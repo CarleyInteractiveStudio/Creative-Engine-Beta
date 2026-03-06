@@ -1,4 +1,5 @@
 import { clearAssetCache } from '../../engine/AssetUtils.js';
+import * as Dialogs from './DialogWindow.js';
 
 // --- Module State ---
 let localDom = {};
@@ -14,6 +15,17 @@ let saveAssetMetaCallback = null;
 let createAssetCallback = null;
 let updateAssetBrowserCallback = null;
 let getAssetsDirectoryHandle = null;
+
+// Drawing state
+let isDrawing = false;
+let drawingTool = 'pencil';
+let drawingColor = '#ffffff';
+let brushSize = 2;
+let startPos = { x: 0, y: 0 };
+let drawingCanvas = null; // Offscreen canvas to hold the drawing
+let drawingCtx = null;
+let tempCanvas = null; // For previewing shapes while dragging
+let tempCtx = null;
 
 // --- Initialization ---
 export function initialize(dependencies) {
@@ -40,6 +52,7 @@ export function initialize(dependencies) {
         applyBtn: cachedDom.slicerCreateAssetBtn,
         deleteBtn: cachedDom.slicerDeleteSpriteBtn,
         loadImageBtn: cachedDom.slicerLoadImageBtn,
+        newSpriteBtn: document.getElementById('slicer-new-sprite-btn'),
         closeBtn: cachedDom.spriteSlicerPanel.querySelector('.close-panel-btn'),
         pixelSizeX: cachedDom.slicePixelSizeX,
         pixelSizeY: cachedDom.slicePixelSizeY,
@@ -49,10 +62,17 @@ export function initialize(dependencies) {
         offsetY: cachedDom.sliceOffsetY,
         paddingX: cachedDom.slicePaddingX,
         paddingY: cachedDom.slicePaddingY,
+        toolbar: document.getElementById('slicer-toolbar'),
+        colorPicker: document.getElementById('slicer-color-picker'),
+        brushSizeInput: document.getElementById('slicer-brush-size'),
+        brushSizeVal: document.getElementById('slicer-brush-size-val'),
     };
 
     // Setup Event Listeners
-    localDom.canvas.addEventListener('mousedown', handleCanvasClick);
+    localDom.canvas.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
     localDom.sliceType.addEventListener('change', (e) => {
         handleSliceTypeChange(e);
         drawSlicePreview();
@@ -69,6 +89,34 @@ export function initialize(dependencies) {
         } else {
             console.error("Asset selector callback not initialized for Sprite Slicer.");
         }
+    });
+
+    localDom.newSpriteBtn.addEventListener('click', () => {
+        Dialogs.showPrompt("Nuevo Sprite", "Introduce el tamaño (ej: 256x256 o solo 256):", (val) => {
+            if (!val) return;
+            let [w, h] = val.toLowerCase().split('x').map(n => parseInt(n.trim()));
+            if (isNaN(w)) return;
+            if (isNaN(h)) h = w;
+            createNewSprite(w, h);
+        });
+    });
+
+    localDom.toolbar.addEventListener('click', (e) => {
+        const btn = e.target.closest('.tool-btn');
+        if (btn) {
+            localDom.toolbar.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            drawingTool = btn.dataset.tool;
+        }
+    });
+
+    localDom.colorPicker.addEventListener('input', (e) => {
+        drawingColor = e.target.value;
+    });
+
+    localDom.brushSizeInput.addEventListener('input', (e) => {
+        brushSize = parseInt(e.target.value);
+        localDom.brushSizeVal.textContent = brushSize;
     });
 
     // Listen for real-time input on all slicing parameter fields
@@ -105,6 +153,34 @@ export async function open(fileHandle, directoryHandle, saveMetaCb) {
     }
 }
 
+async function createNewSprite(w, h) {
+    localDom.canvas.width = w;
+    localDom.canvas.height = h;
+
+    drawingCanvas = document.createElement('canvas');
+    drawingCanvas.width = w;
+    drawingCanvas.height = h;
+    drawingCtx = drawingCanvas.getContext('2d', { willReadFrequently: true });
+
+    tempCanvas = document.createElement('canvas');
+    tempCanvas.width = w;
+    tempCanvas.height = h;
+    tempCtx = tempCanvas.getContext('2d');
+
+    sourceImage = drawingCanvas; // Use drawing canvas as source
+    currentFileHandle = { name: "NewSprite.png" }; // Placeholder
+    generatedSlices = [];
+    selectedSliceIndex = -1;
+
+    localDom.overlay.classList.add('hidden');
+    localDom.mainContent.classList.remove('hidden');
+    localDom.toolbar.classList.remove('hidden');
+    localDom.sliceBtn.disabled = false;
+    localDom.applyBtn.disabled = false;
+
+    draw();
+}
+
 async function loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCb) {
     currentFileHandle = fileHandle;
     dirHandle = directoryHandle;
@@ -115,7 +191,7 @@ async function loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCb) 
         const file = await fileHandle.getFile();
         const L = window.Localization;
         if (!file.type.startsWith('image/')) {
-            window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_IMAGEN_INVALIDA', "El archivo seleccionado no es una imagen válida."));
+            Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_IMAGEN_INVALIDA', "El archivo seleccionado no es una imagen válida."));
             return;
         }
 
@@ -123,11 +199,28 @@ async function loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCb) 
         reader.onload = (e) => {
             sourceImage = new Image();
             sourceImage.onload = () => {
-                localDom.canvas.width = sourceImage.naturalWidth;
-                localDom.canvas.height = sourceImage.naturalHeight;
+                const w = sourceImage.naturalWidth;
+                const h = sourceImage.naturalHeight;
+                localDom.canvas.width = w;
+                localDom.canvas.height = h;
+
+                drawingCanvas = document.createElement('canvas');
+                drawingCanvas.width = w;
+                drawingCanvas.height = h;
+                drawingCtx = drawingCanvas.getContext('2d', { willReadFrequently: true });
+                drawingCtx.drawImage(sourceImage, 0, 0);
+
+                tempCanvas = document.createElement('canvas');
+                tempCanvas.width = w;
+                tempCanvas.height = h;
+                tempCtx = tempCanvas.getContext('2d');
+
+                sourceImage = drawingCanvas; // Now we use the drawing canvas as the primary source
+
                 draw();
                 localDom.overlay.classList.add('hidden');
                 localDom.mainContent.classList.remove('hidden');
+                localDom.toolbar.classList.remove('hidden');
                 // Enable controls now that an image is loaded
                 localDom.sliceBtn.disabled = false;
                 localDom.applyBtn.disabled = false;
@@ -138,7 +231,7 @@ async function loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCb) 
     } catch (error) {
         console.error("Error al cargar la imagen:", error);
         const L = window.Localization;
-        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CARGAR_IMAGEN', "No se pudo cargar la imagen."));
+        Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CARGAR_IMAGEN', "No se pudo cargar la imagen."));
         resetToDefaultState();
     }
 }
@@ -153,9 +246,14 @@ function resetToDefaultState() {
     saveCallback = null;
     generatedSlices = [];
     selectedSliceIndex = -1;
+    drawingCanvas = null;
+    drawingCtx = null;
+    tempCanvas = null;
+    tempCtx = null;
     if(localDom.ctx) localDom.ctx.clearRect(0, 0, localDom.canvas.width, localDom.canvas.height);
     localDom.overlay.classList.remove('hidden');
     localDom.mainContent.classList.add('hidden');
+    localDom.toolbar.classList.add('hidden');
     localDom.applyBtn.textContent = L.get('CREAR_ASSET_SPRITE', 'Crear Asset de Sprite');
     localDom.deleteBtn.disabled = true;
 }
@@ -164,6 +262,10 @@ function draw(previewSlices = []) {
     if (!sourceImage) return;
     localDom.ctx.clearRect(0, 0, localDom.canvas.width, localDom.canvas.height);
     localDom.ctx.drawImage(sourceImage, 0, 0);
+
+    if (isDrawing && tempCanvas) {
+        localDom.ctx.drawImage(tempCanvas, 0, 0);
+    }
 
     // Draw existing, confirmed slices
     generatedSlices.forEach((rect, index) => {
@@ -271,11 +373,11 @@ function executeSlice() {
 async function createSpriteAsset() {
     const L = window.Localization;
     if (generatedSlices.length === 0) {
-        window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('AVISO_SIN_SLICES', "No hay slices para aplicar. Usa el botón 'Slice' primero."));
+        Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('AVISO_SIN_SLICES', "No hay slices para aplicar. Usa el botón 'Slice' primero."));
         return;
     }
     if (!createAssetCallback || !getAssetsDirectoryHandle || !updateAssetBrowserCallback || !currentFileHandle) {
-        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_DEPS_ASSET', "Faltan funciones esenciales del editor para crear el asset."));
+        Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_DEPS_ASSET', "Faltan funciones esenciales del editor para crear el asset."));
         console.error("Error al crear/guardar asset: Faltan dependencias.");
         return;
     }
@@ -303,6 +405,36 @@ async function createSpriteAsset() {
             };
         });
 
+        // If it's a new drawing or edited drawing, we might need to save the image first.
+        // For simplicity, if it's a new sprite, we'll prompt for a filename and save the .png
+        if (currentFileHandle.name === "NewSprite.png") {
+            const fileName = await new Promise(resolve => {
+                Dialogs.showPrompt("Guardar Imagen", "Nombre del archivo de imagen (.png):", (name) => {
+                    if (!name) resolve(null);
+                    resolve(name.endsWith('.png') ? name : `${name}.png`);
+                });
+            });
+
+            if (!fileName) return;
+
+            const assetsDir = await getAssetsDirectoryHandle();
+            const imageFileHandle = await assetsDir.getFileHandle(fileName, { create: true });
+            const blob = await new Promise(resolve => drawingCanvas.toBlob(resolve, 'image/png'));
+            const writable = await imageFileHandle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+
+            currentFileHandle = imageFileHandle;
+            spriteAssetContent.sourceImage = currentFileHandle.name;
+        } else if (drawingCanvas) {
+            // If we have a drawing canvas, we should update the source image file if it's not a read-only asset
+            // Actually, let's just save the current canvas state back to the file if it's an image we opened.
+            const blob = await new Promise(resolve => drawingCanvas.toBlob(resolve, 'image/png'));
+            const writable = await currentFileHandle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+        }
+
         const jsonContent = JSON.stringify(spriteAssetContent, null, 2);
         const assetsDirHandle = await getAssetsDirectoryHandle();
 
@@ -325,7 +457,7 @@ async function createSpriteAsset() {
             const message = isEditing
                 ? L.get('EXITO_ASSET_GUARDADO_CON', "Asset '{name}' guardado con {count} sprites.").replace('{name}', assetName).replace('{count}', generatedSlices.length)
                 : L.get('EXITO_ASSET_CREADO_CON', "Asset '{name}' creado con {count} sprites.").replace('{name}', assetName).replace('{count}', generatedSlices.length);
-            window.Dialogs.showNotification(L.get('EXITO', "Éxito"), message);
+            Dialogs.showNotification(L.get('EXITO', "Éxito"), message);
 
             await updateAssetBrowserCallback(); // Refresh to show new/updated file
             localDom.panel.classList.add('hidden');
@@ -335,7 +467,7 @@ async function createSpriteAsset() {
     } catch (error) {
         console.error(`Error al ${isEditing ? 'guardar' : 'crear'} el asset de sprite:`, error);
         const errorMsg = isEditing ? L.get('ERROR_GUARDAR_CE_SPRITE', 'No se pudo guardar el archivo .ceSprite') : L.get('ERROR_CREAR_CE_SPRITE', 'No se pudo crear el archivo .ceSprite');
-        window.Dialogs.showNotification(L.get('ERROR', "Error"), `${errorMsg}: ${error.message}`);
+        Dialogs.showNotification(L.get('ERROR', "Error"), `${errorMsg}: ${error.message}`);
     }
 }
 
@@ -461,34 +593,115 @@ async function loadCeSpriteForEditing(ceSpriteFileHandle, directoryHandle) {
     } catch (error) {
         console.error("Error loading .ceSprite for editing:", error);
         const L = window.Localization;
-        window.Dialogs.showNotification(L.get('ERROR', "Error"), `${L.get('ERROR_CARGAR_CE_SPRITE', 'No se pudo cargar el archivo .ceSprite para editar')}: ${ceSpriteFileHandle.name}`);
+        Dialogs.showNotification(L.get('ERROR', "Error"), `${L.get('ERROR_CARGAR_CE_SPRITE', 'No se pudo cargar el archivo .ceSprite para editar')}: ${ceSpriteFileHandle.name}`);
         resetToDefaultState();
     }
 }
 
-function handleCanvasClick(e) {
-    if (!sourceImage || generatedSlices.length === 0) return;
+function handleMouseDown(e) {
+    if (!sourceImage) return;
 
     const rect = localDom.canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // Find if a slice was clicked
-    const clickedSliceIndex = generatedSlices.findIndex(slice =>
-        x >= slice.x && x <= slice.x + slice.width &&
-        y >= slice.y && y <= slice.y + slice.height
-    );
+    // Check if we are selecting a slice (only if pencil/eraser is NOT selected, or if we clicked outside)
+    if (generatedSlices.length > 0) {
+        const clickedSliceIndex = generatedSlices.findIndex(slice =>
+            x >= slice.x && x <= slice.x + slice.width &&
+            y >= slice.y && y <= slice.y + slice.height
+        );
 
-    if (clickedSliceIndex !== -1) {
-        selectedSliceIndex = clickedSliceIndex;
-        localDom.deleteBtn.disabled = false;
-        console.log(`Selected slice index: ${selectedSliceIndex}`);
-    } else {
-        selectedSliceIndex = -1;
-        localDom.deleteBtn.disabled = true;
+        if (clickedSliceIndex !== -1) {
+            selectedSliceIndex = clickedSliceIndex;
+            localDom.deleteBtn.disabled = false;
+            draw();
+            return;
+        }
     }
 
-    draw(); // Redraw to show selection highlight
+    selectedSliceIndex = -1;
+    localDom.deleteBtn.disabled = true;
+
+    if (drawingCtx) {
+        isDrawing = true;
+        startPos = { x, y };
+
+        if (drawingTool === 'pencil' || drawingTool === 'eraser') {
+            drawingCtx.beginPath();
+            drawingCtx.moveTo(x, y);
+            drawingCtx.strokeStyle = drawingColor;
+            drawingCtx.lineWidth = brushSize;
+            drawingCtx.lineCap = 'round';
+            drawingCtx.lineJoin = 'round';
+            drawingCtx.globalCompositeOperation = drawingTool === 'eraser' ? 'destination-out' : 'source-over';
+        }
+    }
+
+    draw();
+}
+
+function handleMouseMove(e) {
+    if (!isDrawing || !drawingCtx) return;
+
+    const rect = localDom.canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    if (drawingTool === 'pencil' || drawingTool === 'eraser') {
+        drawingCtx.lineTo(x, y);
+        drawingCtx.stroke();
+    } else {
+        // Shapes
+        if (tempCtx) {
+            tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+            tempCtx.strokeStyle = drawingColor;
+            tempCtx.fillStyle = drawingColor;
+            tempCtx.lineWidth = brushSize;
+            tempCtx.lineCap = 'round';
+            tempCtx.lineJoin = 'round';
+
+            const dx = x - startPos.x;
+            const dy = y - startPos.y;
+
+            if (drawingTool === 'line') {
+                tempCtx.beginPath();
+                tempCtx.moveTo(startPos.x, startPos.y);
+                tempCtx.lineTo(x, y);
+                tempCtx.stroke();
+            } else if (drawingTool === 'square') {
+                tempCtx.strokeRect(startPos.x, startPos.y, dx, dy);
+            } else if (drawingTool === 'circle') {
+                const radius = Math.sqrt(dx * dx + dy * dy);
+                tempCtx.beginPath();
+                tempCtx.arc(startPos.x, startPos.y, radius, 0, Math.PI * 2);
+                tempCtx.stroke();
+            } else if (drawingTool === 'triangle') {
+                tempCtx.beginPath();
+                tempCtx.moveTo(startPos.x + dx / 2, startPos.y);
+                tempCtx.lineTo(startPos.x, startPos.y + dy);
+                tempCtx.lineTo(startPos.x + dx, startPos.y + dy);
+                tempCtx.closePath();
+                tempCtx.stroke();
+            }
+        }
+    }
+
+    draw();
+}
+
+function handleMouseUp(e) {
+    if (!isDrawing || !drawingCtx) return;
+    isDrawing = false;
+
+    if (drawingTool !== 'pencil' && drawingTool !== 'eraser' && tempCanvas) {
+        // Commit shape to main drawing canvas
+        drawingCtx.globalCompositeOperation = 'source-over';
+        drawingCtx.drawImage(tempCanvas, 0, 0);
+        tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+    }
+
+    draw();
 }
 
 function deleteSelectedSlice() {

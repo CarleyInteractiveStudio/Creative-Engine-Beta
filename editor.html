@@ -7,14 +7,14 @@
     <link rel="stylesheet" href="css/editor.css">
     <link rel="stylesheet" href="css/sprite-slicer.css">
     <link rel="stylesheet" href="css/debug.css">
-    <link rel="icon" href="image/Creative_Engine_beta.png" type="image/png">
+    <link rel="icon" href="image/Logo_C.png" type="image/png">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
     <!-- Loading Overlay Panel -->
     <div id="loading-overlay">
         <div class="loading-content">
-            <img src="image/Creative_Engine_beta.png" alt="Creative Engine Logo" class="loading-logo">
+            <img src="image/Logo_C.png" alt="Creative Engine Logo" class="loading-logo">
             <h2 id="loading-status-message" data-i18n="CARGANDO_PROYECTO">Cargando tu proyecto...</h2>
             <div class="progress-bar-container">
                 <div id="progress-bar" class="progress-bar"></div>
@@ -33,7 +33,7 @@
         <div id="menubar">
             <div class="menubar-left">
                 <div class="logo-area">
-                    <img src="image/Creative_Engine_beta.png" alt="Logo">
+                    <img src="image/Logo_C.png" alt="Logo">
                     <span id="project-name-display"></span>
                 </div>
             </div>
@@ -76,9 +76,7 @@
                         <a href="#" id="menu-window-sprite-editor" data-i18n="EDITOR_SPRITES">Editor de Sprites</a>
                         <a href="#" id="menu-window-ambiente-control" data-i18n="CONTROL_AMBIENTE">Control de Ambiente</a>
                         <hr>
-                        <a href="#" id="menu-window-verification-system" data-i18n="SISTEMA_VERIFICACION">Sistema de Verificación</a>
-                        <hr>
-                        <a href="#" id="menu-window-asset-store" data-i18n="TIENDA_ASSETS">Tienda de asset</a>
+                        <a href="#" id="menu-window-vid-spri" data-i18n="VID_SPRI">Vid Spri</a>
                         <hr>
                         <a href="#" id="menu-window-lib" class="disabled">Lib</a>
                     </div>
@@ -96,7 +94,20 @@
                     <button class="menu-btn" data-i18n="AYUDA">Ayuda</button>
                     <div class="menu-content">
                         <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/" target="_blank" id="menu-help" data-i18n="AYUDA">Ayuda</a>
+                        <a href="https://www.youtube.com/@CarleyInteractiveStudioOficial" target="_blank" data-i18n="TUTORIALES">Tutoriales</a>
+                        <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/creative-engine.html#report" target="_blank" id="menu-report-bug" data-i18n="REPORTAR_FALLOS">Reportar Bugs/Errores/Fallos</a>
+                        <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/creative-engine.html#opinions" target="_blank" data-i18n="OPINIONES">Opiniones</a>
+                        <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/creative-engine.html#claims" target="_blank" data-i18n="RECLAMOS">Reclamos</a>
+                        <hr>
+                        <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/creative-engine.html#license" target="_blank" data-i18n="LICENCIA">Licencia</a>
+                        <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/creative-engine.html#privacy" target="_blank" data-i18n="POLITICA_PRIVACIDAD">Privacidad</a>
                     </div>
+                </div>
+                <div class="menu-item">
+                    <a href="https://www.paypal.com/donate/?hosted_button_id=JZ4KM2VUD6AMQ" target="_blank" class="menu-btn donate-btn">
+                        <img src="icons/heart.svg" class="ce-icon">
+                        <span data-i18n="DONAR_BOTON">Donar</span>
+                    </a>
                 </div>
             </div>
             <div class="menubar-right">
@@ -623,16 +634,16 @@ public star() {
                 <div class="resize-handle" data-direction="w"></div>
                 <div class="resize-handle" data-direction="nw"></div>
             </div>
-            <div id="asset-store-panel" class="editor-panel floating-panel hidden" style="width: 800px; height: 600px;">
+            <div id="vid-spri-panel" class="editor-panel floating-panel hidden" style="width: 800px; height: 600px;">
                 <div class="panel-header">
-                    <span data-i18n="TIENDA_ASSETS">Tienda de Asset</span>
+                    <span data-i18n="VID_SPRI">Vid Spri</span>
                     <div class="panel-header-controls">
-                        <button id="btn-open-asset-store-ext" class="panel-tool-btn" title="Abrir en nueva pestaña"><img src="icons/external-link.svg" class="ce-icon"></button>
-                        <button class="close-panel-btn" data-panel="asset-store-panel">&times;</button>
+                        <button id="btn-open-vid-spri-ext" class="panel-tool-btn" title="Abrir en nueva pestaña"><img src="icons/external-link.svg" class="ce-icon"></button>
+                        <button class="close-panel-btn" data-panel="vid-spri-panel">&times;</button>
                     </div>
                 </div>
                 <div class="panel-content no-padding">
-                    <iframe src="https://carleyinteractivestudio.github.io/Creative-Engine-Asset-Store/" style="width: 100%; height: 100%; border: none;"></iframe>
+                    <iframe src="https://carleyinteractivestudio.github.io/VidSpri/" style="width: 100%; height: 100%; border: none;"></iframe>
                 </div>
                 <div class="resize-handle" data-direction="n"></div>
                 <div class="resize-handle" data-direction="ne"></div>
@@ -1350,27 +1361,6 @@ public star() {
         </div>
     </div>
 
-    <!-- Floating Verification System Panel -->
-    <div id="verification-system-panel" class="editor-panel floating-panel hidden">
-        <div class="panel-header">
-            <span data-i18n="SISTEMA_VERIFICACION">Sistema de Verificación</span>
-            <button class="close-panel-btn" data-panel="verification-system-panel" title="Cerrar Panel" data-i18n-title="CERRAR"><img src="icons/x.svg" class="ce-icon"></button>
-        </div>
-        <div class="panel-content">
-            <div id="verification-tile-preview">
-                <p data-i18n="ULTIMO_TILE">Último Tile Seleccionado:</p>
-                <img id="verification-tile-image" src="" alt="Tile Preview" style="width: 64px; height: 64px; border: 1px solid #ccc;">
-            </div>
-            <div id="verification-status" style="margin-top: 10px;">
-                <p data-i18n="ESTADO">Estado:</p>
-                <span id="verification-status-text" data-i18n="ESPERANDO_ACCION">Esperando acción...</span>
-            </div>
-            <div id="verification-details" style="margin-top: 10px;">
-                <p data-i18n="DETALLES">Detalles:</p>
-                <pre id="verification-details-text" style="white-space: pre-wrap;"></pre>
-            </div>
-        </div>
-    </div>
         <div class="panel-content no-padding">
             <div id="now-playing-bar">
                 <span id="now-playing-title" data-i18n="NO_REPRODUCIENDO">Nada en reproducción</span>
@@ -1542,13 +1532,35 @@ public star() {
         <div class="panel-header">
             <span data-i18n="EDITOR_SPRITES">Editor de Sprites</span>
             <div class="panel-header-controls">
+                <button id="slicer-new-sprite-btn" class="panel-tool-btn" data-i18n="NUEVO_SPRITE">Nuevo Sprite</button>
                 <button id="slicer-load-image-btn" class="panel-tool-btn" data-i18n="CARGAR_IMAGEN">Cargar Imagen</button>
                 <button id="slicer-delete-sprite-btn" class="panel-tool-btn danger-btn" data-i18n="ELIMINAR_SPRITE">Eliminar Sprite</button>
                 <button id="slicer-create-asset-btn" class="panel-tool-btn primary-btn" data-i18n="CREAR_ASSET_SPRITE">Crear Asset de Sprite</button>
                 <button class="close-panel-btn" data-panel="sprite-slicer-panel">&times;</button>
             </div>
         </div>
-        <div class="panel-content no-padding">
+        <div class="panel-content no-padding" style="display: flex; flex-direction: column;">
+            <div id="slicer-toolbar" class="hidden">
+                <div class="toolbar-bubble-container">
+                    <div class="tool-bubble">
+                        <button class="tool-btn active" data-tool="pencil" title="Lápiz" data-i18n-title="LAPIZ"><img src="icons/pencil.svg" class="ce-icon"></button>
+                        <button class="tool-btn" data-tool="eraser" title="Goma de Borrar" data-i18n-title="GOMA"><img src="icons/eraser.svg" class="ce-icon"></button>
+                        <button class="tool-btn" data-tool="line" title="Línea" data-i18n-title="LINEA"><img src="icons/minus.svg" class="ce-icon"></button>
+                        <button class="tool-btn" data-tool="square" title="Cuadrado" data-i18n-title="CUADRADO"><img src="icons/square.svg" class="ce-icon"></button>
+                        <button class="tool-btn" data-tool="circle" title="Círculo" data-i18n-title="CIRCULO"><img src="icons/target.svg" class="ce-icon"></button>
+                        <button class="tool-btn" data-tool="triangle" title="Triángulo" data-i18n-title="TRIANGULO"><img src="icons/mountain.svg" class="ce-icon"></button>
+                    </div>
+                    <div class="toolbar-group">
+                        <label for="slicer-color-picker" data-i18n="COLOR">Color:</label>
+                        <input type="color" id="slicer-color-picker" value="#ffffff">
+                    </div>
+                    <div class="toolbar-group">
+                        <label for="slicer-brush-size" data-i18n="TAMANO">Tamaño:</label>
+                        <input type="range" id="slicer-brush-size" min="1" max="50" value="2">
+                        <span id="slicer-brush-size-val">2</span>
+                    </div>
+                </div>
+            </div>
             <div id="sprite-slicer-overlay" class="panel-overlay-message">
                 <p data-i18n="HINT_CARGAR_SPRITES">Carga una imagen para empezar a editar sprites.</p>
                 <p data-i18n="HINT_CARGAR_SPRITES_2">Puedes hacerlo desde el botón "Cargar Imagen" o abriendo un asset de imagen desde el Inspector.</p>

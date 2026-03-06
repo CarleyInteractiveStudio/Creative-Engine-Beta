@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Creative Engine</title>
     <link rel="stylesheet" href="css/style.css">
-    <link rel="icon" href="image/Creative_Engine_beta.png" type="image/png">
+    <link rel="icon" href="image/Logo_C.png" type="image/png">
     <style>
       #supabase-config-warning {
         background-color: #fff3cd;
@@ -38,65 +38,62 @@
 
     <div class="container">
         <header>
-            <img src="image/Creative_Engine_beta.png" alt="Creative Engine Logo" id="header-logo">
+            <img src="image/Logo_C.png" alt="Creative Engine Logo" id="header-logo">
             <h1>Creative Engine</h1>
             <div id="header-controls">
                 <button id="btn-mute-music" title="Silenciar Música"><img src="icons/volume-2.svg" class="ce-icon"></button>
             </div>
             <div id="auth-status-container">
-                <button id="btn-auth-action" data-i18n="INICIAR_SESION">Iniciar Sesión</button>
+                <button id="btn-account-modal" class="account-btn">
+                    <img src="icons/user.svg" class="ce-icon">
+                    <span data-i18n="CUENTA">Cuenta</span>
+                </button>
             </div>
         </header>
 
     <main>
         <div id="welcome-view">
-            <!-- Contenedor para la secuencia de introducción animada -->
-            <div id="intro-sequence">
-                <div id="intro-step-1" class="intro-step">
-                    <img src="image/Creative_Engine_beta.png" alt="Creative Engine Logo">
-                </div>
-                <div id="intro-step-2" class="intro-step">
-                    <img src="image/Logo_C.png" alt="Carley Interactive Studio Logo">
-                </div>
-                <div id="intro-step-3" class="intro-step">
-                    <img src="image/flygame.png" alt="Flygame Logo">
-                </div>
-            </div>
-
-            <!-- Contenido principal que aparecerá después de la intro -->
-            <div id="main-content" class="intro-step">
+            <!-- Contenido principal -->
+            <div id="main-content" class="intro-step visible">
                 <section id="welcome">
                     <h2 data-i18n="WELCOME_TITLE">Creative Engine</h2>
                     <p id="motivational-quote" data-i18n="WELCOME_SUBTITLE">Tu juego empieza aquí. Lo que imagines, lo construyes. <img src="icons/rocket.svg" class="ce-icon small"> <img src="icons/bot.svg" class="ce-icon small"></p>
-                    <p class="description" data-i18n="WELCOME_DESCRIPTION">
-                        Un motor de videojuegos 2D gratuito para crear directamente en tu navegador. Diseña sin límites, crea sin miedo y publica con orgullo.
-                    </p>
+
+                    <div class="welcome-text-container">
+                        <p class="description" data-i18n="WELCOME_DESCRIPTION_LONG">
+                            ¡Bienvenido a Creative Engine! Esperamos que disfrute de una nueva experiencia en la creación de videojuegos. Este motor está diseñado especialmente para ti, pensando en facilitar tu flujo de trabajo creativo.
+                        </p>
+                        <p class="description-warning" data-i18n="WELCOME_DEV_NOTICE">
+                            Ten en cuenta que el motor se encuentra en una fase inicial y de desarrollo constante, por lo que puede presentar fallos inesperados. Si encuentras uno, con mucho gusto estaremos esperando que nos lo digas desde el reporte.
+                        </p>
+                        <p class="description-community" data-i18n="WELCOME_COMMUNITY">
+                            Puedes unirte a nuestras comunidades y seguirnos en nuestros canales para estar siempre activo. ¡Únete a nuestro canal de WhatsApp! Tu apoyo ayuda a que el proyecto mejore cada día. No necesitas ser un programador profesional para apoyar al motor; también puedes colaborar mediante donaciones.
+                        </p>
+                    </div>
                 </section>
 
-                <section id="actions">
-                    <button id="btn-start" class="rainbow-animated-btn" data-i18n="EMPEZAR">Empezar a Crear</button>
-                    <button id="btn-support" class="rainbow-animated-btn" data-i18n="CONTACTO">Contacto y Soporte</button>
-                    <a href="https://www.paypal.com/donate/?hosted_button_id=JZ4KM2VUD6AMQ" target="_blank" rel="noopener noreferrer" class="button-link rainbow-animated-btn" id="btn-donate" data-i18n="DONAR">Donar con PayPal</a>
-                    <a href="https://discord.gg/fBa9ZSAwk6" target="_blank" rel="noopener noreferrer" class="button-link rainbow-animated-btn" id="btn-discord" data-i18n="DISCORD">Unirte a Discord</a>
+                <section id="actions" class="hero-actions">
+                    <button id="btn-start" class="green-button" data-i18n="EMPEZAR">Empezar a Crear</button>
                 </section>
-                 <p class="credits" data-i18n="CREDITOS">
-                    Hecho por <strong>Carley Interactive Studio</strong> con la ayuda de <strong>Google Jules</strong>.
-                </p>
-                <div class="license-container">
-                    <button id="btn-license" data-i18n="LICENCIA_BTN">Lee nuestra licencia</button>
-                    <a href="https://flygam.com/" target="_blank" rel="noopener noreferrer" class="know-games-button" data-i18n="CONOCE_JUEGOS">conoce juegos hecho con con nuestro motor</a>
-                </div>
+
             </div>
         </div>
 
         <div id="launcher-view" style="display: none;">
-            <h2 data-i18n="MIS_PROYECTOS">Mis Proyectos</h2>
-            <div id="project-list" class="project-list">
+            <div class="launcher-header">
+                <h2 data-i18n="MIS_PROYECTOS">Mis Proyectos</h2>
+                <div class="launcher-toolbar">
+                    <button id="btn-select-folder" class="launcher-btn secondary">
+                        <img src="icons/folder.svg" class="ce-icon"> <span data-i18n="ANADIR_PROYECTO">Añadir Proyecto</span>
+                    </button>
+                    <button id="btn-add-project-top" class="launcher-btn green">
+                        <img src="icons/plus.svg" class="ce-icon"> <span data-i18n="CREAR_PROYECTO">Crear Proyecto</span>
+                    </button>
+                </div>
+            </div>
+            <div id="project-list" class="project-grid">
                 <!-- Los proyectos se añadirán aquí dinámicamente -->
                 <p class="no-projects-message" data-i18n="SIN_PROYECTOS">Aún no tienes proyectos. ¡Crea uno para empezar!</p>
-            </div>
-            <div class="launcher-actions">
-                <button id="btn-create-project" data-i18n="CREAR_NUEVO_PROYECTO">Crear Nuevo Proyecto</button>
             </div>
             <div class="storage-warning">
                 <p data-i18n="AVISO_STORAGE"><strong>Aviso Importante:</strong> Tus proyectos se guardan localmente en la carpeta que elijas. Creative Engine no almacena ninguna información en servidores externos.</p>
@@ -104,21 +101,51 @@
         </div>
     </main>
 
-    <footer data-i18n="COPYRIGHT_FOOTER">
-        <p>&copy; 2025 Carley Interactive Studio</p>
-    </footer>
     </div> <!-- Cierre de .container -->
 
-    <!-- Modals -->
-    <div id="custom-dialog-modal" class="modal">
-        <div class="modal-content">
-            <h2 id="custom-dialog-title">Título</h2>
-            <p id="custom-dialog-message">Este es un mensaje de ejemplo.</p>
-            <div id="custom-dialog-buttons" class="dialog-buttons">
-                <!-- Buttons will be added here dynamically -->
+    <footer class="site-footer">
+        <div class="footer-content">
+            <div class="footer-column">
+                <h4 data-i18n="NUESTROS_CANALES">Nuestros Canales</h4>
+                <a href="https://www.facebook.com/profile.php?id=61575555791348" target="_blank" class="footer-link">Facebook</a>
+                <a href="https://www.youtube.com/@CarleyInteractiveStudioOficial" target="_blank" class="footer-link">YouTube</a>
+                <a href="https://whatsapp.com/channel/0029VbBXP5VL7UVaUDazCj0U" target="_blank" class="footer-link">WhatsApp</a>
+                <a href="https://www.tiktok.com/@carley.interactiv.studio?_r=1&_t=ZS-94P0LD49Ig9" target="_blank" class="footer-link" data-i18n="TIKTOK">TikTok</a>
+            </div>
+            <div class="footer-column">
+                <h4 data-i18n="FOROS">Foros</h4>
+                <a href="https://discord.gg/fBa9ZSAwk6" target="_blank" class="footer-link">Discord</a>
+                <a href="https://www.facebook.com/groups/1264745161495908" target="_blank" class="footer-link">Grupo de Facebook</a>
+            </div>
+            <div class="footer-column">
+                <h4 data-i18n="CONTACTO">Contacto</h4>
+                <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/creative-engine.html#report" target="_blank" class="footer-link" data-i18n="SOPORTE">Soporte</a>
+                <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/creative-engine.html#opinions" target="_blank" class="footer-link" data-i18n="OPINIONES">Opiniones</a>
+                <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/creative-engine.html#claims" target="_blank" class="footer-link" data-i18n="RECLAMOS">Reclamos</a>
+            </div>
+            <div class="footer-column">
+                <h4 data-i18n="DONACIONES">Donaciones</h4>
+                <a href="https://www.paypal.com/donate/?hosted_button_id=JZ4KM2VUD6AMQ" target="_blank" class="footer-link" data-i18n="DONAR_BOTON">Donar</a>
+                <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/creative-engine.html#donations" target="_blank" class="footer-link" data-i18n="QUE_HACEMOS_DONACIONES">¿Qué hacemos con sus donaciones?</a>
+            </div>
+            <div class="footer-column">
+                <h4 data-i18n="LEGAL">Legal</h4>
+                <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/creative-engine.html#license" target="_blank" class="footer-link" data-i18n="LICENCIA">Licencia</a>
+                <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/creative-engine.html#privacy" target="_blank" class="footer-link" data-i18n="POLITICA_PRIVACIDAD">Política de Privacidad</a>
+                <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/creative-engine.html#coqui" target="_blank" class="footer-link" data-i18n="COOKIES">Cookies</a>
+            </div>
+            <div class="footer-column">
+                <h4 data-i18n="MAS">Más</h4>
+                <a href="https://carleyinteractivestudio.github.io/VidSpri/" target="_blank" class="footer-link" data-i18n="PRUEBA_VIDSPRI">También prueba VidSpri</a>
+                <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/" target="_blank" class="footer-link" data-i18n="NUESTRO_SITIO_WEB">Nuestro sitio web</a>
+                <a href="#" class="footer-link" id="btn-share" data-i18n="COMPARTIR_MOTOR">Compartir Motor</a>
             </div>
         </div>
-    </div>
+        <div class="footer-bottom">
+            <p data-i18n="COPYRIGHT_FOOTER">&copy; 2026 Carley Interactive Studio. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
 
     <div id="create-project-modal" class="modal">
         <div class="modal-content">
@@ -133,104 +160,88 @@
         </div>
     </div>
 
-    <div id="support-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button" id="close-support">&times;</span>
-            <h2 data-i18n="SUPPORT_TITLE">Contacto y Soporte</h2>
-            <form id="contact-form" action="https://formspree.io/f/xldlkbej" method="POST" enctype="multipart/form-data">
-                <p data-i18n="SUPPORT_HINT">Usa este formulario para enviar sugerencias, consultas o reportar errores. ¡Tu feedback es muy valioso!</p>
-                <label for="contact-email" data-i18n="SUPPORT_EMAIL">Tu Correo Electrónico:</label>
-                <input id="contact-email" type="email" name="email" placeholder="tu@email.com" required>
-                <label for="contact-message" data-i18n="SUPPORT_MESSAGE">Tu Mensaje:</label>
-                <textarea id="contact-message" name="message" placeholder="Escribe tu mensaje, sugerencia o reporte de error aquí..." data-i18n="SUPPORT_PLACEHOLDER_MSG" required></textarea>
-                <label for="contact-attachment" data-i18n="SUPPORT_ATTACHMENT">Adjuntar captura de pantalla (Opcional):</label>
-                <input id="contact-attachment" type="file" name="attachment" accept="image/*" style="margin-bottom: 20px;">
-                <button type="submit" class="modal-btn" data-i18n="SUPPORT_SEND">Enviar Mensaje</button>
-            </form>
-        </div>
-    </div>
 
-    <div id="license-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button" id="close-license">&times;</span>
-            <h2 data-i18n="EULA_TITLE">END USER LICENSE AGREEMENT (EULA)</h2>
-            <div class="license-text">
-                <p data-i18n="EULA_COPYRIGHT"><strong>Copyright (c) 2025 Carley Interactive Studio.</strong> Todos los derechos reservados.</p>
-
-                <h4 data-i18n="EULA_GRANT_TITLE">Concesión de licencia</h4>
-                <p data-i18n="EULA_GRANT_TEXT">El Licenciante otorga al Licenciatario un derecho no exclusivo, intransferible y revocable para utilizar el software en forma binaria “tal cual”, únicamente para el desarrollo de videojuegos, conforme a los términos de este acuerdo.</p>
-
-                <h4 data-i18n="EULA_WARRANTY_TITLE">Garantía limitada y soporte</h4>
-                <p data-i18n="EULA_WARRANTY_TEXT">El software se proporciona “tal cual”, sin garantía expresa o implícita. Sin embargo, en caso de fallos técnicos o errores graves, el Licenciatario podrá reportarlos al Licenciante, quien podrá brindar asistencia técnica sin compromiso de solución garantizada.</p>
-
-                <h4 data-i18n="EULA_RESTRICTIONS_TITLE">Restricciones de uso</h4>
-                <p data-i18n="EULA_RESTRICTIONS_TEXT">El Licenciatario no podrá, bajo ninguna circunstancia: Copiar, clonar, modificar, distribuir, revender, realizar ingeniería inversa o utilizar el software con fines comerciales no autorizados. En caso de incumplimiento, la licencia podrá ser revocada.</p>
-
-                <div class="license-highlight">
-                    <h4 data-i18n="EULA_RIGHTS_TITLE">Derechos sobre los juegos creados</h4>
-                    <p data-i18n="EULA_RIGHTS_TEXT">Todo videojuego creado con el motor es 100% propiedad del usuario. El Licenciante no reclama participación en las ganancias ni derechos sobre el contenido generado.</p>
+    <!-- Account / Settings Modal -->
+    <div id="account-modal" class="modal">
+        <div class="modal-content account-modal-content">
+            <span class="close-button" id="close-account">&times;</span>
+            <div class="split-layout">
+                <div class="split-sidebar">
+                    <ul>
+                        <li class="active" data-section="account-section"><img src="icons/user.svg" class="ce-icon"> <span data-i18n="CUENTA">Cuenta</span></li>
+                        <li data-section="prefs-section"><img src="icons/settings.svg" class="ce-icon"> <span data-i18n="PREFERENCIAS">Preferencias</span></li>
+                    </ul>
                 </div>
+                <div class="split-content">
+                    <div id="account-section" class="section-view active">
+                        <div id="auth-logged-out" class="auth-view">
+                            <h2 data-i18n="AUTH_LOGIN">Iniciar Sesión</h2>
+                            <form id="login-form">
+                                <label for="login-email" data-i18n="AUTH_EMAIL">Correo Electrónico:</label>
+                                <input id="login-email" type="email" name="email" required autocomplete="email">
+                                <label for="login-password" data-i18n="AUTH_PASSWORD">Contraseña:</label>
+                                <input id="login-password" type="password" name="password" required autocomplete="current-password">
+                                <button type="submit" class="modal-btn" data-i18n="AUTH_LOGIN">Iniciar Sesión</button>
+                                <p class="auth-switch" data-i18n="AUTH_NO_ACCOUNT">¿No tienes una cuenta? <a href="#" id="goto-signup">Regístrate</a></p>
+                                <p class="auth-switch"><a href="#" id="goto-reset" data-i18n="AUTH_FORGOT_PASS">¿Olvidaste tu contraseña?</a></p>
+                            </form>
+                        </div>
+                        <div id="auth-logged-in" class="auth-view" style="display: none;">
+                            <h2 data-i18n="MI_CUENTA">Mi Cuenta</h2>
+                            <p id="user-info-text"></p>
+                            <button id="btn-logout" class="modal-btn secondary" data-i18n="CERRAR_SESION">Cerrar Sesión</button>
+                        </div>
+                        <div id="signup-view" class="auth-view" style="display: none;">
+                            <h2 data-i18n="AUTH_SIGNUP">Crear una Cuenta</h2>
+                            <form id="signup-form">
+                                <label for="signup-name" data-i18n="AUTH_USERNAME">Nombre de Usuario:</label>
+                                <input id="signup-name" type="text" name="name" required autocomplete="username">
+                                <label for="signup-email" data-i18n="AUTH_EMAIL">Correo Electrónico:</label>
+                                <input id="signup-email" type="email" name="email" required autocomplete="email">
+                                <label for="signup-password" data-i18n="AUTH_PASSWORD">Contraseña:</label>
+                                <input id="signup-password" type="password" name="password" required autocomplete="new-password" minlength="6">
+                                <p class="password-hint" data-i18n="AUTH_PASS_HINT">La contraseña debe tener al menos 6 caracteres.</p>
+                                <button type="submit" class="modal-btn" data-i18n="AUTH_SIGNUP">Registrarse</button>
+                                <p class="auth-switch" data-i18n="AUTH_ALREADY_ACCOUNT">¿Ya tienes una cuenta? <a href="#" id="goto-login">Inicia Sesión</a></p>
+                            </form>
+                        </div>
+                        <div id="reset-password-view" class="auth-view" style="display: none;">
+                            <h2 data-i18n="AUTH_RESET_PASS">Recuperar Contraseña</h2>
+                            <form id="reset-password-form">
+                                <p data-i18n="AUTH_RESET_HINT">Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.</p>
+                                <label for="reset-email" data-i18n="AUTH_EMAIL">Correo Electrónico:</label>
+                                <input id="reset-email" type="email" name="email" required autocomplete="email">
+                                <button type="submit" class="modal-btn" data-i18n="AUTH_SEND_RESET">Enviar Enlace de Recuperación</button>
+                                <p class="auth-switch"><a href="#" id="back-to-login" data-i18n="AUTH_BACK_TO_LOGIN">Volver a Iniciar Sesión</a></p>
+                            </form>
+                        </div>
+                    </div>
+                    <div id="prefs-section" class="section-view">
+                        <h2 data-i18n="PREFERENCIAS">Preferencias</h2>
+                        <label for="main-lang-select" data-i18n="IDIOMA">Idioma:</label>
+                        <select id="main-lang-select" class="modal-input">
+                            <option value="ES">Español</option>
+                            <option value="EN">English</option>
+                            <option value="PT">Português</option>
+                            <option value="RU">Русский</option>
+                            <option value="ZH">中文</option>
+                        </select>
+                        <p class="field-description" data-i18n="HINT_IDIOMA">Cambia el idioma de la interfaz del motor.</p>
 
-                <p data-i18n="EULA_PROMO_TEXT">Opcionalmente, el Licenciatario podrá colaborar con nosotros enviando material de su juego (imágenes, videos, enlaces) para que podamos usarlo en la promoción del motor, siempre respetando tu autoría.</p>
+                        <hr>
 
-                <h4 data-i18n="EULA_DURATION_TITLE">Duración y terminación</h4>
-                <p data-i18n="EULA_DURATION_TEXT">Este acuerdo entra en vigor en la fecha de descarga o instalación y permanecerá vigente hasta su terminación. La licencia se extingue automáticamente si el Licenciatario incumple cualquiera de sus términos.</p>
-
-                <h4 data-i18n="EULA_LAW_TITLE">Ley aplicable y jurisdicción</h4>
-                <p data-i18n="EULA_LAW_TEXT">Este acuerdo se regirá por las leyes de República Dominicana. Cualquier disputa será sometida a los tribunales competentes de Santo Domingo.</p>
-
-                <p data-i18n="EULA_ACCEPT"><strong>Al descargar, instalar o usar el software, el Licenciatario acepta íntegramente los términos de este acuerdo.</strong></p>
+                        <h2 data-i18n="INTEGRACIONES_IA">Integraciones de IA</h2>
+                        <label for="carl-ai-key" data-i18n="API_KEY">Clave de API (Carl IA):</label>
+                        <div class="api-key-container">
+                            <input id="carl-ai-key" type="password" class="modal-input" placeholder="Introduce tu clave de API">
+                            <button id="btn-save-ai-key" class="modal-btn small" data-i18n="GUARDAR">Guardar</button>
+                        </div>
+                        <p class="field-description">
+                            <a href="https://aistudio.google.com/app/apikey" target="_blank" data-i18n="OBTENER_API_KEY">Obtener una clave en Google AI Studio</a>
+                        </p>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Auth Modals -->
-    <div id="auth-modal" class="modal">
-        <div class="modal-content auth-modal-content">
-            <span class="close-button" id="close-auth">&times;</span>
-
-            <!-- Login View -->
-            <div id="login-view">
-                <h2 data-i18n="AUTH_LOGIN">Iniciar Sesión</h2>
-                <form id="login-form">
-                    <label for="login-email" data-i18n="AUTH_EMAIL">Correo Electrónico:</label>
-                    <input id="login-email" type="email" name="email" required autocomplete="email">
-                    <label for="login-password" data-i18n="AUTH_PASSWORD">Contraseña:</label>
-                    <input id="login-password" type="password" name="password" required autocomplete="current-password">
-                    <button type="submit" class="modal-btn" data-i18n="AUTH_LOGIN">Iniciar Sesión</button>
-                    <p class="auth-switch" data-i18n="AUTH_NO_ACCOUNT">¿No tienes una cuenta? <a href="#" id="goto-signup">Regístrate</a></p>
-                    <p class="auth-switch"><a href="#" id="goto-reset" data-i18n="AUTH_FORGOT_PASS">¿Olvidaste tu contraseña?</a></p>
-                </form>
-            </div>
-
-            <!-- Signup View -->
-            <div id="signup-view" style="display: none;">
-                <h2 data-i18n="AUTH_SIGNUP">Crear una Cuenta</h2>
-                <form id="signup-form">
-                    <label for="signup-name" data-i18n="AUTH_USERNAME">Nombre de Usuario:</label>
-                    <input id="signup-name" type="text" name="name" required autocomplete="username">
-                    <label for="signup-email" data-i18n="AUTH_EMAIL">Correo Electrónico:</label>
-                    <input id="signup-email" type="email" name="email" required autocomplete="email">
-                    <label for="signup-password" data-i18n="AUTH_PASSWORD">Contraseña:</label>
-                    <input id="signup-password" type="password" name="password" required autocomplete="new-password" minlength="6">
-                     <p class="password-hint" data-i18n="AUTH_PASS_HINT">La contraseña debe tener al menos 6 caracteres.</p>
-                    <button type="submit" class="modal-btn" data-i18n="AUTH_SIGNUP">Registrarse</button>
-                    <p class="auth-switch" data-i18n="AUTH_ALREADY_ACCOUNT">¿Ya tienes una cuenta? <a href="#" id="goto-login">Inicia Sesión</a></p>
-                </form>
-            </div>
-
-            <!-- Password Reset View -->
-            <div id="reset-password-view" style="display: none;">
-                <h2 data-i18n="AUTH_RESET_PASS">Recuperar Contraseña</h2>
-                <form id="reset-password-form">
-                    <p data-i18n="AUTH_RESET_HINT">Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.</p>
-                    <label for="reset-email" data-i18n="AUTH_EMAIL">Correo Electrónico:</label>
-                    <input id="reset-email" type="email" name="email" required autocomplete="email">
-                    <button type="submit" class="modal-btn" data-i18n="AUTH_SEND_RESET">Enviar Enlace de Recuperación</button>
-                    <p class="auth-switch"><a href="#" id="back-to-login" data-i18n="AUTH_BACK_TO_LOGIN">Volver a Iniciar Sesión</a></p>
-                </form>
-            </div>
-
         </div>
     </div>
 

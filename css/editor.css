@@ -3564,16 +3564,18 @@ body.mobile-mode .grid-item {
  * like borders or backgrounds itself. It is a flex container to center its child.
  */
 .custom-dialog {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
     display: none; /* Hidden by default */
     align-items: center;
     justify-content: center;
-    background-color: rgba(0, 0, 0, 0.5); /* Add a backdrop */
-    z-index: 9998; /* High z-index, below loading overlay */
+    background-color: rgba(0, 0, 0, 0.85); /* Darker backdrop */
+    z-index: 40000 !important; /* Extremely high z-index */
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 /* The .is-open class makes the dialog visible */
@@ -3762,41 +3764,7 @@ body.mobile-mode .grid-item {
     color: white;
 }
 
-#verification-system-panel {
-    width: 300px;
-    height: 400px;
-    top: 150px;
-    left: calc(50% - 150px);
-}
 
-#verification-tile-preview img {
-    background-color: #222;
-    border: 1px solid var(--color-border);
-    width: 64px;
-    height: 64px;
-    object-fit: contain;
-}
-
-#verification-status-text.success {
-    color: #4CAF50;
-    font-weight: bold;
-}
-
-#verification-status-text.error {
-    color: #F44336;
-    font-weight: bold;
-}
-
-#verification-details-text {
-    background-color: var(--color-background-deep);
-    border: 1px solid var(--color-border);
-    padding: 5px;
-    font-family: monospace;
-    white-space: pre-wrap;
-    word-break: break-all;
-    max-height: 150px;
-    overflow-y: auto;
-}
 #scene-canvas.drag-over-scene {
     outline: 3px dashed var(--color-accent);
     outline-offset: -5px;
@@ -4285,6 +4253,42 @@ body.game-mode #loading-overlay {
     font-size: 0.92rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.carl-message-bubble p {
+    margin-bottom: 8px;
+}
+
+.carl-message-bubble p:last-child {
+    margin-bottom: 0;
+}
+
+.carl-message-bubble code {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.85em;
+}
+
+.carl-message-bubble pre {
+    background: rgba(0, 0, 0, 0.4);
+    padding: 10px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 10px 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.carl-message-bubble pre code {
+    background: transparent;
+    padding: 0;
+    font-size: 0.9em;
+}
+
+.carl-message-bubble ul, .carl-message-bubble ol {
+    margin-left: 20px;
+    margin-bottom: 10px;
 }
 
 .carl-message-ia {

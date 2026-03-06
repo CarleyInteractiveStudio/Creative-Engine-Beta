@@ -30,33 +30,30 @@ class DialogWindow {
         // Content
         const contentDiv = document.createElement('div');
         contentDiv.className = 'dialog-content';
-        contentDiv.innerHTML = this.content;
+        if (this.content instanceof HTMLElement) {
+            contentDiv.appendChild(this.content);
+        } else if (this.content) {
+            contentDiv.innerHTML = this.content; // Use with caution for trusted HTML (like icons/progress bars)
+        }
         container.appendChild(contentDiv);
 
         // Footer
         const footer = document.createElement('div');
         footer.className = 'dialog-footer';
-        this.buttons.forEach(btnInfo => {
+        this.buttons.forEach((btnInfo, index) => {
             const button = document.createElement('button');
             button.textContent = btnInfo.text;
-            button.className = 'dialog-button';
-
-            // CHIVATO #1: Confirmar que el listener se está añadiendo
-            console.log(`[Dialog] Añadiendo listener al botón '${btnInfo.text}'. ¿Tiene callback?`, !!btnInfo.callback);
+            // Primary style for the first button (usually Accept)
+            button.className = 'dialog-button' + (index === 0 ? ' primary' : '');
 
             button.addEventListener('click', async (e) => {
                 e.stopPropagation();
 
-                // CHIVATO #2: Confirmar que el clic se ha registrado
-                console.log(`[Dialog] ¡Clic detectado en el botón '${btnInfo.text}'!`);
-
                 if (btnInfo.callback) {
-                    console.log(`[Dialog] Ejecutando el callback para '${btnInfo.text}'...`);
                     try {
                         await btnInfo.callback();
-                        console.log(`[Dialog] Callback para '${btnInfo.text}' completado.`);
                     } catch (error) {
-                        console.error(`[Dialog] El callback para '${btnInfo.text}' falló:`, error);
+                        console.error(`[Dialog] Callback failed:`, error);
                     }
                 }
                 this.hide();
@@ -71,8 +68,10 @@ class DialogWindow {
 
     show() {
         // Calculate the highest z-index currently in use by panels or other dialogs
-        const highestZ = Array.from(document.querySelectorAll('.floating-panel, .custom-dialog.is-open'))
-            .reduce((maxZ, el) => Math.max(maxZ, parseInt(window.getComputedStyle(el).zIndex) || 0), 0);
+        // Start with a high base (20000) to ensure it's above site footer and other elements
+        const baseZ = 20000;
+        const highestZ = Array.from(document.querySelectorAll('.floating-panel, .custom-dialog.is-open, .modal.is-open'))
+            .reduce((maxZ, el) => Math.max(maxZ, parseInt(window.getComputedStyle(el).zIndex) || 0), baseZ);
 
         // Set the new dialog's z-index to be on top of everything else
         this.dialogElement.style.zIndex = highestZ + 1;
@@ -128,7 +127,20 @@ export function showProgressDialog(title, message) {
 
 export function showNotification(title, message) {
     const L = window.Localization;
-    const dialog = new DialogWindow(title, message, [{ text: L.get('ACEPTAR', 'Aceptar') }]);
+    // Replace newlines with <br> for HTML content
+    // We use a safe way to handle <br> without full innerHTML risk
+    const acceptText = L ? L.get('ACEPTAR', 'Aceptar') : 'Aceptar';
+    const dialog = new DialogWindow(title, '', [{ text: acceptText }]);
+
+    // Set content safely
+    const contentDiv = dialog.dialogElement.querySelector('.dialog-content');
+    const p = document.createElement('p');
+    message.split('\n').forEach((line, i) => {
+        if (i > 0) p.appendChild(document.createElement('br'));
+        p.appendChild(document.createTextNode(line));
+    });
+    contentDiv.appendChild(p);
+
     dialog.show();
 }
 
@@ -305,6 +317,14 @@ export async function showBuildDialog(projectConfig, onConfirm) {
                     <input type="checkbox" id="run-after" checked style="margin-right:10px;">
                     <label>${L.get('RUN_AFTER_BUILD_CHECK', 'Probar juego tras construir')}</label>
                 </div>
+                <hr style="border:0; border-top:1px solid #444; margin-top: 15px; margin-bottom: 15px;">
+                <div class="dialog-row">
+                    <label style="display:block; margin-bottom:5px;">${L.get('RESOURCE_LOADING_MODE', 'Modo de Carga de Recursos')}:</label>
+                    <select id="resource-loading-mode" style="width:100%; padding:8px; background:#222; border:1px solid #444; color:white;">
+                        <option value="lazy" ${projectConfig.resourceLoadingMode === 'lazy' ? 'selected' : ''}>${L.get('LAZY_LOAD_FAST', 'Carga Perezosa (Inicio Rápido)')}</option>
+                        <option value="preload" ${projectConfig.resourceLoadingMode === 'preload' ? 'selected' : ''}>${L.get('PRELOAD_STABLE', 'Precarga (Estable)')}</option>
+                    </select>
+                </div>
             </div>
         </div>
     `;
@@ -319,6 +339,7 @@ export async function showBuildDialog(projectConfig, onConfirm) {
                     method: dialog.dialogElement.querySelector('#build-method').value,
                     includeUnusedAssets: dialog.dialogElement.querySelector('#include-unused').checked,
                     runAfterBuild: dialog.dialogElement.querySelector('#run-after').checked,
+                    resourceLoadingMode: dialog.dialogElement.querySelector('#resource-loading-mode').value,
                     exportTarget: dialog.dialogElement.querySelector('input[name="export-target"]:checked').value,
                     startScene: dialog.dialogElement.querySelector('input[name="start-scene"]:checked')?.value,
                     includedScenes: Array.from(dialog.dialogElement.querySelectorAll('.include-scene:checked')).map(el => el.dataset.path),
@@ -402,11 +423,23 @@ export async function showBuildDialog(projectConfig, onConfirm) {
  */
 export function showConfirmation(title, message, onConfirm, onCancel) {
     const L = window.Localization;
+    const acceptText = L ? L.get('ACEPTAR', 'Aceptar') : 'Aceptar';
+    const cancelText = L ? L.get('CANCELAR', 'Cancelar') : 'Cancelar';
     const buttons = [
-        { text: L.get('ACEPTAR', 'Aceptar'), callback: onConfirm },
-        { text: L.get('CANCELAR', 'Cancelar'), callback: onCancel }
+        { text: acceptText, callback: onConfirm },
+        { text: cancelText, callback: onCancel }
     ];
-    const dialog = new DialogWindow(title, message, buttons);
+    const dialog = new DialogWindow(title, '', buttons);
+
+    // Set content safely
+    const contentDiv = dialog.dialogElement.querySelector('.dialog-content');
+    const p = document.createElement('p');
+    message.split('\n').forEach((line, i) => {
+        if (i > 0) p.appendChild(document.createElement('br'));
+        p.appendChild(document.createTextNode(line));
+    });
+    contentDiv.appendChild(p);
+
     dialog.show();
 }
 
@@ -419,16 +452,14 @@ export function showConfirmation(title, message, onConfirm, onCancel) {
  */
 export function showPrompt(title, message, onConfirm, defaultValue = '') {
     const L = window.Localization;
+    const acceptText = L ? L.get('ACEPTAR', 'Aceptar') : 'Aceptar';
+    const cancelText = L ? L.get('CANCELAR', 'Cancelar') : 'Cancelar';
+
     // Create a unique ID for the input to focus it later
     const inputId = `dialog-input-${Date.now()}`;
-    const content = `
-        <p>${message}</p>
-        <input type="text" id="${inputId}" class="dialog-input" value="${defaultValue}">
-    `;
-
-    const dialog = new DialogWindow(title, content, [
+    const dialog = new DialogWindow(title, '', [
         {
-            text: L.get('ACEPTAR', 'Aceptar'),
+            text: acceptText,
             callback: () => {
                 const input = dialog.dialogElement.querySelector(`#${inputId}`);
                 if (onConfirm) {
@@ -436,8 +467,21 @@ export function showPrompt(title, message, onConfirm, defaultValue = '') {
                 }
             }
         },
-        { text: L.get('CANCELAR', 'Cancelar') } // No callback needed for cancel
+        { text: cancelText } // No callback needed for cancel
     ]);
+
+    // Set content safely
+    const contentDiv = dialog.dialogElement.querySelector('.dialog-content');
+    const p = document.createElement('p');
+    p.textContent = message;
+    contentDiv.appendChild(p);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = inputId;
+    input.className = 'dialog-input';
+    input.value = defaultValue;
+    contentDiv.appendChild(input);
 
     dialog.show();
     // Focus the input field for better UX
@@ -458,36 +502,38 @@ export function showPrompt(title, message, onConfirm, defaultValue = '') {
  */
 export function showSelection(title, message, items, onSelect) {
     const L = window.Localization;
-    let listHtml = `<p>${message}</p><div class="dialog-selection-list">`;
+    const container = document.createElement('div');
+
+    const p = document.createElement('p');
+    p.textContent = message;
+    container.appendChild(p);
+
+    const listDiv = document.createElement('div');
+    listDiv.className = 'dialog-selection-list';
+
     items.forEach((item, index) => {
-        // Sanitize item content to prevent HTML injection if item names are user-generated
-        const sanitizedItem = item.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        listHtml += `
-            <div class="dialog-selection-item">
-                <span>${sanitizedItem}</span>
-                <button class="dialog-button select-button" data-index="${index}" data-value="${sanitizedItem}">${L.get('SELECCIONAR', 'Seleccionar')}</button>
-            </div>
-        `;
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'dialog-selection-item';
+
+        const span = document.createElement('span');
+        span.textContent = item;
+
+        const btn = document.createElement('button');
+        btn.className = 'dialog-button select-button';
+        btn.textContent = L ? L.get('SELECCIONAR', 'Seleccionar') : 'Seleccionar';
+        btn.onclick = () => {
+            if (onSelect) onSelect(item, index);
+            dialog.hide();
+        };
+
+        itemDiv.appendChild(span);
+        itemDiv.appendChild(btn);
+        listDiv.appendChild(itemDiv);
     });
-    listHtml += `</div>`;
 
-    const dialog = new DialogWindow(title, listHtml, [{ text: L.get('CANCELAR', 'Cancelar') }]);
+    container.appendChild(listDiv);
 
-    // Add event listener for the select buttons
-    const listContainer = dialog.dialogElement.querySelector('.dialog-selection-list');
-    if (listContainer) {
-        listContainer.addEventListener('click', (e) => {
-            if (e.target.classList.contains('select-button')) {
-                const index = parseInt(e.target.dataset.index, 10);
-                const value = e.target.dataset.value;
-                if (onSelect) {
-                    onSelect(value, index);
-                }
-                dialog.hide();
-            }
-        });
-    }
-
+    const dialog = new DialogWindow(title, container, [{ text: L ? L.get('CANCELAR', 'Cancelar') : 'Cancelar' }]);
     dialog.show();
 }
 

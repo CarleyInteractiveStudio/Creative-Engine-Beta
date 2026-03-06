@@ -5,13 +5,28 @@ SILENCIAR_MUSICA: Silenciar Música
 
 # General
 EMPEZAR: Empezar a Crear
-CONTACTO: Contacto y Soporte
+CONTACTO: Contacto
+SOPORTE: Soporte
+OPINIONES: Opiniones
+RECLAMOS: Reclamos
+INTEGRACIONES_IA: Integraciones de IA
+API_KEY: Clave de API
+OBTENER_API_KEY: Obtener una clave en Google AI Studio
 DONAR: Donar con PayPal
 DISCORD: Unirte a Discord
 CREDITOS: Hecho por Carley Interactive Studio con la ayuda de Google Jules.
 LICENCIA_BTN: Lee nuestra licencia
 CONOCE_JUEGOS: conoce juegos hecho con con nuestro motor
 VERIFICANDO: Verificando...
+CUENTA: Cuenta
+DONAR_BOTON: Donar
+QUE_HACEMOS_DONACIONES: ¿Qué hacemos con sus donaciones?
+NUESTROS_CANALES: Nuestros Canales
+LICENCIA: Licencia
+POLITICA_PRIVACIDAD: Política de Privacidad
+COOKIES: Cookies
+ELIMINAR_PROYECTO: Borrar Proyecto Seleccionado
+MI_CUENTA: Mi Cuenta
 CARGANDO_PROYECTO: Cargando tu proyecto...
 CARGANDO_LIBS: Cargando librerías...
 HA_OCURRIDO_ERROR: Ha ocurrido un error.
@@ -22,7 +37,15 @@ VOLVER_INICIO: Volver al Inicio
 WELCOME_TITLE: Creative Engine
 WELCOME_SUBTITLE: Tu juego empieza aquí. Lo que imagines, lo construyes.
 WELCOME_DESCRIPTION: Un motor de videojuegos 2D gratuito para crear directamente en tu navegador. Diseña sin límites, crea sin miedo y publica con orgullo.
-COPYRIGHT_FOOTER: &copy; 2025 Carley Interactive Studio
+WELCOME_DESCRIPTION_LONG: ¡Bienvenido a Creative Engine! Esperamos que disfrute de una nueva experiencia en la creación de videojuegos. Este motor está diseñado especialmente para ti, pensando en facilitar tu flujo de trabajo creativo.
+WELCOME_DEV_NOTICE: Ten en cuenta que el motor se encuentra en una fase inicial y de desarrollo constante, por lo que puede presentar fallos inesperados. Si encuentras uno, con mucho gusto estaremos esperando que nos lo digas desde el reporte.
+WELCOME_COMMUNITY: Puedes unirte a nuestras comunidades y seguirnos en nuestros canales para estar siempre activo. ¡Únete a nuestro canal de WhatsApp! Tu apoyo ayuda a que el proyecto mejore cada día. No necesitas ser un programador profesional para apoyar al motor; también puedes colaborar mediante donaciones.
+COPYRIGHT_FOOTER: &copy; 2026 Carley Interactive Studio. Todos los derechos reservados.
+PRUEBA_VIDSPRI: También prueba VidSpri
+NUESTRO_SITIO_WEB: Nuestro sitio web
+COMPARTIR_MOTOR: Compartir Motor
+MAS: Más
+TIKTOK: TikTok
 
 # Quotes
 QUOTE_1: Tu juego empieza aquí. Lo que imagines, lo construyes.
@@ -39,6 +62,27 @@ QUOTE_10: La creatividad no se enseña. Se desbloquea.
 # Auth State
 HOLA: Hola
 CERRAR_SESION: Cerrar Sesión
+AUTH_LOGIN: Iniciar Sesión
+AUTH_EMAIL: Correo Electrónico
+AUTH_PASSWORD: Contraseña
+AUTH_NO_ACCOUNT: ¿No tienes una cuenta?
+AUTH_FORGOT_PASS: ¿Olvidaste tu contraseña?
+AUTH_SIGNUP: Registrarse
+AUTH_USERNAME: Nombre de Usuario
+AUTH_PASS_HINT: La contraseña debe tener al menos 6 caracteres.
+AUTH_ALREADY_ACCOUNT: ¿Ya tienes una cuenta?
+AUTH_RESET_PASS: Recuperar Contraseña
+AUTH_RESET_HINT: Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.
+AUTH_SEND_RESET: Enviar Enlace de Recuperación
+AUTH_BACK_TO_LOGIN: Volver a Iniciar Sesión
+NO_TIENES_CUENTA: ¿No tienes una cuenta?
+REGISTRARSE: Regístrate
+OLVIDE_CONTRASENA: Olvidé mi contraseña
+YA_TIENES_CUENTA: ¿Ya tienes una cuenta?
+RECUPERAR_CONTRASENA: Recuperar Contraseña
+ENVIAR_ENLACE: Enviar Enlace
+VOLVER_LOGIN: Volver al Inicio de Sesión
+LOGGED_IN_AS: Sesión iniciada como:
 REGISTRANDO: Registrando...
 ERROR_REGISTRO: Error de Registro
 REGISTRO_EXITOSO: ¡Registro Exitoso!
@@ -49,7 +93,13 @@ AUTH_RESET_SENT: Si existe una cuenta con este correo, se ha enviado un enlace d
 ENVIANDO: Enviando...
 
 # Launcher
+RESOURCE_LOADING_MODE: Modo de Carga de Recursos
+PRELOAD_STABLE: Precarga (Estable - Carga todo antes de iniciar)
+LAZY_LOAD_FAST: Carga Perezosa (Inicio Rápido - Carga mientras se juega)
+CARGANDO_RECURSOS: Cargando recursos...
 CARPETA: Carpeta
+ANADIR_PROYECTO: Añadir Proyecto
+CREAR_PROYECTO: Crear Proyecto
 MIS_PROYECTOS: Mis Proyectos
 CREAR_NUEVO_PROYECTO: Crear Nuevo Proyecto
 AVISO_STORAGE: Aviso Importante: Tus proyectos se guardan localmente en la carpeta que elijas. Creative Engine no almacena ninguna información en servidores externos.
@@ -57,6 +107,9 @@ NOMBRE_PROYECTO: Nombre del Proyecto:
 HINT_PROYECTO: Usa letras, números y guiones. Sin espacios ni caracteres especiales.
 CREAR: Crear
 SIN_PROYECTOS: Aún no tienes proyectos. ¡Crea uno para empezar!
+VER_UBICACION: Ver ubicación
+UBICACION_DEL_PROYECTO: Ubicación del Proyecto
+HINT_RUTA_PROYECTO: El proyecto se encuentra en la carpeta de proyectos configurada, dentro de la subcarpeta:
 
 # Libraries
 LIBRERIAS: Librerías
@@ -101,6 +154,11 @@ SIN_PERMISOS: Sin permisos especiales.
 IMPORTAR_LIBRERIA: Importar Librería
 NO_ACTIVIDAD_RECIENTE: No hay actividad reciente.
 
+# General
+FOROS: Foros
+DONACIONES: Donaciones
+LEGAL: Legal
+
 # Asset Browser
 CREAR_CARPETA: Crear Carpeta
 NOMBRE_CARPETA_PROMPT: Introduce el nombre de la nueva carpeta:
@@ -137,6 +195,8 @@ ARCHIVO: Archivo
 EDITAR: Editar
 VENTANA: Ventana
 AYUDA: Ayuda
+TUTORIALES: Tutoriales
+REPORTAR_FALLOS: Reportar Bugs/Errores/Fallos
 NUEVA_ESCENA: Nueva Escena
 ABRIR_ESCENA: Abrir Escena...
 GUARDAR_ESCENA: Guardar Escena
@@ -162,6 +222,7 @@ EDITOR_SPRITES: Editor de Sprites
 CONTROL_AMBIENTE: Control de Ambiente
 SISTEMA_VERIFICACION: Sistema de Verificación
 TIENDA_ASSETS: Tienda de asset
+VID_SPRI: Vid Spri
 VISTA_ESCENA: Escena
 VISTA_JUEGO: Juego
 VISTA_CODIGO: Codigo
@@ -255,6 +316,7 @@ PAUSAR: Pausar
 # Preferences
 APARIENCIA: Apariencia
 IDIOMA: Idioma
+HINT_IDIOMA: Cambia el idioma de la interfaz del motor.
 TEMA_EDITOR: Tema del Editor
 OSCURO_MODERNO: Oscuro Moderno
 CLARO: Claro
@@ -272,13 +334,28 @@ SILENCIAR_MUSICA: Mute Music
 
 # General
 EMPEZAR: Start Creating
-CONTACTO: Contact & Support
+CONTACTO: Contact
+SOPORTE: Support
+OPINIONES: Opinions
+RECLAMOS: Claims
+INTEGRACIONES_IA: AI Integrations
+API_KEY: API Key
+OBTENER_API_KEY: Get a key at Google AI Studio
 DONAR: Donate with PayPal
 DISCORD: Join Discord
 CREDITOS: Made by Carley Interactive Studio with the help of Google Jules.
 LICENCIA_BTN: Read our license
 CONOCE_JUEGOS: discover games made with our engine
 VERIFICANDO: Verifying...
+CUENTA: Account
+DONAR_BOTON: Donate
+QUE_HACEMOS_DONACIONES: What do we do with your donations?
+NUESTROS_CANALES: Our Channels
+LICENCIA: License
+POLITICA_PRIVACIDAD: Privacy Policy
+COOKIES: Cookies
+ELIMINAR_PROYECTO: Delete Selected Project
+MI_CUENTA: My Account
 CARGANDO_PROYECTO: Loading your project...
 CARGANDO_LIBS: Loading libraries...
 HA_OCURRIDO_ERROR: An error occurred.
@@ -289,7 +366,15 @@ VOLVER_INICIO: Back to Start
 WELCOME_TITLE: Creative Engine
 WELCOME_SUBTITLE: Your game starts here. What you imagine, you build.
 WELCOME_DESCRIPTION: A free 2D game engine to create directly in your browser. Design without limits, create without fear, and publish with pride.
-COPYRIGHT_FOOTER: &copy; 2025 Carley Interactive Studio
+WELCOME_DESCRIPTION_LONG: Welcome to Creative Engine! We hope you enjoy a new experience in video game creation. This engine is designed especially for you, with your creative workflow in mind.
+WELCOME_DEV_NOTICE: Please note that the engine is in an initial phase and under constant development, so it may present unexpected failures. If you find one, we will be gladly waiting for you to tell us from the report.
+WELCOME_COMMUNITY: You can join our communities and follow us on our channels to stay active. Join our WhatsApp channel! Your support helps the project improve every day. You don't need to be a professional programmer to support the engine; you can also collaborate through donations.
+COPYRIGHT_FOOTER: &copy; 2026 Carley Interactive Studio. All rights reserved.
+PRUEBA_VIDSPRI: Also try VidSpri
+NUESTRO_SITIO_WEB: Our Website
+COMPARTIR_MOTOR: Share Engine
+MAS: More
+TIKTOK: TikTok
 
 # Quotes
 QUOTE_1: Your game starts here. What you imagine, you build.
@@ -306,6 +391,27 @@ QUOTE_10: Creativity isn't taught. It's unlocked.
 # Auth State
 HOLA: Hello
 CERRAR_SESION: Log Out
+AUTH_LOGIN: Log In
+AUTH_EMAIL: Email Address
+AUTH_PASSWORD: Password
+AUTH_NO_ACCOUNT: Don't have an account?
+AUTH_FORGOT_PASS: Forgot your password?
+AUTH_SIGNUP: Sign Up
+AUTH_USERNAME: Username
+AUTH_PASS_HINT: Password must be at least 6 characters long.
+AUTH_ALREADY_ACCOUNT: Already have an account?
+AUTH_RESET_PASS: Recover Password
+AUTH_RESET_HINT: Enter your email and we'll send you a link to reset your password.
+AUTH_SEND_RESET: Send Recovery Link
+AUTH_BACK_TO_LOGIN: Back to Login
+NO_TIENES_CUENTA: Don't have an account?
+REGISTRARSE: Sign Up
+OLVIDE_CONTRASENA: Forgot my password
+YA_TIENES_CUENTA: Already have an account?
+RECUPERAR_CONTRASENA: Recover Password
+ENVIAR_ENLACE: Send Link
+VOLVER_LOGIN: Back to Login
+LOGGED_IN_AS: Logged in as:
 REGISTRANDO: Registering...
 ERROR_REGISTRO: Registration Error
 REGISTRO_EXITOSO: Registration Successful!
@@ -316,7 +422,13 @@ AUTH_RESET_SENT: If an account exists with this email, a recovery link has been 
 ENVIANDO: Sending...
 
 # Launcher
+RESOURCE_LOADING_MODE: Resource Loading Mode
+PRELOAD_STABLE: Preload (Stable - Loads everything before starting)
+LAZY_LOAD_FAST: Lazy Load (Fast Start - Loads while playing)
+CARGANDO_RECURSOS: Loading resources...
 CARPETA: Folder
+ANADIR_PROYECTO: Add Project
+CREAR_PROYECTO: Create Project
 MIS_PROYECTOS: My Projects
 CREAR_NUEVO_PROYECTO: Create New Project
 AVISO_STORAGE: Important Notice: Your projects are saved locally in the folder you choose. Creative Engine does not store any information on external servers.
@@ -324,6 +436,9 @@ NOMBRE_PROYECTO: Project Name:
 HINT_PROYECTO: Use letters, numbers, and hyphens. No spaces or special characters.
 CREAR: Create
 SIN_PROYECTOS: You don't have any projects yet. Create one to start!
+VER_UBICACION: View location
+UBICACION_DEL_PROYECTO: Project Location
+HINT_RUTA_PROYECTO: The project is located in the configured projects folder, inside the subfolder:
 
 # Libraries
 LIBRERIAS: Libraries
@@ -368,6 +483,11 @@ SIN_PERMISOS: No special permissions.
 IMPORTAR_LIBRERIA: Import Library
 NO_ACTIVIDAD_RECIENTE: No recent activity.
 
+# General
+FOROS: Forums
+DONACIONES: Donations
+LEGAL: Legal
+
 # Asset Browser
 CREAR_CARPETA: Create Folder
 NOMBRE_CARPETA_PROMPT: Enter the name for the new folder:
@@ -404,6 +524,8 @@ ARCHIVO: File
 EDITAR: Edit
 VENTANA: Window
 AYUDA: Help
+TUTORIALES: Tutorials
+REPORTAR_FALLOS: Report Bugs/Errors/Failures
 NUEVA_ESCENA: New Scene
 ABRIR_ESCENA: Open Scene...
 GUARDAR_ESCENA: Save Scene
@@ -429,6 +551,7 @@ EDITOR_SPRITES: Sprite Editor
 CONTROL_AMBIENTE: Environment Control
 SISTEMA_VERIFICACION: Verification System
 TIENDA_ASSETS: Asset Store
+VID_SPRI: Vid Spri
 VISTA_ESCENA: Scene
 VISTA_JUEGO: Game
 VISTA_CODIGO: Code
@@ -522,6 +645,7 @@ PAUSAR: Pause
 # Preferences
 APARIENCIA: Appearance
 IDIOMA: Language
+HINT_IDIOMA: Change the engine interface language.
 TEMA_EDITOR: Editor Theme
 OSCURO_MODERNO: Modern Dark
 CLARO: Light
@@ -540,12 +664,29 @@ SILENCIAR_MUSICA: Silenciar Música
 # General
 EMPEZAR: Começar a Criar
 CONTACTO: Contato e Suporte
+SOPORTE: Suporte
+OPINIONES: Opiniões
+RECLAMOS: Reclamações
 DONAR: Doar com PayPal
 DISCORD: Juntar-se ao Discord
 CREDITOS: Feito por Carley Interactive Studio com a ajuda de Google Jules.
 LICENCIA_BTN: Leia nossa licença
 CONOCE_JUEGOS: conheça jogos feitos com nosso motor
 VERIFICANDO: Verificando...
+CUENTA: Conta
+DONAR_BOTON: Doar
+QUE_HACEMOS_DONACIONES: O que fazemos com as suas doações?
+NUESTROS_CANALES: Nossos Canais
+LICENCIA: Licença
+POLITICA_PRIVACIDAD: Política de Privacidade
+COOKIES: Cookies
+FOROS: Fóruns
+DONACIONES: Doações
+LEGAL: Legal
+PRUEBA_VIDSPRI: Também teste VidSpri
+NUESTRO_SITIO_WEB: Nosso site
+COMPARTIR_MOTOR: Compartilhar Motor
+MAS: Mais
 CARGANDO_PROYECTO: Carregando seu projeto...
 CARGANDO_LIBS: Carregando bibliotecas...
 HA_OCURRIDO_ERROR: Ocorreu um erro.
@@ -556,7 +697,8 @@ VOLVER_INICIO: Voltar ao Início
 WELCOME_TITLE: Creative Engine
 WELCOME_SUBTITLE: Seu jogo começa aqui. O que você imagina, você constrói.
 WELCOME_DESCRIPTION: Um motor de jogos 2D gratuito para criar diretamente no seu navegador. Projete sem limites, crie sem medo e publique com orgulho.
-COPYRIGHT_FOOTER: &copy; 2025 Carley Interactive Studio
+COPYRIGHT_FOOTER: &copy; 2026 Carley Interactive Studio. Todos os direitos reservados.
+TIKTOK: TikTok
 
 # Quotes
 QUOTE_1: Seu jogo começa aqui. O que você imagina, você constrói.
@@ -583,6 +725,10 @@ AUTH_RESET_SENT: Se existir uma conta com este e-mail, um link de recuperação 
 ENVIANDO: Enviando...
 
 # Launcher
+RESOURCE_LOADING_MODE: Modo de Carregamento de Recursos
+PRELOAD_STABLE: Pré-carregar (Estável - Carrega tudo antes de iniciar)
+LAZY_LOAD_FAST: Carregamento Lento (Início Rápido - Carrega enquanto joga)
+CARGANDO_RECURSOS: Carregando recursos...
 CARPETA: Pasta
 MIS_PROYECTOS: Meus Projetos
 CREAR_NUEVO_PROYECTO: Criar Novo Projeto
@@ -696,6 +842,7 @@ EDITOR_SPRITES: Editor de Sprites
 CONTROL_AMBIENTE: Control de Ambiente
 SISTEMA_VERIFICACION: Sistema de Verificação
 TIENDA_ASSETS: Loja de Assets
+VID_SPRI: Vid Spri
 VISTA_ESCENA: Cena
 VISTA_JUEGO: Jogo
 VISTA_CODIGO: Codigo
@@ -807,12 +954,29 @@ SILENCIAR_MUSICA: Выключить музыку
 # General
 EMPEZAR: Начать создание
 CONTACTO: Контакты и поддержка
+SOPORTE: Поддержка
+OPINIONES: Мнения
+RECLAMOS: Претензии
 DONAR: Пожертвовать через PayPal
 DISCORD: Присоединиться к Discord
 CREDITOS: Сделано Carley Interactive Studio при помощи Google Jules.
 LICENCIA_BTN: Читать нашу лицензию
 CONOCE_JUEGOS: познакомьтесь с играми, сделанными на нашем движке
 VERIFICANDO: Проверка...
+CUENTA: Аккаунт
+DONAR_BOTON: Пожертвовать
+QUE_HACEMOS_DONACIONES: Что мы делаем с вашими пожертвованиями?
+NUESTROS_CANALES: Наши каналы
+LICENCIA: Лицензия
+POLITICA_PRIVACIDAD: Политика конфиденциальности
+COOKIES: Cookies
+FOROS: Форумы
+DONACIONES: Пожертвования
+LEGAL: Юридическая информация
+PRUEBA_VIDSPRI: Также попробуйте VidSpri
+NUESTRO_SITIO_WEB: Наш веб-сайт
+COMPARTIR_MOTOR: Поделиться движком
+MAS: Больше
 CARGANDO_PROYECTO: Загрузка проекта...
 CARGANDO_LIBS: Загрузка библиотек...
 HA_OCURRIDO_ERROR: Произошла ошибка.
@@ -823,7 +987,8 @@ VOLVER_INICIO: Вернуться в начало
 WELCOME_TITLE: Creative Engine
 WELCOME_SUBTITLE: Ваша игра начинается здесь. Что вообразите, то и построите.
 WELCOME_DESCRIPTION: Бесплатный 2D-движок для создания игр прямо в браузере. Проектируйте без границ, творите без страха и публикуйте с гордостью.
-COPYRIGHT_FOOTER: &copy; 2025 Carley Interactive Studio
+COPYRIGHT_FOOTER: &copy; 2026 Carley Interactive Studio. Все права защищены.
+TIKTOK: TikTok
 
 # Quotes
 QUOTE_1: Ваша игра начинается здесь. Что вообразите, то и построите.
@@ -850,6 +1015,10 @@ AUTH_RESET_SENT: Если аккаунт с таким адресом сущес
 ENVIANDO: Отправка...
 
 # Launcher
+RESOURCE_LOADING_MODE: Режим загрузки ресурсов
+PRELOAD_STABLE: Предзагрузка (Стабильно - Загружает всё перед запуском)
+LAZY_LOAD_FAST: Отложенная загрузка (Быстрый старт - Загрузка во время игры)
+CARGANDO_RECURSOS: Загрузка ресурсов...
 CARPETA: Папка
 MIS_PROYECTOS: Мои проекты
 CREAR_NUEVO_PROYECTO: Создать новый проект
@@ -963,6 +1132,7 @@ EDITOR_SPRITES: Редактор спрайтов
 CONTROL_AMBIENTE: Управление окружением
 SISTEMA_VERIFICACION: Система проверки
 TIENDA_ASSETS: Магазин ассетов
+VID_SPRI: Vid Spri
 VISTA_ESCENA: Сцена
 VISTA_JUEGO: Игра
 VISTA_CODIGO: Код
@@ -1074,12 +1244,29 @@ SILENCIAR_MUSICA: 静音
 # General
 EMPEZAR: 开始创作
 CONTACTO: 联系与支持
+SOPORTE: 支持
+OPINIONES: 意见
+RECLAMOS: 投诉
 DONAR: 通过 PayPal 捐赠
 DISCORD: 加入 Discord
 CREDITOS: 由 Carley Interactive Studio 在 Google Jules 的帮助下制作。
 LICENCIA_BTN: 阅读我们的许可证
 CONOCE_JUEGOS: 探索使用我们的引擎制作的游戏
 VERIFICANDO: 正在验证...
+CUENTA: 账户
+DONAR_BOTON: 捐赠
+QUE_HACEMOS_DONACIONES: 我们如何处理您的捐赠？
+NUESTROS_CANALES: 我们的频道
+LICENCIA: 许可证
+POLITICA_PRIVACIDAD: 隐私政策
+COOKIES: Cookies
+FOROS: 论坛
+DONACIONES: 捐赠
+LEGAL: 法律
+PRUEBA_VIDSPRI: 也请尝试 VidSpri
+NUESTRO_SITIO_WEB: 我们的网站
+COMPARTIR_MOTOR: 分享引擎
+MAS: 更多
 CARGANDO_PROYECTO: 正在加载您的项目...
 CARGANDO_LIBS: 正在加载库...
 HA_OCURRIDO_ERROR: 发生错误。
@@ -1090,7 +1277,8 @@ VOLVER_INICIO: 返回首页
 WELCOME_TITLE: Creative Engine
 WELCOME_SUBTITLE: 您的游戏从这里开始。所见即所造。
 WELCOME_DESCRIPTION: 一款可以在浏览器中直接创作的免费 2D 游戏引擎。无限制设计，无畏创作，自豪发布。
-COPYRIGHT_FOOTER: &copy; 2025 Carley Interactive Studio
+COPYRIGHT_FOOTER: &copy; 2026 Carley Interactive Studio。保留所有权利。
+TIKTOK: TikTok
 
 # Quotes
 QUOTE_1: 您的游戏从这里开始。所见即所造。
@@ -1117,6 +1305,10 @@ AUTH_RESET_SENT: 如果该电子邮件存在帐户，则已发送恢复链接。
 ENVIANDO: 正在发送...
 
 # Launcher
+RESOURCE_LOADING_MODE: 资源加载模式
+PRELOAD_STABLE: 预加载 (稳定 - 启动前加载所有内容)
+LAZY_LOAD_FAST: 懒加载 (快速启动 - 边玩边加载)
+CARGANDO_RECURSOS: 正在加载资源...
 CARPETA: 文件夹
 MIS_PROYECTOS: 我的项目
 CREAR_NUEVO_PROYECTO: 创建新项目
@@ -1230,6 +1422,7 @@ EDITOR_SPRITES: 精灵编辑器
 CONTROL_AMBIENTE: 环境控制
 SISTEMA_VERIFICACION: 验证系统
 TIENDA_ASSETS: 资源商店
+VID_SPRI: Vid Spri
 VISTA_ESCENA: 场景
 VISTA_JUEGO: 游戏
 VISTA_CODIGO: 代码

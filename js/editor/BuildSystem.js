@@ -113,7 +113,11 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
         const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
 
         // Merge options with project config for final build config
-        const mergedConfig = { ...currentProjectConfig, ...options };
+    const mergedConfig = {
+        ...currentProjectConfig,
+        ...options,
+        resourceLoadingMode: options.resourceLoadingMode || currentProjectConfig.resourceLoadingMode || 'lazy'
+    };
 
         let outputHandle = null;
         let zip = null;
@@ -205,7 +209,8 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
 
         // 6. Special Case: Engine Splash Logo and sound
         updateProgress("Configurando pantallas de splash...");
-        if (mergedConfig.splashScreens?.showEngineLogo) {
+        const engineLogoEnabled = mergedConfig.showEngineLogo || mergedConfig.splashScreens?.showEngineLogo;
+        if (engineLogoEnabled) {
             try {
                 const logoResp = await fetch('image/Logo_C.png');
                 if (logoResp.ok) await writeFile('image/Logo_C.png', await logoResp.blob());
@@ -348,6 +353,7 @@ async function addEngineFilesToZip(zipOrHandle) {
         'js/engine/EngineAPI.js',
         'js/engine/Input.js',
         'js/engine/InputAPI.js',
+        'js/engine/Localization.js',
         'js/engine/Leyes.js',
         'js/engine/Materia.js',
         'js/engine/MathUtils.js',
@@ -363,6 +369,7 @@ async function addEngineFilesToZip(zipOrHandle) {
         'js/engine/StandaloneRuntime.js'
     ];
 
+    // Add engine files
     for (const file of engineFiles) {
         try {
             const response = await fetch(file);
@@ -386,6 +393,26 @@ async function addEngineFilesToZip(zipOrHandle) {
         } catch (e) {
             console.error(`Failed to add engine file: ${file}`, e);
         }
+    }
+
+    // Also add the default translation file
+    try {
+        const langFile = 'translations/engine.lang';
+        const response = await fetch(langFile);
+        if (response.ok) {
+            const content = await response.text();
+            if (zipOrHandle.file) {
+                zipOrHandle.file(langFile, content);
+            } else {
+                let current = await zipOrHandle.getDirectoryHandle('translations', { create: true });
+                const fileHandle = await current.getFileHandle('engine.lang', { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(content);
+                await writable.close();
+            }
+        }
+    } catch (e) {
+        console.error("Failed to add engine.lang to build", e);
     }
 }
 

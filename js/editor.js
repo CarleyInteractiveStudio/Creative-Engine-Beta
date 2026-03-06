@@ -32,7 +32,6 @@ import { API as LibraryAPI } from './editor/LibraryAPI.js';
 import * as RuntimeAPIManager from './engine/RuntimeAPIManager.js';
 import * as CES_Transpiler from './editor/CES_Transpiler.js';
 import { initialize as initializeLibraryWindow } from './editor/ui/LibraryWindow.js';
-import * as VerificationSystem from './editor/ui/VerificationSystem.js';
 import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
 import { TerrenoEditorWindow } from './editor/ui/TerrenoEditorWindow.js';
 import * as EngineAPI from './engine/EngineAPI.js';
@@ -40,8 +39,12 @@ import { getCustomComponentDefinitions } from './editor/EngineAPIExtension.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
 import { buildProject, runStandalonePreview } from './editor/BuildSystem.js';
-import { showNotification as showNotificationDialog, showConfirmation as showConfirmationDialog, showBuildDialog } from './editor/ui/DialogWindow.js';
+import * as Dialogs from './editor/ui/DialogWindow.js';
+const { showNotification: showNotificationDialog, showConfirmation: showConfirmationDialog, showBuildDialog } = Dialogs;
 import { Localization } from './engine/Localization.js';
+
+// Guarantee window-level access for non-module scripts (like auth.js)
+window.Dialogs = Dialogs;
 
 // Debug configuration
 window.CE_DEBUG_ANIMATION = false;
@@ -259,7 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'export-filename', 'export-confirm-btn', 'import-confirm-btn', 'resizer-left', 'resizer-right', 'resizer-bottom',
             'ui-editor-panel', 'ui-editor-save-btn', 'ui-canvas-maximize-btn', 'ui-editor-hierarchy',
             'ui-editor-canvas-container', 'ui-editor-canvas', 'ui-editor-inspector', 'ui-resizer-left', 'ui-resizer-right',
-            'asset-store-panel', 'btn-open-asset-store-ext',
+            'vid-spri-panel', 'btn-open-vid-spri-ext',
             // Carl IA Panel Elements
             'carl-ia-panel', 'carl-ia-view-selector-btn', 'carl-ia-brain-selector-btn', 'carl-ia-messages', 'carl-ia-input', 'carl-ia-send-btn', 'menubar-carl-ia-btn',
             // Terminal Elements
@@ -292,8 +295,6 @@ document.addEventListener('DOMContentLoaded', () => {
             'asset-selector-footer', 'asset-selector-confirm-btn',
             // Disassociate Sprite Modal
             'disassociate-sprite-modal', 'disassociate-sprite-list',
-            // Verification System Panel
-            'verification-system-panel', 'verification-tile-image', 'verification-status-text', 'verification-details-text',
             // Ambiente Control Panel
             'ambiente-control-panel', 'ambiente-tiempo', 'ambiente-tiempo-valor',
             'ambiente-noche-dia-intensidad', 'ambiente-noche-dia-intensidad-valor',
@@ -892,8 +893,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'animator-controller-panel': 'menu-window-animator',
             'tile-palette-panel': 'menu-window-tile-palette',
             'sprite-slicer-panel': 'menu-window-sprite-editor',
-            'asset-store-panel': 'menu-window-asset-store',
-            'verification-system-panel': 'menu-window-verification-system',
+            'vid-spri-panel': 'menu-window-vid-spri',
             'ambiente-control-panel': 'menu-window-ambiente-control'
         };
         const checkmark = '✓ ';
@@ -2246,6 +2246,29 @@ document.addEventListener('DOMContentLoaded', () => {
         selectMateria(null);
     };
 
+    const captureThumbnail = async () => {
+        if (!projectsDirHandle) return;
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        if (!projectName) return;
+
+        try {
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            const canvas = dom.sceneCanvas;
+
+            // Convert canvas to blob
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            if (!blob) return;
+
+            const thumbHandle = await projectHandle.getFileHandle('thumbnail.png', { create: true });
+            const writable = await thumbHandle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            console.log("[Editor] Miniatura del proyecto guardada.");
+        } catch (e) {
+            console.error("[Editor] Error al capturar miniatura:", e);
+        }
+    };
+
     saveScene = async function() {
         if (isPrefabMode) {
             await savePrefab();
@@ -2274,6 +2297,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 SceneManager.setSceneDirty(false);
                 showNotificationDialog('Éxito', '¡Escena guardada!');
                 updateAssetBrowser(); // Refresh to show the new file
+
+                // Capture thumbnail
+                await captureThumbnail();
             } catch (error) {
                 if (error.name !== 'AbortError') {
                     console.error("Error en 'Guardar Como':", error);
@@ -2289,6 +2315,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 await writable.close();
                 SceneManager.setSceneDirty(false);
                 showNotificationDialog('Éxito', '¡Escena guardada!');
+
+                // Capture thumbnail
+                await captureThumbnail();
             } catch (error) {
                 console.error("Error al guardar la escena:", error);
                 showNotificationDialog('Error', 'No se pudo guardar la escena.');
@@ -2565,6 +2594,15 @@ document.addEventListener('DOMContentLoaded', () => {
             saveScene();
         });
 
+        const reportBugBtn = document.getElementById('menu-report-bug');
+        if (reportBugBtn) {
+            reportBugBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                // We use the already available showNotification or a specialized one
+                showNotificationDialog('Reportar Fallo', '¡Gracias por querer ayudarnos! Por favor, envía un mensaje detallado a nuestro correo de soporte o usa el formulario de contacto en el inicio.');
+            });
+        }
+
         dom.menuBuild.addEventListener('click', (e) => {
             e.preventDefault();
             showBuildDialog(currentProjectConfig, (options) => {
@@ -2758,9 +2796,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Handle exceptions where panel ID doesn't match menu ID perfectly
             if (panelName === 'sprite-editor') panelId = 'sprite-slicer-panel';
-            else if (panelName === 'verification-system') panelId = 'verification-system-panel';
             else if (panelName === 'tile-palette') panelId = 'tile-palette-panel';
-            else if (panelName === 'asset-store') panelId = 'asset-store-panel';
+            else if (panelName === 'vid-spri') panelId = 'vid-spri-panel';
             else if (panelName === 'ambiente-control') panelId = 'ambiente-control-panel';
             else if (panelName === 'animator') panelId = 'animator-controller-panel';
 
@@ -2857,9 +2894,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
 
-        if (dom.btnOpenAssetStoreExt) {
-            dom.btnOpenAssetStoreExt.addEventListener('click', () => {
-                const iframe = dom.assetStorePanel.querySelector('iframe');
+        if (dom.btnOpenVidSpriExt) {
+            dom.btnOpenVidSpriExt.addEventListener('click', () => {
+                const iframe = dom.vidSpriPanel.querySelector('iframe');
                 if (iframe && iframe.src) {
                     window.open(iframe.src, '_blank');
                 }
@@ -2957,40 +2994,42 @@ document.addEventListener('DOMContentLoaded', () => {
             let selectedProvider = null;
             let knownWorkingModel = {}; // Cache for working models, e.g., { gemini: 'models/gemini-1.5-flash' }
 
-            const CARL_SYSTEM_PROMPT = `Eres Carl, el asistente inteligente de Creative Engine. Tu personalidad es alegre, servicial y apasionada por ayudar en la creación de videojuegos. Siempre te presentas como Carl. Tu misión es asistir al usuario en sus tareas, proponiendo soluciones y explicando paso a paso cómo lograr sus visiones en el motor.
+            const CARL_SYSTEM_PROMPT_TEMPLATE = `Eres Carl, el asistente inteligente de Creative Engine. Tu personalidad es alegre, servicial y apasionada por ayudar en la creación de videojuegos. Siempre te presentas como Carl. Tu misión es asistir al usuario en sus tareas, proponiendo soluciones y explicando paso a paso cómo lograr sus visiones en el motor.
 
-Eres un experto en el lenguaje de scripting del motor (CES/CHC), que ahora soporta una sintaxis moderna en español y potentes características de videojuegos. Aquí tienes tu guía de referencia técnica:
+IMPORTANTE: El idioma actual de la interfaz del motor es {idioma}. Debes responder preferiblemente en este idioma, a menos que el usuario te hable en otro.
 
-0. IMPORTACIONES:
-- Usa 've motor;' al principio para habilitar atajos.
-- Usa 've motor.ui;' para trabajar con la interfaz de usuario.
+CONOCIMIENTO DE LA INTERFAZ (UI):
+- Menú Superior: Archivo (Nueva escena, Abrir, Guardar, Importar/Exportar), Editar (Configuración del Proyecto, Preferencias), Ventana (Jerarquía, Inspector, Navegador, Consola, Editor de Animación, Paleta de Tiles, Editor de Sprites, Control de Ambiente, Vid Spri), Librerías, Carl IA, Donar.
+- Paneles Principales:
+  - Jerarquía: Gestiona los objetos (Materias) en la escena actual. Permite crear cámaras, sprites, luces, UI, etc.
+  - Inspector: Edita propiedades del objeto seleccionado y permite añadir componentes (Leyes).
+  - Navegador (Assets): Gestiona los archivos del proyecto (imágenes, sonidos, scripts, escenas, prefabs).
+  - Consola: Muestra logs del sistema y de los scripts (usando imprimir o consola.imprimir).
+  - Escena: El área central donde se posicionan los objetos visualmente.
+- Herramientas de Edición: Mover (Q), Panear (W), Escalar (E), Rotar (R), Herramienta Universal (T), Terreno (B), Pincel de Tiles.
+- Vistas de Panel Central: Escena, Juego (para probar el juego), Código (editor integrado para .ces y .chc), Terminal.
 
-1. SINTAXIS EN ESPAÑOL:
-- Control: si, sino, mientras, para, retornar.
-- Tipos: variable, constante, verdadero, falso, materia, mtr, numero, texto, booleano, Color, Vector2, Prefab.
+CONOCIMIENTO DE COMPONENTES (LEYES):
+- Básicos: Transform (Posición, Rotación, Escala), Cámara, AudioSource (Sonido), VideoPlayer, CreativeScript.
+- Renderizado: SpriteRenderer (Sprites y Spritesheets), TextureRender (Formas geométricas con textura), ParticleSystem (Partículas), Water (Agua).
+- Físicas 2D: Rigidbody2D, BoxCollider2D, CapsuleCollider2D, CircleCollider2D, TilemapCollider2D, LineCollider2D.
+- Vehículos y Controladores: SuspensionHC (suspensión física), VehicleTopDown (con derrape), PlaneController (física de aviones), HelicopterController.
+- Mapas: Tilemap (para niveles por azulejos), Terreno2D (generación de suelos por nodos).
+- Iluminación: PointLight2D (Luz de punto), SpotLight2D (Luz focal), FreeformLight2D, SpriteLight2D.
+- Interfaz (UI): Canvas (Lienzo), UIImage, UIText, Button, UIEventTrigger.
+- Animación: Animator (para clips individuales), AnimatorController (máquina de estados compleja).
+- Utilidades: CameraFollow (seguimiento), Parallax (fondos infinitos), DrawingOrder, Layout Groups (Vertical, Horizontal, Rejilla).
 
-2. CORRUTINAS Y TIEMPO:
-- esperar(segundos): Pausa la ejecución sin bloquear el motor.
-- cada(segundos) { ... }: Bloque para lógica periódica.
+SINTAXIS DE SCRIPTING (CES/CHC):
+0. IMPORTACIONES: Usa 've motor;' o 've motor.ui;'.
+1. SINTAXIS: si, sino, mientras, para, retornar, variable, constante, verdadero, falso, Color, Vector2, Prefab.
+2. CORRUTINAS: esperar(segundos);
+3. TIMERS: cada(segundos) { ... }
+4. ACCESO: materia (mtr), nombre, tag, posicion, fisica, animador, camara, fuenteDeAudio, ui.texto, ui.boton.
+5. EVENTOS: alEmpezar(), alActualizar(delta), alEntrarEnColision(otro), alRecibir(mensaje, datos).
+6. FUNCIONES: buscar(nombre), lanzarRayo(origen, dir, dist, tag), crear prefab, destruir(mtr), difundir(msg), danar(mtr, cant).
 
-3. ACCESO IMPLÍCITO (No necesitas 'this.'):
-- mtr / materia: El objeto actual.
-- nombre, tag: Propiedades del objeto actual.
-- posicion, fisica, animador, camara, fuenteDeAudio.
-- colisionador2d: Acceso genérico a colisionadores (Box/Capsule).
-- particulas: Sistema de partículas.
-- ui.texto, ui.boton, ui.imagen, lienzo: Acceso rápido a UI.
-
-4. EVENTOS AUTOMÁTICOS:
-- alEmpezar(), alActualizar(delta), alEntrarEnColision(otro), alEntrarEnTrigger(otro), alRecibir(mensaje, datos).
-
-5. FUNCIONES DE PODER:
-- buscar(nombre): Encuentra objetos.
-- lanzarRayo(origen, direccion, distancia, tag): Raycast.
-- crear prefab: Instancia un prefab (ej: crear miprefab).
-- destruir(objeto), difundir(mensaje, datos), danar(mtr, cant), curar(mtr, cant).
-
-Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemplos de código, ya que es más amigable. Siempre anima al usuario y recuérdale que tú estás aquí para ayudarle a convertir sus sueños en realidad. Habla siempre en el idioma que el usuario te hable.`;
+Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicándole el menú o panel exacto. Si te pide código, usa siempre la sintaxis en español mencionada arriba. Siempre sé motivador y recuérdale que tú estás aquí para ayudarle a construir sus sueños.`;
 
             const updateCarlIaBrainMenu = () => {
                 const prefs = getPreferences();
@@ -3080,7 +3119,22 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
 
                 const msgDiv = document.createElement('div');
                 msgDiv.className = `carl-message-bubble carl-message-${sender} ${isError ? 'error' : ''}`;
-                msgDiv.textContent = text;
+
+                // --- Markdown Rendering for IA responses ---
+                if (sender === 'ia' && !isError && window.showdown) {
+                    const converter = new showdown.Converter({
+                        omitExtraWLInCodeBlocks: true,
+                        simplifiedAutoLink: true,
+                        strikethrough: true,
+                        tables: true,
+                        ghCodeBlocks: true,
+                        tasklists: true
+                    });
+                    msgDiv.innerHTML = converter.makeHtml(text);
+                } else {
+                    msgDiv.textContent = text;
+                }
+
                 msgDiv.style.padding = '10px 14px';
                 msgDiv.style.borderRadius = '18px';
                 msgDiv.style.lineHeight = '1.4';
@@ -3155,7 +3209,12 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
                 const executeApiCall = async (model, prompt) => {
                     addMessage("...", 'ia');
                     const thinkingMessage = messagesDiv.lastElementChild;
-                    const result = await AIHandler.callGenerativeAI(provider, model, apiKey, prompt, CARL_SYSTEM_PROMPT);
+
+                    // Detect current language and prepare prompt
+                    const currentLang = Localization.currentLanguage || 'ES';
+                    const systemPrompt = CARL_SYSTEM_PROMPT_TEMPLATE.replace('{idioma}', currentLang);
+
+                    const result = await AIHandler.callGenerativeAI(provider, model, apiKey, prompt, systemPrompt);
                     if (thinkingMessage) thinkingMessage.remove();
 
                     if (result.success) {
@@ -3798,7 +3857,6 @@ public start() {
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openAssetSelectorCallback: openAssetSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser, createAssetCallback: createAsset, onAssetOpened, enterAddTilemapLayerMode });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
             TilePalette.initialize({ dom, projectsDirHandle, openAssetSelectorCallback: openAssetSelector, setActiveToolCallback: SceneView.setActiveTool });
-            VerificationSystem.initialize({ dom });
             TerrenoEditorWindow.initialize({ dom, updateInspector });
             AmbienteControlWindow.initialize({
                 dom,

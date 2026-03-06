@@ -9,6 +9,7 @@ import * as MathUtils from './MathUtils.js';
 import * as RuntimeAPIManager from './RuntimeAPIManager.js';
 import * as Components from './Components.js';
 import { setStandaloneMode, getURLForAssetPath } from './AssetUtils.js';
+import { Localization } from './Localization.js';
 
 export class StandaloneRuntime {
     constructor(canvasId) {
@@ -27,6 +28,13 @@ export class StandaloneRuntime {
     async start() {
         console.log("Standalone Runtime Starting...");
         setStandaloneMode(true);
+
+        // 0. Initialize Localization
+        try {
+            await Localization.init();
+        } catch (e) {
+            console.warn("Localization init failed in standalone", e);
+        }
 
         // 1. Load config (if not already provided by preview)
         if (!this.config) {
@@ -56,8 +64,16 @@ export class StandaloneRuntime {
         InputManager.initialize(this.canvas, this.canvas);
 
         // --- Splash Screen Phase ---
-        if (this.config.splashScreens && this.config.splashScreens.show) {
+        const hasSplashes = this.config.splashScreens && (this.config.splashScreens.show || this.config.splashScreens.showEngineLogo);
+        const engineLogoEnabled = this.config.showEngineLogo || (this.config.splashScreens && this.config.splashScreens.showEngineLogo);
+
+        if (hasSplashes || engineLogoEnabled) {
             await this.playSplashScreens();
+        }
+
+        // --- Resource Preloading Phase ---
+        if (this.config.resourceLoadingMode === 'preload') {
+            await this.preloadAllResources();
         }
 
         // 3. Load Main Scene
@@ -229,6 +245,136 @@ export class StandaloneRuntime {
         }
     }
 
+    async preloadAllResources() {
+        return new Promise(async (resolve) => {
+            const container = document.createElement('div');
+            container.id = 'preload-container';
+            container.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:#111; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10001; color:white; font-family:sans-serif; transition: opacity 0.5s;';
+            document.body.appendChild(container);
+
+            const title = document.createElement('h2');
+            title.textContent = (window.Localization?.get('CARGANDO_RECURSOS') || 'Cargando recursos...');
+            container.appendChild(title);
+
+            const progressBar = document.createElement('div');
+            progressBar.style.cssText = 'width:300px; height:10px; background:#333; border-radius:5px; margin-top:20px; overflow:hidden; border:1px solid #444;';
+            const progressFill = document.createElement('div');
+            progressFill.style.cssText = 'width:0%; height:100%; background:#3498db; transition: width 0.1s;';
+            progressBar.appendChild(progressFill);
+            container.appendChild(progressBar);
+
+            const statusText = document.createElement('p');
+            statusText.style.cssText = 'margin-top:10px; font-size:0.8rem; color:#888;';
+            container.appendChild(statusText);
+
+            try {
+                // 1. Collect all scenes to scan for assets
+                const scenesToScan = this.config.allScenes || [];
+                const startScene = this.config.startScene || 'default.ceScene';
+                if (!scenesToScan.includes(startScene)) scenesToScan.push(startScene);
+
+                const assetsToLoad = new Set();
+
+                // Add app icon
+                if (this.config.appIcon) assetsToLoad.add(this.config.appIcon);
+
+                // Add splash screens
+                if (this.config.splashScreens && this.config.splashScreens.list) {
+                    this.config.splashScreens.list.forEach(s => assetsToLoad.add(s.path));
+                }
+
+                // 2. Scan scenes for asset references
+                for (const scenePath of scenesToScan) {
+                    statusText.textContent = `Analizando escena: ${scenePath}`;
+                    try {
+                        const path = scenePath.startsWith('Assets/') ? scenePath : `Assets/${scenePath}`;
+                        const url = await getURLForAssetPath(path);
+                        const resp = await fetch(url);
+                        if (resp.ok) {
+                            const sceneData = await resp.json();
+                            this._extractAssetsFromSceneData(sceneData, assetsToLoad);
+                        }
+                    } catch (e) { console.warn("Failed to scan scene for preloading:", scenePath, e); }
+                }
+
+                // 3. Load everything
+                const total = assetsToLoad.size;
+                let current = 0;
+
+                for (const assetPath of assetsToLoad) {
+                    current++;
+                    const percent = (current / total) * 100;
+                    progressFill.style.width = `${percent}%`;
+                    statusText.textContent = `Cargando: ${assetPath} (${current}/${total})`;
+
+                    try {
+                        const url = await getURLForAssetPath(assetPath);
+                        if (url) {
+                            // Determine type and preload accordingly
+                            const ext = assetPath.split('.').pop().toLowerCase();
+                            if (['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext)) {
+                                await new Promise((res) => {
+                                    const img = new Image();
+                                    img.onload = res;
+                                    img.onerror = res;
+                                    img.src = url;
+                                });
+                            } else if (['mp3', 'wav', 'ogg'].includes(ext)) {
+                                await new Promise((res) => {
+                                    const audio = new Audio();
+                                    audio.oncanplaythrough = res;
+                                    audio.onerror = res;
+                                    audio.src = url;
+                                    audio.load();
+                                    // Fallback for some browsers that won't fire canplaythrough without user interaction
+                                    setTimeout(res, 500);
+                                });
+                            } else {
+                                // Just fetch the file to put it in browser cache
+                                await fetch(url).catch(() => {});
+                            }
+                        }
+                    } catch (e) { console.warn("Preload failed for:", assetPath, e); }
+                }
+
+            } catch (error) {
+                console.error("Preload process failed:", error);
+            } finally {
+                container.style.opacity = '0';
+                setTimeout(() => {
+                    container.remove();
+                    resolve();
+                }, 500);
+            }
+        });
+    }
+
+    _extractAssetsFromSceneData(sceneData, assetSet) {
+        if (!sceneData.materias) return;
+
+        const scanMateria = (m) => {
+            if (m.leyes) {
+                m.leyes.forEach(ley => {
+                    if (ley.properties) {
+                        const findAssets = (obj) => {
+                            for (const key in obj) {
+                                const val = obj[key];
+                                if (typeof val === 'string' && val.startsWith('Assets/')) {
+                                    assetSet.add(val);
+                                } else if (val && typeof val === 'object' && !val.__materiaId) {
+                                    findAssets(val);
+                                }
+                            }
+                        };
+                        findAssets(ley.properties);
+                    }
+                });
+            }
+            if (m.children) m.children.forEach(scanMateria);
+        };
+        sceneData.materias.forEach(scanMateria);
+    }
+
     async playSplashScreens() {
         return new Promise(async (resolve) => {
             const container = document.createElement('div');
@@ -246,13 +392,15 @@ export class StandaloneRuntime {
             splashText.style.cssText = 'color: white; font-size: 1.5rem; margin-top: 30px; opacity: 0; transition: opacity 0.8s; font-family: sans-serif; text-align: center;';
             container.appendChild(splashText);
 
-            const splashes = this.config.splashScreens.list || [];
+            const splashes = (this.config.splashScreens && this.config.splashScreens.list) ? [...this.config.splashScreens.list] : [];
 
-            // Default Engine Splash if requested
-            if (this.config.splashScreens.showEngineLogo) {
+            // Default Engine Splash if requested (either in splashScreens obj or root config)
+            const engineLogoEnabled = this.config.showEngineLogo || (this.config.splashScreens && this.config.splashScreens.showEngineLogo);
+
+            if (engineLogoEnabled) {
                 splashes.unshift({
                     path: 'engine/Logo_C.png',
-                    duration: this.config.splashScreens.engineLogoDuration || 10,
+                    duration: (this.config.splashScreens && this.config.splashScreens.engineLogoDuration) || 3,
                     sound: 'engine/startup.wav',
                     isEngineLogo: true
                 });
