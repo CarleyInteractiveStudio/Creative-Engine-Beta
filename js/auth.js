@@ -258,6 +258,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const loggedInView = document.getElementById('auth-logged-in');
     const userInfoText = document.getElementById('user-info-text');
 
+    const authOnlyElements = document.querySelectorAll('.auth-only');
+    authOnlyElements.forEach(el => {
+      if (el.tagName === 'LI') {
+        el.style.display = session ? 'list-item' : 'none';
+      } else {
+        el.style.display = session ? 'block' : 'none';
+      }
+    });
+
     if (session) {
       const userName = session.user.user_metadata.full_name || session.user.email;
       if (userInfoText) {
@@ -279,15 +288,214 @@ document.addEventListener('DOMContentLoaded', () => {
         contactEmailInput.value    = '';
         contactEmailInput.readOnly = false;
       }
+
+      // If we were in a protected section, go back to account
+      const activeSection = document.querySelector('.section-view.active');
+      if (activeSection && activeSection.classList.contains('auth-only')) {
+          const accountSectionItem = document.querySelector('[data-section="account-section"]');
+          if (accountSectionItem) accountSectionItem.click();
+      }
     }
   };
 
   _supabase.auth.onAuthStateChange(function(event, session) {
     updateUiForSession(session);
+    if (session) loadUserGames();
   });
 
   _supabase.auth.getSession().then(function(result) {
     const session = result.data ? result.data.session : null;
     updateUiForSession(session);
+    if (session) loadUserGames();
   });
+
+  async function loadUserGames() {
+    const { data: { session } } = await _supabase.auth.getSession();
+    if (!session) return;
+
+    const gamesListContainer = document.getElementById('user-games-list');
+    if (!gamesListContainer) return;
+
+    gamesListContainer.innerHTML = '<p>Cargando tus juegos...</p>';
+
+    try {
+        // Placeholder for future database query
+        // const { data, error } = await _supabase.from('games').select('*').eq('user_id', session.user.id);
+
+        // For now, let's simulate some data
+        const mockGames = []; // Start with empty to show "no games" state
+
+        if (mockGames.length === 0) {
+            gamesListContainer.innerHTML = '<p class="no-projects-message">No has publicado ningún juego todavía.</p>';
+            return;
+        }
+
+        gamesListContainer.innerHTML = '';
+        mockGames.forEach(game => {
+            const gameItem = document.createElement('div');
+            gameItem.className = 'project-item'; // Reuse project-item styling
+            gameItem.style.marginBottom = '10px';
+            gameItem.style.background = 'rgba(255,255,255,0.05)';
+
+            gameItem.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <div>
+                        <h3>${game.name} <small>v${game.version}</small></h3>
+                        <p style="font-size: 0.8em; color: #888;">${game.description}</p>
+                        <div style="display: flex; gap: 15px; margin-top: 5px; font-size: 0.75em; color: #aaa;">
+                            <span><img src="icons/play.svg" class="ce-icon small"> ${game.plays || 0} ${window.Localization?.get('JUGADAS') || 'Jugadas'}</span>
+                            <span><img src="icons/heart.svg" class="ce-icon small"> ${game.likes || 0} ${window.Localization?.get('ME_GUSTAS') || 'Me Gusta'}</span>
+                            <span><img src="icons/message-square.svg" class="ce-icon small"> ${game.comments || 0} ${window.Localization?.get('COMENTARIOS') || 'Comentarios'}</span>
+                        </div>
+                    </div>
+                    <div class="project-actions">
+                        <button class="project-action-btn delete" title="Borrar Juego">
+                            <img src="icons/trash.svg" class="ce-icon" style="filter: invert(0.3) sepia(1) saturate(10) hue-rotate(-50deg);">
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            const deleteBtn = gameItem.querySelector('.delete');
+            deleteBtn.onclick = () => {
+                window.Dialogs.showConfirmation('Borrar Juego', `¿Estás seguro de que quieres borrar "${game.name}"?`, async () => {
+                    console.log("Deleting game:", game.id);
+                    window.Dialogs.showNotification('Éxito', 'Juego borrado.');
+                    loadUserGames();
+                });
+            };
+
+            gamesListContainer.appendChild(gameItem);
+        });
+    } catch (e) {
+        console.error(e);
+        gamesListContainer.innerHTML = '<p>Error al cargar los juegos.</p>';
+    }
+  }
+
+  // --- API Key Loading ---
+  const aiKeyInput = document.getElementById('carl-ai-key');
+  if (aiKeyInput) {
+    const savedKey = localStorage.getItem('creativeEngine_gemini_apiKey');
+    if (savedKey) {
+        aiKeyInput.value = savedKey;
+    }
+  }
+
+  // --- My Games Logic ---
+  const btnShowPublishForm = document.getElementById('btn-show-publish-form');
+  const publishFormContainer = document.getElementById('publish-game-form-container');
+  const btnVerifyProject = document.getElementById('btn-verify-project');
+  const projectVerifiedDetails = document.getElementById('project-verified-details');
+  const verifiedGameName = document.getElementById('verified-game-name');
+  const verifiedGameVersion = document.getElementById('verified-game-version');
+  const btnPublishPhotoPicker = document.getElementById('btn-publish-photo-picker');
+  const publishPhotoInput = document.getElementById('publish-photo-input');
+  const publishPhotoPreview = document.getElementById('publish-photo-preview');
+  const publishGameForm = document.getElementById('publish-game-form');
+
+  if (btnShowPublishForm) {
+    btnShowPublishForm.addEventListener('click', () => {
+        publishFormContainer.style.display = publishFormContainer.style.display === 'none' ? 'block' : 'none';
+    });
+  }
+
+  if (btnPublishPhotoPicker) {
+    btnPublishPhotoPicker.addEventListener('click', () => publishPhotoInput.click());
+  }
+
+  if (publishPhotoInput) {
+    publishPhotoInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            publishPhotoPreview.src = URL.createObjectURL(file);
+        }
+    });
+  }
+
+  if (btnVerifyProject) {
+    btnVerifyProject.addEventListener('click', async () => {
+        const githubUrl = document.getElementById('publish-github').value.trim();
+        if (!githubUrl) {
+            window.Dialogs.showNotification('Error', 'Por favor, ingresa un enlace de GitHub.');
+            return;
+        }
+
+        btnVerifyProject.disabled = true;
+        btnVerifyProject.textContent = 'Verificando...';
+
+        try {
+            // Simplified logic: Check if we can find a project.ceconfig in the current directory structure
+            // In a real scenario, this would involve fetching from GitHub or checking local projects.
+            // Since we are in the landing page, we'll try to find a local project that matches.
+
+            // For now, let's simulate the verification.
+            // In the future, this should fetch project.ceconfig from the GitHub repo.
+
+            const rawUrl = githubUrl.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
+            const configUrl = `${rawUrl}${rawUrl.endsWith('/') ? '' : '/'}main/project.ceconfig`;
+
+            console.log("Fetching config from:", configUrl);
+
+            const response = await fetch(configUrl);
+            if (response.ok) {
+                const config = await response.json();
+                verifiedGameName.textContent = config.appName || 'Desconocido';
+                verifiedGameVersion.textContent = config.appVersion || '1.0.0';
+                projectVerifiedDetails.style.display = 'block';
+                window.Dialogs.showNotification('Éxito', 'Proyecto verificado correctamente.');
+            } else {
+                throw new Error("No se encontró 'project.ceconfig' en la rama principal de GitHub.");
+            }
+        } catch (error) {
+            console.error(error);
+            window.Dialogs.showNotification('Error de Verificación', error.message);
+        } finally {
+            btnVerifyProject.disabled = false;
+            btnVerifyProject.textContent = window.Localization ? window.Localization.get('VERIFICAR_PROYECTO', 'Verificar Proyecto') : 'Verificar Proyecto';
+        }
+    });
+  }
+
+  if (publishGameForm) {
+    publishGameForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const { data: { session } } = await _supabase.auth.getSession();
+        if (!session) {
+            window.Dialogs.showNotification('Error', 'Debes iniciar sesión para publicar.');
+            return;
+        }
+
+        const submitBtn = publishGameForm.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Subiendo...';
+
+        try {
+            // Here we would upload to Supabase 'games' table
+            // and upload the image to Supabase storage.
+
+            // Placeholder for SQL logic to be provided by user later
+            console.log("Publishing game:", {
+                name: verifiedGameName.textContent,
+                version: verifiedGameVersion.textContent,
+                github: document.getElementById('publish-github').value,
+                description: document.getElementById('publish-description').value,
+                user_id: session.user.id
+            });
+
+            window.Dialogs.showNotification('¡Éxito!', 'Tu juego ha sido publicado en Creative Games.');
+            publishGameForm.reset();
+            projectVerifiedDetails.style.display = 'none';
+            publishFormContainer.style.display = 'none';
+            loadUserGames();
+        } catch (error) {
+            console.error(error);
+            window.Dialogs.showNotification('Error', 'Ocurrió un error al publicar el juego.');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = window.Localization ? window.Localization.get('SUBIR', 'Subir') : 'Subir';
+        }
+    });
+  }
 });

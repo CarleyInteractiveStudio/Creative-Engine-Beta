@@ -4,6 +4,7 @@ INICIAR_SESION: Iniciar Sesión
 SILENCIAR_MUSICA: Silenciar Música
 
 # General
+TUTORIALES: Tutoriales
 EMPEZAR: Empezar a Crear
 CONTACTO: Contacto
 SOPORTE: Soporte
@@ -158,6 +159,17 @@ NO_ACTIVIDAD_RECIENTE: No hay actividad reciente.
 FOROS: Foros
 DONACIONES: Donaciones
 LEGAL: Legal
+MIS_JUEGOS: Mis Juegos
+PUBLICAR_JUEGO: Publicar Juego
+ENLACE_GITHUB: Enlace de GitHub
+SUBIR_FOTO_JUEGO: Subir foto para Creative Games
+DESCRIPCION_JUEGO: Descripción del Juego
+SUBIR: Subir
+VERIFICAR_PROYECTO: Verificar Proyecto
+BORRAR_JUEGO: Borrar Juego
+JUGADAS: Jugadas
+COMENTARIOS: Comentarios
+ME_GUSTAS: Me Gusta
 
 # Asset Browser
 CREAR_CARPETA: Crear Carpeta
@@ -333,6 +345,7 @@ INICIAR_SESION: Log In
 SILENCIAR_MUSICA: Mute Music
 
 # General
+TUTORIALES: Tutorials
 EMPEZAR: Start Creating
 CONTACTO: Contact
 SOPORTE: Support
@@ -487,6 +500,17 @@ NO_ACTIVIDAD_RECIENTE: No recent activity.
 FOROS: Forums
 DONACIONES: Donations
 LEGAL: Legal
+MIS_JUEGOS: My Games
+PUBLICAR_JUEGO: Publish Game
+ENLACE_GITHUB: GitHub Link
+SUBIR_FOTO_JUEGO: Upload photo for Creative Games
+DESCRIPCION_JUEGO: Game Description
+SUBIR: Upload
+VERIFICAR_PROYECTO: Verify Project
+BORRAR_JUEGO: Delete Game
+JUGADAS: Plays
+COMENTARIOS: Comments
+ME_GUSTAS: Likes
 
 # Asset Browser
 CREAR_CARPETA: Create Folder
@@ -662,6 +686,7 @@ INICIAR_SESION: Iniciar Sessão
 SILENCIAR_MUSICA: Silenciar Música
 
 # General
+TUTORIALES: Tutoriais
 EMPEZAR: Começar a Criar
 CONTACTO: Contato e Suporte
 SOPORTE: Suporte
@@ -683,6 +708,17 @@ COOKIES: Cookies
 FOROS: Fóruns
 DONACIONES: Doações
 LEGAL: Legal
+MIS_JUEGOS: Meus Jogos
+PUBLICAR_JUEGO: Publicar Jogo
+ENLACE_GITHUB: Link do GitHub
+SUBIR_FOTO_JUEGO: Carregar foto para Creative Games
+DESCRIPCION_JUEGO: Descrição do Jogo
+SUBIR: Carregar
+VERIFICAR_PROYECTO: Verificar Projeto
+BORRAR_JUEGO: Excluir Jogo
+JUGADAS: Jogadas
+COMENTARIOS: Comentários
+ME_GUSTAS: Curtidas
 PRUEBA_VIDSPRI: Também teste VidSpri
 NUESTRO_SITIO_WEB: Nosso site
 COMPARTIR_MOTOR: Compartilhar Motor
@@ -952,6 +988,7 @@ INICIAR_SESION: Войти
 SILENCIAR_MUSICA: Выключить музыку
 
 # General
+TUTORIALES: Обучение
 EMPEZAR: Начать создание
 CONTACTO: Контакты и поддержка
 SOPORTE: Поддержка
@@ -973,6 +1010,17 @@ COOKIES: Cookies
 FOROS: Форумы
 DONACIONES: Пожертвования
 LEGAL: Юридическая информация
+MIS_JUEGOS: Мои Игры
+PUBLICAR_JUEGO: Опубликовать Игру
+ENLACE_GITHUB: Ссылка на GitHub
+SUBIR_FOTO_JUEGO: Загрузить фото для Creative Games
+DESCRIPCION_JUEGO: Описание Игры
+SUBIR: Загрузить
+VERIFICAR_PROYECTO: Проверить Проект
+BORRAR_JUEGO: Удалить Игру
+JUGADAS: Просмотры
+COMENTARIOS: Комментарии
+ME_GUSTAS: Лайки
 PRUEBA_VIDSPRI: Также попробуйте VidSpri
 NUESTRO_SITIO_WEB: Наш веб-сайт
 COMPARTIR_MOTOR: Поделиться движком
@@ -1242,6 +1290,7 @@ INICIAR_SESION: 登录
 SILENCIAR_MUSICA: 静音
 
 # General
+TUTORIALES: 教程
 EMPEZAR: 开始创作
 CONTACTO: 联系与支持
 SOPORTE: 支持
@@ -1263,6 +1312,17 @@ COOKIES: Cookies
 FOROS: 论坛
 DONACIONES: 捐赠
 LEGAL: 法律
+MIS_JUEGOS: 我的游戏
+PUBLICAR_JUEGO: 发布游戏
+ENLACE_GITHUB: GitHub 链接
+SUBIR_FOTO_JUEGO: 为 Creative Games 上传照片
+DESCRIPCION_JUEGO: 游戏描述
+SUBIR: 上传
+VERIFICAR_PROYECTO: 验证项目
+BORRAR_JUEGO: 删除游戏
+JUGADAS: 播放量
+COMENTARIOS: 评论
+ME_GUSTAS: 点赞
 PRUEBA_VIDSPRI: 也请尝试 VidSpri
 NUESTRO_SITIO_WEB: 我们的网站
 COMPARTIR_MOTOR: 分享引擎
