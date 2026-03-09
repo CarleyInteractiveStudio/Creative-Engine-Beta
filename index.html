@@ -184,8 +184,11 @@
                                 <label for="login-password" data-i18n="AUTH_PASSWORD">Contraseña:</label>
                                 <input id="login-password" type="password" name="password" required autocomplete="current-password">
                                 <button type="submit" class="modal-btn" data-i18n="AUTH_LOGIN">Iniciar Sesión</button>
-                                <p class="auth-switch" data-i18n="AUTH_NO_ACCOUNT">¿No tienes una cuenta? <a href="#" id="goto-signup">Regístrate</a></p>
-                                <p class="auth-switch"><a href="#" id="goto-reset" data-i18n="AUTH_FORGOT_PASS">¿Olvidaste tu contraseña?</a></p>
+                                <p class="auth-switch">
+                                    <span data-i18n="AUTH_NO_ACCOUNT">¿No tienes una cuenta?</span>
+                                    <a href="https://carleystudio.com/cuenta.html" id="goto-signup" target="_blank" data-i18n="REGISTRARSE">Regístrate</a>
+                                </p>
+                                <p class="auth-switch"><a href="https://carleystudio.com/cuenta.html" id="goto-reset" data-i18n="AUTH_FORGOT_PASS" target="_blank">¿Olvidaste tu contraseña?</a></p>
                             </form>
                         </div>
                         <div id="auth-logged-in" class="auth-view" style="display: none;">
@@ -204,7 +207,10 @@
                                 <input id="signup-password" type="password" name="password" required autocomplete="new-password" minlength="6">
                                 <p class="password-hint" data-i18n="AUTH_PASS_HINT">La contraseña debe tener al menos 6 caracteres.</p>
                                 <button type="submit" class="modal-btn" data-i18n="AUTH_SIGNUP">Registrarse</button>
-                                <p class="auth-switch" data-i18n="AUTH_ALREADY_ACCOUNT">¿Ya tienes una cuenta? <a href="#" id="goto-login">Inicia Sesión</a></p>
+                                <p class="auth-switch">
+                                    <span data-i18n="AUTH_ALREADY_ACCOUNT">¿Ya tienes una cuenta?</span>
+                                    <a href="#" id="goto-login" data-i18n="AUTH_LOGIN">Inicia Sesión</a>
+                                </p>
                             </form>
                         </div>
                         <div id="reset-password-view" class="auth-view" style="display: none;">

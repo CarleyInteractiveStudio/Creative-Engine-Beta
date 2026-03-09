@@ -136,9 +136,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (viewToShow) viewToShow.style.display = 'block';
   };
 
-  if (gotoSignup) gotoSignup.addEventListener('click', e => { e.preventDefault(); showView(signupView); });
+  // Note: gotoSignup and gotoReset now point to external URLs in index.html,
+  // so we don't preventDefault() or show internal views for them anymore.
   if (gotoLogin) gotoLogin.addEventListener('click',  e => { e.preventDefault(); showView(loginView); });
-  if (gotoReset) gotoReset.addEventListener('click',  e => { e.preventDefault(); showView(resetPasswordView); });
   if (backToLogin) backToLogin.addEventListener('click', e => { e.preventDefault(); showView(loginView); });
 
   // --- Modal Closing Logic ---
