@@ -470,67 +470,6 @@ function drawScaleAxisGizmo(ctx, centerX, centerY, zoom, GIZMO_SIZE, HANDLE_THIC
     ctx.fillRect(centerX + GIZMO_SIZE - SCALE_BOX_SIZE / 2, centerY - SCALE_BOX_SIZE / 2, SCALE_BOX_SIZE, SCALE_BOX_SIZE);
 }
 
-function checkWheelSuspensionGizmoHit(canvasPos) {
-    const selectedMateria = getSelectedMateria();
-    if (!selectedMateria || !renderer) return null;
-
-    const suspension = selectedMateria.getComponent(Components.WheelSuspension);
-    const transform = selectedMateria.getComponent(Components.Transform);
-    if (!suspension || !transform) return null;
-
-    const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
-    const zoom = renderer.camera.effectiveZoom;
-    const handleHitboxSize = 12 / zoom;
-
-    const rad = -transform.rotation * Math.PI / 180;
-    const cos = Math.cos(rad), sin = Math.sin(rad);
-    const localX = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
-    const localY = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
-
-    const axis = suspension.constraintAxis;
-    const mag = Math.hypot(axis.x, axis.y);
-    const adx = mag > 0 ? axis.x / mag : 0;
-    const ady = mag > 0 ? axis.y / mag : 1;
-
-    // Perpendicular para el radio
-    const pdx = -ady;
-    const pdy = adx;
-
-    for (let i = 0; i < suspension.wheels.length; i++) {
-        const wheel = suspension.wheels[i];
-        const ox = wheel.offset.x;
-        const oy = wheel.offset.y;
-        const length = wheel.restDistance;
-        const limitDist = wheel.limitDistance;
-        const radius = wheel.wheelRadius;
-
-        // Hit para anclaje (offset)
-        if (Math.abs(localX - ox) < handleHitboxSize / 2 && Math.abs(localY - oy) < handleHitboxSize / 2) {
-            suspension.selectedIndex = i;
-            if (updateInspector) updateInspector();
-            return `suspension-offset-${i}`;
-        }
-
-        if (suspension.selectedIndex === i) {
-            // Hit para largo (Reposo)
-            if (Math.abs(localX - (ox + adx * length)) < handleHitboxSize / 2 && Math.abs(localY - (oy + ady * length)) < handleHitboxSize / 2) {
-                return `suspension-length-${i}`;
-            }
-            // Hit para límite
-            if (Math.abs(localX - (ox + adx * limitDist)) < handleHitboxSize / 2 && Math.abs(localY - (oy + ady * limitDist)) < handleHitboxSize / 2) {
-                return `suspension-limit-${i}`;
-            }
-            // Hit para radio (usando perpendicular)
-            const rx = ox + adx * length + pdx * radius;
-            const ry = oy + ady * length + pdy * radius;
-            if (Math.abs(localX - rx) < handleHitboxSize / 2 && Math.abs(localY - ry) < handleHitboxSize / 2) {
-                return `suspension-radius-${i}`;
-            }
-        }
-    }
-
-    return null;
-}
 
 function checkUIGizmoHit(canvasPos) {
     const selectedMateria = getSelectedMateria();
@@ -789,66 +728,6 @@ export function initialize(dependencies) {
 
         const isString = typeof dragState.handle === 'string';
 
-        if (isString && dragState.handle.startsWith('suspension-offset-')) {
-            const idx = parseInt(dragState.handle.split('-').pop());
-            const suspension = dragState.materia.getComponent(Components.WheelSuspension);
-            const rect = dom.sceneCanvas.getBoundingClientRect();
-            const worldMouse = screenToWorld(moveEvent.clientX - rect.left, moveEvent.clientY - rect.top);
-            const rad = -transform.rotation * Math.PI / 180;
-            const cos = Math.cos(rad), sin = Math.sin(rad);
-            const lx = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
-            const ly = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
-            suspension.wheels[idx].offset = { x: lx, y: ly };
-        } else if (isString && (dragState.handle.startsWith('suspension-length-') || dragState.handle.startsWith('suspension-limit-'))) {
-            const isLimit = dragState.handle.startsWith('suspension-limit-');
-            const idx = parseInt(dragState.handle.split('-').pop());
-            const suspension = dragState.materia.getComponent(Components.WheelSuspension);
-            const rect = dom.sceneCanvas.getBoundingClientRect();
-            const worldMouse = screenToWorld(moveEvent.clientX - rect.left, moveEvent.clientY - rect.top);
-            const rad = -transform.rotation * Math.PI / 180;
-            const cos = Math.cos(rad), sin = Math.sin(rad);
-            const lx = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
-            const ly = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
-            const ox = suspension.wheels[idx].offset.x;
-            const oy = suspension.wheels[idx].offset.y;
-
-            const axis = suspension.constraintAxis;
-            const mag = Math.hypot(axis.x, axis.y);
-            const adx = mag > 0 ? axis.x / mag : 0;
-            const ady = mag > 0 ? axis.y / mag : 1;
-
-            const newDist = Math.max(1, (lx - ox) * adx + (ly - oy) * ady);
-            if (isLimit) {
-                suspension.wheels[idx].limitDistance = Math.min(newDist, suspension.wheels[idx].restDistance - 5);
-            } else {
-                suspension.wheels[idx].restDistance = Math.max(newDist, suspension.wheels[idx].limitDistance + 5);
-            }
-        } else if (isString && dragState.handle.startsWith('suspension-radius-')) {
-            const idx = parseInt(dragState.handle.split('-').pop());
-            const suspension = dragState.materia.getComponent(Components.WheelSuspension);
-            const rect = dom.sceneCanvas.getBoundingClientRect();
-            const worldMouse = screenToWorld(moveEvent.clientX - rect.left, moveEvent.clientY - rect.top);
-            const rad = -transform.rotation * Math.PI / 180;
-            const cos = Math.cos(rad), sin = Math.sin(rad);
-            const lx = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
-            const ly = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
-
-            const wheel = suspension.wheels[idx];
-            const ox = wheel.offset.x;
-            const oy = wheel.offset.y;
-
-            const axis = suspension.constraintAxis;
-            const mag = Math.hypot(axis.x, axis.y);
-            const adx = mag > 0 ? axis.x / mag : 0;
-            const ady = mag > 0 ? axis.y / mag : 1;
-
-            // Centro de la rueda (usamos el largo de reposo para el gizmo del radio)
-            const cx = ox + adx * wheel.restDistance;
-            const cy = oy + ady * wheel.restDistance;
-
-            // Distancia del mouse al centro de la rueda
-            suspension.wheels[idx].wheelRadius = Math.max(2, Math.hypot(lx - cx, ly - cy));
-        }
 
         switch (dragState.handle) {
             case 'camera-move': transform.x += dx; transform.y += dy; break;
@@ -987,6 +866,39 @@ export function initialize(dependencies) {
                 transform.rotation = Math.atan2(worldMouse.y - transform.y, worldMouse.x - transform.x) * 180 / Math.PI;
                 break;
             }
+            // --- Amortiguador Collider Gizmo Logic ---
+            case 'amort-top': {
+                const amort = dragState.materia.getComponent(Components.AmortiguadorCollider);
+                const rad = -transform.rotation * Math.PI / 180;
+                const localDy = -dx * Math.sin(rad) + dy * Math.cos(rad);
+                amort.size.y -= localDy;
+                amort.offset.y += localDy / 2;
+                break;
+            }
+            case 'amort-bottom': {
+                const amort = dragState.materia.getComponent(Components.AmortiguadorCollider);
+                const rad = -transform.rotation * Math.PI / 180;
+                const localDy = -dx * Math.sin(rad) + dy * Math.cos(rad);
+                amort.size.y += localDy;
+                amort.offset.y += localDy / 2;
+                break;
+            }
+            case 'amort-right': {
+                const amort = dragState.materia.getComponent(Components.AmortiguadorCollider);
+                const rad = -transform.rotation * Math.PI / 180;
+                const localDx = dx * Math.cos(rad) + dy * Math.sin(rad);
+                amort.size.x += localDx;
+                amort.offset.x += localDx / 2;
+                break;
+            }
+            case 'amort-left': {
+                const amort = dragState.materia.getComponent(Components.AmortiguadorCollider);
+                const rad = -transform.rotation * Math.PI / 180;
+                const localDx = dx * Math.cos(rad) + dy * Math.sin(rad);
+                amort.size.x -= localDx;
+                amort.offset.x += localDx / 2;
+                break;
+            }
         }
 
         // --- Collider Gizmo Logic ---
@@ -995,16 +907,16 @@ export function initialize(dependencies) {
             const rad = -transform.rotation * Math.PI / 180;
             const cos = Math.cos(rad);
             const sin = Math.sin(rad);
-            const localDx = dx * cos - dy * sin;
-            const localDy = dx * sin + dy * cos;
+            const localDx = dx * cos + dy * sin;
+            const localDy = -dx * sin + dy * cos;
 
             switch (dragState.handle) {
                 case 'collider-top':
-                    boxCollider.size.y += localDy;
+                    boxCollider.size.y -= localDy;
                     boxCollider.offset.y += localDy / 2;
                     break;
                 case 'collider-bottom':
-                    boxCollider.size.y -= localDy;
+                    boxCollider.size.y += localDy;
                     boxCollider.offset.y += localDy / 2;
                     break;
                 case 'collider-right':
@@ -1016,25 +928,25 @@ export function initialize(dependencies) {
                     boxCollider.offset.x += localDx / 2;
                     break;
                 case 'collider-tr':
-                    boxCollider.size.y += localDy;
+                    boxCollider.size.y -= localDy;
                     boxCollider.offset.y += localDy / 2;
                     boxCollider.size.x += localDx;
                     boxCollider.offset.x += localDx / 2;
                     break;
                  case 'collider-tl':
-                    boxCollider.size.y += localDy;
+                    boxCollider.size.y -= localDy;
                     boxCollider.offset.y += localDy / 2;
                     boxCollider.size.x -= localDx;
                     boxCollider.offset.x += localDx / 2;
                     break;
                 case 'collider-br':
-                    boxCollider.size.y -= localDy;
+                    boxCollider.size.y += localDy;
                     boxCollider.offset.y += localDy / 2;
                     boxCollider.size.x += localDx;
                     boxCollider.offset.x += localDx / 2;
                     break;
                 case 'collider-bl':
-                    boxCollider.size.y -= localDy;
+                    boxCollider.size.y += localDy;
                     boxCollider.offset.y += localDy / 2;
                     boxCollider.size.x -= localDx;
                     boxCollider.offset.x += localDx / 2;
@@ -1048,8 +960,8 @@ export function initialize(dependencies) {
             const rad = -transform.rotation * Math.PI / 180;
             const cos = Math.cos(rad);
             const sin = Math.sin(rad);
-            const localDx = dx * cos - dy * sin;
-            const localDy = dx * sin + dy * cos;
+            const localDx = dx * cos + dy * sin;
+            const localDy = -dx * sin + dy * cos;
 
             switch (dragState.handle) {
                 case 'collider-circle-handle':
@@ -1070,16 +982,16 @@ export function initialize(dependencies) {
             const rad = -transform.rotation * Math.PI / 180;
             const cos = Math.cos(rad);
             const sin = Math.sin(rad);
-            const localDx = dx * cos - dy * sin;
-            const localDy = dx * sin + dy * cos;
+            const localDx = dx * cos + dy * sin;
+            const localDy = -dx * sin + dy * cos;
 
             switch (dragState.handle) {
                 case 'collider-capsule-top':
-                    capsuleCollider.size.y += localDy;
+                    capsuleCollider.size.y -= localDy;
                     capsuleCollider.offset.y += localDy / 2;
                     break;
                 case 'collider-capsule-bottom':
-                    capsuleCollider.size.y -= localDy;
+                    capsuleCollider.size.y += localDy;
                     capsuleCollider.offset.y += localDy / 2;
                     break;
                 case 'collider-capsule-right':
@@ -1475,7 +1387,7 @@ export function initialize(dependencies) {
             if (!selectedMateria || activeTool === 'pan') return;
 
             const canvasPos = InputManager.getMousePositionInCanvas();
-            const hitHandle = checkWheelSuspensionGizmoHit(canvasPos) || checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCircleColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos) || checkUIGizmoHit(canvasPos);
+            const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCircleColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos) || checkAmortiguadorColliderGizmoHit(canvasPos) || checkUIGizmoHit(canvasPos);
 
             if (hitHandle) {
                 e.stopPropagation();
@@ -1887,8 +1799,6 @@ export function drawOverlay() {
 
     drawTerrainBrushGizmo();
 
-    drawWheelSuspensionGizmos();
-
     drawBasicAIGizmos();
 }
 
@@ -1983,89 +1893,6 @@ function drawRaycastGizmos() {
     ctx.restore();
 }
 
-function drawWheelSuspensionGizmos() {
-    const selectedMateria = getSelectedMateria();
-    if (!selectedMateria) return;
-
-    const suspension = selectedMateria.getComponent(Components.WheelSuspension);
-    const transform = selectedMateria.getComponent(Components.Transform);
-    if (!suspension || !transform || !suspension.showGizmo) return;
-
-    const { ctx, camera } = renderer;
-    const zoom = camera.effectiveZoom;
-
-    ctx.save();
-    ctx.translate(transform.x, transform.y);
-    ctx.rotate(transform.rotation * Math.PI / 180);
-
-    const axis = suspension.constraintAxis;
-    const handleSize = 8 / zoom;
-    const mag = Math.hypot(axis.x, axis.y);
-    const adx = mag > 0 ? axis.x / mag : 0;
-    const ady = mag > 0 ? axis.y / mag : 1;
-
-    // Perpendicular para manija de radio
-    const pdx = -ady;
-    const pdy = adx;
-
-    suspension.wheels.forEach((wheel, index) => {
-        const isSelected = suspension.selectedIndex === index;
-        const ox = wheel.offset.x;
-        const oy = wheel.offset.y;
-        const length = wheel.restDistance;
-        const limitDist = wheel.limitDistance;
-        const radius = wheel.wheelRadius;
-
-        // 1. Dibujar eje del resorte (de anclaje a reposo)
-        ctx.beginPath();
-        ctx.moveTo(ox, oy);
-        ctx.lineTo(ox + adx * length, oy + ady * length);
-        ctx.strokeStyle = isSelected ? '#ffaa00' : 'rgba(255, 170, 0, 0.4)';
-        ctx.lineWidth = (isSelected ? 3 : 1) / zoom;
-        ctx.stroke();
-
-        // 2. Dibujar círculo de la rueda
-        ctx.beginPath();
-        ctx.arc(ox + adx * length, oy + ady * length, radius, 0, Math.PI * 2);
-        ctx.strokeStyle = isSelected ? '#ffff00' : 'rgba(255, 255, 0, 0.4)';
-        ctx.setLineDash([5 / zoom, 5 / zoom]);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // 3. Dibujar límite de seguridad (Hard Stop)
-        ctx.beginPath();
-        ctx.moveTo(ox + adx * limitDist - pdx * radius, oy + ady * limitDist - pdy * radius);
-        ctx.lineTo(ox + adx * limitDist + pdx * radius, oy + ady * limitDist + pdy * radius);
-        ctx.strokeStyle = isSelected ? '#ff0000' : 'rgba(255, 0, 0, 0.3)';
-        ctx.lineWidth = 2 / zoom;
-        ctx.stroke();
-
-        // 4. Dibujar anclaje
-        ctx.fillStyle = isSelected ? '#ffaa00' : 'rgba(255, 170, 0, 0.4)';
-        ctx.beginPath();
-        ctx.arc(ox, oy, 4 / zoom, 0, Math.PI * 2);
-        ctx.fill();
-
-        // 5. Manijas interactivas (Solo si está seleccionada la rueda)
-        if (isSelected) {
-            ctx.fillStyle = '#ffffff';
-            // Manija para posición (offset)
-            ctx.fillRect(ox - handleSize / 2, oy - handleSize / 2, handleSize, handleSize);
-            // Manija para el largo (al final del eje)
-            ctx.fillRect(ox + adx * length - handleSize / 2, oy + ady * length - handleSize / 2, handleSize, handleSize);
-            // Manija para el límite (roja)
-            ctx.fillStyle = '#ff0000';
-            ctx.fillRect(ox + adx * limitDist - handleSize / 2, oy + ady * limitDist - handleSize / 2, handleSize, handleSize);
-            ctx.fillStyle = '#ffffff';
-            // Manija para el radio (en el borde de la rueda, perpendicular)
-            const rx = ox + adx * length + pdx * radius;
-            const ry = oy + ady * length + pdy * radius;
-            ctx.fillRect(rx - handleSize / 2, ry - handleSize / 2, handleSize, handleSize);
-        }
-    });
-
-    ctx.restore();
-}
 
 function drawBasicAIGizmos() {
     const selectedMateria = getSelectedMateria();
@@ -2207,14 +2034,55 @@ function checkBoxColliderGizmoHit(canvasPos) {
     const halfHitbox = handleHitboxSize / 2;
 
     const handles = [
-        { x: 0, y: halfHeight, name: 'collider-top' },
-        { x: 0, y: -halfHeight, name: 'collider-bottom' },
+        { x: 0, y: -halfHeight, name: 'collider-top' },
+        { x: 0, y: halfHeight, name: 'collider-bottom' },
         { x: halfWidth, y: 0, name: 'collider-right' },
         { x: -halfWidth, y: 0, name: 'collider-left' },
-        { x: -halfWidth, y: halfHeight, name: 'collider-tl' },
-        { x: halfWidth, y: halfHeight, name: 'collider-tr' },
-        { x: -halfWidth, y: -halfHeight, name: 'collider-bl' },
-        { x: halfWidth, y: -halfHeight, name: 'collider-br' }
+        { x: -halfWidth, y: -halfHeight, name: 'collider-tl' },
+        { x: halfWidth, y: -halfHeight, name: 'collider-tr' },
+        { x: -halfWidth, y: halfHeight, name: 'collider-bl' },
+        { x: halfWidth, y: halfHeight, name: 'collider-br' }
+    ];
+
+    for (const handle of handles) {
+        if ( localMouseX >= handle.x - halfHitbox && localMouseX <= handle.x + halfHitbox &&
+             localMouseY >= handle.y - halfHitbox && localMouseY <= handle.y + halfHitbox ) {
+            return handle.name;
+        }
+    }
+
+    return null;
+}
+
+function checkAmortiguadorColliderGizmoHit(canvasPos) {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria || !renderer) return null;
+
+    const amort = selectedMateria.getComponent(Components.AmortiguadorCollider);
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!amort || !transform) return null;
+
+    const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
+
+    const rad = -transform.rotation * Math.PI / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const localMouseX = (worldMouse.x - (transform.x + amort.offset.x)) * cos - (worldMouse.y - (transform.y + amort.offset.y)) * sin;
+    const localMouseY = (worldMouse.x - (transform.x + amort.offset.x)) * sin + (worldMouse.y - (transform.y + amort.offset.y)) * cos;
+
+    const width = amort.size.x * transform.scale.x;
+    const height = amort.size.y * transform.scale.y;
+    const halfWidth = width / 2;
+    const halfHeight = height / 2;
+
+    const handleHitboxSize = 10 / renderer.camera.effectiveZoom;
+    const halfHitbox = handleHitboxSize / 2;
+
+    const handles = [
+        { x: 0, y: -halfHeight, name: 'amort-top' },
+        { x: 0, y: halfHeight, name: 'amort-bottom' },
+        { x: halfWidth, y: 0, name: 'amort-right' },
+        { x: -halfWidth, y: 0, name: 'amort-left' }
     ];
 
     for (const handle of handles) {
@@ -2252,8 +2120,8 @@ function checkCapsuleColliderGizmoHit(canvasPos) {
     let handles = [];
     if (capsuleCollider.direction === 'Vertical') {
         handles = [
-            { x: 0, y: height / 2, name: 'collider-capsule-top' },
-            { x: 0, y: -height / 2, name: 'collider-capsule-bottom' },
+            { x: 0, y: -height / 2, name: 'collider-capsule-top' },
+            { x: 0, y: height / 2, name: 'collider-capsule-bottom' },
             { x: width / 2, y: 0, name: 'collider-capsule-right' },
             { x: -width / 2, y: 0, name: 'collider-capsule-left' }
         ];
@@ -2261,8 +2129,8 @@ function checkCapsuleColliderGizmoHit(canvasPos) {
         handles = [
             { x: width / 2, y: 0, name: 'collider-capsule-right' },
             { x: -width / 2, y: 0, name: 'collider-capsule-left' },
-            { x: 0, y: height / 2, name: 'collider-capsule-top' },
-            { x: 0, y: -height / 2, name: 'collider-capsule-bottom' }
+            { x: 0, y: -height / 2, name: 'collider-capsule-top' },
+            { x: 0, y: height / 2, name: 'collider-capsule-bottom' }
         ];
     }
 
@@ -2331,10 +2199,10 @@ function drawPhysicsGizmos() {
         ctx.fillStyle = 'rgba(0, 255, 0, 0.9)';
 
         const handles = [
-            { x: 0, y: height / 2 }, { x: 0, y: -height / 2 },
+            { x: 0, y: -height / 2 }, { x: 0, y: height / 2 },
             { x: width / 2, y: 0 }, { x: -width / 2, y: 0 },
-            { x: -width / 2, y: height / 2 }, { x: width / 2, y: height / 2 },
-            { x: -width / 2, y: -height / 2 }, { x: width / 2, y: -height / 2 }
+            { x: -width / 2, y: -height / 2 }, { x: width / 2, y: -height / 2 },
+            { x: -width / 2, y: height / 2 }, { x: width / 2, y: height / 2 }
         ];
         handles.forEach(handle => ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize));
 
@@ -2364,9 +2232,48 @@ function drawPhysicsGizmos() {
         ctx.fillStyle = 'rgba(0, 255, 0, 0.9)';
 
         let handles = (capsuleCollider.direction === 'Vertical')
-            ? [{ x: 0, y: height / 2 }, { x: 0, y: -height / 2 }, { x: width / 2, y: 0 }, { x: -width / 2, y: 0 }]
-            : [{ x: width / 2, y: 0 }, { x: -width / 2, y: 0 }, { x: 0, y: height / 2 }, { x: 0, y: -height / 2 }];
+            ? [{ x: 0, y: -height / 2 }, { x: 0, y: height / 2 }, { x: width / 2, y: 0 }, { x: -width / 2, y: 0 }]
+            : [{ x: width / 2, y: 0 }, { x: -width / 2, y: 0 }, { x: 0, y: -height / 2 }, { x: 0, y: height / 2 }];
 
+        handles.forEach(handle => ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize));
+
+        ctx.restore();
+    }
+
+    // Draw AmortiguadorCollider
+    const amortCollider = selectedMateria.getComponent(Components.AmortiguadorCollider);
+    if (amortCollider) {
+        const width = amortCollider.size.x * transform.scale.x;
+        const height = amortCollider.size.y * transform.scale.y;
+        const centerX = transform.x + amortCollider.offset.x;
+        const centerY = transform.y + amortCollider.offset.y;
+
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(transform.rotation * Math.PI / 180);
+
+        ctx.strokeStyle = 'rgba(255, 100, 0, 0.8)'; // Naranja para diferenciarlo
+        ctx.lineWidth = 2 / camera.effectiveZoom;
+        ctx.setLineDash([5 / camera.effectiveZoom, 5 / camera.effectiveZoom]);
+        ctx.strokeRect(-width / 2, -height / 2, width, height);
+
+        // Dibujar linea de "Nivel de Expulsión" (Nivel de aire/viento)
+        const expulsionY = (height / 2) - (height * amortCollider.distanciaDeseada);
+        ctx.beginPath();
+        ctx.moveTo(-width / 2, expulsionY);
+        ctx.lineTo(width / 2, expulsionY);
+        ctx.strokeStyle = 'rgba(0, 200, 255, 0.5)';
+        ctx.setLineDash([]);
+        ctx.stroke();
+
+        const handleSize = 8 / camera.effectiveZoom;
+        const halfHandle = handleSize / 2;
+        ctx.fillStyle = 'rgba(255, 100, 0, 0.9)';
+
+        const handles = [
+            { x: 0, y: -height / 2, name: 'amort-top' }, { x: 0, y: height / 2, name: 'amort-bottom' },
+            { x: width / 2, y: 0, name: 'amort-right' }, { x: -width / 2, y: 0, name: 'amort-left' }
+        ];
         handles.forEach(handle => ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize));
 
         ctx.restore();

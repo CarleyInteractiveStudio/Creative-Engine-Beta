@@ -87,6 +87,8 @@ const typeMap = {
     'autoDisposicionHorizontal': 'HorizontalLayoutGroup',
     'autoDisposicionRejilla': 'GridLayoutGroup',
     'ajustadorDeTamanoDeContenido': 'ContentSizeFitter',
+    'AmortiguadorCollider': 'AmortiguadorCollider',
+    'colisionadorAmortiguador': 'AmortiguadorCollider',
     'variable': 'any',
     'any': 'any'
 };
@@ -114,7 +116,7 @@ const componentShortcuts = [
     'raycastSource', 'rallo',
     'basicAI', 'iaBasica',
     'vehicleController', 'controladorDeVehiculo',
-    'wheelSuspension', 'suspensionDeRueda',
+    'amortiguadorCollider', 'colisionadorAmortiguador',
     'textureRender', 'renderizadorDeTextura',
     'canvas', 'lienzo',
     'uiImage', 'imagenUI',
@@ -156,7 +158,8 @@ const componentShortcuts = [
     'azar', 'random', 'seno', 'sin', 'coseno', 'cos', 'tangente', 'tan',
     'raizCuadrada', 'sqrt', 'redondear', 'round', 'piso', 'floor', 'techo', 'ceil',
     'absoluto', 'abs', 'limitar', 'clamp', 'distancia', 'distance', 'Vector2', 'Color',
-    'tono', 'pitch', 'estaTocandoSuelo'
+    'tono', 'pitch', 'estaTocandoSuelo', 'tagsDeDeslizamiento',
+    'nivelExpulsion', 'soporte', 'fuerza', 'modoVista', 'potencia', 'velocidadMaxima', 'autoVolteo', 'velocidadGiro', 'intensidadDerrape', 'amortiguacion'
 ];
 
 function getDefaultValueForType(canonicalType) {
