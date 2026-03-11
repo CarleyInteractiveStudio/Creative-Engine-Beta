@@ -270,9 +270,17 @@ export class PhysicsSystem {
 
         // 2. Broad-phase collision detection and state update
         const newActiveCollisions = new Map();
-        const collidables = this.scene.getAllMaterias().filter(m =>
-            m.isActive && (m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CapsuleCollider2D) || m.getComponent(Components.CircleCollider2D) || m.getComponent(Components.PolygonCollider2D) || m.getComponent(Components.TilemapCollider2D) || m.getComponent(Components.TerrenoCollider2D) || m.getComponent(Components.LineCollider2D))
-        );
+        const collidables = this.scene.getAllMaterias().filter(m => {
+            if (!m.isActive) return false;
+            const rb = m.getComponent(Components.Rigidbody2D);
+            // Ignore if the Rigidbody is explicitly marked as non-simulated
+            if (rb && rb.simulated === false) return false;
+
+            return m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CapsuleCollider2D) ||
+                   m.getComponent(Components.CircleCollider2D) || m.getComponent(Components.PolygonCollider2D) ||
+                   m.getComponent(Components.TilemapCollider2D) || m.getComponent(Components.TerrenoCollider2D) ||
+                   m.getComponent(Components.LineCollider2D);
+        });
 
         for (let i = 0; i < collidables.length; i++) {
             for (let j = i + 1; j < collidables.length; j++) {
@@ -282,9 +290,21 @@ export class PhysicsSystem {
                 // --- 2.1 Collision Filtering ---
                 // 1. Assembly Filter: Don't collide if they share the same VehicleController.
                 // Prevents vehicle parts (chassis, wheels) from exploding due to internal collisions.
-                const vehicleA = materiaA.findAncestorWithComponent(Components.VehicleController) || (materiaA.getComponent(Components.VehicleController) ? materiaA : null);
-                const vehicleB = materiaB.findAncestorWithComponent(Components.VehicleController) || (materiaB.getComponent(Components.VehicleController) ? materiaB : null);
+                const vehicleA = (materiaA.getComponent(Components.VehicleController) || materiaA.getComponent(Components.WheelSuspension)) ? materiaA : (materiaA.findAncestorWithComponent(Components.VehicleController) || materiaA.findAncestorWithComponent(Components.WheelSuspension));
+                const vehicleB = (materiaB.getComponent(Components.VehicleController) || materiaB.getComponent(Components.WheelSuspension)) ? materiaB : (materiaB.findAncestorWithComponent(Components.VehicleController) || materiaB.findAncestorWithComponent(Components.WheelSuspension));
+
                 if (vehicleA && vehicleA === vehicleB) continue;
+
+                // 2. Wheel Filter: Ignore physical collisions for wheel materias.
+                // They are handled by the WheelSuspension component logic.
+                if (materiaA.isWheel || materiaB.isWheel) continue;
+
+                // Also check if one is explicitly registered as a wheel of a suspension on the other
+                const suspA = materiaA.getComponent(Components.WheelSuspension);
+                if (suspA && suspA.wheels.some(w => w.materiaId === materiaB.id)) continue;
+
+                const suspB = materiaB.getComponent(Components.WheelSuspension);
+                if (suspB && suspB.wheels.some(w => w.materiaId === materiaA.id)) continue;
 
                 if (materiaA.isAncestorOf(materiaB) || materiaB.isAncestorOf(materiaA)) {
                     continue;
