@@ -770,6 +770,7 @@ function drawOnionSkin() {
     if (menuButton) {
         menuButton.addEventListener('click', (e) => {
             e.preventDefault();
+            e.stopPropagation(); // Avoid double-toggle from editor.js generic listener
             dom.animationPanel.classList.toggle('hidden');
             // We need a way to update the checkmark in the menu
             // This will require passing the updateWindowMenuUI function as a dependency

@@ -33,6 +33,15 @@ CARGANDO_LIBS: Cargando librerías...
 HA_OCURRIDO_ERROR: Ha ocurrido un error.
 REINTENTAR: Reintentar
 VOLVER_INICIO: Volver al Inicio
+CONCEDER_PERMISOS: Conceder Permisos
+ERROR_PERMISOS_DETALLES: Creative Engine necesita tu permiso para leer y escribir en la carpeta de tus proyectos.
+CARL_WELCOME_MSG: ¡Hola! Soy Carl, tu asistente de Creative Engine. ¿En qué puedo ayudarte a construir hoy?
+CARL_V1_MANTENIMIENTO: Carl V1 está actualmente en mantenimiento cerebral. Por favor, usa un modelo externo (Gemini/OpenAI/Claude) configurándolo en Preferencias.
+CARL_ERROR_CONEXION: No puedo conectar con {provider}. Por favor, asegúrate de haber configurado tu API Key correctamente en el panel de Preferencias.
+CARL_BUSCANDO_MODELO: El modelo por defecto no funcionó. Buscando uno compatible para ti...
+CARL_MODELO_ENCONTRADO: ¡Encontré un modelo compatible! Usando '{model}'. Reintentando...
+CARL_ERROR_SIN_MODELO: No pude encontrar un modelo de chat compatible en la lista de tu API key.
+CARL_ERROR_LISTAR_MODELOS: No pude listar los modelos disponibles para tu API key. Revisa la consola.
 
 # Welcome Section
 WELCOME_TITLE: Creative Engine
@@ -374,6 +383,15 @@ CARGANDO_LIBS: Loading libraries...
 HA_OCURRIDO_ERROR: An error occurred.
 REINTENTAR: Retry
 VOLVER_INICIO: Back to Start
+CONCEDER_PERMISOS: Grant Permissions
+ERROR_PERMISOS_DETALLES: Creative Engine needs your permission to read and write in your projects folder.
+CARL_WELCOME_MSG: Hello! I'm Carl, your Creative Engine assistant. How can I help you build today?
+CARL_V1_MANTENIMIENTO: Carl V1 is currently undergoing brain maintenance. Please use an external model (Gemini/OpenAI/Claude) by configuring it in Preferences.
+CARL_ERROR_CONEXION: I cannot connect to {provider}. Please make sure you have configured your API Key correctly in the Preferences panel.
+CARL_BUSCANDO_MODELO: The default model did not work. Looking for a compatible one for you...
+CARL_MODELO_ENCONTRADO: I found a compatible model! Using '{model}'. Retrying...
+CARL_ERROR_SIN_MODELO: I could not find a compatible chat model in your API key list.
+CARL_ERROR_LISTAR_MODELOS: I could not list the available models for your API key. Check the console.
 
 # Welcome Section
 WELCOME_TITLE: Creative Engine
@@ -728,6 +746,15 @@ CARGANDO_LIBS: Carregando bibliotecas...
 HA_OCURRIDO_ERROR: Ocorreu um erro.
 REINTENTAR: Repetir
 VOLVER_INICIO: Voltar ao Início
+CONCEDER_PERMISOS: Conceder Permissões
+ERROR_PERMISOS_DETALLES: O Creative Engine precisa da sua permissão para ler e escrever na pasta dos seus projetos.
+CARL_WELCOME_MSG: Olá! Eu sou o Carl, o seu assistente do Creative Engine. Como posso ajudar você a construir hoje?
+CARL_V1_MANTENIMIENTO: Carl V1 está atualmente em manutenção cerebral. Por favor, use um modelo externo (Gemini/OpenAI/Claude) configurando-o em Preferências.
+CARL_ERROR_CONEXION: Não consigo me conectar ao {provider}. Certifique-se de ter configurado sua chave de API corretamente no painel de Preferências.
+CARL_BUSCANDO_MODELO: O modelo padrão não funcionou. Procurando um compatível para você...
+CARL_MODELO_ENCONTRADO: Encontrei um modelo compatível! Usando '{model}'. Tentando novamente...
+CARL_ERROR_SIN_MODELO: Não foi possível encontrar um modelo de chat compatível na sua lista de chaves de API.
+CARL_ERROR_LISTAR_MODELOS: Não foi possível listar os modelos disponíveis para sua chave de API. Verifique o console.
 
 # Welcome Section
 WELCOME_TITLE: Creative Engine
@@ -1030,6 +1057,15 @@ CARGANDO_LIBS: Загрузка библиотек...
 HA_OCURRIDO_ERROR: Произошла ошибка.
 REINTENTAR: Повторить
 VOLVER_INICIO: Вернуться в начало
+CONCEDER_PERMISOS: Предоставить разрешения
+ERROR_PERMISOS_DETALLES: Creative Engine требуется ваше разрешение для чтения и записи в папку ваших проектов.
+CARL_WELCOME_MSG: Привет! Я Карл, твой помощник в Creative Engine. Чем я могу помочь тебе в создании сегодня?
+CARL_V1_MANTENIMIENTO: Carl V1 в настоящее время находится на техническом обслуживании. Пожалуйста, используйте внешнюю модель (Gemini/OpenAI/Claude), настроив её в Настройках.
+CARL_ERROR_CONEXION: Я не могу подключиться к {provider}. Пожалуйста, убедитесь, что вы правильно настроили свой API-ключ в панели Настроек.
+CARL_BUSCANDO_MODELO: Модель по умолчанию не сработала. Ищу совместимую для вас...
+CARL_MODELO_ENCONTRADO: Я нашел совместимую модель! Использую '{model}'. Повторная попытка...
+CARL_ERROR_SIN_MODELO: Не удалось найти совместимую модель чата в вашем списке API-ключей.
+CARL_ERROR_LISTAR_MODELOS: Не удалось получить список доступных моделей для вашего API-ключа. Проверьте консоль.
 
 # Welcome Section
 WELCOME_TITLE: Creative Engine
@@ -1332,6 +1368,15 @@ CARGANDO_LIBS: 正在加载库...
 HA_OCURRIDO_ERROR: 发生错误。
 REINTENTAR: 重试
 VOLVER_INICIO: 返回首页
+CONCEDER_PERMISOS: 授予权限
+ERROR_PERMISOS_DETALLES: Creative Engine 需要您的许可才能在您的项目文件夹中进行读写操作。
+CARL_WELCOME_MSG: 你好！我是 Carl，你的 Creative Engine 助手。今天我能帮你构建什么？
+CARL_V1_MANTENIMIENTO: Carl V1 目前正在进行大脑维护。请通过在“偏好设置”中进行配置来使用外部模型（Gemini/OpenAI/Claude）。
+CARL_ERROR_CONEXION: 我无法连接到 {provider}。请确保您已在“偏好设置”面板中正确配置了您的 API Key。
+CARL_BUSCANDO_MODELO: 默认模型不起作用。正在为您寻找兼容的模型...
+CARL_MODELO_ENCONTRADO: 我找到了一个兼容的模型！正在使用“{model}”。正在重试...
+CARL_ERROR_SIN_MODELO: 我无法在您的 API key 列表中找到兼容的聊天模型。
+CARL_ERROR_LISTAR_MODELOS: 我无法列出您的 API key 的可用模型。请检查控制台。
 
 # Welcome Section
 WELCOME_TITLE: Creative Engine

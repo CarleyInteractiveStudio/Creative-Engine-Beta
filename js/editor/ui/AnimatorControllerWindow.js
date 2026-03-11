@@ -681,6 +681,7 @@ function setupEventListeners() {
     if (menuButton) {
         menuButton.addEventListener('click', async (e) => {
             e.preventDefault();
+            e.stopPropagation(); // Avoid double-toggle from editor.js generic listener
             const panel = dom.animatorControllerPanel;
             const isHiding = panel.classList.toggle('hidden');
             updateWindowMenuUI();
