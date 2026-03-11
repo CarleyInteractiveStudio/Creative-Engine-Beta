@@ -488,21 +488,34 @@ public star() {
                     <div id="animation-toolbar">
                         <button id="animation-save-btn" title="Guardar Asset" data-i18n-title="GUARDAR"><img src="icons/save.svg" class="ce-icon"> <span data-i18n="GUARDAR">Guardar</span></button>
                         <select id="animation-state-selector"></select>
+                        <select id="animation-type-selector">
+                            <option value="frame">Frame-by-Frame</option>
+                            <option value="skeletal">Skeletal (Bones)</option>
+                        </select>
                         <button id="animation-play-btn"><img src="icons/play.svg" class="ce-icon"></button>
                         <button id="animation-stop-btn"><img src="icons/stop.svg" class="ce-icon"></button>
+                        <button id="animation-record-btn" title="Grabar Keyframe" class="danger-btn"><img src="icons/target.svg" class="ce-icon"></button>
                         <label for="animation-speed" data-i18n="VELOCIDAD">Velocidad:</label>
                         <input type="number" id="animation-speed" value="10" min="1">
                         <span>FPS</span>
-                        <button id="add-frame-btn"><img src="icons/plus.svg" class="ce-icon"> <span data-i18n="AÑADIR_FRAME">Añadir Frame</span></button>
-                        <button id="animation-import-btn" title="Importar imagen(es) como fotogramas" data-i18n-title="IMPORTAR"><img src="icons/download.svg" class="ce-icon"> <span data-i18n="IMPORTAR">Importar</span></button>
-                        <button id="delete-frame-btn" title="Borrar Frame Seleccionado" data-i18n-title="BORRAR"><img src="icons/trash.svg" class="ce-icon"></button>
+                        <button id="add-frame-btn" class="frame-only"><img src="icons/plus.svg" class="ce-icon"> <span data-i18n="AÑADIR_FRAME">Añadir Frame</span></button>
+                        <button id="animation-import-btn" class="frame-only" title="Importar imagen(es) como fotogramas" data-i18n-title="IMPORTAR"><img src="icons/download.svg" class="ce-icon"> <span data-i18n="IMPORTAR">Importar</span></button>
+                        <button id="delete-frame-btn" title="Borrar Frame/Keyframe Seleccionado" data-i18n-title="BORRAR"><img src="icons/trash.svg" class="ce-icon"></button>
                         <button id="timeline-toggle-btn" title="Ocultar/Mostrar Línea de Tiempo"><img src="icons/arrow-up.svg" class="ce-icon"></button>
                     </div>
                     <div id="animation-content-container">
                         <div id="animation-edit-view">
                             <div id="animation-timeline-container">
-                                <div id="animation-timeline">
+                                <div id="animation-timeline" class="frame-mode">
                                     <!-- Frames will be added here -->
+                                </div>
+                                <div id="skeletal-timeline" class="hidden">
+                                    <div id="timeline-scrubber">
+                                        <input type="range" id="animation-time-slider" min="0" max="1" step="0.01" value="0">
+                                    </div>
+                                    <div id="skeletal-tracks">
+                                        <!-- Tracks for bones will be added here -->
+                                    </div>
                                 </div>
                             </div>
                             <div id="timeline-resizer"></div>
@@ -799,6 +812,8 @@ public star() {
             <hr>
             <li data-action="rename" data-i18n="RENOMBRAR">Renombrar</li>
             <li data-action="delete" class="danger" data-i18n="BORRAR">Borrar</li>
+            <hr class="file-only-divider" style="display: none;">
+            <li data-action="import-spine" class="file-only" style="display: none;">Importar como Esqueleto (Spine JSON)</li>
             <hr class="folder-only-divider" style="display: none;">
             <li data-action="export-package" class="folder-only" style="display: none;">Exportar Paquete (.cep)</li>
         </ul>
@@ -832,6 +847,10 @@ public star() {
                             <li data-action="create-triangle" data-i18n="TRIANGULO">Triángulo</li>
                             <li data-action="create-capsule" data-i18n="CAPSULA">Cápsula</li>
                             <li data-action="create-line-collider" data-i18n="LINE_COLLIDER">Colisionador de Líneas</li>
+                            <hr>
+                            <li data-action="create-bone" data-i18n="BONE">Hueso</li>
+                            <li data-action="create-skeleton" data-i18n="SKELETON">Esqueleto (Skinning)</li>
+                            <li data-action="create-ik-manager" data-i18n="IK_MANAGER">Gestor IK</li>
                         </ul>
                     </li>
                     <li class="has-submenu">

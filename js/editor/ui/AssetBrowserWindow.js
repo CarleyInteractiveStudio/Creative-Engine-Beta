@@ -2,6 +2,7 @@ import { getURLForAssetPath } from '../../engine/AssetUtils.js';
 import { createNewPalette } from './TilePaletteWindow.js';
 import { showNotification, showConfirmation, showPrompt } from './DialogWindow.js';
 import * as SceneManager from '../../engine/SceneManager.js';
+import * as SkeletonImporter from '../SkeletonImporter.js';
 
 // --- Module State ---
 let dom;
@@ -31,6 +32,7 @@ export function initialize(dependencies) {
     onAssetSelected = dependencies.onAssetSelected;
     onAssetOpened = dependencies.onAssetOpened;
     onShowContextMenu = dependencies.onShowContextMenu;
+    window.getSelectedMateria = dependencies.getSelectedMateria;
     onExportPackage = dependencies.onExportPackage;
     exportContext = dependencies.exportContext; // Share the context object
     createUiSystemFile = dependencies.createUiSystemFile;
@@ -434,6 +436,50 @@ export async function handleContextMenuAction(action) {
              }
             break;
         }
+        case 'import-spine': {
+            if (selectedAsset && selectedAsset.name.endsWith('.json')) {
+                await handleImportSpine(selectedAsset);
+            }
+            break;
+        }
+    }
+}
+
+async function handleImportSpine(item) {
+    const L = window.Localization;
+    const selectedMateria = window.getSelectedMateria ? window.getSelectedMateria() : null;
+    if (!selectedMateria) {
+        showNotification(L.get('AVISO'), "Selecciona una Materia en la jerarquía para ser la raíz del esqueleto.");
+        return;
+    }
+
+    try {
+        const file = await currentDirectoryHandle.handle.getFileHandle(item.name);
+        const fileObj = await file.getFile();
+        const content = await fileObj.text();
+        const result = await SkeletonImporter.importSpineJSON(content, selectedMateria, projectsDirHandle);
+
+        showNotification(L.get('EXITO'), `Esqueleto importado con ${result.boneMap.size} huesos.`);
+
+        if (result.animations.length > 0) {
+            for (const anim of result.animations) {
+                const fileName = `${anim.name}.cea`;
+                try {
+                    const fileH = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
+                    const writable = await fileH.createWritable();
+                    await writable.write(JSON.stringify(anim, null, 2));
+                    await writable.close();
+                } catch (e) {
+                    console.warn(`No se pudo guardar la animación ${fileName}`, e);
+                }
+            }
+        }
+
+        if (window.updateHierarchy) window.updateHierarchy();
+        if (updateAssetBrowserCallback) await updateAssetBrowserCallback();
+    } catch (e) {
+        console.error("Error importando Spine:", e);
+        showNotification(L.get('ERROR'), "No se pudo importar el archivo como Spine JSON.");
     }
 }
 
@@ -900,6 +946,8 @@ async function handleGridContextMenu(e) {
     const item = e.target.closest('.grid-item');
     const exportOption = dom.contextMenu.querySelector('[data-action="export-package"]');
     const exportDivider = dom.contextMenu.querySelector('.folder-only-divider');
+    const importSpineOption = dom.contextMenu.querySelector('[data-action="import-spine"]');
+    const fileDivider = dom.contextMenu.querySelector('.file-only-divider');
 
     if (item) {
         // Select the item that was right-clicked
@@ -911,8 +959,11 @@ async function handleGridContextMenu(e) {
 
         contextAsset = { name: assetName, kind: assetKind }; // Store asset for context action
 
+        const isJson = assetName.toLowerCase().endsWith('.json');
         exportOption.style.display = assetKind === 'directory' ? 'block' : 'none';
         exportDivider.style.display = assetKind === 'directory' ? 'block' : 'none';
+        if (importSpineOption) importSpineOption.style.display = (assetKind === 'file' && isJson) ? 'block' : 'none';
+        if (fileDivider) fileDivider.style.display = (assetKind === 'file' && isJson) ? 'block' : 'none';
     } else {
         // Right-clicked on empty space, deselect all
         dom.assetGridView.querySelectorAll('.grid-item').forEach(i => i.classList.remove('active'));
@@ -920,6 +971,8 @@ async function handleGridContextMenu(e) {
         contextAsset = null; // Clear context asset
         exportOption.style.display = 'none';
         exportDivider.style.display = 'none';
+        if (importSpineOption) importSpineOption.style.display = 'none';
+        if (fileDivider) fileDivider.style.display = 'none';
     }
 
     onShowContextMenu(dom.contextMenu, e);

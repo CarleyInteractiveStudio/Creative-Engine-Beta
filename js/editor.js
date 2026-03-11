@@ -304,7 +304,9 @@ document.addEventListener('DOMContentLoaded', () => {
             'markdown-viewer-panel', 'markdown-viewer-title', 'md-preview-btn', 'md-edit-btn', 'md-save-btn',
             'md-preview-content', 'md-edit-content',
             // CHC Editor Elements
-            'chc-integrated-editor', 'chc-human-text', 'chc-run-btn', 'chc-loading-overlay', 'chc-loading-text'
+            'chc-integrated-editor', 'chc-human-text', 'chc-run-btn', 'chc-loading-overlay', 'chc-loading-text',
+            // Animation Skeletal Elements
+            'animation-type-selector', 'animation-record-btn', 'skeletal-timeline', 'animation-time-slider', 'skeletal-tracks'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
@@ -1434,6 +1436,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const terreno2D = materia.getComponent(Components.Terreno2D);
                 const water = materia.getComponent(Components.Water);
                 const lineCollider = materia.getComponent(Components.LineCollider2D);
+                const skeleton = materia.getComponent(Components.SkeletonRenderer);
+                const bone = materia.getComponent(Components.Bone);
                 const videoPlayer = materia.getComponent(Components.VideoPlayer);
                 const gyzmo = materia.getComponent(Components.Gyzmo);
                 const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
@@ -1650,6 +1654,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     rendererInstance.drawLineCollider(lineCollider, worldPosition.x, worldPosition.y);
                 } else if (gyzmo) {
                     rendererInstance.drawGyzmo(gyzmo);
+                } else if (skeleton) {
+                    rendererInstance.drawSkeleton(skeleton);
+                } else if (bone) {
+                    rendererInstance.drawBone(bone);
                 }
             }
 
@@ -1827,6 +1835,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const tr = materia.getComponent(Components.TextureRender);
                 if (tr) tr.update(deltaTime);
+
+                const skeleton = materia.getComponent(Components.SkeletonRenderer);
+                if (skeleton) {
+                    if (skeleton.source && skeleton.source !== skeleton._lastLoadedSource) {
+                        skeleton.loadTexture(projectsDirHandle);
+                    }
+                }
 
 
                 // ONLY update Animator and Controller for selected object to avoid performance issues

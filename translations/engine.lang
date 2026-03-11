@@ -276,6 +276,9 @@ AUDIO: Audio
 VIDEO: Video
 WATER: Agua
 LINE_COLLIDER: Colisionador de Líneas
+BONE: Hueso
+SKELETON: Esqueleto (Skinning)
+IK_MANAGER: Gestor IK
 ESCENA_VACIA: La escena está vacía.<br>Click derecho para crear un objeto.
 RENOMBRAR: Renombrar
 DUPLICAR: Duplicar
@@ -626,6 +629,9 @@ AUDIO: Audio
 VIDEO: Video
 WATER: Water
 LINE_COLLIDER: Line Collider
+BONE: Bone
+SKELETON: Skeleton (Skinning)
+IK_MANAGER: IK Manager
 ESCENA_VACIA: The scene is empty.<br>Right-click to create an object.
 RENOMBRAR: Rename
 DUPLICAR: Duplicate

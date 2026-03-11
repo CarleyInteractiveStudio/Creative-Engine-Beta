@@ -36,7 +36,7 @@ const availableComponents = {
     'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
     'CAT_CAMARA': [Components.Camera],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
-    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.SuspensionHC, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController],
+    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.SuspensionHC, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController, Components.Bone, Components.SkeletonRenderer, Components.IKManager2D],
     'CAT_SCRIPTING': [Components.CreativeScript]
 };
 
@@ -57,7 +57,10 @@ const componentIcons = {
     'SuspensionHC': 'truck',
     'VehicleTopDown': 'rocket',
     'PlaneController': 'rocket',
-    'HelicopterController': 'rocket'
+    'HelicopterController': 'rocket',
+    'Bone': 'bone',
+    'SkeletonRenderer': 'layout',
+    'IKManager2D': 'mouse-pointer'
 };
 
 const fileIcons = {
@@ -3399,6 +3402,75 @@ async function updateInspectorForMateria(selectedMateria) {
                             <input type="text" class="prop-input" data-component="HelicopterController" data-prop="teclaGiroIzquierda" value="${ley.teclaGiroIzquierda}" title="Izquierda">
                             <input type="text" class="prop-input" data-component="HelicopterController" data-prop="teclaGiroDerecha" value="${ley.teclaGiroDerecha}" title="Derecha">
                         </div>
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.Bone) {
+            componentHTML = `
+                ${renderComponentHeader("Bone (Hueso)", icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Longitud</label>
+                        <input type="number" class="prop-input" data-component="Bone" data-prop="length" value="${ley.length}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Grosor</label>
+                        <input type="number" class="prop-input" data-component="Bone" data-prop="thickness" value="${ley.thickness}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Color</label>
+                        <div class="prop-inputs">
+                            <input type="color" class="prop-input" data-component="Bone" data-prop="color" value="${ley.color || '#00ff00'}">
+                            <input type="text" class="prop-input hex-input" data-component="Bone" data-prop="color" value="${ley.color || '#00ff00'}" style="flex-grow: 1; font-family: monospace;">
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.SkeletonRenderer) {
+            componentHTML = `
+                ${renderComponentHeader("Skeleton Renderer", icon, index)}
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label>Imagen</label>
+                        ${renderPropertyDropper('Sprite', ley.source, 'data-component="SkeletonRenderer" data-prop="source"')}
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Opacidad</label>
+                        <input type="range" class="prop-input" data-component="SkeletonRenderer" data-prop="opacity" value="${ley.opacity}" min="0" max="1" step="0.01">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Vértices</label>
+                        <span class="field-value">${ley.mesh.vertices.length / 2}</span>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Huesos Asignados</label>
+                        <span class="field-value">${ley.bones.length}</span>
+                    </div>
+                    <button class="panel-tool-btn" style="width:100%; margin-top: 8px;" onclick="const s = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.SkeletonRenderer); s.bones = window.SceneManager.currentScene.getAllMaterias().filter(m => m.getComponentByName('Bone')).map(m => m.name || m.id); window.updateInspector();">Auto-Asignar Huesos</button>
+                    <p class="field-description">Asigna automáticamente todos los objetos con componente 'Bone' de la escena a este renderizador.</p>
+                    <hr>
+                    <button class="primary-btn" style="width:100%;" onclick="const s = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.SkeletonRenderer); const scene = window.SceneManager.currentScene; s.bindPoses = s.bones.map(key => { let b; if(typeof key === 'number') b = scene.findMateriaById(key); else b = s.materia.findChildByName(key, true); if(!b) return null; const t = b.getComponentByName('Transform'); return { x: t.x, y: t.y, rotation: t.rotation, scale: { ...t.scale } }; }); window.Dialogs.showNotification('Éxito', 'Pose base capturada.');">Capturar Pose Base (Bind Pose)</button>
+                </div>
+            `;
+        } else if (ley instanceof Components.IKManager2D) {
+            componentHTML = `
+                ${renderComponentHeader("IK Manager 2D", icon, index)}
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label>Objetivo (Target)</label>
+                        ${renderPropertyDropper('Materia', ley.target, 'data-component="IKManager2D" data-prop="target"')}
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Largo Cadena</label>
+                        <input type="number" class="prop-input" data-component="IKManager2D" data-prop="chainLength" value="${ley.chainLength}" min="1">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Iteraciones</label>
+                        <input type="number" class="prop-input" data-component="IKManager2D" data-prop="iterations" value="${ley.iterations}" min="1">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Tolerancia</label>
+                        <input type="number" class="prop-input" data-component="IKManager2D" data-prop="tolerance" value="${ley.tolerance}" step="0.01" min="0.01">
                     </div>
                 </div>
             `;

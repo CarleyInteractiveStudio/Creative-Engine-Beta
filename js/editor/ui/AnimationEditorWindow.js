@@ -16,6 +16,8 @@ let lastDrawPos = { x: 0, y: 0 };
 let currentAnimationAsset = null; // Holds the parsed .cea file content
 let currentAnimationFileHandle = null; // Holds the file handle for saving
 let currentFrameIndex = -1;
+let currentKeyframeIndex = -1;
+let currentAnimationTime = 0;
 let isAnimationPlaying = false;
 let animationPlaybackId = null;
 
@@ -192,6 +194,11 @@ export async function openAnimationAsset(fileHandle, dirHandle) {
         }
 
         currentAnimationAsset = data;
+
+        if (dom.animationTypeSelector) {
+            dom.animationTypeSelector.value = data.type || 'frame';
+            updateUIForAnimationType();
+        }
 
         dom.animationPanel.classList.remove('hidden');
         dom.animationPanelOverlay.classList.add('hidden');
@@ -635,6 +642,26 @@ function drawOnionSkin() {
     dom.animationStopBtn.addEventListener('click', stopAnimationPlayback);
     dom.animationSaveBtn.addEventListener('click', saveAnimationAsset);
 
+    if (dom.animationTypeSelector) {
+        dom.animationTypeSelector.addEventListener('change', (e) => {
+            if (currentAnimationAsset) {
+                currentAnimationAsset.type = e.target.value;
+                updateUIForAnimationType();
+            }
+        });
+    }
+
+    if (dom.animationRecordBtn) {
+        dom.animationRecordBtn.addEventListener('click', recordKeyframe);
+    }
+
+    if (dom.animationTimeSlider) {
+        dom.animationTimeSlider.addEventListener('input', (e) => {
+            currentAnimationTime = parseFloat(e.target.value);
+            previewSkeletalAnimationAt(currentAnimationTime);
+        });
+    }
+
     dom.addFrameBtn.addEventListener('click', addFrameFromCanvas);
     if (dom.animationImportBtn) {
         dom.animationImportBtn.addEventListener('click', importAssets);
@@ -764,6 +791,204 @@ function drawOnionSkin() {
     });
 
     drawAnimEditorGrid(); // Draw initial grid
+
+    if (dom.deleteFrameBtn) {
+        // Redefine delete listener to handle keyframes too
+        const oldDelete = dom.deleteFrameBtn.onclick;
+        dom.deleteFrameBtn.onclick = null;
+        dom.deleteFrameBtn.addEventListener('click', () => {
+            const type = currentAnimationAsset ? (currentAnimationAsset.type || 'frame') : 'frame';
+            if (type === 'frame') {
+                // Original frame delete logic
+                if (currentFrameIndex === -1) {
+                    window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('AVISO_SELECCION_FRAME', 'Por favor, selecciona un fotograma para borrar.'));
+                    return;
+                }
+                const anim = (currentAnimationAsset && currentAnimationAsset.animations && currentAnimationAsset.animations.length > 0)
+                    ? currentAnimationAsset.animations[0]
+                    : null;
+                if (anim) {
+                    anim.frames.splice(currentFrameIndex, 1);
+                    currentFrameIndex = -1;
+                    populateTimeline();
+                }
+            } else {
+                // Skeletal keyframe delete logic
+                if (currentKeyframeIndex === -1) {
+                    window.Dialogs.showNotification("Aviso", "Por favor, selecciona un keyframe para borrar.");
+                    return;
+                }
+                currentAnimationAsset.keyframes.splice(currentKeyframeIndex, 1);
+                currentKeyframeIndex = -1;
+                populateSkeletalTracks();
+            }
+        });
+    }
+
+function updateUIForAnimationType() {
+    const type = currentAnimationAsset ? (currentAnimationAsset.type || 'frame') : 'frame';
+    const isFrame = type === 'frame';
+
+    dom.animationTimeline.classList.toggle('hidden', !isFrame);
+    if (dom.skeletalTimeline) dom.skeletalTimeline.classList.toggle('hidden', isFrame);
+
+    document.querySelectorAll('.frame-only').forEach(el => {
+        el.style.display = isFrame ? 'inline-block' : 'none';
+    });
+
+    if (isFrame) {
+        populateTimeline();
+    } else {
+        populateSkeletalTracks();
+    }
+}
+
+function recordKeyframe() {
+    if (!currentAnimationAsset || currentAnimationAsset.type !== 'skeletal') return;
+
+    const time = currentAnimationTime;
+    const scene = window.SceneManager.currentScene;
+    if (!scene) return;
+
+    // IMPROVEMENT: Only record bones belonging to the selected character/hierarchy
+    const selectedMateria = window.getSelectedMateria ? window.getSelectedMateria() : null;
+    if (!selectedMateria) {
+        window.Dialogs.showNotification("Aviso", "Selecciona el objeto raíz (Animator/Esqueleto) para grabar sus huesos.");
+        return;
+    }
+
+    const keyframeData = {};
+
+    // Recursive function to record bones in hierarchy
+    const recordHierarchy = (mtr) => {
+        if (mtr.getComponentByName('Bone') || mtr.getComponentByName('SkeletonRenderer')) {
+            const trans = mtr.getComponentByName('Transform');
+            if (trans) {
+                const key = mtr.name || mtr.id;
+                keyframeData[key] = {
+                    pos: { ...trans.localPosition },
+                    rot: trans.localRotation,
+                    scale: { ...trans.localScale }
+                };
+            }
+        }
+        for (const child of mtr.children) {
+            recordHierarchy(child);
+        }
+    };
+
+    recordHierarchy(selectedMateria);
+
+    if (Object.keys(keyframeData).length === 0) {
+        window.Dialogs.showNotification("Aviso", "No se encontraron huesos en la jerarquía del objeto seleccionado.");
+        return;
+    }
+
+    if (!currentAnimationAsset.keyframes) currentAnimationAsset.keyframes = [];
+
+    // Find if a keyframe already exists at this time
+    const existingIdx = currentAnimationAsset.keyframes.findIndex(k => Math.abs(k.time - time) < 0.001);
+    if (existingIdx >= 0) {
+        currentAnimationAsset.keyframes[existingIdx].data = keyframeData;
+    } else {
+        currentAnimationAsset.keyframes.push({ time, data: keyframeData });
+        currentAnimationAsset.keyframes.sort((a, b) => a.time - b.time);
+    }
+
+    // Update duration if needed
+    currentAnimationAsset.duration = Math.max(currentAnimationAsset.duration || 1.0, time);
+
+    populateSkeletalTracks();
+}
+
+function populateSkeletalTracks() {
+    if (!dom.skeletalTracks || !currentAnimationAsset) return;
+    dom.skeletalTracks.innerHTML = '';
+
+    if (!currentAnimationAsset.keyframes) return;
+
+    const track = document.createElement('div');
+    track.className = 'skeletal-track-main';
+    track.style.position = 'relative';
+    track.style.height = '40px';
+    track.style.background = '#222';
+    track.style.width = '100%';
+
+    currentAnimationAsset.keyframes.forEach((kf, idx) => {
+        const marker = document.createElement('div');
+        marker.className = 'keyframe-marker';
+        const percent = (kf.time / (currentAnimationAsset.duration || 1)) * 100;
+        marker.style.left = `${percent}%`;
+        marker.dataset.index = idx;
+        marker.title = `Keyframe at ${kf.time.toFixed(2)}s`;
+
+        marker.onclick = () => {
+            currentKeyframeIndex = idx;
+            currentAnimationTime = kf.time;
+            if (dom.animationTimeSlider) dom.animationTimeSlider.value = currentAnimationTime;
+            previewSkeletalAnimationAt(currentAnimationTime);
+            // Highlight selected marker
+            track.querySelectorAll('.keyframe-marker').forEach(m => m.classList.remove('active'));
+            marker.classList.add('active');
+        };
+
+        track.appendChild(marker);
+    });
+
+    dom.skeletalTracks.appendChild(track);
+}
+
+function previewSkeletalAnimationAt(time) {
+    if (!currentAnimationAsset || currentAnimationAsset.type !== 'skeletal' || !currentAnimationAsset.keyframes) return;
+
+    const scene = window.SceneManager.currentScene;
+    if (!scene) return;
+
+    const keyframes = currentAnimationAsset.keyframes;
+    if (keyframes.length === 0) return;
+
+    let k1 = keyframes[0], k2 = keyframes[keyframes.length - 1];
+    for (let i = 0; i < keyframes.length - 1; i++) {
+        if (time >= keyframes[i].time && time <= keyframes[i+1].time) {
+            k1 = keyframes[i];
+            k2 = keyframes[i+1];
+            break;
+        }
+    }
+
+    const t = (k1 === k2) ? 0 : (time - k1.time) / (k2.time - k1.time);
+    const allKeys = new Set([...Object.keys(k1.data), ...Object.keys(k2.data)]);
+
+    for (const key of allKeys) {
+        let mtr = null;
+        if (!isNaN(key)) {
+            mtr = scene.findMateriaById(parseInt(key));
+        } else {
+            // Find in whole scene if it's a skeletal preview
+            mtr = scene.getAllMaterias().find(m => m.name === key);
+        }
+
+        if (!mtr) continue;
+        const trans = mtr.getComponentByName('Transform');
+        if (!trans) continue;
+
+        const d1 = k1.data[key] || k2.data[key];
+        const d2 = k2.data[key] || k1.data[key];
+
+        if (d1 && d2) {
+            trans.localPosition.x = d1.pos.x + (d2.pos.x - d1.pos.x) * t;
+            trans.localPosition.y = d1.pos.y + (d2.pos.y - d1.pos.y) * t;
+            let r1 = d1.rot, r2 = d2.rot;
+            while (r2 - r1 > 180) r2 -= 360;
+            while (r2 - r1 < -180) r2 += 360;
+            trans.localRotation = r1 + (r2 - r1) * t;
+            trans.localScale.x = d1.scale.x + (d2.scale.x - d1.scale.x) * t;
+            trans.localScale.y = d1.scale.y + (d2.scale.y - d1.scale.y) * t;
+        }
+    }
+
+    if (window.updateScene) window.updateScene();
+}
 
     // Handle showing/hiding the panel from the main menu
     const menuButton = document.getElementById('menu-window-animation');
