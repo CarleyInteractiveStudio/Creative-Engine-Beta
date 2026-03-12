@@ -188,9 +188,9 @@
                         <fieldset class="settings-section">
                             <legend data-i18n="FUNC_PERMISOS">Funcionalidad y Permisos</legend>
                             <label for="lib-create-description" data-i18n="DESCRIPCION_USO">Descripción / Cómo usar</label>
-                            <textarea id="lib-create-description" rows="4" placeholder="Describe para qué sirve esta librería y cómo pueden usarla otros desarrolladores."></textarea>
+                            <textarea id="lib-create-description" rows="4" placeholder="Describe para qué sirve esta librería y cómo pueden usarla otros desarrolladores." style="width: 100%; padding: 10px; border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); resize: vertical;"></textarea>
 
-                            <label data-i18n="ARCHIVOS_LIB">Archivos de la Librería (.js, .ces)</label>
+                            <label data-i18n="ARCHIVOS_LIB" style="margin-top: 15px; display: block;">Archivos de la Librería (.js, .ces)</label>
                             <div id="lib-create-drop-zone" class="drop-zone">
                                 <p data-i18n="DROP_ARCHIVOS">Arrastra y suelta los archivos aquí, o haz clic para seleccionar.</p>
                                 <input type="file" id="lib-create-file-input" multiple accept=".js,.ces" style="display: none;">
@@ -223,8 +223,8 @@
                         </fieldset>
                     </form>
                     <div class="modal-footer">
-                        <button id="lib-create-cancel-btn" data-i18n="CANCELAR">Cancelar</button>
-                        <button id="lib-create-confirm-btn" class="primary-btn" data-i18n="CREAR_LIBRERIA">Crear Librería</button>
+                        <button type="button" id="lib-create-cancel-btn" class="dialog-button" data-i18n="CANCELAR">Cancelar</button>
+                        <button type="button" id="lib-create-confirm-btn" class="dialog-button primary-btn" data-i18n="CREAR_LIBRERIA">Crear Librería</button>
                     </div>
                 </div>
             </div>

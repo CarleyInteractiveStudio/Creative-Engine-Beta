@@ -815,6 +815,42 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Open Scene
+        if (e.ctrlKey && e.key.toLowerCase() === 'o') {
+            e.preventDefault();
+            dom.menuOpenScene.click();
+            return;
+        }
+
+        // Create New Materia (Empty)
+        if (e.ctrlKey && e.key.toLowerCase() === 'n') {
+            e.preventDefault();
+            handleHierarchyContextMenuAction('create-empty');
+            return;
+        }
+
+        // Window Shortcuts (Shift + Ctrl + Key)
+        if (e.ctrlKey && e.shiftKey) {
+            const key = e.key.toLowerCase();
+            if (key === 'a') { // Animation Editor
+                e.preventDefault();
+                document.getElementById('menu-window-animation').click();
+            } else if (key === 'c') { // Animation Controller
+                e.preventDefault();
+                document.getElementById('menu-window-animator').click();
+            } else if (key === 's') { // Sprite Editor
+                e.preventDefault();
+                document.getElementById('menu-window-sprite-editor').click();
+            } else if (key === 'l') { // Carl IA
+                e.preventDefault();
+                dom.menubarCarlIaBtn.click();
+            } else if (key === 'b') { // Libraries
+                e.preventDefault();
+                dom.menubarLibrariesBtn.click();
+            }
+            return;
+        }
+
         if (!e.ctrlKey && !e.altKey) {
             switch (e.key.toLowerCase()) {
                 case 'q':
@@ -1081,7 +1117,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         const libData = JSON.parse(content);
 
                         if (libData.api_access && libData.api_access.runtime_accessible) {
-                            const scriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
+                            let scriptContent = '';
+                            if (libData.script_base64) {
+                                scriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
+                            } else if (libData.files && libData.mainScript && libData.files[libData.mainScript]) {
+                                scriptContent = decodeURIComponent(escape(atob(libData.files[libData.mainScript])));
+                            }
+
                             const apiObject = (new Function(scriptContent))();
 
                             if (apiObject && typeof apiObject === 'object') {
@@ -3726,7 +3768,13 @@ public start() {
                                 console.warn(`No se encontró o no se pudo leer el archivo .meta para la librería '${libData.name}'. No se concederán permisos.`);
                             }
 
-                            const scriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
+                            let scriptContent = '';
+                            if (libData.script_base64) {
+                                scriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
+                            } else if (libData.files && libData.mainScript && libData.files[libData.mainScript]) {
+                                scriptContent = decodeURIComponent(escape(atob(libData.files[libData.mainScript])));
+                            }
+
                             const engineAPI = EngineAPI.getEngineAPI();
 
                             // --- API SANDBOXING ---
