@@ -279,6 +279,10 @@ LINE_COLLIDER: Colisionador de Líneas
 BONE: Hueso
 SKELETON: Esqueleto (Skinning)
 IK_MANAGER: Gestor IK
+IMPORTAR_ESQUELETO_SPINE: Importar Esqueleto (Spine JSON)
+ERROR_IMPORTAR_SIN_OBJETO: Selecciona un objeto en la jerarquía para importar el esqueleto como hijo.
+ESQUELETO_IMPORTADO: Esqueleto importado correctamente.
+WEIGHT_PAINTER: Pintor de Pesos
 ESCENA_VACIA: La escena está vacía.<br>Click derecho para crear un objeto.
 RENOMBRAR: Renombrar
 DUPLICAR: Duplicar
@@ -632,6 +636,10 @@ LINE_COLLIDER: Line Collider
 BONE: Bone
 SKELETON: Skeleton (Skinning)
 IK_MANAGER: IK Manager
+IMPORTAR_ESQUELETO_SPINE: Import Skeleton (Spine JSON)
+ERROR_IMPORTAR_SIN_OBJETO: Select an object in the hierarchy to import the skeleton as a child.
+ESQUELETO_IMPORTADO: Skeleton imported successfully.
+WEIGHT_PAINTER: Weight Painter
 ESCENA_VACIA: The scene is empty.<br>Right-click to create an object.
 RENOMBRAR: Rename
 DUPLICAR: Duplicate

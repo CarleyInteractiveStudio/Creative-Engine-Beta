@@ -310,19 +310,13 @@ export class Renderer {
 
         const { ctx } = this;
         const mesh = skeleton.mesh;
-        const bones = skeleton.bones;
         const bindPoses = skeleton.bindPoses;
 
-        const scene = skeleton.materia.scene || window.SceneManager.currentScene;
-        const boneTransforms = bones.map(key => {
-            let boneMtr;
-            if (typeof key === 'number') {
-                boneMtr = scene.findMateriaById(key);
-            } else {
-                boneMtr = skeleton.materia.findChildByName(key, true);
-            }
-            return boneMtr ? boneMtr.getComponent(Transform) : null;
-        });
+        if (!skeleton._boneMateriaCache || skeleton._boneMateriaCache.length !== skeleton.bones.length) {
+            skeleton._updateBoneCache();
+        }
+
+        const boneTransforms = skeleton._boneMateriaCache.map(mtr => mtr ? mtr.getComponent(Transform) : null);
 
         // Compute deformed vertices in WORLD space
         const deformedVertices = [];

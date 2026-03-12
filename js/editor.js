@@ -20,7 +20,7 @@ import { initialize as initializeImportExport } from './editor/ui/PackageImportE
 import { transpile } from './editor/CES_Transpiler.js';
 import * as SceneView from './editor/SceneView.js';
 import * as MathUtils from './engine/MathUtils.js';
-import { setActiveTool } from './editor/SceneView.js';
+import { setActiveTool, getActiveTool } from './editor/SceneView.js';
 import * as CodeEditor from './editor/CodeEditorWindow.js';
 import { initializeFloatingPanels, bringToFront } from './editor/FloatingPanelManager.js';
 import * as DebugPanel from './editor/ui/DebugPanel.js';
@@ -37,6 +37,7 @@ import { TerrenoEditorWindow } from './editor/ui/TerrenoEditorWindow.js';
 import * as EngineAPI from './engine/EngineAPI.js';
 import { getCustomComponentDefinitions } from './editor/EngineAPIExtension.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
+import * as SkeletonImporter from './editor/SkeletonImporter.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
 import { buildProject, runStandalonePreview } from './editor/BuildSystem.js';
 import * as Dialogs from './editor/ui/DialogWindow.js';
@@ -288,7 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'btn-play', 'btn-pause', 'btn-stop', 'btn-exit-prefab', 'btn-save-prefab',
             'tool-tile-brush', 'tool-tile-bucket', 'tool-tile-rectangle-fill', 'tool-tile-eraser',
             // Menubar scene options
-            'menu-new-scene', 'menu-open-scene', 'menu-save-scene', 'menu-build', 'menu-import-asset',
+            'menu-new-scene', 'menu-open-scene', 'menu-save-scene', 'menu-build', 'menu-import-asset', 'menu-import-skeleton',
             // Asset Selector Bubble Elements
             'asset-selector-bubble', 'asset-selector-title', 'asset-selector-breadcrumbs', 'asset-selector-grid-view',
             'asset-selector-toolbar', 'asset-selector-view-modes', 'asset-selector-search',
@@ -2491,6 +2492,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const tabBar = dom.assetsPanel.querySelector('.tab-bar');
         const contentContainer = dom.assetsPanel.querySelector('.panel-content-container');
 
+        // Close menu when clicking outside
+        window.addEventListener('click', (e) => {
+            const menu = document.getElementById('anim-node-context-menu');
+            if (menu && menu.style.display !== 'none' && !menu.contains(e.target)) {
+                menu.style.display = 'none';
+            }
+        });
+
         if (tabBar && contentContainer) {
             tabBar.addEventListener('click', (e) => {
                 if (e.target.matches('.tab-btn')) {
@@ -2624,6 +2633,29 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.menuSaveScene.addEventListener('click', (e) => {
             e.preventDefault();
             saveScene();
+        });
+
+        dom.menuImportSkeleton.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const L = window.Localization;
+            openAssetSelector(async (fileHandle, path, dirHandle) => {
+                const selectedMtr = getSelectedMateria();
+                if (!selectedMtr) {
+                    showNotificationDialog(L.get('AVISO'), L.get('ERROR_IMPORTAR_SIN_OBJETO', 'Selecciona un objeto en la jerarquía para importar el esqueleto como hijo.'));
+                    return;
+                }
+
+                try {
+                    const file = await fileHandle.getFile();
+                    const content = await file.text();
+                    const result = await SkeletonImporter.importSpineJSON(content, selectedMtr, projectsDirHandle);
+                    showNotificationDialog(L.get('EXITO'), L.get('ESQUELETO_IMPORTADO', 'Esqueleto importado correctamente.'));
+                    updateHierarchy();
+                } catch (err) {
+                    console.error("Error importing Spine skeleton:", err);
+                    showNotificationDialog(L.get('ERROR'), 'Error importing Spine JSON.');
+                }
+            }, { filter: ['.json'], title: L.get('IMPORTAR_ESQUELETO_SPINE', 'Import Skeleton (Spine)') });
         });
 
         const reportBugBtn = document.getElementById('menu-report-bug');
@@ -3467,6 +3499,7 @@ Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicán
         window.TerrenoEditorWindow = TerrenoEditorWindow;
         window.AnimationEditorWindow = AnimationEditorWindow;
         window.TilePalette = TilePalette;
+        window.SkeletonImporter = SkeletonImporter;
 
         // --- For Playwright Testing ---
         // This exposes a safe subset of the HierarchyWindow module for programmatic UI creation in tests

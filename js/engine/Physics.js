@@ -99,6 +99,48 @@ export class PhysicsSystem {
 
         for (let s = 0; s < SUB_STEPS; s++) {
             this._step(subDeltaTime);
+            this._resolveConstraints(subDeltaTime);
+        }
+    }
+
+    _resolveConstraints(deltaTime) {
+        const allMaterias = this.scene.getAllMaterias();
+
+        // Resolve Bone Constraints (Ragdoll)
+        for (const materia of allMaterias) {
+            const bone = materia.getComponent(Components.Bone);
+            if (!bone || !bone.isRagdoll || !materia.parent) continue;
+
+            const transform = materia.getComponent(Components.Transform);
+            const parentTransform = materia.parent.getComponent(Components.Transform);
+            if (!transform || !parentTransform) continue;
+
+            const rb = materia.getComponent(Components.Rigidbody2D);
+            if (!rb || rb.bodyType !== 'Dynamic') continue;
+
+            // 1. Pivot Constraint (Keep bone attached to parent joint)
+            const parentRB = materia.parent.getComponent(Components.Rigidbody2D);
+
+            if (parentRB) {
+                const targetLocalPos = bone._bindLocalPos || { x: 0, y: 0 };
+                if (!bone._bindLocalPos) bone._bindLocalPos = { ...transform.localPosition };
+
+                transform.localPosition = targetLocalPos;
+            }
+
+            // 2. Angular Limits
+            let localRot = transform.localRotation;
+            const limits = bone.angularLimits || { min: -45, max: 45 };
+
+            if (localRot < limits.min || localRot > limits.max) {
+                const targetRot = this._clamp(localRot, limits.min, limits.max);
+                const diff = targetRot - localRot;
+
+                // Apply restorative torque (Spring)
+                rb.angularVelocity += diff * (bone.stiffness || 0.5) * deltaTime * 10;
+                // Apply damping
+                rb.angularVelocity *= (1.0 - (bone.damping || 0.1));
+            }
         }
     }
 

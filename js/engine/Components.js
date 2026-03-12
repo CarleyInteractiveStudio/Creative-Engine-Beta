@@ -1391,6 +1391,12 @@ export class Animator extends Leyes {
         this.endFrame = -1; // -1 means play until the end of the clip
         this.frameTimer = 0;
 
+        // Blending State
+        this._isBlending = false;
+        this._blendTimer = 0;
+        this._blendDuration = 0;
+        this._prevPose = null; // Map of boneName -> {pos, rot, scale}
+
         // Importante: Empezar pausado en el editor. El motor llamará a play() al iniciar el juego.
         this.isPlaying = false;
         this.spriteRenderer = null;
@@ -1519,6 +1525,42 @@ export class Animator extends Leyes {
     }
 
     /**
+     * Comienza una transición suave a una nueva animación.
+     * @param {string} path - Ruta al nuevo clip.
+     * @param {number} duration - Duración del crossfade en segundos.
+     * @param {object} options - Opciones adicionales.
+     */
+    crossfade(path, duration = 0.3, options = {}) {
+        if (this.animationClipPath === path && this.isPlaying) return;
+
+        // Capture current skeletal pose
+        this._prevPose = this.captureSkeletalPose();
+        this._isBlending = true;
+        this._blendTimer = 0;
+        this._blendDuration = duration;
+
+        this.play(path, options);
+    }
+
+    captureSkeletalPose() {
+        const pose = new Map();
+        // Capture transforms of all children that might be bones
+        const captureRecursive = (mtr) => {
+            const trans = mtr.getComponent(Transform);
+            if (trans) {
+                pose.set(mtr.name || mtr.id.toString(), {
+                    pos: { ...trans.localPosition },
+                    rot: trans.localRotation,
+                    scale: { ...trans.localScale }
+                });
+            }
+            mtr.children.forEach(captureRecursive);
+        };
+        captureRecursive(this.materia);
+        return pose;
+    }
+
+    /**
      * Reproduce una animación.
      * @param {string} [path] - Ruta opcional a un nuevo clip.
      * @param {object} [options] - Opciones: { loop, speed, startFrame, endFrame, source, force }
@@ -1617,6 +1659,14 @@ export class Animator extends Leyes {
             this.loadAnimationClip(this.projectsDirHandle || window.projectsDirHandle);
         }
 
+        if (this._isBlending) {
+            this._blendTimer += deltaTime;
+            if (this._blendTimer >= this._blendDuration) {
+                this._isBlending = false;
+                this._prevPose = null;
+            }
+        }
+
         if (!this.isPlaying || !this.animationClip) {
             return;
         }
@@ -1704,10 +1754,7 @@ export class Animator extends Leyes {
         const clip = this.animationClip;
         if (!clip || !clip.keyframes || clip.keyframes.length === 0) return;
 
-        // Sort keyframes by time
         const keyframes = clip.keyframes;
-
-        // Find surrounding keyframes
         let k1 = keyframes[0], k2 = keyframes[keyframes.length - 1];
         for (let i = 0; i < keyframes.length - 1; i++) {
             if (time >= keyframes[i].time && time <= keyframes[i+1].time) {
@@ -1718,38 +1765,60 @@ export class Animator extends Leyes {
         }
 
         const t = (k1 === k2) ? 0 : (time - k1.time) / (k2.time - k1.time);
+        const blendFactor = this._isBlending ? (this._blendTimer / this._blendDuration) : 1.0;
 
-        // Apply interpolation to each materia involved
         const allKeys = new Set([...Object.keys(k1.data), ...Object.keys(k2.data)]);
         for (const key of allKeys) {
-            // Key can be an ID (number) or a Name (string)
-            let mtr = null;
-            if (!isNaN(key)) {
-                mtr = this.materia.scene?.findMateriaById(parseInt(key)) || window.SceneManager.currentScene.findMateriaById(parseInt(key));
-            } else {
-                // Look for bone by name within the hierarchy of the animator's materia
-                mtr = this.materia.findChildByName(key, true);
-            }
-
+            let mtr = isNaN(key) ? this.materia.findChildByName(key, true) : (this.materia.scene?.findMateriaById(parseInt(key)) || window.SceneManager.currentScene.findMateriaById(parseInt(key)));
             if (!mtr) continue;
+
             const trans = mtr.getComponent(Transform);
             if (!trans) continue;
+
+            // Skipping bones driven by physics ragdoll
+            const bone = mtr.getComponent(Bone);
+            if (bone && bone.isRagdoll) continue;
 
             const d1 = k1.data[key] || k2.data[key];
             const d2 = k2.data[key] || k1.data[key];
 
             if (d1 && d2) {
-                // Position
-                trans.localPosition.x = d1.pos.x + (d2.pos.x - d1.pos.x) * t;
-                trans.localPosition.y = d1.pos.y + (d2.pos.y - d1.pos.y) * t;
-                // Rotation (handle wrap-around)
-                let r1 = d1.rot, r2 = d2.rot;
-                while (r2 - r1 > 180) r2 -= 360;
-                while (r2 - r1 < -180) r2 += 360;
-                trans.localRotation = r1 + (r2 - r1) * t;
-                // Scale
-                trans.localScale.x = d1.scale.x + (d2.scale.x - d1.scale.x) * t;
-                trans.localScale.y = d1.scale.y + (d2.scale.y - d1.scale.y) * t;
+                // Target pose from animation
+                let targetPos = {
+                    x: d1.pos.x + (d2.pos.x - d1.pos.x) * t,
+                    y: d1.pos.y + (d2.pos.y - d1.pos.y) * t
+                };
+                let targetRot = d1.rot;
+                let r2 = d2.rot;
+                while (r2 - targetRot > 180) r2 -= 360;
+                while (r2 - targetRot < -180) r2 += 360;
+                targetRot += (r2 - targetRot) * t;
+
+                let targetScale = {
+                    x: d1.scale.x + (d2.scale.x - d1.scale.x) * t,
+                    y: d1.scale.y + (d2.scale.y - d1.scale.y) * t
+                };
+
+                // Apply blending with previous pose if necessary
+                if (this._isBlending && this._prevPose && this._prevPose.has(key)) {
+                    const prev = this._prevPose.get(key);
+
+                    trans.localPosition.x = prev.pos.x + (targetPos.x - prev.pos.x) * blendFactor;
+                    trans.localPosition.y = prev.pos.y + (targetPos.y - prev.pos.y) * blendFactor;
+
+                    let r1 = prev.rot;
+                    let r2_blend = targetRot;
+                    while (r2_blend - r1 > 180) r2_blend -= 360;
+                    while (r2_blend - r1 < -180) r2_blend += 360;
+                    trans.localRotation = r1 + (r2_blend - r1) * blendFactor;
+
+                    trans.localScale.x = prev.scale.x + (targetScale.x - prev.scale.x) * blendFactor;
+                    trans.localScale.y = prev.scale.y + (targetScale.y - prev.scale.y) * blendFactor;
+                } else {
+                    trans.localPosition = targetPos;
+                    trans.localRotation = targetRot;
+                    trans.localScale = targetScale;
+                }
             }
         }
     }
@@ -2969,11 +3038,51 @@ export class AnimatorController extends Leyes {
         for (const trans of this.controller.transitions) {
             if (trans.from === this.currentStateName) {
                 if (this._evaluateConditions(trans.conditions)) {
-                    this.play(trans.to);
+                    if (trans.duration > 0) {
+                        this.crossfade(trans.to, trans.duration);
+                    } else {
+                        this.play(trans.to);
+                    }
                     break;
                 }
             }
         }
+    }
+
+    crossfade(stateName, duration = 0.3, force = false, overrides = {}) {
+        if (!stateName) return;
+        const debug = window.CE_DEBUG_ANIMATION;
+
+        if (!force && this.currentStateName && this.currentStateName !== stateName) {
+            if (!this.canTransitionTo(stateName)) return;
+        }
+
+        if (!this.animator && this.materia) {
+            this.animator = this.materia.getComponent(Animator);
+        }
+
+        if (!this.animator || !this.states.has(stateName)) return;
+
+        const state = this.states.get(stateName);
+        this.currentStateName = stateName;
+
+        const transform = this.materia.getComponent(Transform);
+        if (transform) {
+            transform.flipX = !!state.flipX;
+            transform.flipY = !!state.flipY;
+        }
+
+        if (!state.animationClip) {
+            this.animator.stop();
+            return;
+        }
+
+        this.animator.crossfade(state.animationClip, duration, {
+            loop: overrides.loop !== undefined ? overrides.loop : (state.loop !== undefined ? state.loop : true),
+            speed: overrides.speed || state.speed || 12,
+            source: 'controller',
+            force: force
+        });
     }
 
     _evaluateConditions(conditions) {
@@ -3006,7 +3115,8 @@ export class AnimatorController extends Leyes {
                 // If there are conditions, they must be met
                 if (hasConditions) {
                     if (this._evaluateConditions(trans.conditions)) {
-                        this.play(trans.to);
+                        if (trans.duration > 0) this.crossfade(trans.to, trans.duration);
+                        else this.play(trans.to);
                         transitionFound = true;
                         break;
                     }
@@ -3015,7 +3125,8 @@ export class AnimatorController extends Leyes {
                     // Only follow if the current animation is NOT looping.
                     // This prevents "Idle -> Walk" automatic jumps when the user is just standing still.
                     if (!this.animator.loop) {
-                        this.play(trans.to);
+                        if (trans.duration > 0) this.crossfade(trans.to, trans.duration);
+                        else this.play(trans.to);
                         transitionFound = true;
                         break;
                     }
@@ -6413,6 +6524,12 @@ export class Bone extends Leyes {
         this.length = 100;
         this.color = '#00ff00';
         this.thickness = 5;
+
+        // Ragdoll Properties
+        this.isRagdoll = false;
+        this.angularLimits = { min: -45, max: 45 };
+        this.stiffness = 0.5;
+        this.damping = 0.1;
     }
 
     clone() {
@@ -6420,6 +6537,10 @@ export class Bone extends Leyes {
         copy.length = this.length;
         copy.color = this.color;
         copy.thickness = this.thickness;
+        copy.isRagdoll = this.isRagdoll;
+        copy.angularLimits = { ...this.angularLimits };
+        copy.stiffness = this.stiffness;
+        copy.damping = this.damping;
         return copy;
     }
 }
@@ -6447,6 +6568,15 @@ export class SkeletonRenderer extends Leyes {
 
         this._texture = new Image();
         this._lastLoadedSource = '';
+        this._boneMateriaCache = []; // Cached Materia references
+    }
+
+    _updateBoneCache() {
+        const scene = this.materia.scene || window.SceneManager.currentScene;
+        this._boneMateriaCache = this.bones.map(key => {
+            if (typeof key === 'number') return scene.findMateriaById(key);
+            return this.materia.findChildByName(key, true);
+        });
     }
 
     async setSourcePath(path, projectsDirHandle) {
