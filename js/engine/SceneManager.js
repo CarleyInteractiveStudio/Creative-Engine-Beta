@@ -252,6 +252,10 @@ export function serializeMateria(materia, recursive = false) {
                             ...layer,
                             tileData: Array.from(layer.tileData.entries())
                         }));
+                    } else if (ley.constructor.name === 'Tilemap' && (key === '_width' || key === '_height')) {
+                        leyData.properties[key.substring(1)] = ley[key];
+                    } else if (ley.constructor.name === 'TilemapCollider2D' && (key === '_sourceLayerIndex' || key === '_useAllLayers')) {
+                        leyData.properties[key.substring(1)] = ley[key];
                     } else if (ley.constructor.name === 'Terreno2D' && (key === 'maskCanvas' || key === 'maskCtx' || key === 'imageCache')) {
                         // Skip internal properties
                         continue;
@@ -340,7 +344,11 @@ async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, mate
             if (ComponentClass) {
                 const newLey = new ComponentClass(newMateria);
                 if (leyData.type === 'Tilemap') {
+                    // Manual property assignment to respect setters
+                    if (leyData.properties.width !== undefined) newLey.width = leyData.properties.width;
+                    if (leyData.properties.height !== undefined) newLey.height = leyData.properties.height;
                     Object.assign(newLey, leyData.properties);
+
                     if (newLey.layers && Array.isArray(newLey.layers)) {
                         newLey.layers.forEach(layer => {
                             layer.tileData = new Map(layer.tileData || []);
@@ -355,6 +363,8 @@ async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, mate
                         }
                     }
                 } else if (leyData.type === 'TilemapCollider2D') {
+                    if (leyData.properties.sourceLayerIndex !== undefined) newLey.sourceLayerIndex = leyData.properties.sourceLayerIndex;
+                    if (leyData.properties.useAllLayers !== undefined) newLey.useAllLayers = leyData.properties.useAllLayers;
                     Object.assign(newLey, leyData.properties);
                     newLey._cachedMesh = new Map(newLey._cachedMesh || []);
                 } else if (leyData.type === 'TilemapRenderer' || leyData.type === 'Terreno2D') {

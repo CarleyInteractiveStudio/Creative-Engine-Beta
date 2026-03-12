@@ -94,6 +94,7 @@ export class StandaloneRuntime {
             SceneManager.setCurrentScene(scene);
 
             this.physicsSystem = new PhysicsSystem(scene);
+            scene.physicsSystem = this.physicsSystem; // Link for components
             UISystem.initialize(scene);
             EngineAPI.CEEngine.initialize({ physicsSystem: this.physicsSystem });
 
