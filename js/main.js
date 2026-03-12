@@ -596,6 +596,41 @@ Para más detalles, consulta la sección "Ayuda" del editor.`;
         if (mainLangSelect) mainLangSelect.value = e.detail;
     });
 
+    // --- Reset Engine Logic ---
+    const resetEngineBtn = document.getElementById('btn-reset-engine');
+    if (resetEngineBtn) {
+        resetEngineBtn.addEventListener('click', () => {
+            Dialogs.showConfirmation(
+                Localization.get('RESTABLECER_MOTOR', 'Restablecer Motor'),
+                Localization.get('CONFIRM_RESTABLECER', '¿Estás seguro de que quieres borrar todos los datos locales del motor? Esto te pedirá elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se verán afectados.'),
+                async () => {
+                    try {
+                        // 1. Clear LocalStorage
+                        localStorage.clear();
+
+                        // 2. Delete IndexedDB
+                        const deleteRequest = indexedDB.deleteDatabase(dbName);
+                        deleteRequest.onsuccess = () => {
+                            console.log("IndexedDB deleted successfully.");
+                            window.location.reload();
+                        };
+                        deleteRequest.onerror = () => {
+                            console.error("Error deleting IndexedDB.");
+                            window.location.reload(); // Reload anyway to clear session state
+                        };
+                        deleteRequest.onblocked = () => {
+                            console.warn("IndexedDB delete blocked. Please close other tabs.");
+                            window.location.reload();
+                        };
+                    } catch (e) {
+                        console.error("Error during reset:", e);
+                        window.location.reload();
+                    }
+                }
+            );
+        });
+    }
+
     // AI Key Logic
     const aiKeyInput = document.getElementById('carl-ai-key');
     const saveAiKeyBtn = document.getElementById('btn-save-ai-key');

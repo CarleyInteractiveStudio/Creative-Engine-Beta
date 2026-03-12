@@ -485,6 +485,14 @@ main { padding: 20px 0; }
 }
 .modal-btn.secondary:hover { background-color: #484f58; }
 
+.modal-btn.danger {
+    background-color: #da3633;
+    border-color: #f85149;
+}
+.modal-btn.danger:hover {
+    background-color: #b62324;
+}
+
 /* --- Launcher View Styles --- */
 .launcher-header {
     display: flex;

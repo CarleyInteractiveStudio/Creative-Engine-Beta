@@ -346,6 +346,10 @@ DETENER: Detener
 PAUSAR: Pausar
 
 # Preferences
+RESTABLECER_MOTOR: Restablecer Datos del Motor
+CONFIRM_RESTABLECER: ¿Estás seguro de que quieres borrar todos los datos locales del motor? Esto te pedirá elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se verán afectados.
+HINT_RESTABLECER: Borra toda la configuración local (Carpeta de proyectos, claves de IA, etc.). Los archivos de tus proyectos en el disco NO se borrarán.
+OPCIONES_AVANZADAS: Opciones Avanzadas
 APARIENCIA: Apariencia
 IDIOMA: Idioma
 HINT_IDIOMA: Cambia el idioma de la interfaz del motor.
@@ -707,6 +711,10 @@ DETENER: Stop
 PAUSAR: Pause
 
 # Preferences
+RESTABLECER_MOTOR: Restablecer Datos del Motor
+CONFIRM_RESTABLECER: ¿Estás seguro de que quieres borrar todos los datos locales del motor? Esto te pedirá elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se verán afectados.
+HINT_RESTABLECER: Borra toda la configuración local (Carpeta de proyectos, claves de IA, etc.). Los archivos de tus proyectos en el disco NO se borrarán.
+OPCIONES_AVANZADAS: Opciones Avanzadas
 APARIENCIA: Appearance
 IDIOMA: Language
 HINT_IDIOMA: Change the engine interface language.
@@ -1023,6 +1031,10 @@ DETENER: Parar
 PAUSAR: Pausar
 
 # Preferences
+RESTABLECER_MOTOR: Restablecer Datos del Motor
+CONFIRM_RESTABLECER: ¿Estás seguro de que quieres borrar todos los datos locales del motor? Esto te pedirá elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se verán afectados.
+HINT_RESTABLECER: Borra toda la configuración local (Carpeta de proyectos, claves de IA, etc.). Los archivos de tus proyectos en el disco NO se borrarán.
+OPCIONES_AVANZADAS: Opciones Avanzadas
 APARIENCIA: Aparência
 IDIOMA: Idioma
 TEMA_EDITOR: Tema do Editor
@@ -1338,6 +1350,10 @@ DETENER: Стоп
 PAUSAR: Пауза
 
 # Preferences
+RESTABLECER_MOTOR: Restablecer Datos del Motor
+CONFIRM_RESTABLECER: ¿Estás seguro de que quieres borrar todos los datos locales del motor? Esto te pedirá elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se verán afectados.
+HINT_RESTABLECER: Borra toda la configuración local (Carpeta de proyectos, claves de IA, etc.). Los archivos de tus proyectos en el disco NO se borrarán.
+OPCIONES_AVANZADAS: Opciones Avanzadas
 APARIENCIA: Внешний вид
 IDIOMA: Язык
 TEMA_EDITOR: Тема редактора
@@ -1653,6 +1669,10 @@ DETENER: 停止
 PAUSAR: 暂停
 
 # Preferences
+RESTABLECER_MOTOR: Restablecer Datos del Motor
+CONFIRM_RESTABLECER: ¿Estás seguro de que quieres borrar todos los datos locales del motor? Esto te pedirá elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se verán afectados.
+HINT_RESTABLECER: Borra toda la configuración local (Carpeta de proyectos, claves de IA, etc.). Los archivos de tus proyectos en el disco NO se borrarán.
+OPCIONES_AVANZADAS: Opciones Avanzadas
 APARIENCIA: 外观
 IDIOMA: 语言
 TEMA_EDITOR: 编辑器主题
