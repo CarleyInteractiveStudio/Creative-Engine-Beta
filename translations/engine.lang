@@ -112,6 +112,10 @@ ANADIR_PROYECTO: Añadir Proyecto
 CREAR_PROYECTO: Crear Proyecto
 MIS_PROYECTOS: Mis Proyectos
 CREAR_NUEVO_PROYECTO: Crear Nuevo Proyecto
+TIPO_PROYECTO: Tipo de Proyecto:
+PROYECTO_2D: Proyecto 2D
+PROYECTO_3D: Proyecto 3D
+MUY_PRONTO: Muy pronto
 AVISO_STORAGE: Aviso Importante: Tus proyectos se guardan localmente en la carpeta que elijas. Creative Engine no almacena ninguna información en servidores externos.
 NOMBRE_PROYECTO: Nombre del Proyecto:
 HINT_PROYECTO: Usa letras, números y guiones. Sin espacios ni caracteres especiales.
@@ -469,6 +473,10 @@ ANADIR_PROYECTO: Add Project
 CREAR_PROYECTO: Create Project
 MIS_PROYECTOS: My Projects
 CREAR_NUEVO_PROYECTO: Create New Project
+TIPO_PROYECTO: Project Type:
+PROYECTO_2D: 2D Project
+PROYECTO_3D: 3D Project
+MUY_PRONTO: Coming Soon
 AVISO_STORAGE: Important Notice: Your projects are saved locally in the folder you choose. Creative Engine does not store any information on external servers.
 NOMBRE_PROYECTO: Project Name:
 HINT_PROYECTO: Use letters, numbers, and hyphens. No spaces or special characters.
@@ -809,6 +817,10 @@ CARGANDO_RECURSOS: Carregando recursos...
 CARPETA: Pasta
 MIS_PROYECTOS: Meus Projetos
 CREAR_NUEVO_PROYECTO: Criar Novo Projeto
+TIPO_PROYECTO: Tipo de Projeto:
+PROYECTO_2D: Projeto 2D
+PROYECTO_3D: Projeto 3D
+MUY_PRONTO: Em breve
 AVISO_STORAGE: Aviso Importante: Seus projetos são salvos localmente na pasta que você escolher. Creative Engine não armazena nenhuma informação em servidores externos.
 NOMBRE_PROYECTO: Nome do Projeto:
 HINT_PROYECTO: Use letras, números e hifens. Sem espaços ou caracteres especiais.
@@ -1120,6 +1132,10 @@ CARGANDO_RECURSOS: Загрузка ресурсов...
 CARPETA: Папка
 MIS_PROYECTOS: Мои проекты
 CREAR_NUEVO_PROYECTO: Создать новый проект
+TIPO_PROYECTO: Тип проекта:
+PROYECTO_2D: 2D проект
+PROYECTO_3D: 3D проект
+MUY_PRONTO: Скоро
 AVISO_STORAGE: Важное примечание: Ваши проекты сохраняются локально в выбранной вами папке. Creative Engine не хранит информацию на внешних серверах.
 NOMBRE_PROYECTO: Название проекта:
 HINT_PROYECTO: Используйте буквы, цифры и дефисы. Без пробелов и спецсимволов.
@@ -1431,6 +1447,10 @@ CARGANDO_RECURSOS: 正在加载资源...
 CARPETA: 文件夹
 MIS_PROYECTOS: 我的项目
 CREAR_NUEVO_PROYECTO: 创建新项目
+TIPO_PROYECTO: 项目类型:
+PROYECTO_2D: 2D 项目
+PROYECTO_3D: 3D 项目
+MUY_PRONTO: 敬请期待
 AVISO_STORAGE: 重要提示：您的项目保存在您选择的本地文件夹中。Creative Engine 不会在外部服务器上存储任何信息。
 NOMBRE_PROYECTO: 项目名称：
 HINT_PROYECTO: 使用字母、数字和连字符。不含空格或特殊字符。

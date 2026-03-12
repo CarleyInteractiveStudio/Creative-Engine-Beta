@@ -5,6 +5,7 @@ import { Materia } from '../engine/Materia.js';
 export async function importSpineJSON(jsonContent, targetMateria, projectsDirHandle) {
     const data = JSON.parse(jsonContent);
     const scene = targetMateria.scene || window.SceneManager.currentScene;
+    const skeletonRenderers = [];
 
     // 1. Create Bones
     const boneMap = new Map(); // name -> Materia
@@ -167,10 +168,31 @@ export async function importSpineJSON(jsonContent, targetMateria, projectsDirHan
 
                         meshMtr.addComponent(skel);
                         meshMtr.setParent(parentMtr, false);
+                        skeletonRenderers.push(skel);
                     }
                 }
             }
         }
+    }
+
+    // 4. Automatically capture Bind Poses
+    // Wait a frame or ensure transforms are calculated
+    for (const skel of skeletonRenderers) {
+        skel.bindPoses = skel.bones.map(boneName => {
+            const boneMtr = boneMap.get(boneName);
+            if (!boneMtr) return null;
+            const t = boneMtr.getComponentByName('Transform');
+            if (!t) return null;
+            // Since we just built the hierarchy, world transforms might not be updated.
+            // But we can calculate them manually or assume they are at origin for now.
+            // In a more robust engine, we'd wait for a scene update.
+            return {
+                x: boneMtr.x,
+                y: boneMtr.y,
+                rotation: boneMtr.rotation,
+                scale: { ...boneMtr.scale }
+            };
+        });
     }
 
     return { boneMap, animations };

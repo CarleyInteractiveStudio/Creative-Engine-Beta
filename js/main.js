@@ -286,6 +286,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if(closeCreateProject) closeCreateProject.addEventListener('click', closeModal);
 
+    // Project Type Selector Visual Logic
+    const typeCards = document.querySelectorAll('.type-card');
+    typeCards.forEach(card => {
+        card.addEventListener('click', () => {
+            if (card.classList.contains('disabled')) return;
+
+            typeCards.forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+            const radio = card.querySelector('input[type="radio"]');
+            if (radio) radio.checked = true;
+        });
+    });
+
     window.addEventListener('click', (event) => {
         if (event.target == createProjectModal) {
             closeModal();
@@ -317,6 +330,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const projectNameInput = document.getElementById('project-name');
         const projectName = projectNameInput.value.trim().replace(/[^a-zA-Z0-9-]/g, '-');
+        const projectType = createProjectForm.querySelector('input[name="projectType"]:checked').value;
 
         if (!projectName) {
             window.Dialogs.showNotification('Entrada Inválida', 'Por favor, introduce un nombre de proyecto válido.');
@@ -344,6 +358,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             const assetsDirHandle = await projectDirHandle.getDirectoryHandle('Assets', { create: true });
             const libDirHandle = await projectDirHandle.getDirectoryHandle('lib', { create: true });
             const tutorialDirHandle = await assetsDirHandle.getDirectoryHandle('tutorial', { create: true });
+
+            // Crear el archivo de configuración base
+            const config = {
+                appName: projectName,
+                appVersion: '1.0.0',
+                projectType: projectType,
+                engineVersion: '0.1.0-beta'
+            };
+            const configFileHandle = await projectDirHandle.getFileHandle('project.ceconfig', { create: true });
+            let writableConfig = await configFileHandle.createWritable();
+            await writableConfig.write(JSON.stringify(config, null, 2));
+            await writableConfig.close();
 
             // Crear el archivo de escena por defecto
             const sceneFileHandle = await assetsDirHandle.getFileHandle('default.ceScene', { create: true });

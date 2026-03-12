@@ -408,6 +408,69 @@ main { padding: 20px 0; }
     box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
 }
 
+/* Project Type Selector */
+.project-type-selector {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.type-card {
+    flex: 1;
+    position: relative;
+    cursor: pointer;
+    background: var(--primary-bg-color);
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    padding: 15px;
+    transition: all 0.2s ease;
+}
+
+.type-card input[type="radio"] {
+    display: none;
+}
+
+.type-card .card-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.type-card .type-icon {
+    width: 32px;
+    height: 32px;
+    filter: brightness(0) invert(0.7);
+}
+
+.type-card.active {
+    border-color: var(--accent-color);
+    background: rgba(88, 166, 255, 0.05);
+}
+
+.type-card.active .type-icon {
+    filter: brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(190deg);
+}
+
+.type-card.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #1c2128;
+}
+
+.soon-badge {
+    background: var(--accent-color);
+    color: white;
+    font-size: 0.7em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    font-weight: bold;
+    position: absolute;
+    top: -10px;
+    right: 5px;
+}
+
 .modal-btn {
     background-color: var(--accent-color);
     color: var(--button-text-color);
