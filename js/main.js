@@ -306,6 +306,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // --- View Switching & Project Creation ---
+    let isCreatingProject = false;
     if (startButton) {
         startButton.addEventListener('click', () => {
             console.log("Start button clicked. Switching to launcher view.");
@@ -319,6 +320,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if(createProjectForm) createProjectForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (isCreatingProject) return;
 
         const hasPicker = !!window.showDirectoryPicker;
         const hasSandbox = !!(navigator.storage && navigator.storage.getDirectory);
@@ -338,6 +340,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         try {
+            isCreatingProject = true;
             let dirHandle = await getDirHandle();
             if (!dirHandle) {
                  dirHandle = await window.showDirectoryPicker({ mode: 'readwrite', id: 'creative-engine-projects' });
@@ -443,6 +446,8 @@ Para más detalles, consulta la sección "Ayuda" del editor.`;
                 console.error('Error creando el proyecto:', error);
                 Dialogs.showNotification('Error', 'Ocurrió un error al crear el proyecto.');
             }
+        } finally {
+            isCreatingProject = false;
         }
     });
 

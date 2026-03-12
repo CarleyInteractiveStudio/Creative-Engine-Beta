@@ -1028,6 +1028,11 @@ document.addEventListener('DOMContentLoaded', () => {
             currentProjectConfig.ramLimit = 2048;
         }
 
+        // Ensure keystore config exists for newer projects/imports
+        if (!currentProjectConfig.keystore) {
+            currentProjectConfig.keystore = { path: '', pass: '', alias: '', aliasPass: '' };
+        }
+
         // Apply editor preferences from project config if they exist
         if (currentProjectConfig.preferences) {
             loadExternalPreferences(currentProjectConfig.preferences);

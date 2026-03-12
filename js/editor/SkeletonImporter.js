@@ -187,10 +187,10 @@ export async function importSpineJSON(jsonContent, targetMateria, projectsDirHan
             // But we can calculate them manually or assume they are at origin for now.
             // In a more robust engine, we'd wait for a scene update.
             return {
-                x: boneMtr.x,
-                y: boneMtr.y,
-                rotation: boneMtr.rotation,
-                scale: { ...boneMtr.scale }
+                x: t.x,
+                y: t.y,
+                rotation: t.rotation,
+                scale: { ...t.scale }
             };
         });
     }
