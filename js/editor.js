@@ -3478,6 +3478,15 @@ Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicán
             document.body.classList.add('mobile-mode');
         }
 
+        // --- Prevent accidental navigation ---
+        window.addEventListener('beforeunload', (e) => {
+            if (SceneManager.isSceneDirty && !window.isSubmittingBuild) {
+                // Standard for showing a "Discard changes?" browser dialog
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
         // Initialize localization
         await Localization.init();
         Localization.updateUI();
