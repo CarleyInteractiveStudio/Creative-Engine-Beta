@@ -151,13 +151,12 @@ const cesKeywords = [
 ];
 
 function cesCompletions(context) {
-    let word = context.matchBefore(/\w*/);
-    if (word.from == word.to && !context.explicit) {
-        return null;
-    }
+    let word = context.matchBefore(/\w+/);
+    if (!word) return context.explicit ? { from: context.pos, options: cesKeywords } : null;
     return {
         from: word.from,
-        options: cesKeywords
+        options: cesKeywords,
+        validFor: /^\w*$/
     };
 }
 

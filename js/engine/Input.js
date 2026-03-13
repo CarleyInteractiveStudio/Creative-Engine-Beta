@@ -224,7 +224,14 @@ class InputManager {
      * @returns {boolean} True if the key is pressed.
      */
     static getKey(key) {
-        return !!this._keys.get(key);
+        const normalized = this.normalizeKeyName(key);
+        // Direct match
+        if (this._keys.get(normalized)) return true;
+        // Case-insensitive match for single characters (A-Z)
+        if (normalized.length === 1) {
+            return !!this._keys.get(normalized.toLowerCase()) || !!this._keys.get(normalized.toUpperCase());
+        }
+        return false;
     }
 
     /**
@@ -233,7 +240,12 @@ class InputManager {
      * @returns {boolean} True if the key was just pressed.
      */
     static getKeyDown(key) {
-        return this._keysDown.has(key);
+        const normalized = this.normalizeKeyName(key);
+        if (this._keysDown.has(normalized)) return true;
+        if (normalized.length === 1) {
+            return this._keysDown.has(normalized.toLowerCase()) || this._keysDown.has(normalized.toUpperCase());
+        }
+        return false;
     }
 
     /**
@@ -242,7 +254,55 @@ class InputManager {
      * @returns {boolean} True if the key was just released.
      */
     static getKeyUp(key) {
-        return this._keysUp.has(key);
+        const normalized = this.normalizeKeyName(key);
+        if (this._keysUp.has(normalized)) return true;
+        if (normalized.length === 1) {
+            return this._keysUp.has(normalized.toLowerCase()) || this._keysUp.has(normalized.toUpperCase());
+        }
+        return false;
+    }
+
+    /**
+     * Normalizes a key name to support Spanish and friendly names.
+     * @param {string} key
+     * @returns {string}
+     */
+    static normalizeKeyName(key) {
+        if (!key || typeof key !== 'string') return '';
+        const k = key.toLowerCase();
+        const map = {
+            'espacio': ' ',
+            'space': ' ',
+            'enter': 'Enter',
+            'intro': 'Enter',
+            'escape': 'Escape',
+            'esc': 'Escape',
+            'flecha_arriba': 'ArrowUp',
+            'up': 'ArrowUp',
+            'flecha_abajo': 'ArrowDown',
+            'down': 'ArrowDown',
+            'flecha_izquierda': 'ArrowLeft',
+            'left': 'ArrowLeft',
+            'flecha_derecha': 'ArrowRight',
+            'right': 'ArrowRight',
+            'shift': 'Shift',
+            'mayus': 'Shift',
+            'control': 'Control',
+            'ctrl': 'Control',
+            'alt': 'Alt',
+            'tab': 'Tab',
+            'retroceso': 'Backspace',
+            'backspace': 'Backspace',
+            'suprimir': 'Delete',
+            'delete': 'Delete'
+        };
+
+        if (map[k]) return map[k];
+
+        // Handle a-z (ensure single character if it was a-z)
+        if (k.length === 1) return k;
+
+        return key; // Fallback to original
     }
 
     static getPressedKeys() {

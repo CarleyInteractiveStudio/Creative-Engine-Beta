@@ -690,7 +690,12 @@ export function setActiveTool(toolName) {
     }
 
     if (toolActiveBtn && activeBtnInDropdown) {
-        toolActiveBtn.innerHTML = activeBtnInDropdown.innerHTML.split(' ')[0];
+        const iconImg = activeBtnInDropdown.querySelector('.ce-icon');
+        if (iconImg) {
+            toolActiveBtn.innerHTML = iconImg.outerHTML;
+        } else {
+            toolActiveBtn.innerHTML = activeBtnInDropdown.innerHTML.split(' ')[0];
+        }
         toolActiveBtn.title = activeBtnInDropdown.title;
     }
     activeTool = toolName;

@@ -649,9 +649,11 @@ export class PhysicsSystem {
             const collider = this.getCollider(materia);
             const transform = materia.getComponent(Components.Transform);
             let w = 50, h = 50;
-            if (collider && collider.size) {
-                w = collider.size.x * (transform ? transform.scale.x : 1);
-                h = collider.size.y * (transform ? transform.scale.y : 1);
+            if (collider instanceof Components.BoxCollider2D || collider instanceof Components.CapsuleCollider2D) {
+                w = collider.size.x * (transform ? Math.abs(transform.scale.x) : 1);
+                h = collider.size.y * (transform ? Math.abs(transform.scale.y) : 1);
+            } else if (collider instanceof Components.CircleCollider2D) {
+                w = h = collider.radius * 2 * (transform ? Math.max(Math.abs(transform.scale.x), Math.abs(transform.scale.y)) : 1);
             }
             return (1/12) * rb.mass * (w * w + h * h);
         };
