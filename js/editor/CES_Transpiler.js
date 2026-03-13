@@ -478,8 +478,9 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
  * @param {string} scriptName The name of the script file (e.g., 'PlayerController.ces').
  * @returns {{errors: string[] | null, jsCode: string | null}} An object with an errors array, or the generated JS code.
  */
-export function transpile(code, scriptName) {
+export function transpile(code, scriptName = 'unnamed.ces') {
     const errors = [];
+    if (!scriptName) scriptName = 'unnamed.ces';
     let className = scriptName.replace(/\.(ces|chc)$/, '').replace(/[^a-zA-Z0-9]/g, '_');
     // Asegurar que el nombre de la clase no empiece por un número
     if (/^[0-9]/.test(className)) {

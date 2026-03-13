@@ -1,6 +1,6 @@
 // --- Module for the Code Editor Window (CodeMirror) ---
 
-import { EditorView, basicSetup } from "https://esm.sh/codemirror@6.10.1";
+import { EditorView, basicSetup } from "https://esm.sh/codemirror@6.0.1";
 import { javascript } from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
 import { oneDark } from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
 import { undo, redo, indentWithTab } from "https://esm.sh/@codemirror/commands@6.3.3";
