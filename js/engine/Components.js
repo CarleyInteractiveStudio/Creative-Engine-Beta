@@ -19,6 +19,7 @@ const componentAliases = {
     'Transform': 'posicion',
     'Rigidbody2D': 'fisica',
     'AnimatorController': 'controladorAnimacion',
+    'AnimatorController': 'controlador',
     'SpriteRenderer': 'renderizadorDeSprite',
     'AudioSource': 'fuenteDeAudio',
     'BoxCollider2D': 'colisionadorCaja2D',
@@ -26,6 +27,7 @@ const componentAliases = {
     'CircleCollider2D': 'colisionadorCirculo2D',
     'Camera': 'camara',
     'Animator': 'animador',
+    'Animator': 'animacion',
     'PointLight2D': 'luzPuntual2D',
     'SpotLight2D': 'luzFocal2D',
     'FreeformLight2D': 'luzFormaLibre2D',
@@ -38,6 +40,7 @@ const componentAliases = {
     'TextureRender': 'renderizadorDeTextura',
     'Canvas': 'lienzo',
     'UIImage': 'imagenUI',
+    'UIImage': 'imagen',
     'UITransform': 'posicionUI',
     'UIText': 'textoUI',
     'Button': 'boton',
@@ -461,6 +464,26 @@ export class CreativeScriptBehavior {
     // English Aliases
     broadcast(message, data) { this.difundir(message, data); }
     onReceive(message, callback) { this.alRecibir(message, callback); }
+
+    // --- Input API Shortcuts ---
+    teclaPresionada(k) { return this.input ? this.input.isKeyPressed(k) : false; }
+    teclaRecienPresionada(k) { return this.input ? this.input.isKeyJustPressed(k) : false; }
+    teclaLiberada(k) { return this.input ? this.input.isKeyReleased(k) : false; }
+    tecla(k) { return this.teclaPresionada(k); }
+
+    botonMousePresionado(b) { return this.input ? this.input.isMouseButtonPressed(b) : false; }
+    botonMouseRecienPresionado(b) { return this.input ? this.input.isMouseButtonJustPressed(b) : false; }
+    botonMouseLiberado(b) { return this.input ? this.input.isMouseButtonReleased(b) : false; }
+    obtenerPosicionMouse() { return this.input ? this.input.getMousePosition() : { x: 0, y: 0 }; }
+
+    // English Aliases
+    isKeyPressed(k) { return this.teclaPresionada(k); }
+    isKeyJustPressed(k) { return this.teclaRecienPresionada(k); }
+    isKeyReleased(k) { return this.teclaLiberada(k); }
+    isMouseButtonPressed(b) { return this.botonMousePresionado(b); }
+    isMouseButtonJustPressed(b) { return this.botonMouseRecienPresionado(b); }
+    isMouseButtonReleased(b) { return this.botonMouseLiberado(b); }
+    getMousePosition() { return this.obtenerPosicionMouse(); }
 
     _cleanupSubscriptions() {
         this._messageSubscriptions.forEach(unsub => unsub());

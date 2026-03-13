@@ -102,6 +102,19 @@ ERROR_LOGIN: Error de Inicio de Sesión
 AUTH_RESET_SENT: Si existe una cuenta con este correo, se ha enviado un enlace de recuperación.
 ENVIANDO: Enviando...
 
+# Scene View Tools
+HERRAMIENTA_MOVER: Mover
+HERRAMIENTA_ROTAR: Rotar
+HERRAMIENTA_TERRENO: Terreno
+HERRAMIENTA_ESCALAR: Escalar
+HERRAMIENTA_ESCALAR_EJES: Escalar por Ejes
+HERRAMIENTA_UNIVERSAL: Universal
+HERRAMIENTA_PAN: Panear
+HERRAMIENTA_PINCEL: Pincel de Tiles
+HERRAMIENTA_CUBO: Cubo de Pintura
+HERRAMIENTA_MULTI: Pincel Multi-casilla
+HERRAMIENTA_GOMA: Goma de Tiles
+
 # Launcher
 RESOURCE_LOADING_MODE: Modo de Carga de Recursos
 PRELOAD_STABLE: Precarga (Estable - Carga todo antes de iniciar)
@@ -466,6 +479,19 @@ INICIANDO_SESION_PROGRESO: Logging In...
 ERROR_LOGIN: Login Error
 AUTH_RESET_SENT: If an account exists with this email, a recovery link has been sent.
 ENVIANDO: Sending...
+
+# Scene View Tools
+HERRAMIENTA_MOVER: Move
+HERRAMIENTA_ROTAR: Rotate
+HERRAMIENTA_TERRENO: Terrain
+HERRAMIENTA_ESCALAR: Scale
+HERRAMIENTA_ESCALAR_EJES: Scale by Axes
+HERRAMIENTA_UNIVERSAL: Universal
+HERRAMIENTA_PAN: Pan
+HERRAMIENTA_PINCEL: Tile Brush
+HERRAMIENTA_CUBO: Paint Bucket
+HERRAMIENTA_MULTI: Multi-tile Brush
+HERRAMIENTA_GOMA: Tile Eraser
 
 # Launcher
 RESOURCE_LOADING_MODE: Resource Loading Mode

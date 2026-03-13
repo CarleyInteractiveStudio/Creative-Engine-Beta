@@ -70,6 +70,9 @@ const typeMap = {
     'sprite': 'Sprite',
     'ui': 'UI',
     'uiImage': 'UIImage',
+    'imagen': 'UIImage',
+    'animador': 'Animator',
+    'controlador': 'AnimatorController',
     'script': 'CreativeScript',
     'animacion': 'Animation',
     'clip': 'Animation',
@@ -227,7 +230,8 @@ const componentShortcuts = [
     'teclaIzquierda', 'teclaDerecha', 'frenadoMotor', 'frenado', 'vDespegue', 'sustentacion', 'arrastre', 'teclaPotencia', 'teclaFreno',
     'teclaNarizArriba', 'teclaNarizAbajo', 'usarTodasLasCapas', 'useAllLayers', 'sourceLayerIndex', 'velocidadDespegue', 'fuerzaSustentacion',
     'agilidadGiro', 'arrastreAire', 'potenciaDespegue', 'autoEstabilizar', 'estabilidad', 'teclaDescenso', 'teclaGiroIzquierda', 'teclaGiroDerecha',
-    'teclaBotonFreno', 'frenoEspacio'
+    'teclaBotonFreno', 'frenoEspacio', 'teclaPresionada', 'teclaRecienPresionada', 'teclaLiberada', 'tecla',
+    'botonMousePresionado', 'botonMouseRecienPresionado', 'botonMouseLiberado', 'obtenerPosicionMouse'
 ];
 
 function getDefaultValueForType(canonicalType) {
@@ -352,6 +356,7 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
 
     // 2.a: Replace console shortcuts
     body = body.replace(/(?<![.\w])(imprimir|log)\s*\(/g, 'this._userLog(');
+    body = body.replace(/(?<![\w])consola\.(imprimir|log)\s*\(/g, 'this._userLog(');
 
     // 2.b: Replace multilingual keywords
     // We use Unicode-aware word boundaries: (?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5]) and (?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])

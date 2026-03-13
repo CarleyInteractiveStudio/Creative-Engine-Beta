@@ -791,6 +791,20 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Si estamos en la vista de código, permitir solo atajos globales específicos
+        if (activeView === 'code-editor-content') {
+            // Permitir Ctrl+S para guardar
+            if (e.ctrlKey && e.key.toLowerCase() === 's') {
+                e.preventDefault();
+                CodeEditor.saveCurrentScript();
+                return;
+            }
+            // Si el foco está en un elemento de entrada o en el editor (que no es el body), no procesar atajos de la escena
+            if (e.target !== document.body && e.target !== document.documentElement) {
+                return;
+            }
+        }
+
         if (document.querySelector('.modal.is-open') || e.target.matches('input, textarea, select')) {
             return;
         }
