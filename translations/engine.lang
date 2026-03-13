@@ -107,13 +107,13 @@ HERRAMIENTA_MOVER: Mover
 HERRAMIENTA_ROTAR: Rotar
 HERRAMIENTA_TERRENO: Terreno
 HERRAMIENTA_ESCALAR: Escalar
-HERRAMIENTA_ESCALAR_EJES: Escalar por Ejes
-HERRAMIENTA_UNIVERSAL: Universal
-HERRAMIENTA_PAN: Panear
-HERRAMIENTA_PINCEL: Pincel de Tiles
-HERRAMIENTA_CUBO: Cubo de Pintura
-HERRAMIENTA_MULTI: Pincel Multi-casilla
-HERRAMIENTA_GOMA: Goma de Tiles
+HERRAMIENTA_ESCALAR_EJES: Ejes
+HERRAMIENTA_UNIVERSAL: Todo
+HERRAMIENTA_PAN: Mano
+HERRAMIENTA_PINCEL: Pincel
+HERRAMIENTA_CUBO: Cubo
+HERRAMIENTA_MULTI: Multi
+HERRAMIENTA_GOMA: Borrar
 
 # Launcher
 RESOURCE_LOADING_MODE: Modo de Carga de Recursos
@@ -253,21 +253,21 @@ INSPECTOR: Inspector
 NAVEGADOR: Navegador
 CONSOLA: Consola
 DEPURADOR: Depurador
-EDITOR_ANIMACION: Editor de Animación
-CONTROLADOR_ANIMACION: Controlador de Animación
-PALETA_TILES: Editor de Paleta de Tiles
-EDITOR_SPRITES: Editor de Sprites
-CONTROL_AMBIENTE: Control de Ambiente
-SISTEMA_VERIFICACION: Sistema de Verificación
-TIENDA_ASSETS: Tienda de asset
+EDITOR_ANIMACION: Animación
+CONTROLADOR_ANIMACION: Animador
+PALETA_TILES: Tiles
+EDITOR_SPRITES: Sprites
+CONTROL_AMBIENTE: Ambiente
+SISTEMA_VERIFICACION: Verificación
+TIENDA_ASSETS: Tienda
 VID_SPRI: Vid Spri
 VISTA_ESCENA: Escena
 VISTA_JUEGO: Juego
-VISTA_CODIGO: Codigo
+VISTA_CODIGO: Código
 VISTA_TERMINAL: Terminal
 
 # Hierarchy Context
-CIRCLE_COLLIDER_2D: Colisionador de Círculo 2D
+CIRCLE_COLLIDER_2D: Círculo 2D
 CREAR_MATERIA: Crear Materia
 MATERIA_VACIA: Materia Vacía
 MATERIA_2D: Materia 2D
@@ -284,19 +284,19 @@ BOTON: Botón
 PANEL: Panel
 TEXTO: Texto
 LUZ: Luz
-LUZ_PUNTO: Point Light
-LUZ_FOCAL: Spot Light
-LUZ_FORMA_LIBRE: Freeform Light
-LUZ_SPRITE: Sprite Light
+LUZ_PUNTO: Luz Punto
+LUZ_FOCAL: Luz Focal
+LUZ_FORMA_LIBRE: Luz Libre
+LUZ_SPRITE: Luz Sprite
 CAMARA: Cámara
 AUDIO: Audio
 VIDEO: Video
 WATER: Agua
-LINE_COLLIDER: Colisionador de Líneas
+LINE_COLLIDER: Líneas
 BONE: Hueso
-SKELETON: Esqueleto (Skinning)
+SKELETON: Esqueleto
 IK_MANAGER: Gestor IK
-IMPORTAR_ESQUELETO_SPINE: Importar Esqueleto (Spine JSON)
+IMPORTAR_ESQUELETO_SPINE: Importar Spine
 ERROR_IMPORTAR_SIN_OBJETO: Selecciona un objeto en la jerarquía para importar el esqueleto como hijo.
 ESQUELETO_IMPORTADO: Esqueleto importado correctamente.
 WEIGHT_PAINTER: Pintor de Pesos
@@ -309,7 +309,7 @@ ELIMINAR: Eliminar
 ADD_LEY: Añadir Ley
 LEY: Ley
 LEYES: Leyes
-TRANSFORM: Posición (Transform)
+TRANSFORM: Transform
 POSICION: Posición
 ROTACION: Rotación
 ESCALA: Escala
@@ -485,13 +485,13 @@ HERRAMIENTA_MOVER: Move
 HERRAMIENTA_ROTAR: Rotate
 HERRAMIENTA_TERRENO: Terrain
 HERRAMIENTA_ESCALAR: Scale
-HERRAMIENTA_ESCALAR_EJES: Scale by Axes
-HERRAMIENTA_UNIVERSAL: Universal
-HERRAMIENTA_PAN: Pan
-HERRAMIENTA_PINCEL: Tile Brush
-HERRAMIENTA_CUBO: Paint Bucket
-HERRAMIENTA_MULTI: Multi-tile Brush
-HERRAMIENTA_GOMA: Tile Eraser
+HERRAMIENTA_ESCALAR_EJES: Axes
+HERRAMIENTA_UNIVERSAL: All
+HERRAMIENTA_PAN: Hand
+HERRAMIENTA_PINCEL: Brush
+HERRAMIENTA_CUBO: Bucket
+HERRAMIENTA_MULTI: Multi
+HERRAMIENTA_GOMA: Erase
 
 # Launcher
 RESOURCE_LOADING_MODE: Resource Loading Mode
@@ -631,13 +631,13 @@ INSPECTOR: Inspector
 NAVEGADOR: Browser
 CONSOLA: Console
 DEPURADOR: Debugger
-EDITOR_ANIMACION: Animation Editor
-CONTROLADOR_ANIMACION: Animation Controller
-PALETA_TILES: Tile Palette Editor
-EDITOR_SPRITES: Sprite Editor
-CONTROL_AMBIENTE: Environment Control
-SISTEMA_VERIFICACION: Verification System
-TIENDA_ASSETS: Asset Store
+EDITOR_ANIMACION: Animation
+CONTROLADOR_ANIMACION: Animator
+PALETA_TILES: Tiles
+EDITOR_SPRITES: Sprites
+CONTROL_AMBIENTE: Environment
+SISTEMA_VERIFICACION: Verification
+TIENDA_ASSETS: Store
 VID_SPRI: Vid Spri
 VISTA_ESCENA: Scene
 VISTA_JUEGO: Game
@@ -687,7 +687,7 @@ ELIMINAR: Delete
 ADD_LEY: Add Law
 LEY: Law
 LEYES: Laws
-TRANSFORM: Position (Transform)
+TRANSFORM: Transform
 POSICION: Position
 ROTACION: Rotation
 ESCALA: Scale
@@ -1007,7 +1007,7 @@ ELIMINAR: Excluir
 ADD_LEY: Adicionar Lei
 LEY: Lei
 LEYES: Leis
-TRANSFORM: Posição (Transform)
+TRANSFORM: Transform
 POSICION: Posição
 ROTACION: Rotação
 ESCALA: Escala
@@ -1326,7 +1326,7 @@ ELIMИНАР: Удалить
 ADD_LEY: Добавить закон
 LEY: Закон
 LEYES: Законы
-TRANSFORM: Позиция (Transform)
+TRANSFORM: Transform
 POSICION: Позиция
 ROTACION: Вращение
 ESCALA: Масштаб
@@ -1645,7 +1645,7 @@ ELIMINAR: 删除
 ADD_LEY: 添加法律
 LEY: 法律
 LEYES: 法律
-TRANSFORM: 位置 (变换)
+TRANSFORM: 变换
 POSICION: 位置
 ROTACION: 旋转
 ESCALA: 缩放

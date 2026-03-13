@@ -34,6 +34,29 @@ export class Materia {
     get activo() { return this.isActive; }
     set activo(v) { this.isActive = v; }
 
+    // --- Fast Component Access Getters ---
+    get transform() { return this.getComponentByName('Transform'); }
+    get posicion() { return this.transform; }
+    get transformacion() { return this.transform; }
+
+    get rigidbody2D() { return this.getComponentByName('Rigidbody2D'); }
+    get fisica() { return this.rigidbody2D; }
+
+    get spriteRenderer() { return this.getComponentByName('SpriteRenderer'); }
+    get renderizadorDeSprite() { return this.spriteRenderer; }
+
+    get animator() { return this.getComponentByName('Animator'); }
+    get animador() { return this.animator; }
+    get animacion() { return this.animator; }
+
+    get animatorController() { return this.getComponentByName('AnimatorController'); }
+    get controlador() { return this.animatorController; }
+    get controladorAnimacion() { return this.animatorController; }
+
+    get uiTransform() { return this.getComponentByName('UITransform'); }
+    get posicionUI() { return this.uiTransform; }
+    get transformacionUI() { return this.uiTransform; }
+
     addComponent(component) {
         this.leyes.push(component);
         component.materia = this;
@@ -59,23 +82,25 @@ export class Materia {
         return this.leyes.find(ley => ley.constructor.name === name);
     }
 
+    _resolveMateria(ref) {
+        if (ref instanceof Materia) return ref;
+        if (typeof ref === 'number') {
+            const scene = this.scene || currentScene;
+            return scene ? scene.findMateriaById(ref) : null;
+        }
+        return null;
+    }
+
     /**
      * Busca un componente en los padres de esta materia.
      */
     getComponentInParent(componentClass) {
-        let current = this.parent;
-        // Resolve ID to object if necessary
-        if (typeof current === 'number') {
-            try { current = (this.scene || currentScene).findMateriaById(current); } catch (e) { return null; }
-        }
+        let current = this._resolveMateria(this.parent);
 
         while (current) {
             const comp = typeof componentClass === 'string' ? current.getComponentByName(componentClass) : current.getComponent(componentClass);
             if (comp) return comp;
-            current = current.parent;
-            if (typeof current === 'number') {
-                try { current = currentScene.findMateriaById(current); } catch (e) { return null; }
-            }
+            current = this._resolveMateria(current.parent);
         }
         return null;
     }
@@ -134,34 +159,13 @@ export class Materia {
     hasTag(tag) { return this.tieneTag(tag); }
 
     findAncestorWithComponent(componentClass) {
-        let current = this.parent;
-        // If the parent is a number (ID), we need to resolve it to a Materia object first.
-        if (typeof current === 'number') {
-            try {
-                // Assuming `currentScene` is accessible or passed in somehow.
-                // This is a potential issue if currentScene is not globally available here.
-                // For now, let's rely on it being available via SceneManager.
-                current = currentScene.findMateriaById(current);
-            } catch (e) {
-                console.error("Could not resolve parent ID to Materia:", e);
-                return null;
-            }
-        }
+        let current = this._resolveMateria(this.parent);
 
         while (current) {
             if (current.getComponent(componentClass)) {
                 return current;
             }
-            current = current.parent;
-             // Handle cases where the next parent in the chain is also just an ID
-            if (typeof current === 'number') {
-                 try {
-                    current = currentScene.findMateriaById(current);
-                } catch (e) {
-                    console.error("Could not resolve parent ID to Materia during traversal:", e);
-                    return null;
-                }
-            }
+            current = this._resolveMateria(current.parent);
         }
         return null;
     }
@@ -184,20 +188,12 @@ export class Materia {
     }
 
     isAncestorOf(potentialDescendant) {
-        let current = potentialDescendant.parent;
+        let current = this._resolveMateria(potentialDescendant.parent);
         while (current) {
-            // Resolve numeric ID to object if necessary
-            if (typeof current === 'number') {
-                const scene = this.scene || currentScene;
-                current = scene ? scene.findMateriaById(current) : null;
-            }
-
-            if (!current) break;
-
             if (current.id === this.id) {
                 return true;
             }
-            current = current.parent;
+            current = this._resolveMateria(current.parent);
         }
         return false;
     }
@@ -206,7 +202,7 @@ export class Materia {
         if (this.parent === newParent) return;
 
         let worldPos, worldRot, worldScale;
-        const transform = this.getComponent(Transform);
+        const transform = this.getComponentByName('Transform');
 
         if (keepWorldTransform && transform) {
             worldPos = transform.position;
@@ -237,17 +233,28 @@ export class Materia {
         if (newParent) {
             newParent.children.push(this);
             this.parent = newParent;
-            if (newParent.scene) this.scene = newParent.scene;
+            if (newParent.scene) {
+                this._setMateriaSceneRecursive(newParent.scene);
+            }
         } else {
             this.parent = null;
             const scene = this.scene || currentScene;
-            if (scene) scene.addMateria(this);
+            if (scene) {
+                scene.addMateria(this);
+            }
         }
 
         if (keepWorldTransform && transform) {
             transform.position = worldPos;
             transform.rotation = worldRot;
             transform.scale = worldScale;
+        }
+    }
+
+    _setMateriaSceneRecursive(scene) {
+        this.scene = scene;
+        for (const child of this.children) {
+            child._setMateriaSceneRecursive(scene);
         }
     }
 

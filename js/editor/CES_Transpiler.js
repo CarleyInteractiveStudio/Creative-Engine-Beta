@@ -154,14 +154,14 @@ const typeMap = {
 const componentShortcuts = [
     'transform', 'transformacion', 'posicion', 'posição', 'позиция', '位置',
     'rigidbody2D', 'fisica', 'física', 'физика', '物理',
-    'animatorController', 'controladorAnimacion',
+    'animatorController', 'controladorAnimacion', 'controlador',
     'spriteRenderer', 'renderizadorDeSprite', 'renderizadorDeSpritePT', 'рендерСпрайта', '精灵渲染器',
     'audioSource', 'fuenteDeAudio', 'fonteDeÁudio', 'источникЗвука', '音频源',
     'boxCollider2D', 'colisionadorCaja2D',
     'capsuleCollider2D', 'colisionadorCapsula2D',
     'colisionador2d',
     'camera', 'camara', 'câmera', 'камера', '摄像机',
-    'animator', 'animador', 'аниматор', '动画器',
+    'animator', 'animador', 'animacion', 'аниматор', '动画器',
     'pointLight2D', 'luzPuntual2D',
     'spotLight2D', 'luzFocal2D',
     'freeformLight2D', 'luzFormaLibre2D',
@@ -231,7 +231,8 @@ const componentShortcuts = [
     'teclaNarizArriba', 'teclaNarizAbajo', 'usarTodasLasCapas', 'useAllLayers', 'sourceLayerIndex', 'velocidadDespegue', 'fuerzaSustentacion',
     'agilidadGiro', 'arrastreAire', 'potenciaDespegue', 'autoEstabilizar', 'estabilidad', 'teclaDescenso', 'teclaGiroIzquierda', 'teclaGiroDerecha',
     'teclaBotonFreno', 'frenoEspacio', 'teclaPresionada', 'teclaRecienPresionada', 'teclaLiberada', 'tecla',
-    'botonMousePresionado', 'botonMouseRecienPresionado', 'botonMouseLiberado', 'obtenerPosicionMouse'
+    'botonMousePresionado', 'botonMouseRecienPresionado', 'botonMouseLiberado', 'obtenerPosicionMouse',
+    'rotacion', 'rotation', 'escala', 'scale', 'rotar', 'rotate', 'mover', 'move', 'escalar'
 ];
 
 function getDefaultValueForType(canonicalType) {
@@ -246,7 +247,7 @@ function getDefaultValueForType(canonicalType) {
         case 'Prefab': return null;
         case 'Scene': return null;
         case 'Vector2': return { x: 0, y: 0 };
-        case 'Color': return { r: 255, g: 255, b: 255, a: 1 };
+        case 'Color': return '#ffffff';
         case 'Action': return { targetId: null, functionName: '' };
         default: return null;
     }
@@ -293,6 +294,9 @@ export function getScriptMetadata(scriptName) {
  */
 function transpileBlock(block, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager, customFunctions = []) {
     let body = block;
+    // Unicode-aware boundary to prevent matching inside other words
+    const UB = '(?![.\\w\\u00C0-\\u017F\\u0400-\\u04FF\\u4E00-\\u9FA5])';
+    const PUB = '(?<![.\\w\\u00C0-\\u017F\\u0400-\\u04FF\\u4E00-\\u9FA5])';
 
     // 2.0: Handle 'cada' blocks (Simplified Timers)
     let cadaMatch;
@@ -362,48 +366,48 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
     // We use Unicode-aware word boundaries: (?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5]) and (?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])
 
     // Spanish
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])si\s*\(/g, 'if (');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])sino(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'else');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])mientras\s*\(/g, 'while (');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])para(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])\s*\(/g, 'for (');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])retornar(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'return');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])nuevo(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'new');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])funcion(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'function');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])verdadero(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'true');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])falso(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'false');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])variable(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'let');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])constante(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'const');
+    body = body.replace(new RegExp(`${PUB}si\\s*\\(`, 'g'), 'if (');
+    body = body.replace(new RegExp(`${PUB}sino${UB}`, 'g'), 'else');
+    body = body.replace(new RegExp(`${PUB}mientras\\s*\\(`, 'g'), 'while (');
+    body = body.replace(new RegExp(`${PUB}para${UB}\\s*\\(`, 'g'), 'for (');
+    body = body.replace(new RegExp(`${PUB}retornar${UB}`, 'g'), 'return');
+    body = body.replace(new RegExp(`${PUB}nuevo${UB}`, 'g'), 'new');
+    body = body.replace(new RegExp(`${PUB}funcion${UB}`, 'g'), 'function');
+    body = body.replace(new RegExp(`${PUB}verdadero${UB}`, 'g'), 'true');
+    body = body.replace(new RegExp(`${PUB}falso${UB}`, 'g'), 'false');
+    body = body.replace(new RegExp(`${PUB}variable${UB}`, 'g'), 'let');
+    body = body.replace(new RegExp(`${PUB}constante${UB}`, 'g'), 'const');
 
     // Portuguese
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])se\s*\(/g, 'if (');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])senão(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'else');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])enquanto\s*\(/g, 'while (');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])para(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])\s*\(/g, 'for (');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])função(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'function');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])verdadeiro(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'true');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])falso(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'false');
+    body = body.replace(new RegExp(`${PUB}se\\s*\\(`, 'g'), 'if (');
+    body = body.replace(new RegExp(`${PUB}senão${UB}`, 'g'), 'else');
+    body = body.replace(new RegExp(`${PUB}enquanto\\s*\\(`, 'g'), 'while (');
+    body = body.replace(new RegExp(`${PUB}para${UB}\\s*\\(`, 'g'), 'for (');
+    body = body.replace(new RegExp(`${PUB}função${UB}`, 'g'), 'function');
+    body = body.replace(new RegExp(`${PUB}verdadeiro${UB}`, 'g'), 'true');
+    body = body.replace(new RegExp(`${PUB}falso${UB}`, 'g'), 'false');
 
     // Russian
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])если\s*\(/g, 'if (');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])иначе(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'else');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])пока\s*\(/g, 'while (');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])для(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])\s*\(/g, 'for (');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])вернуть(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'return');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])новый(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'new');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])функция(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'function');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])истина(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'true');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])ложь(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'false');
+    body = body.replace(new RegExp(`${PUB}если\\s*\\(`, 'g'), 'if (');
+    body = body.replace(new RegExp(`${PUB}иначе${UB}`, 'g'), 'else');
+    body = body.replace(new RegExp(`${PUB}пока\\s*\\(`, 'g'), 'while (');
+    body = body.replace(new RegExp(`${PUB}для${UB}\\s*\\(`, 'g'), 'for (');
+    body = body.replace(new RegExp(`${PUB}вернуть${UB}`, 'g'), 'return');
+    body = body.replace(new RegExp(`${PUB}новый${UB}`, 'g'), 'new');
+    body = body.replace(new RegExp(`${PUB}функция${UB}`, 'g'), 'function');
+    body = body.replace(new RegExp(`${PUB}истина${UB}`, 'g'), 'true');
+    body = body.replace(new RegExp(`${PUB}ложь${UB}`, 'g'), 'false');
 
     // Chinese
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])如果\s*\(/g, 'if (');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])否则(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'else');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])当\s*\(/g, 'while (');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])对于(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])\s*\(/g, 'for (');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])返回(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'return');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])新建(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'new');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])函数(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'function');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])真(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'true');
-    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])假(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'false');
+    body = body.replace(new RegExp(`${PUB}如果\\s*\\(`, 'g'), 'if (');
+    body = body.replace(new RegExp(`${PUB}否则${UB}`, 'g'), 'else');
+    body = body.replace(new RegExp(`${PUB}当\\s*\\(`, 'g'), 'while (');
+    body = body.replace(new RegExp(`${PUB}对于${UB}\\s*\\(`, 'g'), 'for (');
+    body = body.replace(new RegExp(`${PUB}返回${UB}`, 'g'), 'return');
+    body = body.replace(new RegExp(`${PUB}新建${UB}`, 'g'), 'new');
+    body = body.replace(new RegExp(`${PUB}函数${UB}`, 'g'), 'function');
+    body = body.replace(new RegExp(`${PUB}真${UB}`, 'g'), 'true');
+    body = body.replace(new RegExp(`${PUB}假${UB}`, 'g'), 'false');
 
     // 2.c: Coroutines support
     body = body.replace(/(?<![.\w])(esperar|aguardar|ждать|等待)\s*\(/g, 'await this.esperar(');
@@ -417,6 +421,14 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
         if (cmd === 'создать') cmd = 'create';
         if (cmd === '创建') cmd = 'create';
         return `await this.${cmd}(this.${p3})`;
+    });
+
+    // 2.d.1: Handle mtr. / materia. prefix mapping to this. for shortcuts
+    body = body.replace(/(?<![\w\u00C0-\u017Fа-яА-Я一-龥])(mtr|materia|matéria|материя|物质)\.([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)/g, (match, p1, p2) => {
+        if (componentShortcuts.includes(p2)) {
+            return `this.${p2}`;
+        }
+        return match;
     });
 
     // 2.e: Auto-prefix component shortcuts
@@ -656,7 +668,7 @@ export function transpile(code, scriptName) {
     let varMatch;
     while ((varMatch = varRegex.exec(unprocessedCode)) !== null) {
         const scopeMatch = varMatch[1] || 'public';
-        const scope = scopeMatch.replace('publico', 'public').replace('privado', 'private');
+        const scope = scopeMatch.replace(/publico|público|открытый|公开/, 'public').replace(/privado|закрытый|私有/, 'private');
         const typeInput = varMatch[2];
         const name = varMatch[3];
         const value = varMatch[4];

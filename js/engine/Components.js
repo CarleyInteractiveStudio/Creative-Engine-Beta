@@ -16,18 +16,16 @@ export function setEditorLogic(logic) {
 
 // --- Bilingual Component Aliases ---
 const componentAliases = {
-    'Transform': 'posicion',
+    'Transform': ['posicion', 'transformacion'],
     'Rigidbody2D': 'fisica',
-    'AnimatorController': 'controladorAnimacion',
-    'AnimatorController': 'controlador',
+    'AnimatorController': ['controladorAnimacion', 'controlador'],
     'SpriteRenderer': 'renderizadorDeSprite',
     'AudioSource': 'fuenteDeAudio',
     'BoxCollider2D': 'colisionadorCaja2D',
     'CapsuleCollider2D': 'colisionadorCapsula2D',
     'CircleCollider2D': 'colisionadorCirculo2D',
     'Camera': 'camara',
-    'Animator': 'animador',
-    'Animator': 'animacion',
+    'Animator': ['animador', 'animacion'],
     'PointLight2D': 'luzPuntual2D',
     'SpotLight2D': 'luzFocal2D',
     'FreeformLight2D': 'luzFormaLibre2D',
@@ -124,23 +122,22 @@ export class CreativeScriptBehavior {
             }
 
             // Create the Spanish alias if it exists in the map
-            const alias = componentAliases[componentName];
-            if (alias && !this.hasOwnProperty(alias)) {
-                this[alias] = component;
+            const aliases = componentAliases[componentName];
+            if (aliases) {
+                const aliasList = Array.isArray(aliases) ? aliases : [aliases];
+                for (const alias of aliasList) {
+                    if (!this.hasOwnProperty(alias)) {
+                        this[alias] = component;
+                    }
+                }
             }
 
-            // Special case for Transform: allow both 'transformacion' and 'posicion'
-            if (componentName === 'Transform') {
-                if (!this.hasOwnProperty('transformacion')) {
-                    this['transformacion'] = component;
-                }
-                if (!this.hasOwnProperty('posicion')) {
-                    this['posicion'] = component;
-                }
-            }
             if (componentName === 'UITransform') {
                 if (!this.hasOwnProperty('transformacionUI')) {
                     this['transformacionUI'] = component;
+                }
+                if (!this.hasOwnProperty('posicionUI')) {
+                    this['posicionUI'] = component;
                 }
             }
         }
@@ -286,6 +283,16 @@ export class CreativeScriptBehavior {
     set flipX(v) { this.voltearH = v; }
     get flipY() { return this.voltearV; }
     set flipY(v) { this.voltearV = v; }
+
+    // --- Transform Proxy Methods ---
+    mover(x, y) { if (this.transform) { if (typeof x === 'object') { this.transform.x += x.x || 0; this.transform.y += x.y || 0; } else { this.transform.x += x; this.transform.y += (y || 0); } } }
+    rotar(deg) { if (this.transform) this.transform.rotation += deg; }
+    escalar(x, y) { if (this.transform) { if (typeof x === 'object') { this.transform.scale.x *= x.x; this.transform.scale.y *= x.y; } else { this.transform.scale.x *= x; this.transform.scale.y *= (y === undefined ? x : y); } } }
+
+    // English Aliases
+    move(x, y) { this.mover(x, y); }
+    rotate(deg) { this.rotar(deg); }
+    scale(x, y) { this.escalar(x, y); }
 
     get motor() { return this; }
     get engine() { return this; }
