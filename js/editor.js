@@ -39,6 +39,7 @@ import { getCustomComponentDefinitions } from './editor/EngineAPIExtension.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
 import * as SkeletonImporter from './editor/SkeletonImporter.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
+import * as CarlAgent from './editor/CarlAgent.js';
 import { buildProject, runStandalonePreview } from './editor/BuildSystem.js';
 import * as Dialogs from './editor/ui/DialogWindow.js';
 const { showNotification: showNotificationDialog, showConfirmation: showConfirmationDialog, showBuildDialog } = Dialogs;
@@ -3171,7 +3172,38 @@ SINTAXIS DE SCRIPTING (CES/CHC):
 5. EVENTOS: alEmpezar(), alActualizar(delta), alEntrarEnColision(otro), alRecibir(mensaje, datos).
 6. FUNCIONES: buscar(nombre), lanzarRayo(origen, dir, dist, tag), crear prefab, destruir(mtr), difundir(msg), danar(mtr, cant).
 
-Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicándole el menú o panel exacto. Si te pide código, usa siempre la sintaxis en español mencionada arriba. Siempre sé motivador y recuérdale que tú estás aquí para ayudarle a construir sus sueños.`;
+Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicándole el menú o panel exacto. Si te pide código, usa siempre la sintaxis en español mencionada arriba. Siempre sé motivador y recuérdale que tú estás aquí para ayudarle a construir sus sueños.
+
+HABILIDADES AUTÓNOMAS (¡NUEVO!):
+Ahora tienes la capacidad de ejecutar acciones reales. Cuando el usuario te pida crear algo complejo (ej: "un juego de plataforma"), debes:
+1. Crear un PLAN de pasos detallados.
+2. Cada paso puede contener uno o más comandos ejecutables.
+
+Para enviar comandos, inclúyelos al final de tu respuesta en un bloque de código JSON marcado con la etiqueta [PLAN].
+Formato del bloque [PLAN]:
+{
+  "plan": [
+    {
+      "title": "Título del paso",
+      "description": "Descripción de lo que harás",
+      "commands": [
+        { "action": "create_materia", "params": { "name": "Cubo", "type": "Sprite" } },
+        { "action": "add_component", "params": { "materiaId": "@last", "type": "Rigidbody2D" } },
+        { "action": "set_property", "params": { "materiaId": "@last", "componentType": "Transform", "propPath": "position.x", "value": 100 } }
+      ]
+    }
+  ]
+}
+
+Comandos Disponibles:
+- create_materia { name, parentId, type: 'Sprite'|'Camera'|'Empty' }
+- delete_materia { id }
+- add_component { materiaId, type, properties: {} }
+- set_property { materiaId, componentType, propPath, value }
+- create_file { path: 'Assets/script.ces', content: '...' }
+- download_file { url, path: 'Assets/image.png' }
+
+NOTA: Usa "@last" en materiaId para referirte al último objeto creado en el mismo plan.`;
 
             const updateCarlIaBrainMenu = () => {
                 const prefs = getPreferences();
@@ -3373,7 +3405,26 @@ Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicán
                     if (thinkingMessage) thinkingMessage.remove();
 
                     if (result.success) {
-                        addMessage(result.text, 'ia', false);
+                        // --- Parse Plan from Response ---
+                        let cleanText = result.text;
+                        const planRegex = /\[PLAN\]\s*(\{[\s\S]*?\})/i;
+                        const match = cleanText.match(planRegex);
+
+                        if (match) {
+                            try {
+                                const planData = JSON.parse(match[1]);
+                                if (planData.plan) {
+                                    CarlAgent.setPlan(planData.plan);
+                                    // Remove JSON from displayed text
+                                    cleanText = cleanText.replace(planRegex, '').trim();
+                                    logToUIConsole("¡Carl ha propuesto un nuevo plan!", "log");
+                                }
+                            } catch (e) {
+                                console.error("Error al parsear el plan de Carl:", e);
+                            }
+                        }
+
+                        addMessage(cleanText || "He trazado un plan para ayudarte. Revísalo en la pestaña Actividad.", 'ia', false);
                         knownWorkingModel[provider] = model;
                         return { status: 'success', error: null, code: 200 };
                     }
@@ -3436,6 +3487,13 @@ Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicán
                     }
                 }
             };
+
+            const modeSelect = dom.carlIaPanel.querySelector('#carl-execution-mode-select');
+            if (modeSelect) {
+                modeSelect.addEventListener('change', (e) => {
+                    CarlAgent.setExecutionMode(e.target.value);
+                });
+            }
 
             sendBtn.addEventListener('click', sendMessage);
             input.addEventListener('keydown', (e) => {
@@ -3570,6 +3628,16 @@ Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicán
         window.AnimationEditorWindow = AnimationEditorWindow;
         window.TilePalette = TilePalette;
         window.SkeletonImporter = SkeletonImporter;
+
+        // --- Carl Agent Integration ---
+        CarlAgent.initialize(dom);
+        window.ceHotReload = hotReloadScript;
+        window.ceCreateAsset = async (name, content) => {
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            const assetsHandle = await projectHandle.getDirectoryHandle('Assets', { create: true });
+            return await createAsset(name, content, assetsHandle);
+        };
 
         // --- For Playwright Testing ---
         // This exposes a safe subset of the HierarchyWindow module for programmatic UI creation in tests
