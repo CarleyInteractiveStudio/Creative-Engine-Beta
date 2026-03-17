@@ -683,13 +683,6 @@ public star() {
                                 <a href="#" class="carl-view-option" data-view="activity" data-i18n="CARL_ACTIVIDAD">Actividad</a>
                             </div>
                         </div>
-                        <div class="menu-item">
-                            <button id="carl-ia-brain-selector-btn" class="panel-tool-btn" data-i18n="CARL_CEREBRO">Cerebro</button>
-                            <div class="menu-content" id="carl-ia-brain-options">
-                                <a href="#" data-model="carl-v1">Carl V1</a>
-                                <a href="#" data-model="external" data-i18n="CARL_MODELO_EXTERNAL">Usar modelo externo</a>
-                            </div>
-                        </div>
                         <button class="close-panel-btn" data-panel="carl-ia-panel">&times;</button>
                     </div>
                 </div>
@@ -707,14 +700,6 @@ public star() {
                         </div>
                     </div>
                     <div id="carl-ia-activity-view" class="carl-view">
-                        <div class="carl-mode-selector">
-                            <label data-i18n="MODO_EJECUCION">Modo:</label>
-                            <select id="carl-execution-mode-select">
-                                <option value="permission" selected data-i18n="CON_PERMISO">Con Permiso</option>
-                                <option value="visual" data-i18n="MODO_VISUAL">Visual (Paso a paso)</option>
-                                <option value="automatic" data-i18n="MODO_AUTOMATICO">Automático</option>
-                            </select>
-                        </div>
                         <div id="carl-ia-activity-log">
                             <!-- Activity logs will go here -->
                             <div class="carl-initial-info" data-i18n="NO_ACTIVIDAD_RECIENTE">No hay actividad reciente.</div>
@@ -1295,6 +1280,14 @@ public star() {
                         <input type="checkbox" id="prefs-carl-can-download-files">
                         <label for="prefs-carl-can-download-files" data-i18n="PERMITIR_DESCARGAR">Permitir descargar archivos</label>
                     </div>
+                    <hr>
+                    <label for="prefs-carl-execution-mode" data-i18n="MODO_EJECUCION_CARL">Modo de Ejecución de Carl</label>
+                    <select id="prefs-carl-execution-mode">
+                        <option value="permission" data-i18n="CON_PERMISO">Con Permiso (Manual)</option>
+                        <option value="visual" data-i18n="MODO_VISUAL">Visual (Paso a paso)</option>
+                        <option value="automatic" data-i18n="MODO_AUTOMATICO">Totalmente Automático</option>
+                    </select>
+                    <p class="field-description" data-i18n="HINT_MODO_CARL">Controla qué tanta autonomía tiene Carl al ejecutar planes en tu proyecto.</p>
                 </fieldset>
                 <fieldset class="settings-section">
                     <legend data-i18n="EJECUCION_JUEGO">Ejecución del Juego</legend>

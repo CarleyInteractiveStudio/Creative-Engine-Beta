@@ -32,7 +32,8 @@ const defaultPrefs = {
         canUseConsole: false,
         canManageFiles: false,
         canManipulateScenes: false,
-        canDownloadFiles: false
+        canDownloadFiles: false,
+        executionMode: 'permission'
     },
     showTerminal: false,
     executionMode: 'integrated',
@@ -160,7 +161,8 @@ async function savePreferences() {
         canUseConsole: _dom.prefsCarlCanUseConsole.checked,
         canManageFiles: _dom.prefsCarlCanManageFiles.checked,
         canManipulateScenes: _dom.prefsCarlCanManipulateScenes.checked,
-        canDownloadFiles: _dom.prefsCarlCanDownloadFiles.checked
+        canDownloadFiles: _dom.prefsCarlCanDownloadFiles.checked,
+        executionMode: _dom.prefsCarlExecutionMode.value
     };
 
     currentPreferences.showTerminal = _dom.prefsShowTerminal.checked;
@@ -230,6 +232,7 @@ function loadPreferences() {
     if (_dom.prefsCarlCanManageFiles) _dom.prefsCarlCanManageFiles.checked = currentPreferences.carlPermissions.canManageFiles;
     if (_dom.prefsCarlCanManipulateScenes) _dom.prefsCarlCanManipulateScenes.checked = currentPreferences.carlPermissions.canManipulateScenes;
     if (_dom.prefsCarlCanDownloadFiles) _dom.prefsCarlCanDownloadFiles.checked = currentPreferences.carlPermissions.canDownloadFiles;
+    if (_dom.prefsCarlExecutionMode) _dom.prefsCarlExecutionMode.value = currentPreferences.carlPermissions.executionMode || 'permission';
 
     if (_dom.prefsShowTerminal) _dom.prefsShowTerminal.checked = currentPreferences.showTerminal;
     if (_dom.prefsExecutionMode) _dom.prefsExecutionMode.value = currentPreferences.executionMode || 'integrated';

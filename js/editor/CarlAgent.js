@@ -81,6 +81,7 @@ export function setPlan(steps) {
 
 export function setExecutionMode(mode) {
     executionMode = mode;
+    updateActivityUI();
 }
 
 /**

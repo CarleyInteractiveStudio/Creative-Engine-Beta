@@ -3128,8 +3128,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Carl IA Panel Logic ---
         if (dom.carlIaPanel) {
-            const brainSelectorMenu = dom.carlIaPanel.querySelector('#carl-ia-brain-options');
-            const brainButton = dom.carlIaBrainSelectorBtn;
             const messagesDiv = dom.carlIaMessages;
             const input = dom.carlIaInput;
             const sendBtn = dom.carlIaSendBtn;
@@ -3163,16 +3161,20 @@ CONOCIMIENTO DE COMPONENTES (LEYES):
 - Animación: Animator (para clips individuales), AnimatorController (máquina de estados compleja).
 - Utilidades: CameraFollow (seguimiento), Parallax (fondos infinitos), DrawingOrder, Layout Groups (Vertical, Horizontal, Rejilla).
 
-SINTAXIS DE SCRIPTING (CES/CHC):
-0. IMPORTACIONES: Usa 've motor;' o 've motor.ui;'.
-1. SINTAXIS: si, sino, mientras, para, retornar, variable, constante, verdadero, falso, Color, Vector2, Prefab.
-2. CORRUTINAS: esperar(segundos);
-3. TIMERS: cada(segundos) { ... }
-4. ACCESO: materia (mtr), nombre, tag, posicion, fisica, animador, camara, fuenteDeAudio, ui.texto, ui.boton.
-5. EVENTOS: alEmpezar(), alActualizar(delta), alEntrarEnColision(otro), alRecibir(mensaje, datos).
-6. FUNCIONES: buscar(nombre), lanzarRayo(origen, dir, dist, tag), crear prefab, destruir(mtr), difundir(msg), danar(mtr, cant).
+SINTAXIS DE SCRIPTING (CES/CHC) - ¡ACTUALIZADO!:
+0. IMPORTACIONES: 've motor;' o 've motor.ui;' (OBLIGATORIO para usar APIs).
+1. PALABRAS CLAVE: si (if), sino (else), mientras (while), para (for), retornar (return), funcion, variable (let), constante (const), verdadero (true), falso (false), nuevo (new).
+2. DECLARACIÓN: 'publico [tipo] [nombre] = [valor];' (se ve en Inspector) o 'privado [tipo] [nombre];'.
+3. TIPOS: number (numero), text (texto), boolean (booleano), Materia (mtr), Sprite, Audio (sonido), Prefab, Scene (escena), Vector2, Color.
+4. ACCESO DIRECTO (Sin 'this.'): nombre, tag, posicion (Transform), fisica (Rigidbody2D), animador, renderizadorDeSprite, fuenteDeAudio, camara, rejilla, lienzo (Canvas).
+5. EVENTOS (Hooks): alEmpezar(), alActualizar(delta), actualizarFijo(delta) [físicas], alEntrarEnColision(otro), alHacerClick().
+6. CONTROL DE TIEMPO:
+   - 'cada(segundos) { ... }' (Bucle temporal infinito).
+   - 'esperar(segundos);' (Pausa asíncrona).
+7. FUNCIONES MOTOR: buscar(nombre), destruir(mtr), crear miPrefab (instanciar), lanzarRayo(origen, dir, dist, tag), estaTocandoTag(tag).
+8. SISTEMA PROXY (Potente): Llama a animaciones o sonidos por su nombre directamente: 'reproducir.Correr();' o 'play.Explosion();'.
 
-Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicándole el menú o panel exacto. Si te pide código, usa siempre la sintaxis en español mencionada arriba. Siempre sé motivador y recuérdale que tú estás aquí para ayudarle a construir sus sueños.
+REGLA DE ORO: Devuelve siempre código .ces limpio. Sé motivador y recuerda que eres un agente activo, no solo un chat.
 
 HABILIDADES AUTÓNOMAS (¡NUEVO!):
 Ahora tienes la capacidad de ejecutar acciones reales. Cuando el usuario te pida crear algo complejo (ej: "un juego de plataforma"), debes:
@@ -3224,32 +3226,13 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
 
             const updateCarlIaBrainMenu = () => {
                 const prefs = getPreferences();
-                brainSelectorMenu.querySelectorAll('[data-external]').forEach(el => el.remove());
+                const provider = prefs.ai?.provider;
 
-                const providers = ['gemini', 'openai', 'anthropic'];
-                let foundConfiguredProvider = null;
-
-                providers.forEach(provider => {
-                    const apiKey = localStorage.getItem(`creativeEngine_${provider}_apiKey`);
-                    if (apiKey) {
-                        const newOption = document.createElement('a');
-                        newOption.href = '#';
-                        newOption.dataset.model = provider;
-                        newOption.dataset.external = true;
-                        const displayName = provider.charAt(0).toUpperCase() + provider.slice(1);
-                        newOption.textContent = `${displayName} (Preferencias)`;
-                        brainSelectorMenu.appendChild(newOption);
-
-                        if (!foundConfiguredProvider || (prefs.ai && prefs.ai.provider === provider)) {
-                            foundConfiguredProvider = { type: provider, name: newOption.textContent };
-                        }
-                    }
-                });
-
-                // Auto-select if nothing selected
-                if (!selectedProvider && foundConfiguredProvider) {
-                    selectedProvider = foundConfiguredProvider;
-                    brainButton.textContent = `Cerebro: ${selectedProvider.name}`;
+                if (provider && provider !== 'none') {
+                    const displayName = provider.charAt(0).toUpperCase() + provider.slice(1);
+                    selectedProvider = { type: provider, name: displayName };
+                } else {
+                    selectedProvider = null;
                 }
             };
 
@@ -3273,18 +3256,6 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
             const viewSelectorMenu = dom.carlIaPanel.querySelector('#carl-ia-view-selector-btn + .menu-content');
             const viewButton = dom.carlIaViewSelectorBtn;
 
-            brainSelectorMenu.parentElement.addEventListener('click', (e) => {
-                if (e.target.matches('a')) {
-                    e.preventDefault();
-                    const modelType = e.target.dataset.model;
-                    const modelName = e.target.textContent;
-                    selectedProvider = { type: modelType, name: modelName };
-                    brainButton.textContent = `Cerebro: ${modelName}`;
-                    messagesDiv.innerHTML = `<div style="font-style: italic; color: rgba(255,255,255,0.6); text-align: center; padding: 20px;">Cerebro '${modelName}' activado. <br><br><b>¡Hola! Soy Carl</b>, tu asistente. ¿En qué puedo ayudarte hoy?</div>`;
-                    brainSelectorMenu.classList.remove('visible');
-                }
-            });
-
             if (viewSelectorMenu) {
                 viewSelectorMenu.parentElement.addEventListener('click', (e) => {
                     if (e.target.matches('a')) {
@@ -3304,6 +3275,11 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
 
                         const targetView = dom.carlIaPanel.querySelector(`#carl-ia-${view}-view`);
                         if (targetView) targetView.classList.add('active');
+
+                        // Clear notification if switching to activity
+                        if (view === 'activity') {
+                            e.target.classList.remove('has-notification');
+                        }
 
                         viewSelectorMenu.classList.remove('visible');
                     }
@@ -3434,14 +3410,18 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                                     CarlAgent.setPlan(planData.plan);
                                     // Remove JSON from displayed text
                                     cleanText = cleanText.replace(planRegex, '').trim();
+
+                                    // Add Action Button to message
+                                    const actionButtonHtml = `<div style="margin-top: 10px;"><button onclick="document.querySelector('.carl-view-option[data-view=\\'activity\\']').click()" class="approve-btn" style="width: auto; padding: 6px 15px;">Ver Plan de Acción</button></div>`;
+                                    cleanText += actionButtonHtml;
+
                                     logToUIConsole("¡Carl ha propuesto un nuevo plan!", "log");
 
-                                // Notify user via Activity tab highlight
-                                const activityBtn = dom.carlIaPanel.querySelector('.carl-view-option[data-view="activity"]');
-                                if (activityBtn) {
-                                    activityBtn.classList.add('has-notification');
-                                    setTimeout(() => activityBtn.classList.remove('has-notification'), 5000);
-                                }
+                                    // Notify user via Activity tab highlight
+                                    const activityBtn = dom.carlIaPanel.querySelector('.carl-view-option[data-view="activity"]');
+                                    if (activityBtn) {
+                                        activityBtn.classList.add('has-notification');
+                                    }
                                 }
                             } catch (e) {
                                 console.error("Error al parsear el plan de Carl:", e);
@@ -3517,6 +3497,8 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                 modeSelect.addEventListener('change', (e) => {
                     CarlAgent.setExecutionMode(e.target.value);
                 });
+                // Sync initial mode
+                CarlAgent.setExecutionMode(modeSelect.value);
             }
 
             sendBtn.addEventListener('click', sendMessage);
