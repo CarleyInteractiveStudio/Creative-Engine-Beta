@@ -99,7 +99,7 @@ export function switchView(view) {
 
     const panel = document.getElementById('carl-ia-panel');
     const viewButton = document.getElementById('carl-ia-view-selector-btn');
-    const viewSelectorMenu = panel ? panel.querySelector('.menu-content') : null;
+    const viewSelectorMenu = panel ? panel.querySelector('#carl-ia-view-selector-btn + .menu-content') : null;
 
     if (!panel || !viewButton || !viewSelectorMenu) {
         console.error("[CarlAgent] No se pudieron encontrar los elementos de la UI para cambiar de vista.");

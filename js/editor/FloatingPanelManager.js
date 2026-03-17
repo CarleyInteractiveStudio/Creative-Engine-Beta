@@ -16,12 +16,22 @@ function initializePanel(panel) {
     // Bring panel to front on any mousedown
     panel.addEventListener('mousedown', () => bringToFront(panel));
 
+    // Stop propagation on header controls to prevent drag interference
+    // We only stop pointerdown/mousedown to prevent dragging, but allow click to bubble for dropdowns
+    const headerControls = panel.querySelector('.panel-header-controls');
+    if (headerControls) {
+        const stopProp = (e) => e.stopPropagation();
+        headerControls.addEventListener('pointerdown', stopProp);
+        headerControls.addEventListener('mousedown', stopProp);
+        // headerControls.addEventListener('click', stopProp); // Allow click to bubble for global menu logic
+    }
+
     // Dragging logic
     if (header) {
         header.style.touchAction = 'none';
         header.addEventListener('pointerdown', (e) => {
-            // Ignore clicks on buttons inside the header
-            if (e.target.closest('button, input, select, .resize-handle')) return;
+            // Ignore clicks on buttons, menus, and other interactive elements inside the header
+            if (e.target.closest('button, input, select, .resize-handle, .menu-content, .menu-item, .panel-tool-btn, .carl-view-option')) return;
 
             // Prevent dragging when the panel is maximized
             if (panel.classList.contains('maximized')) return;

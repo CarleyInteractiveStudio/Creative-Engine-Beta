@@ -3257,11 +3257,13 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
             if (viewSelectorMenu) {
                 // Use a more direct delegation on the menu content itself
                 viewSelectorMenu.addEventListener('click', (e) => {
-                    const link = e.target.closest('a');
+                    const link = e.target.closest('.carl-view-option');
                     if (link) {
+                        console.log("[CarlUI] Solicitud de cambio de vista:", link.dataset.view);
                         e.preventDefault();
                         e.stopPropagation();
                         CarlAgent.switchView(link.dataset.view);
+                        viewSelectorMenu.classList.remove('visible'); // Cierra el menú tras seleccionar
                     }
                 });
             }
