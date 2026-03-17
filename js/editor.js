@@ -3173,16 +3173,14 @@ SINTAXIS DE SCRIPTING (CES/CHC) - ¡ACTUALIZADO!:
 7. FUNCIONES MOTOR: buscar(nombre), destruir(mtr), crear miPrefab, lanzarRayo(origen, dir, dist, tag), estaTocandoTag(tag).
 8. SISTEMA PROXY (Potente): Llama a animaciones o sonidos por su nombre directamente: 'reproducir.Correr();' o 'play.Explosion();'.
 
-REGLA DE ORO: Devuelve siempre código .ces limpio. Sé motivador y recuerda que eres un agente activo, NO solo un chat. Si el usuario te pide crear algo, ¡hazlo directamente mediante un plan! No solo le des el código.
+REGLA DE ORO: Devuelve siempre código .ces limpio. Sé motivador y recuerda que eres un AGENTE AUTÓNOMO E INDEPENDIENTE. Si el usuario te pide crear algo, ¡HAZLO DIRECTAMENTE! No preguntes si quieres que lo haga, simplemente explica brevemente qué harás y genera el plan de acción.
 
-HABILIDADES AUTÓNOMAS (¡NUEVO!):
-Ahora tienes la capacidad de ejecutar acciones reales en el editor. Cuando el usuario te pida construir, crear, modificar o descargar algo, DEBES:
-1. Crear un PLAN de pasos detallados con comandos ejecutables.
-2. Cada paso puede contener uno o más comandos ejecutables.
+HABILIDADES AUTÓNOMAS (EJECUCIÓN DIRECTA):
+Tienes la capacidad de ejecutar acciones reales en el editor. Cuando el usuario te pida construir, crear, modificar o descargar algo, DEBES:
+1. Explicar brevemente en lenguaje natural lo que vas a hacer (ej: "¡Claro! Voy a crear ese objeto y el script para ti...").
+2. Incluir el bloque JSON [PLAN] al final de tu respuesta para que el motor ejecute los comandos automáticamente.
 
-Para enviar comandos, inclúyelos al final de tu respuesta en un bloque de código JSON marcado con la etiqueta [PLAN]. Siempre menciona al usuario que debe ir a la pestaña "Actividad" para ejecutar las acciones (o ver el progreso).
-
-Formato del bloque [PLAN]:
+Formato del bloque [PLAN] (OBLIGATORIO al final de tu respuesta si vas a actuar):
 {
   "plan": [
     {
@@ -3389,8 +3387,8 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
 
                         // --- Parse Plan from Response ---
                         let cleanText = result.text;
-                        // Robust regex to handle potential markdown code blocks around JSON
-                        const planRegex = /\[PLAN\]\s*(?:```json)?\s*(\{[\s\S]*?\})\s*(?:```)?/i;
+                        // Robust regex to handle potential markdown code blocks around JSON, with or without [PLAN] tag
+                        const planRegex = /(?:\[PLAN\]\s*)?(?:```json)?\s*(\{\s*"plan":\s*\[[\s\S]*?\}\s*\]\s*\})\s*(?:```)?/i;
                         const match = cleanText.match(planRegex);
 
                         if (match) {
@@ -3633,6 +3631,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
         window.TilePalette = TilePalette;
         window.SkeletonImporter = SkeletonImporter;
         window.CarlAgent = CarlAgent;
+        window.stopGame = stopGame;
 
         // --- Carl Agent Integration ---
         CarlAgent.initialize(dom);

@@ -73,6 +73,12 @@ export function setPlan(steps) {
     currentStepIndex = 0;
     updateActivityUI();
 
+    // Si el juego está en ejecución, lo detenemos automáticamente para realizar los cambios del plan
+    if (window.isGameRunning && window.stopGame) {
+        console.log("[CarlAgent] Deteniendo el juego para ejecutar el nuevo plan.");
+        window.stopGame();
+    }
+
     // Auto-start if mode is not permission
     if (executionMode !== 'permission') {
         executeNextStep();
