@@ -3180,18 +3180,18 @@ Formato del bloque [PLAN]:
   ]
 }
 
-Comandos: create_materia, delete_materia, add_component, set_property, create_file, download_file.
+Comandos (USA EL NOMBRE EXACTO): create_materia, delete_materia, add_component, set_property, create_file, download_file.
 Usa "@last" para referirte al ID del objeto creado en el paso anterior.
 
 REGLA DE ORO: Sé un hacedor, no un charlatán. Si el código que das usa 'mtr.' o 'this.', estás fallando en tu programación.
 
-Comandos Disponibles:
-- create_materia { name, parentId, type: 'Sprite'|'Camera'|'Canvas'|'Audio'|'Empty' }
-- delete_materia { id } // id puede ser el ID numérico o el nombre exacto
-- add_component { materiaId, type, properties: {} } // type puede ser el nombre en inglés o español
-- set_property { materiaId, componentType, propPath, value } // propPath puede ser anidado, ej: 'position.x' o 'color'
-- create_file { path: 'Assets/nombre.ces', content: '...' }
-- download_file { url, path: 'Assets/nombre.png' }
+COMANDOS Y PARÁMETROS (SINTAXIS ESTRICTA):
+- create_materia { "name": "Nombre", "type": "Sprite"|"Camera"|"Canvas"|"Audio"|"Empty" }
+- add_component { "materiaId": "@last"|id, "type": "Rigidbody2D"|"BoxCollider2D"|"CreativeScript"|..., "properties": {} }
+  - NOTA: Para scripts usa type: "CreativeScript" y en properties: { "scriptName": "Nombre.ces" }.
+- set_property { "materiaId": "@last"|id, "componentType": "Transform", "propPath": "position.x", "value": 100 }
+- create_file { "path": "Assets/nombre.ces", "content": "..." }
+- download_file { "url": "...", "path": "Assets/nombre.png" }
 
 REGLAS DE PROPIEDADES COMUNES:
 - Transform: 'position.x', 'position.y', 'rotation', 'scale.x', 'scale.y'

@@ -248,11 +248,21 @@ async function executeCommand(action, params) {
             }
 
             const comp = new ComponentClass(materia);
-            materia.addComponent(comp);
 
             if (properties) {
                 for (const prop in properties) {
                     comp[prop] = properties[prop];
+                }
+            }
+
+            materia.addComponent(comp);
+
+            // Manejo especial para scripts: inicializarlos inmediatamente si el juego está corriendo
+            if (comp instanceof Components.CreativeScript && (window.isGameRunning || window.CE_Standalone_Scripts)) {
+                await comp.initializeInstance();
+                if (comp.isInitialized) {
+                    try { comp.start(); } catch(e) {}
+                    try { comp.onEnable(); } catch(e) {}
                 }
             }
 
@@ -412,12 +422,15 @@ function logActivity(message, type = 'info') {
 /**
  * Función global para que la UI apruebe un paso.
  */
-window.carlAgent = {
+window.CarlAgent = {
     approveStep: () => {
         executeNextStep();
     },
     setExecutionMode: (mode) => {
         executionMode = mode;
         console.log(`Carl Agent Execution Mode: ${mode}`);
+    },
+    switchView: (view) => {
+        switchView(view);
     }
 };
