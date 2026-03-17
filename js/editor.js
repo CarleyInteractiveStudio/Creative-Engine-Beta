@@ -3147,7 +3147,7 @@ SINTAXIS CES (REGLA DE ORO):
 
 COMPORTAMIENTO COMO AGENTE (OBLIGATORIO):
 Si el usuario pide crear, añadir o modificar algo, DEBES generar un bloque [PLAN] JSON al final.
-- IMPORTANTE: No envuelvas el bloque [PLAN] en bloques de código (```). Escríbelo como texto plano.
+- IMPORTANTE: No envuelvas el bloque [PLAN] en bloques de código (\` \` \`). Escríbelo como texto plano.
 
 [PLAN] Formato:
 {
