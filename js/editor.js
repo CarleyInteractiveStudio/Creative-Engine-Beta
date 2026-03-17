@@ -3381,23 +3381,72 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                     if (thinkingMessage) thinkingMessage.remove();
 
                     if (result.success) {
+                        console.log("[CarlIA] Respuesta recibida:", result.text);
                         // Update history with raw response
                         carlChatHistory.push({ role: 'assistant', content: result.text });
                         if (carlChatHistory.length > 12) carlChatHistory.shift();
 
                         // --- Parse Plan from Response ---
                         let cleanText = result.text;
-                        // Robust regex to handle potential markdown code blocks around JSON, with or without [PLAN] tag
-                        const planRegex = /(?:\[PLAN\]\s*)?(?:```json)?\s*(\{\s*"plan":\s*\[[\s\S]*?\}\s*\]\s*\})\s*(?:```)?/i;
-                        const match = cleanText.match(planRegex);
 
-                        if (match) {
+                        // Use a balanced brace counter to extract JSON more reliably than regex
+                        function extractJsonPlan(text) {
+                            const planMarker = '"plan":';
+                            const markerIndex = text.indexOf(planMarker);
+                            if (markerIndex === -1) return null;
+
+                            // Find the starting brace of the object containing "plan"
+                            let startIndex = text.lastIndexOf('{', markerIndex);
+                            if (startIndex === -1) return null;
+
+                            let braceCount = 0;
+                            let foundStart = false;
+                            let jsonString = '';
+
+                            for (let i = startIndex; i < text.length; i++) {
+                                const char = text[i];
+                                if (char === '{') {
+                                    braceCount++;
+                                    foundStart = true;
+                                } else if (char === '}') {
+                                    braceCount--;
+                                }
+
+                                if (foundStart) {
+                                    jsonString += char;
+                                    if (braceCount === 0) {
+                                        return {
+                                            json: jsonString,
+                                            fullMatch: text.substring(startIndex, i + 1),
+                                            start: startIndex,
+                                            end: i + 1
+                                        };
+                                    }
+                                }
+                            }
+                            return null;
+                        }
+
+                        const planMatch = extractJsonPlan(cleanText);
+
+                        if (planMatch) {
+                            console.log("[CarlIA] Plan detectado mediante extracción de llaves balanceadas.");
                             try {
-                                const planData = JSON.parse(match[1].trim());
+                                const planData = JSON.parse(planMatch.json.trim());
                                 if (planData.plan) {
+                                    console.log("[CarlIA] Cargando plan en CarlAgent:", planData.plan);
                                     CarlAgent.setPlan(planData.plan);
-                                    // Remove JSON from displayed text
-                                    cleanText = cleanText.replace(planRegex, '').trim();
+
+                                    // Remove JSON and markers from displayed text
+                                    // We also try to remove the [PLAN] tag and markdown code blocks if they are wrapping the JSON
+                                    let beforeJson = cleanText.substring(0, planMatch.start);
+                                    let afterJson = cleanText.substring(planMatch.end);
+
+                                    // Clean up [PLAN] tag and markdown backticks around the match
+                                    beforeJson = beforeJson.replace(/\[PLAN\]\s*$/i, '').replace(/```json\s*$/i, '').replace(/```\s*$/i, '');
+                                    afterJson = afterJson.replace(/^\s*```/, '');
+
+                                    cleanText = (beforeJson.trim() + "\n\n" + afterJson.trim()).trim();
 
                                     // Add Action Button to message
                                     // Note: onclick still needs a global or accessible function
@@ -3636,11 +3685,22 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
         // --- Carl Agent Integration ---
         CarlAgent.initialize(dom);
         window.ceHotReload = hotReloadScript;
-        window.ceCreateAsset = async (name, content) => {
+        window.ceCreateAsset = async (path, content) => {
             const projectName = new URLSearchParams(window.location.search).get('project');
             const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-            const assetsHandle = await projectHandle.getDirectoryHandle('Assets', { create: true });
-            return await createAsset(name, content, assetsHandle);
+
+            const parts = path.split('/');
+            const fileName = parts.pop();
+            let currentHandle = projectHandle;
+
+            // Traverse and create directories if they don't exist
+            for (const part of parts) {
+                if (part) {
+                    currentHandle = await currentHandle.getDirectoryHandle(part, { create: true });
+                }
+            }
+
+            return await createAsset(fileName, content, currentHandle);
         };
 
         // --- For Playwright Testing ---

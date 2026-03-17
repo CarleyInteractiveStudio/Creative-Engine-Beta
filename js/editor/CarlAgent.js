@@ -129,17 +129,24 @@ export function switchView(view) {
  * Ejecuta el siguiente paso del plan según el modo actual.
  */
 export async function executeNextStep() {
-    if (currentStepIndex < 0 || currentStepIndex >= currentPlan.length) return;
+    if (currentStepIndex < 0 || currentStepIndex >= currentPlan.length) {
+        console.log("[CarlAgent] No hay más pasos que ejecutar o índice fuera de rango.", { currentStepIndex, planLength: currentPlan.length });
+        return;
+    }
 
     const step = currentPlan[currentStepIndex];
     step.status = 'executing';
     updateActivityUI();
 
+    console.log(`[CarlAgent] Ejecutando paso ${currentStepIndex + 1}/${currentPlan.length}: ${step.title}`);
     logActivity(`Iniciando paso: ${step.title}`, 'info');
 
     try {
         for (const cmd of step.commands) {
+            console.log(`[CarlAgent] -> Ejecutando comando: ${cmd.action}`, cmd.params);
             const result = await executeCommand(cmd.action, cmd.params);
+            console.log(`[CarlAgent] <- Resultado: ${result.success ? 'EXITO' : 'FALLO'}`, result.message);
+
             if (!result.success) {
                 throw new Error(`Comando ${cmd.action} falló: ${result.message}`);
             }
@@ -155,6 +162,7 @@ export async function executeNextStep() {
         }
     } catch (error) {
         step.status = 'failed';
+        console.error(`[CarlAgent] Error crítico en paso ${step.title}:`, error);
         logActivity(`Error en paso ${step.title}: ${error.message}`, 'error');
     }
 
@@ -183,11 +191,37 @@ function resolveMateria(idOrName) {
  * Resuelve un nombre de componente (soporta alias bilingües).
  */
 function resolveComponentClass(name) {
+    if (!name) return null;
+
+    // Normalización: Eliminar espacios y convertir a PascalCase o usar mapa
+    const aliasMap = {
+        'Script': 'CreativeScript',
+        'Creative Script': 'CreativeScript',
+        'Guion': 'CreativeScript',
+        'Rigidbody2D': 'Rigidbody2D',
+        'Rigidbody 2D': 'Rigidbody2D',
+        'Fisica': 'Rigidbody2D',
+        'BoxCollider2D': 'BoxCollider2D',
+        'Box Collider 2D': 'BoxCollider2D',
+        'ColisionadorDeCaja': 'BoxCollider2D',
+        'CircleCollider2D': 'CircleCollider2D',
+        'ColisionadorCircular': 'CircleCollider2D',
+        'SpriteRenderer': 'SpriteRenderer',
+        'RenderizadorDeSprite': 'SpriteRenderer',
+        'Imagen': 'UIImage',
+        'Texto': 'UIText',
+        'Boton': 'Button',
+        'Controlador': 'AnimatorController',
+        'Animador': 'Animator'
+    };
+
+    const resolvedName = aliasMap[name] || name;
+
     // 1. Intentar acceso directo en el objeto Components
-    if (Components[name]) return Components[name];
+    if (Components[resolvedName]) return Components[resolvedName];
 
     // 2. Buscar en el registro por nombre o alias
-    return getComponentFromRegistry(name);
+    return getComponentFromRegistry(resolvedName);
 }
 
 /**
@@ -316,13 +350,11 @@ async function executeCommand(action, params) {
             // This requires access to the file system handle, which is usually in editor.js
             // For now, we use a global shortcut if available
             if (window.ceCreateAsset) {
-                const parts = path.split('/');
-                const fileName = parts.pop();
-
-                const result = await window.ceCreateAsset(fileName, content);
+                const result = await window.ceCreateAsset(path, content);
                 if (result) {
                     updateAssetBrowser();
 
+                    const fileName = path.split('/').pop();
                     // Hot Reload if game is running and it's a script
                     if ((fileName.endsWith('.ces') || fileName.endsWith('.chc')) && window.ceHotReload) {
                         await window.ceHotReload(fileName);
@@ -343,9 +375,7 @@ async function executeCommand(action, params) {
 
                 const blob = await response.blob();
                 if (window.ceCreateAsset) {
-                    const parts = path.split('/');
-                    const fileName = parts.pop();
-                    await window.ceCreateAsset(fileName, blob);
+                    await window.ceCreateAsset(path, blob);
                     updateAssetBrowser();
                     return { success: true, message: `Archivo descargado y guardado en '${path}'.` };
                 }
