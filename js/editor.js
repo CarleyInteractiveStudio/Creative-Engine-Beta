@@ -3256,34 +3256,6 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
             const viewSelectorMenu = dom.carlIaPanel.querySelector('#carl-ia-view-selector-btn + .menu-content');
             const viewButton = dom.carlIaViewSelectorBtn;
 
-            const switchCarlView = (view) => {
-                const link = viewSelectorMenu.querySelector(`.carl-view-option[data-view="${view}"]`);
-                if (!link) return;
-
-                viewButton.textContent = link.textContent;
-
-                // Switch active state in menu
-                viewSelectorMenu.querySelectorAll('.carl-view-option').forEach(a => a.classList.remove('active'));
-                link.classList.add('active');
-
-                // Switch visible view
-                const views = dom.carlIaPanel.querySelectorAll('.carl-view');
-                views.forEach(v => v.classList.remove('active'));
-
-                const targetView = dom.carlIaPanel.querySelector(`#carl-ia-${view}-view`);
-                if (targetView) targetView.classList.add('active');
-
-                // Clear notification if switching to activity
-                if (view === 'activity') {
-                    link.classList.remove('has-notification');
-                }
-
-                viewSelectorMenu.classList.remove('visible');
-            };
-
-            // Expose for CarlAgent and chat buttons
-            CarlAgent.switchView = switchCarlView;
-
             if (viewSelectorMenu) {
                 // Use a more direct delegation on the menu content itself
                 viewSelectorMenu.addEventListener('click', (e) => {
@@ -3291,7 +3263,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                     if (link) {
                         e.preventDefault();
                         e.stopPropagation();
-                        switchCarlView(link.dataset.view);
+                        CarlAgent.switchView(link.dataset.view);
                     }
                 });
             }
@@ -3430,7 +3402,8 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                                     cleanText = cleanText.replace(planRegex, '').trim();
 
                                     // Add Action Button to message
-                                    const actionButtonHtml = `<div style="margin-top: 10px;"><button onclick="CarlAgent.switchView('activity')" class="approve-btn" style="width: auto; padding: 6px 15px;">Ver Actividad</button></div>`;
+                                    // Note: onclick still needs a global or accessible function
+                                    const actionButtonHtml = `<div style="margin-top: 10px;"><button onclick="window.CarlAgent.switchView('activity')" class="approve-btn" style="width: auto; padding: 6px 15px;">Ver Actividad</button></div>`;
                                     cleanText += actionButtonHtml;
 
                                     logToUIConsole("¡Carl ha propuesto un nuevo plan!", "log");

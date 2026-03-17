@@ -85,6 +85,41 @@ export function setExecutionMode(mode) {
 }
 
 /**
+ * Cambia la vista del panel de Carl entre Chat y Actividad.
+ * @param {string} view - 'chat' o 'activity'
+ */
+export function switchView(view) {
+    if (!editorDom) return;
+
+    const panel = editorDom.carlIaPanel;
+    const viewSelectorMenu = panel.querySelector('#carl-ia-view-selector-btn + .menu-content');
+    const viewButton = editorDom.carlIaViewSelectorBtn;
+
+    const link = viewSelectorMenu.querySelector(`.carl-view-option[data-view="${view}"]`);
+    if (!link) return;
+
+    viewButton.textContent = link.textContent;
+
+    // Switch active state in menu
+    viewSelectorMenu.querySelectorAll('.carl-view-option').forEach(a => a.classList.remove('active'));
+    link.classList.add('active');
+
+    // Switch visible view
+    const views = panel.querySelectorAll('.carl-view');
+    views.forEach(v => v.classList.remove('active'));
+
+    const targetView = panel.querySelector(`#carl-ia-${view}-view`);
+    if (targetView) targetView.classList.add('active');
+
+    // Clear notification if switching to activity
+    if (view === 'activity') {
+        link.classList.remove('has-notification');
+    }
+
+    viewSelectorMenu.classList.remove('visible');
+}
+
+/**
  * Ejecuta el siguiente paso del plan según el modo actual.
  */
 export async function executeNextStep() {
