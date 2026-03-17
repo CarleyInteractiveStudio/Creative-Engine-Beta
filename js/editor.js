@@ -3679,11 +3679,13 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
         window.AnimationEditorWindow = AnimationEditorWindow;
         window.TilePalette = TilePalette;
         window.SkeletonImporter = SkeletonImporter;
-        window.CarlAgent = CarlAgent;
+        // window.CarlAgent ya está expuesto por CarlAgent.js
         window.stopGame = stopGame;
 
         // --- Carl Agent Integration ---
-        CarlAgent.initialize(dom);
+        if (window.CarlAgent && window.CarlAgent.initialize) {
+            window.CarlAgent.initialize(dom);
+        }
         window.ceHotReload = hotReloadScript;
         window.ceCreateAsset = async (path, content) => {
             const projectName = new URLSearchParams(window.location.search).get('project');

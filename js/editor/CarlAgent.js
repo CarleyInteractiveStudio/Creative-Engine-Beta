@@ -95,14 +95,22 @@ export function setExecutionMode(mode) {
  * @param {string} view - 'chat' o 'activity'
  */
 export function switchView(view) {
-    if (!editorDom) return;
+    console.log(`[CarlAgent] Intentando cambiar a vista: ${view}`);
 
-    const panel = editorDom.carlIaPanel;
-    const viewSelectorMenu = panel.querySelector('#carl-ia-view-selector-btn + .menu-content');
-    const viewButton = editorDom.carlIaViewSelectorBtn;
+    const panel = document.getElementById('carl-ia-panel');
+    const viewButton = document.getElementById('carl-ia-view-selector-btn');
+    const viewSelectorMenu = panel ? panel.querySelector('.menu-content') : null;
+
+    if (!panel || !viewButton || !viewSelectorMenu) {
+        console.error("[CarlAgent] No se pudieron encontrar los elementos de la UI para cambiar de vista.");
+        return;
+    }
 
     const link = viewSelectorMenu.querySelector(`.carl-view-option[data-view="${view}"]`);
-    if (!link) return;
+    if (!link) {
+        console.warn(`[CarlAgent] Opción de vista no encontrada: ${view}`);
+        return;
+    }
 
     viewButton.textContent = link.textContent;
 
@@ -115,11 +123,18 @@ export function switchView(view) {
     views.forEach(v => v.classList.remove('active'));
 
     const targetView = panel.querySelector(`#carl-ia-${view}-view`);
-    if (targetView) targetView.classList.add('active');
+    if (targetView) {
+        targetView.classList.add('active');
+        console.log(`[CarlAgent] Vista cambiada exitosamente a: ${view}`);
+    } else {
+        console.error(`[CarlAgent] No se encontró el contenedor de vista: #carl-ia-${view}-view`);
+    }
 
     // Clear notification if switching to activity
     if (view === 'activity') {
         link.classList.remove('has-notification');
+        const activityOption = viewSelectorMenu.querySelector('.carl-view-option[data-view="activity"]');
+        if (activityOption) activityOption.classList.remove('has-notification');
     }
 
     viewSelectorMenu.classList.remove('visible');
@@ -446,14 +461,22 @@ function logActivity(message, type = 'info') {
 }
 
 /**
- * Función global para que la UI apruebe un paso.
+ * API unificada para Carl Agent, expuesta globalmente.
  */
-window.carlAgent = {
-    approveStep: () => {
-        executeNextStep();
-    },
+export const AgentAPI = {
+    initialize,
+    setPlan,
     setExecutionMode: (mode) => {
         executionMode = mode;
         console.log(`Carl Agent Execution Mode: ${mode}`);
+        updateActivityUI();
+    },
+    switchView,
+    approveStep: () => {
+        executeNextStep();
     }
 };
+
+// Garantizar acceso global mediante ambos nombres comunes
+window.CarlAgent = AgentAPI;
+window.carlAgent = AgentAPI;
