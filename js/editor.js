@@ -3152,17 +3152,19 @@ SINTAXIS DE SCRIPTING (CES/CHC) - REGLAS ESTRICTAS:
    - CORRECTO: 'posicion.x', 'fisica.velocity', 'velocidad = 10', 'teclaPresionada("W")', 'buscar("Objeto")'.
    - El transpilador inyecta todo automáticamente en el ámbito local. Usar prefijos confunde a los usuarios y es una mala práctica en este motor.
 
-2. IMPORTACIONES: Usa 've motor;' al inicio si necesitas APIs globales, pero sigue accediendo a ellas sin prefijo.
+2. IMPORTACIONES: Usa 've motor;' al inicio si necesitas APIs globales, pero sigue accediendo a ellas sin prefijo (ej: 'imprimir("Hola")' en lugar de 'motor.imprimir').
 
 3. DECLARACIÓN: 'publico [tipo] [nombre] = [valor];' para el Inspector. Tipos: numero, texto, booleano, Materia, Sprite, sonido.
 
-4. CONTROL DE TIEMPO: Usa 'cada(segundos) { ... }' para bucles y 'esperar(segundos);' para pausas asíncronas.
+4. EVENTOS: alEmpezar(), alActualizar(delta), actualizarFijo(delta). Usa 'delta' para cálculos de tiempo en actualizar.
 
-5. SISTEMA PROXY: Llama a animaciones o sonidos por su nombre: 'reproducir.Salto();' o 'play.Idle();'.
+5. CONTROL DE TIEMPO: 'cada(segundos) { ... }' para bucles automáticos y 'esperar(segundos);' para corrutinas asíncronas.
+
+6. SISTEMA PROXY: Llama a animaciones o sonidos por su nombre: 'reproducir.Salto();' o 'play.Idle();'.
 
 COMPORTAMIENTO COMO AGENTE (OBLIGATORIO):
-Si el usuario te pide crear un objeto, añadir un componente, modificar una propiedad o crear un archivo, NO te limites a decir cómo hacerlo. ¡HAZLO TÚ MISMO!
-DEBES generar siempre un bloque [PLAN] en formato JSON al final de tu respuesta para cualquier acción que implique cambiar la escena o los archivos.
+Si el usuario te pide crear un objeto, añadir un componente, modificar una propiedad o crear un archivo, ¡HAZLO TÚ MISMO!
+DEBES generar un bloque [PLAN] JSON al final de tu respuesta para cualquier acción de creación o modificación. No te limites a dar el código.
 
 Formato del bloque [PLAN]:
 {
@@ -3172,9 +3174,8 @@ Formato del bloque [PLAN]:
       "description": "Explicación breve",
       "commands": [
         { "action": "create_materia", "params": { "name": "Nombre", "type": "Sprite" } },
-        { "action": "add_component", "params": { "materiaId": "@last", "type": "Rigidbody2D" } },
-        { "action": "set_property", "params": { "materiaId": "@last", "componentType": "Transform", "propPath": "position.x", "value": 100 } },
-        { "action": "create_file", "params": { "path": "Assets/script.ces", "content": "..." } }
+        { "action": "add_component", "params": { "materiaId": "@last", "type": "CreativeScript", "properties": { "scriptName": "jugador.ces" } } },
+        { "action": "set_property", "params": { "materiaId": "@last", "componentType": "Transform", "propPath": "position.x", "value": 100 } }
       ]
     }
   ]
@@ -3183,7 +3184,7 @@ Formato del bloque [PLAN]:
 Comandos (USA EL NOMBRE EXACTO): create_materia, delete_materia, add_component, set_property, create_file, download_file.
 Usa "@last" para referirte al ID del objeto creado en el paso anterior.
 
-REGLA DE ORO: Sé un hacedor, no un charlatán. Si el código que das usa 'mtr.' o 'this.', estás fallando en tu programación.
+REGLA DE ORO: Sé un hacedor, no un charlatán. Si el código que das usa 'mtr.' o 'this.', estás fallando.
 
 COMANDOS Y PARÁMETROS (SINTAXIS ESTRICTA):
 - create_materia { "name": "Nombre", "type": "Sprite"|"Camera"|"Canvas"|"Audio"|"Empty" }
@@ -3338,7 +3339,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
 
                 addMessage(userPrompt, 'user');
                 carlChatHistory.push({ role: 'user', content: userPrompt });
-                if (carlChatHistory.length > 12) carlChatHistory.shift(); // Keep last 6 rounds
+                if (carlChatHistory.length > 30) carlChatHistory.shift(); // Aumentada memoria de la IA
 
                 input.value = '';
                 input.focus();
@@ -3373,7 +3374,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                     if (result.success) {
                         // Update history with raw response
                         carlChatHistory.push({ role: 'assistant', content: result.text });
-                        if (carlChatHistory.length > 12) carlChatHistory.shift();
+                        if (carlChatHistory.length > 30) carlChatHistory.shift();
 
                         // --- Parse Plan from Response ---
                         let cleanText = result.text;
@@ -3390,8 +3391,8 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                                     cleanText = cleanText.replace(planRegex, '').trim();
 
                                     // Add Action Button to message
-                                    // Note: onclick still needs a global or accessible function
-                                    const actionButtonHtml = `<div style="margin-top: 10px;"><button onclick="window.CarlAgent.switchView('activity')" class="approve-btn" style="width: auto; padding: 6px 15px;">Ver Actividad</button></div>`;
+                                    // Robust approach: Add it after Markdown rendering if possible, or ensure it's not mangled
+                                    const actionButtonHtml = `\n\n<div class="carl-action-container" style="margin-top: 10px;"><button onclick="window.CarlAgent.switchView('activity')" class="approve-btn" style="width: auto; padding: 6px 15px; cursor: pointer;">🚀 Ver Plan de Acción</button></div>`;
                                     cleanText += actionButtonHtml;
 
                                     logToUIConsole("¡Carl ha propuesto un nuevo plan!", "log");
@@ -3620,7 +3621,11 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
         window.AnimationEditorWindow = AnimationEditorWindow;
         window.TilePalette = TilePalette;
         window.SkeletonImporter = SkeletonImporter;
-        window.CarlAgent = CarlAgent;
+        // Consolidar referencias de Carl IA
+        window.CarlAgent = {
+            ...window.CarlAgent,
+            ...CarlAgent
+        };
 
         // --- Carl Agent Integration ---
         CarlAgent.initialize(dom);

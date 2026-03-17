@@ -30,6 +30,7 @@ export function initialize(dom) {
     // Registrar los manejadores globales para que la terminal y otros módulos los usen
     window.carlCommandHandlers = {
         crearObjeto: async (params) => executeCommand('create_materia', params),
+        crearMateria: async (params) => executeCommand('create_materia', params),
         borrarObjeto: async (params) => executeCommand('delete_materia', params),
         agregarComponente: async (params) => executeCommand('add_component', params),
         modificarPropiedad: async (params) => executeCommand('set_property', params),
@@ -89,19 +90,19 @@ export function setExecutionMode(mode) {
  * @param {string} view - 'chat' o 'activity'
  */
 export function switchView(view) {
-    if (!editorDom) return;
+    const panel = document.getElementById('carl-ia-panel');
+    if (!panel) return;
 
-    const panel = editorDom.carlIaPanel;
-    const viewSelectorMenu = panel.querySelector('#carl-ia-view-selector-btn + .menu-content');
-    const viewButton = editorDom.carlIaViewSelectorBtn;
+    const viewSelectorMenu = panel.querySelector('.menu-content');
+    const viewButton = document.getElementById('carl-ia-view-selector-btn');
 
-    const link = viewSelectorMenu.querySelector(`.carl-view-option[data-view="${view}"]`);
+    const link = panel.querySelector(`.carl-view-option[data-view="${view}"]`);
     if (!link) return;
 
-    viewButton.textContent = link.textContent;
+    if (viewButton) viewButton.textContent = link.textContent;
 
     // Switch active state in menu
-    viewSelectorMenu.querySelectorAll('.carl-view-option').forEach(a => a.classList.remove('active'));
+    panel.querySelectorAll('.carl-view-option').forEach(a => a.classList.remove('active'));
     link.classList.add('active');
 
     // Switch visible view
@@ -116,7 +117,7 @@ export function switchView(view) {
         link.classList.remove('has-notification');
     }
 
-    viewSelectorMenu.classList.remove('visible');
+    if (viewSelectorMenu) viewSelectorMenu.classList.remove('visible');
 }
 
 /**
@@ -188,13 +189,21 @@ function resolveComponentClass(name) {
  * Ejecuta un comando individual.
  */
 async function executeCommand(action, params) {
-    console.log(`[CarlAgent] Ejecutando comando: ${action}`, params);
+    // Normalizar nombre de acción (la IA a veces olvida los guiones bajos)
+    let normalizedAction = action.toLowerCase().replace(/[^a-z_]/g, '');
+    if (normalizedAction === 'createmateria') normalizedAction = 'create_materia';
+    if (normalizedAction === 'createfile') normalizedAction = 'create_file';
+    if (normalizedAction === 'addcomponent') normalizedAction = 'add_component';
+    if (normalizedAction === 'setproperty') normalizedAction = 'set_property';
+    if (normalizedAction === 'deletemateria') normalizedAction = 'delete_materia';
+
+    console.log(`[CarlAgent] Ejecutando comando: ${normalizedAction} (Original: ${action})`, params);
 
     // Pre-procesar parámetros para resolver @last si es necesario (aunque resolveMateria ya lo hace)
     if (params.materiaId === '@last') params.materiaId = lastCreatedMateriaId;
     if (params.parentId === '@last') params.parentId = lastCreatedMateriaId;
 
-    switch (action) {
+    switch (normalizedAction) {
         case 'create_materia': {
             const { name, parentId, type } = params;
             const parent = parentId ? resolveMateria(parentId) : null;
@@ -220,6 +229,7 @@ async function executeCommand(action, params) {
             updateHierarchy();
             if (window.selectMateria) window.selectMateria(newMtr.id);
             lastCreatedMateriaId = newMtr.id;
+            SceneManager.setSceneDirty(true);
             return { success: true, message: `Objeto '${newMtr.name}' creado con ID ${newMtr.id}` };
         }
 
@@ -231,6 +241,7 @@ async function executeCommand(action, params) {
             SceneManager.currentScene.removeMateria(id);
             updateHierarchy();
             updateInspector();
+            SceneManager.setSceneDirty(true);
             return { success: true, message: `Objeto ${id} (${materia.name}) eliminado.` };
         }
 
@@ -267,6 +278,7 @@ async function executeCommand(action, params) {
             }
 
             updateInspector();
+            SceneManager.setSceneDirty(true);
             return { success: true, message: `Componente '${type}' añadido a '${materia.name}'.` };
         }
 
@@ -309,6 +321,7 @@ async function executeCommand(action, params) {
                 target[lastProp] = finalValue;
 
                 updateInspector();
+                SceneManager.setSceneDirty(true);
                 return { success: true, message: `Propiedad '${propPath}' de '${componentType}' actualizada a ${JSON.stringify(finalValue)}.` };
             } catch (e) {
                 return { success: false, message: `Error al asignar propiedad: ${e.message}` };
@@ -419,13 +432,15 @@ function logActivity(message, type = 'info') {
     // Podríamos añadir una lista de logs históricos debajo del plan
 }
 
+export function approveStep() {
+    executeNextStep();
+}
+
 /**
  * Función global para que la UI apruebe un paso.
  */
 window.CarlAgent = {
-    approveStep: () => {
-        executeNextStep();
-    },
+    approveStep,
     setExecutionMode: (mode) => {
         executionMode = mode;
         console.log(`Carl Agent Execution Mode: ${mode}`);
