@@ -3196,14 +3196,31 @@ Formato del bloque [PLAN]:
 }
 
 Comandos Disponibles:
-- create_materia { name, parentId, type: 'Sprite'|'Camera'|'Empty' }
-- delete_materia { id }
-- add_component { materiaId, type, properties: {} }
-- set_property { materiaId, componentType, propPath, value }
-- create_file { path: 'Assets/script.ces', content: '...' }
-- download_file { url, path: 'Assets/image.png' }
+- create_materia { name, parentId, type: 'Sprite'|'Camera'|'Canvas'|'Audio'|'Empty' }
+- delete_materia { id } // id puede ser el ID numérico o el nombre exacto
+- add_component { materiaId, type, properties: {} } // type puede ser el nombre en inglés o español
+- set_property { materiaId, componentType, propPath, value } // propPath puede ser anidado, ej: 'position.x' o 'color'
+- create_file { path: 'Assets/nombre.ces', content: '...' }
+- download_file { url, path: 'Assets/nombre.png' }
 
-NOTA: Usa "@last" en materiaId para referirte al último objeto creado en el mismo plan.`;
+REGLAS DE PROPIEDADES COMUNES:
+- Transform: 'position.x', 'position.y', 'rotation', 'scale.x', 'scale.y'
+- Rigidbody2D: 'gravityScale', 'mass', 'fixedRotation' (booleano)
+- SpriteRenderer: 'color' (hex), 'opacity' (0-1)
+- CameraFollow: 'target' (nombre o id), 'smoothSpeed', 'offset.x', 'offset.y'
+
+NOTIFICACIÓN AL USUARIO:
+Cuando crees un plan, informa al usuario que debe ir a la pestaña "Actividad" dentro de tu panel para revisarlo y ejecutarlo. Especialmente si estás en modo 'Con Permiso'.
+
+MODOS DE EJECUCIÓN (Para tu información):
+1. Con Permiso: El usuario aprueba cada paso manualmente.
+2. Visual: Ejecutas paso a paso con una pequeña pausa para que el usuario vea el progreso.
+3. Automático: Ejecutas todo el plan de corrido.
+
+EFICIENCIA Y OPTIMIZACIÓN:
+Intenta agrupar comandos en el menor número de pasos posible para ahorrar tiempo y recursos. Solo usa la IA para decidir la lógica; la ejecución pesada la hace el motor.
+
+NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto creado en el mismo plan.`;
 
             const updateCarlIaBrainMenu = () => {
                 const prefs = getPreferences();
@@ -3418,6 +3435,13 @@ NOTA: Usa "@last" en materiaId para referirte al último objeto creado en el mis
                                     // Remove JSON from displayed text
                                     cleanText = cleanText.replace(planRegex, '').trim();
                                     logToUIConsole("¡Carl ha propuesto un nuevo plan!", "log");
+
+                                // Notify user via Activity tab highlight
+                                const activityBtn = dom.carlIaPanel.querySelector('.carl-view-option[data-view="activity"]');
+                                if (activityBtn) {
+                                    activityBtn.classList.add('has-notification');
+                                    setTimeout(() => activityBtn.classList.remove('has-notification'), 5000);
+                                }
                                 }
                             } catch (e) {
                                 console.error("Error al parsear el plan de Carl:", e);

@@ -8,6 +8,7 @@
 
 import * as SceneManager from '../engine/SceneManager.js';
 import * as Components from '../engine/Components.js';
+import { getComponent as getComponentFromRegistry } from '../engine/ComponentRegistry.js';
 import * as MateriaFactory from './MateriaFactory.js';
 import { updateHierarchy } from './ui/HierarchyWindow.js';
 import { updateInspector } from './ui/InspectorWindow.js';
@@ -119,34 +120,65 @@ export async function executeNextStep() {
 }
 
 /**
+ * Resuelve una referencia a una materia (ID o Nombre).
+ */
+function resolveMateria(idOrName) {
+    if (idOrName === '@last') return SceneManager.currentScene.findMateriaById(lastCreatedMateriaId);
+
+    // Si ya es un objeto Materia
+    if (typeof idOrName === 'object' && idOrName !== null && idOrName.id !== undefined) return idOrName;
+
+    const id = parseInt(idOrName);
+    if (!isNaN(id) && idOrName.toString() === id.toString()) {
+        return SceneManager.currentScene.findMateriaById(id);
+    }
+
+    // Búsqueda por nombre
+    return SceneManager.currentScene.getAllMaterias().find(m => m.name === idOrName);
+}
+
+/**
+ * Resuelve un nombre de componente (soporta alias bilingües).
+ */
+function resolveComponentClass(name) {
+    // 1. Intentar acceso directo en el objeto Components
+    if (Components[name]) return Components[name];
+
+    // 2. Buscar en el registro por nombre o alias
+    return getComponentFromRegistry(name);
+}
+
+/**
  * Ejecuta un comando individual.
  */
 async function executeCommand(action, params) {
     console.log(`[CarlAgent] Ejecutando comando: ${action}`, params);
 
-    // Resolve @last shortcut
-    for (const key in params) {
-        if (params[key] === '@last') {
-            params[key] = lastCreatedMateriaId;
-        }
-    }
+    // Pre-procesar parámetros para resolver @last si es necesario (aunque resolveMateria ya lo hace)
+    if (params.materiaId === '@last') params.materiaId = lastCreatedMateriaId;
+    if (params.parentId === '@last') params.parentId = lastCreatedMateriaId;
 
     switch (action) {
         case 'create_materia': {
             const { name, parentId, type } = params;
-            const parent = parentId ? SceneManager.currentScene.findMateriaById(parseInt(parentId)) : null;
+            const parent = parentId ? resolveMateria(parentId) : null;
             let newMtr;
 
-            if (type === 'Sprite') newMtr = MateriaFactory.createBaseMateria(name || "Nuevo Sprite", parent);
-            else if (type === 'Canvas') newMtr = MateriaFactory.createCanvasObject();
-            else if (type === 'Camera') {
+            // Usar MateriaFactory para objetos comunes
+            if (type === 'Sprite' || type === 'renderizadorDeSprite') {
+                newMtr = MateriaFactory.createBaseMateria(name || "Nuevo Sprite", parent);
+                newMtr.addComponent(new Components.SpriteRenderer(newMtr));
+            } else if (type === 'Canvas' || type === 'lienzo') {
+                newMtr = MateriaFactory.createCanvasObject();
+                if (name) newMtr.name = name;
+            } else if (type === 'Camera' || type === 'camara') {
                  newMtr = MateriaFactory.createBaseMateria(name || "Nueva Cámara", parent);
                  newMtr.addComponent(new Components.Camera(newMtr));
-            }
-            else newMtr = MateriaFactory.createBaseMateria(name || "Nuevo Objeto", parent);
-
-            if (type === 'Sprite' && !newMtr.getComponent(Components.SpriteRenderer)) {
-                newMtr.addComponent(new Components.SpriteRenderer(newMtr));
+            } else if (type === 'Audio' || type === 'sonido') {
+                newMtr = MateriaFactory.createAudioObject(parent);
+                if (name) newMtr.name = name;
+            } else {
+                newMtr = MateriaFactory.createBaseMateria(name || "Nuevo Objeto", parent);
             }
 
             updateHierarchy();
@@ -156,48 +188,85 @@ async function executeCommand(action, params) {
         }
 
         case 'delete_materia': {
-            const id = parseInt(params.id);
+            const materia = resolveMateria(params.id);
+            if (!materia) return { success: false, message: `Objeto '${params.id}' no encontrado.` };
+
+            const id = materia.id;
             SceneManager.currentScene.removeMateria(id);
             updateHierarchy();
             updateInspector();
-            return { success: true, message: `Objeto ${id} eliminado.` };
+            return { success: true, message: `Objeto ${id} (${materia.name}) eliminado.` };
         }
 
         case 'add_component': {
             const { materiaId, type, properties } = params;
-            const materia = SceneManager.currentScene.findMateriaById(parseInt(materiaId));
-            if (!materia) return { success: false, message: "Objeto no encontrado." };
+            const materia = resolveMateria(materiaId);
+            if (!materia) return { success: false, message: `Objeto '${materiaId}' no encontrado.` };
 
-            const ComponentClass = Components[type];
+            const ComponentClass = resolveComponentClass(type);
             if (!ComponentClass) return { success: false, message: `Componente '${type}' no reconocido.` };
 
-            const comp = new ComponentClass(materia);
-            if (properties) {
-                Object.assign(comp, properties);
+            // Evitar duplicados si es un componente único
+            if (materia.getComponent(ComponentClass)) {
+                return { success: true, message: `El objeto ya tiene un componente '${type}'.` };
             }
+
+            const comp = new ComponentClass(materia);
             materia.addComponent(comp);
+
+            if (properties) {
+                for (const prop in properties) {
+                    comp[prop] = properties[prop];
+                }
+            }
+
             updateInspector();
             return { success: true, message: `Componente '${type}' añadido a '${materia.name}'.` };
         }
 
         case 'set_property': {
             const { materiaId, componentType, propPath, value } = params;
-            const materia = SceneManager.currentScene.findMateriaById(parseInt(materiaId));
-            if (!materia) return { success: false, message: "Objeto no encontrado." };
+            const materia = resolveMateria(materiaId);
+            if (!materia) return { success: false, message: `Objeto '${materiaId}' no encontrado.` };
 
-            const comp = materia.getComponent(Components[componentType]);
+            const ComponentClass = resolveComponentClass(componentType);
+            const comp = ComponentClass ? materia.getComponent(ComponentClass) : materia.getComponentByName(componentType);
+
             if (!comp) return { success: false, message: `Componente '${componentType}' no encontrado en '${materia.name}'.` };
 
             // Handle nested paths like "position.x"
             const paths = propPath.split('.');
             let target = comp;
-            for (let i = 0; i < paths.length - 1; i++) {
-                target = target[paths[i]];
-            }
-            target[paths[paths.length - 1]] = value;
 
-            updateInspector();
-            return { success: true, message: `Propiedad '${propPath}' actualizada.` };
+            try {
+                for (let i = 0; i < paths.length - 1; i++) {
+                    const next = target[paths[i]];
+                    if (next === undefined || next === null) {
+                        // Intentar crear el objeto intermedio si es común
+                        if (paths[i] === 'scale' || paths[i] === 'position' || paths[i] === 'offset') {
+                            target[paths[i]] = { x: 0, y: 0 };
+                        } else {
+                            throw new Error(`Ruta inválida: ${paths[i]}`);
+                        }
+                    }
+                    target = target[paths[i]];
+                }
+
+                const lastProp = paths[paths.length - 1];
+
+                // Manejo especial de valores numéricos si vienen como string
+                let finalValue = value;
+                if (typeof value === 'string' && !isNaN(parseFloat(value))) {
+                    finalValue = parseFloat(value);
+                }
+
+                target[lastProp] = finalValue;
+
+                updateInspector();
+                return { success: true, message: `Propiedad '${propPath}' de '${componentType}' actualizada a ${JSON.stringify(finalValue)}.` };
+            } catch (e) {
+                return { success: false, message: `Error al asignar propiedad: ${e.message}` };
+            }
         }
 
         case 'create_file': {
