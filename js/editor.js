@@ -3183,7 +3183,7 @@ Formato del bloque [PLAN]:
 Comandos: create_materia, delete_materia, add_component, set_property, create_file, download_file.
 Usa "@last" para referirte al ID del objeto creado en el paso anterior.
 
-REGLA DE ORO: Sé un hacedor, no un charlatán. Si el código que das usa 'mtr.' o 'this.', estás fallando en tu programación.`;
+REGLA DE ORO: Sé un hacedor, no un charlatán. Si el código que das usa 'mtr.' o 'this.', estás fallando en tu programación.
 
 Comandos Disponibles:
 - create_materia { name, parentId, type: 'Sprite'|'Camera'|'Canvas'|'Audio'|'Empty' }
