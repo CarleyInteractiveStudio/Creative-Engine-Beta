@@ -3134,6 +3134,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let selectedProvider = null;
             let knownWorkingModel = {}; // Cache for working models, e.g., { gemini: 'models/gemini-1.5-flash' }
+            let carlChatHistory = []; // Memory for the session
 
             const CARL_SYSTEM_PROMPT_TEMPLATE = `Eres Carl, el asistente inteligente de Creative Engine. Tu personalidad es alegre, servicial y apasionada por ayudar en la creación de videojuegos. Siempre te presentas como Carl. Tu misión es asistir al usuario en sus tareas, proponiendo soluciones y explicando paso a paso cómo lograr sus visiones en el motor.
 
@@ -3151,37 +3152,36 @@ CONOCIMIENTO DE LA INTERFAZ (UI):
 - Vistas de Panel Central: Escena, Juego (para probar el juego), Código (editor integrado para .ces y .chc), Terminal.
 
 CONOCIMIENTO DE COMPONENTES (LEYES):
-- Básicos: Transform (Posición, Rotación, Escala), Cámara, AudioSource (Sonido), VideoPlayer, CreativeScript.
-- Renderizado: SpriteRenderer (Sprites y Spritesheets), TextureRender (Formas geométricas con textura), ParticleSystem (Partículas), Water (Agua).
-- Físicas 2D: Rigidbody2D, BoxCollider2D, CapsuleCollider2D, CircleCollider2D, TilemapCollider2D, LineCollider2D.
-- Vehículos y Controladores: SuspensionHC (suspensión física), VehicleTopDown (con derrape), PlaneController (física de aviones), HelicopterController.
-- Mapas: Tilemap (para niveles por azulejos), Terreno2D (generación de suelos por nodos).
-- Iluminación: PointLight2D (Luz de punto), SpotLight2D (Luz focal), FreeformLight2D, SpriteLight2D.
-- Interfaz (UI): Canvas (Lienzo), UIImage, UIText, Button, UIEventTrigger.
-- Animación: Animator (para clips individuales), AnimatorController (máquina de estados compleja).
-- Utilidades: CameraFollow (seguimiento), Parallax (fondos infinitos), DrawingOrder, Layout Groups (Vertical, Horizontal, Rejilla).
+- Básicos: Transform (posicion), Cámara (camara), AudioSource (fuenteDeAudio), VideoPlayer, CreativeScript.
+- Renderizado: SpriteRenderer (renderizadorDeSprite), TextureRender, ParticleSystem, Water (agua).
+- Físicas 2D: Rigidbody2D (fisica), BoxCollider2D, CapsuleCollider2D, CircleCollider2D, TilemapCollider2D, LineCollider2D.
+- Vehículos y Controladores: SuspensionHC, VehicleTopDown, PlaneController, HelicopterController.
+- Mapas: Tilemap (rejilla), Terreno2D.
+- Iluminación: PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D.
+- Interfaz (UI): Canvas (lienzo), UIImage (imagen), UIText (texto), Button (boton), UIEventTrigger.
+- Animación: Animator (animador), AnimatorController (controlador).
+- Utilidades: CameraFollow, Parallax, DrawingOrder, Layout Groups.
 
 SINTAXIS DE SCRIPTING (CES/CHC) - ¡ACTUALIZADO!:
-0. IMPORTACIONES: 've motor;' o 've motor.ui;' (OBLIGATORIO para usar APIs).
-1. PALABRAS CLAVE: si (if), sino (else), mientras (while), para (for), retornar (return), funcion, variable (let), constante (const), verdadero (true), falso (false), nuevo (new).
-2. DECLARACIÓN: 'publico [tipo] [nombre] = [valor];' (se ve en Inspector) o 'privado [tipo] [nombre];'.
-3. TIPOS: number (numero), text (texto), boolean (booleano), Materia (mtr), Sprite, Audio (sonido), Prefab, Scene (escena), Vector2, Color.
-4. ACCESO DIRECTO (Sin 'this.'): nombre, tag, posicion (Transform), fisica (Rigidbody2D), animador, renderizadorDeSprite, fuenteDeAudio, camara, rejilla, lienzo (Canvas).
-5. EVENTOS (Hooks): alEmpezar(), alActualizar(delta), actualizarFijo(delta) [físicas], alEntrarEnColision(otro), alHacerClick().
-6. CONTROL DE TIEMPO:
-   - 'cada(segundos) { ... }' (Bucle temporal infinito).
-   - 'esperar(segundos);' (Pausa asíncrona).
-7. FUNCIONES MOTOR: buscar(nombre), destruir(mtr), crear miPrefab (instanciar), lanzarRayo(origen, dir, dist, tag), estaTocandoTag(tag).
+0. IMPORTACIONES: 've motor;' (OBLIGATORIO).
+1. PALABRAS CLAVE: si, sino, mientras, para, retornar, funcion, variable, constante, verdadero, falso, nuevo.
+2. DECLARACIÓN: 'publico [tipo] [nombre] = [valor];' (¡OBLIGATORIO para el Inspector!). Tipos: numero, texto, booleano, Materia, Sprite, sonido.
+3. ACCESO DIRECTO: nombre, tag, posicion, fisica, animador, renderizadorDeSprite, fuenteDeAudio, camara, rejilla, lienzo.
+4. INPUT API (Sin prefijos): teclaPresionada("espacio"), teclaRecienPresionada("W"), botonMousePresionado(0), obtenerPosicionMouse(). NO USES 'entrada.' NI 'motor.'.
+5. EVENTOS: alEmpezar(), alActualizar(delta), actualizarFijo(delta), alEntrarEnColision(otro), alHacerClick().
+6. CONTROL DE TIEMPO: 'cada(segundos) { ... }', 'esperar(segundos);'.
+7. FUNCIONES MOTOR: buscar(nombre), destruir(mtr), crear miPrefab, lanzarRayo(origen, dir, dist, tag), estaTocandoTag(tag).
 8. SISTEMA PROXY (Potente): Llama a animaciones o sonidos por su nombre directamente: 'reproducir.Correr();' o 'play.Explosion();'.
 
-REGLA DE ORO: Devuelve siempre código .ces limpio. Sé motivador y recuerda que eres un agente activo, no solo un chat.
+REGLA DE ORO: Devuelve siempre código .ces limpio. Sé motivador y recuerda que eres un agente activo, NO solo un chat. Si el usuario te pide crear algo, ¡hazlo directamente mediante un plan! No solo le des el código.
 
 HABILIDADES AUTÓNOMAS (¡NUEVO!):
-Ahora tienes la capacidad de ejecutar acciones reales. Cuando el usuario te pida crear algo complejo (ej: "un juego de plataforma"), debes:
-1. Crear un PLAN de pasos detallados.
+Ahora tienes la capacidad de ejecutar acciones reales en el editor. Cuando el usuario te pida construir, crear, modificar o descargar algo, DEBES:
+1. Crear un PLAN de pasos detallados con comandos ejecutables.
 2. Cada paso puede contener uno o más comandos ejecutables.
 
-Para enviar comandos, inclúyelos al final de tu respuesta en un bloque de código JSON marcado con la etiqueta [PLAN].
+Para enviar comandos, inclúyelos al final de tu respuesta en un bloque de código JSON marcado con la etiqueta [PLAN]. Siempre menciona al usuario que debe ir a la pestaña "Actividad" para ejecutar las acciones (o ver el progreso).
+
 Formato del bloque [PLAN]:
 {
   "plan": [
@@ -3256,32 +3256,42 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
             const viewSelectorMenu = dom.carlIaPanel.querySelector('#carl-ia-view-selector-btn + .menu-content');
             const viewButton = dom.carlIaViewSelectorBtn;
 
+            const switchCarlView = (view) => {
+                const link = viewSelectorMenu.querySelector(`.carl-view-option[data-view="${view}"]`);
+                if (!link) return;
+
+                viewButton.textContent = link.textContent;
+
+                // Switch active state in menu
+                viewSelectorMenu.querySelectorAll('.carl-view-option').forEach(a => a.classList.remove('active'));
+                link.classList.add('active');
+
+                // Switch visible view
+                const views = dom.carlIaPanel.querySelectorAll('.carl-view');
+                views.forEach(v => v.classList.remove('active'));
+
+                const targetView = dom.carlIaPanel.querySelector(`#carl-ia-${view}-view`);
+                if (targetView) targetView.classList.add('active');
+
+                // Clear notification if switching to activity
+                if (view === 'activity') {
+                    link.classList.remove('has-notification');
+                }
+
+                viewSelectorMenu.classList.remove('visible');
+            };
+
+            // Expose for CarlAgent and chat buttons
+            CarlAgent.switchView = switchCarlView;
+
             if (viewSelectorMenu) {
-                viewSelectorMenu.parentElement.addEventListener('click', (e) => {
-                    if (e.target.matches('a')) {
+                // Use a more direct delegation on the menu content itself
+                viewSelectorMenu.addEventListener('click', (e) => {
+                    const link = e.target.closest('a');
+                    if (link) {
                         e.preventDefault();
-                        const view = e.target.dataset.view;
-                        const viewName = e.target.textContent;
-
-                        viewButton.textContent = viewName;
-
-                        // Switch active state in menu
-                        viewSelectorMenu.querySelectorAll('.carl-view-option').forEach(a => a.classList.remove('active'));
-                        e.target.classList.add('active');
-
-                        // Switch visible view
-                        const views = dom.carlIaPanel.querySelectorAll('.carl-view');
-                        views.forEach(v => v.classList.remove('active'));
-
-                        const targetView = dom.carlIaPanel.querySelector(`#carl-ia-${view}-view`);
-                        if (targetView) targetView.classList.add('active');
-
-                        // Clear notification if switching to activity
-                        if (view === 'activity') {
-                            e.target.classList.remove('has-notification');
-                        }
-
-                        viewSelectorMenu.classList.remove('visible');
+                        e.stopPropagation();
+                        switchCarlView(link.dataset.view);
                     }
                 });
             }
@@ -3367,6 +3377,9 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                 }
 
                 addMessage(userPrompt, 'user');
+                carlChatHistory.push({ role: 'user', content: userPrompt });
+                if (carlChatHistory.length > 12) carlChatHistory.shift(); // Keep last 6 rounds
+
                 input.value = '';
                 input.focus();
 
@@ -3394,25 +3407,30 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                     const currentLang = Localization.currentLanguage || 'ES';
                     const systemPrompt = CARL_SYSTEM_PROMPT_TEMPLATE.replace('{idioma}', currentLang);
 
-                    const result = await AIHandler.callGenerativeAI(provider, model, apiKey, prompt, systemPrompt);
+                    const result = await AIHandler.callGenerativeAI(provider, model, apiKey, prompt, systemPrompt, carlChatHistory);
                     if (thinkingMessage) thinkingMessage.remove();
 
                     if (result.success) {
+                        // Update history with raw response
+                        carlChatHistory.push({ role: 'assistant', content: result.text });
+                        if (carlChatHistory.length > 12) carlChatHistory.shift();
+
                         // --- Parse Plan from Response ---
                         let cleanText = result.text;
-                        const planRegex = /\[PLAN\]\s*(\{[\s\S]*?\})/i;
+                        // Robust regex to handle potential markdown code blocks around JSON
+                        const planRegex = /\[PLAN\]\s*(?:```json)?\s*(\{[\s\S]*?\})\s*(?:```)?/i;
                         const match = cleanText.match(planRegex);
 
                         if (match) {
                             try {
-                                const planData = JSON.parse(match[1]);
+                                const planData = JSON.parse(match[1].trim());
                                 if (planData.plan) {
                                     CarlAgent.setPlan(planData.plan);
                                     // Remove JSON from displayed text
                                     cleanText = cleanText.replace(planRegex, '').trim();
 
                                     // Add Action Button to message
-                                    const actionButtonHtml = `<div style="margin-top: 10px;"><button onclick="document.querySelector('.carl-view-option[data-view=\\'activity\\']').click()" class="approve-btn" style="width: auto; padding: 6px 15px;">Ver Plan de Acción</button></div>`;
+                                    const actionButtonHtml = `<div style="margin-top: 10px;"><button onclick="CarlAgent.switchView('activity')" class="approve-btn" style="width: auto; padding: 6px 15px;">Ver Actividad</button></div>`;
                                     cleanText += actionButtonHtml;
 
                                     logToUIConsole("¡Carl ha propuesto un nuevo plan!", "log");
@@ -3421,6 +3439,13 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                                     const activityBtn = dom.carlIaPanel.querySelector('.carl-view-option[data-view="activity"]');
                                     if (activityBtn) {
                                         activityBtn.classList.add('has-notification');
+                                    }
+
+                                    // Auto-switch to activity tab if in visual or automatic mode
+                                    if (prefs.carlPermissions?.executionMode !== 'permission') {
+                                        setTimeout(() => {
+                                            if (CarlAgent.switchView) CarlAgent.switchView('activity');
+                                        }, 1000);
                                     }
                                 }
                             } catch (e) {
@@ -3634,6 +3659,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
         window.AnimationEditorWindow = AnimationEditorWindow;
         window.TilePalette = TilePalette;
         window.SkeletonImporter = SkeletonImporter;
+        window.CarlAgent = CarlAgent;
 
         // --- Carl Agent Integration ---
         CarlAgent.initialize(dom);

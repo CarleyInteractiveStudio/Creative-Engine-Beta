@@ -179,6 +179,8 @@ DESACTIVADA: desactivada
 SIN_DESCRIPCION: Sin descripción.
 SIN_PERMISOS: Sin permisos especiales.
 IMPORTAR_LIBRERIA: Importar Librería
+CARL_CHAT: Chat
+CARL_ACTIVIDAD: Actividad
 NO_ACTIVIDAD_RECIENTE: No hay actividad reciente.
 MODO_EJECUCION: Modo de Ejecución
 PLAN_ACTUAL: Plan Actual
@@ -563,6 +565,8 @@ DESACTIVADA: deactivated
 SIN_DESCRIPCION: No description.
 SIN_PERMISOS: No special permissions.
 IMPORTAR_LIBRERIA: Import Library
+CARL_CHAT: Chat
+CARL_ACTIVIDAD: Activity
 NO_ACTIVIDAD_RECIENTE: No recent activity.
 MODO_EJECUCION: Execution Mode
 PLAN_ACTUAL: Current Plan

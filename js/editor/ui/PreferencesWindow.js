@@ -29,11 +29,11 @@ const defaultPrefs = {
         provider: 'none'
     },
     carlPermissions: {
-        canUseConsole: false,
-        canManageFiles: false,
-        canManipulateScenes: false,
-        canDownloadFiles: false,
-        executionMode: 'permission'
+        canUseConsole: true,
+        canManageFiles: true,
+        canManipulateScenes: true,
+        canDownloadFiles: true,
+        executionMode: 'automatic'
     },
     showTerminal: false,
     executionMode: 'integrated',

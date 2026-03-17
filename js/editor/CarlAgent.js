@@ -17,7 +17,7 @@ import { updateAssetBrowser } from './ui/AssetBrowserWindow.js';
 let editorDom = null;
 let currentPlan = [];
 let currentStepIndex = -1;
-let executionMode = 'permission'; // 'automatic', 'visual', 'permission'
+let executionMode = 'automatic'; // Default to automatic for seamless creation
 let isExecuting = false;
 let lastCreatedMateriaId = null;
 
@@ -352,6 +352,11 @@ function updateActivityUI() {
 
     html += `</div></div>`;
     activityLog.innerHTML = html;
+
+    // Apply translations to the newly injected content
+    if (window.Localization) {
+        window.Localization.applyToElement(activityLog);
+    }
 }
 
 function getStatusIcon(status) {
