@@ -39,7 +39,7 @@ import { getCustomComponentDefinitions } from './editor/EngineAPIExtension.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
 import * as SkeletonImporter from './editor/SkeletonImporter.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
-import * as CarlAgent from './editor/CarlAgent.js';
+import { AgentAPI as CarlAgent } from './editor/CarlAgent.js';
 import { buildProject, runStandalonePreview } from './editor/BuildSystem.js';
 import * as Dialogs from './editor/ui/DialogWindow.js';
 const { showNotification: showNotificationDialog, showConfirmation: showConfirmationDialog, showBuildDialog } = Dialogs;
@@ -3136,82 +3136,34 @@ document.addEventListener('DOMContentLoaded', () => {
             let knownWorkingModel = {}; // Cache for working models, e.g., { gemini: 'models/gemini-1.5-flash' }
             let carlChatHistory = []; // Memory for the session
 
-            const CARL_SYSTEM_PROMPT_TEMPLATE = `Eres Carl, el asistente inteligente de Creative Engine. Tu personalidad es alegre, servicial y apasionada por ayudar en la creación de videojuegos. Siempre te presentas como Carl. Tu misión es asistir al usuario en sus tareas, proponiendo soluciones y actuando como un agente de ejecución real.
+            const CARL_SYSTEM_PROMPT_TEMPLATE = `Eres Carl, un agente autónomo de Creative Engine. No solo explicas, ¡EJECUTAS!
 
-IMPORTANTE: El idioma actual de la interfaz del motor es {idioma}. Debes responder preferiblemente en este idioma.
-
-CONOCIMIENTO DE LA INTERFAZ (UI):
-- Menú Superior: Archivo, Editar, Ventana, Librerías, Carl IA, Donar.
-- Paneles: Jerarquía (objetos), Inspector (propiedades), Navegador (assets), Consola (logs), Escena (área visual).
-- Herramientas: Mover (Q), Panear (W), Escalar (E), Rotar (R), Universal (T), Terreno (B), Pincel de Tiles.
-- Vistas: Escena, Juego, Código, Terminal.
-
-SINTAXIS DE SCRIPTING (CES/CHC) - REGLAS ESTRICTAS:
-1. ACCESO DIRECTO ABSOLUTO: NO USES NINGÚN PREFIJO para acceder a componentes, variables o APIs del motor.
-   - INCORRECTO: 'mtr.posicion', 'materia.fisica', 'this.velocidad', 'entrada.tecla', 'motor.buscar'.
-   - CORRECTO: 'posicion.x', 'fisica.velocity', 'velocidad = 10', 'teclaPresionada("W")', 'buscar("Objeto")'.
-   - El transpilador inyecta todo automáticamente en el ámbito local. Usar prefijos confunde a los usuarios y es una mala práctica en este motor.
-
-2. IMPORTACIONES: Usa 've motor;' al inicio si necesitas APIs globales, pero sigue accediendo a ellas sin prefijo (ej: 'imprimir("Hola")' en lugar de 'motor.imprimir').
-
-3. DECLARACIÓN: 'publico [tipo] [nombre] = [valor];' para el Inspector. Tipos: numero, texto, booleano, Materia, Sprite, sonido.
-
-4. EVENTOS: alEmpezar(), alActualizar(delta), actualizarFijo(delta). Usa 'delta' para cálculos de tiempo en actualizar.
-
-5. CONTROL DE TIEMPO: 'cada(segundos) { ... }' para bucles automáticos y 'esperar(segundos);' para corrutinas asíncronas.
-
-6. SISTEMA PROXY: Llama a animaciones o sonidos por su nombre: 'reproducir.Salto();' o 'play.Idle();'.
+SINTAXIS CES (REGLA DE ORO):
+- ACCESO DIRECTO SIEMPRE. No uses 'mtr.', 'materia.', 'this.', 'entrada.' o 'motor.'.
+- Ej: 'posicion.x = 10;', 'teclaPresionada("W")', 'fisica.velocity.y = 5;'.
+- DECLARACIÓN: 'publico numero velocidad = 5;'.
+- EVENTOS: alEmpezar(), alActualizar(delta).
 
 COMPORTAMIENTO COMO AGENTE (OBLIGATORIO):
-Si el usuario te pide crear un objeto, añadir un componente, modificar una propiedad o crear un archivo, ¡HAZLO TÚ MISMO!
-DEBES generar un bloque [PLAN] JSON al final de tu respuesta para cualquier acción de creación o modificación. No te limites a dar el código.
+Si el usuario pide crear, añadir o modificar algo, DEBES generar un bloque [PLAN] JSON al final.
 
-Formato del bloque [PLAN]:
+[PLAN] Formato:
 {
   "plan": [
     {
-      "title": "Nombre del paso",
-      "description": "Explicación breve",
+      "title": "Nombre", "description": "...",
       "commands": [
-        { "action": "create_materia", "params": { "name": "Nombre", "type": "Sprite" } },
-        { "action": "add_component", "params": { "materiaId": "@last", "type": "CreativeScript", "properties": { "scriptName": "jugador.ces" } } },
-        { "action": "set_property", "params": { "materiaId": "@last", "componentType": "Transform", "propPath": "position.x", "value": 100 } }
+        { "action": "create_materia", "params": { "name": "N", "type": "Sprite" } },
+        { "action": "create_file", "params": { "path": "Assets/s.ces", "content": "..." } },
+        { "action": "add_component", "params": { "materiaId": "@last", "type": "CreativeScript", "properties": { "scriptName": "s.ces" } } }
       ]
     }
   ]
 }
 
-Comandos (USA EL NOMBRE EXACTO): create_materia, delete_materia, add_component, set_property, create_file, download_file.
-Usa "@last" para referirte al ID del objeto creado en el paso anterior.
-
-REGLA DE ORO: Sé un hacedor, no un charlatán. Si el código que das usa 'mtr.' o 'this.', estás fallando.
-
-COMANDOS Y PARÁMETROS (SINTAXIS ESTRICTA):
-- create_materia { "name": "Nombre", "type": "Sprite"|"Camera"|"Canvas"|"Audio"|"Empty" }
-- add_component { "materiaId": "@last"|id, "type": "Rigidbody2D"|"BoxCollider2D"|"CreativeScript"|..., "properties": {} }
-  - NOTA: Para scripts usa type: "CreativeScript" y en properties: { "scriptName": "Nombre.ces" }.
-- set_property { "materiaId": "@last"|id, "componentType": "Transform", "propPath": "position.x", "value": 100 }
-- create_file { "path": "Assets/nombre.ces", "content": "..." }
-- download_file { "url": "...", "path": "Assets/nombre.png" }
-
-REGLAS DE PROPIEDADES COMUNES:
-- Transform: 'position.x', 'position.y', 'rotation', 'scale.x', 'scale.y'
-- Rigidbody2D: 'gravityScale', 'mass', 'fixedRotation' (booleano)
-- SpriteRenderer: 'color' (hex), 'opacity' (0-1)
-- CameraFollow: 'target' (nombre o id), 'smoothSpeed', 'offset.x', 'offset.y'
-
-NOTIFICACIÓN AL USUARIO:
-Cuando crees un plan, informa al usuario que debe ir a la pestaña "Actividad" dentro de tu panel para revisarlo y ejecutarlo. Especialmente si estás en modo 'Con Permiso'.
-
-MODOS DE EJECUCIÓN (Para tu información):
-1. Con Permiso: El usuario aprueba cada paso manualmente.
-2. Visual: Ejecutas paso a paso con una pequeña pausa para que el usuario vea el progreso.
-3. Automático: Ejecutas todo el plan de corrido.
-
-EFICIENCIA Y OPTIMIZACIÓN:
-Intenta agrupar comandos en el menor número de pasos posible para ahorrar tiempo y recursos. Solo usa la IA para decidir la lógica; la ejecución pesada la hace el motor.
-
-NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto creado en el mismo plan.`;
+Comandos: create_materia, delete_materia, add_component, set_property, create_file, download_file.
+Usa "@last" para referirte al ID del objeto creado en el mismo plan.
+Regla: El JSON del [PLAN] debe ir siempre al final de tu respuesta.`;
 
             const updateCarlIaBrainMenu = () => {
                 const prefs = getPreferences();
@@ -3329,7 +3281,6 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                     const provider = prefs.ai.provider;
                     const displayName = provider.charAt(0).toUpperCase() + provider.slice(1);
                     selectedProvider = { type: provider, name: `${displayName} (Preferencias)` };
-                    brainButton.textContent = `Cerebro: ${selectedProvider.name}`;
                 }
 
                 if (!selectedProvider) {
@@ -3378,40 +3329,62 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
 
                         // --- Parse Plan from Response ---
                         let cleanText = result.text;
-                        // Robust regex to handle potential markdown code blocks around JSON
-                        const planRegex = /\[PLAN\]\s*(?:```json)?\s*(\{[\s\S]*?\})\s*(?:```)?/i;
-                        const match = cleanText.match(planRegex);
 
-                        if (match) {
-                            try {
-                                const planData = JSON.parse(match[1].trim());
-                                if (planData.plan) {
-                                    CarlAgent.setPlan(planData.plan);
-                                    // Remove JSON from displayed text
-                                    cleanText = cleanText.replace(planRegex, '').trim();
+                        // Robust balanced JSON extractor for [PLAN] blocks
+                        const planTagIndex = cleanText.toUpperCase().indexOf('[PLAN]');
+                        if (planTagIndex !== -1) {
+                            const remainingText = cleanText.substring(planTagIndex);
+                            const startBrace = remainingText.indexOf('{');
 
-                                    // Add Action Button to message
-                                    // Robust approach: Add it after Markdown rendering if possible, or ensure it's not mangled
-                                    const actionButtonHtml = `\n\n<div class="carl-action-container" style="margin-top: 10px;"><button onclick="window.CarlAgent.switchView('activity')" class="approve-btn" style="width: auto; padding: 6px 15px; cursor: pointer;">🚀 Ver Plan de Acción</button></div>`;
-                                    cleanText += actionButtonHtml;
+                            if (startBrace !== -1) {
+                                let braceCount = 0;
+                                let endBrace = -1;
 
-                                    logToUIConsole("¡Carl ha propuesto un nuevo plan!", "log");
-
-                                    // Notify user via Activity tab highlight
-                                    const activityBtn = dom.carlIaPanel.querySelector('.carl-view-option[data-view="activity"]');
-                                    if (activityBtn) {
-                                        activityBtn.classList.add('has-notification');
-                                    }
-
-                                    // Auto-switch to activity tab if in visual or automatic mode
-                                    if (prefs.carlPermissions?.executionMode !== 'permission') {
-                                        setTimeout(() => {
-                                            if (CarlAgent.switchView) CarlAgent.switchView('activity');
-                                        }, 1000);
+                                for (let i = startBrace; i < remainingText.length; i++) {
+                                    if (remainingText[i] === '{') braceCount++;
+                                    else if (remainingText[i] === '}') {
+                                        braceCount--;
+                                        if (braceCount === 0) {
+                                            endBrace = i;
+                                            break;
+                                        }
                                     }
                                 }
-                            } catch (e) {
-                                console.error("Error al parsear el plan de Carl:", e);
+
+                                if (endBrace !== -1) {
+                                    const jsonString = remainingText.substring(startBrace, endBrace + 1);
+                                    try {
+                                        const planData = JSON.parse(jsonString);
+                                        if (planData.plan) {
+                                            CarlAgent.setPlan(planData.plan);
+
+                                            // Limpiar el texto removiendo la etiqueta y el JSON
+                                            const fullPlanSection = remainingText.substring(0, endBrace + 1);
+                                            cleanText = (cleanText.substring(0, planTagIndex) + cleanText.substring(planTagIndex + fullPlanSection.length)).trim();
+
+                                            // Add Action Button to message
+                                            const actionButtonHtml = `\n\n<div class="carl-action-container" style="margin-top: 10px;"><button onclick="window.CarlAgent.switchView('activity'); return false;" class="approve-btn" style="width: auto; padding: 6px 15px; cursor: pointer;">🚀 Ver Plan de Acción</button></div>`;
+                                            cleanText += actionButtonHtml;
+
+                                            logToUIConsole("¡Carl ha propuesto un nuevo plan!", "log");
+
+                                            // Notify user via Activity tab highlight
+                                            const activityBtn = dom.carlIaPanel.querySelector('.carl-view-option[data-view="activity"]');
+                                            if (activityBtn) {
+                                                activityBtn.classList.add('has-notification');
+                                            }
+
+                                            // Auto-switch to activity tab if in visual or automatic mode
+                                            if (prefs.carlPermissions?.executionMode !== 'permission') {
+                                                setTimeout(() => {
+                                                    if (CarlAgent.switchView) CarlAgent.switchView('activity');
+                                                }, 1000);
+                                            }
+                                        }
+                                    } catch (e) {
+                                        console.error("Error al parsear el plan de Carl:", e);
+                                    }
+                                }
                             }
                         }
 
@@ -3621,11 +3594,9 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
         window.AnimationEditorWindow = AnimationEditorWindow;
         window.TilePalette = TilePalette;
         window.SkeletonImporter = SkeletonImporter;
+
         // Consolidar referencias de Carl IA
-        window.CarlAgent = {
-            ...window.CarlAgent,
-            ...CarlAgent
-        };
+        window.CarlAgent = CarlAgent;
 
         // --- Carl Agent Integration ---
         CarlAgent.initialize(dom);

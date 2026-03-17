@@ -178,6 +178,9 @@ function resolveMateria(idOrName) {
  * Resuelve un nombre de componente (soporta alias bilingües).
  */
 function resolveComponentClass(name) {
+    // Normalizar nombre (IA suele usar 'Script')
+    if (name === 'Script') return Components.CreativeScript;
+
     // 1. Intentar acceso directo en el objeto Components
     if (Components[name]) return Components[name];
 
@@ -438,8 +441,9 @@ export function approveStep() {
 
 /**
  * Función global para que la UI apruebe un paso.
+ * Se exporta un objeto con todas las funciones públicas necesarias para el motor.
  */
-window.CarlAgent = {
+export const AgentAPI = {
     approveStep,
     setExecutionMode: (mode) => {
         executionMode = mode;
@@ -447,5 +451,10 @@ window.CarlAgent = {
     },
     switchView: (view) => {
         switchView(view);
-    }
+    },
+    setPlan,
+    initialize
 };
+
+// Asignación global compatible con disparadores de eventos HTML (onclick)
+window.CarlAgent = AgentAPI;
