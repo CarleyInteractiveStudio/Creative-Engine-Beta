@@ -333,22 +333,25 @@ async function executeCommand(action, params) {
 
         case 'create_file': {
             const { path, content } = params;
-            // This requires access to the file system handle, which is usually in editor.js
-            // For now, we use a global shortcut if available
+
             if (window.ceCreateAsset) {
-                const parts = path.split('/');
-                const fileName = parts.pop();
+                // Ensure we only use the filename for the asset creation shortcut
+                const fileName = path.split('/').pop();
 
-                const result = await window.ceCreateAsset(fileName, content);
-                if (result) {
-                    updateAssetBrowser();
+                try {
+                    const result = await window.ceCreateAsset(fileName, content);
+                    if (result) {
+                        updateAssetBrowser();
 
-                    // Hot Reload if game is running and it's a script
-                    if ((fileName.endsWith('.ces') || fileName.endsWith('.chc')) && window.ceHotReload) {
-                        await window.ceHotReload(fileName);
+                        // Hot Reload if game is running and it's a script
+                        if ((fileName.endsWith('.ces') || fileName.endsWith('.chc')) && window.ceHotReload) {
+                            await window.ceHotReload(fileName);
+                        }
+
+                        return { success: true, message: `Archivo '${fileName}' creado en Assets/.` };
                     }
-
-                    return { success: true, message: `Archivo '${path}' creado.` };
+                } catch (e) {
+                    return { success: false, message: `Error al crear archivo: ${e.message}` };
                 }
             }
             return { success: false, message: "Función de creación de archivos no disponible en este contexto." };

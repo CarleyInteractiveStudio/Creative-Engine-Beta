@@ -3139,13 +3139,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const CARL_SYSTEM_PROMPT_TEMPLATE = `Eres Carl, un agente autónomo de Creative Engine. No solo explicas, ¡EJECUTAS!
 
 SINTAXIS CES (REGLA DE ORO):
-- ACCESO DIRECTO SIEMPRE. No uses 'mtr.', 'materia.', 'this.', 'entrada.' o 'motor.'.
-- Ej: 'posicion.x = 10;', 'teclaPresionada("W")', 'fisica.velocity.y = 5;'.
-- DECLARACIÓN: 'publico numero velocidad = 5;'.
+- ACCESO DIRECTO SIEMPRE. No uses 'mtr.', 'this.', 'entrada.' o 'motor.'.
+- CORRECTO: 'posicion.x = 10;', 'teclaPresionada("W")', 'imprimir("Log")'.
+- INCORRECTO: 'consola.log()', 'console.log()'. USA SIEMPRE 'imprimir()'.
+- DECLARACIÓN: 'publico [tipo] [nombre] = [valor];'.
 - EVENTOS: alEmpezar(), alActualizar(delta).
 
 COMPORTAMIENTO COMO AGENTE (OBLIGATORIO):
 Si el usuario pide crear, añadir o modificar algo, DEBES generar un bloque [PLAN] JSON al final.
+- IMPORTANTE: No envuelvas el bloque [PLAN] en bloques de código (```). Escríbelo como texto plano.
 
 [PLAN] Formato:
 {
@@ -3209,7 +3211,7 @@ Regla: El JSON del [PLAN] debe ir siempre al final de tu respuesta.`;
                 });
             }
 
-            const addMessage = (text, sender, isError = false) => {
+            const addMessage = (text, sender, isError = false, planToSet = null) => {
                 const messageWrapper = document.createElement('div');
                 messageWrapper.className = `carl-message-wrapper ${sender}`;
                 messageWrapper.style.display = 'flex';
@@ -3231,6 +3233,29 @@ Regla: El JSON del [PLAN] debe ir siempre al final de tu respuesta.`;
                         tasklists: true
                     });
                     msgDiv.innerHTML = converter.makeHtml(text);
+
+                    // Si hay un plan, añadir el botón de acción DEPUÉS del renderizado
+                    if (planToSet) {
+                        CarlAgent.setPlan(planToSet);
+                        const btnContainer = document.createElement('div');
+                        btnContainer.className = 'carl-action-container';
+                        btnContainer.style.marginTop = '10px';
+
+                        const btn = document.createElement('button');
+                        btn.className = 'approve-btn';
+                        btn.style.width = 'auto';
+                        btn.style.padding = '6px 15px';
+                        btn.style.cursor = 'pointer';
+                        btn.innerHTML = '🚀 Ver Plan de Acción';
+                        btn.onclick = (e) => {
+                            e.preventDefault();
+                            CarlAgent.switchView('activity');
+                            return false;
+                        };
+
+                        btnContainer.appendChild(btn);
+                        msgDiv.appendChild(btnContainer);
+                    }
                 } else {
                     msgDiv.textContent = text;
                 }
@@ -3329,8 +3354,10 @@ Regla: El JSON del [PLAN] debe ir siempre al final de tu respuesta.`;
 
                         // --- Parse Plan from Response ---
                         let cleanText = result.text;
+                        let extractedPlan = null;
 
                         // Robust balanced JSON extractor for [PLAN] blocks
+                        // This handles both plain JSON and JSON inside Markdown blocks
                         const planTagIndex = cleanText.toUpperCase().indexOf('[PLAN]');
                         if (planTagIndex !== -1) {
                             const remainingText = cleanText.substring(planTagIndex);
@@ -3356,15 +3383,32 @@ Regla: El JSON del [PLAN] debe ir siempre al final de tu respuesta.`;
                                     try {
                                         const planData = JSON.parse(jsonString);
                                         if (planData.plan) {
-                                            CarlAgent.setPlan(planData.plan);
+                                            extractedPlan = planData.plan;
 
-                                            // Limpiar el texto removiendo la etiqueta y el JSON
-                                            const fullPlanSection = remainingText.substring(0, endBrace + 1);
-                                            cleanText = (cleanText.substring(0, planTagIndex) + cleanText.substring(planTagIndex + fullPlanSection.length)).trim();
+                                            // Determine how much to remove from the text
+                                            // If the plan is wrapped in a code block, find it
+                                            let removalEnd = planTagIndex + remainingText.indexOf('}', endBrace) + 1; // Basic
 
-                                            // Add Action Button to message
-                                            const actionButtonHtml = `\n\n<div class="carl-action-container" style="margin-top: 10px;"><button onclick="window.CarlAgent.switchView('activity'); return false;" class="approve-btn" style="width: auto; padding: 6px 15px; cursor: pointer;">🚀 Ver Plan de Acción</button></div>`;
-                                            cleanText += actionButtonHtml;
+                                            // Better: look for potential markdown closure after the JSON
+                                            const afterJson = remainingText.substring(endBrace + 1);
+                                            const codeBlockEnd = afterJson.indexOf('```');
+
+                                            let fullPlanSection;
+                                            if (codeBlockEnd !== -1 && codeBlockEnd < 10) { // If closure is close to JSON
+                                                fullPlanSection = remainingText.substring(0, endBrace + 1 + codeBlockEnd + 3);
+                                            } else {
+                                                fullPlanSection = remainingText.substring(0, endBrace + 1);
+                                            }
+
+                                            // Also look back for markdown start before [PLAN]
+                                            const beforeTag = cleanText.substring(0, planTagIndex);
+                                            const lastCodeStart = beforeTag.lastIndexOf('```');
+
+                                            if (lastCodeStart !== -1 && lastCodeStart > planTagIndex - 20) {
+                                                cleanText = (cleanText.substring(0, lastCodeStart) + cleanText.substring(planTagIndex + fullPlanSection.length)).trim();
+                                            } else {
+                                                cleanText = (cleanText.substring(0, planTagIndex) + cleanText.substring(planTagIndex + fullPlanSection.length)).trim();
+                                            }
 
                                             logToUIConsole("¡Carl ha propuesto un nuevo plan!", "log");
 
@@ -3388,7 +3432,7 @@ Regla: El JSON del [PLAN] debe ir siempre al final de tu respuesta.`;
                             }
                         }
 
-                        addMessage(cleanText || "He trazado un plan para ayudarte. Revísalo en la pestaña Actividad.", 'ia', false);
+                        addMessage(cleanText || "He trazado un plan para ayudarte. Revísalo en la pestaña Actividad.", 'ia', false, extractedPlan);
                         knownWorkingModel[provider] = model;
                         return { status: 'success', error: null, code: 200 };
                     }
