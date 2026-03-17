@@ -39,6 +39,7 @@ import { getCustomComponentDefinitions } from './editor/EngineAPIExtension.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
 import * as SkeletonImporter from './editor/SkeletonImporter.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
+import * as CarlAgent from './editor/CarlAgent.js';
 import { buildProject, runStandalonePreview } from './editor/BuildSystem.js';
 import * as Dialogs from './editor/ui/DialogWindow.js';
 const { showNotification: showNotificationDialog, showConfirmation: showConfirmationDialog, showBuildDialog } = Dialogs;
@@ -3127,14 +3128,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Carl IA Panel Logic ---
         if (dom.carlIaPanel) {
-            const brainSelectorMenu = dom.carlIaPanel.querySelector('#carl-ia-brain-options');
-            const brainButton = dom.carlIaBrainSelectorBtn;
             const messagesDiv = dom.carlIaMessages;
             const input = dom.carlIaInput;
             const sendBtn = dom.carlIaSendBtn;
 
             let selectedProvider = null;
             let knownWorkingModel = {}; // Cache for working models, e.g., { gemini: 'models/gemini-1.5-flash' }
+            let carlChatHistory = []; // Memory for the session
 
             const CARL_SYSTEM_PROMPT_TEMPLATE = `Eres Carl, el asistente inteligente de Creative Engine. Tu personalidad es alegre, servicial y apasionada por ayudar en la creación de videojuegos. Siempre te presentas como Carl. Tu misión es asistir al usuario en sus tareas, proponiendo soluciones y explicando paso a paso cómo lograr sus visiones en el motor.
 
@@ -3152,55 +3152,87 @@ CONOCIMIENTO DE LA INTERFAZ (UI):
 - Vistas de Panel Central: Escena, Juego (para probar el juego), Código (editor integrado para .ces y .chc), Terminal.
 
 CONOCIMIENTO DE COMPONENTES (LEYES):
-- Básicos: Transform (Posición, Rotación, Escala), Cámara, AudioSource (Sonido), VideoPlayer, CreativeScript.
-- Renderizado: SpriteRenderer (Sprites y Spritesheets), TextureRender (Formas geométricas con textura), ParticleSystem (Partículas), Water (Agua).
-- Físicas 2D: Rigidbody2D, BoxCollider2D, CapsuleCollider2D, CircleCollider2D, TilemapCollider2D, LineCollider2D.
-- Vehículos y Controladores: SuspensionHC (suspensión física), VehicleTopDown (con derrape), PlaneController (física de aviones), HelicopterController.
-- Mapas: Tilemap (para niveles por azulejos), Terreno2D (generación de suelos por nodos).
-- Iluminación: PointLight2D (Luz de punto), SpotLight2D (Luz focal), FreeformLight2D, SpriteLight2D.
-- Interfaz (UI): Canvas (Lienzo), UIImage, UIText, Button, UIEventTrigger.
-- Animación: Animator (para clips individuales), AnimatorController (máquina de estados compleja).
-- Utilidades: CameraFollow (seguimiento), Parallax (fondos infinitos), DrawingOrder, Layout Groups (Vertical, Horizontal, Rejilla).
+- Básicos: Transform (posicion), Cámara (camara), AudioSource (fuenteDeAudio), VideoPlayer, CreativeScript.
+- Renderizado: SpriteRenderer (renderizadorDeSprite), TextureRender, ParticleSystem, Water (agua).
+- Físicas 2D: Rigidbody2D (fisica), BoxCollider2D, CapsuleCollider2D, CircleCollider2D, TilemapCollider2D, LineCollider2D.
+- Vehículos y Controladores: SuspensionHC, VehicleTopDown, PlaneController, HelicopterController.
+- Mapas: Tilemap (rejilla), Terreno2D.
+- Iluminación: PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D.
+- Interfaz (UI): Canvas (lienzo), UIImage (imagen), UIText (texto), Button (boton), UIEventTrigger.
+- Animación: Animator (animador), AnimatorController (controlador).
+- Utilidades: CameraFollow, Parallax, DrawingOrder, Layout Groups.
 
-SINTAXIS DE SCRIPTING (CES/CHC):
-0. IMPORTACIONES: Usa 've motor;' o 've motor.ui;'.
-1. SINTAXIS: si, sino, mientras, para, retornar, variable, constante, verdadero, falso, Color, Vector2, Prefab.
-2. CORRUTINAS: esperar(segundos);
-3. TIMERS: cada(segundos) { ... }
-4. ACCESO: materia (mtr), nombre, tag, posicion, fisica, animador, camara, fuenteDeAudio, ui.texto, ui.boton.
-5. EVENTOS: alEmpezar(), alActualizar(delta), alEntrarEnColision(otro), alRecibir(mensaje, datos).
-6. FUNCIONES: buscar(nombre), lanzarRayo(origen, dir, dist, tag), crear prefab, destruir(mtr), difundir(msg), danar(mtr, cant).
+SINTAXIS DE SCRIPTING (CES/CHC) - ¡ACTUALIZADO!:
+0. IMPORTACIONES: 've motor;' (OBLIGATORIO).
+1. PALABRAS CLAVE: si, sino, mientras, para, retornar, funcion, variable, constante, verdadero, falso, nuevo.
+2. DECLARACIÓN: 'publico [tipo] [nombre] = [valor];' (¡OBLIGATORIO para el Inspector!). Tipos: numero, texto, booleano, Materia, Sprite, sonido.
+3. ACCESO DIRECTO: nombre, tag, posicion, fisica, animador, renderizadorDeSprite, fuenteDeAudio, camara, rejilla, lienzo.
+4. INPUT API (Sin prefijos): teclaPresionada("espacio"), teclaRecienPresionada("W"), botonMousePresionado(0), obtenerPosicionMouse(). NO USES 'entrada.' NI 'motor.'.
+5. EVENTOS: alEmpezar(), alActualizar(delta), actualizarFijo(delta), alEntrarEnColision(otro), alHacerClick().
+6. CONTROL DE TIEMPO: 'cada(segundos) { ... }', 'esperar(segundos);'.
+7. FUNCIONES MOTOR: buscar(nombre), destruir(mtr), crear miPrefab, lanzarRayo(origen, dir, dist, tag), estaTocandoTag(tag).
+8. SISTEMA PROXY (Potente): Llama a animaciones o sonidos por su nombre directamente: 'reproducir.Correr();' o 'play.Explosion();'.
 
-Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicándole el menú o panel exacto. Si te pide código, usa siempre la sintaxis en español mencionada arriba. Siempre sé motivador y recuérdale que tú estás aquí para ayudarle a construir sus sueños.`;
+REGLA DE ORO: Devuelve siempre código .ces limpio. Sé motivador y recuerda que eres un agente activo, NO solo un chat. Si el usuario te pide crear algo, ¡hazlo directamente mediante un plan! No solo le des el código.
+
+HABILIDADES AUTÓNOMAS (¡NUEVO!):
+Ahora tienes la capacidad de ejecutar acciones reales en el editor. Cuando el usuario te pida construir, crear, modificar o descargar algo, DEBES:
+1. Crear un PLAN de pasos detallados con comandos ejecutables.
+2. Cada paso puede contener uno o más comandos ejecutables.
+
+Para enviar comandos, inclúyelos al final de tu respuesta en un bloque de código JSON marcado con la etiqueta [PLAN]. Siempre menciona al usuario que debe ir a la pestaña "Actividad" para ejecutar las acciones (o ver el progreso).
+
+Formato del bloque [PLAN]:
+{
+  "plan": [
+    {
+      "title": "Título del paso",
+      "description": "Descripción de lo que harás",
+      "commands": [
+        { "action": "create_materia", "params": { "name": "Cubo", "type": "Sprite" } },
+        { "action": "add_component", "params": { "materiaId": "@last", "type": "Rigidbody2D" } },
+        { "action": "set_property", "params": { "materiaId": "@last", "componentType": "Transform", "propPath": "position.x", "value": 100 } }
+      ]
+    }
+  ]
+}
+
+Comandos Disponibles:
+- create_materia { name, parentId, type: 'Sprite'|'Camera'|'Canvas'|'Audio'|'Empty' }
+- delete_materia { id } // id puede ser el ID numérico o el nombre exacto
+- add_component { materiaId, type, properties: {} } // type puede ser el nombre en inglés o español
+- set_property { materiaId, componentType, propPath, value } // propPath puede ser anidado, ej: 'position.x' o 'color'
+- create_file { path: 'Assets/nombre.ces', content: '...' }
+- download_file { url, path: 'Assets/nombre.png' }
+
+REGLAS DE PROPIEDADES COMUNES:
+- Transform: 'position.x', 'position.y', 'rotation', 'scale.x', 'scale.y'
+- Rigidbody2D: 'gravityScale', 'mass', 'fixedRotation' (booleano)
+- SpriteRenderer: 'color' (hex), 'opacity' (0-1)
+- CameraFollow: 'target' (nombre o id), 'smoothSpeed', 'offset.x', 'offset.y'
+
+NOTIFICACIÓN AL USUARIO:
+Cuando crees un plan, informa al usuario que debe ir a la pestaña "Actividad" dentro de tu panel para revisarlo y ejecutarlo. Especialmente si estás en modo 'Con Permiso'.
+
+MODOS DE EJECUCIÓN (Para tu información):
+1. Con Permiso: El usuario aprueba cada paso manualmente.
+2. Visual: Ejecutas paso a paso con una pequeña pausa para que el usuario vea el progreso.
+3. Automático: Ejecutas todo el plan de corrido.
+
+EFICIENCIA Y OPTIMIZACIÓN:
+Intenta agrupar comandos en el menor número de pasos posible para ahorrar tiempo y recursos. Solo usa la IA para decidir la lógica; la ejecución pesada la hace el motor.
+
+NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto creado en el mismo plan.`;
 
             const updateCarlIaBrainMenu = () => {
                 const prefs = getPreferences();
-                brainSelectorMenu.querySelectorAll('[data-external]').forEach(el => el.remove());
+                const provider = prefs.ai?.provider;
 
-                const providers = ['gemini', 'openai', 'anthropic'];
-                let foundConfiguredProvider = null;
-
-                providers.forEach(provider => {
-                    const apiKey = localStorage.getItem(`creativeEngine_${provider}_apiKey`);
-                    if (apiKey) {
-                        const newOption = document.createElement('a');
-                        newOption.href = '#';
-                        newOption.dataset.model = provider;
-                        newOption.dataset.external = true;
-                        const displayName = provider.charAt(0).toUpperCase() + provider.slice(1);
-                        newOption.textContent = `${displayName} (Preferencias)`;
-                        brainSelectorMenu.appendChild(newOption);
-
-                        if (!foundConfiguredProvider || (prefs.ai && prefs.ai.provider === provider)) {
-                            foundConfiguredProvider = { type: provider, name: newOption.textContent };
-                        }
-                    }
-                });
-
-                // Auto-select if nothing selected
-                if (!selectedProvider && foundConfiguredProvider) {
-                    selectedProvider = foundConfiguredProvider;
-                    brainButton.textContent = `Cerebro: ${selectedProvider.name}`;
+                if (provider && provider !== 'none') {
+                    const displayName = provider.charAt(0).toUpperCase() + provider.slice(1);
+                    selectedProvider = { type: provider, name: displayName };
+                } else {
+                    selectedProvider = null;
                 }
             };
 
@@ -3224,39 +3256,14 @@ Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicán
             const viewSelectorMenu = dom.carlIaPanel.querySelector('#carl-ia-view-selector-btn + .menu-content');
             const viewButton = dom.carlIaViewSelectorBtn;
 
-            brainSelectorMenu.parentElement.addEventListener('click', (e) => {
-                if (e.target.matches('a')) {
-                    e.preventDefault();
-                    const modelType = e.target.dataset.model;
-                    const modelName = e.target.textContent;
-                    selectedProvider = { type: modelType, name: modelName };
-                    brainButton.textContent = `Cerebro: ${modelName}`;
-                    messagesDiv.innerHTML = `<div style="font-style: italic; color: rgba(255,255,255,0.6); text-align: center; padding: 20px;">Cerebro '${modelName}' activado. <br><br><b>¡Hola! Soy Carl</b>, tu asistente. ¿En qué puedo ayudarte hoy?</div>`;
-                    brainSelectorMenu.classList.remove('visible');
-                }
-            });
-
             if (viewSelectorMenu) {
-                viewSelectorMenu.parentElement.addEventListener('click', (e) => {
-                    if (e.target.matches('a')) {
+                // Use a more direct delegation on the menu content itself
+                viewSelectorMenu.addEventListener('click', (e) => {
+                    const link = e.target.closest('a');
+                    if (link) {
                         e.preventDefault();
-                        const view = e.target.dataset.view;
-                        const viewName = e.target.textContent;
-
-                        viewButton.textContent = viewName;
-
-                        // Switch active state in menu
-                        viewSelectorMenu.querySelectorAll('.carl-view-option').forEach(a => a.classList.remove('active'));
-                        e.target.classList.add('active');
-
-                        // Switch visible view
-                        const views = dom.carlIaPanel.querySelectorAll('.carl-view');
-                        views.forEach(v => v.classList.remove('active'));
-
-                        const targetView = dom.carlIaPanel.querySelector(`#carl-ia-${view}-view`);
-                        if (targetView) targetView.classList.add('active');
-
-                        viewSelectorMenu.classList.remove('visible');
+                        e.stopPropagation();
+                        CarlAgent.switchView(link.dataset.view);
                     }
                 });
             }
@@ -3342,6 +3349,9 @@ Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicán
                 }
 
                 addMessage(userPrompt, 'user');
+                carlChatHistory.push({ role: 'user', content: userPrompt });
+                if (carlChatHistory.length > 12) carlChatHistory.shift(); // Keep last 6 rounds
+
                 input.value = '';
                 input.focus();
 
@@ -3369,11 +3379,54 @@ Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicán
                     const currentLang = Localization.currentLanguage || 'ES';
                     const systemPrompt = CARL_SYSTEM_PROMPT_TEMPLATE.replace('{idioma}', currentLang);
 
-                    const result = await AIHandler.callGenerativeAI(provider, model, apiKey, prompt, systemPrompt);
+                    const result = await AIHandler.callGenerativeAI(provider, model, apiKey, prompt, systemPrompt, carlChatHistory);
                     if (thinkingMessage) thinkingMessage.remove();
 
                     if (result.success) {
-                        addMessage(result.text, 'ia', false);
+                        // Update history with raw response
+                        carlChatHistory.push({ role: 'assistant', content: result.text });
+                        if (carlChatHistory.length > 12) carlChatHistory.shift();
+
+                        // --- Parse Plan from Response ---
+                        let cleanText = result.text;
+                        // Robust regex to handle potential markdown code blocks around JSON
+                        const planRegex = /\[PLAN\]\s*(?:```json)?\s*(\{[\s\S]*?\})\s*(?:```)?/i;
+                        const match = cleanText.match(planRegex);
+
+                        if (match) {
+                            try {
+                                const planData = JSON.parse(match[1].trim());
+                                if (planData.plan) {
+                                    CarlAgent.setPlan(planData.plan);
+                                    // Remove JSON from displayed text
+                                    cleanText = cleanText.replace(planRegex, '').trim();
+
+                                    // Add Action Button to message
+                                    // Note: onclick still needs a global or accessible function
+                                    const actionButtonHtml = `<div style="margin-top: 10px;"><button onclick="window.CarlAgent.switchView('activity')" class="approve-btn" style="width: auto; padding: 6px 15px;">Ver Actividad</button></div>`;
+                                    cleanText += actionButtonHtml;
+
+                                    logToUIConsole("¡Carl ha propuesto un nuevo plan!", "log");
+
+                                    // Notify user via Activity tab highlight
+                                    const activityBtn = dom.carlIaPanel.querySelector('.carl-view-option[data-view="activity"]');
+                                    if (activityBtn) {
+                                        activityBtn.classList.add('has-notification');
+                                    }
+
+                                    // Auto-switch to activity tab if in visual or automatic mode
+                                    if (prefs.carlPermissions?.executionMode !== 'permission') {
+                                        setTimeout(() => {
+                                            if (CarlAgent.switchView) CarlAgent.switchView('activity');
+                                        }, 1000);
+                                    }
+                                }
+                            } catch (e) {
+                                console.error("Error al parsear el plan de Carl:", e);
+                            }
+                        }
+
+                        addMessage(cleanText || "He trazado un plan para ayudarte. Revísalo en la pestaña Actividad.", 'ia', false);
                         knownWorkingModel[provider] = model;
                         return { status: 'success', error: null, code: 200 };
                     }
@@ -3436,6 +3489,15 @@ Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicán
                     }
                 }
             };
+
+            const modeSelect = dom.carlIaPanel.querySelector('#carl-execution-mode-select');
+            if (modeSelect) {
+                modeSelect.addEventListener('change', (e) => {
+                    CarlAgent.setExecutionMode(e.target.value);
+                });
+                // Sync initial mode
+                CarlAgent.setExecutionMode(modeSelect.value);
+            }
 
             sendBtn.addEventListener('click', sendMessage);
             input.addEventListener('keydown', (e) => {
@@ -3570,6 +3632,17 @@ Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicán
         window.AnimationEditorWindow = AnimationEditorWindow;
         window.TilePalette = TilePalette;
         window.SkeletonImporter = SkeletonImporter;
+        window.CarlAgent = CarlAgent;
+
+        // --- Carl Agent Integration ---
+        CarlAgent.initialize(dom);
+        window.ceHotReload = hotReloadScript;
+        window.ceCreateAsset = async (name, content) => {
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            const assetsHandle = await projectHandle.getDirectoryHandle('Assets', { create: true });
+            return await createAsset(name, content, assetsHandle);
+        };
 
         // --- For Playwright Testing ---
         // This exposes a safe subset of the HierarchyWindow module for programmatic UI creation in tests

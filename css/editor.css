@@ -4374,6 +4374,143 @@ body.game-mode #loading-overlay {
     color: white !important;
 }
 
+.carl-view-option.has-notification {
+    position: relative;
+    color: #fff !important;
+}
+
+.carl-view-option.has-notification::after {
+    content: '';
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 8px;
+    height: 8px;
+    background-color: #ff4444;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #ff4444;
+    animation: carlPulseNotification 1.5s infinite;
+}
+
+@keyframes carlPulseNotification {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.5); opacity: 0.5; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* --- Plan UI Styles --- */
+.carl-plan-container {
+    padding: 15px;
+}
+
+.carl-plan-container h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.1em;
+    color: var(--accent-color);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.carl-steps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.carl-step-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 12px;
+    transition: all 0.3s ease;
+}
+
+.carl-step-item.current {
+    border-color: var(--accent-color);
+    background: rgba(14, 99, 156, 0.05);
+    box-shadow: 0 0 15px rgba(14, 99, 156, 0.1);
+}
+
+.carl-step-item.completed {
+    border-color: #2ecc71;
+    opacity: 0.8;
+}
+
+.carl-step-item.executing {
+    border-color: #f39c12;
+    animation: carlStepPulse 2s infinite;
+}
+
+@keyframes carlStepPulse {
+    0% { border-color: rgba(243, 156, 18, 0.5); }
+    50% { border-color: rgba(243, 156, 18, 1); }
+    100% { border-color: rgba(243, 156, 18, 0.5); }
+}
+
+.step-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.step-status-icon {
+    font-size: 1.2em;
+}
+
+.step-title {
+    font-weight: 600;
+    font-size: 0.95em;
+}
+
+.step-desc {
+    font-size: 0.85em;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin-bottom: 12px;
+}
+
+.approve-btn {
+    width: 100%;
+    padding: 8px;
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: filter 0.2s;
+}
+
+.approve-btn:hover {
+    filter: brightness(1.2);
+}
+
+.carl-mode-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 15px;
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.carl-mode-selector label {
+    font-size: 0.8em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.carl-mode-selector select {
+    background: var(--bg-primary);
+    color: white;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 2px 5px;
+    font-size: 0.85em;
+}
+
 .carl-view {
     display: none;
     flex-grow: 1;
