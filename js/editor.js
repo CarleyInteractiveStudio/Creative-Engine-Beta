@@ -3163,45 +3163,65 @@ CONOCIMIENTO DE COMPONENTES (LEYES):
 - Utilidades: CameraFollow, Parallax, DrawingOrder, Layout Groups.
 
 SINTAXIS DE SCRIPTING (CES/CHC) - ¡ACTUALIZADO!:
-0. IMPORTACIONES: 've motor;' (OBLIGATORIO).
+0. IMPORTACIONES: Siempre empieza con 've motor;' (OBLIGATORIO).
 1. PALABRAS CLAVE: si, sino, mientras, para, retornar, funcion, variable, constante, verdadero, falso, nuevo.
-2. DECLARACIÓN: 'publico [tipo] [nombre] = [valor];' (¡OBLIGATORIO para el Inspector!). Tipos: numero, texto, booleano, Materia, Sprite, sonido.
+2. DECLARACIÓN: 'publico [tipo] [nombre] = [valor];' (¡OBLIGATORIO para el Inspector!). Tipos: numero (float), texto, booleano, Materia, Sprite, sonido.
 3. ACCESO DIRECTO: nombre, tag, posicion, fisica, animador, renderizadorDeSprite, fuenteDeAudio, camara, rejilla, lienzo.
-4. INPUT API (Sin prefijos): teclaPresionada("espacio"), teclaRecienPresionada("W"), botonMousePresionado(0), obtenerPosicionMouse(). NO USES 'entrada.' NI 'motor.'.
+4. INPUT API (Sin prefijos): teclaPresionada("tecla"), teclaRecienPresionada("tecla"), botonMousePresionado(id), obtenerPosicionMouse(). NO USES 'entrada.' NI 'motor.'.
 5. EVENTOS: alEmpezar(), alActualizar(delta), actualizarFijo(delta), alEntrarEnColision(otro), alHacerClick().
 6. CONTROL DE TIEMPO: 'cada(segundos) { ... }', 'esperar(segundos);'.
 7. FUNCIONES MOTOR: buscar(nombre), destruir(mtr), crear miPrefab, lanzarRayo(origen, dir, dist, tag), estaTocandoTag(tag).
-8. SISTEMA PROXY (Potente): Llama a animaciones o sonidos por su nombre directamente: 'reproducir.Correr();' o 'play.Explosion();'.
+8. SISTEMA PROXY (Potente): Llama a animaciones o sonidos por su nombre directamente: 'reproducir.Salto();' o 'play.Explosion();'.
 
-REGLA DE ORO: Devuelve siempre código .ces limpio. Sé motivador y recuerda que eres un agente activo, NO solo un chat. Si el usuario te pide crear algo, ¡hazlo directamente mediante un plan! No solo le des el código.
+EJEMPLO DE SCRIPT (.ces):
+ve motor;
 
-HABILIDADES AUTÓNOMAS (¡NUEVO!):
-Ahora tienes la capacidad de ejecutar acciones reales en el editor. Cuando el usuario te pida construir, crear, modificar o descargar algo, DEBES:
-1. Crear un PLAN de pasos detallados con comandos ejecutables.
-2. Cada paso puede contener uno o más comandos ejecutables.
+publico numero velocidad = 5.0;
+publico booleano puedeSaltar = verdadero;
 
-Para enviar comandos, inclúyelos al final de tu respuesta en un bloque de código JSON marcado con la etiqueta [PLAN]. Siempre menciona al usuario que debe ir a la pestaña "Actividad" para ejecutar las acciones (o ver el progreso).
+alEmpezar() {
+    imprimir("Iniciado!");
+    reproducir.Idle();
+}
 
-Formato del bloque [PLAN]:
+alActualizar(delta) {
+    si (teclaPresionada("D")) {
+        posicion.x += velocidad * delta;
+        reproducir.Correr();
+    } sino si (teclaRecienPresionada("espacio") && puedeSaltar) {
+        fisica.aplicarFuerzaImpulso(0, 10);
+        play.Salto();
+    }
+}
+
+REGLA DE ORO: Devuelve siempre código .ces completo y válido. Sé motivador y actúa como un AGENTE AUTÓNOMO E INDEPENDIENTE. Si el usuario te pide crear algo, ¡HAZLO DIRECTAMENTE! No preguntes si quieres que lo haga, simplemente explica brevemente qué harás y genera el bloque JSON. IMPORTANTE: Los scripts (.ces) deben empezar siempre con 've motor;' y usar variables 'publico' para el Inspector. NO uses markdown (\`\`\`json) para el plan, pon el JSON directamente.
+
+HABILIDADES AUTÓNOMAS (EJECUCIÓN DIRECTA):
+Tienes la capacidad de ejecutar acciones reales en el editor. Cuando el usuario te pida construir, crear, modificar o descargar algo, DEBES:
+1. Explicar brevemente en lenguaje natural lo que vas a hacer (ej: "¡Claro! Voy a crear ese objeto y el script para ti...").
+2. Generar un bloque JSON que empiece con {"plan": [...]}. NO uses bloques de código markdown (\`\`\`json) para el plan, escríbelo directamente como texto después de tu explicación.
+
+Formato del bloque JSON (OBLIGATORIO para actuar):
 {
   "plan": [
     {
-      "title": "Título del paso",
-      "description": "Descripción de lo que harás",
+      "title": "Crear Jugador",
+      "description": "Crea el objeto, añade física y el script de control.",
       "commands": [
-        { "action": "create_materia", "params": { "name": "Cubo", "type": "Sprite" } },
-        { "action": "add_component", "params": { "materiaId": "@last", "type": "Rigidbody2D" } },
-        { "action": "set_property", "params": { "materiaId": "@last", "componentType": "Transform", "propPath": "position.x", "value": 100 } }
+        { "action": "create_materia", "params": { "name": "Jugador", "type": "Sprite" } },
+        { "action": "add_component", "params": { "materiaId": "@last", "type": "Rigidbody2D", "properties": { "fixedRotation": true } } },
+        { "action": "create_file", "params": { "path": "Assets/Control.ces", "content": "ve motor;\\n\\nalActualizar(delta) { ... }" } },
+        { "action": "add_component", "params": { "materiaId": "@last", "type": "CreativeScript", "properties": { "scriptName": "Control.ces" } } }
       ]
     }
   ]
 }
 
-Comandos Disponibles:
+Comandos Disponibles (Usa exactamente estos nombres):
 - create_materia { name, parentId, type: 'Sprite'|'Camera'|'Canvas'|'Audio'|'Empty' }
-- delete_materia { id } // id puede ser el ID numérico o el nombre exacto
-- add_component { materiaId, type, properties: {} } // type puede ser el nombre en inglés o español
-- set_property { materiaId, componentType, propPath, value } // propPath puede ser anidado, ej: 'position.x' o 'color'
+- delete_materia { id } // id puede ser el ID numérico, "@last" o el nombre exacto
+- add_component { materiaId, type, properties: {} } // type: 'Rigidbody2D', 'BoxCollider2D', 'CreativeScript', etc.
+- set_property { materiaId, componentType, propPath, value } // propPath: 'position.x', 'color', etc.
 - create_file { path: 'Assets/nombre.ces', content: '...' }
 - download_file { url, path: 'Assets/nombre.png' }
 
@@ -3259,11 +3279,13 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
             if (viewSelectorMenu) {
                 // Use a more direct delegation on the menu content itself
                 viewSelectorMenu.addEventListener('click', (e) => {
-                    const link = e.target.closest('a');
+                    const link = e.target.closest('.carl-view-option');
                     if (link) {
+                        console.log("[CarlUI] Solicitud de cambio de vista:", link.dataset.view);
                         e.preventDefault();
                         e.stopPropagation();
                         CarlAgent.switchView(link.dataset.view);
+                        viewSelectorMenu.classList.remove('visible'); // Cierra el menú tras seleccionar
                     }
                 });
             }
@@ -3383,27 +3405,118 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                     if (thinkingMessage) thinkingMessage.remove();
 
                     if (result.success) {
+                        console.log("[CarlIA] Respuesta recibida:", result.text);
                         // Update history with raw response
                         carlChatHistory.push({ role: 'assistant', content: result.text });
                         if (carlChatHistory.length > 12) carlChatHistory.shift();
 
                         // --- Parse Plan from Response ---
                         let cleanText = result.text;
-                        // Robust regex to handle potential markdown code blocks around JSON
-                        const planRegex = /\[PLAN\]\s*(?:```json)?\s*(\{[\s\S]*?\})\s*(?:```)?/i;
-                        const match = cleanText.match(planRegex);
 
-                        if (match) {
+                        /**
+                         * Robustly extracts a JSON object containing a "plan" key from a string.
+                         * Corrected to handle braces inside strings and scan multiple blocks.
+                         */
+                        function extractJsonPlan(text) {
+                            const planMarkerRegex = /"\s*plan\s*"\s*:/;
+                            let searchIndex = 0;
+
+                            while (true) {
+                                const match = text.substring(searchIndex).match(planMarkerRegex);
+                                if (!match) break;
+
+                                const markerIndex = searchIndex + match.index;
+                                const startIndex = text.lastIndexOf('{', markerIndex);
+
+                                if (startIndex !== -1) {
+                                    let braceCount = 0;
+                                    let foundStart = false;
+                                    let inString = false;
+                                    let escape = false;
+                                    let jsonString = '';
+
+                                    for (let i = startIndex; i < text.length; i++) {
+                                        const char = text[i];
+                                        jsonString += char;
+
+                                        if (!inString) {
+                                            if (char === '{') {
+                                                braceCount++;
+                                                foundStart = true;
+                                            } else if (char === '}') {
+                                                braceCount--;
+                                            } else if (char === '"') {
+                                                inString = true;
+                                            }
+                                        } else {
+                                            if (escape) {
+                                                escape = false;
+                                            } else if (char === '\\') {
+                                                escape = true;
+                                            } else if (char === '"') {
+                                                inString = false;
+                                            }
+                                        }
+
+                                        if (foundStart && braceCount === 0) {
+                                            try {
+                                                const parsed = JSON.parse(jsonString);
+                                                if (parsed && parsed.plan) {
+                                                    return {
+                                                        json: jsonString,
+                                                        start: startIndex,
+                                                        end: i + 1
+                                                    };
+                                                }
+                                            } catch (e) {}
+                                            break; // Valid object but not a plan, or invalid JSON
+                                        }
+                                    }
+                                }
+                                searchIndex = markerIndex + 1;
+                            }
+                            return null;
+                        }
+
+                        const planMatch = extractJsonPlan(cleanText);
+
+                        if (planMatch) {
+                            console.log("[CarlIA] Plan detectado mediante extracción de llaves balanceadas.");
                             try {
-                                const planData = JSON.parse(match[1].trim());
+                                const planData = JSON.parse(planMatch.json.trim());
                                 if (planData.plan) {
+                                    console.log("[CarlIA] Cargando plan en CarlAgent:", planData.plan);
                                     CarlAgent.setPlan(planData.plan);
-                                    // Remove JSON from displayed text
-                                    cleanText = cleanText.replace(planRegex, '').trim();
+
+                                    // Remove JSON and markers from displayed text
+                                    // We also try to remove the [PLAN] tag and markdown code blocks if they are wrapping the JSON
+                                    let beforeJson = cleanText.substring(0, planMatch.start);
+                                    let afterJson = cleanText.substring(planMatch.end);
+
+                                    // Clean up markdown code blocks if they wrap the JSON
+                                    // Search backwards for the start of a code block
+                                    const codeBlockStart = beforeJson.lastIndexOf('```');
+                                    if (codeBlockStart !== -1) {
+                                        // If there's only whitespace between the code block start and the JSON start
+                                        const intermediate = beforeJson.substring(codeBlockStart + 3);
+                                        if (/^(json)?\s*$/i.test(intermediate)) {
+                                            beforeJson = beforeJson.substring(0, codeBlockStart);
+                                        }
+                                    }
+
+                                    // Search forwards for the end of a code block
+                                    if (afterJson.trim().startsWith('```')) {
+                                        afterJson = afterJson.trim().substring(3);
+                                    }
+
+                                    // Clean up [PLAN] tag
+                                    beforeJson = beforeJson.replace(/\[PLAN\]\s*$/i, '');
+
+                                    cleanText = (beforeJson.trim() + "\n\n" + afterJson.trim()).trim();
 
                                     // Add Action Button to message
-                                    // Note: onclick still needs a global or accessible function
-                                    const actionButtonHtml = `<div style="margin-top: 10px;"><button onclick="window.CarlAgent.switchView('activity')" class="approve-btn" style="width: auto; padding: 6px 15px;">Ver Actividad</button></div>`;
+                                    const activityLabel = window.Localization?.get('VER_ACTIVIDAD') || 'Ver Actividad';
+                                    const actionButtonHtml = `<div style="margin-top: 10px;"><button onclick="window.CarlAgent.switchView('activity')" class="approve-btn" style="width: auto; padding: 6px 15px;">${activityLabel}</button></div>`;
                                     cleanText += actionButtonHtml;
 
                                     logToUIConsole("¡Carl ha propuesto un nuevo plan!", "log");
@@ -3415,14 +3528,14 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                                     }
 
                                     // Auto-switch to activity tab if in visual or automatic mode
-                                    if (prefs.carlPermissions?.executionMode !== 'permission') {
+                                    if (getPreferences().carlPermissions?.executionMode !== 'permission') {
                                         setTimeout(() => {
                                             if (CarlAgent.switchView) CarlAgent.switchView('activity');
                                         }, 1000);
                                     }
                                 }
                             } catch (e) {
-                                console.error("Error al parsear el plan de Carl:", e);
+                                console.error("Error al procesar el plan de Carl:", e);
                             }
                         }
 
@@ -3632,16 +3745,44 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
         window.AnimationEditorWindow = AnimationEditorWindow;
         window.TilePalette = TilePalette;
         window.SkeletonImporter = SkeletonImporter;
-        window.CarlAgent = CarlAgent;
+        // window.CarlAgent ya está expuesto por CarlAgent.js
+        window.stopGame = stopGame;
 
         // --- Carl Agent Integration ---
-        CarlAgent.initialize(dom);
+        if (window.CarlAgent && window.CarlAgent.initialize) {
+            window.CarlAgent.initialize(dom);
+        }
         window.ceHotReload = hotReloadScript;
-        window.ceCreateAsset = async (name, content) => {
-            const projectName = new URLSearchParams(window.location.search).get('project');
-            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-            const assetsHandle = await projectHandle.getDirectoryHandle('Assets', { create: true });
-            return await createAsset(name, content, assetsHandle);
+        window.ceCreateAsset = async (path, content) => {
+            try {
+                console.log(`[ceCreateAsset] Intentando crear asset en: ${path}`);
+                const projectName = new URLSearchParams(window.location.search).get('project') || 'TestProject';
+                const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName, { create: true });
+
+                // Ensure the path is valid and starts with Assets/ if not absolute
+                let cleanPath = path;
+                if (!cleanPath.startsWith('Assets/')) {
+                    cleanPath = 'Assets/' + cleanPath;
+                }
+
+                const parts = cleanPath.split('/');
+                const fileName = parts.pop();
+                let currentHandle = projectHandle;
+
+                // Traverse and create directories if they don't exist
+                for (const part of parts) {
+                    if (part) {
+                        currentHandle = await currentHandle.getDirectoryHandle(part, { create: true });
+                    }
+                }
+
+                const result = await createAsset(fileName, content || "", currentHandle);
+                if (result) console.log(`[ceCreateAsset] Archivo '${fileName}' creado exitosamente en ${currentHandle.name}`);
+                return result;
+            } catch (e) {
+                console.error("[ceCreateAsset] Error crítico al crear asset:", e);
+                return null;
+            }
         };
 
         // --- For Playwright Testing ---

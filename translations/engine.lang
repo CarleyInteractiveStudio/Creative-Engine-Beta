@@ -181,6 +181,7 @@ SIN_PERMISOS: Sin permisos especiales.
 IMPORTAR_LIBRERIA: Importar Librería
 CARL_CHAT: Chat
 CARL_ACTIVIDAD: Actividad
+VER_ACTIVIDAD: Ver Actividad
 NO_ACTIVIDAD_RECIENTE: No hay actividad reciente.
 MODO_EJECUCION: Modo de Ejecución
 PLAN_ACTUAL: Plan Actual
@@ -567,6 +568,7 @@ SIN_PERMISOS: No special permissions.
 IMPORTAR_LIBRERIA: Import Library
 CARL_CHAT: Chat
 CARL_ACTIVIDAD: Activity
+VER_ACTIVIDAD: View Activity
 NO_ACTIVIDAD_RECIENTE: No recent activity.
 MODO_EJECUCION: Execution Mode
 PLAN_ACTUAL: Current Plan

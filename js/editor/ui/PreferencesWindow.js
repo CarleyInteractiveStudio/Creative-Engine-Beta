@@ -165,6 +165,11 @@ async function savePreferences() {
         executionMode: _dom.prefsCarlExecutionMode.value
     };
 
+    // Sincronizar el modo de ejecución con CarlAgent
+    if (window.CarlAgent && window.CarlAgent.setExecutionMode) {
+        window.CarlAgent.setExecutionMode(currentPreferences.carlPermissions.executionMode);
+    }
+
     currentPreferences.showTerminal = _dom.prefsShowTerminal.checked;
     currentPreferences.executionMode = _dom.prefsExecutionMode.value;
     currentPreferences.autoCloseGameWindow = _dom.prefsAutoCloseGameWindow.checked;
@@ -238,6 +243,10 @@ function loadPreferences() {
     if (_dom.prefsExecutionMode) _dom.prefsExecutionMode.value = currentPreferences.executionMode || 'integrated';
     if (_dom.prefsAutoCloseGameWindow) _dom.prefsAutoCloseGameWindow.checked = currentPreferences.autoCloseGameWindow !== false;
 
+    // Sincronizar el modo de ejecución cargado con CarlAgent
+    if (window.CarlAgent && window.CarlAgent.setExecutionMode) {
+        window.CarlAgent.setExecutionMode(currentPreferences.carlPermissions.executionMode);
+    }
 
     if (_dom.prefsTheme) {
         if (_dom.prefsTheme.value === 'custom') {

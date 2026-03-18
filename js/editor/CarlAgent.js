@@ -73,6 +73,12 @@ export function setPlan(steps) {
     currentStepIndex = 0;
     updateActivityUI();
 
+    // Si el juego está en ejecución, lo detenemos automáticamente para realizar los cambios del plan
+    if (window.isGameRunning && window.stopGame) {
+        console.log("[CarlAgent] Deteniendo el juego para ejecutar el nuevo plan.");
+        window.stopGame();
+    }
+
     // Auto-start if mode is not permission
     if (executionMode !== 'permission') {
         executeNextStep();
@@ -89,51 +95,73 @@ export function setExecutionMode(mode) {
  * @param {string} view - 'chat' o 'activity'
  */
 export function switchView(view) {
-    if (!editorDom) return;
+    console.log(`[CarlAgent] Intentando cambiar a vista: ${view}`);
 
-    const panel = editorDom.carlIaPanel;
-    const viewSelectorMenu = panel.querySelector('#carl-ia-view-selector-btn + .menu-content');
-    const viewButton = editorDom.carlIaViewSelectorBtn;
+    const panel = document.getElementById('carl-ia-panel');
+    const viewButton = document.getElementById('carl-ia-view-selector-btn');
+    // More robust lookup using ID if possible, otherwise scoped query
+    const viewSelectorMenu = document.querySelector('#carl-ia-panel .menu-content');
 
-    const link = viewSelectorMenu.querySelector(`.carl-view-option[data-view="${view}"]`);
-    if (!link) return;
+    const chatView = document.getElementById('carl-ia-chat-view');
+    const activityView = document.getElementById('carl-ia-activity-view');
+
+    if (!panel || !viewButton || !chatView || !activityView) {
+        console.error("[CarlAgent] No se pudieron encontrar los elementos de la UI para cambiar de vista.");
+        return;
+    }
+
+    const link = panel.querySelector(`.carl-view-option[data-view="${view}"]`);
+    if (!link) {
+        console.warn(`[CarlAgent] Opción de vista no encontrada: ${view}`);
+        return;
+    }
 
     viewButton.textContent = link.textContent;
 
     // Switch active state in menu
-    viewSelectorMenu.querySelectorAll('.carl-view-option').forEach(a => a.classList.remove('active'));
+    panel.querySelectorAll('.carl-view-option').forEach(a => a.classList.remove('active'));
     link.classList.add('active');
 
     // Switch visible view
-    const views = panel.querySelectorAll('.carl-view');
-    views.forEach(v => v.classList.remove('active'));
+    chatView.classList.remove('active');
+    activityView.classList.remove('active');
 
-    const targetView = panel.querySelector(`#carl-ia-${view}-view`);
-    if (targetView) targetView.classList.add('active');
+    const targetView = document.getElementById(`carl-ia-${view}-view`);
+    if (targetView) {
+        targetView.classList.add('active');
+        console.log(`[CarlAgent] Vista cambiada exitosamente a: ${view}`);
+    }
 
     // Clear notification if switching to activity
     if (view === 'activity') {
         link.classList.remove('has-notification');
     }
 
-    viewSelectorMenu.classList.remove('visible');
+    if (viewSelectorMenu) viewSelectorMenu.classList.remove('visible');
 }
 
 /**
  * Ejecuta el siguiente paso del plan según el modo actual.
  */
 export async function executeNextStep() {
-    if (currentStepIndex < 0 || currentStepIndex >= currentPlan.length) return;
+    if (currentStepIndex < 0 || currentStepIndex >= currentPlan.length) {
+        console.log("[CarlAgent] No hay más pasos que ejecutar o índice fuera de rango.", { currentStepIndex, planLength: currentPlan.length });
+        return;
+    }
 
     const step = currentPlan[currentStepIndex];
     step.status = 'executing';
     updateActivityUI();
 
+    console.log(`[CarlAgent] Ejecutando paso ${currentStepIndex + 1}/${currentPlan.length}: ${step.title}`);
     logActivity(`Iniciando paso: ${step.title}`, 'info');
 
     try {
         for (const cmd of step.commands) {
+            console.log(`[CarlAgent] -> Ejecutando comando: ${cmd.action}`, cmd.params);
             const result = await executeCommand(cmd.action, cmd.params);
+            console.log(`[CarlAgent] <- Resultado: ${result.success ? 'EXITO' : 'FALLO'}`, result.message);
+
             if (!result.success) {
                 throw new Error(`Comando ${cmd.action} falló: ${result.message}`);
             }
@@ -149,6 +177,7 @@ export async function executeNextStep() {
         }
     } catch (error) {
         step.status = 'failed';
+        console.error(`[CarlAgent] Error crítico en paso ${step.title}:`, error);
         logActivity(`Error en paso ${step.title}: ${error.message}`, 'error');
     }
 
@@ -177,24 +206,84 @@ function resolveMateria(idOrName) {
  * Resuelve un nombre de componente (soporta alias bilingües).
  */
 function resolveComponentClass(name) {
+    if (!name) return null;
+
+    // Normalización: Eliminar espacios y convertir a PascalCase o usar mapa
+    const aliasMap = {
+        'Script': 'CreativeScript',
+        'Creative Script': 'CreativeScript',
+        'Guion': 'CreativeScript',
+        'Rigidbody2D': 'Rigidbody2D',
+        'Rigidbody 2D': 'Rigidbody2D',
+        'Fisica': 'Rigidbody2D',
+        'BoxCollider2D': 'BoxCollider2D',
+        'Box Collider 2D': 'BoxCollider2D',
+        'ColisionadorDeCaja': 'BoxCollider2D',
+        'CircleCollider2D': 'CircleCollider2D',
+        'ColisionadorCircular': 'CircleCollider2D',
+        'SpriteRenderer': 'SpriteRenderer',
+        'RenderizadorDeSprite': 'SpriteRenderer',
+        'Imagen': 'UIImage',
+        'Texto': 'UIText',
+        'Boton': 'Button',
+        'Controlador': 'AnimatorController',
+        'Animador': 'Animator'
+    };
+
+    const resolvedName = aliasMap[name] || name;
+
     // 1. Intentar acceso directo en el objeto Components
-    if (Components[name]) return Components[name];
+    if (Components[resolvedName]) return Components[resolvedName];
 
     // 2. Buscar en el registro por nombre o alias
-    return getComponentFromRegistry(name);
+    return getComponentFromRegistry(resolvedName);
+}
+
+/**
+ * Normaliza el nombre de una acción a su formato estándar de motor.
+ */
+function normalizeCommand(action) {
+    const map = {
+        'createmateria': 'create_materia',
+        'crearmateria': 'create_materia',
+        'crearobjeto': 'create_materia',
+        'deletemateria': 'delete_materia',
+        'borrarmateria': 'delete_materia',
+        'borrarobjeto': 'delete_materia',
+        'addcomponent': 'add_component',
+        'add_component': 'add_component',
+        'agregarcomponente': 'add_component',
+        'setproperty': 'set_property',
+        'set_property': 'set_property',
+        'modificarpropiedad': 'set_property',
+        'createfile': 'create_file',
+        'create_file': 'create_file',
+        'creararchivo': 'create_file',
+        'deletefile': 'delete_file',
+        'delete_file': 'delete_file',
+        'borrararchivo': 'delete_file',
+        'downloadfile': 'download_file',
+        'download_file': 'download_file',
+        'descargararchivo': 'download_file'
+    };
+    // Remove underscores and convert to lowercase for flexible matching
+    const cleanAction = action.toLowerCase().replace(/_/g, '');
+    return map[cleanAction] || action;
 }
 
 /**
  * Ejecuta un comando individual.
  */
 async function executeCommand(action, params) {
-    console.log(`[CarlAgent] Ejecutando comando: ${action}`, params);
+    const standardAction = normalizeCommand(action);
+    console.log(`[CarlAgent] Ejecutando comando: ${standardAction} (original: ${action})`, params);
 
-    // Pre-procesar parámetros para resolver @last si es necesario (aunque resolveMateria ya lo hace)
+    // Pre-procesar parámetros para resolver @last si es necesario
     if (params.materiaId === '@last') params.materiaId = lastCreatedMateriaId;
     if (params.parentId === '@last') params.parentId = lastCreatedMateriaId;
+    if (params.id === '@last') params.id = lastCreatedMateriaId;
 
-    switch (action) {
+    switch (standardAction) {
         case 'create_materia': {
             const { name, parentId, type } = params;
             const parent = parentId ? resolveMateria(parentId) : null;
@@ -306,23 +395,23 @@ async function executeCommand(action, params) {
         }
 
         case 'create_file': {
-            const { path, content } = params;
-            // This requires access to the file system handle, which is usually in editor.js
-            // For now, we use a global shortcut if available
-            if (window.ceCreateAsset) {
-                const parts = path.split('/');
-                const fileName = parts.pop();
+            const filePath = params.path || params.filename || params.nombre || params.archivo;
+            const fileContent = params.content || params.contenido || "";
 
-                const result = await window.ceCreateAsset(fileName, content);
+            if (!filePath) return { success: false, message: "Falta el nombre o la ruta del archivo (path)." };
+
+            if (window.ceCreateAsset) {
+                const result = await window.ceCreateAsset(filePath, fileContent);
                 if (result) {
                     updateAssetBrowser();
 
+                    const fileName = filePath.split('/').pop();
                     // Hot Reload if game is running and it's a script
                     if ((fileName.endsWith('.ces') || fileName.endsWith('.chc')) && window.ceHotReload) {
                         await window.ceHotReload(fileName);
                     }
 
-                    return { success: true, message: `Archivo '${path}' creado.` };
+                    return { success: true, message: `Archivo '${filePath}' creado.` };
                 }
             }
             return { success: false, message: "Función de creación de archivos no disponible en este contexto." };
@@ -337,9 +426,7 @@ async function executeCommand(action, params) {
 
                 const blob = await response.blob();
                 if (window.ceCreateAsset) {
-                    const parts = path.split('/');
-                    const fileName = parts.pop();
-                    await window.ceCreateAsset(fileName, blob);
+                    await window.ceCreateAsset(path, blob);
                     updateAssetBrowser();
                     return { success: true, message: `Archivo descargado y guardado en '${path}'.` };
                 }
@@ -410,14 +497,22 @@ function logActivity(message, type = 'info') {
 }
 
 /**
- * Función global para que la UI apruebe un paso.
+ * API unificada para Carl Agent, expuesta globalmente.
  */
-window.carlAgent = {
-    approveStep: () => {
-        executeNextStep();
-    },
+export const AgentAPI = {
+    initialize,
+    setPlan,
     setExecutionMode: (mode) => {
         executionMode = mode;
         console.log(`Carl Agent Execution Mode: ${mode}`);
+        updateActivityUI();
+    },
+    switchView,
+    approveStep: () => {
+        executeNextStep();
     }
 };
+
+// Garantizar acceso global mediante ambos nombres comunes
+window.CarlAgent = AgentAPI;
+window.carlAgent = AgentAPI;
