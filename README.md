@@ -71,4 +71,11 @@ Creative Engine es un motor de videojuegos 2D profesional y ligero, diseñado pa
 - **Física:** Motor de física 2D integrado con soporte para colisiones de caja, círculo y cápsula.
 
 ---
+## 🌐 Idiomas / Languages
+- [English (English)](docs/en/README.md)
+- [Português (Portuguese)](docs/pt/README.md)
+- [Русский (Russian)](docs/ru/README.md)
+- [中文 (Chinese)](docs/zh/README.md)
+
+---
 *Desarrollado con ❤️ para la comunidad de desarrolladores de videojuegos.*
