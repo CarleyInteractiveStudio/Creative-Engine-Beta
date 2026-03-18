@@ -132,6 +132,8 @@ MUY_PRONTO: Muy pronto
 AVISO_STORAGE: Aviso Importante: Tus proyectos se guardan localmente en la carpeta que elijas. Creative Engine no almacena ninguna información en servidores externos.
 NOMBRE_PROYECTO: Nombre del Proyecto:
 HINT_PROYECTO: Usa letras, números y guiones. Sin espacios ni caracteres especiales.
+SOY_NUEVO: Soy nuevo
+HINT_SOY_NUEVO: Activa esto para recibir una guía básica al abrir el proyecto.
 CREAR: Crear
 SIN_PROYECTOS: Aún no tienes proyectos. ¡Crea uno para empezar!
 VER_UBICACION: Ver ubicación
@@ -518,6 +520,8 @@ MUY_PRONTO: Coming Soon
 AVISO_STORAGE: Important Notice: Your projects are saved locally in the folder you choose. Creative Engine does not store any information on external servers.
 NOMBRE_PROYECTO: Project Name:
 HINT_PROYECTO: Use letters, numbers, and hyphens. No spaces or special characters.
+SOY_NUEVO: I am new
+HINT_SOY_NUEVO: Enable this to receive a basic guide when opening the project.
 CREAR: Create
 SIN_PROYECTOS: You don't have any projects yet. Create one to start!
 VER_UBICACION: View location
@@ -874,6 +878,8 @@ MUY_PRONTO: Em breve
 AVISO_STORAGE: Aviso Importante: Seus projetos são salvos localmente na pasta que você escolher. Creative Engine não armazena nenhuma informação em servidores externos.
 NOMBRE_PROYECTO: Nome do Projeto:
 HINT_PROYECTO: Use letras, números e hifens. Sem espaços ou caracteres especiais.
+SOY_NUEVO: Sou novo
+HINT_SOY_NUEVO: Ative isso para receber um guia básico ao abrir o projeto.
 CREAR: Criar
 SIN_PROYECTOS: Você ainda não tem projetos. Crie um para começar!
 
@@ -1193,6 +1199,8 @@ MUY_PRONTO: Скоро
 AVISO_STORAGE: Важное примечание: Ваши проекты сохраняются локально в выбранной вами папке. Creative Engine не хранит информацию на внешних серверах.
 NOMBRE_PROYECTO: Название проекта:
 HINT_PROYECTO: Используйте буквы, цифры и дефисы. Без пробелов и спецсимволов.
+SOY_NUEVO: Я новичок
+HINT_SOY_NUEVO: Включите это, чтобы получить базовое руководство при открытии проекта.
 CREAR: Создать
 SIN_PROYECTOS: У вас пока нет проектов. Создайте один, чтобы начать!
 
@@ -1512,6 +1520,8 @@ MUY_PRONTO: 敬请期待
 AVISO_STORAGE: 重要提示：您的项目保存在您选择的本地文件夹中。Creative Engine 不会在外部服务器上存储任何信息。
 NOMBRE_PROYECTO: 项目名称：
 HINT_PROYECTO: 使用字母、数字和连字符。不含空格或特殊字符。
+SOY_NUEVO: 我是新手
+HINT_SOY_NUEVO: 启用此选项可在打开项目时获得基础指南。
 CREAR: 创建
 SIN_PROYECTOS: 您还没有任何项目。创建一个开始吧！
 
@@ -1709,6 +1719,51 @@ BUCLE: 循环 (Loop)
 REPRODUCIR: 播放
 DETENER: 停止
 PAUSAR: 暂停
+
+# Novice Guide
+TITULO_NOVATO: ¡Bienvenido!
+MSG_NOVATO: Hola, has activado la casilla de novatos. Si quieres, puedes desactivarla aquí. Aquí tienes una guía básica para empezar:
+DESACTIVAR_GUIA: Desactivar guía para este proyecto
+CONSEJO_NOVATO_1: 1. Crea una Materia en la Jerarquía para empezar tu objeto.
+CONSEJO_NOVATO_2: 2. Añade una Ley (Componente) en el Inspector para darle propiedades.
+CONSEJO_NOVATO_3: 3. Usa Scripts (.ces) en el Navegador para programar la lógica.
+IR_A_DOCUMENTACION: Ver Documentación
+
+# Novice Guide
+TITULO_NOVATO: Welcome!
+MSG_NOVATO: Hello, you have activated the novice checkbox. Here is a basic guide to get you started.
+DESACTIVAR_GUIA: Deactivate guide for this project
+CONSEJO_NOVATO_1: 1. Create a Matter in the Hierarchy to start your object.
+CONSEJO_NOVATO_2: 2. Add a Law (Component) in the Inspector to give it properties.
+CONSEJO_NOVATO_3: 3. Use Scripts (.ces) in the Browser to program the logic.
+IR_A_DOCUMENTACION: View Documentation
+
+# Novice Guide
+TITULO_NOVATO: Bem-vindo!
+MSG_NOVATO: Olá, você ativou a caixa de novato. Aqui está um guia básico para você começar.
+DESACTIVAR_GUIA: Desativar guia para este projeto
+CONSEJO_NOVATO_1: 1. Crie uma Matéria na Hierarquia para iniciar seu objeto.
+CONSEJO_NOVATO_2: 2. Adicione uma Lei (Componente) no Inspetor para dar propriedades.
+CONSEJO_NOVATO_3: 3. Use Scripts (.ces) no Navegador para programar a lógica.
+IR_A_DOCUMENTACION: Ver Documentação
+
+# Novice Guide
+TITULO_NOVATO: Добро пожаловать!
+MSG_NOVATO: Привет, вы активировали флажок новичка. Вот базовое руководство, которое поможет вам начать работу.
+DESACTIVAR_GUIA: Отключить руководство для этого проекта
+CONSEJO_NOVATO_1: 1. Создайте Материю в Иерархии, чтобы начать свой объект.
+CONSEJO_NOVATO_2: 2. Добавьте Закон (Компонент) в Инспекторе, чтобы придать ему свойства.
+CONSEJO_NOVATO_3: 3. Используйте скрипты (.ces) в Браузере для программирования логики.
+IR_A_DOCUMENTACION: Просмотреть документацию
+
+# Novice Guide
+TITULO_NOVATO: 欢迎！
+MSG_NOVATO: 您好，您已激活新手复选框。这是一份帮助您入门的基础指南。
+DESACTIVAR_GUIA: 停用此项目的指南
+CONSEJO_NOVATO_1: 1. 在层级面板中创建一个“物质”来开始您的对象。
+CONSEJO_NOVATO_2: 2. 在检查器中添加一个“法律”（组件）来赋予其属性。
+CONSEJO_NOVATO_3: 3. 在浏览器中使用脚本 (.ces) 来编写逻辑。
+IR_A_DOCUMENTACION: 查看文档
 
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor

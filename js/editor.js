@@ -40,6 +40,7 @@ import * as MateriaFactory from './editor/MateriaFactory.js';
 import * as SkeletonImporter from './editor/SkeletonImporter.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
 import * as CarlAgent from './editor/CarlAgent.js';
+import * as NoviceGuide from './editor/ui/NoviceGuideWindow.js';
 import { buildProject, runStandalonePreview } from './editor/BuildSystem.js';
 import * as Dialogs from './editor/ui/DialogWindow.js';
 const { showNotification: showNotificationDialog, showConfirmation: showConfirmationDialog, showBuildDialog } = Dialogs;
@@ -4241,6 +4242,11 @@ public start() {
                     });
                     windowMenu.appendChild(menuItem);
                 });
+            }
+
+            // Check for novice guide
+            if (currentProjectConfig.isNewUser) {
+                NoviceGuide.show(dom);
             }
 
             // Fade out the loading screen and show the editor
