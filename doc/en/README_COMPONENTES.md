@@ -1,49 +1,58 @@
-# 🧩 Component Dictionary (Leyes) - Creative Engine
+# 🧩 Component Guide (Laws) - Creative Engine
 
-Components are the building blocks of any object (Materia) in your game. Each component adds specific behavior or properties.
-
----
-
-## 🏗️ Essential Components
-
-### 📐 Transform (posicion)
-Defines the object's presence in the world.
-- **Position (x, y):** Where the object is.
-- **Rotation:** Angle in degrees.
-- **Scale (x, y):** Size multiplier.
-
-### 🎥 Camera (camara)
-Determines what the player sees.
-- **Depth:** Rendering order (lower is back).
-- **Culling Mask:** Which layers are visible.
-- **Background Color:** Color for empty areas.
+In Creative Engine, **Matter** (objects) come to life through **Laws** (components). Each Law adds specific functionality, such as gravity, image rendering, or AI logic.
 
 ---
 
-## 🎨 Rendering Components
+## 🏗️ 1. Core Components
 
-### 🖼️ SpriteRenderer (renderizadorDeSprite)
-Displays a 2D image.
-- **Source:** Path to the image file.
-- **Color:** Tint/multiplier for the image.
-- **Flip X/Y:** Horizontal or vertical mirroring.
+### 📍 Transform
+Defines an object's position, rotation, and scale.
+```ces
+position.x += 5;
+rotation += 45;
+scale.x = 2;
+flipX = true;
+```
 
-### 🌊 Water (agua)
-Adds a dynamic water surface with physics and visual effects.
-- **Level:** Surface height.
-- **Density:** Buoyancy strength.
+### 🎥 Camera
+Defines the visible area of the game.
+```ces
+camera.orthographicSize = 10;
+camera.backgroundColor = "#ff0000";
+```
 
 ---
 
-## ⚙️ Physics 2D
+## 🚗 4. Vehicles and Advanced Controllers
 
-### 🧱 Rigidbody2D (fisica)
-Makes the object react to gravity and forces.
-- **Mass:** Weight of the object.
-- **Gravity Scale:** Multiplier for the world's gravity.
-- **Fixed Rotation:** Prevents the object from spinning.
+### 🚁 HelicopterController
+Side-scrolling flight simulation for helicopters.
+- **Parameters:** Engine power, takeoff power (vDespegue), turn agility, and auto-stability.
+- **Scripting:**
+  ```ces
+  helicopterController.power = 2500;
+  helicopterController.vDespegue = 1200;
+  ```
 
-### 📦 BoxCollider2D / CircleCollider2D
-Defines the physical shape for collisions.
-- **Is Trigger:** If true, objects pass through but trigger events.
-- **Friction:** Surface grip.
+### ✈️ PlaneController
+Aerodynamic lift physics and side-scrolling flight.
+- **Parameters:** Takeoff speed, lift force, turn agility, and air drag.
+
+### 🏎️ VehicleTopDown
+Arcade control for cars in a top-down view.
+- **Parameters:** Power, max speed, turn agility, and drift intensity.
+
+---
+
+## 🦴 7. Animation, Skeleton, and Lighting
+
+### 🦴 SkeletonRenderer and IK (Inverse Kinematics)
+- **SkeletonRenderer:** Renders meshes deformed by bones (Skinning).
+- **Bone:** Defines each part of the skeleton.
+- **IKManager2D:** Controls bone chains so a hand or foot follows a target.
+
+### 💡 2D Lighting
+- **PointLight2D:** Light in all directions.
+- **SpotLight2D:** Cone-shaped light.
+- **SpriteLight2D:** Uses a sprite as a light shape.

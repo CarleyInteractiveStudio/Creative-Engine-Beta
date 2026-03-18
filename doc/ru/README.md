@@ -1,52 +1,32 @@
-# 🏗️ Advanced Guide: Projects, Scenes, and Building - Creative Engine
+# Creative Engine 🎨🚀
 
-This guide covers core aspects of asset management, level design, and final publishing for your games.
+Creative Engine — это профессиональный и легкий 2D-движок для создания игр прямо в браузере.
 
----
+## ✨ Ключевые особенности
 
-## 📂 1. Project Structure
+### 🖥️ Редактор мирового уровня
+- **SVG-интерфейс:** Только профессиональные векторные иконки.
+- **VidSpri:** Конвертируйте видео в оптимизированные последовательности спрайтов.
+- **Мультиязычность:** Переведен на испанский, английский, португальский, русский и китайский.
 
-Each project in Creative Engine is saved in a dedicated folder:
-- `/Assets`: All your images, sounds, videos, and scripts.
-- `/lib`: Folder for libraries (.celib) extending the engine.
-- `project.ceconfig`: Technical settings file (layers, tags, metadata).
-- `thumbnail.png`: Project preview image.
+### 🚗 Транспорт и реалистичная физика
+- **Продвинутая симуляция:** Контроллеры для вертолетов, самолетов и машин (Top-Down).
+- **Вода:** Симуляция жидкостей с динамической плавучестью.
 
-### Project Settings
-Go to **Edit > Project Settings** to:
-- Change the game's title and author.
-- Manage **Sorting Layers** (draw order).
-- Define **Collision Layers** and **Tags**.
+### 🦴 Анимация и Скиннинг
+- **2D Скелет:** Деформация изображений с помощью костей и весов.
+- **IK (Инверсная кинематика):** Реалистичное движение конечностей.
+- **Smart Animator:** Автоматическая смена анимаций в зависимости от движения.
 
----
+### 🤖 Искусственный интеллект Carl IA
+- **Автономный помощник:** Карл может создавать целые сцены по вашим планам действий.
+- **CHC (Code Helper):** Мгновенно переводит ваши идеи в код .ces.
 
-## 🎬 2. Scene Management (.ceScene)
+## 📚 Техническая документация
 
-Scenes are individual worlds containing materials and environment settings.
-
-### Basic Operations
-- **Save Scene:** Use `Ctrl + S`.
-- **Switch Scenes:** Double-click any `.ceScene` file in the browser.
-- **Scene Thumbnail:** The engine automatically takes a screenshot for the icon upon saving.
-
----
-
-## 📦 3. Import and Packages (.cep)
-
-### Importing Assets
-1. **Drag and Drop:** Drag files directly from your PC to the asset browser.
-2. **Spine (Skeletal Animation):** Supports importing from Spine in `.json` format.
-
-### Exporting Packages
-Right-click any folder in `Assets` and select **Export Package**. This creates a `.cep` file for easy transfer between projects.
+- **[Руководство по компонентам](README_COMPONENTES.md):** Словарь всех компонентов и транспорта.
+- **[Руководство по скриптингу](README_SCRIPTING.md):** Руководство по языку движка.
+- **[Визуальные редакторы](README_EDITORES_VISUALES.md):** Анимация, тайлы, террейн и VidSpri.
 
 ---
-
-## 🏗️ 4. Build System
-
-Building creates an independent web package (`.zip`) ready to be hosted on servers.
-
-1. Go to **File > Build**.
-2. Select the starting scene.
-3. Configure Splash Screens.
-4. Click "Build Game".
+*Разработано Carley Interactive Studio.*

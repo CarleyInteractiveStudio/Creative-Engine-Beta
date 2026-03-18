@@ -3651,6 +3651,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
         window.selectMateria = selectMateria;
         window.updateInspector = updateInspector;
         window.openAssetSelector = openAssetSelector;
+        window.SceneManager.openMarkdownViewer = openMarkdownViewerCallback;
         window.setActiveTool = SceneView.setActiveTool;
         window.CES_Transpiler = CES_Transpiler;
         window.TerrenoEditorWindow = TerrenoEditorWindow;

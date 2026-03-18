@@ -1,71 +1,51 @@
-# 🏗️ Guía Avanzada: Proyectos, Escenas y Construcción - Creative Engine
+# 🏗️ Proyectos, Escenas y Publicación - Creative Engine
 
-Esta guía cubre los aspectos fundamentales de la gestión de activos, el diseño de niveles y la publicación final de tus juegos.
+Este manual cubre la gestión técnica de tus creaciones, desde la estructura de carpetas hasta el empaquetado final.
 
 ---
 
-## 📂 1. Estructura de Proyectos
+## 📂 1. Estructura de un Proyecto
 
-Cada proyecto en Creative Engine se guarda en una carpeta independiente con la siguiente estructura:
-- `/Assets`: Aquí residen todas tus imágenes, sonidos, videos y scripts.
-- `/lib`: Carpeta reservada para librerías (.celib) que extienden el motor.
-- `project.ceconfig`: Archivo de configuración técnica (capas, tags, metadatos).
-- `thumbnail.png`: Imagen de previsualización del proyecto.
-
-### Configuración del Proyecto
-Ve a **Editar > Configuración del Proyecto** para:
-- Cambiar el nombre y autor del juego.
-- Gestionar las **Sorting Layers** (orden de dibujo por capas).
-- Definir **Collision Layers** y **Tags**.
+Cada proyecto se guarda en su propia carpeta con los siguientes elementos:
+- **/Assets:** Imágenes, sonidos, scripts y escenas.
+- **/lib:** Librerías (.celib) que extienden el motor.
+- **/doc:** Documentación local del proyecto y manuales del motor.
+- **project.ceconfig:** Configuración técnica (Capas, Tags, metadatos).
+- **thumbnail.png:** Imagen de previsualización del proyecto.
 
 ---
 
 ## 🎬 2. Gestión de Escenas (.ceScene)
 
-Las escenas son mundos individuales que contienen materias y configuraciones ambientales.
-
-### Operaciones Básicas
-- **Guardar Escena:** Usa `Ctrl + S`. Es crucial guardar para persistir la jerarquía de objetos.
-- **Cambio de Escena:** Doble clic en cualquier archivo `.ceScene` en el navegador. Se te preguntará si quieres guardar los cambios pendientes.
-- **Miniatura de Escena:** Al guardar, el motor captura automáticamente una foto de lo que ves para usarla como icono en el navegador.
-
-### Control de Ambiente
-Usa el panel de **Control de Ambiente** (Ventana > Control de Ambiente) para:
-- Ajustar el ciclo día/noche.
-- Definir colores de luz ambiental.
-- **Excluir capas:** Evita que objetos como la interfaz de usuario se vean afectados por la oscuridad.
+Las escenas son mundos independientes. Puedes tener niveles, menús y pantallas de carga.
+- **Guardar:** `Ctrl + S`. Se captura una miniatura automáticamente.
+- **Cambiar de escena:** Haz doble clic en un archivo `.ceScene` en el Navegador.
+- **Lógica de Cambio:** Puedes usar `escena.cargar("Assets/Nivel2.ceScene")` en tus scripts.
 
 ---
 
-## 📦 3. Importación y Paquetes (.cep)
+## 📦 3. Prefabs (.ceprefab)
 
-### Importación de Activos
-1. **Arrastrar y Soltar:** Puedes arrastrar archivos directamente desde tu PC al área de cuadrícula del Navegador de Assets.
-2. **Spine (Animación Esquelética):** Soporte oficial para importar esqueletos exportados desde Spine en formato `.json`. Ve a **Archivo > Importar Esqueleto**.
-
-### Exportación de Paquetes
-Haz clic derecho en cualquier carpeta dentro de `Assets` y elige **Exportar Paquete**. Esto creará un archivo `.cep` que agrupa todo el contenido (imágenes, scripts vinculados, etc.) para que puedas moverlo entre proyectos fácilmente.
+Un Prefab es un objeto pre-configurado que puedes reutilizar.
+- **Crear:** Arrastra una Materia desde la Jerarquía hasta el Navegador de Assets.
+- **Uso:** Arrastra el archivo `.ceprefab` a la escena para crear una instancia.
+- **Edición:** Haz doble clic en el prefab en el Navegador para entrar en el **Modo Edición de Prefab**.
 
 ---
 
-## 🏗️ 4. El Sistema de Build (Publicación)
+## 🏗️ 4. Sistema de Build y Exportación
 
-El proceso de Build genera un paquete web independiente (`.zip`) listo para ser alojado en servidores.
+### Exportar Assets (.cep)
+Haz clic derecho en cualquier carpeta en Assets y elige **Exportar Paquete**. Esto crea un archivo `.cep` comprimido con todos los archivos necesarios, ideal para compartir con otros creadores.
 
-### Pasos para un Build Exitoso
+### Build del Juego
+Prepara tu juego para la web.
 1. Ve a **Archivo > Build**.
-2. **Escena Inicial:** Asegúrate de seleccionar qué escena cargará primero el jugador.
-3. **Optimización de Assets:**
-   - Si desactivas "Incluir todos los archivos", el motor realizará un análisis de dependencias para exportar **únicamente** lo que tus escenas necesitan, ahorrando mucho peso.
-4. **Pantallas de Splash:** Puedes añadir logos de tu estudio que aparecerán antes de cargar el juego.
-5. **Generación:** Haz clic en "Construir Juego". Obtendrás un ZIP que contiene el motor runtime, tus scripts transpilados y tus assets optimizados.
+2. Selecciona la escena inicial.
+3. Configura las pantallas de inicio (Splash Screens).
+4. El motor generará un archivo `.zip` con un entorno web independiente listo para subir a sitios como Itch.io.
 
 ---
 
-## 🏠 5. Sistema de Prefabs
-
-Un **Prefab** es una plantilla de un objeto que puedes reutilizar.
-1. Crea un objeto y configúralo (ponle leyes, scripts, hijos).
-2. Arrástralo desde la **Jerarquía** hacia el **Navegador de Assets**.
-3. Se creará un archivo `.ceprefab`. Ahora puedes arrastrarlo a cualquier escena para crear copias idénticas.
-4. **Modo Edición:** Haz doble clic en el `.ceprefab` para entrar en el editor de prefabs aislado. Los cambios aquí afectarán a todas las instancias futuras.
+## 📱 5. Firma de Android (Keystore)
+En la Configuración del Proyecto, puedes generar o asignar un archivo **Keystore**. Esto es obligatorio si planeas convertir tu build web en una APK de Android firmada para Google Play.

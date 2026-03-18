@@ -87,14 +87,42 @@ Definen la forma física para los choques.
 
 ---
 
-## 🤖 4. Inteligencia y Movimiento
+## 🚗 4. Vehículos y Controladores Avanzados
+
+### 🚁 HelicopterController (Controlador de Helicóptero)
+Simulación de vuelo lateral para helicópteros.
+- **Parámetros:** Potencia de motor, potencia de despegue (vDespegue), agilidad de giro y auto-estabilidad.
+- **Scripting:**
+  ```ces
+  controladorDeHelicoptero.potencia = 2500;
+  controladorDeHelicoptero.vDespegue = 1200;
+  ```
+
+### ✈️ PlaneController (Controlador de Avión)
+Física de sustentación aerodinámica y vuelo lateral.
+- **Parámetros:** Velocidad de despegue, fuerza de sustentación, agilidad de giro y arrastre de aire.
+- **Scripting:**
+  ```ces
+  controladorDeAvion.sustentacion = 1.5;
+  controladorDeAvion.velocidadDespegue = 500;
+  ```
+
+### 🏎️ VehicleTopDown (Vehículo Cenital)
+Control arcade para coches en vista desde arriba.
+- **Parámetros:** Potencia, velocidad máxima, agilidad de giro e intensidad de derrape (drift).
+- **Scripting:**
+  ```ces
+  controladorVehiculoTopDown.derrape = 0.5;
+  controladorVehiculoTopDown.giro = 200;
+  ```
+
+---
+
+## 🤖 5. Inteligencia y Movimiento
 
 ### 🧠 BasicAI (IA Básica)
 Comportamientos automáticos para NPCs y enemigos.
-- **Modos:**
-  - **Follow:** Sigue a una Materia objetivo.
-  - **Escape:** Huye de un objetivo.
-  - **Wander:** Camina aleatoriamente.
+- **Modos:** Follow (Seguir), Escape (Huir), Wander (Vagar).
 - **Scripting:**
   ```ces
   iaBasica.speed = 250;
@@ -112,18 +140,14 @@ Mueve el objeto entre dos puntos.
 
 ---
 
-## 📱 5. Interfaz de Usuario (UI)
+## 📱 6. Interfaz de Usuario (UI)
 
 ### 🖼️ Canvas (Lienzo)
-El contenedor principal para todos los elementos de interfaz.
-- **Scripting:**
-  ```ces
-  lienzo.scaleChildren = verdadero;
-  ```
+El contenedor principal para todos los elementos de interfaz. Soporta modo Pantalla o Espacio de Mundo.
 
 ### 🔘 Button (Botón)
 Detecta clics del usuario.
-- **Uso en Inspector:** Permite definir colores para los estados (Normal, Presionado, Desactivado) o cambiar sprites.
+- **Uso en Inspector:** Permite definir colores para los estados (Normal, Presionado, Desactivado).
 - **Scripting:**
   ```ces
   alHacerClick() {
@@ -132,43 +156,25 @@ Detecta clics del usuario.
   ```
 
 ### 📝 UIText (Texto UI)
-Muestra texto en pantalla con fuentes personalizadas.
-- **Scripting:**
-  ```ces
-  textoUI.text = "Puntos: " + puntos;
-  textoUI.fontSize = 40;
-  ```
+Muestra texto en pantalla con fuentes personalizadas (.ttf, .otf).
 
 ---
 
-## 🎬 6. Animación y Audio
+## 🎬 7. Animación, Esqueleto e Iluminación
 
 ### 🎮 AnimatorController (Controlador)
 Gestiona estados de animación (Caminar, Saltar, Quieto).
-- **Uso en Inspector:** Requiere un archivo `.ceanim`. El "Smart Mode" anima automáticamente según el movimiento del Rigidbody2D o el componente Movement.
-- **Scripting:**
-  ```ces
-  controlador.play("Atacar"); // Fuerza un estado
-  ```
+- **Smart Mode:** Anima automáticamente según el movimiento del objeto.
 
-### 🔊 AudioSource (Fuente de Audio)
-Reproduce efectos de sonido o música.
-- **Uso en Inspector:** Soporta **Audio Espacial** (el volumen baja si el objeto se aleja de la cámara).
-- **Scripting:**
-  ```ces
-  fuenteDeAudio.reproducir();
-  fuenteDeAudio.loop = verdadero;
-  reproducir.Explosion(); // Atajo proxy (reproduce sonido por nombre)
-  ```
+### 🦴 SkeletonRenderer (Esqueleto) e IK (Cinemática Inversa)
+- **SkeletonRenderer:** Renderiza mallas deformadas por huesos (Skinning).
+- **Bone (Hueso):** Define cada parte del esqueleto.
+- **IKManager2D (Gestor IK):** Controla cadenas de huesos para que una mano o pie siga un objetivo.
 
----
-
-## 📡 7. Otros Componentes
-
-- **RaycastSource (Rallo):** Lanza rayos invisibles para detectar paredes o enemigos al frente.
-- **ParticleSystem (Partículas):** Crea efectos de fuego, humo o chispas usando un prefab como base.
-- **Parallax:** Crea fondos infinitos que se mueven a distinta velocidad para dar profundidad.
-- **Light2D (Luces):** Ilumina tu escena con luces puntuales, focales o formas libres.
+### 💡 Iluminación 2D (Lights)
+- **PointLight2D (Luz Puntual):** Luz en todas las direcciones.
+- **SpotLight2D (Luz Focal):** Luz en forma de cono.
+- **SpriteLight2D:** Usa un sprite como forma de luz.
 
 ---
 

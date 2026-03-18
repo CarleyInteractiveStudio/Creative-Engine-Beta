@@ -1,43 +1,30 @@
-# 🎨 Visual Editor Guide: Animator, Tiles, and Sprites - Creative Engine
+# 🎨 Visual Editors Guide - Creative Engine
 
-Creative Engine includes specialized tools for asset creation and world-building.
+Creative Engine includes specialized tools for asset creation and world-building without code.
 
 ---
 
 ## 🎭 1. Animator Controller (.ceanim)
-Manage the character's states (Idling, Running, Jumping).
-- **States:** Individual animation clips.
-- **Transitions:** Arrows connecting states.
-- **Entry State:** The starting animation when the game begins.
-
-### Creating Transitions
-Right-click an animation node and select **Create Transition**. Click another node to connect them.
+Manage your characters' state logic.
+- **States:** Nodes containing an animation clip (.cea).
+- **Transitions:** Arrows connecting states under certain conditions.
+- **Smart Mode:** Automatically chooses states based on movement.
 
 ---
 
-## 🗺️ 2. Tile Palette (.cepalette)
-Paint levels using grids of sprites.
-- **Brush (B):** Paint tiles on the map.
-- **Bucket (G):** Fill areas.
-- **Eraser (N):** Remove tiles.
-
-### Setup
-Create a `.cepalette` asset, open it, and associate a **Spritesheet** to extract tiles.
+## 🦴 2. Skeletal Animation and Skinning
+Move parts of an object fluidly.
+- **Bone:** Defines the hierarchical structure.
+- **SkeletonRenderer:** Deforms an image according to bone movement.
+- **IK (Inverse Kinematics):** Automatically adjusts limbs (like a leg) when moving the end effector (a foot).
 
 ---
 
-## 🖼️ 3. Sprite Editor (Slicer)
-Extract individual frames from a single large image.
-- **Automatic:** Carl IA finds objects in the image.
-- **Grid by Cell Size:** Divide by fixed dimensions (e.g., 64x64).
-- **Grid by Cell Count:** Divide into specific rows and columns.
-
-### Pivot Points
-Define where the "origin" of the sprite is (Center, Bottom, etc.).
+## ⛰️ 5. 2D Terrain Editor
+Paint organic floor and wall shapes with custom textures.
+- **Collisions:** The **TerrenoCollider2D** component automatically generates the physical shape.
 
 ---
 
-## 🎬 4. Animation Editor (.cea)
-Create traditional or skeletal 2D animations.
-- **Frame-by-Frame:** Each frame is a new image.
-- **Skeletal (Bones):** Move bones to animate a single mesh.
+## 🎞️ 6. VidSpri: Video to Sprite Converter
+Integrated tool to convert video files into optimized sprite sheets or image sequences. Access from **Window > Vid Spri**.

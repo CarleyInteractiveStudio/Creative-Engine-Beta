@@ -1,52 +1,32 @@
-# 🏗️ Advanced Guide: Projects, Scenes, and Building - Creative Engine
+# Creative Engine 🎨🚀
 
-This guide covers core aspects of asset management, level design, and final publishing for your games.
+Creative Engine 是一款专业且轻量级的 2D 游戏引擎，专为追求在浏览器中获得流畅且强大创作体验的开发者设计。
 
----
+## ✨ 核心特性
 
-## 📂 1. Project Structure
+### 🖥️ 世界级编辑器
+- **SVG 界面:** 无表情符号，仅使用专业矢量图标。
+- **VidSpri:** 将视频转换为优化的精灵序列。
+- **多语言支持:** 已翻译为西班牙语、英语、葡萄牙语、俄语和中文。
 
-Each project in Creative Engine is saved in a dedicated folder:
-- `/Assets`: All your images, sounds, videos, and scripts.
-- `/lib`: Folder for libraries (.celib) extending the engine.
-- `project.ceconfig`: Technical settings file (layers, tags, metadata).
-- `thumbnail.png`: Project preview image.
+### 🚗 载具与真实物理
+- **高级模拟:** 直升机、飞机和汽车（俯视角）控制器。
+- **水系统:** 基于粒子的流体模拟，具有动态浮力。
 
-### Project Settings
-Go to **Edit > Project Settings** to:
-- Change the game's title and author.
-- Manage **Sorting Layers** (draw order).
-- Define **Collision Layers** and **Tags**.
+### 🦴 动画与蒙皮
+- **2D 骨骼:** 使用骨骼和权重使图像变形。
+- **IK (反向动力学):** 真实的肢体动作。
+- **智能动画师:** 根据运动自动切换动画。
 
----
+### 🤖 智能助手 Carl IA
+- **自主代理:** Carl 可以通过行动计划为你创建完整的场景。
+- **CHC (代码助手):** 瞬间将你的想法转化为 .ces 代码。
 
-## 🎬 2. Scene Management (.ceScene)
+## 📚 技术文档
 
-Scenes are individual worlds containing materials and environment settings.
-
-### Basic Operations
-- **Save Scene:** Use `Ctrl + S`.
-- **Switch Scenes:** Double-click any `.ceScene` file in the browser.
-- **Scene Thumbnail:** The engine automatically takes a screenshot for the icon upon saving.
-
----
-
-## 📦 3. Import and Packages (.cep)
-
-### Importing Assets
-1. **Drag and Drop:** Drag files directly from your PC to the asset browser.
-2. **Spine (Skeletal Animation):** Supports importing from Spine in `.json` format.
-
-### Exporting Packages
-Right-click any folder in `Assets` and select **Export Package**. This creates a `.cep` file for easy transfer between projects.
+- **[组件指南 (法律)](README_COMPONENTES.md):** 所有组件和载具的词典。
+- **[脚本指南 (CES)](README_SCRIPTING.md):** 引擎双语脚本手册。
+- **[视觉编辑器指南](README_EDITORES_VISUALES.md):** 动画、瓦片、地形和 VidSpri。
 
 ---
-
-## 🏗️ 4. Build System
-
-Building creates an independent web package (`.zip`) ready to be hosted on servers.
-
-1. Go to **File > Build**.
-2. Select the starting scene.
-3. Configure Splash Screens.
-4. Click "Build Game".
+*由 Carley Interactive Studio 开发。*

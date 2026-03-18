@@ -1,51 +1,60 @@
 # 🎨 Guía de Editores Visuales - Creative Engine
 
-Creative Engine incluye una suite de herramientas visuales para gestionar gráficos, animaciones y niveles de forma intuitiva.
+Creative Engine incluye herramientas especializadas para la creación de activos y construcción de mundos sin necesidad de código.
 
 ---
 
-## ✂️ 1. Editor de Sprites (Sprite Slicer)
+## 🎭 1. Controlador de Animación (.ceanim)
+Gestiona la lógica de estados de tus personajes.
 
-Permite recortar una imagen grande en múltiples sprites pequeños (útil para hojas de personajes o tilesets).
+### Conceptos Clave
+- **Estados:** Nodos que contienen un clip de animación (.cea).
+- **Transiciones:** Flechas que conectan estados bajo ciertas condiciones.
+- **Smart Mode:** Si está activo, el motor elige automáticamente el estado (Caminar, Saltar, Quieto) basándose en la velocidad del Rigidbody2D o el componente Movement.
 
-- **Cómo Abrirlo:** Haz doble clic en cualquier imagen (.png, .jpg) en el Navegador de Assets.
-- **Modos de Recorte:**
-  - **Automático:** Detecta los bordes de los dibujos.
-  - **Grid:** Divide la imagen en celdas iguales (ej: 32x32).
-- **Pivotes:** Define el punto central de cada sprite (ej: los pies de un personaje).
-
----
-
-## 🎞️ 2. Editor de Animaciones (.cea)
-
-Crea secuencias de imágenes para tus personajes u objetos.
-
-- **Cómo Abrirlo:** Haz doble clic en un archivo `.cea`.
-- **Línea de Tiempo:** Arrastra sprites desde el navegador hacia la línea de tiempo para añadir fotogramas.
-- **Cebolla (Onion Skin):** Muestra el frame anterior y posterior de forma transparente para ayudarte a animar con fluidez.
-- **Velocidad (FPS):** Ajusta qué tan rápido se reproduce la animación.
+### Uso
+1. Crea un asset de **Controlador de Animación**.
+2. Haz doble clic para abrir el editor visual.
+3. Arrastra clips `.cea` al grafo.
+4. Conecta estados haciendo clic derecho sobre un nodo y seleccionando **Crear Transición**.
 
 ---
 
-## 🎮 3. Controlador de Animación (StateMachine)
+## 🦴 2. Animación Esquelética y Skinning
+A diferencia de la animación por cuadros, la esquelética permite mover partes de un objeto de forma fluida.
 
-Gestiona la lógica de cuándo debe reproducirse cada animación (ej: Quieto -> Caminar).
-
-- **Cómo Abrirlo:** Haz doble clic en un archivo `.ceanim`.
-- **Grafo Visual:** Haz clic derecho para crear estados. Conecta estados arrastrando desde un nodo a otro.
-- **Smart Mode (Modo Inteligente):** Si lo activas, el motor detectará automáticamente si el personaje se mueve arriba, abajo, izquierda o derecha y reproducirá la animación correspondiente sin necesidad de programar.
+- **Bone (Hueso):** Define la estructura jerárquica.
+- **SkeletonRenderer:** Toma una imagen y la deforma según el movimiento de los huesos.
+- **IK (Cinemática Inversa):** Permite mover el final de una cadena (como un pie) y que el resto de los huesos (pierna, rodilla) se ajusten automáticamente.
 
 ---
 
-## 🗺️ 4. Editor de Tilemaps (Mapas de Azulejos)
+## 🗺️ 3. Paleta de Tiles (.cepalette)
+Pinta niveles rápidamente usando rejillas de sprites.
 
-Diseña niveles basados en rejilla de forma rápida.
+1. Crea un asset de **Paleta de Tiles**.
+2. Ábrelo y asocia una hoja de sprites (Spritesheet) o imágenes sueltas.
+3. En la ventana **Paleta**, selecciona un tile.
+4. En la escena, usa el **Pincel (B)** para pintar o la **Goma (N)** para borrar.
 
-- **Componente:** Añade una Ley de tipo **Tilemap** a una Materia.
-- **Paletas:** Abre la ventana **Paleta de Tiles** (Ventana > Paleta de Tiles) y arrastra tu tileset.
-- **Herramientas:**
-  - **Pincel:** Pinta azulejos individuales.
-  - **Cubo:** Rellena áreas grandes.
-  - **Goma:** Borra azulejos.
-- **Capas:** Crea múltiples capas para tener fondos y decoraciones por separado.
-- **Colisiones:** Añade la Ley **TilemapCollider2D** para generar colisiones automáticas basadas en los azulejos pintados.
+---
+
+## 🖼️ 4. Editor de Sprites (Slicer)
+Extrae cuadros individuales de una imagen grande.
+
+- **Automatic:** Carl IA detecta automáticamente los bordes de los sprites.
+- **Grid:** Divide por tamaño de celda (ej: 32x32) o por conteo de filas/columnas.
+- **Pivote:** Define el centro de rotación y posición del sprite.
+
+---
+
+## ⛰️ 5. Editor de Terreno 2D
+Permite pintar formas orgánicas de suelo y paredes con texturas personalizadas.
+
+- **Capas:** Puedes tener múltiples texturas superpuestas.
+- **Colisiones:** El componente **TerrenoCollider2D** genera automáticamente la forma física de lo que has pintado.
+
+---
+
+## 🎞️ 6. VidSpri: Conversor de Video a Sprite
+Herramienta integrada para convertir archivos de video en hojas de sprites o secuencias de imágenes optimizadas para el motor. Accede desde **Ventana > Vid Spri**.

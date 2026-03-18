@@ -1,54 +1,31 @@
-# 📟 Terminal Guide: Commands and Utilities - Creative Engine
+# 📟 Comandos de Terminal - Creative Engine
 
-The Creative Engine Terminal is a low-level tool for developers to inspect the engine's internal state and execute advanced operations.
-
----
-
-## 🚀 1. How to Open the Terminal
-Go to **Window > Terminal** or use the shortcut `Ctrl + \` (if assigned). It's also available as a tab in the Code Editor view.
+O terminal é uma ferramenta avançada para depurar e controlar o motor via comandos de texto. Aceda em **Janela > Terminal**.
 
 ---
 
-## 🛠️ 2. Core Commands
-
-### `ls` / `dir`
-Lists all files in the current project directory.
-- `ls Assets`: Shows contents of the Assets folder.
-
-### `clear` / `cls`
-Clears the terminal output screen.
-
-### `whoami`
-Displays the current engine version and active project.
-
-### `help`
-Lists all available terminal commands.
+## 📂 Gestão de Ficheiros
+- `ls [pasta]`: Lista o conteúdo de um diretório.
+- `cd [pasta]`: Muda o diretório atual.
+- `mkdir [nome]`: Cria uma nova pasta.
 
 ---
 
-## 🧪 3. Advanced Engine Commands
-
-### `find [name]`
-Search for a Materia in the hierarchy by its name.
-
-### `inspect [id]`
-Dumps the internal JSON state of a Materia with the given ID.
-
-### `stats`
-Displays real-time performance metrics (FPS, Draw Calls, Physics objects).
+## 🔍 Inspeção de Objetos
+- `find [nome]`: Procura uma Matéria na cena e devolve o seu ID.
+- `inspect [id]`: Mostra todas as propriedades de um objeto em JSON.
+- `log [mensagem]`: Imprime uma mensagem na consola.
 
 ---
 
-## 🎮 4. Game Control
+## 🎮 Controlo de Jogo
+- `play`: Inicia o jogo.
+- `stop`: Para o jogo e restaura a cena.
+- `scene [caminho]`: Carrega uma cena específica imediatamente.
 
-### `play` / `stop`
-Starts or stops the game directly from the command line.
+---
 
-### `scene [path]`
-Loads a scene from the given relative path.
-- `scene Assets/MainScene.ceScene`
-
-### `set [prop] [value]`
-Directly modifies a property on the engine's state.
-- `set timeScale 0.5`: Enters slow-motion mode.
-- `set debugDraw true`: Shows physics colliders.
+## 🧪 Utilitários Avançados
+- `stats`: Mostra métricas de desempenho (FPS, memória).
+- `clear`: Limpa o ecrã do terminal.
+- `help`: Lista todos os comandos disponíveis.

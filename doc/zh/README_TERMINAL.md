@@ -1,54 +1,23 @@
-# 📟 Terminal Guide: Commands and Utilities - Creative Engine
+# 📟 终端命令 - Creative Engine
 
-The Creative Engine Terminal is a low-level tool for developers to inspect the engine's internal state and execute advanced operations.
-
----
-
-## 🚀 1. How to Open the Terminal
-Go to **Window > Terminal** or use the shortcut `Ctrl + \` (if assigned). It's also available as a tab in the Code Editor view.
+终端是用于调试和通过文本命令控制引擎的高级工具。通过 **窗口 > 终端** 访问。
 
 ---
 
-## 🛠️ 2. Core Commands
-
-### `ls` / `dir`
-Lists all files in the current project directory.
-- `ls Assets`: Shows contents of the Assets folder.
-
-### `clear` / `cls`
-Clears the terminal output screen.
-
-### `whoami`
-Displays the current engine version and active project.
-
-### `help`
-Lists all available terminal commands.
+## 📂 文件管理
+- `ls [文件夹]`: 列出目录内容。
+- `cd [文件夹]`: 更改当前目录。
+- `mkdir [名称]`: 创建新文件夹。
 
 ---
 
-## 🧪 3. Advanced Engine Commands
-
-### `find [name]`
-Search for a Materia in the hierarchy by its name.
-
-### `inspect [id]`
-Dumps the internal JSON state of a Materia with the given ID.
-
-### `stats`
-Displays real-time performance metrics (FPS, Draw Calls, Physics objects).
+## 🔍 对象检查
+- `find [名称]`: 通过名称在场景中查找“物质”并返回其 ID。
+- `inspect [id]`: 以 JSON 格式显示对象的所有属性。
 
 ---
 
-## 🎮 4. Game Control
-
-### `play` / `stop`
-Starts or stops the game directly from the command line.
-
-### `scene [path]`
-Loads a scene from the given relative path.
-- `scene Assets/MainScene.ceScene`
-
-### `set [prop] [value]`
-Directly modifies a property on the engine's state.
-- `set timeScale 0.5`: Enters slow-motion mode.
-- `set debugDraw true`: Shows physics colliders.
+## 🎮 游戏控制
+- `play`: 开始游戏。
+- `stop`: 停止游戏并恢复场景。
+- `scene [路径]`: 立即加载特定场景。

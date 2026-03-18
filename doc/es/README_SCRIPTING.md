@@ -1,6 +1,6 @@
 # 📜 Guía Maestra de Scripting (CES) - Creative Engine
 
-Creative Engine utiliza **CES (Creative Engine Script)**, un lenguaje potente basado en JavaScript pero simplificado para creadores de videojuegos. Esta guía te enseñará desde lo básico hasta sistemas complejos.
+Creative Engine utiliza **CES (Creative Engine Script)**, un lenguaje potente basado en JavaScript pero simplificado para creadores de videojuegos. Esta guía te enseñará desde lo básico hasta los sistemas más potentes.
 
 ---
 
@@ -27,6 +27,8 @@ publico booleano esInvencible = falso;
 publico Materia objetivo; // Aparecerá un cuadro para arrastrar objetos
 publico Sprite icono;
 publico Audio sonidoSalto;
+publico Prefab enemigo;
+publico Scene siguienteNivel;
 ```
 
 ---
@@ -82,159 +84,58 @@ alActualizar(delta) {
 
 ---
 
-## 🤖 Ejemplos Prácticos
-
-### 🎮 Ejemplo 1: Controlador de Personaje Completo
-Este script maneja movimiento, salto, animaciones y sonido.
+## 📢 Mensajería Global y Comunicación
+Comunica scripts entre sí sin acoplamiento.
 
 ```ces
-ve motor;
+// En el Script del Jugador:
+difundir("Victoria", { puntos: 100 });
 
-publico numero velocidad = 300;
-publico numero fuerzaSalto = 15;
-
-alActualizar(delta) {
-    variable movX = 0;
-
-    si (teclaPresionada("ArrowRight")) {
-        movX = 1;
-        voltearH = falso;
-    } sino si (teclaPresionada("ArrowLeft")) {
-        movX = -1;
-        voltearH = verdadero;
-    }
-
-    // Mover usando el Rigidbody
-    fisica.velocity.x = movX * (velocidad * delta);
-
-    // Control de Animaciones vía Proxy
-    si (movX != 0) {
-        reproducir.Caminar();
-    } sino {
-        reproducir.Quieto();
-    }
-
-    si (teclaRecienPresionada("Space") y estaTocandoTag("Suelo")) {
-        fisica.applyImpulse(nuevo Vector2(0, -fuerzaSalto));
-        reproducir.Salto(); // Reproduce sonido o animación
-    }
+// En el Script de la Interfaz:
+alEmpezar() {
+    alRecibir("Victoria", (datos) => {
+        imprimir("¡Ganaste con " + datos.puntos + " puntos!");
+    });
 }
-```
-
-### 👾 Ejemplo 2: NPC con IA y Detección
-Un enemigo que sigue al jugador si lo ve.
-
-```ces
-ve motor;
-
-publico Materia jugador;
-publico numero distanciaDeteccion = 400;
-
-alActualizar(delta) {
-    si (jugador == nulo) {
-        jugador = buscar("Jugador");
-        retornar;
-    }
-
-    variable dist = distancia(posicion, jugador.posicion);
-
-    si (dist < distanciaDeteccion) {
-        // Mirar hacia el jugador
-        si (jugador.posicion.x > posicion.x) {
-            posicion.x += 2;
-            voltearH = falso;
-        } sino {
-            posicion.x -= 2;
-            voltearH = verdadero;
-        }
-        reproducir.Correr();
-    } sino {
-        reproducir.Quieto();
-    }
-}
-```
-
-### 🏹 Ejemplo 3: Sistema de Combate (Disparo)
-Lanzar un proyectil y detectar colisiones.
-
-```ces
-ve motor;
-
-publico Prefab balaPrefab;
-
-alActualizar(delta) {
-    si (teclaRecienPresionada("f")) {
-        // Crear la bala en nuestra posición
-        variable bala = crear balaPrefab;
-
-        // Darle velocidad inicial
-        variable dir = voltearH ? -1 : 1;
-        bala.fisica.velocity.x = 20 * dir;
-    }
-}
-
-// Este evento se dispara si algo choca con nosotros
-alEntrarEnColision(otro) {
-    si (otro.tieneTag("Enemigo")) {
-        imprimir("¡Impacto!");
-        destruir(otro); // Destruye al enemigo
-        destruir(materia); // Se destruye la bala (este objeto)
-    }
-}
-```
-
-### 💰 Ejemplo 4: Interfaz de Usuario (Puntos)
-Actualizar texto y reaccionar a botones.
-
-```ces
-ve motor;
-
-variable puntos = 0;
-
-// Se puede llamar desde otros scripts usando enviarMensaje o directamente
-sumarPunto() {
-    puntos += 1;
-    textoUI.text = "Score: " + puntos;
-}
-
-alRecibir("MonedaRecogida", (datos) => {
-    sumarPunto();
-});
 ```
 
 ---
 
-## 🪄 Funciones Especiales de Creative Engine
+## 🪄 Funciones Especiales y Proxy
 
 ### ⏳ Corrutinas (Esperar)
-Permite pausar la lógica de un script sin congelar el juego.
+Pausa la lógica sin detener el juego.
 ```ces
 alEmpezar() {
-    imprimir("Iniciando cuenta atrás...");
     esperar(3);
-    imprimir("¡YA!");
+    imprimir("¡Han pasado 3 segundos!");
 }
 ```
 
 ### 🔁 Bucles Temporizados (Cada)
-Ejecuta algo repetidamente cada X segundos.
 ```ces
 alEmpezar() {
     cada(1.5) {
-        imprimir("Ha pasado un segundo y medio");
-        // Ideal para spawnear enemigos o regenerar vida
+        imprimir("Generando enemigo...");
+        crear enemigoPrefab;
     }
 }
 ```
 
-### 📢 Mensajería Global
-Comunica scripts entre sí de forma limpia.
+### 🎭 Proxy de Animación y Sonido
+Llama a estados o clips por su nombre directamente:
 ```ces
-// En Script A:
-difundir("Victoria", { nivel: 1 });
-
-// En Script B:
-alRecibir("Victoria", (datos) => {
-    imprimir("Ganaste el nivel " + datos.nivel);
-});
+reproducir.Caminar(); // En el AnimatorController
+play.Jump();          // Alias en inglés
+reproducir.Explosion(); // En el AudioSource
 ```
+
+---
+
+## 🛠️ Utilidades de Motor
+- `buscar(nombre)`: Encuentra un objeto en la escena.
+- `destruir(materia)`: Elimina un objeto.
+- `lanzarRayo(origen, direccion, distancia, tag)`: Raycasting 2D.
+- `estaTocandoTag(tag)`: Detección rápida de colisiones.
+- `instanciar(original, x, y)`: Clona un objeto existente.
+- `crear miPrefab`: Instancia un prefab por su nombre.

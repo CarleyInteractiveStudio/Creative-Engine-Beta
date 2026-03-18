@@ -1,52 +1,51 @@
-# 🏗️ Advanced Guide: Projects, Scenes, and Building - Creative Engine
+# 🏗️ Projects, Scenes, and Publishing - Creative Engine
 
-This guide covers core aspects of asset management, level design, and final publishing for your games.
+This manual covers the technical management of your creations, from folder structure to final packaging.
 
 ---
 
 ## 📂 1. Project Structure
 
-Each project in Creative Engine is saved in a dedicated folder:
-- `/Assets`: All your images, sounds, videos, and scripts.
-- `/lib`: Folder for libraries (.celib) extending the engine.
-- `project.ceconfig`: Technical settings file (layers, tags, metadata).
-- `thumbnail.png`: Project preview image.
-
-### Project Settings
-Go to **Edit > Project Settings** to:
-- Change the game's title and author.
-- Manage **Sorting Layers** (draw order).
-- Define **Collision Layers** and **Tags**.
+Each project is saved in its own folder with the following items:
+- **/Assets:** Images, sounds, scripts, and scenes.
+- **/lib:** Libraries (.celib) extending the engine.
+- **/doc:** Local project documentation and engine manuals.
+- **project.ceconfig:** Technical configuration (Layers, Tags, metadata).
+- **thumbnail.png:** Project preview image.
 
 ---
 
 ## 🎬 2. Scene Management (.ceScene)
 
-Scenes are individual worlds containing materials and environment settings.
-
-### Basic Operations
-- **Save Scene:** Use `Ctrl + S`.
-- **Switch Scenes:** Double-click any `.ceScene` file in the browser.
-- **Scene Thumbnail:** The engine automatically takes a screenshot for the icon upon saving.
+Scenes are independent worlds. You can have levels, menus, and loading screens.
+- **Save:** `Ctrl + S`. A thumbnail is captured automatically.
+- **Switch Scenes:** Double-click a `.ceScene` file in the Browser.
+- **Switch Logic:** Use `scene.load("Assets/Level2.ceScene")` in your scripts.
 
 ---
 
-## 📦 3. Import and Packages (.cep)
+## 📦 3. Prefabs (.ceprefab)
 
-### Importing Assets
-1. **Drag and Drop:** Drag files directly from your PC to the asset browser.
-2. **Spine (Skeletal Animation):** Supports importing from Spine in `.json` format.
-
-### Exporting Packages
-Right-click any folder in `Assets` and select **Export Package**. This creates a `.cep` file for easy transfer between projects.
+A Prefab is a pre-configured object you can reuse.
+- **Create:** Drag a Materia from the Hierarchy to the Asset Browser.
+- **Usage:** Drag the `.ceprefab` file into the scene to create an instance.
+- **Editing:** Double-click the prefab in the Browser to enter **Prefab Edit Mode**.
 
 ---
 
-## 🏗️ 4. Build System
+## 🏗️ 4. Build and Export System
 
-Building creates an independent web package (`.zip`) ready to be hosted on servers.
+### Exporting Assets (.cep)
+Right-click any folder in Assets and choose **Export Package**. This creates a compressed `.cep` file with all necessary files, ideal for sharing with other creators.
 
+### Building the Game
+Prepare your game for the web.
 1. Go to **File > Build**.
 2. Select the starting scene.
 3. Configure Splash Screens.
-4. Click "Build Game".
+4. The engine will generate a `.zip` file with a standalone web environment ready to upload to sites like Itch.io.
+
+---
+
+## 📱 5. Android Signing (Keystore)
+In Project Settings, you can generate or assign a **Keystore** file. This is mandatory if you plan to convert your web build into a signed Android APK for Google Play.

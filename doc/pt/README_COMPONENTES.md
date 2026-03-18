@@ -1,49 +1,41 @@
-# 🧩 Component Dictionary (Leyes) - Creative Engine
+# 🧩 Guia de Componentes (Leis) - Creative Engine
 
-Components are the building blocks of any object (Materia) in your game. Each component adds specific behavior or properties.
-
----
-
-## 🏗️ Essential Components
-
-### 📐 Transform (posicion)
-Defines the object's presence in the world.
-- **Position (x, y):** Where the object is.
-- **Rotation:** Angle in degrees.
-- **Scale (x, y):** Size multiplier.
-
-### 🎥 Camera (camara)
-Determines what the player sees.
-- **Depth:** Rendering order (lower is back).
-- **Culling Mask:** Which layers are visible.
-- **Background Color:** Color for empty areas.
+No Creative Engine, as **Matérias** (objetos) ganham vida através das **Leis** (componentes). Cada Lei adiciona uma funcionalidade específica.
 
 ---
 
-## 🎨 Rendering Components
+## 🏗️ 1. Componentes Base
 
-### 🖼️ SpriteRenderer (renderizadorDeSprite)
-Displays a 2D image.
-- **Source:** Path to the image file.
-- **Color:** Tint/multiplier for the image.
-- **Flip X/Y:** Horizontal or vertical mirroring.
-
-### 🌊 Water (agua)
-Adds a dynamic water surface with physics and visual effects.
-- **Level:** Surface height.
-- **Density:** Buoyancy strength.
+### 📍 Transform (Posição)
+```ces
+posição.x += 5;
+rotação += 45;
+escala.x = 2;
+inverterH = verdadeiro;
+```
 
 ---
 
-## ⚙️ Physics 2D
+## 🚗 4. Veículos e Controladores Avançados
 
-### 🧱 Rigidbody2D (fisica)
-Makes the object react to gravity and forces.
-- **Mass:** Weight of the object.
-- **Gravity Scale:** Multiplier for the world's gravity.
-- **Fixed Rotation:** Prevents the object from spinning.
+### 🚁 HelicopterController
+Simulação de voo lateral para helicópteros.
+- **Parâmetros:** Potência, vDespegue (potência de descolagem), agilidade e autoEstabilidade.
 
-### 📦 BoxCollider2D / CircleCollider2D
-Defines the physical shape for collisions.
-- **Is Trigger:** If true, objects pass through but trigger events.
-- **Friction:** Surface grip.
+### ✈️ PlaneController
+Física aerodinâmica e voo lateral.
+
+### 🏎️ VehicleTopDown
+Controle arcade para carros (vista superior).
+
+---
+
+## 🦴 7. Animação, Esqueleto e Iluminação
+
+### 🦴 SkeletonRenderer e IK (Cinemática Inversa)
+- **SkeletonRenderer:** Renderiza malhas deformadas por ossos.
+- **IKManager2D:** Controla cadeias de ossos para que uma mão ou pé siga um alvo.
+
+### 💡 Iluminação 2D
+- **PointLight2D:** Luz em todas as direções.
+- **SpotLight2D:** Luz focal (cone).

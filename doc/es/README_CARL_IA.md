@@ -1,58 +1,44 @@
-# 🤖 Guía de Carl IA: Tu Asistente Autónomo - Creative Engine
+# 🤖 Carl IA: Tu Copiloto Inteligente - Creative Engine
 
-Carl IA no es solo un chat; es un agente inteligente capaz de manipular el editor, crear archivos y ayudarte a construir tu juego paso a paso.
-
----
-
-## 🚀 Cómo Activar a Carl IA
-
-Para abrir el panel de Carl:
-1. **Botón Superior:** Haz clic en el icono del robot 🤖 (**Carl**) en la barra de menú.
-2. **Atajo:** Presiona `Shift + Ctrl + L`.
+Carl no es solo un chat; es un agente autónomo integrado en el motor capaz de ayudarte a construir tu juego realizando acciones reales por ti.
 
 ---
 
-## ⚙️ Configuración (API Keys)
-
-Carl necesita un "cerebro" para funcionar. Debes configurar una clave de API en **Editar > Preferencias > IA**.
-
-### ¿Dónde encontrar las API Keys?
-- **Google Gemini (Recomendado/Gratis):** Ve a [Google AI Studio](https://aistudio.google.com/app/apikey). Crea una clave gratuita para Gemini 1.5 Flash.
-- **OpenAI (GPT):** Ve a [OpenAI Platform](https://platform.openai.com/api-keys). Requiere saldo en tu cuenta.
-- **Anthropic (Claude):** Ve a [Anthropic Console](https://console.anthropic.com/settings/keys).
-
-**Instrucciones:** Selecciona el proveedor en Preferencias, pega la clave y haz clic en **Guardar Clave**. Luego elige un modelo de la lista.
+## 💬 Cómo interactuar con Carl
+Haz clic en el botón **Carl** del menú superior o usa `Ctrl + Shift + L`.
+Puedes pedirle cosas como:
+- "Crea un jugador con físicas y un script para moverlo con las flechas."
+- "Explícame cómo funciona el componente Water."
+- "Descarga una imagen de fondo desde esta URL."
+- "Haz un plan para crear un sistema de inventario."
 
 ---
 
-## 🛠️ Habilidades Autónomas
-
-Puedes pedirle a Carl que realice tareas reales en tu proyecto. Ejemplos de lo que puedes decir:
-
-- *"Crea un objeto llamado Jugador con un SpriteRenderer y Rigidbody2D."*
-- *"Descarga un fondo desde esta URL y ponlo en mi escena."*
-- *"Crea un script que mueva al jugador con las flechas."*
-- *"Cambia el color de todos mis enemigos a rojo."*
-
-### La Pestaña "Actividad" (Activity)
-Cuando Carl propone una acción (ej: crear un objeto), generará un **Plan de Acción**.
-1. Haz clic en el botón **"Ver Actividad"** que aparecerá en el chat.
-2. Verás los pasos detallados que Carl va a ejecutar.
-3. Dependiendo de tu **Modo de Ejecución**, Carl pedirá permiso o lo hará solo.
+## 🧠 Modo de Planeación Profunda (Deep Planning)
+Cuando le pides una tarea compleja, Carl entra en un modo de análisis:
+1. **Preguntas:** Te hará preguntas aclaratorias para estar 100% seguro de tus metas.
+2. **El Plan:** Generará un bloque estructurado llamado `[PLAN]` con pasos ejecutables.
+3. **Actividad:** Puedes ver y aprobar estos pasos en la pestaña **Actividad** de su panel.
 
 ---
 
-## 🚦 Modos de Ejecución
-
-Puedes cambiar el comportamiento de Carl desde el desplegable en su panel:
-
-1. **Con Permiso (Seguro):** Carl te mostrará cada paso y deberás hacer clic en "Aprobar" para que continúe.
-2. **Visual (Recomendado):** Carl ejecuta los comandos automáticamente pero con una pausa entre ellos para que veas el progreso en la escena.
-3. **Automático (Rápido):** Carl realiza todo el plan de forma instantánea.
+## ⚡ Comandos Autónomos
+Carl puede ejecutar comandos como:
+- `create_materia`: Crea objetos (Sprites, Cámaras, etc.).
+- `add_component`: Añade Leyes a objetos existentes.
+- `set_property`: Modifica valores en el Inspector.
+- `create_file`: Crea scripts (.ces) o archivos de datos.
+- `download_file`: Importa activos desde internet directamente a tu proyecto.
 
 ---
 
-## 💡 Consejos para hablar con Carl
-- **Sé específico:** *"Crea un cuadrado azul de 100x100"* es mejor que *"Crea algo"*.
-- **Usa referencias:** Puedes decirle *"Mueve a @last a la derecha"*, donde `@last` se refiere al último objeto que Carl creó.
-- **Pide correcciones:** Si un script tiene un error, pégalo en el chat y dile *"Carl, corrige este error de sintaxis"*.
+## 🛠️ Asistencia en Código (CHC)
+Dentro del Editor de Código, puedes usar el **CHC (Code Helper)**. Escribe en lenguaje humano lo que quieres que haga tu script, y Carl lo traducirá instantáneamente a código `.ces` válido, siguiendo todos los estándares del motor (como el uso obligatorio de `ve motor;`).
+
+---
+
+## ⚙️ Configuración de Autonomía
+En **Editar > Preferencias**, puedes elegir cuánta libertad tiene Carl:
+- **Con Permiso:** Debes aprobar cada paso manualmente.
+- **Visual:** Carl ejecuta solo pero ves el progreso paso a paso.
+- **Automático:** Carl trabaja en segundo plano sin interrupciones.
