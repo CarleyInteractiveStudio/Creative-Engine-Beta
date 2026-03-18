@@ -54,6 +54,9 @@ Creative Engine es un motor de videojuegos 2D profesional y ligero, diseñado pa
 - **[Guía de Librerías y Extensibilidad](README_LIBRERIAS.md):** Aprende a crear tus propias herramientas para el editor y ampliar las funciones de scripting.
 - **[Guía de la Terminal](README_TERMINAL.md):** Domina el uso de comandos para gestionar archivos y objetos de forma experta.
 - **[Gestión Avanzada (Proyectos, Escenas, Build)](README_AVANZADO.md):** Aprende a publicar tu juego, crear prefabs, gestionar escenas y optimizar tus assets.
+- **[Manual de Carl IA](README_CARL_IA.md):** Aprende a usar a tu asistente autónomo para construir juegos con lenguaje natural.
+- **[Guía de Editores Visuales](README_EDITORES_VISUALES.md):** Domina el Editor de Animaciones, Sprites, AnimatorController y Tilemaps.
+- **[Configuración y Preferencias](README_CONFIGURACION.md):** Personaliza el editor, gestiona capas, tags y el sistema de iluminación ambiental.
 
 ## 🚀 Cómo Empezar
 
