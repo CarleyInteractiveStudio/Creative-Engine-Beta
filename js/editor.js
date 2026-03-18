@@ -3194,7 +3194,7 @@ alActualizar(delta) {
     }
 }
 
-REGLA DE ORO: Devuelve siempre código .ces completo y válido. Sé motivador y actúa como un AGENTE AUTÓNOMO E INDEPENDIENTE. Si el usuario te pide crear algo, ¡HAZLO DIRECTAMENTE! No preguntes si quieres que lo haga, simplemente explica brevemente qué harás y genera el bloque JSON.
+REGLA DE ORO: Devuelve siempre código .ces completo y válido. Sé motivador y actúa como un AGENTE AUTÓNOMO E INDEPENDIENTE. Si el usuario te pide crear algo, ¡HAZLO DIRECTAMENTE! No preguntes si quieres que lo haga, simplemente explica brevemente qué harás y genera el bloque JSON. IMPORTANTE: Los scripts (.ces) deben empezar siempre con 've motor;' y usar variables 'publico' para el Inspector. NO uses markdown (```json) para el plan, pon el JSON directamente.
 
 HABILIDADES AUTÓNOMAS (EJECUCIÓN DIRECTA):
 Tienes la capacidad de ejecutar acciones reales en el editor. Cuando el usuario te pida construir, crear, modificar o descargar algo, DEBES:
@@ -3413,51 +3413,67 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                         // --- Parse Plan from Response ---
                         let cleanText = result.text;
 
-                        // Use a balanced brace counter to extract JSON more reliably than regex
+                        /**
+                         * Robustly extracts a JSON object containing a "plan" key from a string.
+                         * Corrected to handle braces inside strings and scan multiple blocks.
+                         */
                         function extractJsonPlan(text) {
-                            const planMarker = '"plan":';
-                            let markerIndex = text.indexOf(planMarker);
+                            const planMarkerRegex = /"\s*plan\s*"\s*:/;
+                            let searchIndex = 0;
 
-                            // Iterate in case there are multiple JSON blocks and the first one doesn't contain the plan
-                            while (markerIndex !== -1) {
-                                // Find the starting brace of the object containing "plan"
-                                let startIndex = text.lastIndexOf('{', markerIndex);
+                            while (true) {
+                                const match = text.substring(searchIndex).match(planMarkerRegex);
+                                if (!match) break;
+
+                                const markerIndex = searchIndex + match.index;
+                                const startIndex = text.lastIndexOf('{', markerIndex);
+
                                 if (startIndex !== -1) {
                                     let braceCount = 0;
                                     let foundStart = false;
+                                    let inString = false;
+                                    let escape = false;
                                     let jsonString = '';
 
                                     for (let i = startIndex; i < text.length; i++) {
                                         const char = text[i];
-                                        if (char === '{') {
-                                            braceCount++;
-                                            foundStart = true;
-                                        } else if (char === '}') {
-                                            braceCount--;
+                                        jsonString += char;
+
+                                        if (!inString) {
+                                            if (char === '{') {
+                                                braceCount++;
+                                                foundStart = true;
+                                            } else if (char === '}') {
+                                                braceCount--;
+                                            } else if (char === '"') {
+                                                inString = true;
+                                            }
+                                        } else {
+                                            if (escape) {
+                                                escape = false;
+                                            } else if (char === '\\') {
+                                                escape = true;
+                                            } else if (char === '"') {
+                                                inString = false;
+                                            }
                                         }
 
-                                        if (foundStart) {
-                                            jsonString += char;
-                                            if (braceCount === 0) {
-                                                // Check if it's valid JSON and has the plan key
-                                                try {
-                                                    const parsed = JSON.parse(jsonString);
-                                                    if (parsed && parsed.plan) {
-                                                        return {
-                                                            json: jsonString,
-                                                            fullMatch: text.substring(startIndex, i + 1),
-                                                            start: startIndex,
-                                                            end: i + 1
-                                                        };
-                                                    }
-                                                } catch (e) {
-                                                    // Not valid JSON yet, continue searching
+                                        if (foundStart && braceCount === 0) {
+                                            try {
+                                                const parsed = JSON.parse(jsonString);
+                                                if (parsed && parsed.plan) {
+                                                    return {
+                                                        json: jsonString,
+                                                        start: startIndex,
+                                                        end: i + 1
+                                                    };
                                                 }
-                                            }
+                                            } catch (e) {}
+                                            break; // Valid object but not a plan, or invalid JSON
                                         }
                                     }
                                 }
-                                markerIndex = text.indexOf(planMarker, markerIndex + 1);
+                                searchIndex = markerIndex + 1;
                             }
                             return null;
                         }
@@ -3738,21 +3754,35 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
         }
         window.ceHotReload = hotReloadScript;
         window.ceCreateAsset = async (path, content) => {
-            const projectName = new URLSearchParams(window.location.search).get('project');
-            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            try {
+                console.log(`[ceCreateAsset] Intentando crear asset en: ${path}`);
+                const projectName = new URLSearchParams(window.location.search).get('project') || 'TestProject';
+                const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName, { create: true });
 
-            const parts = path.split('/');
-            const fileName = parts.pop();
-            let currentHandle = projectHandle;
-
-            // Traverse and create directories if they don't exist
-            for (const part of parts) {
-                if (part) {
-                    currentHandle = await currentHandle.getDirectoryHandle(part, { create: true });
+                // Ensure the path is valid and starts with Assets/ if not absolute
+                let cleanPath = path;
+                if (!cleanPath.startsWith('Assets/')) {
+                    cleanPath = 'Assets/' + cleanPath;
                 }
-            }
 
-            return await createAsset(fileName, content, currentHandle);
+                const parts = cleanPath.split('/');
+                const fileName = parts.pop();
+                let currentHandle = projectHandle;
+
+                // Traverse and create directories if they don't exist
+                for (const part of parts) {
+                    if (part) {
+                        currentHandle = await currentHandle.getDirectoryHandle(part, { create: true });
+                    }
+                }
+
+                const result = await createAsset(fileName, content || "", currentHandle);
+                if (result) console.log(`[ceCreateAsset] Archivo '${fileName}' creado exitosamente en ${currentHandle.name}`);
+                return result;
+            } catch (e) {
+                console.error("[ceCreateAsset] Error crítico al crear asset:", e);
+                return null;
+            }
         };
 
         // --- For Playwright Testing ---

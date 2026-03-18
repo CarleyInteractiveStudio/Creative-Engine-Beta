@@ -251,14 +251,19 @@ function normalizeCommand(action) {
         'borrarmateria': 'delete_materia',
         'borrarobjeto': 'delete_materia',
         'addcomponent': 'add_component',
+        'add_component': 'add_component',
         'agregarcomponente': 'add_component',
         'setproperty': 'set_property',
+        'set_property': 'set_property',
         'modificarpropiedad': 'set_property',
         'createfile': 'create_file',
+        'create_file': 'create_file',
         'creararchivo': 'create_file',
         'deletefile': 'delete_file',
+        'delete_file': 'delete_file',
         'borrararchivo': 'delete_file',
         'downloadfile': 'download_file',
+        'download_file': 'download_file',
         'descargararchivo': 'download_file'
     };
     // Remove underscores and convert to lowercase for flexible matching
@@ -390,21 +395,23 @@ async function executeCommand(action, params) {
         }
 
         case 'create_file': {
-            const { path, content } = params;
-            // This requires access to the file system handle, which is usually in editor.js
-            // For now, we use a global shortcut if available
+            const filePath = params.path || params.filename || params.nombre || params.archivo;
+            const fileContent = params.content || params.contenido || "";
+
+            if (!filePath) return { success: false, message: "Falta el nombre o la ruta del archivo (path)." };
+
             if (window.ceCreateAsset) {
-                const result = await window.ceCreateAsset(path, content);
+                const result = await window.ceCreateAsset(filePath, fileContent);
                 if (result) {
                     updateAssetBrowser();
 
-                    const fileName = path.split('/').pop();
+                    const fileName = filePath.split('/').pop();
                     // Hot Reload if game is running and it's a script
                     if ((fileName.endsWith('.ces') || fileName.endsWith('.chc')) && window.ceHotReload) {
                         await window.ceHotReload(fileName);
                     }
 
-                    return { success: true, message: `Archivo '${path}' creado.` };
+                    return { success: true, message: `Archivo '${filePath}' creado.` };
                 }
             }
             return { success: false, message: "Función de creación de archivos no disponible en este contexto." };
