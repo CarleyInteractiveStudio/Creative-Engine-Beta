@@ -303,6 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'ambiente-noche-dia-intensidad', 'ambiente-noche-dia-intensidad-valor',
             'ambiente-ciclo-automatico', 'ambiente-duracion-dia',
             'ambiente-filtro-color', 'ambiente-filtro-swatches', 'ambiente-capas-excluidas',
+            'menu-docs',
             // Markdown Viewer Panel
             'markdown-viewer-panel', 'markdown-viewer-title', 'md-preview-btn', 'md-edit-btn', 'md-save-btn',
             'md-preview-content', 'md-edit-content',
@@ -2698,6 +2699,29 @@ document.addEventListener('DOMContentLoaded', () => {
             saveScene();
         });
 
+        if (dom.menuDocs) {
+            dom.menuDocs.addEventListener('click', (e) => {
+                e.preventDefault();
+                const lang = Localization.currentLanguage.toLowerCase();
+                const readmePath = `doc/${lang}/README.md`;
+
+                // Intentar abrir el README principal en el visor de Markdown
+                (async () => {
+                    try {
+                        const projectName = new URLSearchParams(window.location.search).get('project');
+                        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                        const fileHandle = await projectHandle.getFileHandle(readmePath);
+                        const file = await fileHandle.getFile();
+                        const content = await file.text();
+                        openMarkdownViewerCallback(readmePath, content);
+                    } catch (err) {
+                        console.warn("No se pudo abrir la documentación local, abriendo sitio externo.");
+                        window.open('https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/docs/', '_blank');
+                    }
+                })();
+            });
+        }
+
         dom.menuImportSkeleton.addEventListener('click', async (e) => {
             e.preventDefault();
             const L = window.Localization;
@@ -3641,6 +3665,20 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
         window.ceCreateAsset = async (name, content) => {
             const projectName = new URLSearchParams(window.location.search).get('project');
             const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+
+            // Si el nombre contiene una ruta (ej: doc/es/README.md), crear directorios recursivamente
+            if (name.includes('/')) {
+                const parts = name.split('/');
+                const fileName = parts.pop();
+                let currentHandle = projectHandle;
+
+                for (const part of parts) {
+                    currentHandle = await currentHandle.getDirectoryHandle(part, { create: true });
+                }
+
+                return await createAsset(fileName, content, currentHandle);
+            }
+
             const assetsHandle = await projectHandle.getDirectoryHandle('Assets', { create: true });
             return await createAsset(name, content, assetsHandle);
         };
@@ -3718,6 +3756,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                 updateLoadingProgress(12, "Preparando archivos del proyecto...");
                 await projectHandle.getDirectoryHandle('Assets', { create: true });
                 const libDirHandle = await projectHandle.getDirectoryHandle('lib', { create: true });
+            await projectHandle.getDirectoryHandle('doc', { create: true });
 
                 updateLoadingProgress(15, "Compilando scripts del proyecto...");
                 await scanAndTranspileAllScripts(projectHandle);

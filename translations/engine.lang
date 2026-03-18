@@ -245,6 +245,7 @@ VENTANA: Ventana
 AYUDA: Ayuda
 TUTORIALES: Tutoriales
 REPORTAR_FALLOS: Reportar Bugs/Errores/Fallos
+DOCUMENTACION: Documentación
 NUEVA_ESCENA: Nueva Escena
 ABRIR_ESCENA: Abrir Escena...
 GUARDAR_ESCENA: Guardar Escena
@@ -633,6 +634,7 @@ VENTANA: Window
 AYUDA: Help
 TUTORIALES: Tutorials
 REPORTAR_FALLOS: Report Bugs/Errors/Failures
+DOCUMENTACION: Documentation
 NUEVA_ESCENA: New Scene
 ABRIR_ESCENA: Open Scene...
 GUARDAR_ESCENA: Save Scene
@@ -962,6 +964,7 @@ ARCHIVO: Arquivo
 EDITAR: Editar
 VENTANA: Janela
 AYUDA: Ajuda
+DOCUMENTACION: Documentação
 NUEVA_ESCENA: Nova Cena
 ABRIR_ESCENA: Abrir Cena...
 GUARDAR_ESCENA: Salvar Cena
@@ -1283,6 +1286,7 @@ ARCHIVO: Файл
 EDITAR: Правка
 VENTANA: Окно
 AYUDA: Справка
+DOCUMENTACION: Документация
 NUEVA_ESCENA: Новая сцена
 ABRIR_ESCENA: Открыть сцену...
 GUARDAR_ESCENA: Сохранить сцену
@@ -1604,6 +1608,7 @@ ARCHIVO: 文件
 EDITAR: 编辑
 VENTANA: 窗口
 AYUDA: 帮助
+DOCUMENTACION: 文档
 NUEVA_ESCENA: 新场景
 ABRIR_ESCENA: 打开场景...
 GUARDAR_ESCENA: 保存场景
