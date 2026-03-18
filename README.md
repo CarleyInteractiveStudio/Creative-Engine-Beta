@@ -50,6 +50,7 @@ Creative Engine es un motor de videojuegos 2D profesional y ligero, diseñado pa
 ## 📚 Documentación
 
 - **[Guía de Componentes (Leyes)](README_COMPONENTES.md):** Aprende sobre todos los componentes disponibles, sus propiedades y cómo usarlos en scripts.
+- **[Guía Maestra de Scripting (CES)](README_SCRIPTING.md):** Todo lo que necesitas saber para programar tus juegos: sintaxis, eventos, input y ejemplos completos.
 
 ## 🚀 Cómo Empezar
 
