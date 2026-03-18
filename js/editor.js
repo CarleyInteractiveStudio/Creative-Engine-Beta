@@ -3163,43 +3163,65 @@ CONOCIMIENTO DE COMPONENTES (LEYES):
 - Utilidades: CameraFollow, Parallax, DrawingOrder, Layout Groups.
 
 SINTAXIS DE SCRIPTING (CES/CHC) - ¡ACTUALIZADO!:
-0. IMPORTACIONES: 've motor;' (OBLIGATORIO).
+0. IMPORTACIONES: Siempre empieza con 've motor;' (OBLIGATORIO).
 1. PALABRAS CLAVE: si, sino, mientras, para, retornar, funcion, variable, constante, verdadero, falso, nuevo.
-2. DECLARACIÓN: 'publico [tipo] [nombre] = [valor];' (¡OBLIGATORIO para el Inspector!). Tipos: numero, texto, booleano, Materia, Sprite, sonido.
+2. DECLARACIÓN: 'publico [tipo] [nombre] = [valor];' (¡OBLIGATORIO para el Inspector!). Tipos: numero (float), texto, booleano, Materia, Sprite, sonido.
 3. ACCESO DIRECTO: nombre, tag, posicion, fisica, animador, renderizadorDeSprite, fuenteDeAudio, camara, rejilla, lienzo.
-4. INPUT API (Sin prefijos): teclaPresionada("espacio"), teclaRecienPresionada("W"), botonMousePresionado(0), obtenerPosicionMouse(). NO USES 'entrada.' NI 'motor.'.
+4. INPUT API (Sin prefijos): teclaPresionada("tecla"), teclaRecienPresionada("tecla"), botonMousePresionado(id), obtenerPosicionMouse(). NO USES 'entrada.' NI 'motor.'.
 5. EVENTOS: alEmpezar(), alActualizar(delta), actualizarFijo(delta), alEntrarEnColision(otro), alHacerClick().
 6. CONTROL DE TIEMPO: 'cada(segundos) { ... }', 'esperar(segundos);'.
 7. FUNCIONES MOTOR: buscar(nombre), destruir(mtr), crear miPrefab, lanzarRayo(origen, dir, dist, tag), estaTocandoTag(tag).
-8. SISTEMA PROXY (Potente): Llama a animaciones o sonidos por su nombre directamente: 'reproducir.Correr();' o 'play.Explosion();'.
+8. SISTEMA PROXY (Potente): Llama a animaciones o sonidos por su nombre directamente: 'reproducir.Salto();' o 'play.Explosion();'.
 
-REGLA DE ORO: Devuelve siempre código .ces limpio. Sé motivador y recuerda que eres un AGENTE AUTÓNOMO E INDEPENDIENTE. Si el usuario te pide crear algo, ¡HAZLO DIRECTAMENTE! No preguntes si quieres que lo haga, simplemente explica brevemente qué harás y genera el plan de acción.
+EJEMPLO DE SCRIPT (.ces):
+ve motor;
+
+publico numero velocidad = 5.0;
+publico booleano puedeSaltar = verdadero;
+
+alEmpezar() {
+    imprimir("Iniciado!");
+    reproducir.Idle();
+}
+
+alActualizar(delta) {
+    si (teclaPresionada("D")) {
+        posicion.x += velocidad * delta;
+        reproducir.Correr();
+    } sino si (teclaRecienPresionada("espacio") && puedeSaltar) {
+        fisica.aplicarFuerzaImpulso(0, 10);
+        play.Salto();
+    }
+}
+
+REGLA DE ORO: Devuelve siempre código .ces completo y válido. Sé motivador y actúa como un AGENTE AUTÓNOMO E INDEPENDIENTE. Si el usuario te pide crear algo, ¡HAZLO DIRECTAMENTE! No preguntes si quieres que lo haga, simplemente explica brevemente qué harás y genera el bloque JSON.
 
 HABILIDADES AUTÓNOMAS (EJECUCIÓN DIRECTA):
 Tienes la capacidad de ejecutar acciones reales en el editor. Cuando el usuario te pida construir, crear, modificar o descargar algo, DEBES:
 1. Explicar brevemente en lenguaje natural lo que vas a hacer (ej: "¡Claro! Voy a crear ese objeto y el script para ti...").
-2. Incluir el bloque JSON [PLAN] al final de tu respuesta para que el motor ejecute los comandos automáticamente.
+2. Generar un bloque JSON que empiece con {"plan": [...]}. NO uses bloques de código markdown (```json ... ```) para el plan, escríbelo directamente como texto después de tu explicación.
 
-Formato del bloque [PLAN] (OBLIGATORIO al final de tu respuesta si vas a actuar):
+Formato del bloque JSON (OBLIGATORIO para actuar):
 {
   "plan": [
     {
-      "title": "Título del paso",
-      "description": "Descripción de lo que harás",
+      "title": "Crear Jugador",
+      "description": "Crea el objeto, añade física y el script de control.",
       "commands": [
-        { "action": "create_materia", "params": { "name": "Cubo", "type": "Sprite" } },
-        { "action": "add_component", "params": { "materiaId": "@last", "type": "Rigidbody2D" } },
-        { "action": "set_property", "params": { "materiaId": "@last", "componentType": "Transform", "propPath": "position.x", "value": 100 } }
+        { "action": "create_materia", "params": { "name": "Jugador", "type": "Sprite" } },
+        { "action": "add_component", "params": { "materiaId": "@last", "type": "Rigidbody2D", "properties": { "fixedRotation": true } } },
+        { "action": "create_file", "params": { "path": "Assets/Control.ces", "content": "ve motor;\\n\\nalActualizar(delta) { ... }" } },
+        { "action": "add_component", "params": { "materiaId": "@last", "type": "CreativeScript", "properties": { "scriptName": "Control.ces" } } }
       ]
     }
   ]
 }
 
-Comandos Disponibles:
+Comandos Disponibles (Usa exactamente estos nombres):
 - create_materia { name, parentId, type: 'Sprite'|'Camera'|'Canvas'|'Audio'|'Empty' }
-- delete_materia { id } // id puede ser el ID numérico o el nombre exacto
-- add_component { materiaId, type, properties: {} } // type puede ser el nombre en inglés o español
-- set_property { materiaId, componentType, propPath, value } // propPath puede ser anidado, ej: 'position.x' o 'color'
+- delete_materia { id } // id puede ser el ID numérico, "@last" o el nombre exacto
+- add_component { materiaId, type, properties: {} } // type: 'Rigidbody2D', 'BoxCollider2D', 'CreativeScript', etc.
+- set_property { materiaId, componentType, propPath, value } // propPath: 'position.x', 'color', etc.
 - create_file { path: 'Assets/nombre.ces', content: '...' }
 - download_file { url, path: 'Assets/nombre.png' }
 
@@ -3394,37 +3416,48 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                         // Use a balanced brace counter to extract JSON more reliably than regex
                         function extractJsonPlan(text) {
                             const planMarker = '"plan":';
-                            const markerIndex = text.indexOf(planMarker);
-                            if (markerIndex === -1) return null;
+                            let markerIndex = text.indexOf(planMarker);
 
-                            // Find the starting brace of the object containing "plan"
-                            let startIndex = text.lastIndexOf('{', markerIndex);
-                            if (startIndex === -1) return null;
+                            // Iterate in case there are multiple JSON blocks and the first one doesn't contain the plan
+                            while (markerIndex !== -1) {
+                                // Find the starting brace of the object containing "plan"
+                                let startIndex = text.lastIndexOf('{', markerIndex);
+                                if (startIndex !== -1) {
+                                    let braceCount = 0;
+                                    let foundStart = false;
+                                    let jsonString = '';
 
-                            let braceCount = 0;
-                            let foundStart = false;
-                            let jsonString = '';
+                                    for (let i = startIndex; i < text.length; i++) {
+                                        const char = text[i];
+                                        if (char === '{') {
+                                            braceCount++;
+                                            foundStart = true;
+                                        } else if (char === '}') {
+                                            braceCount--;
+                                        }
 
-                            for (let i = startIndex; i < text.length; i++) {
-                                const char = text[i];
-                                if (char === '{') {
-                                    braceCount++;
-                                    foundStart = true;
-                                } else if (char === '}') {
-                                    braceCount--;
-                                }
-
-                                if (foundStart) {
-                                    jsonString += char;
-                                    if (braceCount === 0) {
-                                        return {
-                                            json: jsonString,
-                                            fullMatch: text.substring(startIndex, i + 1),
-                                            start: startIndex,
-                                            end: i + 1
-                                        };
+                                        if (foundStart) {
+                                            jsonString += char;
+                                            if (braceCount === 0) {
+                                                // Check if it's valid JSON and has the plan key
+                                                try {
+                                                    const parsed = JSON.parse(jsonString);
+                                                    if (parsed && parsed.plan) {
+                                                        return {
+                                                            json: jsonString,
+                                                            fullMatch: text.substring(startIndex, i + 1),
+                                                            start: startIndex,
+                                                            end: i + 1
+                                                        };
+                                                    }
+                                                } catch (e) {
+                                                    // Not valid JSON yet, continue searching
+                                                }
+                                            }
+                                        }
                                     }
                                 }
+                                markerIndex = text.indexOf(planMarker, markerIndex + 1);
                             }
                             return null;
                         }
@@ -3444,15 +3477,30 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                                     let beforeJson = cleanText.substring(0, planMatch.start);
                                     let afterJson = cleanText.substring(planMatch.end);
 
-                                    // Clean up [PLAN] tag and markdown backticks around the match
-                                    beforeJson = beforeJson.replace(/\[PLAN\]\s*$/i, '').replace(/```json\s*$/i, '').replace(/```\s*$/i, '');
-                                    afterJson = afterJson.replace(/^\s*```/, '');
+                                    // Clean up markdown code blocks if they wrap the JSON
+                                    // Search backwards for the start of a code block
+                                    const codeBlockStart = beforeJson.lastIndexOf('```');
+                                    if (codeBlockStart !== -1) {
+                                        // If there's only whitespace between the code block start and the JSON start
+                                        const intermediate = beforeJson.substring(codeBlockStart + 3);
+                                        if (/^(json)?\s*$/i.test(intermediate)) {
+                                            beforeJson = beforeJson.substring(0, codeBlockStart);
+                                        }
+                                    }
+
+                                    // Search forwards for the end of a code block
+                                    if (afterJson.trim().startsWith('```')) {
+                                        afterJson = afterJson.trim().substring(3);
+                                    }
+
+                                    // Clean up [PLAN] tag
+                                    beforeJson = beforeJson.replace(/\[PLAN\]\s*$/i, '');
 
                                     cleanText = (beforeJson.trim() + "\n\n" + afterJson.trim()).trim();
 
                                     // Add Action Button to message
-                                    // Note: onclick still needs a global or accessible function
-                                    const actionButtonHtml = `<div style="margin-top: 10px;"><button onclick="window.CarlAgent.switchView('activity')" class="approve-btn" style="width: auto; padding: 6px 15px;">Ver Actividad</button></div>`;
+                                    const activityLabel = window.Localization?.get('VER_ACTIVIDAD') || 'Ver Actividad';
+                                    const actionButtonHtml = `<div style="margin-top: 10px;"><button onclick="window.CarlAgent.switchView('activity')" class="approve-btn" style="width: auto; padding: 6px 15px;">${activityLabel}</button></div>`;
                                     cleanText += actionButtonHtml;
 
                                     logToUIConsole("¡Carl ha propuesto un nuevo plan!", "log");
@@ -3464,14 +3512,14 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                                     }
 
                                     // Auto-switch to activity tab if in visual or automatic mode
-                                    if (prefs.carlPermissions?.executionMode !== 'permission') {
+                                    if (getPreferences().carlPermissions?.executionMode !== 'permission') {
                                         setTimeout(() => {
                                             if (CarlAgent.switchView) CarlAgent.switchView('activity');
                                         }, 1000);
                                     }
                                 }
                             } catch (e) {
-                                console.error("Error al parsear el plan de Carl:", e);
+                                console.error("Error al procesar el plan de Carl:", e);
                             }
                         }
 

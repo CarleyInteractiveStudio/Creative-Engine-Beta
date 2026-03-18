@@ -31,7 +31,7 @@ function initializePanel(panel) {
         header.style.touchAction = 'none';
         header.addEventListener('pointerdown', (e) => {
             // Ignore clicks on buttons, menus, and other interactive elements inside the header
-            if (e.target.closest('button, input, select, .resize-handle, .menu-content, .menu-item, .panel-tool-btn, .carl-view-option')) return;
+            if (e.target.closest('button, input, select, .resize-handle, .menu-content, .menu-item, .panel-tool-btn, .carl-view-option, a')) return;
 
             // Prevent dragging when the panel is maximized
             if (panel.classList.contains('maximized')) return;
