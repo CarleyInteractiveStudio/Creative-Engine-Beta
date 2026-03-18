@@ -47,6 +47,10 @@ Creative Engine es un motor de videojuegos 2D profesional y ligero, diseñado pa
   - **Audio Espacial:** Atenuación de volumen basada en la distancia a la cámara.
   - **Recorte de Rango:** Define exactamente qué parte del archivo de audio reproducir.
 
+## 📚 Documentación
+
+- **[Guía de Componentes (Leyes)](README_COMPONENTES.md):** Aprende sobre todos los componentes disponibles, sus propiedades y cómo usarlos en scripts.
+
 ## 🚀 Cómo Empezar
 
 1. **Lanzar el Editor:** Abre `index.html` en un servidor web local (ej: `python -m http.server`).
