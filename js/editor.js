@@ -3643,7 +3643,6 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
         SceneManager.setCustomComponentProvider(getCustomComponentDefinitions());
 
         // Expose SceneManager globally for modules that need it (like InspectorWindow)
-        window.SceneManager = SceneManager;
         window.Materia = Materia;
         window.MateriaFactory = { ...MateriaFactory };
         window.Components = Components;
@@ -3651,7 +3650,8 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
         window.selectMateria = selectMateria;
         window.updateInspector = updateInspector;
         window.openAssetSelector = openAssetSelector;
-        window.SceneManager.openMarkdownViewer = openMarkdownViewerCallback;
+        window.SceneManager = SceneManager;
+        window.openMarkdownViewer = openMarkdownViewerCallback;
         window.setActiveTool = SceneView.setActiveTool;
         window.CES_Transpiler = CES_Transpiler;
         window.TerrenoEditorWindow = TerrenoEditorWindow;
