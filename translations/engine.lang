@@ -237,6 +237,8 @@ IMAGE: Imagen
 TERRENO: Terreno
 CANVAS: Canvas
 PANEL: Panel
+COMBATANT: Combatiente
+HEALTH_BAR: Barra de Salud
 
 # Editor Menubar
 ARCHIVO: Archivo
@@ -646,6 +648,8 @@ IMAGE: Image
 TERRENO: Terrain
 CANVAS: Canvas
 PANEL: Panel
+COMBATANT: Combatant
+HEALTH_BAR: Health Bar
 
 # Editor Menubar
 ARCHIVO: File

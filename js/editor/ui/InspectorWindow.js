@@ -35,8 +35,8 @@ const availableComponents = {
     'CAT_AUDIO': [Components.AudioSource],
     'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
     'CAT_CAMARA': [Components.Camera],
-    'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
-    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.SuspensionHC, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController],
+    'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
+    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Attack, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.SuspensionHC, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController],
     'CAT_SCRIPTING': [Components.CreativeScript]
 };
 
@@ -48,13 +48,13 @@ const componentIcons = {
     Terreno2D: 'mountain', TerrenoCollider2D: 'mountain',
     Button: 'mouse-pointer', UIText: 'type', Canvas: 'image',
     VerticalLayoutGroup: 'layers', HorizontalLayoutGroup: 'layers', GridLayoutGroup: 'grid', ContentSizeFitter: 'maximize',
-    Movement: 'run', CameraFollow: 'video', Parallax: 'mountain-snow', DrawingOrder: 'layers', ProjectileLauncher: 'rocket', AutoDestroy: 'timer', Health: 'heart', Patrol: 'route',
-    Water: 'bucket', LineCollider2D: 'route',
+    Movement: 'run', CameraFollow: 'video', Parallax: 'mountain-snow', DrawingOrder: 'layers', ProjectileLauncher: 'rocket', AutoDestroy: 'timer', Health: 'heart', Attack: 'target', Patrol: 'route',
+    Water: 'bucket', LineCollider2D: 'route', ProgressBar: 'maximize',
     'ParticleSystem': 'sparkles',
     'Gyzmo': 'target',
     'RaycastSource': 'route',
     'BasicAI': 'bot',
-    'SuspensionHC': 'truck',
+    'SuspensionHC': 'wrench',
     'VehicleTopDown': 'rocket',
     'PlaneController': 'rocket',
     'HelicopterController': 'rocket',
@@ -1700,9 +1700,115 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="CURRENT_HEALTH">${L.get('CURRENT_HEALTH', 'Vida Actual')}</label>
                         <input type="number" class="prop-input" step="1" min="0" data-component="Health" data-prop="currentHealth" value="${ley.currentHealth}">
                     </div>
+                    <div class="inspector-row">
+                        <label data-i18n="DEATH_ANIMATION">${L.get('DEATH_ANIMATION', 'Animación Muerte')}</label>
+                        ${renderPropertyDropper('Animation', ley.deathAnimation, 'data-component="Health" data-prop="deathAnimation"')}
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="FREEZE_FRAME">${L.get('FREEZE_FRAME', 'Fotograma Congelado')}</label>
+                        <input type="number" class="prop-input" step="1" min="-1" data-component="Health" data-prop="freezeFrame" value="${ley.freezeFrame}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="DESTRUCTION_DELAY">${L.get('DESTRUCTION_DELAY', 'Tiempo Desaparición')}</label>
+                        <input type="number" class="prop-input" step="0.1" min="-1" data-component="Health" data-prop="destructionDelay" value="${ley.destructionDelay}">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Health" data-prop="disableMovementOnDeath" ${ley.disableMovementOnDeath ? 'checked' : ''}>
+                        <label data-i18n="DISABLE_MOVEMENT">${L.get('DISABLE_MOVEMENT', 'Desactivar Movimiento')}</label>
+                    </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Health" data-prop="destroyOnDeath" ${ley.destroyOnDeath ? 'checked' : ''}>
                         <label data-i18n="DESTROY_ON_DEATH">${L.get('DESTROY_ON_DEATH', 'Destruir al morir')}</label>
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.Attack) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('ATTACK_COMPONENT', "Ataque (Attack)"), icon, index)}
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label data-i18n="COLLIDER_MATERIA">${L.get('COLLIDER_MATERIA', 'Materia Colisionador')}</label>
+                        ${renderPropertyDropper('Materia', ley.colliderMateria, 'data-component="Attack" data-prop="colliderMateria"')}
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="COOLDOWN">${L.get('COOLDOWN', 'Enfriamiento')}</label>
+                        <input type="number" class="prop-input" step="0.1" min="0" data-component="Attack" data-prop="cooldown" value="${ley.cooldown}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="CYCLE_KEY">${L.get('CYCLE_KEY', 'Tecla Ciclo')}</label>
+                        <input type="text" class="prop-input" data-component="Attack" data-prop="cycleKey" value="${ley.cycleKey || ''}">
+                    </div>
+                    <div class="inspector-section-header">
+                        <span data-i18n="ATTACKS">${L.get('ATTACKS', 'Ataques')}</span>
+                    </div>
+                    <div class="layer-list">
+                        ${ley.attacks.map((atk, aIdx) => `
+                            <div class="layer-item" style="flex-direction: column; align-items: stretch; gap: 5px; padding: 10px;">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <strong>${L.get('ATTACK', 'Ataque')} ${aIdx}</strong>
+                                    <button class="layer-btn remove" onclick="const atk = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.Attack); atk.attacks.splice(${aIdx}, 1); window.updateInspector();">-</button>
+                                </div>
+                                <div class="prop-row-multi">
+                                    <label>Key</label>
+                                    <input type="text" class="prop-input" data-component="Attack" data-prop="attacks.${aIdx}.key" value="${atk.key || ''}">
+                                </div>
+                                <div class="inspector-row">
+                                    <label>Anim</label>
+                                    ${renderPropertyDropper('Animation', atk.animation, `data-component="Attack" data-prop="attacks.${aIdx}.animation"`)}
+                                </div>
+                                <div class="prop-row-multi">
+                                    <label>${L.get('DAMAGE', 'Daño')}</label>
+                                    <input type="number" class="prop-input" data-component="Attack" data-prop="attacks.${aIdx}.damage" value="${atk.damage}">
+                                </div>
+                                <div class="prop-row-multi">
+                                    <label>${L.get('PUSH_FORCE', 'Empuje')}</label>
+                                    <input type="number" class="prop-input" data-component="Attack" data-prop="attacks.${aIdx}.pushForce" value="${atk.pushForce}">
+                                </div>
+                                <div class="prop-row-multi">
+                                    <label>${L.get('DURATION', 'Duración')}</label>
+                                    <input type="number" class="prop-input" step="0.05" data-component="Attack" data-prop="attacks.${aIdx}.duration" value="${atk.duration}">
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button class="add-event-btn" onclick="const atk = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.Attack); atk.attacks.push({key: 'j', animation: '', damage: 10, pushForce: 5, duration: 0.2}); window.updateInspector();">+</button>
+                </div>
+            `;
+        } else if (ley instanceof Components.ProgressBar) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('PROGRESS_BAR', "Barra de Progreso"), icon, index)}
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label data-i18n="TARGET_MATERIA">${L.get('TARGET_MATERIA', 'Materia Objetivo')}</label>
+                        ${renderPropertyDropper('Materia', ley.targetMateria, 'data-component="ProgressBar" data-prop="targetMateria"')}
+                    </div>
+                    <div class="inspector-row">
+                        <label data-i18n="FILL_MATERIA">${L.get('FILL_MATERIA', 'Materia Relleno')}</label>
+                        ${renderPropertyDropper('Materia', ley.fillMateria, 'data-component="ProgressBar" data-prop="fillMateria"')}
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="FULL_SIZE">${L.get('FULL_SIZE', 'Tamaño Total')}</label>
+                        <input type="number" class="prop-input" data-component="ProgressBar" data-prop="fullSize" value="${ley.fullSize}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="ORIENTATION">${L.get('ORIENTATION', 'Orientación')}</label>
+                        <select class="prop-input" data-component="ProgressBar" data-prop="orientation">
+                            <option value="Horizontal" ${ley.orientation === 'Horizontal' ? 'selected' : ''}>Horizontal</option>
+                            <option value="Vertical" ${ley.orientation === 'Vertical' ? 'selected' : ''}>Vertical</option>
+                        </select>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="ProgressBar" data-prop="isSceneLoading" ${ley.isSceneLoading ? 'checked' : ''}>
+                        <label data-i18n="USE_AS_LOADING_BAR">${L.get('USE_AS_LOADING_BAR', 'Usar como Barra de Carga')}</label>
+                    </div>
+                    <hr>
+                    <div class="prop-row-multi">
+                        <label data-i18n="VALUE">${L.get('VALUE', 'Valor')}</label>
+                        <input type="number" class="prop-input" data-component="ProgressBar" data-prop="value" value="${ley.value}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="MAX_VALUE">${L.get('MAX_VALUE', 'Valor Máximo')}</label>
+                        <input type="number" class="prop-input" data-component="ProgressBar" data-prop="maxValue" value="${ley.maxValue}">
                     </div>
                 </div>
             `;
