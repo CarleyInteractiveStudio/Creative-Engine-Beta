@@ -4772,6 +4772,7 @@ export class Attack extends Leyes {
 
         let colMtr = this.colliderMateria;
         if (typeof colMtr === 'number') colMtr = scene.findMateriaById(colMtr);
+        else if (typeof colMtr === 'string') colMtr = this.materia.findChildByName(colMtr, true) || scene.findMateriaByName(colMtr);
         if (!colMtr) colMtr = this.materia;
 
         const overlaps = engine.alPermanecerEnColision(colMtr);

@@ -168,8 +168,18 @@ export class Scene {
      * Útil después de restaurar una escena desde un snapshot o cargarla por primera vez.
      */
     async loadAllAssets(projectsDirHandle) {
+        loadingProgress = 0;
         const promises = [];
-        for (const materia of this.getAllMaterias()) {
+        const allMaterias = this.getAllMaterias();
+        let loadedCount = 0;
+        const total = allMaterias.length;
+
+        const updateProgress = () => {
+            loadedCount++;
+            loadingProgress = total > 0 ? loadedCount / total : 1;
+        };
+
+        for (const materia of allMaterias) {
             for (const ley of materia.leyes) {
                 const className = ley.constructor.name;
                 if (className === 'SpriteRenderer') {
@@ -190,14 +200,17 @@ export class Scene {
                     promises.push(ley.loadTextures(projectsDirHandle));
                 }
             }
+            updateProgress();
         }
         await Promise.allSettled(promises);
+        loadingProgress = 1.0;
     }
 }
 
 export let currentScene = new Scene();
 export let currentSceneFileHandle = null;
 export let isSceneDirty = false;
+export let loadingProgress = 0;
 
 export function setCurrentScene(scene) {
     currentScene = scene;
