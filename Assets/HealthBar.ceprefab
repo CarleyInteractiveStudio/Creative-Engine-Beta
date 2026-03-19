@@ -1,0 +1,76 @@
+{
+    "name": "HealthBar",
+    "tag": "UI",
+    "isActive": true,
+    "leyes": [
+        {
+            "type": "UITransform",
+            "properties": {
+                "position": { "x": 0, "y": 0 },
+                "size": { "width": 200, "height": 30 },
+                "anchorPoint": 4
+            }
+        },
+        {
+            "type": "Canvas",
+            "properties": {
+                "renderMode": "World Space",
+                "size": { "x": 200, "y": 30 }
+            }
+        },
+        {
+            "type": "ProgressBar",
+            "properties": {
+                "value": 100,
+                "maxValue": 100,
+                "fullSize": 200,
+                "orientation": "Horizontal",
+                "fillMateria": "Fill"
+            }
+        }
+    ],
+    "children": [
+        {
+            "name": "Background",
+            "isActive": true,
+            "leyes": [
+                {
+                    "type": "UITransform",
+                    "properties": {
+                        "position": { "x": 0, "y": 0 },
+                        "size": { "width": 200, "height": 30 },
+                        "anchorPoint": 4
+                    }
+                },
+                {
+                    "type": "UIImage",
+                    "properties": {
+                        "color": "#333333",
+                        "source": ""
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Fill",
+            "isActive": true,
+            "leyes": [
+                {
+                    "type": "UITransform",
+                    "properties": {
+                        "position": { "x": -100, "y": 0 },
+                        "size": { "width": 200, "height": 30 },
+                        "anchorPoint": 3
+                    }
+                },
+                {
+                    "type": "UIImage",
+                    "properties": {
+                        "color": "#ff3333",
+                        "source": ""
+                    }
+                }
+            ]
+        }
+    ]
+}

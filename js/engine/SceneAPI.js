@@ -38,6 +38,9 @@ const sceneAPI = {
     establecerLuzAmbiental: setAmbientLight,
     establecerHora: setTime,
     instanciarPrefab: SceneManager.instanciarPrefab,
+
+    get loadingProgress() { return SceneManager.loadingProgress || 0; },
+    get progresoCarga() { return SceneManager.loadingProgress || 0; }
 };
 
 export function getAPIs() {

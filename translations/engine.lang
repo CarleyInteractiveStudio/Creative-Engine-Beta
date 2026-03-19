@@ -369,6 +369,26 @@ REPRODUCIR: Reproducir
 DETENER: Detener
 PAUSAR: Pausar
 
+# Combat & Health
+HEALTH: Vida
+MAX_HEALTH: Vida Máxima
+CURRENT_HEALTH: Vida Actual
+DEATH_ANIMATION: Animación de Muerte
+FREEZE_FRAME: Fotograma Congelado
+DESTRUCTION_DELAY: Tiempo Desaparición
+DISABLE_MOVEMENT: Desactivar Movimiento
+ATTACK: Ataque
+ATTACKS: Ataques
+CYCLE_KEY: Tecla de Ciclo
+COOLDOWN: Enfriamiento
+COLLIDER_MATERIA: Materia Colisionador
+DAMAGE: Daño
+PUSH_FORCE: Fuerza de Empuje
+PROGRESS_BAR: Barra de Progreso
+TARGET_MATERIA: Materia Objetivo
+FILL_MATERIA: Materia Relleno
+ORIENTATION: Orientación
+
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
 CONFIRM_RESTABLECER: ¿Estás seguro de que quieres borrar todos los datos locales del motor? Esto te pedirá elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se verán afectados.
@@ -758,6 +778,26 @@ REPRODUCIR: Play
 DETENER: Stop
 PAUSAR: Pause
 
+# Combat & Health
+HEALTH: Health
+MAX_HEALTH: Max Health
+CURRENT_HEALTH: Current Health
+DEATH_ANIMATION: Death Animation
+FREEZE_FRAME: Freeze Frame
+DESTRUCTION_DELAY: Destruction Delay
+DISABLE_MOVEMENT: Disable Movement
+ATTACK: Attack
+ATTACKS: Attacks
+CYCLE_KEY: Cycle Key
+COOLDOWN: Cooldown
+COLLIDER_MATERIA: Collider Matter
+DAMAGE: Damage
+PUSH_FORCE: Push Force
+PROGRESS_BAR: Progress Bar
+TARGET_MATERIA: Target Matter
+FILL_MATERIA: Fill Matter
+ORIENTATION: Orientation
+
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
 CONFIRM_RESTABLECER: ¿Estás seguro de que quieres borrar todos los datos locales del motor? Esto te pedirá elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se verán afectados.
@@ -1081,6 +1121,26 @@ REPRODUCIR: Reproduzir
 DETENER: Parar
 PAUSAR: Pausar
 
+# Combat & Health
+HEALTH: Vida
+MAX_HEALTH: Vida Máxima
+CURRENT_HEALTH: Vida Atual
+DEATH_ANIMATION: Animação de Morte
+FREEZE_FRAME: Frame Congelado
+DESTRUCTION_DELAY: Tempo de Destruição
+DISABLE_MOVEMENT: Desativar Movimento
+ATTACK: Ataque
+ATTACKS: Ataques
+CYCLE_KEY: Tecla de Ciclo
+COOLDOWN: Cooldown
+COLLIDER_MATERIA: Matéria do Colisor
+DAMAGE: Dano
+PUSH_FORCE: Força de Empuxo
+PROGRESS_BAR: Barra de Progresso
+TARGET_MATERIA: Matéria Alvo
+FILL_MATERIA: Matéria de Preenchimento
+ORIENTATION: Orientação
+
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
 CONFIRM_RESTABLECER: ¿Estás seguro de que quieres borrar todos los datos locales del motor? Esto te pedirá elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se verán afectados.
@@ -1403,6 +1463,26 @@ REPRODUCIR: Воспроизвести
 DETENER: Стоп
 PAUSAR: Пауза
 
+# Combat & Health
+HEALTH: Здоровье
+MAX_HEALTH: Макс. здоровье
+CURRENT_HEALTH: Текущее здоровье
+DEATH_ANIMATION: Анимация смерти
+FREEZE_FRAME: Замороженный кадр
+DESTRUCTION_DELAY: Задержка удаления
+DISABLE_MOVEMENT: Отключить движение
+ATTACK: Атака
+ATTACKS: Атаки
+CYCLE_KEY: Клавиша цикла
+COOLDOWN: Перезарядка
+COLLIDER_MATERIA: Объект коллайдера
+DAMAGE: Урон
+PUSH_FORCE: Сила отталкивания
+PROGRESS_BAR: Шкала прогресса
+TARGET_MATERIA: Целевой объект
+FILL_MATERIA: Объект заполнения
+ORIENTATION: Ориентация
+
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
 CONFIRM_RESTABLECER: ¿Estás seguro de que quieres borrar todos los datos locales del motor? Esto te pedirá elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se verán afectados.
@@ -1724,6 +1804,26 @@ BUCLE: 循环 (Loop)
 REPRODUCIR: 播放
 DETENER: 停止
 PAUSAR: 暂停
+
+# Combat & Health
+HEALTH: 生命值
+MAX_HEALTH: 最大生命值
+CURRENT_HEALTH: 当前生命值
+DEATH_ANIMATION: 死亡动画
+FREEZE_FRAME: 冻结帧
+DESTRUCTION_DELAY: 销毁延迟
+DISABLE_MOVEMENT: 禁用移动
+ATTACK: 攻击
+ATTACKS: 攻击列表
+CYCLE_KEY: 循环按键
+COOLDOWN: 冷却时间
+COLLIDER_MATERIA: 碰撞体对象
+DAMAGE: 伤害
+PUSH_FORCE: 推力
+PROGRESS_BAR: 进度条
+TARGET_MATERIA: 目标对象
+FILL_MATERIA: 填充对象
+ORIENTATION: 方向
 
 # Novice Guide
 TITULO_NOVATO: ¡Bienvenido!
