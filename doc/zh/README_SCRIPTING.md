@@ -1,62 +1,42 @@
-# 📜 脚本大师指南 (CES) - Creative Engine
+# 📜 脚本编写大师指南 (CES) - Creative Engine
 
-Creative Engine 使用 **CES (Creative Engine Script)**，这是一种基于 JavaScript 的强大语言，但为游戏开发者进行了简化。
+Creative Engine 使用 **CES (Creative Engine Script)**，这是一种基于 JavaScript 但为游戏创作者简化的强大语言。本指南将教您从基础到高级系统的所有知识。
 
 ---
 
 ## 🚀 核心概念
 
 ### 1. 强制导入
-每个脚本都必须以连接指令开始：
+每个脚本必须以连接引擎的指令开始：
 ```ces
-引擎 motor;
+ve motor;
 ```
 
-### 2. 直接访问
-与其他引擎不同，您不需要编写 `this.` 或 `mtr.`。如果对象有 `SpriteRenderer`，直接写 `精灵渲染器` (或 `renderizadorDeSprite`)。
+### 2. 直接访问 (无前缀)
+与其他引擎不同，您不需要编写 `this.` 或 `mtr.` 来访问对象的组件。如果对象具有 `SpriteRenderer`，只需编写 `renderizadorDeSprite`。
+
+### 3. 多语言设计
+您可以互换使用西班牙语或英语术语进行编码。引擎都能理解。例如，`fisica` 与 `rigidbody2D` 相同。
 
 ---
 
-## 💎 公共变量
-使用 `公开` 关键字让变量显示在检查器中。
+## 💎 公共变量 (检查器)
+要使变量出现在编辑器的检查器中，请使用 `publico` 关键字。
 
 ```ces
-公开 数字 速度 = 5;
-公开 文本 名字 = "英雄";
-公开 布尔值 无敌 = 假;
-公开 物质 目标;
-```
-
----
-
-## ⏱️ 生命周期事件
-
-```ces
-// 当对象在游戏中出现时执行一次
-开始() {
-    log("你好，世界！");
-}
-
-// 每帧执行一次
-更新(delta) {
-}
+publico numero velocidad = 5;
+publico texto nombreJugador = "英雄";
+publico booleano esInvencible = falso;
+publico Materia objetivo; // 将出现一个用于拖放对象的方框
 ```
 
 ---
 
-## 🪄 特殊函数与代理
-
-### ⏳ 协程 (等待)
-```ces
-开始() {
-    等待(3);
-    log("3秒过去了！");
-}
-```
-
-### 🎭 动画与音效代理
-直接通过名称调用状态或剪辑：
-```ces
-reproducir.Caminar(); // 在 AnimatorController 中
-play.Jump();
-```
+## 🛠️ 引擎实用程序
+- `buscar(nombre)`: 在场景中查找对象。
+- `destruir(materia)`: 删除对象。
+- `lanzarRayo(origen, direccion, distancia, tag)`: 2D 射线检测。
+- `estaTocandoTag(tag)`: 快速碰撞检测。
+- `instanciar(original, x, y)`: 克隆现有对象。
+- `crear miPrefab`: 按名称实例化预制件。
+- `solapamientoUI(mtrA, mtrB)`: 检测界面元素之间的碰撞。

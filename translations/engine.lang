@@ -401,7 +401,7 @@ HEALTH: Vida (Health)
 ATTACK: Ataque (Attack)
 PATROL: Patrulla
 PARTICLESYSTEM: Sistema de Partículas
-RAYCASTSOURCE: Origen de Rayo (Rallo)
+RAYCASTSOURCE: Origen de Rayo
 BASICAI: IA Básica
 SUSPENSIONHC: Suspensión de Vehículo
 VEHICLETOPDOWN: Vehículo Top-Down

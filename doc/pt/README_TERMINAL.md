@@ -1,31 +1,34 @@
 # 📟 Comandos de Terminal - Creative Engine
 
-O terminal é uma ferramenta avançada para depurar e controlar o motor via comandos de texto. Aceda em **Janela > Terminal**.
+La terminal es una herramienta avanzada para depurar y controlar el motor mediante comandos de texto. Accede desde **Ventana > Terminal**.
 
 ---
 
-## 📂 Gestão de Ficheiros
-- `ls [pasta]`: Lista o conteúdo de um diretório.
-- `cd [pasta]`: Muda o diretório atual.
-- `mkdir [nome]`: Cria uma nova pasta.
+## 📂 Gestión de Archivos
+- `ls [carpeta]`: Lista el contenido de un directorio.
+- `cd [carpeta]`: Cambia de directorio actual en la terminal.
+- `mkdir [nombre]`: Crea una nueva carpeta.
+- `cat [archivo]`: Muestra el contenido de un archivo de texto.
 
 ---
 
-## 🔍 Inspeção de Objetos
-- `find [nome]`: Procura uma Matéria na cena e devolve o seu ID.
-- `inspect [id]`: Mostra todas as propriedades de um objeto em JSON.
-- `log [mensagem]`: Imprime uma mensagem na consola.
+## 🔍 Inspección de Objetos
+- `find [nombre]`: Busca una Materia en la escena por su nombre y devuelve su ID.
+- `inspect [id]`: Muestra todas las propiedades y componentes de un objeto en formato JSON.
+- `log [mensaje]`: Imprime un mensaje en la consola del editor.
 
 ---
 
-## 🎮 Controlo de Jogo
-- `play`: Inicia o jogo.
-- `stop`: Para o jogo e restaura a cena.
-- `scene [caminho]`: Carrega uma cena específica imediatamente.
+## 🎮 Control de Juego
+- `play`: Inicia el juego.
+- `stop`: Detiene el juego y restaura la escena.
+- `pause`: Pausa o resume la ejecución.
+- `scene [ruta]`: Carga una escena específica inmediatamente.
 
 ---
 
-## 🧪 Utilitários Avançados
-- `stats`: Mostra métricas de desempenho (FPS, memória).
-- `clear`: Limpa o ecrã do terminal.
-- `help`: Lista todos os comandos disponíveis.
+## 🧪 Utilidades Avanzadas
+- `stats`: Muestra métricas de rendimiento (FPS, llamadas de dibujado, memoria).
+- `clear`: Limpia la pantalla de la terminal.
+- `whoami`: Muestra información del proyecto activo y versión del motor.
+- `help`: Lista todos los comandos disponibles.

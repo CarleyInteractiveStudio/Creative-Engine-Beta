@@ -15,6 +15,9 @@ ve motor;
 ### 2. Acceso Directo (Sin Prefijos)
 A diferencia de otros motores, NO necesitas escribir `this.` o `mtr.` para acceder a los componentes de un objeto. Si el objeto tiene un `SpriteRenderer`, simplemente escribe `renderizadorDeSprite`.
 
+### 3. Multilingüe por Diseño
+Puedes programar usando términos en español o inglés indistintamente. El motor entiende ambos. Por ejemplo, `fisica` es lo mismo que `rigidbody2D`.
+
 ---
 
 ## 💎 Variables Públicas (Inspector)
@@ -130,6 +133,14 @@ play.Jump();          // Alias en inglés
 reproducir.Explosion(); // En el AudioSource
 ```
 
+### 🧠 Detección de UI
+```ces
+// Comprueba si dos elementos de interfaz se solapan (ideal para inventarios)
+si (solapamientoUI(item, ranura)) {
+    imprimir("¡Objeto colocado!");
+}
+```
+
 ---
 
 ## 🛠️ Utilidades de Motor
@@ -139,3 +150,4 @@ reproducir.Explosion(); // En el AudioSource
 - `estaTocandoTag(tag)`: Detección rápida de colisiones.
 - `instanciar(original, x, y)`: Clona un objeto existente.
 - `crear miPrefab`: Instancia un prefab por su nombre.
+- `solapamientoUI(mtrA, mtrB)`: Detecta colisión entre elementos de interfaz.

@@ -1,46 +1,51 @@
-# 🏗️ Продвинутое руководство: Проекты, Сцены и Сборка - Creative Engine
+# 🏗️ Projects, Scenes, and Publishing - Creative Engine
 
-Это руководство охватывает основные аспекты управления активами, проектирования уровней и финальной публикации ваших игр.
-
----
-
-## 📂 1. Структура проектов
-
-Каждый проект в Creative Engine сохраняется в отдельной папке:
-- `/Assets`: Все ваши изображения, звуки, видео и скрипты.
-- `/lib`: Папка для библиотек (.celib), расширяющих движок.
-- `project.ceconfig`: Файл технических настроек (слои, теги, метаданные).
-- `thumbnail.png`: Изображение предварительного просмотра проекта.
+This manual covers the technical management of your creations, from folder structure to final packaging.
 
 ---
 
-## 🎬 2. Управление сценами (.ceScene)
+## 📂 1. Project Structure
 
-Сцены — это отдельные миры, содержащие материю и настройки окружения.
-
-### Основные операции
-- **Сохранить сцену:** Используйте `Ctrl + S`.
-- **Переключение сцен:** Дважды щелкните по любому файлу `.ceScene` в браузере.
-- **Миниатюра сцены:** При сохранении движок автоматически делает снимок экрана для иконки.
-
----
-
-## 📦 3. Импорт и Пакеты (.cep)
-
-### Импорт активов
-1. **Drag and Drop:** Перетаскивайте файлы прямо из ПК в браузер активов.
-2. **Spine (Скелетная анимация):** Поддержка импорта из Spine в формате `.json`.
-
-### Экспорт пакетов
-Щелкните правой кнопкой мыши на любую папку в `Assets` и выберите **Экспортировать пакет**. Это создаст файл `.cep` для удобного переноса между проектами.
+Each project is saved in its own folder with the following items:
+- **/Assets:** Images, sounds, scripts, and scenes.
+- **/lib:** Libraries (.celib) extending the engine.
+- **/doc:** Local project documentation and engine manuals.
+- **project.ceconfig:** Technical configuration (Layers, Tags, metadata).
+- **thumbnail.png:** Project preview image.
 
 ---
 
-## 🏗️ 4. Система сборки (Build)
+## 🎬 2. Scene Management (.ceScene)
 
-Сборка создает независимый веб-пакет (`.zip`), готовый к размещению на серверах.
+Scenes are independent worlds. You can have levels, menus, and loading screens.
+- **Save:** `Ctrl + S`. A thumbnail is captured automatically.
+- **Switch Scenes:** Double-click a `.ceScene` file in the Browser.
+- **Switch Logic:** Use `scene.load("Assets/Level2.ceScene")` in your scripts.
 
-1. Перейдите в **Файл > Build**.
-2. Выберите начальную сцену.
-3. Настройте логотипы (Splash Screens).
-4. Нажмите "Собрать игру".
+---
+
+## 📦 3. Prefabs (.ceprefab)
+
+A Prefab is a pre-configured object you can reuse.
+- **Create:** Drag a Materia from the Hierarchy to the Asset Browser.
+- **Usage:** Drag the `.ceprefab` file into the scene to create an instance.
+- **Editing:** Double-click the prefab in the Browser to enter **Prefab Edit Mode**.
+
+---
+
+## 🏗️ 4. Build and Export System
+
+### Exporting Assets (.cep)
+Right-click any folder in Assets and choose **Export Package**. This creates a compressed `.cep` file with all necessary files, ideal for sharing with other creators.
+
+### Building the Game
+Prepare your game for the web.
+1. Go to **File > Build**.
+2. Select the starting scene.
+3. Configure Splash Screens.
+4. The engine will generate a `.zip` file with a standalone web environment ready to upload to sites like Itch.io.
+
+---
+
+## 📱 5. Android Signing (Keystore)
+In Project Settings, you can generate or assign a **Keystore** file. This is mandatory if you plan to convert your web build into a signed Android APK for Google Play.

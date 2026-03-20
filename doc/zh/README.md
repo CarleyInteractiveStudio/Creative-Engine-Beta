@@ -1,32 +1,35 @@
 # Creative Engine 🎨🚀
 
-Creative Engine 是一款专业且轻量级的 2D 游戏引擎，专为追求在浏览器中获得流畅且强大创作体验的开发者设计。
+Creative Engine is a professional, lightweight 2D game engine designed for creators looking for a fluid and powerful experience directly in the browser.
 
-## ✨ 核心特性
+## ✨ Highlight Features
 
-### 🖥️ 世界级编辑器
-- **SVG 界面:** 无表情符号，仅使用专业矢量图标。
-- **VidSpri:** 将视频转换为优化的精灵序列。
-- **多语言支持:** 已翻译为西班牙语、英语、葡萄牙语、俄语和中文。
+### 🖥️ World-Class Editor
+- **SVG Interface:** No emojis, only professional vector icons.
+- **VidSpri:** Convert videos into optimized sprite sequences.
+- **Multilingual:** Translated into Spanish, English, Portuguese, Russian, and Chinese.
 
-### 🚗 载具与真实物理
-- **高级模拟:** 直升机、飞机和汽车（俯视角）控制器。
-- **水系统:** 基于粒子的流体模拟，具有动态浮力。
+### 🚗 Vehicles and Realistic Physics
+- **Advanced Simulation:** Controllers for Helicopters, Planes, and Cars (Top-Down).
+- **Water:** Particle-based fluids with dynamic buoyancy.
+- **HC Suspension:** Spring system for Hill Climb-style vehicles.
 
-### 🦴 动画与蒙皮
-- **2D 骨骼:** 使用骨骼和权重使图像变形。
-- **IK (反向动力学):** 真实的肢体动作。
-- **智能动画师:** 根据运动自动切换动画。
+### 🦴 Animation and Skinning
+- **2D Skeleton:** Deform images using bones and weights.
+- **IK (Inverse Kinematics):** Move limbs realistically.
+- **Smart Animator:** Automatic animation switching based on movement.
 
-### 🤖 智能助手 Carl IA
-- **自主代理:** Carl 可以通过行动计划为你创建完整的场景。
-- **CHC (代码助手):** 瞬间将你的想法转化为 .ces 代码。
+### 🤖 Artificial Intelligence with Carl IA
+- **Autonomous Assistant:** Carl can create complete scenes for you via action plans.
+- **CHC (Code Helper):** Instantly translates your ideas into .ces code.
 
-## 📚 技术文档
+## 📚 Technical Documentation
 
-- **[组件指南 (法律)](README_COMPONENTES.md):** 所有组件和载具的词典。
-- **[脚本指南 (CES)](README_SCRIPTING.md):** 引擎双语脚本手册。
-- **[视觉编辑器指南](README_EDITORES_VISUALES.md):** 动画、瓦片、地形和 VidSpri。
+- **[Component Guide (Laws)](README_COMPONENTES.md):** Dictionary of all components and vehicles.
+- **[Scripting Guide (CES)](README_SCRIPTING.md):** Manual for the engine's bilingual language.
+- **[Visual Editors Guide](README_EDITORES_VISUALES.md):** Animation, Tiles, Terrain, and VidSpri.
+- **[Carl IA Manual](README_CARL_IA.md):** How to use AI to accelerate your development.
+- **[Advanced Management](README_AVANZADO.md):** Prefabs, Scenes, and Build System.
 
 ---
-*由 Carley Interactive Studio 开发。*
+*Developed by Carley Interactive Studio.*

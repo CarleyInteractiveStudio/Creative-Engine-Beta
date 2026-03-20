@@ -1,31 +1,36 @@
-# 📚 Library Extension Guide (.celib) - Creative Engine
+# 📚 Libraries and Extensibility Guide - Creative Engine
 
-Libraries allow you to extend the engine with your own panels, components, and runtime functions.
-
----
-
-## 📂 1. Directory Structure
-
-All libraries must be placed in the `/lib` folder of your project:
-- `/lib/MyLib.celib`: The library package itself.
-- `/lib/MyLib.celib.meta`: Current status and user-granted permissions.
+Libraries in Creative Engine (`.celib` files) allow you to extend both the editor interface and the programming capabilities of your games.
 
 ---
 
-## 🛠️ 2. Creating a Library
+## 🛠️ 1. Interface Libraries (Editor Tools)
 
-A library is a JSON package containing a JavaScript script.
-1. Use **Library Window > Create**.
-2. Write your script inside an IIFE (Immediately Invoked Function Expression).
+You can create your own custom windows and tools for the editor using `CreativeEngine.API`.
 
-### Example: Custom Panel
+### Registering a Window
+To make your tool appear in the **Window** menu, use:
+
 ```javascript
 (function() {
     CreativeEngine.API.registrarVentana({
-        nombre: "My Tool",
+        nombre: "My Super Tool",
+        estilo: "moderno", // "carl", "moderno", or empty
+        ancho: 400,
+        alto: 300,
         alAbrir: function(panel) {
-            panel.texto("Custom Content");
-            panel.boton("Action", () => console.log("Done!"));
+            panel.texto("Welcome to my tool!", { bold: true, color: "#3498db" });
+
+            panel.fila((f) => {
+                f.boton("Greet", () => alert("Hello!"));
+                f.boton("Close", () => panel.elemento.remove());
+            });
+
+            panel.separador();
+
+            panel.input("Your Name", (value) => {
+                console.log("Name entered: " + value);
+            });
         }
     });
 })();
@@ -33,24 +38,46 @@ A library is a JSON package containing a JavaScript script.
 
 ---
 
-## 🔒 3. Permissions
+## 🎮 2. Runtime Libraries (New Script Functions)
 
-For security, the engine requires you to grant permissions explicitly in the **Library Details** view:
-- **Create Windows:** Allows the library to add entries to the Window menu.
-- **Runtime Access:** Allows `.ces` scripts to call the library's internal functions.
-- **Custom Components:** Allows the library to register new logic for Materias.
+If you want to add new functions that can be used within your `.ces` scripts, you must register a runtime API.
+
+### Example: Advanced Math Library
+Create a JS file and register it like this:
+
+```javascript
+(function() {
+    const MyCalculator = {
+        sum: (a, b) => a + b,
+        square: (n) => n * n,
+        generateID: () => "ID_" + Math.random().toString(36).substr(2, 9)
+    };
+
+    // This will make "MyCalculator" available in .ces scripts
+    CreativeEngine.API.registrarRuntimeAPI("MyCalculator", MyCalculator);
+})();
+```
+
+### How to use it in a Script (.ces)
+Use the `go` keyword followed by the library name:
+
+```ces
+ve motor;
+go "MyCalculator"; // Import the library
+
+start() {
+    variable result = sum(10, 5); // Lib functions are global now
+    print("Result: " + result);
+    print("My ID is: " + generateID());
+}
+```
 
 ---
 
-## 🧪 4. Using in Scripts (.ces)
-
-Import the library using the `go` command:
-```ces
-go "MyLib"
-
-start() {
-    variable result = myCustomFunction(10);
-    log(result);
-}
-```
-*(Note: `myCustomFunction` must be exported by the library script)*
+## 📦 How to Create and Install a Library
+1. Create a file with the `.js` extension.
+2. Write your extension code (UI or Runtime).
+3. In the editor, drag the `.js` file to the **Asset Browser**.
+4. The engine will detect the library and move it automatically to the `/lib` folder.
+5. Open the **Libraries** panel (Top Menu) to activate it.
+6. **Restart the editor** for the changes to take effect.

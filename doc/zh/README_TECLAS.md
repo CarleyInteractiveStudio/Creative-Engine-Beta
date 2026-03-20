@@ -1,52 +1,31 @@
-# ⌨️ Keyboard Shortcuts Guide - Creative Engine
+# Atajos de Teclado del Editor - Creative Engine
 
-Master these shortcuts to work significantly faster in the Creative Engine.
+Este documento detalla los atajos de teclado disponibles para agilizar tu flujo de trabajo en el editor.
 
----
+## General
+- **Ctrl + S**: Guardar Escena actual (o Script si el editor de código está activo).
+- **Ctrl + O**: Abrir Escena.
+- **Ctrl + D**: Duplicar Materia seleccionada.
+- **Suprimir / Retroceso**: Eliminar Materia seleccionada.
 
-## 🏗️ 1. Editor Navigation
+## Herramientas de Escena
+- **Q**: Herramienta de Movimiento.
+- **W**: Herramienta de Paneado (Cámara).
+- **E**: Herramienta de Escala.
+- **R**: Herramienta de Rotación.
+- **T**: Herramienta Universal.
+- **B**: Pincel de Terreno / Tiles.
+- **G**: Cubo de Pintura (Tiles).
+- **N**: Goma de Borrar (Tiles).
 
-- **Move (Q):** Move the selected object.
-- **Rotate (R):** Rotate the selected object.
-- **Scale (E):** Scale the selected object.
-- **Universal (T):** Combined Transform tool.
-- **Pan (W):** Drag the entire scene view.
-- **Terrain (B):** Activate the Terrain or Tile brush.
+## Ventanas (Atajos Rápidos)
+- **Ctrl + N**: Crear Nueva Materia Vacía en la escena.
+- **Ctrl + Shift + A**: Abrir Editor de Animación.
+- **Ctrl + Shift + C**: Abrir Controlador de Animación (Animator).
+- **Ctrl + Shift + S**: Abrir Editor de Sprites / Slicer.
+- **Ctrl + Shift + L**: Abrir/Cerrar Chat con Carl IA.
+- **Ctrl + Shift + B**: Abrir Ventana de Librerías.
 
----
-
-## 📂 2. File & Scene Control
-
-- **Ctrl + S:** Save the current Scene or Script.
-- **Ctrl + N:** Create a new empty Materia (Object).
-- **Ctrl + O:** Open an existing scene.
-- **Ctrl + D:** Duplicate the selected object(s).
-- **Delete / Backspace:** Delete the selected object(s).
-
----
-
-## 💻 3. Programming (Code Editor)
-
-- **Ctrl + S:** Save current script.
-- **Ctrl + Z:** Undo change.
-- **Ctrl + Y:** Redo change.
-- **Ctrl + F:** Search in code.
-- **Ctrl + H:** Find and Replace.
-
----
-
-## 🤖 4. Carl IA & Windows
-
-- **Ctrl + Shift + L:** Open/Close Carl IA.
-- **Ctrl + Shift + A:** Open Animation Editor.
-- **Ctrl + Shift + C:** Open Animator Controller.
-- **Ctrl + Shift + S:** Open Sprite Editor.
-- **Ctrl + Shift + B:** Open Library Manager.
-
----
-
-## 🎮 5. Playback
-
-- **Play:** Starts the game from the current scene.
-- **Pause:** Freezes execution but keeps state.
-- **Stop:** Returns to the editor and restores the previous scene state.
+## Editor de Código
+- **Ctrl + Z**: Deshacer.
+- **Ctrl + Y**: Rehacer.
