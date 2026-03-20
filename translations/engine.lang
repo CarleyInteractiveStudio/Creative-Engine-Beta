@@ -237,6 +237,8 @@ IMAGE: Imagen
 TERRENO: Terreno
 CANVAS: Canvas
 PANEL: Panel
+COMBATANT: Combatiente
+HEALTH_BAR: Barra de Salud
 
 # Editor Menubar
 ARCHIVO: Archivo
@@ -369,6 +371,26 @@ REPRODUCIR: Reproducir
 DETENER: Detener
 PAUSAR: Pausar
 
+# Combat & Health
+HEALTH: Vida
+MAX_HEALTH: Vida Máxima
+CURRENT_HEALTH: Vida Actual
+DEATH_ANIMATION: Animación de Muerte
+FREEZE_FRAME: Fotograma Congelado
+DESTRUCTION_DELAY: Tiempo Desaparición
+DISABLE_MOVEMENT: Desactivar Movimiento
+ATTACK: Ataque
+ATTACKS: Ataques
+CYCLE_KEY: Tecla de Ciclo
+COOLDOWN: Enfriamiento
+COLLIDER_MATERIA: Materia Colisionador
+DAMAGE: Daño
+PUSH_FORCE: Fuerza de Empuje
+PROGRESS_BAR: Barra de Progreso
+TARGET_MATERIA: Materia Objetivo
+FILL_MATERIA: Materia Relleno
+ORIENTATION: Orientación
+
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
 CONFIRM_RESTABLECER: ¿Estás seguro de que quieres borrar todos los datos locales del motor? Esto te pedirá elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se verán afectados.
@@ -386,6 +408,62 @@ AUTOSAVE: Guardado automático de scripts
 RESETEAR_DISENO: Restablecer Diseño de Paneles
 TITULO_PREFERENCIAS: Preferencias del Editor
 GUARDAR_PREFERENCIAS: Guardar Preferencias
+KEY: Tecla
+ANIM: Anim
+NINGUNA: Ninguna
+GENERATE_COLLIDERS: Generar Colisionadores
+COLLIDERS_GENERATED: Colisionadores generados
+SOURCE_LAYER: Capa de Origen
+USE_ALL_LAYERS: Usar todas las capas
+TEXTURE_TYPE: Tipo de Textura
+SPRITE_MODE: Modo de Sprite
+PIXELS_PER_UNIT: Píxeles por Unidad
+MESH_TYPE: Tipo de Malla
+FILTER_MODE: Modo de Filtro
+WRAP_MODE: Modo de Envoltura
+MAX_SIZE: Tamaño Máximo
+COMPRESSION: Compresión
+COLUMNS: Columnas
+ROWS: Filas
+PACKAGE_TYPE: Tipo de Paquete
+DESCRIPTION: Descripción
+AUDIO_PREVIEW: Previsualización de Audio
+ACTIONS: Acciones
+QUALITY: Calidad
+OPTIMIZATION_QUALITY: Optimización y Calidad
+ROOT_COMPONENTS: Componentes (Objeto Raíz)
+STRUCTURE: Estructura
+EDIT_PREFAB: Editar Prefab
+ANIMATION_PREVIEW: Previsualización de Animación
+SLICING: Slicing
+CREATE_ANIM_ASSET: Crear Asset de Animación (.cea)
+APPLY: Aplicar
+PRESETS: Presets
+WHITE: Blanco
+YELLOW: Amarillo
+GOLD: Oro
+ORANGE: Naranja
+RED: Rojo
+GREEN: Verde
+CYAN: Cian
+BLUE: Azul
+VIOLET: Violeta
+POSE_CAPTURADA: Pose base capturada.
+MODE: Modo
+RESOLUTION: Resolución
+SIMPLICITY: Simplicidad
+SHOW_IN_GAME_GLOBAL: Mostrar en Juego (Global)
+POS_XY: Pos (X/Y)
+SIZE_WH: Tamaño (W/H)
+VISIBLE_IN_GAME: Visible en Juego
+LONGITUD: Longitud
+GROSOR: Grosor
+IMAGEN: Imagen
+HUESOS_ASIGNADOS: Huesos Asignados
+OBJETIVO_TARGET: Objetivo (Target)
+LARGO_CADENA: Largo Cadena
+ITERACIONES: Iteraciones
+TOLERANCIA: Tolerancia
 
 [EN]
 # Header
@@ -626,6 +704,8 @@ IMAGE: Image
 TERRENO: Terrain
 CANVAS: Canvas
 PANEL: Panel
+COMBATANT: Combatant
+HEALTH_BAR: Health Bar
 
 # Editor Menubar
 ARCHIVO: File
@@ -758,6 +838,26 @@ REPRODUCIR: Play
 DETENER: Stop
 PAUSAR: Pause
 
+# Combat & Health
+HEALTH: Health
+MAX_HEALTH: Max Health
+CURRENT_HEALTH: Current Health
+DEATH_ANIMATION: Death Animation
+FREEZE_FRAME: Freeze Frame
+DESTRUCTION_DELAY: Destruction Delay
+DISABLE_MOVEMENT: Disable Movement
+ATTACK: Attack
+ATTACKS: Attacks
+CYCLE_KEY: Cycle Key
+COOLDOWN: Cooldown
+COLLIDER_MATERIA: Collider Matter
+DAMAGE: Damage
+PUSH_FORCE: Push Force
+PROGRESS_BAR: Progress Bar
+TARGET_MATERIA: Target Matter
+FILL_MATERIA: Fill Matter
+ORIENTATION: Orientation
+
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
 CONFIRM_RESTABLECER: ¿Estás seguro de que quieres borrar todos los datos locales del motor? Esto te pedirá elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se verán afectados.
@@ -775,6 +875,62 @@ AUTOSAVE: Auto-save scripts
 RESETEAR_DISENO: Reset Panel Layout
 TITULO_PREFERENCIAS: Editor Preferences
 GUARDAR_PREFERENCIAS: Save Preferences
+KEY: Key
+ANIM: Anim
+NINGUNA: None
+GENERATE_COLLIDERS: Generate Colliders
+COLLIDERS_GENERATED: Colliders generated
+SOURCE_LAYER: Source Layer
+USE_ALL_LAYERS: Use all layers
+TEXTURE_TYPE: Texture Type
+SPRITE_MODE: Sprite Mode
+PIXELS_PER_UNIT: Pixels Per Unit
+MESH_TYPE: Mesh Type
+FILTER_MODE: Filter Mode
+WRAP_MODE: Wrap Mode
+MAX_SIZE: Max Size
+COMPRESSION: Compression
+COLUMNS: Columns
+ROWS: Rows
+PACKAGE_TYPE: Package Type
+DESCRIPTION: Description
+AUDIO_PREVIEW: Audio Preview
+ACTIONS: Actions
+QUALITY: Quality
+OPTIMIZATION_QUALITY: Optimization & Quality
+ROOT_COMPONENTS: Root Components
+STRUCTURE: Structure
+EDIT_PREFAB: Edit Prefab
+ANIMATION_PREVIEW: Animation Preview
+SLICING: Slicing
+CREATE_ANIM_ASSET: Create Animation Asset (.cea)
+APPLY: Apply
+PRESETS: Presets
+WHITE: White
+YELLOW: Yellow
+GOLD: Gold
+ORANGE: Orange
+RED: Red
+GREEN: Green
+CYAN: Cyan
+BLUE: Blue
+VIOLET: Violet
+POSE_CAPTURADA: Base pose captured.
+MODE: Mode
+RESOLUTION: Resolution
+SIMPLICITY: Simplicity
+SHOW_IN_GAME_GLOBAL: Show in Game (Global)
+POS_XY: Pos (X/Y)
+SIZE_WH: Size (W/H)
+VISIBLE_IN_GAME: Visible in Game
+LONGITUD: Length
+GROSOR: Thickness
+IMAGEN: Image
+HUESOS_ASIGNADOS: Assigned Bones
+OBJETIVO_TARGET: Target
+LARGO_CADENA: Chain Length
+ITERACIONES: Iterations
+TOLERANCIA: Tolerance
 
 [PT]
 # Header
@@ -1081,6 +1237,26 @@ REPRODUCIR: Reproduzir
 DETENER: Parar
 PAUSAR: Pausar
 
+# Combat & Health
+HEALTH: Vida
+MAX_HEALTH: Vida Máxima
+CURRENT_HEALTH: Vida Atual
+DEATH_ANIMATION: Animação de Morte
+FREEZE_FRAME: Frame Congelado
+DESTRUCTION_DELAY: Tempo de Destruição
+DISABLE_MOVEMENT: Desativar Movimento
+ATTACK: Ataque
+ATTACKS: Ataques
+CYCLE_KEY: Tecla de Ciclo
+COOLDOWN: Cooldown
+COLLIDER_MATERIA: Matéria do Colisor
+DAMAGE: Dano
+PUSH_FORCE: Força de Empuxo
+PROGRESS_BAR: Barra de Progresso
+TARGET_MATERIA: Matéria Alvo
+FILL_MATERIA: Matéria de Preenchimento
+ORIENTATION: Orientação
+
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
 CONFIRM_RESTABLECER: ¿Estás seguro de que quieres borrar todos los datos locales del motor? Esto te pedirá elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se verán afectados.
@@ -1097,6 +1273,47 @@ AUTOSAVE: Salvamento automático de scripts
 RESETEAR_DISENO: Redefinir Layout de Painéis
 TITULO_PREFERENCIAS: Preferências do Editor
 GUARDAR_PREFERENCIAS: Salvar Preferências
+KEY: Tecla
+ANIM: Anim
+NINGUNA: Nenhuma
+GENERATE_COLLIDERS: Gerar Colisores
+COLLIDERS_GENERATED: Colisores gerados
+SOURCE_LAYER: Camada de Origem
+USE_ALL_LAYERS: Usar todas as camadas
+TEXTURE_TYPE: Tipo de Textura
+SPRITE_MODE: Modo de Sprite
+PIXELS_PER_UNIT: Pixels por Unidade
+MESH_TYPE: Tipo de Malha
+FILTER_MODE: Modo de Filtro
+WRAP_MODE: Modo de Envolvimento
+MAX_SIZE: Tamanho Máximo
+COMPRESSION: Compressão
+COLUMNS: Colunas
+ROWS: Linhas
+PACKAGE_TYPE: Tipo de Pacote
+DESCRIPTION: Descrição
+AUDIO_PREVIEW: Pré-visualização de Áudio
+ACTIONS: Ações
+QUALITY: Qualidade
+OPTIMIZATION_QUALITY: Otimização e Qualidade
+ROOT_COMPONENTS: Componentes (Objeto Raíz)
+STRUCTURE: Estrutura
+EDIT_PREFAB: Editar Prefab
+ANIMATION_PREVIEW: Pré-visualização de Animação
+SLICING: Slicing
+CREATE_ANIM_ASSET: Criar Asset de Animação (.cea)
+APPLY: Aplicar
+PRESETS: Presets
+WHITE: Branco
+YELLOW: Amarelo
+GOLD: Ouro
+ORANGE: Laranja
+RED: Vermelho
+GREEN: Verde
+CYAN: Ciano
+BLUE: Azul
+VIOLET: Violeta
+POSE_CAPTURADA: Pose base capturada.
 
 [RU]
 # Header
@@ -1403,6 +1620,26 @@ REPRODUCIR: Воспроизвести
 DETENER: Стоп
 PAUSAR: Пауза
 
+# Combat & Health
+HEALTH: Здоровье
+MAX_HEALTH: Макс. здоровье
+CURRENT_HEALTH: Текущее здоровье
+DEATH_ANIMATION: Анимация смерти
+FREEZE_FRAME: Замороженный кадр
+DESTRUCTION_DELAY: Задержка удаления
+DISABLE_MOVEMENT: Отключить движение
+ATTACK: Атака
+ATTACKS: Атаки
+CYCLE_KEY: Клавиша цикла
+COOLDOWN: Перезарядка
+COLLIDER_MATERIA: Объект коллайдера
+DAMAGE: Урон
+PUSH_FORCE: Сила отталкивания
+PROGRESS_BAR: Шкала прогресса
+TARGET_MATERIA: Целевой объект
+FILL_MATERIA: Объект заполнения
+ORIENTATION: Ориентация
+
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
 CONFIRM_RESTABLECER: ¿Estás seguro de que quieres borrar todos los datos locales del motor? Esto te pedirá elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se verán afectados.
@@ -1419,6 +1656,47 @@ AUTOSAVE: Автосохранение скриптов
 RESETEAR_DISENO: Сброс макета панелей
 TITULO_PREFERENCIAS: Настройки редактора
 GUARDAR_PREFERENCIAS: Сохранить настройки
+KEY: Клавиша
+ANIM: Аним
+NINGUNA: Нет
+GENERATE_COLLIDERS: Генерировать коллайдеры
+COLLIDERS_GENERATED: Коллайдеров сгенерировано
+SOURCE_LAYER: Слой источника
+USE_ALL_LAYERS: Использовать все слои
+TEXTURE_TYPE: Тип текстуры
+SPRITE_MODE: Режим спрайта
+PIXELS_PER_UNIT: Пикселей на единицу
+MESH_TYPE: Тип сетки
+FILTER_MODE: Режим фильтрации
+WRAP_MODE: Режим повтора
+MAX_SIZE: Макс. размер
+COMPRESSION: Сжатие
+COLUMNS: Столбцы
+ROWS: Строки
+PACKAGE_TYPE: Тип пакета
+DESCRIPTION: Описание
+AUDIO_PREVIEW: Предпрослушивание
+ACTIONS: Действия
+QUALITY: Качество
+OPTIMIZATION_QUALITY: Оптимизация и качество
+ROOT_COMPONENTS: Компоненты (Корневой объект)
+STRUCTURE: Структура
+EDIT_PREFAB: Редактировать префаб
+ANIMATION_PREVIEW: Предпросмотр анимации
+SLICING: Нарезка (Slicing)
+CREATE_ANIM_ASSET: Создать ассет анимации (.cea)
+APPLY: Применить
+PRESETS: Пресеты
+WHITE: Белый
+YELLOW: Желтый
+GOLD: Золотой
+ORANGE: Оранжевый
+RED: Красный
+GREEN: Зеленый
+CYAN: Циан
+BLUE: Синий
+VIOLET: Фиолетовый
+POSE_CAPTURADA: Базовая поза захвачена.
 
 [ZH]
 # Header
@@ -1725,6 +2003,26 @@ REPRODUCIR: 播放
 DETENER: 停止
 PAUSAR: 暂停
 
+# Combat & Health
+HEALTH: 生命值
+MAX_HEALTH: 最大生命值
+CURRENT_HEALTH: 当前生命值
+DEATH_ANIMATION: 死亡动画
+FREEZE_FRAME: 冻结帧
+DESTRUCTION_DELAY: 销毁延迟
+DISABLE_MOVEMENT: 禁用移动
+ATTACK: 攻击
+ATTACKS: 攻击列表
+CYCLE_KEY: 循环按键
+COOLDOWN: 冷却时间
+COLLIDER_MATERIA: 碰撞体对象
+DAMAGE: 伤害
+PUSH_FORCE: 推力
+PROGRESS_BAR: 进度条
+TARGET_MATERIA: 目标对象
+FILL_MATERIA: 填充对象
+ORIENTATION: 方向
+
 # Novice Guide
 TITULO_NOVATO: ¡Bienvenido!
 MSG_NOVATO: Hola, has activado la casilla de novatos. Si quieres, puedes desactivarla aquí. Aquí tienes una guía básica para empezar:
@@ -1791,3 +2089,44 @@ AUTOSAVE: 脚本自动保存
 RESETEAR_DISENO: 重置面板布局
 TITULO_PREFERENCIAS: 编辑器偏好设置
 GUARDAR_PREFERENCIAS: 保存偏好设置
+KEY: 按键
+ANIM: 动画
+NINGUNA: 无
+GENERATE_COLLIDERS: 生成碰撞体
+COLLIDERS_GENERATED: 已生成碰撞体
+SOURCE_LAYER: 源图层
+USE_ALL_LAYERS: 使用所有图层
+TEXTURE_TYPE: 纹理类型
+SPRITE_MODE: 精灵模式
+PIXELS_PER_UNIT: 每单位像素
+MESH_TYPE: 网格类型
+FILTER_MODE: 过滤模式
+WRAP_MODE: 包裹模式
+MAX_SIZE: 最大尺寸
+COMPRESSION: 压缩
+COLUMNS: 列
+ROWS: 行
+PACKAGE_TYPE: 包类型
+DESCRIPTION: 描述
+AUDIO_PREVIEW: 音频预览
+ACTIONS: 操作
+QUALITY: 质量
+OPTIMIZATION_QUALITY: 优化与质量
+ROOT_COMPONENTS: 根组件
+STRUCTURE: 结构
+EDIT_PREFAB: 编辑预制件
+ANIMATION_PREVIEW: 动画预览
+SLICING: 切片
+CREATE_ANIM_ASSET: 创建动画资源 (.cea)
+APPLY: 应用
+PRESETS: 预设
+WHITE: 白色
+YELLOW: 黄色
+GOLD: 金色
+ORANGE: 橙色
+RED: 红色
+GREEN: 绿色
+CYAN: 青色
+BLUE: 蓝色
+VIOLET: 紫色
+POSE_CAPTURADA: 基础姿势已捕捉。

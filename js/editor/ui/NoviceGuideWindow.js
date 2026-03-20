@@ -52,8 +52,8 @@ export function show(dom) {
                     const projectHandle = await window.projectsDirHandle.getDirectoryHandle(projectName);
                     const fileHandle = await projectHandle.getFileHandle(path);
                     const content = await (await fileHandle.getFile()).text();
-                    if (window.SceneManager && window.SceneManager.openMarkdownViewer) {
-                         window.SceneManager.openMarkdownViewer(path, content);
+                    if (window.openMarkdownViewer) {
+                         window.openMarkdownViewer(path, content);
                     }
                 } catch (e) {
                     console.warn("Doc not found:", path);

@@ -57,6 +57,63 @@ export function createImageObject(parent) {
     return newMateria;
 }
 
+export function createProgressBarObject(parent) {
+    if (!parent) {
+        console.error("createProgressBarObject requiere un padre que sea un Canvas.");
+        return null;
+    }
+    const L = window.Localization;
+    const barName = generateUniqueName(L.get('PROGRESS_BAR', 'ProgressBar'));
+    const barMateria = new Materia(barName);
+
+    // Parent: Background
+    const bgTransform = new Components.UITransform(barMateria);
+    bgTransform.size = { width: 200, height: 20 };
+    barMateria.addComponent(bgTransform);
+
+    const bgImage = new Components.UIImage(barMateria);
+    bgImage.color = '#333333';
+    barMateria.addComponent(bgImage);
+
+    // Child: Fill
+    const fillName = generateUniqueName('Fill');
+    const fillMateria = new Materia(fillName);
+
+    const fillTransform = new Components.UITransform(fillMateria);
+    fillTransform.anchorPreset = 'stretch-stretch';
+    fillTransform.size = { width: 0, height: 0 };
+    fillMateria.addComponent(fillTransform);
+
+    const fillImage = new Components.UIImage(fillMateria);
+    fillImage.color = '#2ecc71';
+    fillMateria.addComponent(fillImage);
+
+    barMateria.addChild(fillMateria);
+
+    // ProgressBar Component
+    const progressBar = new Components.ProgressBar(barMateria);
+    progressBar.fillImage = fillImage;
+    barMateria.addComponent(progressBar);
+
+    parent.addChild(barMateria);
+
+    return barMateria;
+}
+
+export function createCombatantObject(parent = null) {
+    const L = window.Localization;
+    const name = generateUniqueName(L.get('COMBATANT', 'Combatiente'));
+    const newMateria = createBaseMateria(name, parent);
+
+    newMateria.addComponent(new Components.SpriteRenderer(newMateria));
+    newMateria.addComponent(new Components.Rigidbody2D(newMateria));
+    newMateria.addComponent(new Components.BoxCollider2D(newMateria));
+    newMateria.addComponent(new Components.Health(newMateria));
+    newMateria.addComponent(new Components.Attack(newMateria));
+
+    return newMateria;
+}
+
 export function createAudioObject(parent = null) {
     const L = window.Localization;
     const name = generateUniqueName(L.get('AUDIO', 'Audio'));

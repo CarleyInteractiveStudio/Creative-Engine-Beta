@@ -12,7 +12,7 @@
 import { Materia } from '../../engine/Materia.js';
 import * as Components from '../../engine/Components.js';
 import { showConfirmation } from './DialogWindow.js';
-import { createBaseMateria, generateUniqueName, createPanelObject, createTextObject, createButtonObject, createTerrenoObject, createAudioObject, createVideoObject, createWaterObject, createLineColliderObject } from '../MateriaFactory.js';
+import { createBaseMateria, generateUniqueName, createPanelObject, createTextObject, createButtonObject, createTerrenoObject, createAudioObject, createVideoObject, createWaterObject, createLineColliderObject, createProgressBarObject, createCombatantObject } from '../MateriaFactory.js';
 
 // Module-level state and dependencies
 let dom = {};
@@ -220,6 +220,9 @@ export function handleContextMenuAction(action) {
         case 'create-line-collider':
             newMateria = createLineColliderObject(selectedMateria);
             break;
+        case 'create-combatant':
+            newMateria = createCombatantObject(selectedMateria);
+            break;
         case 'create-camera':
             newMateria = createCameraObject(selectedMateria);
             break;
@@ -370,6 +373,41 @@ export function handleContextMenuAction(action) {
                     parentCanvas.addComponent(new Components.Canvas(parentCanvas));
                 }
                 newMateria = createButtonObject(parentCanvas);
+            }
+            break;
+        case 'create-ui-progress-bar':
+            {
+                let parentCanvas = selectedMateria;
+                if (parentCanvas && !parentCanvas.getComponent(Components.Canvas)) {
+                    parentCanvas = parentCanvas.findAncestorWithComponent(Components.Canvas);
+                }
+                if (!parentCanvas) {
+                    parentCanvas = createBaseMateria(generateUniqueName(L.get('CANVAS', 'Canvas')), null);
+                    parentCanvas.addComponent(new Components.Canvas(parentCanvas));
+                }
+                newMateria = createProgressBarObject(parentCanvas);
+            }
+            break;
+        case 'create-ui-health-bar':
+            {
+                let parentCanvas = selectedMateria;
+                if (parentCanvas && !parentCanvas.getComponent(Components.Canvas)) {
+                    parentCanvas = parentCanvas.findAncestorWithComponent(Components.Canvas);
+                }
+                if (!parentCanvas) {
+                    parentCanvas = createBaseMateria(generateUniqueName(L.get('CANVAS', 'Canvas')), null);
+                    parentCanvas.addComponent(new Components.Canvas(parentCanvas));
+                }
+
+                (async () => {
+                    const prefab = await SceneManager.instantiatePrefabFromPath('Assets/HealthBar.ceprefab');
+                    if (prefab) {
+                        prefab.setParent(parentCanvas, true);
+                        updateHierarchy();
+                        selectMateriaCallback(prefab.id);
+                    }
+                })();
+                return; // Logic handled inside async block
             }
             break;
 

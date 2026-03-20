@@ -72,6 +72,8 @@ const componentAliases = {
     'Bone': 'hueso',
     'SkeletonRenderer': 'renderizadorDeEsqueleto',
     'IKManager2D': 'gestorIK2D',
+    'Attack': 'ataque',
+    'ProgressBar': 'barraDeProgreso',
 };
 
 
@@ -4607,9 +4609,15 @@ export class Health extends Leyes {
         this.maxHealth = 100;
         this.currentHealth = 100;
         this.destroyOnDeath = true;
+        this.deathAnimation = "";
+        this.freezeFrame = -1;
+        this.destructionDelay = 2.0;
+        this.disableMovementOnDeath = true;
+        this.isDead = false;
     }
 
     damage(amount) {
+        if (this.isDead) return;
         this.currentHealth -= amount;
         if (this.currentHealth <= 0) {
             this.currentHealth = 0;
@@ -4620,6 +4628,7 @@ export class Health extends Leyes {
     danar(cantidad) { this.damage(cantidad); }
 
     heal(amount) {
+        if (this.isDead) return;
         this.currentHealth += amount;
         if (this.currentHealth > this.maxHealth) {
             this.currentHealth = this.maxHealth;
@@ -4629,15 +4638,52 @@ export class Health extends Leyes {
     curar(cantidad) { this.heal(cantidad); }
 
     onDeath() {
-        // Enviar mensaje de muerte
+        if (this.isDead) return;
+        this.isDead = true;
+
+        // Play death animation
+        const animator = this.materia.getComponent(Animator);
+        if (animator && this.deathAnimation) {
+            animator.play(this.deathAnimation, {
+                loop: false,
+                endFrame: this.freezeFrame !== -1 ? this.freezeFrame : undefined,
+                force: true
+            });
+        }
+
+        // Disable movement and control components
+        if (this.disableMovementOnDeath) {
+            const moveComponents = [
+                'Movement', 'VehicleTopDown', 'PlaneController', 'HelicopterController', 'BasicAI', 'Rigidbody2D'
+            ];
+            moveComponents.forEach(name => {
+                const comp = this.materia.getComponentByName(name);
+                if (comp) {
+                    if (name === 'Rigidbody2D') {
+                        comp.velocity = { x: 0, y: 0 };
+                        comp.angularVelocity = 0;
+                    } else {
+                        comp.isActive = false;
+                    }
+                }
+            });
+        }
+
+        // Send death message to scripts
         this.materia.leyes.forEach(ley => {
             if (ley instanceof CreativeScript) {
                 ley._safeInvoke('alMorir');
+                ley._safeInvoke('onDeath');
             }
         });
 
-        if (this.destroyOnDeath && this.materia.scene) {
-            this.materia.scene.removeMateria(this.materia.id);
+        // Optional destruction after delay
+        if (this.destroyOnDeath && this.materia.scene && this.destructionDelay >= 0) {
+            setTimeout(() => {
+                if (this.materia && this.materia.scene) {
+                    this.materia.scene.removeMateria(this.materia.id);
+                }
+            }, this.destructionDelay * 1000);
         }
     }
 
@@ -4645,6 +4691,189 @@ export class Health extends Leyes {
     set vidaMaxima(v) { this.maxHealth = v; }
     get vidaActual() { return this.currentHealth; }
     set vidaActual(v) { this.currentHealth = v; }
+    get animacionMuerte() { return this.deathAnimation; }
+    set animacionMuerte(v) { this.deathAnimation = v; }
+    get fotogramaCongelado() { return this.freezeFrame; }
+    set fotogramaCongelado(v) { this.freezeFrame = v; }
+    get tiempoDesaparicion() { return this.destructionDelay; }
+    set tiempoDesaparicion(v) { this.destructionDelay = v; }
+}
+
+/**
+ * Componente que gestiona el ataque de un objeto.
+ */
+export class Attack extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.attacks = [
+            { key: 'j', animation: '', damage: 10, pushForce: 5, duration: 0.2 }
+        ];
+        this.colliderMateria = null; // Materia ID that acts as the hit area
+        this.cooldown = 0.3;
+        this.cycleKey = ""; // If set, this key will cycle through the attacks list
+
+        this._timer = 0;
+        this._cycleIndex = 0;
+        this._isAttacking = false;
+        this._attackWindow = 0;
+        this._currentAttack = null;
+        this._hitObjects = new Set();
+    }
+
+    update(deltaTime) {
+        if (this._timer > 0) this._timer -= deltaTime;
+
+        if (this._isAttacking) {
+            this._attackWindow -= deltaTime;
+            this._applyHitLogic();
+            if (this._attackWindow <= 0) {
+                this._isAttacking = false;
+            }
+            return;
+        }
+
+        const input = RuntimeAPIManager.getAPI('input');
+        if (input && this._timer <= 0) {
+            // Check for individual attack keys
+            for (const atk of this.attacks) {
+                if (atk.key && input.isKeyJustPressed(atk.key)) {
+                    this.executeAttack(atk);
+                    return;
+                }
+            }
+
+            // Check for cycle key
+            if (this.cycleKey && input.isKeyJustPressed(this.cycleKey) && this.attacks.length > 0) {
+                const atk = this.attacks[this._cycleIndex];
+                this.executeAttack(atk);
+                this._cycleIndex = (this._cycleIndex + 1) % this.attacks.length;
+            }
+        }
+    }
+
+    executeAttack(atk) {
+        this._isAttacking = true;
+        this._currentAttack = atk;
+        this._attackWindow = atk.duration || 0.2;
+        this._timer = this.cooldown;
+        this._hitObjects.clear();
+
+        const animator = this.materia.getComponent(Animator) || this.materia.getComponent(AnimatorController);
+        if (animator && atk.animation) {
+            animator.play(atk.animation, { loop: false, force: true });
+        }
+    }
+
+    _applyHitLogic() {
+        const scene = this.materia.scene;
+        if (!scene) return;
+        const engine = RuntimeAPIManager.getAPI('engine');
+        if (!engine) return;
+
+        let colMtr = this.colliderMateria;
+        if (typeof colMtr === 'number') colMtr = scene.findMateriaById(colMtr);
+        else if (typeof colMtr === 'string') colMtr = this.materia.findChildByName(colMtr, true) || scene.findMateriaByName(colMtr);
+        if (!colMtr) colMtr = this.materia;
+
+        const overlaps = engine.alPermanecerEnColision(colMtr);
+        for (const other of overlaps) {
+            if (other === this.materia || this._hitObjects.has(other.id)) continue;
+
+            const health = other.getComponent(Health);
+            if (health) {
+                health.damage(this._currentAttack.damage);
+                this._hitObjects.add(other.id);
+            }
+
+            const rb = other.getComponent(Rigidbody2D);
+            if (rb && this._currentAttack.pushForce > 0) {
+                const t1 = this.materia.getComponent(Transform);
+                const t2 = other.getComponent(Transform);
+                if (t1 && t2) {
+                    const dx = t2.x - t1.x;
+                    const dy = t2.y - t1.y;
+                    const mag = Math.hypot(dx, dy) || 1;
+                    rb.applyImpulse((dx / mag) * this._currentAttack.pushForce, (dy / mag) * this._currentAttack.pushForce);
+                }
+            }
+        }
+    }
+
+    // Spanish Aliases
+    get ataques() { return this.attacks; }
+    set ataques(v) { this.attacks = v; }
+    get materiaColisionador() { return this.colliderMateria; }
+    set materiaColisionador(v) { this.colliderMateria = v; }
+    get tiempoEspera() { return this.cooldown; }
+    set tiempoEspera(v) { this.cooldown = v; }
+    get teclaCiclo() { return this.cycleKey; }
+    set teclaCiclo(v) { this.cycleKey = v; }
+}
+
+/**
+ * Componente que muestra una barra de progreso vinculada a un valor o componente.
+ */
+export class ProgressBar extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.value = 100;
+        this.maxValue = 100;
+        this.targetMateria = null; // Sync with this Materia's Health
+        this.fillMateria = null;   // The UI element that will be scaled
+        this.fullSize = 100;
+        this.orientation = 'Horizontal'; // 'Horizontal' or 'Vertical'
+        this.isSceneLoading = false;
+    }
+
+    update() {
+        const scene = this.materia.scene;
+
+        if (this.isSceneLoading) {
+            const sceneAPI = RuntimeAPIManager.getAPI('scene');
+            this.value = sceneAPI ? sceneAPI.loadingProgress : 0;
+            this.maxValue = 1.0;
+        } else if (scene) {
+            let target = this.targetMateria;
+            if (typeof target === 'number') target = scene.findMateriaById(target);
+            else if (typeof target === 'string') target = scene.findMateriaByName(target);
+
+            if (target) {
+                const health = target.getComponent(Health);
+                if (health) {
+                    this.value = health.currentHealth;
+                    this.maxValue = health.maxHealth;
+                }
+            }
+        }
+
+        let fill = this.fillMateria;
+        if (typeof fill === 'number' && scene) fill = scene.findMateriaById(fill);
+        else if (typeof fill === 'string' && scene) fill = this.materia.findChildByName(fill, true);
+
+        if (fill) {
+            const ui = fill.getComponent(UITransform);
+            if (ui) {
+                const ratio = Math.max(0, Math.min(1, this.value / (this.maxValue || 1)));
+                if (this.orientation === 'Horizontal') {
+                    ui.size.width = this.fullSize * ratio;
+                } else {
+                    ui.size.height = this.fullSize * ratio;
+                }
+            }
+        }
+    }
+
+    // Spanish Aliases
+    get valor() { return this.value; }
+    set valor(v) { this.value = v; }
+    get valorMaximo() { return this.maxValue; }
+    set valorMaximo(v) { this.maxValue = v; }
+    get materiaObjetivo() { return this.targetMateria; }
+    set materiaObjetivo(v) { this.targetMateria = v; }
+    get materiaRelleno() { return this.fillMateria; }
+    set materiaRelleno(v) { this.fillMateria = v; }
+    get tamanoTotal() { return this.fullSize; }
+    set tamanoTotal(v) { this.fullSize = v; }
 }
 
 /**
@@ -6544,6 +6773,8 @@ registerComponent('VerticalLayoutGroup', VerticalLayoutGroup);
 registerComponent('HorizontalLayoutGroup', HorizontalLayoutGroup);
 registerComponent('GridLayoutGroup', GridLayoutGroup);
 registerComponent('ContentSizeFitter', ContentSizeFitter);
+registerComponent('Attack', Attack);
+registerComponent('ProgressBar', ProgressBar);
 
 /**
  * Componente Bone (Hueso): Define un hueso en una jerarquía esquelética.
