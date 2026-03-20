@@ -1005,7 +1005,12 @@ export class CreativeScript extends Leyes {
     }
 
     clone() {
-        return new CreativeScript(null, this.scriptName);
+        const newScript = new CreativeScript(null, this.scriptName);
+        // Deep copy of public variables to preserve Inspector values
+        if (this.publicVars) {
+            newScript.publicVars = JSON.parse(JSON.stringify(this.publicVars));
+        }
+        return newScript;
     }
 }
 
@@ -1562,6 +1567,15 @@ export class Animator extends Leyes {
      * @param {number} duration - Duración del crossfade en segundos.
      * @param {object} options - Opciones adicionales.
      */
+    clone() {
+        const newAnimator = new Animator(null);
+        newAnimator.animationClipPath = this.animationClipPath;
+        newAnimator.speed = this.speed;
+        newAnimator.loop = this.loop;
+        newAnimator.playOnAwake = this.playOnAwake;
+        return newAnimator;
+    }
+
     crossfade(path, duration = 0.3, options = {}) {
         if (this.animationClipPath === path && this.isPlaying) return;
 
@@ -2258,6 +2272,20 @@ export class AudioSource extends Leyes {
     set inicioReproduccion(v) { this.playbackStart = v; }
     get finReproduccion() { return this.playbackEnd; }
     set finReproduccion(v) { this.playbackEnd = v; }
+
+    clone() {
+        const newAudio = new AudioSource(null);
+        newAudio.source = this.source;
+        newAudio.volume = this.volume;
+        newAudio.loop = this.loop;
+        newAudio.playOnAwake = this.playOnAwake;
+        newAudio.spatial = this.spatial;
+        newAudio.minDistance = this.minDistance;
+        newAudio.maxDistance = this.maxDistance;
+        newAudio.playbackStart = this.playbackStart;
+        newAudio.playbackEnd = this.playbackEnd;
+        return newAudio;
+    }
 
     onDestroy() {
         this.stop();
@@ -4575,6 +4603,17 @@ export class ProjectileLauncher extends Leyes {
     set cadencia(v) { this.fireRate = v; }
     get velocidadProyectil() { return this.projectileSpeed; }
     set velocidadProyectil(v) { this.projectileSpeed = v; }
+
+    clone() {
+        const newPl = new ProjectileLauncher(null);
+        newPl.projectilePrefab = this.projectilePrefab;
+        newPl.fireKey = this.fireKey;
+        newPl.fireRate = this.fireRate;
+        newPl.projectileSpeed = this.projectileSpeed;
+        newPl.direction = { ...this.direction };
+        newPl.offset = { ...this.offset };
+        return newPl;
+    }
 }
 
 /**
@@ -4598,6 +4637,12 @@ export class AutoDestroy extends Leyes {
 
     get retraso() { return this.delay; }
     set retraso(v) { this.delay = v; }
+
+    clone() {
+        const newAd = new AutoDestroy(null);
+        newAd.delay = this.delay;
+        return newAd;
+    }
 }
 
 /**
@@ -4697,6 +4742,19 @@ export class Health extends Leyes {
     set fotogramaCongelado(v) { this.freezeFrame = v; }
     get tiempoDesaparicion() { return this.destructionDelay; }
     set tiempoDesaparicion(v) { this.destructionDelay = v; }
+
+    clone() {
+        const newHealth = new Health(null);
+        newHealth.maxHealth = this.maxHealth;
+        newHealth.currentHealth = this.currentHealth;
+        newHealth.destroyOnDeath = this.destroyOnDeath;
+        newHealth.deathAnimation = this.deathAnimation;
+        newHealth.freezeFrame = this.freezeFrame;
+        newHealth.destructionDelay = this.destructionDelay;
+        newHealth.disableMovementOnDeath = this.disableMovementOnDeath;
+        newHealth.isDead = this.isDead;
+        return newHealth;
+    }
 }
 
 /**
@@ -4808,6 +4866,15 @@ export class Attack extends Leyes {
     set tiempoEspera(v) { this.cooldown = v; }
     get teclaCiclo() { return this.cycleKey; }
     set teclaCiclo(v) { this.cycleKey = v; }
+
+    clone() {
+        const newAtk = new Attack(null);
+        newAtk.attacks = JSON.parse(JSON.stringify(this.attacks));
+        newAtk.colliderMateria = this.colliderMateria;
+        newAtk.cooldown = this.cooldown;
+        newAtk.cycleKey = this.cycleKey;
+        return newAtk;
+    }
 }
 
 /**
@@ -4874,6 +4941,18 @@ export class ProgressBar extends Leyes {
     set materiaRelleno(v) { this.fillMateria = v; }
     get tamanoTotal() { return this.fullSize; }
     set tamanoTotal(v) { this.fullSize = v; }
+
+    clone() {
+        const newPb = new ProgressBar(null);
+        newPb.value = this.value;
+        newPb.maxValue = this.maxValue;
+        newPb.targetMateria = this.targetMateria;
+        newPb.fillMateria = this.fillMateria;
+        newPb.fullSize = this.fullSize;
+        newPb.orientation = this.orientation;
+        newPb.isSceneLoading = this.isSceneLoading;
+        return newPb;
+    }
 }
 
 /**
@@ -4933,6 +5012,15 @@ export class Patrol extends Leyes {
     set distancia(v) { this.distance = v; }
     get tiempoPausa() { return this.pauseTime; }
     set tiempoPausa(v) { this.pauseTime = v; }
+
+    clone() {
+        const newPatrol = new Patrol(null);
+        newPatrol.speed = this.speed;
+        newPatrol.distance = this.distance;
+        newPatrol.horizontal = this.horizontal;
+        newPatrol.pauseTime = this.pauseTime;
+        return newPatrol;
+    }
 }
 
 

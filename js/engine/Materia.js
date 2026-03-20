@@ -57,6 +57,29 @@ export class Materia {
     get posicionUI() { return this.uiTransform; }
     get transformacionUI() { return this.uiTransform; }
 
+    get health() { return this.getComponentByName('Health'); }
+    get salud() { return this.health; }
+    get vida() { return this.health; }
+    get saude() { return this.health; } // PT
+    get sante() { return this.health; } // FR
+    get zdorovye() { return this.health; } // RU (romanized)
+    get jiankang() { return this.health; } // ZH (romanized)
+
+    get attack() { return this.getComponentByName('Attack'); }
+    get ataque() { return this.attack; }
+    get attaque() { return this.attack; } // FR
+    get atack() { return this.attack; } // RU (approx)
+    get gongji() { return this.attack; } // ZH (romanized)
+
+    get progressBar() { return this.getComponentByName('ProgressBar'); }
+    get barraDeProgreso() { return this.progressBar; }
+    get barra() { return this.progressBar; }
+    get uiBarra() { return this.progressBar; }
+    get uiBar() { return this.progressBar; }
+    get uiBarre() { return this.progressBar; } // FR
+    get uiPolosa() { return this.progressBar; } // RU (romanized)
+    get uiTiao() { return this.progressBar; } // ZH (romanized)
+
     addComponent(component) {
         this.leyes.push(component);
         component.materia = this;
