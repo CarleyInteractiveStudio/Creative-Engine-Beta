@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder, Terreno2D, Gyzmo, Animator, UIEventTrigger, VideoPlayer, Water, LineCollider2D, Bone, SkeletonRenderer } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder, Terreno2D, Gyzmo, Animator, UIEventTrigger, VideoPlayer, Water, LineCollider2D, Bone, SkeletonRenderer, UIMask, UIScrollRect } from './Components.js';
 import { getAbsoluteRect, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false, isGameView = false) {
@@ -1001,21 +1001,34 @@ export class Renderer {
 
             // Drawing Logic for the current element
             const uiImage = element.getComponent(UIImage);
+            const uiMask = element.getComponent(UIMask) || element.getComponent(UIScrollRect);
             const uiText = element.getComponent(UIText);
             const videoPlayer = element.getComponent(VideoPlayer);
             const uiEventTrigger = element.getComponent(UIEventTrigger);
 
-            if (this.isEditor && uiEventTrigger && uiEventTrigger.showGizmo) {
-                this.ctx.save();
-                this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.8)';
-                this.ctx.setLineDash([5, 5]);
-                this.ctx.lineWidth = 2;
-                this.ctx.strokeRect(x, y, width, height);
-                this.ctx.fillStyle = 'rgba(0, 255, 255, 0.1)';
-                this.ctx.fillRect(x, y, width, height);
-                this.ctx.restore();
+            if (this.isEditor) {
+                const uiCollider = element.getComponent(UICollider);
+                if ((uiEventTrigger && uiEventTrigger.showGizmo) || (uiMask && uiMask.showGizmo) || uiCollider) {
+                    this.ctx.save();
+                    this.ctx.strokeStyle = uiCollider ? 'rgba(0, 255, 0, 0.8)' : 'rgba(0, 255, 255, 0.8)';
+                    this.ctx.setLineDash([5, 5]);
+                    this.ctx.lineWidth = 2;
+                    this.ctx.strokeRect(x, y, width, height);
+                    if (uiEventTrigger || uiMask) {
+                        this.ctx.fillStyle = uiCollider ? 'rgba(0, 255, 0, 0.05)' : 'rgba(0, 255, 255, 0.1)';
+                        this.ctx.fillRect(x, y, width, height);
+                    }
+                    this.ctx.restore();
+                }
             }
             const textureRender = element.getComponent(TextureRender);
+
+            if (uiMask) {
+                this.ctx.save();
+                this.ctx.beginPath();
+                this.ctx.rect(x, y, width, height);
+                this.ctx.clip();
+            }
 
             if (videoPlayer) {
                 this.drawVideoPlayer(videoPlayer, x, y, width, height);
@@ -1053,6 +1066,10 @@ export class Renderer {
                 this._drawUIText(uiText, x, y, width, height);
             }
 
+            if (uiMask) {
+                // We keep the clip active for children, so we don't restore here yet.
+                // Instead, we will restore after drawing children.
+            }
 
             // Restore context if we applied inverse scale
             if (!scaleChildren && (scaleX !== 1 || scaleY !== 1)) {
@@ -1069,6 +1086,10 @@ export class Renderer {
 
         for (const child of sortedChildren) {
             this._drawUIElementAndChildren(child, rectCache, scaleX, scaleY, scaleChildren);
+        }
+
+        if (uiTransform && (element.getComponent(UIMask) || element.getComponent(UIScrollRect))) {
+            this.ctx.restore(); // Restore clip
         }
     }
 

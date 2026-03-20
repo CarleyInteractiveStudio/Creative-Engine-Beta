@@ -83,6 +83,28 @@ export class Materia {
     get deslizador() { return this.progressBar; }
     get barraProgresso() { return this.progressBar; } // PT
 
+    get uiScrollRect() { return this.getComponentByName('UIScrollRect'); }
+    get rectScroll() { return this.uiScrollRect; }
+    get scroll() { return this.uiScrollRect; }
+    get rolagem() { return this.uiScrollRect; } // PT
+    get parcourir() { return this.uiScrollRect; } // FR
+    get prokrutka() { return this.uiScrollRect; } // RU
+    get gundong() { return this.uiScrollRect; } // ZH
+
+    get uiMask() { return this.getComponentByName('UIMask'); }
+    get mascaraUI() { return this.uiMask; }
+    get mascara() { return this.uiMask; }
+    get masque() { return this.uiMask; } // FR
+    get maska() { return this.uiMask; } // RU
+    get zhezao() { return this.uiMask; } // ZH
+
+    get uiCollider() { return this.getComponentByName('UICollider'); }
+    get colisionadorUI() { return this.uiCollider; }
+    get colisorUI() { return this.uiCollider; } // PT
+    get collisionneurUI() { return this.uiCollider; } // FR
+    get kollayderUI() { return this.uiCollider; } // RU
+    get pengzhuangUI() { return this.uiCollider; } // ZH
+
     addComponent(component) {
         this.leyes.push(component);
         component.materia = this;

@@ -16,6 +16,7 @@ class InputManager {
     static _mousePosition = { x: 0, y: 0 };
     static _mousePositionInCanvas = { x: 0, y: 0 };
     static _mouseDelta = { x: 0, y: 0 };
+    static _mouseWheelDelta = { x: 0, y: 0 };
     static _buttonsDownTime = new Map();
     static _canvasRect = null;
     static _sceneCanvas = null;
@@ -74,6 +75,8 @@ class InputManager {
         this._buttonsUp.clear();
         this._mouseDelta.x = 0;
         this._mouseDelta.y = 0;
+        this._mouseWheelDelta.x = 0;
+        this._mouseWheelDelta.y = 0;
 
         // Use the currently active canvas (scene or game) to compute canvas-relative positions
         if (this._activeCanvas) {
@@ -475,6 +478,14 @@ class InputManager {
     }
 
     /**
+     * Gets the mouse wheel delta since the last frame.
+     * @returns {{x: number, y: number}}
+     */
+    static getMouseWheel() {
+        return this._mouseWheelDelta;
+    }
+
+    /**
      * Gets how many seconds a mouse button has been held down.
      * @param {number} button
      * @returns {number} Time in seconds.
@@ -486,6 +497,9 @@ class InputManager {
     }
 
     static _onWheel(event) {
+        this._mouseWheelDelta.x += event.deltaX;
+        this._mouseWheelDelta.y += event.deltaY;
+
         // If the scroll event is on one of the canvases, we do nothing here.
         // The dedicated listener in `SceneView.js` (for editor) or standalone logic will handle it.
         if ((this._sceneCanvas && this._sceneCanvas.contains(event.target)) ||

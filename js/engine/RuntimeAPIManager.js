@@ -62,3 +62,7 @@ export function clearAPIs() {
     registeredAPIs.clear();
     console.log("Todas las APIs de tiempo de ejecución han sido eliminadas.");
 }
+
+let uiSystem = null;
+export function setUISystem(ui) { uiSystem = ui; }
+export function getUISystem() { return uiSystem; }

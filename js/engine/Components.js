@@ -3344,6 +3344,121 @@ export class UIEventTrigger extends Leyes {
 }
 registerComponent('UIEventTrigger', UIEventTrigger);
 
+/**
+ * Componente UIMask: Recorta los hijos de este objeto para que solo sean visibles dentro de su área.
+ */
+export class UIMask extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.showGizmo = false;
+    }
+    clone() {
+        const copy = new UIMask(null);
+        copy.showGizmo = this.showGizmo;
+        return copy;
+    }
+}
+registerComponent('UIMask', UIMask);
+
+/**
+ * Componente UIScrollRect: Permite el desplazamiento de contenido UI.
+ */
+export class UIScrollRect extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.contentMateria = null; // Objeto que contiene los elementos a desplazar
+        this.horizontal = false;
+        this.vertical = true;
+        this.scrollPosition = { x: 0, y: 0 };
+        this.scrollSensitivity = 1.0;
+        this.inertia = 0.9;
+
+        this.horizontalScrollbar = null; // Referencia a un ProgressBar
+        this.verticalScrollbar = null;
+
+        this._velocity = { x: 0, y: 0 };
+    }
+
+    update(deltaTime) {
+        if (this.inertia > 0 && (Math.abs(this._velocity.x) > 0.01 || Math.abs(this._velocity.y) > 0.01)) {
+            this.scrollPosition.x += this._velocity.x * deltaTime;
+            this.scrollPosition.y += this._velocity.y * deltaTime;
+            this._velocity.x *= this.inertia;
+            this._velocity.y *= this.inertia;
+        }
+
+        // Aplicar posición al contenido
+        let content = this.contentMateria;
+        if (typeof content === 'number') content = this.materia.scene.findMateriaById(content);
+        else if (typeof content === 'string') content = this.materia.findChildByName(content, true);
+
+        if (content) {
+            const ui = content.getComponent(UITransform);
+            const myUI = this.materia.getComponent(UITransform);
+            if (ui && myUI) {
+                // Limitar scroll según el tamaño del contenido
+                const maxScrollX = Math.max(0, ui.size.width - myUI.size.width);
+                const maxScrollY = Math.max(0, ui.size.height - myUI.size.height);
+
+                this.scrollPosition.x = Math.max(0, Math.min(maxScrollX, this.scrollPosition.x));
+                this.scrollPosition.y = Math.max(0, Math.min(maxScrollY, this.scrollPosition.y));
+
+                if (this.horizontal) ui.position.x = -this.scrollPosition.x + (ui.size.width - myUI.size.width) / 2;
+                if (this.vertical) ui.position.y = -this.scrollPosition.y + (ui.size.height - myUI.size.height) / 2;
+
+                // Sincronizar barras
+                this._syncScrollbar(this.verticalScrollbar, this.scrollPosition.y, maxScrollY);
+                this._syncScrollbar(this.horizontalScrollbar, this.scrollPosition.x, maxScrollX);
+            }
+        }
+    }
+
+    _syncScrollbar(sbRef, pos, max) {
+        if (!sbRef) return;
+        let sb = sbRef;
+        if (typeof sb === 'number') sb = this.materia.scene.findMateriaById(sb);
+        else if (typeof sb === 'string') sb = this.materia.findChildByName(sb, true);
+
+        if (sb) {
+            const pb = sb.getComponent(ProgressBar);
+            if (pb) {
+                pb.maxValue = max || 1;
+                pb.value = pos;
+            }
+        }
+    }
+
+    clone() {
+        const copy = new UIScrollRect(null);
+        copy.contentMateria = this.contentMateria;
+        copy.horizontal = this.horizontal;
+        copy.vertical = this.vertical;
+        copy.scrollPosition = { ...this.scrollPosition };
+        copy.scrollSensitivity = this.scrollSensitivity;
+        copy.inertia = this.inertia;
+        copy.horizontalScrollbar = this.horizontalScrollbar;
+        copy.verticalScrollbar = this.verticalScrollbar;
+        return copy;
+    }
+}
+registerComponent('UIScrollRect', UIScrollRect);
+
+/**
+ * Componente UICollider: Define un área de colisión específica para elementos UI.
+ */
+export class UICollider extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.isTrigger = true;
+    }
+    clone() {
+        const copy = new UICollider(null);
+        copy.isTrigger = this.isTrigger;
+        return copy;
+    }
+}
+registerComponent('UICollider', UICollider);
+
 registerComponent('PointLight2D', PointLight2D);
 registerComponent('SpotLight2D', SpotLight2D);
 registerComponent('FreeformLight2D', FreeformLight2D);
@@ -4892,6 +5007,7 @@ export class ProgressBar extends Leyes {
         this.fullSize = 100;
         this.orientation = 'Horizontal'; // 'Horizontal' or 'Vertical'
         this.isSceneLoading = false;
+        this.interactable = false; // Slider mode
     }
 
     update() {
@@ -4953,6 +5069,7 @@ export class ProgressBar extends Leyes {
         newPb.fullSize = this.fullSize;
         newPb.orientation = this.orientation;
         newPb.isSceneLoading = this.isSceneLoading;
+        newPb.interactable = this.interactable;
         return newPb;
     }
 }

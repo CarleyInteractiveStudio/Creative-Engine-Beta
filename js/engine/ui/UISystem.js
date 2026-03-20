@@ -2,17 +2,21 @@ import * as Components from '../Components.js';
 import * as SceneManager from '../SceneManager.js';
 import { InputManager as Input } from '../Input.js';
 import * as UITransformUtils from '../UITransformUtils.js';
+import * as RuntimeAPIManager from '../RuntimeAPIManager.js';
 
 let activeScene = null;
 let hoveredButton = null;
 let hoveredTriggers = new Set();
 let pressedTriggers = new Set();
+let activeSlider = null;
+let activeScroll = null;
 let originalSpriteCache = new WeakMap(); // Cache original sprites for sprite swap
 
 export function initialize(scene) {
     activeScene = scene;
     hoveredTriggers.clear();
     pressedTriggers.clear();
+    RuntimeAPIManager.setUISystem({ checkUIOverlap });
 }
 
 export function update(deltaTime) {
@@ -20,6 +24,8 @@ export function update(deltaTime) {
 
     handleButtonStates();
     handleEventTriggers();
+    handleSliders();
+    handleScrolls();
     checkForClicks();
 }
 
@@ -255,6 +261,128 @@ function executeUIEvent(event, eventData) {
     if (scriptInstance && typeof scriptInstance[event.functionName] === 'function') {
         scriptInstance[event.functionName](eventData);
     }
+}
+
+function handleSliders() {
+    if (!activeScene) return;
+    const sliders = activeScene.findAllMateriasWithComponent(Components.ProgressBar);
+    const mousePos = Input.getMousePosition();
+    const isMouseDown = Input.getMouseButton(0);
+
+    if (!isMouseDown) {
+        activeSlider = null;
+    }
+
+    if (activeSlider) {
+        const slider = activeSlider.getComponent(Components.ProgressBar);
+        const canvasMateria = activeSlider.findAncestorWithComponent(Components.Canvas);
+        const canvas = canvasMateria.getComponent(Components.Canvas);
+        const screenRect = UITransformUtils.getScreenRect(activeSlider, canvas);
+
+        let newValue;
+        if (slider.orientation === 'Horizontal') {
+            const ratio = (mousePos.x - screenRect.x) / screenRect.width;
+            newValue = ratio * slider.maxValue;
+        } else {
+            const ratio = 1 - (mousePos.y - screenRect.y) / screenRect.height;
+            newValue = ratio * slider.maxValue;
+        }
+        slider.value = Math.max(0, Math.min(slider.maxValue, newValue));
+
+        const scrollRect = activeSlider.getComponentInParent(Components.UIScrollRect);
+        if (scrollRect) {
+            if (scrollRect.verticalScrollbar === activeSlider || scrollRect.verticalScrollbar === activeSlider.id || scrollRect.verticalScrollbar === activeSlider.name) {
+                scrollRect.scrollPosition.y = slider.value;
+            }
+            if (scrollRect.horizontalScrollbar === activeSlider || scrollRect.horizontalScrollbar === activeSlider.id || scrollRect.horizontalScrollbar === activeSlider.name) {
+                scrollRect.scrollPosition.x = slider.value;
+            }
+        }
+        return;
+    }
+
+    for (const sliderMateria of sliders) {
+        const slider = sliderMateria.getComponent(Components.ProgressBar);
+        if (!slider.interactable || !sliderMateria.isActive) continue;
+
+        const canvasMateria = sliderMateria.findAncestorWithComponent(Components.Canvas);
+        if (!canvasMateria) continue;
+        const canvas = canvasMateria.getComponent(Components.Canvas);
+
+        const screenRect = UITransformUtils.getScreenRect(sliderMateria, canvas);
+        const isHovered = mousePos.x >= screenRect.x && mousePos.x <= screenRect.x + screenRect.width &&
+                        mousePos.y >= screenRect.y && mousePos.y <= screenRect.y + screenRect.height;
+
+        if (isHovered && Input.getMouseButtonDown(0)) {
+            activeSlider = sliderMateria;
+            break;
+        }
+    }
+}
+
+function handleScrolls() {
+    if (!activeScene) return;
+    const scrolls = activeScene.findAllMateriasWithComponent(Components.UIScrollRect);
+    const mousePos = Input.getMousePosition();
+    const mouseDelta = Input.getMouseDelta();
+    const wheel = Input.getMouseWheel();
+    const isMouseDown = Input.getMouseButton(0);
+
+    if (!isMouseDown) activeScroll = null;
+
+    if (activeScroll) {
+        const scroll = activeScroll.getComponent(Components.UIScrollRect);
+        if (scroll.horizontal) {
+            scroll.scrollPosition.x -= mouseDelta.x;
+            scroll._velocity.x = -mouseDelta.x / (1/60);
+        }
+        if (scroll.vertical) {
+            scroll.scrollPosition.y -= mouseDelta.y;
+            scroll._velocity.y = -mouseDelta.y / (1/60);
+        }
+        return;
+    }
+
+    for (const scrollMateria of scrolls) {
+        if (!scrollMateria.isActive) continue;
+        const scroll = scrollMateria.getComponent(Components.UIScrollRect);
+        const canvasMateria = scrollMateria.findAncestorWithComponent(Components.Canvas);
+        if (!canvasMateria) continue;
+        const canvas = canvasMateria.getComponent(Components.Canvas);
+
+        const screenRect = UITransformUtils.getScreenRect(scrollMateria, canvas);
+        const isHovered = mousePos.x >= screenRect.x && mousePos.x <= screenRect.x + screenRect.width &&
+                        mousePos.y >= screenRect.y && mousePos.y <= screenRect.y + screenRect.height;
+
+        // Wheel scroll
+        if (isHovered && (wheel.x !== 0 || wheel.y !== 0)) {
+            if (scroll.horizontal) scroll.scrollPosition.x += wheel.y * scroll.scrollSensitivity;
+            if (scroll.vertical) scroll.scrollPosition.y += wheel.y * scroll.scrollSensitivity;
+        }
+
+        // Drag scroll
+        if (isHovered && Input.getMouseButtonDown(0)) {
+            activeScroll = scrollMateria;
+            break;
+        }
+    }
+}
+
+/**
+ * Comprueba si dos elementos UI se solapan en pantalla.
+ */
+export function checkUIOverlap(mtrA, mtrB) {
+    const canvasA = mtrA.findAncestorWithComponent(Components.Canvas);
+    const canvasB = mtrB.findAncestorWithComponent(Components.Canvas);
+    if (!canvasA || !canvasB) return false;
+
+    const rectA = UITransformUtils.getScreenRect(mtrA, canvasA.getComponent(Components.Canvas));
+    const rectB = UITransformUtils.getScreenRect(mtrB, canvasB.getComponent(Components.Canvas));
+
+    return rectA.x < rectB.x + rectB.width &&
+           rectA.x + rectA.width > rectB.x &&
+           rectA.y < rectB.y + rectB.height &&
+           rectA.y + rectA.height > rectB.y;
 }
 
 function checkForClicks() {
