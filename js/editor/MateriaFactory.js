@@ -80,8 +80,10 @@ export function createProgressBarObject(parent) {
     const fillMateria = new Materia(fillName);
 
     const fillTransform = new Components.UITransform(fillMateria);
-    fillTransform.anchorPreset = 'stretch-stretch';
-    fillTransform.size = { width: 0, height: 0 };
+    fillTransform.anchorPoint = 3; // Middle-Left
+    fillTransform.pivot = { x: 0, y: 0.5 }; // Pivot on the left center
+    fillTransform.size = { width: 200, height: 20 };
+    fillTransform.position = { x: 0, y: 0 };
     fillMateria.addComponent(fillTransform);
 
     const fillImage = new Components.UIImage(fillMateria);
@@ -92,7 +94,8 @@ export function createProgressBarObject(parent) {
 
     // ProgressBar Component
     const progressBar = new Components.ProgressBar(barMateria);
-    progressBar.fillImage = fillImage;
+    progressBar.fillMateria = fillName;
+    progressBar.fullSize = 200;
     barMateria.addComponent(progressBar);
 
     parent.addChild(barMateria);

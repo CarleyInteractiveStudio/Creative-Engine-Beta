@@ -157,6 +157,23 @@ export class Scene {
             if (materia.parent !== null && typeof materia.parent === 'number') {
                 materia.parent = materiaMap.get(materia.parent) || null;
             }
+
+            // --- Pass 2: Re-establish references within component properties ---
+            for (const ley of materia.leyes) {
+                for (const key in ley) {
+                    if (ley[key] && typeof ley[key] === 'object' && ley[key].id !== undefined) {
+                        // If it's a reference to a Materia by object, try to map it to the new one in this scene
+                        const originalId = ley[key].id;
+                        if (materiaMap.has(originalId)) {
+                            ley[key] = materiaMap.get(originalId);
+                        }
+                    } else if (typeof ley[key] === 'number' && (key === 'targetMateria' || key === 'fillMateria' || key === 'colliderMateria' || key === 'chasis')) {
+                        // If it's a numeric reference (ID), ensure it's still valid in the new context
+                        // Usually ID preservation in scene.clone(true) handles this, but mapping helps for components
+                        // that might hold direct references.
+                    }
+                }
+            }
         }
 
 

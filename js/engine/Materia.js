@@ -79,6 +79,9 @@ export class Materia {
     get uiBarre() { return this.progressBar; } // FR
     get uiPolosa() { return this.progressBar; } // RU (romanized)
     get uiTiao() { return this.progressBar; } // ZH (romanized)
+    get uiSlider() { return this.progressBar; }
+    get deslizador() { return this.progressBar; }
+    get barraProgresso() { return this.progressBar; } // PT
 
     addComponent(component) {
         this.leyes.push(component);

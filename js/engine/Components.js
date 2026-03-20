@@ -1928,6 +1928,7 @@ export class UITransform extends Leyes {
         super(materia);
         this.position = { x: 0, y: 0 }; // Position relative to the anchor point
         this.size = { width: 100, height: 100 };
+        this.pivot = { x: 0.5, y: 0.5 };
         this.anchorPoint = 4; // 0-8, representing the 3x3 grid. 4 is center.
     }
 
@@ -1935,6 +1936,7 @@ export class UITransform extends Leyes {
         const newUITransform = new UITransform(null);
         newUITransform.position = { ...this.position };
         newUITransform.size = { ...this.size };
+        newUITransform.pivot = { ...this.pivot };
         newUITransform.anchorPoint = this.anchorPoint;
         return newUITransform;
     }
