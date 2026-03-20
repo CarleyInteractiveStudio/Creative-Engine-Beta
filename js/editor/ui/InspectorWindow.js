@@ -1144,7 +1144,10 @@ export function refreshInspectorValues() {
                 if (input.type === 'checkbox') {
                     if (input.checked !== !!value) input.checked = !!value;
                 } else if (input.type === 'color') {
-                    if (input.value !== value) input.value = value;
+                    // Solo asignar si es un formato hexadecimal válido para evitar errores de consola
+                    if (typeof value === 'string' && /^#[0-9A-F]{6}$/i.test(value)) {
+                        if (input.value !== value) input.value = value;
+                    }
                 } else if (input.type === 'number' || input.type === 'range') {
                     const numValue = parseFloat(value);
                     if (!isNaN(numValue)) {

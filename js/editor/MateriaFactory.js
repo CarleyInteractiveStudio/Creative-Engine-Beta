@@ -21,9 +21,13 @@ export function generateUniqueName(baseName) {
     return newName;
 }
 
-export function createBaseMateria(name, parent = null) {
+export function createBaseMateria(name, parent = null, useUITransform = false) {
     const newMateria = new Materia(name);
-    newMateria.addComponent(new Components.Transform(newMateria));
+    if (useUITransform) {
+        newMateria.addComponent(new Components.UITransform(newMateria));
+    } else {
+        newMateria.addComponent(new Components.Transform(newMateria));
+    }
 
     if (parent) {
         parent.addChild(newMateria);
@@ -36,7 +40,8 @@ export function createBaseMateria(name, parent = null) {
 export function createCanvasObject() {
     const L = window.Localization;
     const name = generateUniqueName(L.get('CANVAS', 'Canvas'));
-    const newMateria = createBaseMateria(name); // createBaseMateria adds Transform
+    // Un Canvas sigue necesitando un Transform de mundo para su posición base en la escena
+    const newMateria = createBaseMateria(name);
     newMateria.addComponent(new Components.Canvas(newMateria));
     return newMateria;
 }
@@ -64,15 +69,15 @@ export function createScrollViewObject(parent) {
     }
     const L = window.Localization;
     const scrollName = generateUniqueName(L.get('SCROLL_VIEW', 'Scroll View'));
-    const scrollMateria = new Materia(scrollName);
 
     // 1. Root: ScrollRect + Mask + Image (Background)
-    const scrollTransform = new Components.UITransform(scrollMateria);
+    const scrollMateria = createBaseMateria(scrollName, parent, true);
+    const scrollTransform = scrollMateria.getComponent(Components.UITransform);
     scrollTransform.size = { width: 300, height: 400 };
-    scrollMateria.addComponent(scrollTransform);
 
     const scrollImage = new Components.UIImage(scrollMateria);
-    scrollImage.color = 'rgba(0, 0, 0, 0.2)';
+    scrollImage.color = '#000000';
+    scrollImage.opacity = 0.2;
     scrollMateria.addComponent(scrollImage);
 
     scrollMateria.addComponent(new Components.UIMask(scrollMateria));
@@ -81,45 +86,42 @@ export function createScrollViewObject(parent) {
 
     // 2. Content Container
     const contentName = generateUniqueName('Content');
-    const contentMateria = new Materia(contentName);
-    const contentTransform = new Components.UITransform(contentMateria);
+    const contentMateria = createBaseMateria(contentName, scrollMateria, true);
+    const contentTransform = contentMateria.getComponent(Components.UITransform);
     contentTransform.anchorPoint = 0; // Top Left
     contentTransform.pivot = { x: 0, y: 1 };
     contentTransform.size = { width: 300, height: 1000 };
-    contentTransform.position = { x: -150, y: -200 }; // Offset to top-left of parent
-    contentMateria.addComponent(contentTransform);
+    contentTransform.position = { x: -150, y: 200 }; // Centered horizontally (-150), Top edge at 200
 
     // Add a vertical layout group to content for convenience
     contentMateria.addComponent(new Components.VerticalLayoutGroup(contentMateria));
 
-    scrollMateria.addChild(contentMateria);
     scrollRect.contentMateria = contentName;
 
     // 3. Scrollbar (Optional but recommended)
     const scrollbarName = generateUniqueName('Vertical Scrollbar');
-    const scrollbarMateria = new Materia(scrollbarName);
-    const sbTransform = new Components.UITransform(scrollbarMateria);
+    const scrollbarMateria = createBaseMateria(scrollbarName, scrollMateria, true);
+    const sbTransform = scrollbarMateria.getComponent(Components.UITransform);
     sbTransform.anchorPoint = 5; // Middle Right
     sbTransform.size = { width: 20, height: 400 };
     sbTransform.position = { x: 140, y: 0 };
-    scrollbarMateria.addComponent(sbTransform);
 
     const sbImage = new Components.UIImage(scrollbarMateria);
-    sbImage.color = 'rgba(255, 255, 255, 0.1)';
+    sbImage.color = '#ffffff';
+    sbImage.opacity = 0.1;
     scrollbarMateria.addComponent(sbImage);
 
     const sbHandleName = generateUniqueName('Handle');
-    const sbHandleMateria = new Materia(sbHandleName);
-    const hTransform = new Components.UITransform(sbHandleMateria);
+    const sbHandleMateria = createBaseMateria(sbHandleName, scrollbarMateria, true);
+    const hTransform = sbHandleMateria.getComponent(Components.UITransform);
     hTransform.anchorPoint = 3; // Left
     hTransform.pivot = { x: 0, y: 0.5 };
     hTransform.size = { width: 20, height: 50 };
-    sbHandleMateria.addComponent(hTransform);
+    hTransform.position = { x: -10, y: 0 };
 
     const hImage = new Components.UIImage(sbHandleMateria);
     hImage.color = '#555555';
     sbHandleMateria.addComponent(hImage);
-    scrollbarMateria.addChild(sbHandleMateria);
 
     const sbPB = new Components.ProgressBar(scrollbarMateria);
     sbPB.fillMateria = sbHandleName;
@@ -128,10 +130,8 @@ export function createScrollViewObject(parent) {
     sbPB.interactable = true;
     scrollbarMateria.addComponent(sbPB);
 
-    scrollMateria.addChild(scrollbarMateria);
     scrollRect.verticalScrollbar = scrollbarName;
 
-    parent.addChild(scrollMateria);
     return scrollMateria;
 }
 
@@ -143,9 +143,10 @@ export function createProgressBarObject(parent) {
     const L = window.Localization;
     const barName = generateUniqueName(L.get('PROGRESS_BAR', 'ProgressBar'));
     const barMateria = new Materia(barName);
+    barMateria.addComponent(new Components.UITransform(barMateria));
 
     // Parent: Background
-    const bgTransform = new Components.UITransform(barMateria);
+    const bgTransform = barMateria.getComponent(Components.UITransform);
     bgTransform.size = { width: 200, height: 20 };
     barMateria.addComponent(bgTransform);
 
@@ -156,8 +157,9 @@ export function createProgressBarObject(parent) {
     // Child: Fill
     const fillName = generateUniqueName('Fill');
     const fillMateria = new Materia(fillName);
+    fillMateria.addComponent(new Components.UITransform(fillMateria));
 
-    const fillTransform = new Components.UITransform(fillMateria);
+    const fillTransform = fillMateria.getComponent(Components.UITransform);
     fillTransform.anchorPoint = 3; // Middle-Left
     fillTransform.pivot = { x: 0, y: 0.5 }; // Pivot on the left center
     fillTransform.size = { width: 200, height: 20 };
@@ -304,6 +306,7 @@ export function createPanelObject(parent) {
     newMateria.addComponent(new Components.UITransform(newMateria));
     const uiImage = new Components.UIImage(newMateria);
     uiImage.color = '#000000'; // Color opaco por defecto
+    uiImage.opacity = 0.5; // Panel semi-transparente por defecto
     newMateria.addComponent(uiImage);
 
     parent.addChild(newMateria);
