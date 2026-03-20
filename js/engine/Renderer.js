@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder, Terreno2D, Gyzmo, Animator, UIEventTrigger, VideoPlayer, Water, LineCollider2D, Bone, SkeletonRenderer, UIMask, UIScrollRect } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder, Terreno2D, Gyzmo, Animator, UIEventTrigger, VideoPlayer, Water, LineCollider2D, Bone, SkeletonRenderer, UIMask, UIScrollRect, UICollider } from './Components.js';
 import { getAbsoluteRect, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false, isGameView = false) {
@@ -1033,12 +1033,15 @@ export class Renderer {
             if (videoPlayer) {
                 this.drawVideoPlayer(videoPlayer, x, y, width, height);
             } else if (uiImage) {
+                this.ctx.save();
+                this.ctx.globalAlpha *= uiImage.opacity !== undefined ? uiImage.opacity : 1.0;
                 if (uiImage.sprite && uiImage.sprite.complete && uiImage.sprite.naturalWidth > 0) {
                      this.ctx.drawImage(uiImage.sprite, x, y, width, height);
                 } else {
                     this.ctx.fillStyle = uiImage.color;
                     this.ctx.fillRect(x, y, width, height);
                 }
+                this.ctx.restore();
                 if (uiImage.isError) {
                     this.ctx.strokeStyle = 'red';
                     this.ctx.lineWidth = 2;

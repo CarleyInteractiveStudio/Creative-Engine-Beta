@@ -2014,10 +2014,14 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="prop-row-multi">
                     <label data-i18n="COLOR">${L.get('COLOR', 'Color')}</label>
                     <div class="prop-inputs">
-                        <input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color || '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
+                            <input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color && ley.color.startsWith('#') ? ley.color : '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
                         <input type="text" class="prop-input hex-input" data-component="UIImage" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
                     </div>
                 </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="OPACITY">${L.get('OPACITY', 'Opacidad')}</label>
+                        <input type="range" class="prop-input" min="0" max="1" step="0.01" data-component="UIImage" data-prop="opacity" value="${ley.opacity !== undefined ? ley.opacity : 1.0}">
+                    </div>
             </div>`;
         } else if (ley instanceof Components.UIText) {
             const fontName = ley.fontAssetPath ? ley.fontAssetPath.split('/').pop() : L.get('DEFAULT', 'Default');

@@ -1948,6 +1948,7 @@ export class UIImage extends Leyes {
         this.sprite = new Image();
         this.source = '';
         this.color = '#FFFFFF'; // Ensure it's a solid, valid color by default
+        this.opacity = 1.0;
         this.isError = false;
         this.isLoading = false;
         this._lastLoadedSource = '';
@@ -2033,6 +2034,7 @@ export class UIImage extends Leyes {
         const newImage = new UIImage(null);
         newImage.source = this.source;
         newImage.color = this.color;
+        newImage.opacity = this.opacity;
         return newImage;
     }
 }
