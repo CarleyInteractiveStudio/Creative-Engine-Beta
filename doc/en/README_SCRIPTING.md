@@ -1,142 +1,217 @@
 # 📜 Master Scripting Guide (CES) - Creative Engine
 
-Creative Engine uses **CES (Creative Engine Script)**, a powerful language based on JavaScript but simplified for game creators. This guide will teach you everything from basics to advanced systems.
+Welcome to the frontier of creation! In **Creative Engine**, scripting isn't an obstacle—it's your superpower. The **CES (Creative Engine Script)** language has been designed to be intuitive, powerful, and above all, **simpler than you think**.
+
+This guide will take you by the hand from your first "Hello World!" to professional-level complex systems. Get ready to bring your ideas to life!
 
 ---
 
-## 🚀 Core Concepts
+## 🚀 1. Your First Step: Connecting with the Engine
 
-### 1. Mandatory Import
-Every script must start with the connect instruction:
+Every great project starts with a single line. In CES, we tell the script to connect to the engine's vital functions:
+
 ```ces
-engine motor;
+ve motor;
 ```
-*(Note: You can also use `ve motor;` as they are aliases)*
+*Tip: You can also use `go motor;` if you prefer a more dynamic tone. You choose!*
 
-### 2. Direct Access (No Prefixes)
-Unlike other engines, you DO NOT need to write `this.` or `mtr.` to access an object's components. If the object has a `SpriteRenderer`, just write `spriteRenderer`.
-
----
-
-## 💎 Public Variables (Inspector)
-To make a variable appear in the editor's Inspector, use the `public` keyword.
-
-```ces
-public number speed = 5;
-public text playerName = "Hero";
-public boolean isInvincible = false;
-public Materia target; // A slot for dragging objects will appear
-public Sprite icon;
-public Audio jumpSound;
-public Prefab enemy;
-public Scene nextLevel;
-```
+### Why is CES different?
+Unlike other engines where you have to write `this.transform.position.x`, in Creative Engine we've removed the bureaucracy:
+- **No `this.`**: Access object properties directly.
+- **No complex prefixes**: If your object has a `Health` component, just write `health.value = 100`.
+- **Bilingual**: Do you prefer `posicion` or `position`? The engine understands both!
 
 ---
 
-## ⏱️ Lifecycle Events
-These are functions called automatically at specific moments.
+## 💎 2. Public Variables: The Inspector is Your Friend
+
+Public variables allow you (or your designers) to adjust values directly from the editor without touching the code.
 
 ```ces
-// Executed once when the object appears in the game
-start() {
-    log("Hello World!");
-}
-
-// Executed every frame (approx. 60 times per second)
-update(delta) {
-    // delta is the time elapsed since the last frame
-}
-
-// Executed at fixed intervals (ideal for physics)
-actualizarFijo(delta) {
-}
-
-// Executed when clicking the object
-onPointerClick() {
-}
+publico number speed = 5;
+publico text message = "Watch out!";
+publico boolean isHero = true;
+publico Materia target;         // Drag any object here
+publico Sprite icon;           // Choose an image
+publico Audio explosionSound;  // Choose a sound
+publico Prefab bulletPrefab;   // A reusable object
+publico Scene nextLevel;       // An entire scene
 ```
 
 ---
 
-## ⌨️ Input & Movement
-Control your characters easily.
+## ⏱️ 3. The Lifecycle: Your Game's Heartbeat
+
+Your script responds to automatic events that occur at key moments:
+
+- **`alEmpezar()` / `start()`**: Runs once when the object is born. Ideal for setting initial values.
+- **`alActualizar(delta)` / `update(delta)`**: The heart of the script. Runs every frame. `delta` is the exact time between frames—use it for smooth movement.
+- **`actualizarFijo(delta)` / `fixedUpdate(delta)`**: Ideal for heavy physics. Runs at constant intervals.
+- **`alHacerClick()` / `onPointerClick()`**: Triggers when the user touches or clicks the object.
+
+---
+
+## ⌨️ 4. Input and Movement
+
+Moving a character is as natural as speaking:
 
 ```ces
-update(delta) {
-    // Key pressed (held)
-    if (teclaPresionada("d")) {
-        position.x += speed;
-        flipX = false;
+alActualizar(delta) {
+    // Simple Horizontal Movement
+    si (isKeyPressed("d")) {
+        posicion.x += speed * delta;
+        voltearH = false; // Look right
+    }
+    si (isKeyPressed("a")) {
+        posicion.x -= speed * delta;
+        voltearH = true; // Look left
     }
 
-    // Key just pressed (single pulse)
-    if (teclaRecienPresionada("Space") && estaTocandoTag("Ground")) {
-        physics.applyImpulse(new Vector2(0, -10));
-    }
-
-    // Mouse
-    if (botonMouseRecienPresionado(0)) { // 0: Left, 1: Middle, 2: Right
-        any mousePos = obtenerPosicionMouse();
-        log("Clicked at: " + mousePos.x + ", " + mousePos.y);
+    // Jump with a single tap
+    si (isKeyJustPressed("Space") and isTouchingTag("Ground")) {
+        fisica.applyImpulse(new Vector2(0, -12));
+        play.Jump(); // Call the "Jump" animation instantly!
     }
 }
 ```
 
 ---
 
-## 📢 Global Messaging
-Communicate between scripts without coupling.
+## 📦 5. Component Reference (Expert Mode)
 
+The engine automatically creates quick access to all components of the object. Here is the master list:
+
+| Component | Access (Alias) | Key Functions |
+| :--- | :--- | :--- |
+| **Transform** | `posicion`, `position` | `x`, `y`, `rotation`, `scale`, `lookAt(x,y)` |
+| **Rigidbody2D** | `fisica`, `rigidbody2D`| `applyForce(x,y)`, `applyImpulse(x,y)`, `velocity` |
+| **SpriteRenderer**| `renderizadorDeSprite` | `color`, `opacity`, `spriteName` |
+| **Animator** | `animador`, `animacion` | `play(name)`, `stop()`, `crossfade(name, time)` |
+| **Health** | `vida`, `health` | `damage(amount)`, `heal(amount)`, `isDead` |
+| **AudioSource** | `sonido`, `audio` | `play()`, `stop()`, `volume`, `loop` |
+| **Attack** | `ataque`, `attack` | `executeAttack(atk)`, `cooldown` |
+| **ProgressBar** | `barra`, `progressBar` | `value`, `maxValue`, `targetMateria` |
+
+---
+
+## 📡 6. Communication: Global Messaging
+
+Do you want all enemies to die when the boss is defeated? Don't look for complex references—use **Messages**.
+
+**In the Boss:**
 ```ces
-// In Player Script:
-broadcast("Victory", { score: 100 });
+alMorir() {
+    broadcast("BossDefeated", { bonus: 500 });
+}
+```
 
-// In UI Script:
-start() {
-    onReceive("Victory", (data) => {
-        log("You won with " + data.score + " points!");
+**In any other script:**
+```ces
+alEmpezar() {
+    onReceive("BossDefeated", (data) => {
+        imprimir("Victory! Bonus: " + data.bonus);
+        destroy(mtr); // The object self-destructs
     });
 }
 ```
 
 ---
 
-## 🪄 Special Functions & Proxies
+## 🪄 7. Magic Functions and Coroutines
 
-### ⏳ Coroutines (Wait)
-Pause logic without freezing the game.
+### ⏳ Coroutines (`esperar`)
+Pause execution without stopping the game. Perfect for sequences:
 ```ces
-start() {
-    wait(3);
-    log("3 seconds passed!");
+async alEmpezar() {
+    imprimir("Starting sequence...");
+    esperar(2);
+    imprimir("2 seconds have passed!");
+    play.Explosion();
 }
 ```
 
-### 🔁 Timed Loops (Each)
+### 🔁 Timed Loops (`cada`)
+Create periodic events cleanly:
 ```ces
-start() {
-    cada(1.5) {
-        log("Spawning enemy...");
+alEmpezar() {
+    cada(3) { // Every 3 seconds
         create enemyPrefab;
+        imprimir("A new enemy has appeared.");
     }
 }
 ```
 
-### 🎭 Animation & Audio Proxies
-Call states or clips directly by name:
+---
+
+## 🍳 8. The Cookbook
+
+### 🏃 Professional Double Jump
 ```ces
-play.Walk();       // In AnimatorController
-reproducir.Jump(); // Spanish alias
-play.Explosion();  // In AudioSource
+ve motor;
+publico number maxJumps = 2;
+number jumpsRemaining = 2;
+
+alActualizar(delta) {
+    si (isTouchingTag("Ground")) {
+        jumpsRemaining = maxJumps;
+    }
+
+    si (isKeyJustPressed("Space") and jumpsRemaining > 0) {
+        fisica.velocity.y = -10; // Vertical impulse
+        jumpsRemaining -= 1;
+        play.Jump();
+    }
+}
+```
+
+### 🎥 Smooth Follow Camera
+```ces
+ve motor;
+publico Materia target;
+publico number smoothing = 0.125;
+
+alActualizar(delta) {
+    si (target) {
+        variable desiredPos = { x: target.posicion.x, y: target.posicion.y };
+        posicion.x += (desiredPos.x - posicion.x) * smoothing;
+        posicion.y += (desiredPos.y - posicion.y) * smoothing;
+    }
+}
+```
+
+### 🎒 Simple Inventory System
+```ces
+ve motor;
+variable inventory = [];
+
+alEntrarEnColision(other) {
+    si (other.hasTag("Item")) {
+        inventory.push(other.nombre);
+        imprimir("Picked up: " + other.nombre + ". Total: " + inventory.length);
+        destroy(other);
+    }
+}
 ```
 
 ---
 
-## 🛠️ Engine Utilities
-- `find(name)`: Locate an object in the scene.
-- `destroy(materia)`: Remove an object.
-- `raycast(origin, direction, distance, tag)`: 2D Raycasting.
-- `isTouchingTag(tag)`: Quick collision detection.
-- `instantiate(original, x, y)`: Clone an existing object.
-- `create myPrefab`: Instance a prefab by name.
+## ⚙️ 9. Under the Hood: The Transpiler
+
+The engine uses a **Smart Transpilation** system. This means that when you write in CES, the engine translates your code into high-performance optimized JavaScript in real-time.
+
+- **Safety**: The engine detects errors before running the game.
+- **Speed**: It runs natively in the browser without heavy layers.
+- **Flexibility**: If you're an expert, you can use any JavaScript function within your CES scripts.
+
+---
+
+## 🎨 10. Conclusion: Your Limit is Your Imagination!
+
+Scripting in **Creative Engine** has been designed so you can focus on the fun part: **creating**. Don't worry about perfect syntax at first; the engine will help you along the way.
+
+Remember: **Every great game started with a single line of code.** What will yours be?
+
+> "Programming isn't about what you know; it's about what you can imagine."
+
+---
+*Need more help? Visit our community on Discord or check out the [Component Guide](README_COMPONENTES.md).*
