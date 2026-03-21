@@ -119,7 +119,8 @@ export class CreativeScriptBehavior {
             const shortcutName = componentName.charAt(0).toLowerCase() + componentName.slice(1);
 
             // Create the primary (English) shortcut (e.g., this.spriteRenderer)
-            if (!this.hasOwnProperty(shortcutName)) {
+            // Use 'in' to avoid overwriting existing getters on the prototype (like transform, fisica, etc.)
+            if (!(shortcutName in this)) {
                 this[shortcutName] = component;
             }
 
@@ -128,7 +129,7 @@ export class CreativeScriptBehavior {
             if (aliases) {
                 const aliasList = Array.isArray(aliases) ? aliases : [aliases];
                 for (const alias of aliasList) {
-                    if (!this.hasOwnProperty(alias)) {
+                    if (!(alias in this)) {
                         this[alias] = component;
                     }
                 }
