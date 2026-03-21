@@ -1,282 +1,259 @@
 # 📔 El Libro Maestro del Scripting (CES) — Creative Engine
 
-¡Bienvenido, Creador! Tienes en tus manos la guía definitiva para dominar **Creative Engine**. Este no es solo un manual técnico; es tu mapa hacia la libertad creativa. El lenguaje **CES (Creative Engine Script)** ha sido forjado para que la distancia entre tu imaginación y tu juego sea lo más corta posible.
-
-En este "libro" digital, exploraremos desde los cimientos de la lógica hasta las arquitecturas más avanzadas. Prepárate, porque **programar es más sencillo de lo que piensas, y aquí te demostraremos por qué**.
+¡Bienvenido a la cumbre de la creación de videojuegos! Este no es un simple manual de usuario; es una enciclopedia técnica diseñada para convertirte en un arquitecto de realidades. En las páginas siguientes, desglosaremos cada engranaje del **Creative Engine Script (CES)**.
 
 ---
 
 ## 📖 Tabla de Contenidos
 
-0. [Capítulo 0: Tu Primer Script en 60 Segundos](#capítulo-0-tu-primer-script-en-60-segundos)
-1. [Capítulo 1: La Filosofía del Motor](#capítulo-1-la-filosofía-del-motor)
-2. [Capítulo 2: Anatomía de un Script](#capítulo-2-anatomía-de-un-script)
-3. [Capítulo 3: Variables y el Inspector Dinámico](#capítulo-3-variables-y-el-inspector-dinámico)
-4. [Capítulo 4: El Ritmo del Juego (Ciclo de Vida)](#capítulo-4-el-ritmo-del-juego-ciclo-de-vida)
-5. [Capítulo 5: Interacción Total (Input y Físicas)](#capítulo-5-interacción-total-input-y-físicas)
-6. [Capítulo 6: El Diccionario de Componentes (Referencia API)](#capítulo-6-el-diccionario-de-componentes-referencia-api)
-7. [Capítulo 7: Comunicación entre Objetos (Mensajería Global)](#capítulo-7-comunicación-entre-objetos-mensajería-global)
-8. [Capítulo 8: Magia Temporal (Corrutinas y Bucles)](#capítulo-8-magia-temporal-corrutinas-y-bucles)
-9. [Capítulo 9: El Recetario de Soluciones (Cookbook)](#capítulo-9-el-recetario-de-soluciones-cookbook)
-10. [Capítulo 10: Optimización y Mejores Prácticas](#capítulo-10-optimización-y-mejores-prácticas)
-11. [Capítulo 11: Solución de Problemas y FAQ](#capítulo-11-solución-de-problemas-y-faq)
+0. [Capítulo 0: Inmersión Rápida (Tu primer éxito)](#capítulo-0-inmersión-rápida)
+1. [Capítulo 1: Filosofía y Arquitectura del Motor](#capítulo-1-filosofía-y-arquitectura)
+2. [Capítulo 2: El Lenguaje CES y el Transpilador](#capítulo-2-el-lenguaje-ces)
+3. [Capítulo 3: El Inspector Dinámico y Tipado](#capítulo-3-el-inspector-dinámico)
+4. [Capítulo 4: El Latido: Ciclo de Vida Profundo](#capítulo-4-el-latido-ciclo-de-vida)
+5. [Capítulo 5: Interacción Galvánica (Input Avanzado)](#capítulo-5-interacción-galvánica)
+6. [Capítulo 6: La Gran Referencia de Componentes (API)](#capítulo-6-la-gran-referencia)
+7. [Capítulo 7: La Red Neuronal (Mensajería Global)](#capítulo-7-la-red-neuronal)
+8. [Capítulo 8: Control del Tiempo y Asincronía](#capítulo-8-control-del-tiempo)
+9. [Capítulo 9: El Gran Recetario (Sistemas Complejos)](#capítulo-9-el-gran-recetario)
+10. [Capítulo 10: Rendimiento de Grado Industrial](#capítulo-10-rendimiento)
+11. [Capítulo 11: Bajo el Capó (Internos del Motor)](#capítulo-11-bajo-el-capó)
+12. [Capítulo 12: Solución de Problemas (Troubleshooting)](#capítulo-12-solución-de-problemas)
 
 ---
 
-## ⚡ Capítulo 0: Tu Primer Script en 60 Segundos
+## ⚡ Capítulo 0: Inmersión Rápida
 
-¿Quieres ver resultados ya? Sigue estos pasos:
+Para empezar con fuerza, crearemos un objeto que no solo se mueve, sino que reacciona.
 
-1. En el **Navegador de Assets**, haz clic derecho y selecciona **Nuevo > Script (CES)**. Ponle de nombre `HolaMundo.ces`.
-2. Haz doble clic para abrirlo y pega este código:
+1. **Crea un Script:** Clic derecho en Assets > Nuevo > Script (CES) > `Guardian.ces`.
+2. **Escribe:**
 ```ces
 ve motor;
-
-alEmpezar() {
-    imprimir("¡El motor está vivo!");
-}
+publico numero velocidadGiro = 100;
 
 alActualizar(delta) {
-    rotacion += 100 * delta; // ¡Hará que el objeto gire!
-}
-```
-3. Arrastra ese archivo desde la biblioteca hacia cualquier objeto (una imagen o un cuadrado) en tu escena.
-4. ¡Dale a **Play**! 🚀
-
----
-
-## 🏛️ Capítulo 1: La Filosofía del Motor
-
-Creative Engine nació bajo una premisa: **El código debe ser legible para humanos y potente para máquinas.**
-
-A diferencia de otros motores que te obligan a lidiar con miles de líneas de "código basura" (boilerplate), en CES cada línea cuenta. Hemos eliminado la necesidad de usar `this.`, `mtr.` o prefijos redundantes.
-
-**¡Importante!** Para que un script pueda controlar algo (como la física o la vida), el objeto **debe tener ese componente añadido**. Si quieres usar `fisica`, asegúrate de añadir un `Rigidbody2D` al objeto en el Inspector.
-
----
-
-## 🦴 Capítulo 2: Anatomía de un Script
-
-Todo script en Creative Engine comienza con una declaración de intención:
-
-```ces
-ve motor;
-```
-
-Esta línea no es opcional; es el puente que conecta tu archivo de texto con el corazón del motor. A partir de aquí, tu script se convierte en una "Ley" que rige el comportamiento de una "Materia" (objeto).
-
----
-
-## 💎 Capítulo 3: Variables y el Inspector Dinámico
-
-El poder de Creative Engine reside en su **Inspector**. Al declarar variables como `publico`, estas aparecen mágicamente en la interfaz del editor, permitiéndote ajustar el juego mientras corre.
-
-### Tipos de Datos Soportados:
-- **`numero`**: Para velocidades, fuerzas, salud, etc.
-- **`texto`**: Para nombres, diálogos o IDs.
-- **`booleano`**: Interruptores de `verdadero` o `falso`.
-- **`Materia`**: Para referenciar otros objetos de la escena.
-- **`Prefab`**: Para instanciar (crear) objetos nuevos (como balas o enemigos).
-- **`Audio` / `Sprite` / `Scene`**: Referencias a recursos del proyecto.
-
-```ces
-publico numero fuerzaSalto = 12;
-publico booleano puedeVolar = falso;
-publico Materia camaraObjetivo;
-```
-
----
-
-## ⏱️ Capítulo 4: El Ritmo del Juego (Ciclo de Vida)
-
-Un juego es una ilusión creada por imágenes que cambian rápidamente. Tu script vive dentro de ese latido:
-
-1. **`alEmpezar()`**: Tu oportunidad de oro para configurar el objeto. Se ejecuta una sola vez.
-2. **`alActualizar(delta)`**: Ocurre aproximadamente 60 veces por segundo. Aquí es donde procesas el movimiento y la lógica constante.
-3. **`actualizarFijo(delta)`**: El motor de física corre aquí. Úsalo para fuerzas constantes para evitar que los objetos "atravessem" paredes.
-4. **`alHacerClick()` / `alPresionar()`**: La respuesta directa al toque del jugador.
-
----
-
-## ⌨️ Capítulo 5: Interacción Total (Input y Físicas)
-
-El motor entiende tus comandos de forma natural. Ya sea teclado, mouse o gamepad, la API es consistente:
-
-```ces
-alActualizar(delta) {
-    // Teclado
-    si (teclaPresionada("w")) {
-        fisica.applyForce(0, -100);
-    }
-
-    // Mouse
-    si (botonMouseRecienPresionado(0)) {
-        variable pos = obtenerPosicionMouse();
-        imprimir("Clic en: " + pos.x + "," + pos.y);
+    rotacion += velocidadGiro * delta;
+    si (teclaPresionada("Space")) {
+        posicion.x += 5;
     }
 }
 ```
+3. **Asigna:** Arrástralo a una Materia. ¡Dale a Play y presiona Espacio!
 
 ---
 
-## 📦 Capítulo 6: El Diccionario de Componentes (Referencia API)
+## 🏛️ Capítulo 1: Filosofía y Arquitectura
 
-Aquí tienes los accesos directos más comunes que el motor te regala (siempre que el objeto tenga el componente correspondiente):
+### ¿Por qué Creative Engine?
+La mayoría de los motores modernos sufren de **"Sobre-ingeniería"**. Creative Engine fue diseñado para eliminar la fricción entre el pensamiento y la ejecución.
 
-- **`posicion` (Transform)**: El ADN del objeto. Controla `x`, `y`, `rotacion` y `escala`.
-- **`fisica` (Rigidbody2D)**: El motor de Newton. Usa `applyImpulse` para saltos y `velocity` para correr.
-- **`vida` (Health)**: Gestiona la mortalidad. Usa `damage(10)` o `heal(5)`.
-- **`animacion` (Animator)**: El director de cine. Usa `play("Correr")` para cambiar de estado.
-- **`audio` (AudioSource)**: La voz del objeto. Usa `play()` o `stop()`.
+**El concepto de "Leyes" y "Materias":**
+- **Materia:** Es el contenedor vacío (el objeto). No tiene peso ni forma por sí mismo.
+- **Leyes:** Son los componentes. Al añadir una Ley de "Física", la Materia comienza a caer. Al añadir una Ley de "Script", la Materia adquiere voluntad.
+
+Esta arquitectura desacoplada permite que tus juegos sean extremadamente modulares y fáciles de depurar.
 
 ---
 
-## 📡 Capítulo 7: Comunicación entre Objetos (Mensajería Global)
+## 🦴 Capítulo 2: El Lenguaje CES
 
-Olvídate de buscar objetos por toda la jerarquía. El sistema de **Mensajería Global** permite que tus scripts hablen entre sí sin conocerse.
+CES no es un lenguaje nuevo desde cero; es una **Abstracción de Alto Nivel** sobre JavaScript (ES6+).
 
-**Emisor:**
+### La Magia de la Omisión
+En CES, el contexto es implícito. El motor sabe que si estás escribiendo un script para el "Jugador", cualquier mención a la `vida` se refiere a la vida *de ese jugador*.
+- **Antes:** `this.materia.getComponent("Health").currentHealth -= 10;`
+- **Ahora (CES):** `vida.damage(10);`
+
+El transpilador se encarga de convertir esa simplicidad en código JavaScript optimizado que el navegador puede ejecutar a velocidades de vértigo.
+
+---
+
+## 💎 Capítulo 3: El Inspector Dinámico
+
+El Inspector no es solo una lista de variables; es una ventana en tiempo real al estado de tu juego.
+
+### Atributos de Visibilidad
+Usar `publico` antes de una variable le indica al motor que debe crear un widget de edición en la interfaz:
+
+- **`publico numero`**: Crea un control deslizante y campo numérico.
+- **`publico Materia`**: Crea un slot de "Drag & Drop" que solo acepta objetos de la escena.
+- **`publico Prefab`**: Permite seleccionar archivos `.ceprefab` de tu biblioteca.
+
+**Tip técnico:** El motor realiza una "Inyección de Dependencias" automática. Si arrastras un objeto que tiene un `SpriteRenderer` a una variable de tipo `Sprite`, el motor extraerá automáticamente el componente correcto.
+
+---
+
+## ⏱️ Capítulo 4: El Latido: Ciclo de Vida Profundo
+
+Tu script tiene etapas biológicas:
+
+1. **`alEmpezar()` (Constructor Tardío):** Se ejecuta una vez cuando el objeto entra en la escena activa. Úsalo para inicializar estados aleatorios o buscar referencias.
+2. **`alActualizar(delta)` (Loop Principal):** El lugar de la lógica visual. Se sincroniza con el refresco de tu pantalla (RequestAnimationFrame).
+3. **`actualizarFijo(delta)` (Tick de Física):** Crucial para la estabilidad. Mientras que `alActualizar` puede variar según la carga gráfica, `actualizarFijo` corre a intervalos constantes (ej: 50Hz), garantizando que las colisiones no fallen.
+4. **`alDestruir()` (Limpieza):** Se activa justo antes de que el objeto desaparezca. Úsalo para liberar memoria o difundir mensajes de muerte.
+
+---
+
+## ⌨️ Capítulo 5: Interacción Galvánica (Input)
+
+El motor abstrae la complejidad de los eventos de hardware en una API de consulta directa (Polling):
+
+### Teclado
+- `teclaPresionada("a")`: Devuelve `verdadero` mientras la tecla esté hundida.
+- `teclaRecienPresionada("Space")`: Solo devuelve `verdadero` en el primer frame del pulso. Ideal para saltos.
+
+### Mouse y Touch
+- `botonMouseRecienPresionado(0)`: 0 es izquierdo, 1 central, 2 derecho.
+- `obtenerPosicionMouse()`: Devuelve un objeto `{x, y}` en coordenadas del mundo.
+
+---
+
+## 📦 Capítulo 6: La Gran Referencia de Componentes (API)
+
+Aquí desglosamos las capacidades de los componentes más importantes:
+
+### 📍 Transformación (`posicion`, `transform`)
+- **`.x`, `.y`**: Coordenadas espaciales.
+- **`.rotacion`**: Ángulo en grados.
+- **`.escala`**: Tamaño relativo (ej: 2 es el doble).
+- **`mirarA(objetivo)`**: Rota el objeto instantáneamente hacia otro objeto o posición.
+
+### ⚖️ Físicas (`fisica`, `rigidbody2D`)
+- **`.velocity`**: Vector de movimiento actual `{x, y}`.
+- **`.gravityScale`**: Cuánta gravedad afecta al objeto (0 = flota).
+- **`applyForce(x, y)`**: Empuje constante (como un motor).
+- **`applyImpulse(x, y)`**: Fuerza instantánea (como una explosión).
+
+### 🩸 Salud (`vida`, `health`)
+- **`.currentHealth`**: Vida actual.
+- **`.maxHealth`**: Límite máximo.
+- **`damage(n)`**: Resta vida y activa eventos de muerte si llega a 0.
+- **`heal(n)`**: Suma vida sin exceder el máximo.
+
+### 🎬 Animación (`animador`, `animacion`)
+- **`play("Nombre")`**: Cambia al estado de animación deseado.
+- **`stop()`**: Congela el fotograma actual.
+- **`reproducir.Correr()`**: Proxy dinámico para llamadas rápidas.
+
+---
+
+## 📡 Capítulo 7: La Red Neuronal (Mensajería)
+
+¿Por qué evitar las referencias directas (`buscar()`)?
+Si el Script A depende del Script B, y borras el Script B, el Script A fallará. El sistema de **Mensajes** elimina este acoplamiento.
+
+- **`difundir("OlaDeCalor", { intensidad: 10 })`**: Envía una señal al aire. No le importa quién la escuche.
+- **`alRecibir("OlaDeCalor", (datos) => { ... })`**: El script se queda "escuchando". Si llega el mensaje, reacciona.
+
+Este patrón (Observer) es la base de los juegos profesionales escalables.
+
+---
+
+## 🪄 Capítulo 8: Control del Tiempo y Asincronía
+
+### Corrutinas (`esperar`)
+En CES, todos los métodos son asíncronos por defecto. Esto te permite escribir secuencias temporales como si fueran una lista de instrucciones:
+
 ```ces
-difundir("NivelCompletado", { tiempo: 45 });
-```
-
-**Receptor:**
-```ces
-alEmpezar() {
-    alRecibir("NivelCompletado", (datos) => {
-        imprimir("¡Felicidades! Lo lograste en " + datos.tiempo + " segundos.");
-    });
+async alHacerClick() {
+    voltearH = verdadero;
+    esperar(0.5);
+    voltearH = falso;
 }
 ```
 
----
-
-## 🪄 Capítulo 8: Magia Temporal (Corrutinas y Bucles)
-
-### El arte de la espera (`esperar`)
-En CES, puedes pausar la lógica de un script sin congelar el juego. Esto es vital para cinemáticas o efectos.
-
-```ces
-async alEmpezar() {
-    imprimir("3...");
-    esperar(1);
-    imprimir("2...");
-    esperar(1);
-    imprimir("1...");
-    esperar(1);
-    imprimir("¡FUEGO!");
-}
-```
-
-### El poder de la repetición (`cada`)
-¿Necesitas generar una moneda cada 5 segundos? No uses contadores manuales complicados:
-
+### El Bucle Periódico (`cada`)
+Es una forma elegante de crear "intervalos de vida":
 ```ces
 alEmpezar() {
-    cada(5) {
-        crear monedaPrefab;
+    cada(2) {
+        imprimir("Han pasado 2 segundos más");
     }
 }
 ```
 
 ---
 
-## 🍳 Capítulo 9: El Recetario de Soluciones (Cookbook)
+## 🍳 Capítulo 9: El Gran Recetario (Cookbook)
 
-### 🏃 Sistema de Movimiento de Plataformas Pro
-*(Requiere componentes: Rigidbody2D, BoxCollider2D)*
+### 🎒 Sistema de Inventario con Slots
 ```ces
 ve motor;
-publico numero velocidad = 10;
-publico numero fuerzaSalto = 12;
+publico numero maxSlots = 5;
+variable items = [];
+
+funcion agregarItem(nombre) {
+    si (items.length < maxSlots) {
+        items.push(nombre);
+        difundir("ActualizarUI", { inventario: items });
+        retornar verdadero;
+    }
+    retornar falso;
+}
+```
+
+### 🧠 IA de Jefe con Fases
+```ces
+ve motor;
+publico numero vidaFase2 = 50;
 
 alActualizar(delta) {
-    variable horizontal = 0;
-    si (teclaPresionada("d")) horizontal = 1;
-    si (teclaPresionada("a")) horizontal = -1;
-
-    // Movimiento directo de física
-    fisica.velocity.x = horizontal * velocidad;
-
-    si (horizontal != 0) {
-        voltearH = (horizontal < 0);
-        reproducir.Caminar();
+    si (vida.currentHealth > vidaFase2) {
+        comportamientoFase1();
     } sino {
-        reproducir.Idle();
-    }
-
-    si (teclaRecienPresionada("Space") y estaTocandoTag("Suelo")) {
-        fisica.applyImpulse(nuevo Vector2(0, -fuerzaSalto));
+        comportamientoFase2();
     }
 }
-```
 
-### 🎯 Sistema de Disparo con Cooldown
-```ces
-ve motor;
-publico Prefab bala;
-publico numero cadencia = 0.5;
-numero tiempoSiguienteDisparo = 0;
-
-alActualizar(delta) {
-    si (teclaPresionada("f") y tiempoSiguienteDisparo <= 0) {
-        crear bala;
-        tiempoSiguienteDisparo = cadencia;
-        reproducir.Disparo();
-    }
-
-    si (tiempoSiguienteDisparo > 0) {
-        tiempoSiguienteDisparo -= delta;
-    }
-}
-```
-
-### 🔘 Botón UI Interactable
-*(Requiere componentes: Button, UIText)*
-```ces
-ve motor;
-publico texto mensajeAlClicar = "¡Hola!";
-
-alHacerClick() {
-    texto.text = mensajeAlClicar;
-    reproducir.ClickSound();
-    imprimir("Botón presionado");
+funcion comportamientoFase2() {
+    escala.x = 2; // El jefe crece
+    fisica.gravityScale = 0; // Empieza a flotar
 }
 ```
 
 ---
 
-## ⚙️ Capítulo 10: Optimización y Mejores Prácticas
+## ⚙️ Capítulo 10: Rendimiento Industrial
 
-Para que tu juego corra a 60 FPS incluso en móviles, sigue estos consejos:
+### El costo de `buscar()`
+Llamar a `buscar("Jugador")` obliga al motor a recorrer toda la lista de objetos. Si tienes 1000 objetos y lo haces cada frame, el juego irá lento.
+**Solución:** Busca una vez en `alEmpezar` y guarda la referencia.
 
-1. **Usa `delta`**: Siempre multiplica tus movimientos por `delta` si cambias la `posicion` directamente. Si usas `fisica.velocity`, el motor se encarga.
-2. **Evita `buscar()` en `alActualizar`**: Buscar objetos por nombre es lento. Hazlo en `alEmpezar` y guarda el resultado en una variable.
-3. **Pooling**: En lugar de destruir y crear cientos de balas, intenta reutilizarlas.
-4. **Capas de Colisión**: Configura en los ajustes del proyecto qué objetos chocan con cuáles para ahorrar procesador.
-
----
-
-## 🛠️ Capítulo 11: Solución de Problemas y FAQ
-
-**P: Mi script lanza un error "Cannot read properties of undefined (reading 'velocity')".**
-R: Este error ocurre cuando intentas acceder a `fisica` pero el objeto no tiene un componente **Rigidbody2D**. Asegúrate de añadirlo en el Inspector.
-
-**P: El script no responde a mis teclas.**
-R: Asegúrate de que el script tenga la línea `ve motor;` al principio y de que no haya errores de sintaxis en la Consola.
-
-**P: ¿Cómo accedo a la vida de otro objeto?**
-R: Primero obtén la referencia (ej: `variable obj = buscar("Enemigo");`) y luego usa `obj.vida.damage(10);`.
+### Object Pooling
+Crear y destruir objetos (`crear`, `destruir`) consume CPU y genera "basura" que el navegador debe limpiar.
+**Mejor práctica:** Para proyectiles, crea un "pool" de 20 balas al inicio, desactívalas y actívalas según las necesites.
 
 ---
 
-## 🎉 Epílogo: Tu Viaje Comienza Ahora
+## 🛠️ Capítulo 11: Bajo el Capó
 
-Has terminado el Libro Maestro, pero tu historia como desarrollador apenas empieza. **Creative Engine** es el lienzo, y tú eres el artista.
+### El Proceso de Transpilación
+Cuando guardas un archivo `.ces`, ocurre esto:
+1. **Scanner:** Se buscan palabras clave como `si`, `publico`, `ve`.
+2. **Mapper:** Se traducen los alias (ej: `fisica` -> `this.obtenerComponente('Rigidbody2D')`).
+3. **Wrapper:** Tu código se envuelve en una clase ES6 que hereda de `CreativeScriptBehavior`.
+4. **Injection:** Se inyectan las APIs de entrada y motor.
 
-No tengas miedo de experimentar. Rompe las reglas, combina componentes y, sobre todo, **diviértete**. Si puedes imaginarlo, puedes programarlo aquí.
-
-> "La mejor forma de predecir el futuro es creándolo." — Peter Drucker
+Este proceso asegura que escribas código fácil pero ejecutes código profesional.
 
 ---
-*¿Tienes dudas? Consulta la [Guía de Componentes](README_COMPONENTES.md) o únete a nuestra comunidad oficial.*
+
+## ❓ Capítulo 12: Solución de Problemas (FAQ)
+
+**P: Mi objeto atraviesa las paredes.**
+R: Asegúrate de usar `actualizarFijo` para el movimiento físico y de que el `Rigidbody2D` esté en modo "Continuous" si el objeto es muy rápido.
+
+**P: "TypeError: Cannot read properties of undefined (reading 'damage')"**
+R: Estás intentando llamar a `vida.damage()` en un objeto que no tiene el componente **Health**. Añádelo en el Inspector.
+
+---
+
+## 🎉 Conclusión
+
+Has completado el Libro Maestro. Ahora, el código no es un lenguaje extraño, sino una herramienta en tus manos. Ve y construye algo increíble.
+
+> "El código es poesía en movimiento."
+
+---
+*¿Deseas profundizar más? Explora el [Libro de la Extensibilidad](README_LIBRERIAS.md).*
