@@ -1,31 +1,61 @@
-# 📚 Library Extension Guide (.celib) - Creative Engine
+# 📚 Книга по расширяемости: Библиотеки и инструменты (.celib) — Creative Engine
 
-Libraries allow you to extend the engine with your own panels, components, and runtime functions.
+Добро пожаловать на продвинутый уровень, Архитектор! Если ты здесь, значит, ты хочешь не просто создавать игры, но и **создавать инструменты, которыми будут пользоваться другие**, или расширять возможности движка уникальными функциями.
 
----
-
-## 📂 1. Directory Structure
-
-All libraries must be placed in the `/lib` folder of your project:
-- `/lib/MyLib.celib`: The library package itself.
-- `/lib/MyLib.celib.meta`: Current status and user-granted permissions.
+В **Creative Engine** система библиотек (.celib) позволяет внедрять чистый JavaScript напрямую в редактор или в само ядро игры. Это руководство научит тебя расширять границы возможного.
 
 ---
 
-## 🛠️ 2. Creating a Library
+## 📖 Оглавление
 
-A library is a JSON package containing a JavaScript script.
-1. Use **Library Window > Create**.
-2. Write your script inside an IIFE (Immediately Invoked Function Expression).
+1. [Глава 1: Сила расширяемости](#глава-1-сила-расширяемости)
+2. [Глава 2: Анатомия библиотеки (.celib)](#глава-2-анатомия-библиотеки-celib)
+3. [Глава 3: Создание инструментов для редактора](#глава-3-создание-инструментов-для-редактора)
+4. [Глава 4: Справочник API конструктора UI](#глава-4-справочник-api-конструктора-ui)
+5. [Глава 5: Расширения Runtime (Новые API для CES)](#глава-5-расширения-runtime-новые-api-для-ces)
+6. [Глава 6: Профессиональный пример — Массовое переименование](#глава-6-профессиональный-пример--массовое-переименование)
+7. [Глава 7: Профессиональный пример — Глобальная система достижений](#глава-7-профессиональный-пример--глобальная-система-достижений)
+8. [Глава 8: Установка и распространение](#глава-8-установка-и-распространение)
 
-### Example: Custom Panel
+---
+
+## 🏛️ Глава 1: Сила расширяемости
+
+Зачем использовать библиотеки?
+- **Автоматизация:** Создавай кнопки, которые генерируют целые уровни или автоматически настраивают освещение.
+- **Собственные API:** Добавляй функции типа `myDatabase.save()`, которые будут ощущаться в CES как родные.
+- **Персонализация:** Изменяй рабочий процесс редактора под себя.
+
+Creative Engine — это **«движок как платформа»**: у тебя есть ключи от королевства.
+
+---
+
+## 🦴 Глава 2: Анатомия библиотеки (.celib)
+
+Библиотека технически представляет собой стандартный JavaScript-файл, обернутый в самовызывающуюся функцию (IIFE) во избежание конфликтов имен.
+
+```javascript
+(function() {
+    // Твоя логика здесь
+    console.log("Моя библиотека успешно загружена.");
+})();
+```
+
+---
+
+## 🛠️ Глава 3: Создание инструментов для редактора
+
+Ты можешь добавлять пользовательские окна в меню **«Окно»** редактора, используя `CreativeEngine.API.registrarVentana`.
+
 ```javascript
 (function() {
     CreativeEngine.API.registrarVentana({
-        nombre: "My Tool",
+        nombre: "Мой инструмент",
+        ancho: 350,
+        alto: 250,
         alAbrir: function(panel) {
-            panel.texto("Custom Content");
-            panel.boton("Action", () => console.log("Done!"));
+            panel.texto("Привет из кода!");
+            panel.boton("Нажми меня", () => alert("Работает!"));
         }
     });
 })();
@@ -33,24 +63,110 @@ A library is a JSON package containing a JavaScript script.
 
 ---
 
-## 🔒 3. Permissions
+## 🍱 Глава 4: Справочник API конструктора UI
 
-For security, the engine requires you to grant permissions explicitly in the **Library Details** view:
-- **Create Windows:** Allows the library to add entries to the Window menu.
-- **Runtime Access:** Allows `.ces` scripts to call the library's internal functions.
-- **Custom Components:** Allows the library to register new logic for Materias.
+Объект `panel`, который ты получаешь в `alAbrir`, — это фабрика динамических интерфейсов. Вот всё, что ты можешь создать:
+
+### Базовые элементы:
+- **`texto(content, options)`**: Выводит текст. Опции: `{ negrita: true, color: "#hex", tamano: "14px" }`.
+- **`boton(label, clickCallback)`**: Интерактивная кнопка.
+- **`input(label, callback)`**: Текстовое поле. Callback возвращает значение при изменении.
+- **`numero(label, callback)`**: Числовое поле для точных значений.
+- **`checkbox(label, initialValue, callback)`**: Булев переключатель.
+- **`slider(label, options, callback)`**: Опции: `{ min, max, paso }`.
+
+### Организация:
+- **`fila(callback)`**: Создает горизонтальный контейнер. Внутри callback ты используешь новый объект строки.
+- **`columna(callback)`**: То же самое, что и строка, но вертикально.
+- **`separador()`**: Тонкая линия для визуальной организации.
+- **`imagen(src)`**: Показывает иконку или превью.
 
 ---
 
-## 🧪 4. Using in Scripts (.ces)
+## 🎮 Глава 5: Расширения Runtime (Новые API для CES)
 
-Import the library using the `go` command:
+Это самая мощная часть: добавление функций, которые могут использовать твои скрипты `.ces`. Это делается через `CreativeEngine.API.registrarRuntimeAPI`.
+
+**В твоем .js файле:**
+```javascript
+(function() {
+    const MyAPI = {
+        greet: (name) => "Привет, " + name,
+        getPoints: () => 100
+    };
+    CreativeEngine.API.registrarRuntimeAPI("Utilities", MyAPI);
+})();
+```
+
+**Использование в скрипте (.ces):**
 ```ces
-go "MyLib"
+ve motor;
+go "Utilities"; // Импорт расширения
 
-start() {
-    variable result = myCustomFunction(10);
-    log(result);
+alEmpezar() {
+    variable msg = greet("Игрок"); // Прямое использование!
 }
 ```
-*(Note: `myCustomFunction` must be exported by the library script)*
+
+---
+
+## 🚀 Глава 6: Профессиональный пример — Массовое переименование
+
+Этот инструмент находит все объекты на сцене и добавляет к ним префикс.
+
+```javascript
+(function() {
+    CreativeEngine.API.registrarVentana({
+        nombre: "Batch Renamer",
+        alAbrir: (ui) => {
+            ui.texto("Добавить префикс ко всем объектам:");
+            let prefix = "OBJ_";
+
+            ui.input("Префикс", (v) => prefix = v);
+
+            ui.boton("Переименовать всё!", () => {
+                const materias = window.SceneManager.currentScene.getAllMaterias();
+                materias.forEach(m => m.name = prefix + m.name);
+                window.updateHierarchy(); // Обновить визуальный список
+                alert("Переименовано " + materias.length + " объектов.");
+            });
+        }
+    });
+})();
+```
+
+---
+
+## 🏆 Глава 7: Профессиональный пример — Глобальная система достижений
+
+Создай систему, которая сохраняет прогресс на постоянной основе.
+
+```javascript
+(function() {
+    const Achievements = {
+        list: [],
+        unlock: function(id) {
+            if (!this.list.includes(id)) {
+                this.list.push(id);
+                console.log("🏆 Достижение разблокировано: " + id);
+                // Здесь можно сохранять в localStorage
+            }
+        }
+    };
+    CreativeEngine.API.registrarRuntimeAPI("Achievements", Achievements);
+})();
+```
+
+---
+
+## 📦 Глава 8: Установка и распространение
+
+1. Напиши свой код в файле `.js`.
+2. Переименуй расширение в `.celib` (необязательно, движок принимает и `.js`).
+3. **Перетащи** файл в панель **Assets (Активы)** редактора.
+4. Движок автоматически переместит его в папку `/lib` твоего проекта.
+5. Активируй его в меню **Библиотеки**.
+6. **Перезапусти редактор** (или обнови страницу), чтобы внедрение кода завершилось.
+
+---
+*Нужны более глубокие API? Свяжитесь с командой разработчиков для доступа к низкоуровненому SDK.*

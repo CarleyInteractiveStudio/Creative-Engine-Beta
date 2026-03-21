@@ -26,6 +26,9 @@ Aprende a usar las potentes herramientas visuales integradas:
 - **Tilemap Editor:** Construye niveles basados en rejillas.
 - **VidSpri:** El secreto para convertir videos en sprites ligeros.
 
+### 📚 [El Libro de la Extensibilidad (Librerías)](README_LIBRERIAS.md)
+**Para los arquitectos de herramientas.** Aprende a crear tus propias ventanas en el editor y ampliar las funciones de scripting con JavaScript puro (.celib).
+
 ### 🤖 [Manual de Carl IA](README_CARL_IA.md)
 Descubre cómo trabajar codo con codo con Carl, tu asistente inteligente capaz de construir escenas y escribir código por ti mediante lenguaje natural.
 

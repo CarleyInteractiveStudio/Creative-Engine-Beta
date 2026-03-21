@@ -26,10 +26,13 @@ Aprenda a usar as potentes ferramentas visuais integradas:
 - **Tilemap Editor:** Construa níveis baseados em grelhas.
 - **VidSpri:** O segredo para converter vídeos em sprites leves.
 
+### 📚 [O Livro da Extensibilidade (Livrarias)](README_LIBRERIAS.md)
+**Para os arquitetos de ferramentas.** Aprenda a criar as suas próprias janelas no editor e a ampliar as funções de scripting com JavaScript puro (.celib).
+
 ### 🤖 [Manual de Carl IA](README_CARL_IA.md)
 Descubra como trabalhar lado a lado com o Carl, o seu assistente inteligente capaz de construir cenas e escrever código por si através de linguagem natural.
 
-### ⚙️ [Gestão Avançada e Configuração](README_AVANZADO.md)
+### ⚙️ [Gestão Avanzada e Configuração](README_AVANZADO.md)
 Para os desenvolvedores que querem ir mais longe:
 - Criação e gestão de Prefabs.
 - Sistema de Build e exportação.

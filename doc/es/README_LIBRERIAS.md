@@ -1,156 +1,172 @@
-# 📚 Guía de Librerías y Extensibilidad - Creative Engine
+# 📚 El Libro de la Extensibilidad: Librerías y Herramientas (.celib) — Creative Engine
 
-Las librerías en Creative Engine (archivos `.celib`) permiten extender tanto la interfaz del editor como las capacidades de programación de tus juegos.
+¡Bienvenido al nivel avanzado, Arquitecto! Si estás aquí, es porque no solo quieres crear juegos, sino que quieres **crear las herramientas que otros usarán** o potenciar el motor con funciones únicas.
+
+En **Creative Engine**, el sistema de librerías (.celib) te permite inyectar JavaScript puro directamente en el editor o en el corazón del juego. Esta guía te enseñará a expandir los límites de lo posible.
 
 ---
 
-## 🛠️ 1. Librerías de Interfaz (Herramientas del Editor)
+## 📖 Tabla de Contenidos
 
-Puedes crear tus propias ventanas y herramientas personalizadas para el editor usando `CreativeEngine.API`.
+1. [Capítulo 1: El Poder de la Extensibilidad](#capítulo-1-el-poder-de-la-extensibilidad)
+2. [Capítulo 2: Anatomía de una Librería (.celib)](#capítulo-2-anatomía-de-una-librería-celib)
+3. [Capítulo 3: Creación de Herramientas para el Editor](#capítulo-3-creación-de-herramientas-para-el-editor)
+4. [Capítulo 4: Referencia API del Generador de UI](#capítulo-4-referencia-api-del-generador-de-ui)
+5. [Capítulo 5: Extensiones de Runtime (Nuevas APIs para CES)](#capítulo-5-extensiones-de-runtime-nuevas-apis-para-ces)
+6. [Capítulo 6: Ejemplo Pro - El Renombrador en Masa](#capítulo-6-ejemplo-pro-el-renombrador-en-masa)
+7. [Capítulo 7: Ejemplo Pro - Sistema de Logros Global](#capítulo-7-ejemplo-pro-sistema-de-logros-global)
+8. [Capítulo 8: Instalación y Distribución](#capítulo-8-instalación-y-distribución)
 
-### Registro de una Ventana
-Para que tu herramienta aparezca en el menú **Ventana**, usa:
+---
+
+## 🏛️ Capítulo 1: El Poder de la Extensibilidad
+
+¿Por qué usar librerías?
+- **Automatización:** Crea botones que generen niveles enteros o configuren luces automáticamente.
+- **APIs Propias:** Añade funciones como `miBaseDeDatos.guardar()` que se sientan nativas en CES.
+- **Personalización:** Cambia el flujo de trabajo del editor para que se adapte a ti.
+
+Creative Engine es **"Engine-as-a-Platform"**: tú tienes las llaves del reino.
+
+---
+
+## 🦴 Capítulo 2: Anatomía de una Librería (.celib)
+
+Una librería es técnicamente un archivo JavaScript estándar envuelto en una función autoejecutable (IIFE) para evitar conflictos.
+
+```javascript
+(function() {
+    // Tu lógica aquí
+    console.log("Mi librería se ha cargado correctamente.");
+})();
+```
+
+---
+
+## 🛠️ Capítulo 3: Creación de Herramientas para el Editor
+
+Puedes añadir ventanas personalizadas al menú **Ventana** del editor usando `CreativeEngine.API.registrarVentana`.
 
 ```javascript
 (function() {
     CreativeEngine.API.registrarVentana({
-        nombre: "Mi Super Herramienta",
-        estilo: "moderno", // "carl", "moderno" o vacio
-        ancho: 400,
-        alto: 300,
+        nombre: "Mi Herramienta",
+        ancho: 350,
+        alto: 250,
         alAbrir: function(panel) {
-            panel.texto("¡Bienvenido a mi herramienta!", { negrita: true, color: "#3498db" });
-
-            panel.fila((f) => {
-                f.boton("Saludar", () => alert("¡Hola!"));
-                f.boton("Cerrar", () => panel.elemento.remove());
-            });
-
-            panel.separador();
-
-            panel.input("Tu Nombre", (valor) => {
-                console.log("Nombre ingresado: " + valor);
-            });
+            panel.texto("¡Hola desde el código!");
+            panel.boton("Pulsar", () => alert("¡Funciona!"));
         }
     });
 })();
 ```
 
-### Componentes de UI Disponibles
-El objeto `panel` pasado a `alAbrir` tiene los siguientes métodos:
-- `texto(contenido, opciones)`
-- `boton(etiqueta, clickCallback, opciones)`
-- `input(etiqueta, opcionesOrCallback)`
-- `numero(etiqueta, opcionesOrCallback)`
-- `checkbox(etiqueta, inicial, alCambiar)`
-- `slider(etiqueta, opciones)`
-- `desplegable(etiqueta, items, opciones)`
-- `imagen(src, opciones)`
-- `fila(callback)` / `columna(callback)`: Para organizar elementos.
+---
+
+## 🍱 Capítulo 4: Referencia API del Generador de UI
+
+El objeto `panel` que recibes en `alAbrir` es una fábrica de interfaces dinámica. Aquí tienes todo lo que puedes crear:
+
+### Elementos Básicos:
+- **`texto(contenido, opciones)`**: Muestra texto. Opciones: `{ negrita: true, color: "#hex", tamano: "14px" }`.
+- **`boton(etiqueta, clickCallback)`**: Un botón interactivo.
+- **`input(etiqueta, callback)`**: Campo de texto. El callback devuelve el valor al cambiar.
+- **`numero(etiqueta, callback)`**: Campo numérico para valores precisos.
+- **`checkbox(etiqueta, valorInicial, callback)`**: Interruptor booleano.
+- **`slider(etiqueta, opciones, callback)`**: Opciones: `{ min, max, paso }`.
+
+### Organización:
+- **`fila(callback)`**: Crea un contenedor horizontal. Dentro del callback, usas el nuevo objeto de fila.
+- **`columna(callback)`**: Igual que la fila, pero vertical.
+- **`separador()`**: Una línea sutil para organizar visualmente.
+- **`imagen(src)`**: Muestra un icono o preview.
 
 ---
 
-## 🎮 2. Librerías de Runtime (Nuevas Funciones para Scripts)
+## 🎮 Capítulo 5: Extensiones de Runtime (Nuevas APIs para CES)
 
-Si quieres añadir nuevas funciones que puedan ser usadas dentro de tus scripts `.ces`, debes registrar una API de runtime.
+Esta es la parte más potente: añadir funciones que tus scripts `.ces` pueden usar. Se hace mediante `CreativeEngine.API.registrarRuntimeAPI`.
 
-### Ejemplo: Librería de Matemáticas Avanzadas
-Crea un archivo JS y regístralo así:
-
+**En tu archivo .js:**
 ```javascript
 (function() {
-    const MiCalculadora = {
-        sumar: (a, b) => a + b,
-        alCuadrado: (n) => n * n,
-        generarID: () => "ID_" + Math.random().toString(36).substr(2, 9)
+    const MiAPI = {
+        saludar: (nombre) => "Hola " + nombre,
+        obtenerPuntos: () => 100
     };
-
-    // Esto hará que "MiCalculadora" esté disponible en los scripts .ces
-    CreativeEngine.API.registrarRuntimeAPI("MiCalculadora", MiCalculadora);
+    CreativeEngine.API.registrarRuntimeAPI("Utilidades", MiAPI);
 })();
 ```
 
-### Cómo usarla en un Script (.ces)
-Usa la palabra clave `go` o `ve` seguida del nombre de la librería:
-
+**Uso en un Script (.ces):**
 ```ces
 ve motor;
-go "MiCalculadora"; // Importamos la librería
+go "Utilidades"; // Importar la extensión
 
 alEmpezar() {
-    variable resultado = sumar(10, 5); // Las funciones de la lib son globales ahora
-    imprimir("Resultado: " + resultado);
-    imprimir("Mi ID es: " + generarID());
+    variable msj = saludar("Jugador"); // ¡Uso directo!
 }
 ```
 
 ---
 
-## 💡 Ejemplos Completos
+## 🚀 Capítulo 6: Ejemplo Pro - El Renombrador en Masa
 
-### 🛠️ Herramienta: Generador de Nombres Aleatorios
+Esta herramienta busca todos los objetos en la escena y les añade un prefijo.
+
 ```javascript
 (function() {
-    const nombres = ["Rex", "Luna", "Titan", "Zelda", "Mario"];
-
     CreativeEngine.API.registrarVentana({
-        nombre: "Generador de NPC",
-        alAbrir: function(ui) {
-            ui.texto("Genera un nombre para tu nuevo objeto:");
+        nombre: "Batch Renamer",
+        alAbrir: (ui) => {
+            ui.texto("Añade un prefijo a todos los objetos:");
+            let prefijo = "OBJ_";
 
-            const display = ui.texto("---", { bold: true, tamano: "20px" });
+            ui.input("Prefijo", (v) => prefijo = v);
 
-            ui.boton("¡Generar!", () => {
-                const nombre = nombres[Math.floor(Math.random() * nombres.length)];
-                display.textContent = nombre;
-
-                // Si hay un objeto seleccionado, le cambiamos el nombre
-                if (window.selectedMateria) {
-                    window.selectedMateria.name = nombre;
-                    window.updateHierarchy();
-                }
+            ui.boton("¡Renombrar Todo!", () => {
+                const materias = window.SceneManager.currentScene.getAllMaterias();
+                materias.forEach(m => m.name = prefijo + m.name);
+                window.updateHierarchy(); // Refrescar la lista visual
+                alert("Renombrados " + materias.length + " objetos.");
             });
         }
     });
 })();
 ```
 
-### 🧬 Librería: Sistema de Logros (Runtime)
+---
+
+## 🏆 Capítulo 7: Ejemplo Pro - Sistema de Logros Global
+
+Crea un sistema que guarde el progreso de forma persistente.
+
 ```javascript
 (function() {
     const Logros = {
-        conseguidos: [],
-        desbloquear: function(nombre) {
-            if (!this.conseguidos.includes(nombre)) {
-                this.conseguidos.push(nombre);
-                window.Dialogs.showNotification("✨ Logro Desbloqueado", nombre);
+        lista: [],
+        desbloquear: function(id) {
+            if (!this.lista.includes(id)) {
+                this.lista.push(id);
+                console.log("🏆 Logro desbloqueado: " + id);
+                // Aquí podrías guardar en localStorage
             }
         }
     };
-
     CreativeEngine.API.registrarRuntimeAPI("Logros", Logros);
 })();
 ```
 
-**Uso en script:**
-```ces
-ve motor;
-go "Logros";
-
-alEntrarEnColision(otro) {
-    si (otro.tieneTag("MonedaEspecial")) {
-        desbloquear("¡Coleccionista de Oro!");
-        destruir(otro);
-    }
-}
-```
-
 ---
 
-## 📦 Cómo Crear e Instalar una Librería
-1. Crea un archivo con extensión `.js`.
-2. Escribe tu código de extensión (UI o Runtime).
-3. En el editor, arrastra el archivo `.js` al **Navegador de Assets**.
-4. El motor detectará la librería y la moverá automáticamente a la carpeta `/lib`.
-5. Abre el panel de **Librerías** (Menú superior) para activarla.
-6. **Reinicia el editor** para que los cambios surtan efecto.
+## 📦 Capítulo 8: Instalación y Distribución
+
+1. Escribe tu código en un archivo `.js`.
+2. Renombra la extensión a `.celib` (opcional, el motor acepta `.js` también).
+3. **Arrastra** el archivo al panel de **Assets** del editor.
+4. El motor lo moverá automáticamente a la carpeta `/lib` de tu proyecto.
+5. Actívala desde el menú **Librerías**.
+6. **Reinicia el editor** (o recarga la página) para que la inyección de código sea completa.
+
+---
+*¿Necesitas APIs más profundas? Contacta con el equipo de desarrollo para acceder al SDK de bajo nivel.*
