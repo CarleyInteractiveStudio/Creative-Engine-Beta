@@ -325,43 +325,63 @@ export class CreativeScriptBehavior {
     get audio() { return this.materia.getComponent(AudioSource); }
     get sonido() { return this.audio; }
 
+    /**
+     * @private
+     * Regresa un Proxy de seguridad que lanza un error descriptivo si se intenta acceder a un componente que no existe.
+     */
+    _missingComponentProxy(name, technicalName) {
+        const handler = {
+            get: (target, prop) => {
+                throw new Error(`Intentaste usar '${name}', pero el componente '${technicalName}' no está añadido a este objeto en el Inspector.`);
+            },
+            set: (target, prop, value) => {
+                throw new Error(`No puedes asignar '${prop}' en '${name}' porque el componente '${technicalName}' no existe en este objeto.`);
+            },
+            apply: (target, thisArg, args) => {
+                throw new Error(`Intentaste llamar a '${name}' como función, pero el componente '${technicalName}' no existe.`);
+            }
+        };
+        // We use a dummy function so it's also "callable" for proxies that might be used as functions
+        return new Proxy(() => {}, handler);
+    }
+
     // --- Common Component Shortcuts (Robust) ---
-    get transform() { return this.obtenerComponente('Transform'); }
+    get transform() { return this.obtenerComponente('Transform') || this._missingComponentProxy('posicion', 'Transform'); }
     get transformacion() { return this.transform; }
     get posicion() { return this.transform; }
 
-    get fisica() { return this.obtenerComponente('Rigidbody2D'); }
+    get fisica() { return this.obtenerComponente('Rigidbody2D') || this._missingComponentProxy('fisica', 'Rigidbody2D'); }
     get rigidbody2D() { return this.fisica; }
 
-    get vida() { return this.obtenerComponente('Health'); }
+    get vida() { return this.obtenerComponente('Health') || this._missingComponentProxy('vida', 'Health'); }
     get salud() { return this.vida; }
     get health() { return this.vida; }
 
-    get animacion() { return this.obtenerComponente('Animator'); }
+    get animacion() { return this.obtenerComponente('Animator') || this._missingComponentProxy('animador', 'Animator'); }
     get animador() { return this.animacion; }
     get animator() { return this.animacion; }
 
-    get controlador() { return this.obtenerComponente('AnimatorController'); }
+    get controlador() { return this.obtenerComponente('AnimatorController') || this._missingComponentProxy('controlador', 'AnimatorController'); }
     get controladorAnimacion() { return this.controlador; }
     get animatorController() { return this.controlador; }
 
-    get ataque() { return this.obtenerComponente('Attack'); }
+    get ataque() { return this.obtenerComponente('Attack') || this._missingComponentProxy('ataque', 'Attack'); }
     get attack() { return this.ataque; }
 
-    get barra() { return this.obtenerComponente('ProgressBar'); }
+    get barra() { return this.obtenerComponente('ProgressBar') || this._missingComponentProxy('barra', 'ProgressBar'); }
     get uiBarra() { return this.barra; }
     get progressBar() { return this.barra; }
 
-    get video() { return this.obtenerComponente('VideoPlayer'); }
+    get video() { return this.obtenerComponente('VideoPlayer') || this._missingComponentProxy('video', 'VideoPlayer'); }
     get pelicula() { return this.video; }
 
-    get agua() { return this.obtenerComponente('Water'); }
+    get agua() { return this.obtenerComponente('Water') || this._missingComponentProxy('agua', 'Water'); }
     get water() { return this.agua; }
 
-    get texto() { return this.obtenerComponente('UIText'); }
-    get boton() { return this.obtenerComponente('Button'); }
-    get imagen() { return this.obtenerComponente('UIImage'); }
-    get lienzo() { return this.obtenerComponente('Canvas'); }
+    get texto() { return this.obtenerComponente('UIText') || this._missingComponentProxy('texto', 'UIText'); }
+    get boton() { return this.obtenerComponente('Button') || this._missingComponentProxy('boton', 'Button'); }
+    get imagen() { return this.obtenerComponente('UIImage') || this._missingComponentProxy('imagen', 'UIImage'); }
+    get lienzo() { return this.obtenerComponente('Canvas') || this._missingComponentProxy('lienzo', 'Canvas'); }
 
     get ui() {
         const self = this;

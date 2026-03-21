@@ -99,17 +99,22 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastLogCount = 1;
 
     function translateErrorMessage(msg) {
-        const translations = {
-            'NotFoundError': 'No se pudo encontrar el archivo o directorio solicitado.',
-            'Unexpected identifier': 'Palabra no reconocida o fuera de lugar.',
-            'is not a function': 'No es una función válida o no existe.',
-            'cannot read property': 'Intentaste acceder a algo que no existe (es nulo).',
-            'Unexpected token': 'Símbolo inesperado (revisa paréntesis o llaves).',
-            'is not defined': 'Esta variable o componente no ha sido definido.'
-        };
+        const translations = [
+            { key: 'reading \'velocity\'', value: 'Te falta el componente "Rigidbody2D" (Físicas) en este objeto para poder moverlo.' },
+            { key: 'reading \'x\'', value: 'Intentaste acceder a una posición (.x) de algo que no existe. ¿Añadiste el componente Transform?' },
+            { key: 'reading \'y\'', value: 'Intentaste acceder a una posición (.y) de algo que no existe. ¿Añadiste el componente Transform?' },
+            { key: 'reading \'play\'', value: 'Te falta el componente "Animator" o "AnimatorController" para reproducir animaciones.' },
+            { key: 'reading \'stop\'', value: 'Te falta el componente "Animator" para detener la animación.' },
+            { key: 'is not a function', value: 'Has intentado llamar a una función que no existe o el nombre está mal escrito.' },
+            { key: 'is not defined', value: 'Estás usando una palabra que el motor no conoce o una variable que no has creado.' },
+            { key: 'Unexpected identifier', value: 'Hay una palabra fuera de lugar. Revisa que no falten puntos (.) o comas (,).' },
+            { key: 'Unexpected token', value: 'Símbolo inesperado. Revisa si te falta cerrar un paréntesis ")" o una llave "}".' },
+            { key: 'NotFoundError', value: 'No se pudo encontrar el archivo o carpeta. Revisa que el nombre sea exacto.' },
+            { key: 'cannot read property', value: 'Intentaste acceder a algo que es nulo o no existe.' }
+        ];
 
-        for (const [key, value] of Object.entries(translations)) {
-            if (msg.toLowerCase().includes(key.toLowerCase())) return value;
+        for (const entry of translations) {
+            if (msg.toLowerCase().includes(entry.key.toLowerCase())) return entry.value;
         }
         return msg;
     }

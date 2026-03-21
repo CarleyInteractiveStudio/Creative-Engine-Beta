@@ -15,6 +15,26 @@ export async function repair(code, fileName, runtimeError = null) {
     if (runtimeError && runtimeError.message) {
         console.log("[AutoReparator] Analizando error de ejecución:", runtimeError.message);
 
+        // Check for missing components based on typical crash patterns
+        const missingComps = [
+            { key: 'velocity', comp: 'Rigidbody2D', name: 'fisica' },
+            { key: 'applyImpulse', comp: 'Rigidbody2D', name: 'fisica' },
+            { key: 'addForce', comp: 'Rigidbody2D', name: 'fisica' },
+            { key: 'play', comp: 'Animator', name: 'animador' },
+            { key: 'stop', comp: 'Animator', name: 'animador' },
+            { key: 'color', comp: 'SpriteRenderer', name: 'renderizadorDeSprite' }
+        ];
+
+        for (const check of missingComps) {
+            if (runtimeError.message.includes(check.key)) {
+                return {
+                    success: false,
+                    code: code,
+                    message: `⚠️ El error sugiere que te falta el componente '${check.comp}' en el objeto '${runtimeError.materiaName}'. Por favor, añádelo desde el Inspector.`
+                };
+            }
+        }
+
         // Suggest fix for "is not defined" (likely a typo in a variable name)
         if (runtimeError.message.includes('is not defined')) {
             const undefinedVar = runtimeError.message.split(' ')[0];
