@@ -1,217 +1,241 @@
-# 📜 脚本大师指南 (CES) - Creative Engine
+# 📜 脚本大师全书 (CES) — Creative Engine
 
-欢迎来到创作的前沿！在 **Creative Engine** 中，脚本不是障碍，而是你的超能力。**CES (Creative Engine Script)** 语言被设计得直观、强大，而且最重要的是，**比你想象的要简单**。
+欢迎，创作者！你手中握着的是掌握 **Creative Engine** 的终极指南。这不仅仅是一本技术手册，它是你通往创作自由的地图。**CES (Creative Engine Script)** 语言的诞生是为了让你的想象力与游戏之间的距离尽可能短。
 
-本指南将牵着你的手，从你的第一个“Hello World!”到专业级的复杂系统。准备好让你的想法成真吧！
+在这本数字“书”中，我们将探索从逻辑基础到最先进架构的一切。准备好，因为**编程比你想象的要简单，在这里我们将向你展示原因**。
 
 ---
 
-## 🚀 1. 你的第一步：与引擎连接
+## 📖 目录
 
-每一个伟大的项目都始于简单的一行代码。在 CES 中，我们告诉脚本连接到引擎的重要功能：
+1. [第一章：引擎哲学](#第一章：引擎哲学)
+2. [第二章：脚本解剖](#第二章：脚本解剖)
+3. [第三章：变量与动态检查器](#第三章：变量与动态检查器)
+4. [第四章：游戏节奏（生命周期）](#第四章：游戏节奏（生命周期）)
+5. [第五章：全方位交互（输入与物理）](#第五章：全方位交互（输入与物理）)
+6. [第六章：组件词典 (API 参考)](#第六章：组件词典-api-参考)
+7. [第七章：对象通信（全局消息）](#第七章：对象通信（全局消息）)
+8. [第八章：时间魔法（协程与循环）](#第八章：时间魔法（协程与循环）)
+9. [第九章：解决方案食谱 (Cookbook)](#第九章：解决方案食谱-cookbook)
+10. [第十章：优化与最佳实践](#第十章：优化与最佳实践)
+
+---
+
+## 🏛️ 第一章：引擎哲学
+
+Creative Engine 诞生于一个前提：**代码必须是人类可读且机器强大的。**
+
+与其他强迫你处理成千上万行“样板代码”（垃圾代码）的引擎不同，在 CES 中，每一行代码都至关重要。我们取消了对 `this.`、`mtr.` 或冗余前缀的需求。如果一个对象有生命值，只需编写 `health`。如果你想移动它，编写 `posicion` 或 `position`。
+
+**目标是让你的代码看起来像是在描述你想要发生的事情。**
+
+---
+
+## 🦴 第二章：脚本解剖
+
+Creative Engine 中的每个脚本都以意图声明开始：
 
 ```ces
 ve motor;
 ```
-*提示：如果你喜欢更具动感的语气，也可以使用 `go motor;`。由你选择！*
 
-### 为什么 CES 与众不同？
-与其他引擎需要编写 `this.transform.position.x` 不同，在 Creative Engine 中我们取消了官僚主义：
-- **无需 `this.`**：直接访问对象的属性。
-- **无需复杂的前缀**：如果你的对象有一个 `Health` 组件，只需编写 `health.currentHealth = 100`。
-- **多语言**：你喜欢 `posicion` 还是 `position`？引擎两者都懂！
+这一行不是可选的；它是连接你的文本文件与引擎核心的桥梁。从这里开始，你的脚本变成了一部“法律”，统治着“物质”（对象）的行为。
 
 ---
 
-## 💎 2. 公共变量：检查器是你的朋友
+## 💎 第三章：变量与动态检查器
 
-公共变量允许你（或你的设计师）直接从编辑器中调整值，而无需触碰代码。
+Creative Engine 的力量在于其**检查器 (Inspector)**。通过将变量声明为 `publico`（公共），它们会神奇地出现在编辑器的界面中，允许你在游戏运行时调整它。
+
+### 支持的数据类型：
+- **`number` (数字)**：用于速度、力、生命值等。
+- **`text` (文本)**：用于名称、对话或 ID。
+- **`boolean` (布尔值)**：用于“真”或“假”的开关。
+- **`Materia` (物质)**：用于引用场景中的其他对象。
+- **`Prefab` (预制件)**：用于实例化（创建）新对象（如子弹或敌人）。
+- **`Audio` / `Sprite` / `Scene`**：引用项目资源。
 
 ```ces
-publico 数字 速度 = 5;
-publico 文本 消息 = "小心！";
-publico 布尔值 是英雄 = 真;
-publico 物质 目标;           // 在此处拖放任何对象
-publico 精灵 图标;           // 选择一个图像
-publico 音频 爆炸声音;       // 选择一个声音
-publico 预制件 子弹预制件;   // 一个可重复使用的对象
-publico 场景 下一关;         // 一个完整的场景
+publico 数字 跳跃力 = 12;
+publico 布尔值 可以飞行 = 假;
+publico 物质 目标摄像机;
 ```
 
 ---
 
-## ⏱️ 3. 生命周期：你的游戏心跳
+## ⏱️ 第四章：游戏节奏（生命周期）
 
-你的脚本会对在关键时刻发生的自动事件做出反应：
+游戏是由快速变化的图像创造的幻觉。你的脚本生活在这种心跳之中：
 
-- **`开始()` / `alEmpezar()`**：对象诞生时执行一次。非常适合设置初始值。
-- **`更新(delta)` / `alActualizar(delta)`**：脚本的核心。每一帧都会执行。`delta` 是帧之间的确切时间，使用它可以使移动平滑。
-- **`actualizarFijo(delta)`**：非常适合重型物理计算。以恒定的时间间隔执行。
-- **`alHacerClick()`**：当用户点击或触摸对象时触发。
+1. **`alEmpezar()` / `开始()`**：配置对象的黄金机会。仅运行一次。
+2. **`alActualizar(delta)` / `更新(delta)`**：每秒大约发生 60 次。这是你处理移动和持续逻辑的地方。
+3. **`actualizarFijo(delta)`**：物理引擎在此运行。将其用于恒定的力，以防止对象“穿过”墙壁。
+4. **`alHacerClick()`**：对玩家触摸的直接响应。
 
 ---
 
-## ⌨️ 4. 输入与移动
+## ⌨️ 第五章：全方位交互（输入与物理）
 
-控制角色移动就像说话一样自然：
+引擎能自然地理解你的命令。无论是键盘、鼠标还是手柄，API 都是一致的：
 
 ```ces
 更新(delta) {
-    // 简单的水平移动
-    如果 (teclaPresionada("d")) {
-        posicion.x += 速度 * delta;
-        水平翻转 = 假; // 向右看
-    }
-    如果 (teclaPresionada("a")) {
-        posicion.x -= 速度 * delta;
-        水平翻转 = 真; // 向左看
+    // 键盘
+    如果 (teclaPresionada("w")) {
+        物理.applyForce(0, -100);
     }
 
-    // 单击跳跃
-    如果 (teclaRecienPresionada("Space") 并且 estaTocandoTag("Ground")) {
-        fisica.applyImpulse(新建 Vector2(0, -12));
-        播放.Salto(); // 瞬间调用“Salto”动画！
+    // 鼠标
+    如果 (botonMouseRecienPresionado(0)) {
+        变量 位置 = 获取鼠标位置();
+        打印("点击位置：" + 位置.x + "," + 位置.y);
     }
 }
 ```
 
 ---
 
-## 📦 5. 组件参考（专家模式）
+## 📦 第六章：组件词典 (API 参考)
 
-引擎会自动创建对对象所有组件的快速访问。这是主列表：
+以下是引擎免费提供给你的最常用快捷方式：
 
-| 组件 | 访问（别名） | 关键功能 |
-| :--- | :--- | :--- |
-| **Transform** | `posicion`, `位置` | `x`, `y`, `rotacion`, `escala`, `mirarA(x,y)` |
-| **Rigidbody2D** | `fisica`, `物理` | `applyForce(x,y)`, `applyImpulse(x,y)`, `velocity` |
-| **SpriteRenderer**| `renderizadorDeSprite` | `color`, `opacity`, `spriteName` |
-| **Animator** | `animador`, `动画器` | `play(name)`, `stop()`, `crossfade(name, time)` |
-| **Health** | `jiankang`, `vida` | `damage(amount)`, `heal(amount)`, `isDead` |
-| **AudioSource** | `sonido`, `audio` | `play()`, `stop()`, `volumen`, `bucle` |
-| **Attack** | `ataque`, `gongji` | `executeAttack(atk)`, `cooldown` |
-| **ProgressBar** | `barra`, `uiTiao` | `value`, `maxValue`, `materiaObjetivo` |
+- **`posicion` (变换)**：对象的 DNA。控制 `x`、`y`、`旋转`和`缩放`。
+- **`fisica` (刚体 2D)**：牛顿引擎。使用 `applyImpulse` 进行跳跃，使用 `velocity` 进行跑步。
+- **`vida` (生命值)**：管理生死。使用 `damage(10)` 或 `heal(5)`。
+- **`animacion` (动画器)**：电影导演。使用 `play("Run")` 来切换状态。
+- **`audio` (音频源)**：对象的嗓音。使用 `play()` 或 `stop()`。
 
 ---
 
-## 📡 6. 通信：全局消息
+## 📡 第七章：对象通信（全局消息）
 
-你想在 Boss 被击败时让所有敌人都死去吗？不要寻找复杂的引用，使用**消息**。
+忘记在整个层级结构中寻找对象吧。**全局消息**系统允许你的脚本在互不相识的情况下彼此对话。
 
-**在 Boss 脚本中：**
+**发送者：**
 ```ces
-alMorir() {
-    broadcast("BossDefeated", { bonus: 500 });
-}
+broadcast("LevelCompleted", { time: 45 });
 ```
 
-**在任何其他脚本中：**
+**接收者：**
 ```ces
-开始() {
-    onReceive("BossDefeated", (data) => {
-        imprimir("胜利！奖励：" + data.bonus);
-        destroy(mtr); // 对象自我销毁
-    });
-}
+onReceive("LevelCompleted", (数据) => {
+    打印("恭喜！你在 " + 数据.time + " 秒内完成了。");
+});
 ```
 
 ---
 
-## 🪄 7. 魔法函数与协程
+## 🪄 第八章：时间魔法（协程与循环）
 
-### ⏳ 协程 (`等待`)
-在不停止游戏的情况下暂停执行。非常适合序列：
+### 等待的艺术 (`等待`)
+在 CES 中，你可以暂停脚本逻辑而不冻结游戏。这对于过场动画或特效至关重要。
+
 ```ces
 async 开始() {
-    imprimir("启动序列...");
-    等待(2);
-    imprimir("已经过去了2秒！");
-    播放.Explosion();
+    打印("3...");
+    等待(1);
+    打印("2...");
+    等待(1);
+    打印("1...");
+    等待(1);
+    打印("开火！");
 }
 ```
 
-### 🔁 定时循环 (`cada`)
-干净地创建周期性事件：
+### 重复的力量 (`cada`)
+你需要每 5 秒生成一个金币吗？不要使用复杂的手动计数器：
+
 ```ces
 开始() {
-    cada(3) { // 每3秒
-        create enemyPrefab;
-        imprimir("一个新敌人出现了。");
+    cada(5) {
+        创建 金币预制件;
     }
 }
 ```
 
 ---
 
-## 🍳 8. 食谱 (Cookbook)
+## 🍳 第九章：解决方案食谱 (Cookbook)
 
-### 🏃 专业双重跳跃
+### 🏃 专业平台跳跃移动系统
 ```ces
 ve motor;
-publico 数字 最大跳跃次数 = 2;
-数字 剩余跳跃次数 = 2;
+publico 数字 速度 = 300;
+publico 数字 跳跃力 = 15;
 
 更新(delta) {
-    如果 (estaTocandoTag("Ground")) {
-        剩余跳跃次数 = 最大跳跃次数;
+    变量 水平 = 0;
+    如果 (teclaPresionada("d")) 水平 = 1;
+    如果 (teclaPresionada("a")) 水平 = -1;
+
+    物理.velocity.x = 水平 * (速度 * delta);
+
+    如果 (水平 != 0) {
+        水平翻转 = (水平 < 0);
+        播放.Walk();
+    } 否则 {
+        播放.Idle();
     }
 
-    如果 (teclaRecienPresionada("Space") 并且 剩余跳跃次数 > 0) {
-        fisica.velocity.y = -10; // 垂直冲力
-        剩余跳跃次数 -= 1;
-        播放.Salto();
+    如果 (teclaRecienPresionada("Space") 并且 正在触摸标签("Ground")) {
+        物理.applyImpulse(新建 Vector2(0, -跳跃力));
     }
 }
 ```
 
-### 🎥 平滑摄像机 (Smooth Follow)
+### 🎯 带冷却时间的射击系统
 ```ces
 ve motor;
-publico 物质 目标;
-publico 数字 平滑度 = 0.125;
+publico 预制件 子弹;
+publico 数字 射速 = 0.5;
+数字 下次射击时间 = 0;
 
 更新(delta) {
-    如果 (目标) {
-        variable 理想位置 = { x: 目标.posicion.x, y: 目标.posicion.y };
-        posicion.x += (理想位置.x - posicion.x) * 平滑度;
-        posicion.y += (理想位置.y - posicion.y) * 平滑度;
+    如果 (teclaPresionada("f") 并且 下次射击时间 <= 0) {
+        创建 子弹;
+        下次射击时间 = 射速;
+        播放.Shoot();
+    }
+
+    如果 (下次射击时间 > 0) {
+        下次射击时间 -= delta;
     }
 }
 ```
 
-### 🎒 简单背包系统
+### 🌊 温柔的漂浮效果 (UI)
 ```ces
 ve motor;
-variable 背包 = [];
+publico 数字 振幅 = 10;
+publico 数字 速度 = 2;
+数字 时间 = 0;
 
-alEntrarEnColision(otro) {
-    如果 (otro.hasTag("Item")) {
-        背包.push(otro.nombre);
-        imprimir("拾取了：" + otro.nombre + "。总计：" + 背包.length);
-        destruir(otro);
-    }
+更新(delta) {
+    时间 += delta * 速度;
+    位置.y += 正弦(时间) * 振幅;
 }
 ```
 
 ---
 
-## ⚙️ 9. 底层原理：转译器
+## ⚙️ 第十章：优化与最佳实践
 
-引擎使用一个**智能转译**系统。这意味着当你使用 CES 编写代码时，引擎会实时将你的代码翻译成高性能的优化 JavaScript。
+为了让你的游戏即使在移动端也能以 60 FPS 运行，请遵循以下建议：
 
-- **安全**：引擎在运行游戏前检测错误。
-- **速度**：在浏览器中原生运行，没有沉重的分层。
-- **灵活性**：如果你是专家，可以在 CES 脚本中使用任何 JavaScript 函数。
-
----
-
-## 🎨 10. 结语：你的极限就是你的想象力！
-
-**Creative Engine** 中的脚本编写旨在让你专注于有趣的部分：**创作**。一开始不必担心完美的语法；引擎会一路为你提供帮助。
-
-请记住：**每一个伟大的游戏都始于一行简单的代码。** 你的第一行会是什么？
-
-> “编程不在于你懂什么，而在于你能想象出什么。”
+1. **使用 `delta`**：始终将你的移动乘以 `delta`。这确保了你的游戏在高性能电脑和老旧电脑上以相同的速度运行。
+2. **避免在 `更新` 中使用 `搜索()`**：按名称搜索对象很慢。在 `开始` 中完成并在变量中保存结果。
+3. **对象池 (Pooling)**：与其销毁和创建数百个子弹，不如尝试重用它们。
+4. **碰撞层**：在项目设置中配置哪些对象与哪些对象发生碰撞，以节省处理能力。
 
 ---
-*需要更多帮助？访问我们的 Discord 社区或查阅 [组件指南](README_COMPONENTES.md)。*
+
+## 🎉 结语：你的旅程现在开始
+
+你已经读完了大师之书，但你作为开发者的故事才刚刚开始。**Creative Engine** 是画布，而你是艺术家。
+
+不要害怕实验。打破规则，组合组件，最重要的是，**享受乐趣**。如果你能想象它，你就能在这里编程。
+
+> “预测未来的最好方法就是创造它。” —— 彼得·德鲁克
+
+---
+*有问题吗？请咨询 [组件指南](README_COMPONENTES.md) 或加入我们的官方社区。*
