@@ -103,12 +103,26 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!consoleMessages) return;
 
         let fullMessage = message;
+        let structuredError = null;
+
+        // Detection of structured transpile errors
+        if (typeof message === 'object' && message !== null && message.message && message.line !== undefined) {
+            structuredError = message;
+            fullMessage = `[Línea ${message.line}] ${message.message}${message.word ? ` (Palabra: '${message.word}')` : ''}`;
+        }
 
         // Handle additional arguments
         if (args.length > 0) {
             args.forEach(arg => {
                 if (arg instanceof Error) {
-                    fullMessage += `\n${arg.stack || `${arg.name}: ${arg.message}`}`;
+                    // Clean stack trace for non-system errors
+                    let stack = arg.stack || `${arg.name}: ${arg.message}`;
+                    if (!isSystem) {
+                        stack = stack.split('\n')
+                            .filter(line => !line.includes('CreativeScript.initializeInstance') && !line.includes('startGame') && !line.includes('runChecksAndPlay'))
+                            .join('\n');
+                    }
+                    fullMessage += `\n${stack}`;
                 } else if (typeof arg === 'object') {
                     try {
                         fullMessage += ` ${JSON.stringify(arg, null, 2)}`;
@@ -143,14 +157,24 @@ document.addEventListener('DOMContentLoaded', () => {
         lastLogType = type;
         lastLogCount = 1;
 
-        const msgEl = document.createElement('div'); // Changed to div for potential multi-line content
+        const msgEl = document.createElement('div');
         msgEl.className = `console-msg log-${type}`;
         msgEl.dataset.category = isSystem ? 'system' : 'user';
-        msgEl.style.whiteSpace = 'pre-wrap'; // Preserve line breaks
+        msgEl.style.whiteSpace = 'pre-wrap';
 
-        const textSpan = document.createElement('span');
-        textSpan.textContent = `> ${fullMessage}`;
-        msgEl.appendChild(textSpan);
+        if (structuredError) {
+            msgEl.classList.add('structured-error');
+            const icon = type === 'error' ? '❌' : '⚠️';
+            msgEl.innerHTML = `<span class="msg-icon">${icon}</span> <span class="msg-text"><b>Error de Sintaxis:</b> ${fullMessage}</span>`;
+            if (structuredError.word) {
+                msgEl.style.borderLeft = "4px solid #ff4444";
+                msgEl.style.backgroundColor = "rgba(255, 68, 68, 0.1)";
+            }
+        } else {
+            const textSpan = document.createElement('span');
+            textSpan.textContent = `> ${fullMessage}`;
+            msgEl.appendChild(textSpan);
+        }
 
         consoleMessages.appendChild(msgEl);
 
@@ -1254,26 +1278,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 2. Transpilar cada archivo y recolectar errores
         const transpilationPromises = cesFiles.map(async ({ handle, dir }) => {
-            const file = await handle.getFile();
-            let code = await file.text();
+            try {
+                const file = await handle.getFile();
+                let code = await file.text();
 
-            // Si es CHC, cargar el código generado de la meta
-            if (handle.name.endsWith('.chc')) {
-                try {
-                    const metaHandle = await dir.getFileHandle(`${handle.name}.meta`);
-                    const metaFile = await metaHandle.getFile();
-                    const metaData = JSON.parse(await metaFile.text());
-                    code = metaData.generatedCode;
-                } catch (e) {
-                    console.warn(`CHC script ${handle.name} no ha sido traducido aún. Omitiendo.`);
-                    return;
+                // Si es CHC, cargar el código generado de la meta
+                if (handle.name.endsWith('.chc')) {
+                    try {
+                        const metaHandle = await dir.getFileHandle(`${handle.name}.meta`);
+                        const metaFile = await metaHandle.getFile();
+                        const metaData = JSON.parse(await metaFile.text());
+                        code = metaData.generatedCode;
+                    } catch (e) {
+                        console.warn(`CHC script ${handle.name} no ha sido traducido aún. Omitiendo.`);
+                        return;
+                    }
                 }
-            }
 
-            const result = CES_Transpiler.transpile(code, handle.name);
+                const result = CES_Transpiler.transpile(code, handle.name);
 
-            if (result.errors && result.errors.length > 0) {
-                allErrors.push({ fileName: handle.name, errors: result.errors });
+                if (result.errors && result.errors.length > 0) {
+                    allErrors.push({ fileName: handle.name, errors: result.errors });
+                }
+            } catch (err) {
+                console.error(`Error procesando script ${handle.name}:`, err);
+                allErrors.push({ fileName: handle.name, errors: [{ line: 0, message: err.message }] });
             }
         });
 
@@ -1288,9 +1317,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             console.error(`Build fallido. Se encontraron errores en ${allErrors.length} archivo(s):`);
             for (const fileErrors of allErrors) {
-                console.error(`\n--- Errores en ${fileErrors.fileName} ---`);
+                logToUIConsole(`Archivo: ${fileErrors.fileName}`, 'warn');
                 for (const error of fileErrors.errors) {
-                    console.error(`  - ${error}`);
+                    logToUIConsole(error, 'error', false);
                 }
             }
             // Cambiar a la pestaña de la consola para que los errores sean visibles

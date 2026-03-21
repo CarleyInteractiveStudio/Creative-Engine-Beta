@@ -7,6 +7,17 @@ const scriptMetadataMap = new Map(); // Nueva estructura para metadatos
 
 // --- Helper Functions ---
 
+function getLineNumber(code, index) {
+    const textBefore = code.substring(0, index);
+    return textBefore.split('\n').length;
+}
+
+function blankOut(code, start, end) {
+    const part = code.substring(start, end);
+    const blanked = part.replace(/[^\n\r]/g, ' ');
+    return code.substring(0, start) + blanked + code.substring(end);
+}
+
 const typeMap = {
     'number': 'number',
     'numero': 'number',
@@ -625,12 +636,15 @@ export function transpile(code, scriptName = 'unnamed.ces') {
         }
 
         if (bodyEndIndex === -1) {
-            errors.push(`Error: Método '${name}' no tiene una llave de cierre correspondiente.`);
+            errors.push({
+                line: getLineNumber(code, methodMatch.index),
+                message: `Método '${name}' no tiene una llave de cierre correspondiente.`,
+                word: name
+            });
             continue;
         }
 
         const body = tempCode.substring(bodyStartIndex, bodyEndIndex);
-        const fullMethodText = tempCode.substring(methodMatch.index, bodyEndIndex + 1);
 
         // Add to public functions if it's not a known internal/lifecycle method
         // In this engine, public methods don't necessarily need the 'funcion' keyword
@@ -648,10 +662,12 @@ export function transpile(code, scriptName = 'unnamed.ces') {
             publicFunctions.push(name);
         }
 
-        methodMatches.push({ name, args, body });
+        methodMatches.push({ name, args, body, index: methodMatch.index });
 
-        // Blank out the matched method to prevent it from being processed again
-        unprocessedCode = unprocessedCode.replace(fullMethodText, '');
+        // Blank out the matched method to prevent it from being processed again, preserving line numbers
+        unprocessedCode = blankOut(unprocessedCode, methodMatch.index, bodyEndIndex + 1);
+        // Important: we must also blank it in tempCode for the loop if we want to be safe,
+        // but since we use gm and global regex, exec handles the index.
     }
 
 
@@ -664,10 +680,14 @@ export function transpile(code, scriptName = 'unnamed.ces') {
         if (libName.startsWith('engine') || libName.startsWith('motor') || RuntimeAPIManager.getAPI(libName)) {
             importedLibs.add(libName);
         } else {
-            errors.push(`Error: La librería '${libName}' no se encontró o no está registrada.`);
+            errors.push({
+                line: getLineNumber(code, goMatch.index),
+                message: `La librería '${libName}' no se encontró o no está registrada.`,
+                word: libName
+            });
         }
+        unprocessedCode = blankOut(unprocessedCode, goMatch.index, goMatch.index + goMatch[0].length);
     }
-    unprocessedCode = unprocessedCode.replace(goRegex, '');
 
 
     // 1.c: Parse and remove public and private variables (multilingual with new syntax)
@@ -683,19 +703,22 @@ export function transpile(code, scriptName = 'unnamed.ces') {
 
         const canonicalType = typeMap[typeInput];
         if (!canonicalType) {
-            errors.push(`Error: Tipo de variable desconocido '${typeInput}' en la declaración de '${name}'.`);
-            continue;
-        }
-
-        const parsedValue = value ? parseInitialValue(value.trim(), canonicalType) : getDefaultValueForType(canonicalType);
-
-        if (scope === 'public') {
-            publicVars.push({ type: canonicalType, name: name, value: value, defaultValue: parsedValue });
+            errors.push({
+                line: getLineNumber(code, varMatch.index),
+                message: `Tipo de variable desconocido '${typeInput}' en la declaración de '${name}'.`,
+                word: typeInput
+            });
         } else {
-            privateVars.push({ name: name, value: value });
+            const parsedValue = value ? parseInitialValue(value.trim(), canonicalType) : getDefaultValueForType(canonicalType);
+
+            if (scope === 'public') {
+                publicVars.push({ type: canonicalType, name: name, value: value, defaultValue: parsedValue });
+            } else {
+                privateVars.push({ name: name, value: value });
+            }
         }
+        unprocessedCode = blankOut(unprocessedCode, varMatch.index, varMatch.index + varMatch[0].length);
     }
-    unprocessedCode = unprocessedCode.replace(varRegex, '');
 
 
     // Almacenar los metadatos de las variables públicas
@@ -741,10 +764,20 @@ export function transpile(code, scriptName = 'unnamed.ces') {
     }
 
     // 1.d: Final check for leftover code
-    unprocessedCode = unprocessedCode.replace(/\/\/.*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
-    if (unprocessedCode.trim() !== '') {
-        const firstInvalidLine = unprocessedCode.trim().split('\n')[0];
-        errors.push(`Error: Código inválido encontrado fuera de una declaración: "${firstInvalidLine}..."`);
+    // We must find the original index of the leftover code.
+    // unprocessedCode still has correct indices because we used blankOut.
+    const leftoverMatch = unprocessedCode.match(/[^\s]/);
+    if (leftoverMatch) {
+        const index = leftoverMatch.index;
+        const line = getLineNumber(code, index);
+        const text = unprocessedCode.substring(index).trim().split('\n')[0];
+        const firstWord = text.split(/\s+/)[0];
+
+        errors.push({
+            line: line,
+            message: `Código inválido o no reconocido fuera de una declaración: "${text.substring(0, 20)}${text.length > 20 ? '...' : ''}"`,
+            word: firstWord
+        });
     }
 
     if (errors.length > 0) {

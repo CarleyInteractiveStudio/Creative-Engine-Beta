@@ -7,6 +7,7 @@ import { undo, redo, indentWithTab } from "https://esm.sh/@codemirror/commands@6
 import { autocompletion, acceptCompletion } from "https://esm.sh/@codemirror/autocomplete@6.16.0";
 import { keymap } from "https://esm.sh/@codemirror/view@6.26.3";
 import { transpile } from './CES_Transpiler.js';
+import * as AutoReparator from './AutoReparator.js';
 import * as AIHandler from './AIHandler.js';
 import { getPreferences } from './ui/PreferencesWindow.js';
 
@@ -238,20 +239,72 @@ export async function saveCurrentScript() {
 
     try {
         const scriptContent = isChc ? dom.chcHumanText.value : codeEditor.state.doc.toString();
+
+        // --- Backup Logic ---
+        try {
+            const metaFileName = `${currentlyOpenFileHandle.name}.meta`;
+            let metaHandle;
+            try {
+                metaHandle = await currentlyOpenDirHandle.getFileHandle(metaFileName, { create: true });
+            } catch (e) {
+                // If it fails, maybe directory not reachable, ignore backup for now
+            }
+
+            if (metaHandle) {
+                const metaFile = await metaHandle.getFile();
+                const metaContentText = await metaFile.text();
+                let metaData = {};
+                try { metaData = JSON.parse(metaContentText); } catch(e) {}
+
+                if (!metaData.history) metaData.history = [];
+
+                // Read current file content to save as backup before overwriting
+                const currentFile = await currentlyOpenFileHandle.getFile();
+                const currentContent = await currentFile.text();
+
+                // Only add to history if content changed
+                if (currentContent !== scriptContent) {
+                    metaData.history.unshift({
+                        content: currentContent,
+                        timestamp: Date.now()
+                    });
+
+                    // Keep only last 10 versions
+                    if (metaData.history.length > 10) {
+                        metaData.history = metaData.history.slice(0, 10);
+                    }
+
+                    const metaWritable = await metaHandle.createWritable();
+                    await metaWritable.write(JSON.stringify(metaData, null, 2));
+                    await metaWritable.close();
+                }
+            }
+        } catch (backupError) {
+            console.warn("Backup error (non-fatal):", backupError);
+        }
+
         const writable = await currentlyOpenFileHandle.createWritable();
         await writable.write(scriptContent);
         await writable.close();
-        window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_SCRIPT_GUARDADO', "Script guardado correctamente")}: '${currentlyOpenFileHandle.name}'.`);
+
+        // window.Dialogs.showNotification removed here, will show specialized one below
 
         // Ahora, transpila y comprueba si hay errores
         console.clear(); // Limpia la consola antes de mostrar nuevos errores
         const result = transpile(scriptContent, currentlyOpenFileHandle.name);
         if (result.errors && result.errors.length > 0) {
             console.error(`${L.get('ERROR_COMPILACION', 'Errores de compilación en')} ${currentlyOpenFileHandle.name}:`);
-            result.errors.forEach(error => console.error(`- ${error}`));
+            result.errors.forEach(error => window.logToUIConsole(error, 'error', false));
+
+            window.Dialogs.showNotification(
+                L.get('AVISO', 'Aviso'),
+                `${L.get('EXITO_SCRIPT_GUARDADO', "Script guardado")} pero tiene ERRORES DE SINTAXIS. Revisa la consola.`,
+                'warning'
+            );
             showConsoleCallback(); // Muestra la consola al usuario
         } else {
             console.log(`${currentlyOpenFileHandle.name}: ${L.get('EXITO_COMPILACION', 'Script compilado exitosamente.')}`);
+            window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_SCRIPT_GUARDADO', "Script guardado correctamente")}: '${currentlyOpenFileHandle.name}'.`);
         }
 
     } catch (error) {
@@ -485,6 +538,94 @@ Por favor, devuelve solo el código corregido y funcional.`;
     }
 }
 
+export async function runAutoReparator() {
+    if (!currentlyOpenFileHandle) return;
+    const L = window.Localization;
+    const isChc = currentlyOpenFileHandle.name.endsWith('.chc');
+    const content = isChc ? dom.chcHumanText.value : codeEditor.state.doc.toString();
+
+    try {
+        const result = await AutoReparator.repair(content, currentlyOpenFileHandle.name);
+
+        if (result.code !== content) {
+            if (isChc) {
+                dom.chcHumanText.value = result.code;
+            } else if (codeEditor) {
+                codeEditor.dispatch({
+                    changes: { from: 0, to: codeEditor.state.doc.length, insert: result.code }
+                });
+            }
+
+            window.Dialogs.showNotification(
+                result.success ? L.get('EXITO', 'Éxito') : L.get('AVISO', 'Aviso'),
+                result.message
+            );
+        } else {
+            window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('NADA_QUE_REPARAR', 'No se encontraron errores obvios que reparar.'));
+        }
+    } catch (e) {
+        console.error("AutoReparator Error:", e);
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), "Fallo al ejecutar el Auto Reparator.");
+    }
+}
+
+export async function showScriptHistory() {
+    if (!currentlyOpenFileHandle) return;
+    const L = window.Localization;
+
+    try {
+        const metaFileName = `${currentlyOpenFileHandle.name}.meta`;
+        const metaHandle = await currentlyOpenDirHandle.getFileHandle(metaFileName);
+        const metaFile = await metaHandle.getFile();
+        const metaData = JSON.parse(await metaFile.text());
+
+        const history = metaData.history || [];
+        const historyList = document.getElementById('script-history-list');
+        const modal = document.getElementById('script-history-modal');
+
+        historyList.innerHTML = '';
+
+        if (history.length === 0) {
+            historyList.innerHTML = `<div class="empty-list-msg">${L.get('SIN_HISTORIAL', 'No hay versiones anteriores guardadas.')}</div>`;
+        } else {
+            history.forEach((entry, index) => {
+                const item = document.createElement('div');
+                item.className = 'dialog-selection-item';
+                const date = new Date(entry.timestamp).toLocaleString();
+                item.innerHTML = `
+                    <div class="item-info">
+                        <span class="item-name">${L.get('VERSION', 'Versión')} ${history.length - index}</span>
+                        <span class="item-details">${date}</span>
+                    </div>
+                    <button class="restore-btn primary-btn" style="padding: 4px 8px; font-size: 0.8em;">${L.get('RESTAURAR', 'Restaurar')}</button>
+                `;
+
+                item.querySelector('.restore-btn').onclick = () => {
+                    const isChc = currentlyOpenFileHandle.name.endsWith('.chc');
+                    if (isChc) {
+                        dom.chcHumanText.value = entry.content;
+                    } else if (codeEditor) {
+                        codeEditor.dispatch({
+                            changes: { from: 0, to: codeEditor.state.doc.length, insert: entry.content }
+                        });
+                    }
+                    modal.classList.add('hidden');
+                    window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), L.get('VERSION_RESTAURADA', 'Versión restaurada en el editor. Recuerda guardar para aplicar los cambios.'));
+                };
+
+                historyList.appendChild(item);
+            });
+        }
+
+        modal.classList.remove('hidden');
+        window.bringToFront(modal);
+
+    } catch (e) {
+        console.error("Error al cargar historial:", e);
+        window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('SIN_HISTORIAL', 'No hay versiones anteriores guardadas para este archivo.'));
+    }
+}
+
 export function initialize(domCache, showConsole, hotReload) {
     dom = domCache;
     showConsoleCallback = showConsole; // Almacena el callback
@@ -494,6 +635,16 @@ export function initialize(domCache, showConsole, hotReload) {
     dom.codeSaveBtn.addEventListener('click', () => saveCurrentScript());
     dom.codeUndoBtn.addEventListener('click', () => undoLastChange());
     dom.codeRedoBtn.addEventListener('click', () => redoLastChange());
+
+    const historyBtn = document.getElementById('code-history-btn');
+    if (historyBtn) {
+        historyBtn.addEventListener('click', () => showScriptHistory());
+    }
+
+    const repairBtn = document.getElementById('code-reparar-btn');
+    if (repairBtn) {
+        repairBtn.addEventListener('click', () => runAutoReparator());
+    }
 
     // CHC specific
     if (dom.chcRunBtn) {

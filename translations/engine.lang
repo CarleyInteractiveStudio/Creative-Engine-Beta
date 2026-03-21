@@ -391,6 +391,16 @@ SCROLL_VIEW: Vista de Desplazamiento
 TARGET_MATERIA: Materia Objetivo
 FILL_MATERIA: Materia Relleno
 ORIENTATION: Orientación
+REPARAR: Reparar
+HISTORIAL_SCRIPT: Historial de Versiones
+SELECCIONAR_VERSION_HINT: Selecciona una versión para restaurarla. Se conservan las últimas 10.
+SIN_HISTORIAL: No hay versiones anteriores guardadas para este archivo.
+VERSION: Versión
+RESTAURAR: Restaurar
+VERSION_RESTAURADA: Versión restaurada en el editor. Recuerda guardar para aplicar los cambios.
+NADA_QUE_REPARAR: No se encontraron errores obvios que reparar.
+REPARACION_EXITOSA: Código reparado con éxito.
+REPARACION_PARCIAL: Se realizaron correcciones, pero aún quedan errores complejos.
 
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
@@ -859,6 +869,16 @@ SCROLL_VIEW: Scroll View
 TARGET_MATERIA: Target Matter
 FILL_MATERIA: Fill Matter
 ORIENTATION: Orientation
+REPARAR: Repair
+HISTORIAL_SCRIPT: Version History
+SELECCIONAR_VERSION_HINT: Select a version to restore it. The last 10 are kept.
+SIN_HISTORIAL: No previous versions saved for this file.
+VERSION: Version
+RESTAURAR: Restore
+VERSION_RESTAURADA: Version restored in the editor. Remember to save to apply changes.
+NADA_QUE_REPARAR: No obvious errors found to repair.
+REPARACION_EXITOSA: Code repaired successfully.
+REPARACION_PARCIAL: Corrections were made, but complex errors remain.
 
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
