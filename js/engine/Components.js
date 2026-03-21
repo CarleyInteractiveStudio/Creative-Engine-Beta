@@ -985,18 +985,18 @@ export class CreativeScript extends Leyes {
                     onDisable: ['alDeshabilitar', 'desactivar'],
                     onDestroy: ['alDestruir'],
                     fixedUpdate: ['actualizarFijo'],
-                    alEntrarEnColision: ['OnCollisionEnter'],
+                    alEntrarEnColision: ['OnCollisionEnter', 'alChocar'],
                     alPermanecerEnColision: ['OnCollisionStay'],
                     alSalirDeColision: ['OnCollisionExit'],
                     alEntrarEnTrigger: ['OnTriggerEnter'],
                     alPermanecerEnTrigger: ['OnTriggerStay'],
                     alSalirDeTrigger: ['OnTriggerExit'],
                     alFinalizarAnimacion: ['OnAnimationEnd'],
-                    onPointerDown: ['alPresionar'],
+                    onPointerDown: ['alPresionar', 'alPulsar'],
                     onPointerUp: ['alSoltar'],
                     onPointerEnter: ['alEntrar'],
                     onPointerExit: ['alSalir'],
-                    onPointerClick: ['alHacerClick'],
+                    onPointerClick: ['alHacerClick', 'alClicar'],
                     onPointerDrag: ['alDeslizar'],
                     onPointerHold: ['alMantener']
                 };
@@ -1149,6 +1149,14 @@ export class Rigidbody2D extends Leyes {
 
     get velocidad() { return this.velocity; }
     set velocidad(v) { this.velocity = v; }
+    get velocidadX() { return this.velocity.x; }
+    set velocidadX(v) { this.velocity.x = v; }
+    get velocidadY() { return this.velocity.y; }
+    set velocidadY(v) { this.velocity.y = v; }
+    get velocityX() { return this.velocity.x; }
+    set velocityX(v) { this.velocity.x = v; }
+    get velocityY() { return this.velocity.y; }
+    set velocityY(v) { this.velocity.y = v; }
     get velocidadAngular() { return this.angularVelocity; }
     set velocidadAngular(v) { this.angularVelocity = v; }
     get masa() { return this.mass; }

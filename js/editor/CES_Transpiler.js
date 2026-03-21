@@ -249,7 +249,8 @@ const componentShortcuts = [
     'agilidadGiro', 'arrastreAire', 'potenciaDespegue', 'autoEstabilizar', 'estabilidad', 'teclaDescenso', 'teclaGiroIzquierda', 'teclaGiroDerecha',
     'teclaBotonFreno', 'frenoEspacio', 'teclaPresionada', 'teclaRecienPresionada', 'teclaLiberada', 'tecla',
     'botonMousePresionado', 'botonMouseRecienPresionado', 'botonMouseLiberado', 'obtenerPosicionMouse',
-    'rotacion', 'rotation', 'escala', 'scale', 'rotar', 'rotate', 'mover', 'move', 'escalar'
+    'rotacion', 'rotation', 'escala', 'scale', 'rotar', 'rotate', 'mover', 'move', 'escalar',
+    'velocidadX', 'velocidadY', 'velocityX', 'velocityY', 'alChocar', 'alClicar', 'alPulsar'
 ];
 
 function getDefaultValueForType(canonicalType) {
@@ -436,6 +437,15 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
     body = body.replace(new RegExp(`${PUB} 和 ${UB}`, 'g'), ' && '); // ZH
     body = body.replace(new RegExp(`${PUB} 或 ${UB}`, 'g'), ' || '); // ZH
 
+    // 2.b.2: Comparison Operators (Spanish)
+    body = body.replace(new RegExp(`${PUB}igual a${UB}`, 'gi'), ' === ');
+    body = body.replace(new RegExp(`${PUB}diferente a${UB}`, 'gi'), ' !== ');
+    body = body.replace(new RegExp(`${PUB}menor o igual a${UB}`, 'gi'), ' <= ');
+    body = body.replace(new RegExp(`${PUB}mayor o igual a${UB}`, 'gi'), ' >= ');
+    body = body.replace(new RegExp(`${PUB}menor a${UB}`, 'gi'), ' < ');
+    body = body.replace(new RegExp(`${PUB}mayor a${UB}`, 'gi'), ' > ');
+    body = body.replace(new RegExp(`${PUB}es${UB}`, 'gi'), ' === ');
+
     // 2.c: Coroutines support
     body = body.replace(/(?<![.\w])(esperar|aguardar|ждать|等待)\s*\(/g, 'await this.esperar(');
 
@@ -451,7 +461,8 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
     });
 
     // 2.d.1: Handle mtr. / materia. prefix mapping to this. for shortcuts
-    body = body.replace(/(?<![\w\u00C0-\u017Fа-яА-Я一-龥])(mtr|materia|matéria|материя|物质)\.([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)/g, (match, p1, p2) => {
+    // Use (?<![.\w]) to ensure we don't match properties of other objects (like col.materia.nombre)
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])(mtr|materia|matéria|материя|物质)\.([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)/g, (match, p1, p2) => {
         if (componentShortcuts.includes(p2)) {
             return `this.${p2}`;
         }
