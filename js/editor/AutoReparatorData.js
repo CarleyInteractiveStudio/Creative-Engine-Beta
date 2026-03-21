@@ -10,7 +10,7 @@ export const examples = [
     },
     {
         title: "Plataformero Básico",
-        code: `ve motor;\npublico numero fuerzaSalto = 10;\npublico numero velocidad = 5;\nalActualizar(delta) {\n    si (teclaPresionada("d")) posicion.x += velocidad;\n    si (teclaPresionada("a")) posicion.x -= velocidad;\n    si (teclaRecienPresionada("Space") && estaTocandoSuelo) fisica.applyImpulse(nuevo Vector2(0, -fuerzaSalto));\n}`
+        code: `ve motor;\npublico numero velocidad = 300;\npublico numero fuerzaSalto = 15;\nalActualizar(delta) {\n    variable horizontal = 0;\n    si (teclaPresionada("d")) horizontal = 1;\n    si (teclaPresionada("a")) horizontal = -1;\n    fisica.velocity.x = horizontal * (velocidad * delta);\n    si (horizontal != 0) {\n        voltearH = (horizontal < 0);\n        reproducir.Caminar();\n    } sino {\n        reproducir.Idle();\n    }\n    si (teclaRecienPresionada("Space") && estaTocandoTag("Suelo")) {\n        fisica.applyImpulse(nuevo Vector2(0, -fuerzaSalto));\n    }\n}`
     },
     {
         title: "Rotación hacia el Mouse",

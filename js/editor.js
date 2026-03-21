@@ -187,16 +187,24 @@ document.addEventListener('DOMContentLoaded', () => {
         msgEl.dataset.category = isSystem ? 'system' : 'user';
         msgEl.style.whiteSpace = 'pre-wrap';
 
+        const iconMap = {
+            'log': '🔵',
+            'warn': '⚠️',
+            'error': '❌'
+        };
+
         if (structuredError) {
             msgEl.classList.add('structured-error');
-            const icon = type === 'error' ? '❌' : '⚠️';
+            const icon = iconMap[type] || '❌';
             const title = structuredError.scriptName ? 'Error de Ejecución' : 'Error de Sintaxis';
 
             let actionButtons = '';
-            if (structuredError.scriptName) {
+            // Show action buttons for both syntax (transpile) and runtime errors if filename is known
+            const targetFile = structuredError.scriptName;
+            if (targetFile) {
                 actionButtons = `
                     <div class="msg-actions">
-                        <button class="console-action-btn" onclick="window._CodeEditor.openScriptAtLine('${structuredError.scriptName}', ${structuredError.line})">Ir a la línea</button>
+                        <button class="console-action-btn" onclick="window._CodeEditor.openScriptAtLine('${targetFile}', ${structuredError.line || 1})">Ir a la línea</button>
                         <button class="console-action-btn special" onclick="window._CodeEditor.runAutoReparator()">Auto Reparar</button>
                     </div>
                 `;
@@ -211,11 +219,18 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
 
             msgEl.style.borderLeft = type === 'error' ? "4px solid #ff4444" : "4px solid #f3ca58";
-            msgEl.style.backgroundColor = type === 'error' ? "rgba(255, 68, 68, 0.1)" : "rgba(243, 202, 88, 0.1)";
+            msgEl.style.backgroundColor = type === 'error' ? "rgba(255, 68, 68, 0.15)" : "rgba(243, 202, 88, 0.15)";
         } else {
-            const textSpan = document.createElement('span');
-            textSpan.textContent = `> ${fullMessage}`;
-            msgEl.appendChild(textSpan);
+            const icon = iconMap[type] || '>';
+            msgEl.innerHTML = `<span class="msg-icon">${icon}</span> <span class="msg-text">${fullMessage}</span>`;
+
+            if (type === 'error') {
+                msgEl.style.backgroundColor = "rgba(255, 68, 68, 0.1)";
+                msgEl.style.borderLeft = "3px solid #ff4444";
+            } else if (type === 'warn') {
+                msgEl.style.backgroundColor = "rgba(243, 202, 88, 0.1)";
+                msgEl.style.borderLeft = "3px solid #f3ca58";
+            }
         }
 
         consoleMessages.appendChild(msgEl);
@@ -3731,6 +3746,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
         window.TilePalette = TilePalette;
         window.SkeletonImporter = SkeletonImporter;
         window.CarlAgent = CarlAgent;
+        window.bringToFront = bringToFront;
 
         // --- Carl Agent Integration ---
         CarlAgent.initialize(dom);

@@ -426,6 +426,16 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
     body = body.replace(new RegExp(`${PUB}真${UB}`, 'g'), 'true');
     body = body.replace(new RegExp(`${PUB}假${UB}`, 'g'), 'false');
 
+    // 2.b.1: Logical Operators (Multilingual)
+    body = body.replace(new RegExp(`${PUB} y ${UB}`, 'g'), ' && ');
+    body = body.replace(new RegExp(`${PUB} o ${UB}`, 'g'), ' || ');
+    body = body.replace(new RegExp(`${PUB} e ${UB}`, 'g'), ' && '); // PT
+    body = body.replace(new RegExp(`${PUB} ou ${UB}`, 'g'), ' || '); // PT
+    body = body.replace(new RegExp(`${PUB} и ${UB}`, 'g'), ' && '); // RU
+    body = body.replace(new RegExp(`${PUB} или ${UB}`, 'g'), ' || '); // RU
+    body = body.replace(new RegExp(`${PUB} 和 ${UB}`, 'g'), ' && '); // ZH
+    body = body.replace(new RegExp(`${PUB} 或 ${UB}`, 'g'), ' || '); // ZH
+
     // 2.c: Coroutines support
     body = body.replace(/(?<![.\w])(esperar|aguardar|ждать|等待)\s*\(/g, 'await this.esperar(');
 
@@ -749,8 +759,9 @@ export function transpile(code, scriptName = 'unnamed.ces') {
         body = transpileBlock(body, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager, customFunctions);
 
         // 2.g: Map multilingual lifecycle methods to their English counterparts
-        if (name === 'iniciar' || name === 'alEmpezar' || name === 'começar' || name === 'начать' || name === '开始') name = 'start';
-        if (name === 'actualizar' || name === 'alActualizar' || name === 'atualizar' || name === 'обновить' || name === '更新') name = 'update';
+        const lowerName = name.toLowerCase();
+        if (name === 'iniciar' || name === 'alEmpezar' || lowerName === 'alempezar' || name === 'começar' || name === 'начать' || name === '开始') name = 'start';
+        if (name === 'actualizar' || name === 'alActualizar' || lowerName === 'alactualizar' || name === 'atualizar' || name === 'обновить' || name === '更新') name = 'update';
 
         if (name === 'start') {
             startMethod = body + '\n' + (rootCadaCode || '');
@@ -772,7 +783,13 @@ export function transpile(code, scriptName = 'unnamed.ces') {
     // 1.d: Final check for leftover code
     // We must find the original index of the leftover code.
     // unprocessedCode still has correct indices because we used blankOut.
-    const leftoverMatch = unprocessedCode.match(/[^\s]/);
+
+    // First, blank out comments in the leftover code to ignore them
+    let finalCheckCode = unprocessedCode.replace(/\/\/.*|\/\*[\s\S]*?\*\//g, (match) => {
+        return " ".repeat(match.length);
+    });
+
+    const leftoverMatch = finalCheckCode.match(/[^\s]/);
     if (leftoverMatch) {
         const index = leftoverMatch.index;
         const line = getLineNumber(code, index);

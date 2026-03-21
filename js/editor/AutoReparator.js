@@ -47,8 +47,8 @@ export async function repair(code, fileName, runtimeError = null) {
         'si': ['if'],
         'sino': ['else'],
         've motor;': ['ve motor', 'go motor', 'engine', 'import motor'],
-        'alActualizar': ['actualizar', 'onUpdate', 'update'],
-        'alEmpezar': ['alInicio', 'onStart', 'start', 'iniciar'],
+        'alActualizar': ['actualizar', 'alactualizar', 'onUpdate', 'update'],
+        'alEmpezar': ['alInicio', 'alempezar', 'onStart', 'start', 'iniciar'],
         'materia': ['objeto', 'mtr', 'this'],
         'posicion': ['position', 'pos'],
         'fisica': ['physics', 'rigidbody', 'física'],
@@ -63,9 +63,56 @@ export async function repair(code, fileName, runtimeError = null) {
         }
     }
 
-    // 2. Ensure 've motor;' exists
-    if (!repairedCode.trim().startsWith('ve motor;')) {
+    // 2. Ensure 've motor;' exists (avoid duplicates)
+    if (!repairedCode.toLowerCase().includes('ve motor;')) {
         repairedCode = 've motor;\n' + repairedCode;
+    }
+
+    // 2.b: Structural Analysis with Examples (Advanced Matcher)
+    console.log("[AutoReparator] Buscando coincidencias en la base de datos de ejemplos...");
+    let bestExample = null;
+    let maxMatch = 0;
+
+    examples.forEach(ex => {
+        // Simple word-overlap score
+        const exWords = ex.code.toLowerCase().match(/\w+/g) || [];
+        const codeWords = repairedCode.toLowerCase().match(/\w+/g) || [];
+        const overlap = exWords.filter(w => codeWords.includes(w)).length;
+        const score = overlap / exWords.length;
+        if (score > maxMatch) {
+            maxMatch = score;
+            bestExample = ex;
+        }
+    });
+
+    if (bestExample && maxMatch > 0.6) {
+        console.log(`[AutoReparator] Coincidencia encontrada con: ${bestExample.title} (Score: ${maxMatch.toFixed(2)})`);
+        // If the code is very broken (transpilation fails), we try to merge the user variables with the example's structure
+        const validation = transpile(repairedCode, fileName);
+        if (validation.errors && validation.errors.length > 0) {
+            console.log("[AutoReparator] El código está muy dañado. Intentando reconstrucción estructural...");
+
+            // Extract user variables
+            const userVars = repairedCode.match(/publico\s+\w+\s+\w+\s*=\s*[^;]+;/g) || [];
+            let structuralBase = bestExample.code;
+
+            // If the example already has the same variable names, we keep user values
+            userVars.forEach(v => {
+                const nameMatch = v.match(/publico\s+\w+\s+(\w+)\s*=/);
+                if (nameMatch) {
+                    const varName = nameMatch[1];
+                    const regex = new RegExp(`publico\\s+\\w+\\s+${varName}\\s*=\\s*[^;]+;`, 'g');
+                    if (structuralBase.match(regex)) {
+                        structuralBase = structuralBase.replace(regex, v);
+                    } else {
+                        // Insert after imports if it's a new variable
+                        structuralBase = structuralBase.replace('ve motor;', `ve motor;\n${v}`);
+                    }
+                }
+            });
+
+            repairedCode = structuralBase;
+        }
     }
 
     // 3. Simple Brackets & Semicolons pattern fixing
