@@ -8,6 +8,7 @@ En este "libro" digital, exploraremos desde los cimientos de la lógica hasta la
 
 ## 📖 Tabla de Contenidos
 
+0. [Capítulo 0: Tu Primer Script en 60 Segundos](#capítulo-0-tu-primer-script-en-60-segundos)
 1. [Capítulo 1: La Filosofía del Motor](#capítulo-1-la-filosofía-del-motor)
 2. [Capítulo 2: Anatomía de un Script](#capítulo-2-anatomía-de-un-script)
 3. [Capítulo 3: Variables y el Inspector Dinámico](#capítulo-3-variables-y-el-inspector-dinámico)
@@ -18,6 +19,29 @@ En este "libro" digital, exploraremos desde los cimientos de la lógica hasta la
 8. [Capítulo 8: Magia Temporal (Corrutinas y Bucles)](#capítulo-8-magia-temporal-corrutinas-y-bucles)
 9. [Capítulo 9: El Recetario de Soluciones (Cookbook)](#capítulo-9-el-recetario-de-soluciones-cookbook)
 10. [Capítulo 10: Optimización y Mejores Prácticas](#capítulo-10-optimización-y-mejores-prácticas)
+11. [Capítulo 11: Solución de Problemas y FAQ](#capítulo-11-solución-de-problemas-y-faq)
+
+---
+
+## ⚡ Capítulo 0: Tu Primer Script en 60 Segundos
+
+¿Quieres ver resultados ya? Sigue estos pasos:
+
+1. En el **Navegador de Assets**, haz clic derecho y selecciona **Nuevo > Script (CES)**. Ponle de nombre `HolaMundo.ces`.
+2. Haz doble clic para abrirlo y pega este código:
+```ces
+ve motor;
+
+alEmpezar() {
+    imprimir("¡El motor está vivo!");
+}
+
+alActualizar(delta) {
+    rotacion += 100 * delta; // ¡Hará que el objeto gire!
+}
+```
+3. Arrastra ese archivo desde la biblioteca hacia cualquier objeto (una imagen o un cuadrado) en tu escena.
+4. ¡Dale a **Play**! 🚀
 
 ---
 
@@ -69,7 +93,7 @@ Un juego es una ilusión creada por imágenes que cambian rápidamente. Tu scrip
 
 1. **`alEmpezar()`**: Tu oportunidad de oro para configurar el objeto. Se ejecuta una sola vez.
 2. **`alActualizar(delta)`**: Ocurre aproximadamente 60 veces por segundo. Aquí es donde procesas el movimiento y la lógica constante.
-3. **`actualizarFijo(delta)`**: El motor de física corre aquí. Úsalo para fuerzas constantes para evitar que los objetos "atraviesen" paredes.
+3. **`actualizarFijo(delta)`**: El motor de física corre aquí. Úsalo para fuerzas constantes para evitar que los objetos "atravessem" paredes.
 4. **`alHacerClick()` / `alPresionar()`**: La respuesta directa al toque del jugador.
 
 ---
@@ -116,7 +140,7 @@ Olvídate de buscar objetos por toda la jerarquía. El sistema de **Mensajería 
 difundir("NivelCompletado", { tiempo: 45 });
 ```
 
-**Receptor:**
+**Recetor:**
 ```ces
 alRecibir("NivelCompletado", (datos) => {
     imprimir("¡Felicidades! Lo lograste en " + datos.tiempo + " segundos.");
@@ -203,16 +227,15 @@ alActualizar(delta) {
 }
 ```
 
-### 🌊 Efecto de Flotación Suave (UI)
+### 🔘 Botón UI Interactable
 ```ces
 ve motor;
-publico numero amplitud = 10;
-publico numero velocidad = 2;
-numero tiempo = 0;
+publico texto mensajeAlClicar = "¡Hola!";
 
-alActualizar(delta) {
-    tiempo += delta * velocidad;
-    posicion.y += seno(tiempo) * amplitud;
+alHacerClick() {
+    textoUI.text = mensajeAlClicar;
+    reproducir.ClickSound();
+    imprimir("Botón presionado");
 }
 ```
 
@@ -226,6 +249,22 @@ Para que tu juego corra a 60 FPS incluso en móviles, sigue estos consejos:
 2. **Evita `buscar()` en `alActualizar`**: Buscar objetos por nombre es lento. Hazlo en `alEmpezar` y guarda el resultado en una variable.
 3. **Pooling**: En lugar de destruir y crear cientos de balas, intenta reutilizarlas.
 4. **Capas de Colisión**: Configura en los ajustes del proyecto qué objetos chocan con cuáles para ahorrar procesador.
+
+---
+
+## 🛠️ Capítulo 11: Solución de Problemas y FAQ
+
+**P: Mi script no hace nada.**
+R: Asegúrate de que la primera línea sea `ve motor;` y que el script esté asignado a un objeto activo en la escena.
+
+**P: El Inspector no muestra mis variables.**
+R: Debes declararlas con la palabra `publico` antes del tipo (ej: `publico numero velocidad = 10;`).
+
+**P: ¿Puedo usar JavaScript normal?**
+R: ¡Sí! CES es una capa sobre JS. Puedes usar `Math.random()`, `Array.push()`, etc.
+
+**P: ¿Cómo destruyo el objeto actual?**
+R: Usa `destruir(mtr);` o simplemente `destruir(materia);`.
 
 ---
 

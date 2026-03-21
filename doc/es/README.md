@@ -1,35 +1,48 @@
 # Creative Engine 🎨🚀
 
-Creative Engine es un motor de videojuegos 2D profesional y ligero, diseñado para creadores que buscan una experiencia fluida y potente directamente en el navegador.
-
-## ✨ Características Destacadas
-
-### 🖥️ Editor de Clase Mundial
-- **Interfaz SVG:** Sin emojis, solo iconos vectoriales profesionales.
-- **VidSpri:** Convierte videos a secuencias de sprites optimizadas.
-- **Multilenguaje:** Traducido al Español, Inglés, Portugués, Ruso y Chino.
-
-### 🚗 Vehículos y Física Realista
-- **Simulación Avanzada:** Controladores para Helicópteros, Aviones y Coches (Top-Down).
-- **Agua (Water):** Fluidos basados en partículas con flotabilidad dinámica.
-- **Suspensión HC:** Sistema de muelles para vehículos tipo Hill Climb.
-
-### 🦴 Animación y Skinning
-- **Esqueleto 2D:** Deforma imágenes usando huesos y pesos.
-- **IK (Cinemática Inversa):** Mueve extremidades de forma realista.
-- **Smart Animator:** Cambio automático de animaciones según el movimiento.
-
-### 🤖 Inteligencia Artificial con Carl IA
-- **Asistente Autónomo:** Carl puede crear escenas completas por ti mediante planes de acción.
-- **CHC (Code Helper):** Traduce tus ideas a código .ces instantáneamente.
-
-## 📚 Documentación Técnica
-
-- **[Guía de Componentes (Leyes)](README_COMPONENTES.md):** Diccionario de todos los componentes y vehículos.
-- **[Guía de Scripting (CES)](README_SCRIPTING.md):** Manual del lenguaje bilingüe del motor.
-- **[Guía de Editores Visuales](README_EDITORES_VISUALES.md):** Animación, Tiles, Terreno y VidSpri.
-- **[Manual de Carl IA](README_CARL_IA.md):** Cómo usar la IA para acelerar tu desarrollo.
-- **[Gestión Avanzada](README_AVANZADO.md):** Prefabs, Escenas y Sistema de Build.
+¡Bienvenido al centro de conocimiento de **Creative Engine**! Aquí encontrarás todo lo que necesitas para transformar tus ideas en realidades interactivas. Nuestra documentación está diseñada para ser tu compañera constante, desde tus primeros pasos hasta el lanzamiento de tu gran proyecto.
 
 ---
-*Desarrollado por Carley Interactive Studio.*
+
+## 📚 Secciones de la Documentación
+
+### 📕 [El Libro Maestro del Scripting (CES)](README_SCRIPTING.md)
+**Nuestra joya de la corona.** Un manual completo en 12 capítulos que te enseña a programar desde cero usando el potente lenguaje CES. Incluye:
+- Conceptos básicos y filosofía.
+- Referencia completa de la API.
+- **Cookbook:** Recetas de código listas para usar (movimiento, disparo, UI).
+- Guía de optimización.
+
+### 🧩 [Guía de Componentes (Leyes)](README_COMPONENTES.md)
+Un diccionario detallado de todas las "Leyes" que puedes aplicar a tus objetos:
+- Físicas y Colisiones.
+- Renderizado de Sprites y Video.
+- Controladores de Vehículos (Helicópteros, Aviones, Coches).
+- Sistemas de Iluminación 2D.
+
+### 🎨 [Guía de Editores Visuales](README_EDITORES_VISUALES.md)
+Aprende a usar las potentes herramientas visuales integradas:
+- **Editor de Animaciones:** Crea secuencias fluidas.
+- **Tilemap Editor:** Construye niveles basados en rejillas.
+- **VidSpri:** El secreto para convertir videos en sprites ligeros.
+
+### 🤖 [Manual de Carl IA](README_CARL_IA.md)
+Descubre cómo trabajar codo con codo con Carl, tu asistente inteligente capaz de construir escenas y escribir código por ti mediante lenguaje natural.
+
+### ⚙️ [Gestión Avanzada y Configuración](README_AVANZADO.md)
+Para los desarrolladores que quieren llegar más lejos:
+- Creación y gestión de Prefabs.
+- Sistema de Build y exportación.
+- Configuración global del proyecto y capas.
+
+---
+
+## 🚀 ¿Por dónde empezar?
+
+Si eres nuevo, te recomendamos seguir este orden:
+1. Lee el **Capítulo 0** del [Libro Maestro del Scripting](README_SCRIPTING.md) para ver tu primer código funcionando.
+2. Explora la [Guía de Componentes](README_COMPONENTES.md) para entender qué puede hacer tu objeto.
+3. ¡Empieza a crear y diviértete!
+
+---
+*Desarrollado con ❤️ por Carley Interactive Studio.*

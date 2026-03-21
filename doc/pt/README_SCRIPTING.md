@@ -8,16 +8,40 @@ Neste "livro" digital, exploraremos desde os alicerces da lógica até as arquit
 
 ## 📖 Tabela de Conteúdos
 
+0. [Capítulo 0: Seu Primeiro Script em 60 Segundos](#capítulo-0-seu-primeiro-script-em-60-segundos)
 1. [Capítulo 1: A Filosofia do Motor](#capítulo-1-a-filosofia-do-motor)
 2. [Capítulo 2: Anatomia de um Script](#capítulo-2-anatomia-de-um-script)
 3. [Capítulo 3: Variáveis e o Inspetor Dinâmico](#capítulo-3-variáveis-e-o-inspetor-dinâmico)
 4. [Capítulo 4: O Ritmo do Jogo (Ciclo de Vida)](#capítulo-4-o-ritmo-do-jogo-ciclo-de-vida)
 5. [Capítulo 5: Interação Total (Input e Físicas)](#capítulo-5-interação-total-input-e-físicas)
-6. [Capítulo 6: O Dicionário de Componentes (Referência API)](#capítulo-6-o-dicionário-de-componentes-referência-api)
+6. [Capítulo 6: O Dicionário de Componentes (Referencia API)](#capítulo-6-o-dicionário-de-componentes-referencia-api)
 7. [Capítulo 7: Comunicação entre Objetos (Mensagens Globais)](#capítulo-7-comunicação-entre-objetos-mensagens-globais)
 8. [Capítulo 8: Magia Temporal (Corrotinas e Loops)](#capítulo-8-magia-temporal-corrotinas-e-loops)
 9. [Capítulo 9: O Receituário de Soluções (Cookbook)](#capítulo-9-o-receituário-de-soluções-cookbook)
 10. [Capítulo 10: Otimização e Melhores Práticas](#capítulo-10-otimização-e-melhores-práticas)
+11. [Capítulo 11: Solução de Problemas e FAQ](#capítulo-11-solução-de-problemas-e-faq)
+
+---
+
+## ⚡ Capítulo 0: Seu Primeiro Script em 60 Segundos
+
+Quer ver resultados agora? Siga estes passos:
+
+1. No **Navegador de Assets**, clique com o botão direito e selecione **Novo > Script (CES)**. Nomeie como `OlaMundo.ces`.
+2. Clique duas vezes para abrir e cole este código:
+```ces
+ve motor;
+
+alEmpezar() {
+    imprimir("O motor está vivo!");
+}
+
+alActualizar(delta) {
+    rotacao += 100 * delta; // Fará o objeto girar!
+}
+```
+3. Arraste esse arquivo da biblioteca para qualquer objeto (uma imagem ou um quadrado) na sua cena.
+4. Clique em **Play**! 🚀
 
 ---
 
@@ -50,7 +74,7 @@ O poder do Creative Engine reside no seu **Inspetor**. Ao declarar variáveis co
 ### Tipos de Dados Suportados:
 - **`numero`**: Para velocidades, forças, saúde, etc.
 - **`texto`**: Para nomes, diálogos ou IDs.
-- **`booleano`**: Interruptores de `verdadeiro` ou `falso`.
+- **`booleano`**: Interruptores de `verdadeiro` o `falso`.
 - **`Materia`**: Para referenciar outros objetos da cena.
 - **`Prefab`**: Para instanciar (criar) objetos novos (como balas ou inimigos).
 - **`Audio` / `Sprite` / `Scene`**: Referências a recursos do projeto.
@@ -87,7 +111,7 @@ atualizar(delta) {
 
     // Mouse
     se (botonMouseRecienPresionado(0)) {
-        variavel pos = obterPosicaoMouse();
+        variavel pos = obterPosicionMouse();
         imprimir("Clique em: " + pos.x + "," + pos.y);
     }
 }
@@ -95,7 +119,7 @@ atualizar(delta) {
 
 ---
 
-## 📦 Capítulo 6: O Dicionário de Componentes (Referência API)
+## 📦 Capítulo 6: O Dicionário de Componentes (Referencia API)
 
 Aqui estão os atalhos mais comuns que o motor lhe oferece:
 
@@ -107,13 +131,13 @@ Aqui estão os atalhos mais comuns que o motor lhe oferece:
 
 ---
 
-## 📡 Capítulo 7: Comunicação entre Objetos (Mensagens Globais)
+## 📡 Capítulo 7: Comunicación entre Objetos (Mensagens Globais)
 
 Esqueça procurar objetos por toda a hierarquia. O sistema de **Mensagens Globais** permite que os seus scripts falem entre si sem se conhecerem.
 
 **Emissor:**
 ```ces
-difundir("NivelCompletado", { tempo: 45 });
+difundir("NivelCompletado", { tiempo: 45 });
 ```
 
 **Recetor:**
@@ -168,7 +192,7 @@ atualizar(delta) {
     se (teclaPresionada("d")) horizontal = 1;
     se (teclaPresionada("a")) horizontal = -1;
 
-    fisica.velocity.x = horizontal * (velocidade * delta);
+    fisica.velocity.x = horizontal * (velocidad * delta);
 
     se (horizontal != 0) {
         inverterH = (horizontal < 0);
@@ -203,16 +227,15 @@ atualizar(delta) {
 }
 ```
 
-### 🌊 Efeito de Flutuação Suave (UI)
+### 🔘 Botão UI Interativo
 ```ces
 ve motor;
-publico numero amplitude = 10;
-publico numero velocidade = 2;
-numero tempo = 0;
+publico texto mensagemAoClicar = "Olá!";
 
-atualizar(delta) {
-    tempo += delta * velocidade;
-    posicion.y += seno(tiempo) * amplitude;
+alHacerClick() {
+    textoUI.text = mensajeAoClicar;
+    reproducir.ClickSound();
+    imprimir("Botão pressionado");
 }
 ```
 
@@ -229,11 +252,29 @@ Para que o seu jogo corra a 60 FPS mesmo em telemóveis, siga estes conselhos:
 
 ---
 
+## 🛠️ Capítulo 11: Solução de Problemas e FAQ
+
+**P: Meu script não faz nada.**
+R: Certifique-se de que a primeira linha seja `ve motor;` e que o script esteja atribuído a um objeto ativo na cena.
+
+**P: O Inspetor não mostra minhas variáveis.**
+R: Você deve declará-las com a palavra `publico` antes do tipo (ex: `publico numero velocidade = 10;`).
+
+**P: Posso usar JavaScript normal?**
+R: Sim! O CES é uma camada sobre JS. Você pode usar `Math.random()`, `Array.push()`, etc.
+
+**P: Como destruo o objeto atual?**
+R: Use `destruir(mtr);` ou simplesmente `destruir(materia);`.
+
+---
+
 ## 🎉 Epílogo: Sua Jornada Começa Agora
 
 Você terminou o Livro Mestre, mas a sua história como desenvolvedor apenas começa. **Creative Engine** é a tela, e você é o artista.
 
 Não tenha medo de experimentar. Quebre as regras, combine componentes e, acima de tudo, **divirta-se**. Se você pode imaginá-lo, você pode programá-lo aqui.
+
+> "A melhor forma de prever o futuro é criá-lo." — Peter Drucker
 
 ---
 *Dúvidas? Consulte o [Guia de Componentes](README_COMPONENTES.md) ou junte-se à nossa comunidade oficial.*

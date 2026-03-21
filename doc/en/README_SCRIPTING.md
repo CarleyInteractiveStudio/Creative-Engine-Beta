@@ -8,6 +8,7 @@ In this digital "book," we will explore everything from the foundations of logic
 
 ## 📖 Table of Contents
 
+0. [Chapter 0: Your First Script in 60 Seconds](#chapter-0-your-first-script-in-60-seconds)
 1. [Chapter 1: The Engine's Philosophy](#chapter-1-the-engines-philosophy)
 2. [Chapter 2: Anatomy of a Script](#chapter-2-anatomy-of-a-script)
 3. [Chapter 3: Variables and the Dynamic Inspector](#chapter-3-variables-and-the-dynamic-inspector)
@@ -18,6 +19,29 @@ In this digital "book," we will explore everything from the foundations of logic
 8. [Chapter 8: Temporal Magic (Coroutines and Loops)](#chapter-8-temporal-magic-coroutines-and-loops)
 9. [Chapter 9: The Cookbook (Solutions Recipe Book)](#chapter-9-the-cookbook-solutions-recipe-book)
 10. [Chapter 10: Optimization and Best Practices](#chapter-10-optimization-and-best-practices)
+11. [Chapter 11: Troubleshooting and FAQ](#chapter-11-troubleshooting-and-faq)
+
+---
+
+## ⚡ Chapter 0: Your First Script in 60 Seconds
+
+Want to see results now? Follow these steps:
+
+1. In the **Asset Browser**, right-click and select **New > Script (CES)**. Name it `HelloWorld.ces`.
+2. Double-click to open it and paste this code:
+```ces
+ve motor;
+
+alEmpezar() {
+    imprimir("The engine is alive!");
+}
+
+alActualizar(delta) {
+    rotation += 100 * delta; // This will make the object spin!
+}
+```
+3. Drag that file from the library onto any object (an image or a square) in your scene.
+4. Hit **Play**! 🚀
 
 ---
 
@@ -203,16 +227,15 @@ alActualizar(delta) {
 }
 ```
 
-### 🌊 Gentle Floating Effect (UI)
+### 🔘 Interactable UI Button
 ```ces
 ve motor;
-publico number amplitude = 10;
-publico number speed = 2;
-number time = 0;
+publico text messageOnClick = "Hello!";
 
-alActualizar(delta) {
-    time += delta * speed;
-    posicion.y += sin(time) * amplitude;
+alHacerClick() {
+    textoUI.text = messageOnClick;
+    play.ClickSound();
+    imprimir("Button pressed");
 }
 ```
 
@@ -226,6 +249,22 @@ To keep your game running at 60 FPS even on mobile, follow these tips:
 2. **Avoid `find()` in `update`**: Searching for objects by name is slow. Do it in `start` and save the result in a variable.
 3. **Pooling**: Instead of destroying and creating hundreds of bullets, try to reuse them.
 4. **Collision Layers**: Configure in the project settings which objects collide with which to save processing power.
+
+---
+
+## 🛠️ Chapter 11: Troubleshooting and FAQ
+
+**Q: My script does nothing.**
+A: Ensure the first line is `ve motor;` and the script is assigned to an active object in the scene.
+
+**Q: The Inspector doesn't show my variables.**
+A: You must declare them with the `publico` keyword before the type (e.g., `publico number speed = 10;`).
+
+**Q: Can I use standard JavaScript?**
+A: Yes! CES is a layer over JS. You can use `Math.random()`, `Array.push()`, etc.
+
+**Q: How do I destroy the current object?**
+A: Use `destruir(mtr);` or simply `destruir(materia);`.
 
 ---
 
