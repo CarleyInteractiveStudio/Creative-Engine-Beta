@@ -74,6 +74,7 @@ const componentAliases = {
     'IKManager2D': 'gestorIK2D',
     'Attack': 'ataque',
     'ProgressBar': 'barraDeProgreso',
+    'SceneLoader': 'cargarEscena',
 };
 
 
@@ -371,6 +372,9 @@ export class CreativeScriptBehavior {
     get barra() { return this.obtenerComponente('ProgressBar') || this._missingComponentProxy('barra', 'ProgressBar'); }
     get uiBarra() { return this.barra; }
     get progressBar() { return this.barra; }
+
+    get cargadorDeEscena() { return this.obtenerComponente('SceneLoader') || this._missingComponentProxy('cargadorDeEscena', 'SceneLoader'); }
+    get sceneLoader() { return this.cargadorDeEscena; }
 
     get video() { return this.obtenerComponente('VideoPlayer') || this._missingComponentProxy('video', 'VideoPlayer'); }
     get pelicula() { return this.video; }
@@ -7097,6 +7101,103 @@ registerComponent('GridLayoutGroup', GridLayoutGroup);
 registerComponent('ContentSizeFitter', ContentSizeFitter);
 registerComponent('Attack', Attack);
 registerComponent('ProgressBar', ProgressBar);
+
+/**
+ * Componente SceneLoader: Carga una escena nueva al detectar colisiones, teclas o clicks en UI.
+ */
+export class SceneLoader extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.scenePath = ""; // Ruta a la escena (ej: Assets/Nivel2.ceScene)
+        this.triggerTag = "Player"; // Tag que debe colisionar
+        this.triggerKey = ""; // Tecla opcional (ej: 'Enter')
+        this.buttonMateria = null; // ID o nombre de la Materia UI (Botón)
+
+        this._isSceneLoaded = false;
+        this._buttonListenerAdded = false;
+    }
+
+    async start() {
+        this._isSceneLoaded = false;
+        this._buttonListenerAdded = false;
+    }
+
+    update(deltaTime) {
+        if (this._isSceneLoaded || !this.scenePath) return;
+
+        // 1. Detectar Tecla
+        if (this.triggerKey) {
+            const input = RuntimeAPIManager.getAPI('input');
+            if (input && input.isKeyJustPressed(this.triggerKey)) {
+                this.load();
+                return;
+            }
+        }
+
+        // 2. Detectar Botón UI y registrar listener
+        if (this.buttonMateria && !this._buttonListenerAdded) {
+            const scene = this.materia.scene;
+            if (scene) {
+                let btnMtr = null;
+                if (typeof this.buttonMateria === 'number') btnMtr = scene.findMateriaById(this.buttonMateria);
+                else if (typeof this.buttonMateria === 'string') btnMtr = scene.findMateriaByName(this.buttonMateria) || this.materia.findChildByName(this.buttonMateria, true);
+
+                if (btnMtr) {
+                    const btn = btnMtr.getComponentByName('Button');
+                    if (btn) {
+                        this._buttonListenerAdded = true;
+                        if (!btn.onClick) btn.onClick = [];
+                        btn.onClick.push(() => this.load());
+                    }
+                    const trigger = btnMtr.getComponentByName('UIEventTrigger');
+                    if (trigger) {
+                        this._buttonListenerAdded = true;
+                        if (!trigger.events.onPointerClick) trigger.events.onPointerClick = [];
+                        trigger.events.onPointerClick.push(() => this.load());
+                    }
+                }
+            }
+        }
+    }
+
+    alEntrarEnColision(col) {
+        if (this._isSceneLoaded || !this.scenePath) return;
+        if (this.triggerTag && col.materia && col.materia.tag === this.triggerTag) {
+            this.load();
+        }
+    }
+
+    load() {
+        if (this._isSceneLoaded || !this.scenePath) return;
+        this._isSceneLoaded = true;
+
+        const sceneAPI = RuntimeAPIManager.getAPI('scene');
+        if (sceneAPI && sceneAPI.loadScene) {
+            console.log(`[SceneLoader] Cargando nueva escena: ${this.scenePath}`);
+            sceneAPI.loadScene(this.scenePath);
+        }
+    }
+
+    // Spanish Aliases
+    get rutaEscena() { return this.scenePath; }
+    set rutaEscena(v) { this.scenePath = v; }
+    get tagActivador() { return this.triggerTag; }
+    set tagActivador(v) { this.triggerTag = v; }
+    get teclaActivadora() { return this.triggerKey; }
+    set teclaActivadora(v) { this.triggerKey = v; }
+    get materiaBoton() { return this.buttonMateria; }
+    set materiaBoton(v) { this.buttonMateria = v; }
+
+    clone() {
+        const copy = new SceneLoader(null);
+        copy.scenePath = this.scenePath;
+        copy.triggerTag = this.triggerTag;
+        copy.triggerKey = this.triggerKey;
+        copy.buttonMateria = this.buttonMateria;
+        return copy;
+    }
+}
+registerComponent('SceneLoader', SceneLoader);
 
 /**
  * Componente Bone (Hueso): Define un hueso en una jerarquía esquelética.

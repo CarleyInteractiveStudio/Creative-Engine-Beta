@@ -251,7 +251,11 @@ const eventNameAliases = {
 };
 
 function executeUIEvent(event, eventData) {
-    if (!event.targetMateriaId || !event.functionName) return;
+    if (typeof event === 'function') {
+        event(eventData);
+        return;
+    }
+    if (!event || !event.targetMateriaId || !event.functionName) return;
     const targetMateria = activeScene.findMateriaById(event.targetMateriaId);
     if (!targetMateria) return;
     const scripts = targetMateria.getComponents(Components.CreativeScript);

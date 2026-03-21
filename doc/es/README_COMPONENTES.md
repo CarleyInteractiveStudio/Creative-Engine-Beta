@@ -138,6 +138,19 @@ Mueve el objeto entre dos puntos.
   patrulla.velocidad = 100;
   ```
 
+### 🎬 SceneLoader (Cargar Escena)
+Permite cambiar de nivel o escena automáticamente.
+- **Modos de Activación:**
+  - **Colisión:** Se activa cuando el jugador choca con el objeto.
+  - **Tecla:** Se activa al presionar una tecla específica.
+  - **Botón UI:** Se activa al hacer clic en un botón de la interfaz.
+- **Uso en Inspector:** Arrastra el archivo `.ceScene` al campo "Ruta de Escena" y configura el activador.
+- **Scripting:**
+  ```ces
+  sceneLoader.scenePath = "Assets/Nivel2.ceScene";
+  sceneLoader.load(); // Carga la escena manualmente
+  ```
+
 ---
 
 ## 📱 6. Interfaz de Usuario (UI)
