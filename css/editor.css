@@ -3462,9 +3462,45 @@ body.mobile-mode .grid-item {
     display: flex !important;
     flex-direction: row !important;
     gap: 10px;
-    padding: 8px 12px !important;
-    margin: 4px 0;
+    padding: 10px 12px !important;
+    margin: 6px 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.msg-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-grow: 1;
+}
+
+.msg-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.console-action-btn {
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 4px 12px;
     border-radius: 4px;
+    font-size: 0.8em;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.console-action-btn:hover {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.console-action-btn.special {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    border: none;
+    color: white;
+    font-weight: 600;
 }
 
 .msg-icon {

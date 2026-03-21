@@ -6,6 +6,8 @@ import { oneDark } from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
 import { undo, redo, indentWithTab } from "https://esm.sh/@codemirror/commands@6.3.3";
 import { autocompletion, acceptCompletion } from "https://esm.sh/@codemirror/autocomplete@6.16.0";
 import { keymap } from "https://esm.sh/@codemirror/view@6.26.3";
+import { Decoration, DecorationSet } from "https://esm.sh/@codemirror/view@6.26.3";
+import { StateField, StateEffect } from "https://esm.sh/@codemirror/state@6.4.1";
 import { transpile } from './CES_Transpiler.js';
 import * as AutoReparator from './AutoReparator.js';
 import * as AIHandler from './AIHandler.js';
@@ -14,6 +16,25 @@ import { getPreferences } from './ui/PreferencesWindow.js';
 // --- Module State ---
 let dom;
 let codeEditor = null;
+
+const addErrorHighlight = StateEffect.define();
+const errorHighlightField = StateField.define({
+    create() { return Decoration.none },
+    update(underlines, tr) {
+        underlines = underlines.map(tr.changes);
+        for (let e of tr.effects) if (e.is(addErrorHighlight)) {
+            underlines = underlines.update({
+                add: [errorHighlightMark.range(e.value.from, e.value.to)]
+            });
+        }
+        return underlines;
+    },
+    provide: f => EditorView.decorations.from(f)
+});
+
+const errorHighlightMark = Decoration.line({
+    attributes: { style: "background-color: rgba(255, 0, 0, 0.2); border-left: 3px solid red;" }
+});
 let currentlyOpenFileHandle = null;
 let currentlyOpenDirHandle = null;
 let showConsoleCallback = () => {}; // Placeholder for the callback
@@ -191,6 +212,7 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
                     basicSetup,
                     javascript(),
                     oneDark,
+                    errorHighlightField,
                     autocompletion({ override: [cesCompletions] }),
                     keymap.of([
                         { key: "Tab", run: acceptCompletion },
@@ -538,14 +560,23 @@ Por favor, devuelve solo el código corregido y funcional.`;
     }
 }
 
+let lastRuntimeError = null;
+
+export function setLastRuntimeError(error) {
+    lastRuntimeError = error;
+}
+
 export async function runAutoReparator() {
     if (!currentlyOpenFileHandle) return;
     const L = window.Localization;
     const isChc = currentlyOpenFileHandle.name.endsWith('.chc');
     const content = isChc ? dom.chcHumanText.value : codeEditor.state.doc.toString();
 
+    // Only pass runtime error if it belongs to the current file
+    const errorToPass = (lastRuntimeError && lastRuntimeError.scriptName === currentlyOpenFileHandle.name) ? lastRuntimeError : null;
+
     try {
-        const result = await AutoReparator.repair(content, currentlyOpenFileHandle.name);
+        const result = await AutoReparator.repair(content, currentlyOpenFileHandle.name, errorToPass);
 
         if (result.code !== content) {
             if (isChc) {
@@ -567,6 +598,52 @@ export async function runAutoReparator() {
         console.error("AutoReparator Error:", e);
         window.Dialogs.showNotification(L.get('ERROR', 'Error'), "Fallo al ejecutar el Auto Reparator.");
     }
+}
+
+export async function openScriptAtLine(fileName, lineNumber) {
+    if (!lineNumber) lineNumber = 1;
+    console.log(`[CodeEditor] Abriendo ${fileName} en la línea ${lineNumber}`);
+
+    // Switch to assets tab and find the file (approximate)
+    // Actually, we can just use the dirHandle if we have it or find it.
+    // Let's assume the file is in 'Assets/'
+
+    const projectName = new URLSearchParams(window.location.search).get('project');
+    const projectHandle = await window.projectsDirHandle.getDirectoryHandle(projectName);
+    const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+
+    // We need to find which subfolder the file is in.
+    // For simplicity, let's try Assets directly first, then subfolders if needed.
+    // Better: use the AssetBrowser to find it or a recursive search.
+
+    async function findFile(dirHandle) {
+        for await (const entry of dirHandle.values()) {
+            if (entry.kind === 'file' && entry.name === fileName) return dirHandle;
+            if (entry.kind === 'directory') {
+                const found = await findFile(entry);
+                if (found) return found;
+            }
+        }
+        return null;
+    }
+
+    const dirHandle = await findFile(assetsHandle) || assetsHandle;
+
+    await openScriptInEditor(fileName, dirHandle, dom.scenePanel);
+
+    // Highlight line
+    setTimeout(() => {
+        if (codeEditor) {
+            const line = codeEditor.state.doc.line(Math.min(lineNumber, codeEditor.state.doc.lines));
+            codeEditor.dispatch({
+                selection: { anchor: line.from },
+                effects: [
+                    EditorView.scrollIntoView(line.from, { y: "center" }),
+                    addErrorHighlight.of({ from: line.from, to: line.to })
+                ]
+            });
+        }
+    }, 100);
 }
 
 export async function showScriptHistory() {
@@ -630,6 +707,13 @@ export function initialize(domCache, showConsole, hotReload) {
     dom = domCache;
     showConsoleCallback = showConsole; // Almacena el callback
     hotReloadCallback = hotReload;
+
+    // Register global access for Console actions
+    window._CodeEditor = {
+        openScriptAtLine,
+        runAutoReparator,
+        setLastRuntimeError
+    };
 
     // Configura los event listeners para los botones de la barra de herramientas
     dom.codeSaveBtn.addEventListener('click', () => saveCurrentScript());

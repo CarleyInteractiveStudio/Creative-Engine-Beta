@@ -493,10 +493,15 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
 /**
  * Transpiles a .ces script into an ES6 class.
  * @param {string} scriptName The name of the script file (e.g., 'PlayerController.ces').
- * @returns {{errors: string[] | null, jsCode: string | null}} An object with an errors array, or the generated JS code.
+ * @returns {{errors: object[] | null, jsCode: string | null, lineMap: object | null}} An object with errors, jsCode and lineMap.
  */
 export function transpile(code, scriptName = 'unnamed.ces') {
     const errors = [];
+    const lineMap = {
+        constructor: [], // {jsLine, cesLine}
+        methods: {} // name -> [{jsLine, cesLine}]
+    };
+
     if (!scriptName) scriptName = 'unnamed.ces';
     let className = scriptName.replace(/\.(ces|chc)$/, '').replace(/[^a-zA-Z0-9]/g, '_');
     // Asegurar que el nombre de la clase no empiece por un número
@@ -724,7 +729,8 @@ export function transpile(code, scriptName = 'unnamed.ces') {
     // Almacenar los metadatos de las variables públicas
     const metadata = {
         publicVars: publicVars.map(pv => ({ name: pv.name, type: pv.type, defaultValue: pv.defaultValue })),
-        publicFunctions: publicFunctions
+        publicFunctions: publicFunctions,
+        lineMap: lineMap
     };
     scriptMetadataMap.set(scriptName, metadata);
 
@@ -786,40 +792,69 @@ export function transpile(code, scriptName = 'unnamed.ces') {
         return { errors, jsCode: null };
     }
 
-    // --- Phase 3: Build the JavaScript class ---
+    // --- Phase 3: Build the JavaScript class with Line Mapping ---
+    let currentJsLine = 4; // Start of constructor logic
+
     let jsCode = `(function(CreativeScriptBehavior, RuntimeAPIManager) {\n`;
     jsCode += `    class ${className} extends CreativeScriptBehavior {\n`;
     jsCode += `        constructor(materia) {\n            super(materia);\n`;
+
     publicVars.forEach(pv => {
         let val = pv.value ? transpileBlock(pv.value, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager, customFunctions) : JSON.stringify(pv.defaultValue);
-        // Replace Spanish booleans in default values (fallback for non-transpiled parts)
         val = val.replace(/\bverdadero\b/g, 'true').replace(/\bfalso\b/g, 'false');
         jsCode += `            this.${pv.name} = ${val}; // Type: ${pv.type}\n`;
+        currentJsLine++;
     });
     privateVars.forEach(pv => {
         let val = pv.value ? transpileBlock(pv.value, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager, customFunctions) : 'null';
         val = val.replace(/\bverdadero\b/g, 'true').replace(/\bfalso\b/g, 'false');
         jsCode += `            this.${pv.name} = ${val};\n`;
+        currentJsLine++;
     });
     jsCode += `        }\n\n`;
+    currentJsLine += 2;
 
-    const indentBody = (body) => body ? body.trim().split('\n').map(line => `            ${line.trim()}`).join('\n') : '';
+    const buildMappedMethod = (name, args, body, cesIndex) => {
+        const header = `        async ${name}(${args}) {\n`;
+        jsCode += header;
+        currentJsLine++;
 
-    jsCode += `        async start(${startArgs}) {\n${indentBody(startMethod)}\n        }\n\n`;
-    jsCode += `        async update(${updateArgs || 'deltaTime'}) {\n${indentBody(updateMethod)}\n        }\n\n`;
+        const cesStartLine = cesIndex !== undefined ? getLineNumber(code, cesIndex) : 1;
 
-    // Process custom methods to be async too
-    const processedCustomMethods = methodMatches
+        if (body) {
+            const bodyLines = body.trim().split('\n');
+            bodyLines.forEach((line, idx) => {
+                jsCode += `            ${line.trim()}\n`;
+                if (!lineMap.methods[name]) lineMap.methods[name] = [];
+                lineMap.methods[name].push({
+                    js: currentJsLine,
+                    ces: cesStartLine + idx // This is approximate for blocks, but better than nothing
+                });
+                currentJsLine++;
+            });
+        }
+        jsCode += `        }\n\n`;
+        currentJsLine += 2;
+    };
+
+    // Find original indices for lifecycle methods
+    const startMatch = methodMatches.find(m => m.name === 'start');
+    const updateMatch = methodMatches.find(m => m.name === 'update');
+
+    buildMappedMethod('start', startArgs, startMethod, startMatch?.index);
+    buildMappedMethod('update', updateArgs || 'deltaTime', updateMethod, updateMatch?.index);
+
+    // Process custom methods
+    methodMatches
         .filter(m => m.name !== 'start' && m.name !== 'update')
-        .map(m => `        async ${m.name}(${m.args}) {\n${indentBody(m.body)}\n        }\n`)
-        .join('\n');
-
-    jsCode += `${processedCustomMethods}\n`;
+        .forEach(m => {
+            buildMappedMethod(m.name, m.args, m.body, m.index);
+        });
 
     jsCode += `    }\n\n    return ${className};\n});`;
 
     transpiledCodeMap.set(scriptName, jsCode);
-    return { errors: null, jsCode };
+    return { errors: null, jsCode, lineMap };
 }
 
 /**

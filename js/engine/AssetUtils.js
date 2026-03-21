@@ -93,6 +93,14 @@ export async function getURLForAssetPath(path, projectsDirHandle) {
             return url;
 
         } catch (error) {
+            if (error.name === 'NotFoundError') {
+                if (typeof window !== 'undefined' && window.logToUIConsole) {
+                    window.logToUIConsole({
+                        message: `NotFoundError: El asset '${path}' no existe.`,
+                        scriptName: null
+                    }, 'error', true);
+                }
+            }
             console.error(`Could not create URL for asset path: ${path}`, error);
             return null;
         } finally {

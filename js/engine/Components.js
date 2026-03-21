@@ -865,7 +865,36 @@ export class CreativeScript extends Leyes {
             // but we do await it here for error handling.
             await this.instance[methodName](...args);
         } catch (e) {
-            console.error(`[CreativeScript] Error en el método '${methodName}' del script '${this.scriptName}' en el objeto '${this.materia ? this.materia.name : 'Desconocido'}':\n`, e);
+            // --- Improved Runtime Error Reporting ---
+            let cesLine = 0;
+            const stack = e.stack || "";
+
+            // Attempt to parse JS line from stack and map to CES
+            const match = stack.match(/<anonymous>:(\d+):/);
+            if (match) {
+                const jsLine = parseInt(match[1]);
+                const metadataSource = window.CE_Script_Metadata || (editorLogic ? editorLogic.getAllMetadata() : {});
+                const meta = metadataSource[this.scriptName];
+                if (meta && meta.lineMap && meta.lineMap.methods[methodName]) {
+                    const map = meta.lineMap.methods[methodName].find(m => m.js === jsLine);
+                    if (map) cesLine = map.ces;
+                }
+            }
+
+            const errorObj = {
+                line: cesLine,
+                message: e.message,
+                scriptName: this.scriptName,
+                methodName: methodName,
+                materiaName: this.materia ? this.materia.name : 'Desconocido',
+                stack: e.stack
+            };
+
+            if (typeof window !== 'undefined' && window.logToUIConsole) {
+                window.logToUIConsole(errorObj, 'error', false);
+            } else {
+                console.error(`[CreativeScript] Error en '${this.scriptName}' (${methodName}):`, e);
+            }
         }
     }
 
@@ -1040,8 +1069,20 @@ export class CreativeScript extends Leyes {
                 throw new Error(`El script '${this.scriptName}' no exporta una clase por defecto.`);
             }
         } catch (error) {
-            console.error(`Error al inicializar la instancia del script '${this.scriptName}':`, error);
-            this.isInitialized = false; // Mark as failed
+            const errorObj = {
+                line: 0,
+                message: error.message,
+                scriptName: this.scriptName,
+                materiaName: this.materia ? this.materia.name : 'Desconocido',
+                stack: error.stack
+            };
+
+            if (typeof window !== 'undefined' && window.logToUIConsole) {
+                window.logToUIConsole(errorObj, 'error', false);
+            } else {
+                console.error(`Error al inicializar script '${this.scriptName}':`, error);
+            }
+            this.isInitialized = false;
         }
     }
 

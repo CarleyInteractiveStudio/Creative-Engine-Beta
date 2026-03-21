@@ -98,6 +98,22 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastLogElement = null;
     let lastLogCount = 1;
 
+    function translateErrorMessage(msg) {
+        const translations = {
+            'NotFoundError': 'No se pudo encontrar el archivo o directorio solicitado.',
+            'Unexpected identifier': 'Palabra no reconocida o fuera de lugar.',
+            'is not a function': 'No es una función válida o no existe.',
+            'cannot read property': 'Intentaste acceder a algo que no existe (es nulo).',
+            'Unexpected token': 'Símbolo inesperado (revisa paréntesis o llaves).',
+            'is not defined': 'Esta variable o componente no ha sido definido.'
+        };
+
+        for (const [key, value] of Object.entries(translations)) {
+            if (msg.toLowerCase().includes(key.toLowerCase())) return value;
+        }
+        return msg;
+    }
+
     function logToUIConsole(message, type = 'log', isSystem = true, ...args) {
         const consoleMessages = dom.consoleMessages || document.getElementById('console-messages');
         if (!consoleMessages) return;
@@ -105,10 +121,19 @@ document.addEventListener('DOMContentLoaded', () => {
         let fullMessage = message;
         let structuredError = null;
 
-        // Detection of structured transpile errors
-        if (typeof message === 'object' && message !== null && message.message && message.line !== undefined) {
+        // Detection of structured errors (transpile or runtime)
+        if (typeof message === 'object' && message !== null && message.message && (message.line !== undefined || message.scriptName)) {
             structuredError = message;
-            fullMessage = `[Línea ${message.line}] ${message.message}${message.word ? ` (Palabra: '${message.word}')` : ''}`;
+
+            // If it's a runtime error, store it globally for the reparator
+            if (message.scriptName) {
+                window._CodeEditor.setLastRuntimeError(message);
+            }
+
+            const lineStr = message.line ? `[Línea ${message.line}] ` : '';
+            const scriptStr = message.scriptName ? `en '${message.scriptName}' ` : '';
+            const friendlyMsg = translateErrorMessage(message.message);
+            fullMessage = `${lineStr}${scriptStr}${friendlyMsg}`;
         }
 
         // Handle additional arguments
@@ -165,11 +190,28 @@ document.addEventListener('DOMContentLoaded', () => {
         if (structuredError) {
             msgEl.classList.add('structured-error');
             const icon = type === 'error' ? '❌' : '⚠️';
-            msgEl.innerHTML = `<span class="msg-icon">${icon}</span> <span class="msg-text"><b>Error de Sintaxis:</b> ${fullMessage}</span>`;
-            if (structuredError.word) {
-                msgEl.style.borderLeft = "4px solid #ff4444";
-                msgEl.style.backgroundColor = "rgba(255, 68, 68, 0.1)";
+            const title = structuredError.scriptName ? 'Error de Ejecución' : 'Error de Sintaxis';
+
+            let actionButtons = '';
+            if (structuredError.scriptName) {
+                actionButtons = `
+                    <div class="msg-actions">
+                        <button class="console-action-btn" onclick="window._CodeEditor.openScriptAtLine('${structuredError.scriptName}', ${structuredError.line})">Ir a la línea</button>
+                        <button class="console-action-btn special" onclick="window._CodeEditor.runAutoReparator()">Auto Reparar</button>
+                    </div>
+                `;
             }
+
+            msgEl.innerHTML = `
+                <span class="msg-icon">${icon}</span>
+                <div class="msg-body">
+                    <span class="msg-text"><b>${title}:</b> ${fullMessage}</span>
+                    ${actionButtons}
+                </div>
+            `;
+
+            msgEl.style.borderLeft = type === 'error' ? "4px solid #ff4444" : "4px solid #f3ca58";
+            msgEl.style.backgroundColor = type === 'error' ? "rgba(255, 68, 68, 0.1)" : "rgba(243, 202, 88, 0.1)";
         } else {
             const textSpan = document.createElement('span');
             textSpan.textContent = `> ${fullMessage}`;
@@ -1317,8 +1359,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             console.error(`Build fallido. Se encontraron errores en ${allErrors.length} archivo(s):`);
             for (const fileErrors of allErrors) {
-                logToUIConsole(`Archivo: ${fileErrors.fileName}`, 'warn');
                 for (const error of fileErrors.errors) {
+                    // Attach script name for better console reporting
+                    error.scriptName = fileErrors.fileName;
                     logToUIConsole(error, 'error', false);
                 }
             }

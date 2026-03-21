@@ -5,11 +5,36 @@ import { transpile } from './CES_Transpiler.js';
  * Auto Reparator Module
  * Analyzes and fixes common syntax errors and misspellings in CES scripts.
  */
-export async function repair(code, fileName) {
+export async function repair(code, fileName, runtimeError = null) {
     let repairedCode = code;
     const L = window.Localization;
 
     console.log(`[AutoReparator] Iniciando reparación de ${fileName}...`);
+
+    // 0. Runtime Error analysis (NEW)
+    if (runtimeError && runtimeError.message) {
+        console.log("[AutoReparator] Analizando error de ejecución:", runtimeError.message);
+
+        // Suggest fix for "is not defined" (likely a typo in a variable name)
+        if (runtimeError.message.includes('is not defined')) {
+            const undefinedVar = runtimeError.message.split(' ')[0];
+            // Try to find a close match in the code
+            const allWords = Array.from(new Set(repairedCode.match(/[a-zA-Z_\u00C0-\u017F][\w\u00C0-\u017F]*/g)));
+            const bestMatch = allWords.find(w => {
+                // Very simple fuzzy: one char difference
+                if (Math.abs(w.length - undefinedVar.length) > 1) return false;
+                let diffs = 0;
+                const minLen = Math.min(w.length, undefinedVar.length);
+                for(let i=0; i<minLen; i++) if (w[i] !== undefinedVar[i]) diffs++;
+                return diffs <= 1;
+            });
+
+            if (bestMatch && bestMatch !== undefinedVar) {
+                console.log(`[AutoReparator] Corrigiendo probable typo: ${undefinedVar} -> ${bestMatch}`);
+                repairedCode = repairedCode.replace(new RegExp(`\\b${undefinedVar}\\b`, 'g'), bestMatch);
+            }
+        }
+    }
 
     // 1. Common Keyword Misspellings (Fuzzy matching simplified)
     const substitutions = {
