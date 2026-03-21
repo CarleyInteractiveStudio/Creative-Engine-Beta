@@ -13,6 +13,9 @@
 - **Cookbook:** Recetas de código listas para usar (movimiento, disparo, UI).
 - Guía de optimización.
 
+### 🚀 [Guía de Solución Rápida (FAQ)](README_SOLUCIONES.md)
+**Tu primer aliado ante errores.** Más de 50 soluciones a problemas comunes en scripting, físicas, UI y el propio editor. ¡Si algo no funciona, la respuesta está aquí!
+
 ### 🧩 [Guía de Componentes (Leyes)](README_COMPONENTES.md)
 Un diccionario detallado de todas las "Leyes" que puedes aplicar a tus objetos:
 - Físicas y Colisiones.

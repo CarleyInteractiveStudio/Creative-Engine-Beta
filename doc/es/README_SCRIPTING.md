@@ -58,7 +58,12 @@ Esta arquitectura desacoplada permite que tus juegos sean extremadamente modular
 
 ## 🦴 Capítulo 2: El Lenguaje CES
 
-CES no es un lenguaje nuevo desde cero; es una **Abstracción de Alto Nivel** sobre JavaScript (ES6+).
+CES no es un lenguaje nuevo desde cero; es una **Abstracción de Alto Nivel** sobre JavaScript (ES6+), diseñada para ser natural y potente.
+
+### Lógica Natural (Novedad)
+Ahora puedes escribir condiciones como si estuvieras hablando:
+- **`si (vida es 10 y energia igual a 100)`** -> Soporte para `y`, `o`, `es`, `igual a`.
+- **`si (puntos diferente a 0 o tiempo menor a 10)`** -> Soporte para `diferente a`, `menor a`, `mayor a`.
 
 ### La Magia de la Omisión
 En CES, el contexto es implícito. El motor sabe que si estás escribiendo un script para el "Jugador", cualquier mención a la `vida` se refiere a la vida *de ese jugador*.
@@ -88,10 +93,12 @@ Usar `publico` antes de una variable le indica al motor que debe crear un widget
 
 Tu script tiene etapas biológicas:
 
-1. **`alEmpezar()` (Constructor Tardío):** Se ejecuta una vez cuando el objeto entra en la escena activa. Úsalo para inicializar estados aleatorios o buscar referencias.
-2. **`alActualizar(delta)` (Loop Principal):** El lugar de la lógica visual. Se sincroniza con el refresco de tu pantalla (RequestAnimationFrame).
-3. **`actualizarFijo(delta)` (Tick de Física):** Crucial para la estabilidad. Mientras que `alActualizar` puede variar según la carga gráfica, `actualizarFijo` corre a intervalos constantes (ej: 50Hz), garantizando que las colisiones no fallen.
-4. **`alDestruir()` (Limpieza):** Se activa justo antes de que el objeto desaparezca. Úsalo para liberar memoria o difundir mensajes de muerte.
+1. **`alEmpezar()` (o `start`):** Se ejecuta una vez al inicio.
+2. **`alActualizar(delta)` (o `update`):** Loop principal de lógica.
+3. **`actualizarFijo(delta)` (o `fixedUpdate`):** Para físicas estables.
+4. **`alChocar(otro)` (o `onCollisionEnter`):** Se activa al tocar otro objeto con colisionador.
+5. **`alClicar()` (o `onPointerClick`):** Para detectar clicks de ratón o toques.
+6. **`alDestruir()` (Limpieza):** Antes de que el objeto desaparezca.
 
 ---
 
@@ -120,6 +127,7 @@ Aquí desglosamos las capacidades de los componentes más importantes:
 - **`mirarA(objetivo)`**: Rota el objeto instantáneamente hacia otro objeto o posición.
 
 ### ⚖️ Físicas (`fisica`, `rigidbody2D`)
+- **`.velocidadX`, `.velocidadY`**: Atajos directos para moverte en ejes.
 - **`.velocity`**: Vector de movimiento actual `{x, y}`.
 - **`.gravityScale`**: Cuánta gravedad afecta al objeto (0 = flota).
 - **`applyForce(x, y)`**: Empuje constante (como un motor).
@@ -239,13 +247,28 @@ Este proceso asegura que escribas código fácil pero ejecutes código profesion
 
 ---
 
-## ❓ Capítulo 12: Solución de Problemas (FAQ)
+## 🛠️ Capítulo 12: Consola Inteligente y Auto Reparación
+
+Creative Engine incluye herramientas avanzadas para que nunca te quedes atascado:
+
+### 🧠 Consola Inteligente
+La consola no solo te dice qué falló, sino **dónde** y **cómo** arreglarlo:
+- **Traducción de Errores**: Convierte errores técnicos en explicaciones claras en español.
+- **Botón "Ir a la línea"**: Abre el editor y resalta la línea exacta del fallo.
+- **Botón "Auto Reparar"**: Analiza tu código y propone una solución basada en miles de patrones correctos.
+
+### 📜 Historial y Backups
+¿Borraste algo importante? En el Editor de Código, haz clic en **"Historial"** para ver y restaurar las últimas 10 versiones de tu script guardadas en el archivo `.meta`.
+
+### ❓ Solución de Problemas (FAQ)
+
+Si tienes un error, consulta nuestra **[Guía de Solución Rápida](README_SOLUCIONES.md)** con más de 50 soluciones a problemas comunes.
 
 **P: Mi objeto atraviesa las paredes.**
 R: Asegúrate de usar `actualizarFijo` para el movimiento físico y de que el `Rigidbody2D` esté en modo "Continuous" si el objeto es muy rápido.
 
 **P: "TypeError: Cannot read properties of undefined (reading 'damage')"**
-R: Estás intentando llamar a `vida.damage()` en un objeto que no tiene el componente **Health**. Añádelo en el Inspector.
+R: Estás intentando llamar a `vida.damage()` en un objeto que no tiene el componente **Health**. El Auto Reparador puede añadirlo por ti.
 
 ---
 
