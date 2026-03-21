@@ -427,10 +427,10 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
     body = body.replace(new RegExp(`${PUB}假${UB}`, 'g'), 'false');
 
     // 2.b.1: Logical Operators (Multilingual)
-    body = body.replace(new RegExp(`${PUB} y ${UB}`, 'g'), ' && ');
-    body = body.replace(new RegExp(`${PUB} o ${UB}`, 'g'), ' || ');
-    body = body.replace(new RegExp(`${PUB} e ${UB}`, 'g'), ' && '); // PT
-    body = body.replace(new RegExp(`${PUB} ou ${UB}`, 'g'), ' || '); // PT
+    body = body.replace(new RegExp(`${PUB}y${UB}`, 'gi'), ' && ');
+    body = body.replace(new RegExp(`${PUB}o${UB}`, 'gi'), ' || ');
+    body = body.replace(new RegExp(`${PUB}e${UB}`, 'gi'), ' && '); // PT
+    body = body.replace(new RegExp(`${PUB}ou${UB}`, 'gi'), ' || '); // PT
     body = body.replace(new RegExp(`${PUB} и ${UB}`, 'g'), ' && '); // RU
     body = body.replace(new RegExp(`${PUB} или ${UB}`, 'g'), ' || '); // RU
     body = body.replace(new RegExp(`${PUB} 和 ${UB}`, 'g'), ' && '); // ZH

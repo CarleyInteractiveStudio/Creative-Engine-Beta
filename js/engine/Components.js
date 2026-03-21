@@ -908,6 +908,7 @@ export class CreativeScript extends Leyes {
                 scriptName: this.scriptName,
                 methodName: methodName,
                 materiaName: this.materia ? this.materia.name : 'Desconocido',
+                materiaId: this.materia ? this.materia.id : null,
                 stack: e.stack
             };
 
@@ -1095,6 +1096,7 @@ export class CreativeScript extends Leyes {
                 message: error.message,
                 scriptName: this.scriptName,
                 materiaName: this.materia ? this.materia.name : 'Desconocido',
+                materiaId: this.materia ? this.materia.id : null,
                 stack: error.stack
             };
 

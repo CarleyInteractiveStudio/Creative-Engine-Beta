@@ -20,17 +20,25 @@ export async function repair(code, fileName, runtimeError = null) {
             { key: 'velocity', comp: 'Rigidbody2D', name: 'fisica' },
             { key: 'applyImpulse', comp: 'Rigidbody2D', name: 'fisica' },
             { key: 'addForce', comp: 'Rigidbody2D', name: 'fisica' },
+            { key: 'fisica', comp: 'Rigidbody2D', name: 'fisica' },
+            { key: 'animador', comp: 'Animator', name: 'animador' },
+            { key: 'animacion', comp: 'Animator', name: 'animador' },
             { key: 'play', comp: 'Animator', name: 'animador' },
             { key: 'stop', comp: 'Animator', name: 'animador' },
+            { key: 'renderizadorDeSprite', comp: 'SpriteRenderer', name: 'renderizadorDeSprite' },
             { key: 'color', comp: 'SpriteRenderer', name: 'renderizadorDeSprite' }
         ];
 
         for (const check of missingComps) {
-            if (runtimeError.message.includes(check.key)) {
+            if (runtimeError.message.includes(check.key) || runtimeError.message.includes(`'${check.name}'`)) {
                 return {
-                    success: false,
+                    success: true, // Success because we identified the problem
                     code: code,
-                    message: `⚠️ El error sugiere que te falta el componente '${check.comp}' en el objeto '${runtimeError.materiaName}'. Por favor, añádelo desde el Inspector.`
+                    message: `⚠️ Falta el componente '${check.comp}' en '${runtimeError.materiaName}'. ¿Quieres que lo añada por ti?`,
+                    addComponent: {
+                        materiaId: runtimeError.materiaId,
+                        componentType: check.comp
+                    }
                 };
             }
         }

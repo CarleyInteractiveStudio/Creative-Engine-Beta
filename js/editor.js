@@ -210,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 actionButtons = `
                     <div class="msg-actions">
                         <button class="console-action-btn" onclick="window._CodeEditor.openScriptAtLine('${targetFile}', ${structuredError.line || 1})">Ir a la línea</button>
-                        <button class="console-action-btn special" onclick="window._CodeEditor.runAutoReparator()">Auto Reparar</button>
+                        <button class="console-action-btn special" onclick="window._CodeEditor.runAutoReparator('${targetFile}')">Auto Reparar</button>
                     </div>
                 `;
             }

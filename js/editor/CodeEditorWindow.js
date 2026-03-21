@@ -565,9 +565,16 @@ export function setLastRuntimeError(error) {
     lastRuntimeError = error;
 }
 
-export async function runAutoReparator() {
-    if (!currentlyOpenFileHandle) return;
+export async function runAutoReparator(targetFileName = null) {
     const L = window.Localization;
+
+    // If a specific file is requested and it's not the current one, try to open it
+    if (targetFileName && (!currentlyOpenFileHandle || currentlyOpenFileHandle.name !== targetFileName)) {
+        await openScriptAtLine(targetFileName, 1);
+    }
+
+    if (!currentlyOpenFileHandle) return;
+
     const isChc = currentlyOpenFileHandle.name.endsWith('.chc');
     const content = isChc ? dom.chcHumanText.value : codeEditor.state.doc.toString();
 
@@ -586,9 +593,44 @@ export async function runAutoReparator() {
                 });
             }
 
-            window.Dialogs.showNotification(
-                result.success ? L.get('EXITO', 'Éxito') : L.get('AVISO', 'Aviso'),
-                result.message
+            if (result.addComponent && window.SceneManager) {
+                window.Dialogs.showConfirmation(
+                    L.get('AUTOCORRECTOR', 'Auto Corrector'),
+                    result.message,
+                    async () => {
+                        const mtr = window.SceneManager.currentScene.findMateriaById(result.addComponent.materiaId);
+                        if (mtr) {
+                            const CompClass = window.Components[result.addComponent.componentType];
+                            if (CompClass) {
+                                mtr.addComponent(new CompClass(mtr));
+                                window.Dialogs.showNotification(L.get('EXITO'), `Componente ${result.addComponent.componentType} añadido con éxito.`);
+                                if (window.updateInspector) window.updateInspector();
+                            }
+                        }
+                    }
+                );
+            } else {
+                window.Dialogs.showNotification(
+                    result.success ? L.get('EXITO', 'Éxito') : L.get('AVISO', 'Aviso'),
+                    result.message
+                );
+            }
+        } else if (result.addComponent && window.SceneManager) {
+            // Case where code didn't change but we need to add a component
+            window.Dialogs.showConfirmation(
+                L.get('AUTOCORRECTOR', 'Auto Corrector'),
+                result.message,
+                async () => {
+                    const mtr = window.SceneManager.currentScene.findMateriaById(result.addComponent.materiaId);
+                    if (mtr) {
+                        const CompClass = window.Components[result.addComponent.componentType];
+                        if (CompClass) {
+                            mtr.addComponent(new CompClass(mtr));
+                            window.Dialogs.showNotification(L.get('EXITO'), `Componente ${result.addComponent.componentType} añadido con éxito.`);
+                            if (window.updateInspector) window.updateInspector();
+                        }
+                    }
+                }
             );
         } else {
             window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('NADA_QUE_REPARAR', 'No se encontraron errores obvios que reparar.'));
