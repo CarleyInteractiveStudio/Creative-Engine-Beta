@@ -49,9 +49,9 @@ alActualizar(delta) {
 
 Creative Engine was born under one premise: **Code must be human-readable and machine-powerful.**
 
-Unlike other engines that force you to deal with thousands of lines of "boilerplate" (junk code), in CES every line counts. We've removed the need for `this.`, `mtr.`, or redundant prefixes. If an object has health, simply write `health`. If you want to move it, write `posicion` or `position`.
+Unlike other engines that force you to deal with thousands of lines of "boilerplate" (junk code), in CES every line counts. We've removed the need for `this.`, `mtr.`, or redundant prefixes.
 
-**The goal is for your code to look like a description of what you want to happen.**
+**Important!** For a script to control something (like physics or health), the object **must have that component added**. If you want to use `fisica` (physics), make sure to add a `Rigidbody2D` to the object in the Inspector.
 
 ---
 
@@ -121,13 +121,13 @@ alActualizar(delta) {
 
 ## 📦 Chapter 6: The Component Dictionary (API Reference)
 
-Here are the most common shortcuts the engine gives you for free:
+Here are the most common shortcuts the engine gives you (as long as the object has the corresponding component):
 
-- **`posicion` (Transform)**: The object's DNA. Controls `x`, `y`, `rotation`, and `scale`.
+- **`posicion` / `position`**: The object's DNA. Controls `x`, `y`, `rotation`, and `scale`.
 - **`fisica` (Rigidbody2D)**: Newton's engine. Use `applyImpulse` for jumps and `velocity` to run.
-- **`vida` (Health)**: Manages mortality. Use `damage(10)` or `heal(5)`.
-- **`animacion` (Animator)**: The film director. Use `play("Run")` to change states.
-- **`audio` (AudioSource)**: The object's voice. Use `play()` or `stop()`.
+- **`vida` / `health`**: Manages mortality. Use `damage(10)` or `heal(5)`.
+- **`animacion` / `animator`**: The film director. Use `play("Run")` to change states.
+- **`audio` / `sonido`**: The object's voice. Use `play()` or `stop()`.
 
 ---
 
@@ -142,9 +142,11 @@ broadcast("LevelCompleted", { time: 45 });
 
 **Receiver:**
 ```ces
-onReceive("LevelCompleted", (data) => {
-    imprimir("Congratulations! You did it in " + data.time + " seconds.");
-});
+alEmpezar() {
+    onReceive("LevelCompleted", (data) => {
+        imprimir("Congratulations! You did it in " + data.time + " seconds.");
+    });
+}
 ```
 
 ---
@@ -182,17 +184,19 @@ alEmpezar() {
 ## 🍳 Chapter 9: The Cookbook (Solutions Recipe Book)
 
 ### 🏃 Pro Platformer Movement System
+*(Requires: Rigidbody2D, BoxCollider2D components)*
 ```ces
 ve motor;
-publico number speed = 300;
-publico number jumpForce = 15;
+publico number speed = 10;
+publico number jumpForce = 12;
 
 alActualizar(delta) {
     variable horizontal = 0;
     si (isKeyPressed("d")) horizontal = 1;
     si (isKeyPressed("a")) horizontal = -1;
 
-    fisica.velocity.x = horizontal * (speed * delta);
+    // Direct physics movement
+    fisica.velocity.x = horizontal * speed;
 
     si (horizontal != 0) {
         voltearH = (horizontal < 0);
@@ -228,12 +232,13 @@ alActualizar(delta) {
 ```
 
 ### 🔘 Interactable UI Button
+*(Requires: Button, UIText components)*
 ```ces
 ve motor;
 publico text messageOnClick = "Hello!";
 
 alHacerClick() {
-    textoUI.text = messageOnClick;
+    texto.text = messageOnClick;
     play.ClickSound();
     imprimir("Button pressed");
 }
@@ -245,7 +250,7 @@ alHacerClick() {
 
 To keep your game running at 60 FPS even on mobile, follow these tips:
 
-1. **Use `delta`**: Always multiply your movements by `delta`. This ensures your game runs at the same speed on a powerful PC and an old one.
+1. **Use `delta`**: Always multiply your movements by `delta` if you change `position` directly. If you use `fisica.velocity`, the engine handles it.
 2. **Avoid `find()` in `update`**: Searching for objects by name is slow. Do it in `start` and save the result in a variable.
 3. **Pooling**: Instead of destroying and creating hundreds of bullets, try to reuse them.
 4. **Collision Layers**: Configure in the project settings which objects collide with which to save processing power.
@@ -254,17 +259,14 @@ To keep your game running at 60 FPS even on mobile, follow these tips:
 
 ## 🛠️ Chapter 11: Troubleshooting and FAQ
 
-**Q: My script does nothing.**
-A: Ensure the first line is `ve motor;` and the script is assigned to an active object in the scene.
+**Q: My script throws error "Cannot read properties of undefined (reading 'velocity')".**
+A: This happens when you try to access `fisica` but the object doesn't have a **Rigidbody2D** component. Make sure to add it in the Inspector.
 
-**Q: The Inspector doesn't show my variables.**
-A: You must declare them with the `publico` keyword before the type (e.g., `publico number speed = 10;`).
+**Q: The script doesn't respond to my keys.**
+A: Ensure the script has the `ve motor;` line at the beginning and that there are no syntax errors in the Console.
 
-**Q: Can I use standard JavaScript?**
-A: Yes! CES is a layer over JS. You can use `Math.random()`, `Array.push()`, etc.
-
-**Q: How do I destroy the current object?**
-A: Use `destruir(mtr);` or simply `destruir(materia);`.
+**Q: How do I access another object's health?**
+A: First get the reference (e.g., `variable obj = find("Enemy");`) and then use `obj.health.damage(10);`.
 
 ---
 

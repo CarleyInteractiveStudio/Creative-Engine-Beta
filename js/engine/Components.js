@@ -286,6 +286,20 @@ export class CreativeScriptBehavior {
     get flipY() { return this.voltearV; }
     set flipY(v) { this.voltearV = v; }
 
+    // --- Direct Transform Access ---
+    get x() { return this.transform ? this.transform.x : 0; }
+    set x(v) { if (this.transform) this.transform.x = v; }
+    get y() { return this.transform ? this.transform.y : 0; }
+    set y(v) { if (this.transform) this.transform.y = v; }
+    get rotacion() { return this.transform ? this.transform.rotation : 0; }
+    set rotacion(v) { if (this.transform) this.transform.rotation = v; }
+    get rotation() { return this.rotacion; }
+    set rotation(v) { this.rotacion = v; }
+    get escala() { return this.transform ? this.transform.scale : { x: 1, y: 1 }; }
+    set escala(v) { if (this.transform) this.transform.scale = v; }
+    get scale() { return this.escala; }
+    set scale(v) { this.escala = v; }
+
     // --- Transform Proxy Methods ---
     mover(x, y) { if (this.transform) { if (typeof x === 'object') { this.transform.x += x.x || 0; this.transform.y += x.y || 0; } else { this.transform.x += x; this.transform.y += (y || 0); } } }
     rotar(deg) { if (this.transform) this.transform.rotation += deg; }
@@ -310,16 +324,43 @@ export class CreativeScriptBehavior {
     get audio() { return this.materia.getComponent(AudioSource); }
     get sonido() { return this.audio; }
 
-    get video() { return this.materia.getComponent(VideoPlayer); }
+    // --- Common Component Shortcuts (Robust) ---
+    get transform() { return this.obtenerComponente('Transform'); }
+    get transformacion() { return this.transform; }
+    get posicion() { return this.transform; }
+
+    get fisica() { return this.obtenerComponente('Rigidbody2D'); }
+    get rigidbody2D() { return this.fisica; }
+
+    get vida() { return this.obtenerComponente('Health'); }
+    get salud() { return this.vida; }
+    get health() { return this.vida; }
+
+    get animacion() { return this.obtenerComponente('Animator'); }
+    get animador() { return this.animacion; }
+    get animator() { return this.animacion; }
+
+    get controlador() { return this.obtenerComponente('AnimatorController'); }
+    get controladorAnimacion() { return this.controlador; }
+    get animatorController() { return this.controlador; }
+
+    get ataque() { return this.obtenerComponente('Attack'); }
+    get attack() { return this.ataque; }
+
+    get barra() { return this.obtenerComponente('ProgressBar'); }
+    get uiBarra() { return this.barra; }
+    get progressBar() { return this.barra; }
+
+    get video() { return this.obtenerComponente('VideoPlayer'); }
     get pelicula() { return this.video; }
 
-    get agua() { return this.materia.getComponent(Water); }
+    get agua() { return this.obtenerComponente('Water'); }
     get water() { return this.agua; }
 
-    get texto() { return this.materia.getComponent(UIText); }
-    get boton() { return this.materia.getComponent(Button); }
-    get imagen() { return this.materia.getComponent(UIImage); }
-    get lienzo() { return this.materia.getComponent(Canvas); }
+    get texto() { return this.obtenerComponente('UIText'); }
+    get boton() { return this.obtenerComponente('Button'); }
+    get imagen() { return this.obtenerComponente('UIImage'); }
+    get lienzo() { return this.obtenerComponente('Canvas'); }
 
     get ui() {
         const self = this;

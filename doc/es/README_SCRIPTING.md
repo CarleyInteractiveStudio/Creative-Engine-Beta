@@ -49,9 +49,9 @@ alActualizar(delta) {
 
 Creative Engine nació bajo una premisa: **El código debe ser legible para humanos y potente para máquinas.**
 
-A diferencia de otros motores que te obligan a lidiar con miles de líneas de "código basura" (boilerplate), en CES cada línea cuenta. Hemos eliminado la necesidad de usar `this.`, `mtr.` o prefijos redundantes. Si un objeto tiene vida, simplemente escribe `vida`. Si quieres moverlo, escribe `posicion`.
+A diferencia de otros motores que te obligan a lidiar con miles de líneas de "código basura" (boilerplate), en CES cada línea cuenta. Hemos eliminado la necesidad de usar `this.`, `mtr.` o prefijos redundantes.
 
-**La meta es que tu código parezca una descripción de lo que quieres que pase.**
+**¡Importante!** Para que un script pueda controlar algo (como la física o la vida), el objeto **debe tener ese componente añadido**. Si quieres usar `fisica`, asegúrate de añadir un `Rigidbody2D` al objeto en el Inspector.
 
 ---
 
@@ -121,7 +121,7 @@ alActualizar(delta) {
 
 ## 📦 Capítulo 6: El Diccionario de Componentes (Referencia API)
 
-Aquí tienes los accesos directos más comunes que el motor te regala:
+Aquí tienes los accesos directos más comunes que el motor te regala (siempre que el objeto tenga el componente correspondiente):
 
 - **`posicion` (Transform)**: El ADN del objeto. Controla `x`, `y`, `rotacion` y `escala`.
 - **`fisica` (Rigidbody2D)**: El motor de Newton. Usa `applyImpulse` para saltos y `velocity` para correr.
@@ -140,11 +140,13 @@ Olvídate de buscar objetos por toda la jerarquía. El sistema de **Mensajería 
 difundir("NivelCompletado", { tiempo: 45 });
 ```
 
-**Recetor:**
+**Receptor:**
 ```ces
-alRecibir("NivelCompletado", (datos) => {
-    imprimir("¡Felicidades! Lo lograste en " + datos.tiempo + " segundos.");
-});
+alEmpezar() {
+    alRecibir("NivelCompletado", (datos) => {
+        imprimir("¡Felicidades! Lo lograste en " + datos.tiempo + " segundos.");
+    });
+}
 ```
 
 ---
@@ -182,17 +184,19 @@ alEmpezar() {
 ## 🍳 Capítulo 9: El Recetario de Soluciones (Cookbook)
 
 ### 🏃 Sistema de Movimiento de Plataformas Pro
+*(Requiere componentes: Rigidbody2D, BoxCollider2D)*
 ```ces
 ve motor;
-publico numero velocidad = 300;
-publico numero fuerzaSalto = 15;
+publico numero velocidad = 10;
+publico numero fuerzaSalto = 12;
 
 alActualizar(delta) {
     variable horizontal = 0;
     si (teclaPresionada("d")) horizontal = 1;
     si (teclaPresionada("a")) horizontal = -1;
 
-    fisica.velocity.x = horizontal * (velocidad * delta);
+    // Movimiento directo de física
+    fisica.velocity.x = horizontal * velocidad;
 
     si (horizontal != 0) {
         voltearH = (horizontal < 0);
@@ -228,12 +232,13 @@ alActualizar(delta) {
 ```
 
 ### 🔘 Botón UI Interactable
+*(Requiere componentes: Button, UIText)*
 ```ces
 ve motor;
 publico texto mensajeAlClicar = "¡Hola!";
 
 alHacerClick() {
-    textoUI.text = mensajeAlClicar;
+    texto.text = mensajeAlClicar;
     reproducir.ClickSound();
     imprimir("Botón presionado");
 }
@@ -245,7 +250,7 @@ alHacerClick() {
 
 Para que tu juego corra a 60 FPS incluso en móviles, sigue estos consejos:
 
-1. **Usa `delta`**: Siempre multiplica tus movimientos por `delta`. Esto asegura que tu juego corra a la misma velocidad en una PC potente y en una antigua.
+1. **Usa `delta`**: Siempre multiplica tus movimientos por `delta` si cambias la `posicion` directamente. Si usas `fisica.velocity`, el motor se encarga.
 2. **Evita `buscar()` en `alActualizar`**: Buscar objetos por nombre es lento. Hazlo en `alEmpezar` y guarda el resultado en una variable.
 3. **Pooling**: En lugar de destruir y crear cientos de balas, intenta reutilizarlas.
 4. **Capas de Colisión**: Configura en los ajustes del proyecto qué objetos chocan con cuáles para ahorrar procesador.
@@ -254,17 +259,14 @@ Para que tu juego corra a 60 FPS incluso en móviles, sigue estos consejos:
 
 ## 🛠️ Capítulo 11: Solución de Problemas y FAQ
 
-**P: Mi script no hace nada.**
-R: Asegúrate de que la primera línea sea `ve motor;` y que el script esté asignado a un objeto activo en la escena.
+**P: Mi script lanza un error "Cannot read properties of undefined (reading 'velocity')".**
+R: Este error ocurre cuando intentas acceder a `fisica` pero el objeto no tiene un componente **Rigidbody2D**. Asegúrate de añadirlo en el Inspector.
 
-**P: El Inspector no muestra mis variables.**
-R: Debes declararlas con la palabra `publico` antes del tipo (ej: `publico numero velocidad = 10;`).
+**P: El script no responde a mis teclas.**
+R: Asegúrate de que el script tenga la línea `ve motor;` al principio y de que no haya errores de sintaxis en la Consola.
 
-**P: ¿Puedo usar JavaScript normal?**
-R: ¡Sí! CES es una capa sobre JS. Puedes usar `Math.random()`, `Array.push()`, etc.
-
-**P: ¿Cómo destruyo el objeto actual?**
-R: Usa `destruir(mtr);` o simplemente `destruir(materia);`.
+**P: ¿Cómo accedo a la vida de otro objeto?**
+R: Primero obtén la referencia (ej: `variable obj = buscar("Enemigo");`) y luego usa `obj.vida.damage(10);`.
 
 ---
 

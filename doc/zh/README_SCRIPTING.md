@@ -37,7 +37,7 @@ alEmpezar() {
 }
 
 alActualizar(delta) {
-    旋转 += 100 * delta; // 这将使对象旋转！
+    rotacion += 100 * delta; // 这将使对象旋转！
 }
 ```
 3. 将该文件从库中拖动到场景中的任何对象（图像或正方形）上。
@@ -49,9 +49,9 @@ alActualizar(delta) {
 
 Creative Engine 诞生于一个前提：**代码必须是人类可读且机器强大的。**
 
-与其他强迫你处理成千上万行“样板代码”（垃圾代码）的引擎不同，在 CES 中，每一行代码都至关重要。我们取消了对 `this.`、`mtr.` 或冗余前缀的需求。如果一个对象有生命值，只需编写 `health`。如果你想移动它，编写 `posicion` 或 `position`。
+与其他强迫你处理成千上万行“样板代码”（垃圾代码）的引擎不同，在 CES 中，每一行代码都至关重要。我们取消了对 `this.`、`mtr.` 或冗余前缀的需求。
 
-**目标是让你的代码看起来像是在描述你想要发生的事情。**
+**重要提示！** 为了让脚本控制某些内容（如物理或生命值），对象**必须添加相应的组件**。如果你想使用 `fisica`（物理），请确保在检查器中为对象添加 `Rigidbody2D`。
 
 ---
 
@@ -106,7 +106,7 @@ publico 物质 目标摄像机;
 更新(delta) {
     // 键盘
     如果 (teclaPresionada("w")) {
-        物理.applyForce(0, -100);
+        fisica.applyForce(0, -100);
     }
 
     // 鼠标
@@ -121,13 +121,13 @@ publico 物质 目标摄像机;
 
 ## 📦 第六章：组件词典 (API 参考)
 
-以下是引擎免费提供给你的最常用快捷方式：
+以下是引擎免费提供给你的最常用快捷方式（前提是对象拥有相应组件）：
 
-- **`posicion` (变换)**：对象的 DNA。控制 `x`、`y`、`旋转`和`缩放`。
+- **`posicion` / `位置` (变换)**：对象的 DNA。控制 `x`、`y`、`rotacion` 和`escala`。
 - **`fisica` (刚体 2D)**：牛顿引擎。使用 `applyImpulse` 进行跳跃，使用 `velocity` 进行跑步。
-- **`vida` (生命值)**：管理生死。使用 `damage(10)` 或 `heal(5)`。
-- **`animacion` (动画器)**：电影导演。使用 `play("Run")` 来切换状态。
-- **`audio` (音频源)**：对象的嗓音。使用 `play()` 或 `stop()`。
+- **`vida` / `health` (生命值)**：管理生死。使用 `damage(10)` 或 `heal(5)`。
+- **`animacion` / `animador` (动画器)**：电影导演。使用 `play("Run")` 来切换状态。
+- **`audio` / `sonido` (音频源)**：对象的嗓音。使用 `play()` 或 `stop()`。
 
 ---
 
@@ -142,9 +142,11 @@ broadcast("LevelCompleted", { time: 45 });
 
 **接收者：**
 ```ces
-onReceive("LevelCompleted", (数据) => {
-    打印("恭喜！你在 " + 数据.time + " 秒内完成了。");
-});
+alEmpezar() {
+    onReceive("LevelCompleted", (数据) => {
+        打印("恭喜！你在 " + 数据.time + " 秒内完成了。");
+    });
+}
 ```
 
 ---
@@ -155,7 +157,7 @@ onReceive("LevelCompleted", (数据) => {
 在 CES 中，你可以暂停脚本逻辑而不冻结游戏。这对于过场动画或特效至关重要。
 
 ```ces
-async 开始() {
+async alEmpezar() {
     打印("3...");
     等待(1);
     打印("2...");
@@ -170,7 +172,7 @@ async 开始() {
 你需要每 5 秒生成一个金币吗？不要使用复杂的手动计数器：
 
 ```ces
-开始() {
+alEmpezar() {
     cada(5) {
         创建 金币预制件;
     }
@@ -182,27 +184,29 @@ async 开始() {
 ## 🍳 第九章：解决方案食谱 (Cookbook)
 
 ### 🏃 专业平台跳跃移动系统
+*(需要组件：Rigidbody2D, BoxCollider2D)*
 ```ces
 ve motor;
-publico 数字 速度 = 300;
-publico 数字 跳跃力 = 15;
+publico 数字 速度 = 10;
+publico 数字 跳跃力 = 12;
 
 更新(delta) {
     变量 水平 = 0;
     如果 (teclaPresionada("d")) 水平 = 1;
     如果 (teclaPresionada("a")) 水平 = -1;
 
-    物理.velocity.x = 水平 * (速度 * delta);
+    // 物理直接移动
+    fisica.velocity.x = 水平 * 速度;
 
     如果 (水平 != 0) {
-        水平翻转 = (水平 < 0);
+        voltearH = (水平 < 0);
         播放.Walk();
     } 否则 {
         播放.Idle();
     }
 
     如果 (teclaRecienPresionada("Space") 并且 正在触摸标签("Ground")) {
-        物理.applyImpulse(新建 Vector2(0, -跳跃力));
+        fisica.applyImpulse(新建 Vector2(0, -跳跃力));
     }
 }
 ```
@@ -228,12 +232,13 @@ publico 数字 射速 = 0.5;
 ```
 
 ### 🔘 可交互 UI 按钮
+*(需要组件：Button, UIText)*
 ```ces
 ve motor;
 publico 文本 点击消息 = "你好！";
 
 alHacerClick() {
-    textoUI.text = 点击消息;
+    texto.text = 点击消息;
     播放.ClickSound();
     imprimir("按钮已按下");
 }
@@ -245,7 +250,7 @@ alHacerClick() {
 
 为了让你的游戏即使在移动端也能以 60 FPS 运行，请遵循以下建议：
 
-1. **使用 `delta`**：始终将你的移动乘以 `delta`。这确保了你的游戏在高性能电脑和老旧电脑上以相同的速度运行。
+1. **使用 `delta`**：如果你直接修改 `posicion`，请务必将移动乘以 `delta`。如果你使用 `fisica.velocity`，引擎会自动处理。
 2. **避免在 `更新` 中使用 `搜索()`**：按名称搜索对象很慢。在 `开始` 中完成并在变量中保存结果。
 3. **对象池 (Pooling)**：与其销毁和创建数百个子弹，不如尝试重用它们。
 4. **碰撞层**：在项目设置中配置哪些对象与哪些对象发生碰撞，以节省处理能力。
@@ -254,17 +259,14 @@ alHacerClick() {
 
 ## 🛠️ 第十一章：故障排除与常见问题
 
-**问：我的脚本没有反应。**
-答：确保第一行是 `ve motor;`，并且脚本已分配给场景中处于激活状态的对象。
+**问：我的脚本抛出错误 "Cannot read properties of undefined (reading 'velocity')"。**
+答：当你尝试访问 `fisica` 但对象没有 **Rigidbody2D** 组件时，会发生此错误。请确保在检查器中添加它。
 
-**问：检查器没有显示我的变量。**
-答：你必须在类型前使用 `publico` 关键字声明它们（例如：`publico 数字 速度 = 10;`）。
+**问：脚本没有响应我的按键。**
+答：确保脚本开头有 `ve motor;` 行，并且控制台 (Console) 中没有语法错误。
 
-**问：我可以使用标准的 JavaScript 吗？**
-答：可以！CES 是 JS 之上的一个层。你可以使用 `Math.random()`、`Array.push()` 等。
-
-**问：如何销毁当前对象？**
-答：使用 `destruir(mtr);` 或简单的 `destruir(materia);`。
+**问：我如何访问另一个对象的生命值？**
+答：先获取引用（例如：`variable obj = find("Enemy");`），然后使用 `obj.vida.damage(10);`。
 
 ---
 
@@ -273,6 +275,8 @@ alHacerClick() {
 你已经读完了大师之书，但你作为开发者的故事才刚刚开始。**Creative Engine** 是画布，而你是艺术家。
 
 不要害怕实验。打破规则，组合组件，最重要的是，**享受乐趣**。如果你能想象它，你就能在这里编程。
+
+> “预测未来的最好方法就是创造它。” —— 彼得·德鲁克
 
 ---
 *有问题吗？请咨询 [组件指南](README_COMPONENTES.md) 或加入我们的官方社区。*

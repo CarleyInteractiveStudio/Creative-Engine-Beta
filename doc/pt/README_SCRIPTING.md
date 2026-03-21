@@ -49,9 +49,9 @@ alActualizar(delta) {
 
 O Creative Engine nasceu sob uma premissa: **O código deve ser legível para humanos e potente para máquinas.**
 
-Ao contrário de outros motores que o obrigam a lidar com milhares de linhas de "código lixo" (boilerplate), no CES cada linha conta. Eliminamos a necessidade de usar `this.`, `mtr.` ou prefixos redundantes. Se um objeto tem vida, basta escrever `saude` ou `vida`. Se quiser movê-lo, escreva `posicao` ou `posição`.
+Ao contrário de outros motores que o obrigam a lidar com milhares de linhas de "código lixo" (boilerplate), no CES cada linha conta. Eliminamos a necessidade de usar `this.`, `mtr.` ou prefixos redundantes.
 
-**A meta é que o seu código pareça uma descrição do que você quer que aconteça.**
+**Importante!** Para que um script possa controlar algo (como a física ou a vida), o objeto **deve ter esse componente adicionado**. Se você quiser usar `fisica`, certifique-se de adicionar um `Rigidbody2D` ao objeto no Inspetor.
 
 ---
 
@@ -89,10 +89,10 @@ publico Materia camaraObjetivo;
 
 ## ⏱️ Capítulo 4: O Ritmo do Jogo (Ciclo de Vida)
 
-Um jogo é uma ilusão criada por imagens que mudam rapidamente. O seu script vive dentro desse batimento:
+Um jogo es uma ilusão criada por imagens que mudam rapidamente. O seu script vive dentro desse batimento:
 
-1. **`começar()` / `alEmpezar()`**: Sua oportunidade de ouro para configurar o objeto. Executa apenas uma vez.
-2. **`atualizar(delta)` / `alActualizar(delta)`**: Ocorre aproximadamente 60 vezes por segundo. Aqui é onde você processa o movimento e a lógica constante.
+1. **`alEmpezar()` / `começar()`**: Sua oportunidade de ouro para configurar o objeto. Executa apenas uma vez.
+2. **`alActualizar(delta)` / `atualizar(delta)`**: Ocorre aproximadamente 60 vezes por segundo. Aqui é onde você processa o movimento e a lógica constante.
 3. **`actualizarFijo(delta)`**: O motor de física roda aqui. Use-o para forças constantes para evitar que os objetos "atravessem" paredes.
 4. **`alHacerClick()` / `alPresionar()`**: A resposta direta ao toque do jogador.
 
@@ -111,7 +111,7 @@ atualizar(delta) {
 
     // Mouse
     se (botonMouseRecienPresionado(0)) {
-        variavel pos = obterPosicionMouse();
+        variavel pos = obtenerPosicionMouse();
         imprimir("Clique em: " + pos.x + "," + pos.y);
     }
 }
@@ -121,13 +121,13 @@ atualizar(delta) {
 
 ## 📦 Capítulo 6: O Dicionário de Componentes (Referencia API)
 
-Aqui estão os atalhos mais comuns que o motor lhe oferece:
+Aqui estão os atalhos mais comuns que o motor lhe oferece (desde que o objeto tenha o componente correspondente):
 
-- **`posicao` (Transform)**: O ADN do objeto. Controla `x`, `y`, `rotacao` e `escala`.
+- **`posicao` / `posição`**: O ADN do objeto. Controla `x`, `y`, `rotacao` e `escala`.
 - **`fisica` (Rigidbody2D)**: O motor de Newton. Use `applyImpulse` para saltos e `velocity` para correr.
-- **`saude` (Health)**: Gere a mortalidade. Use `damage(10)` ou `heal(5)`.
-- **`animador` (Animator)**: O diretor de cinema. Use `play("Correr")` para mudar de estado.
-- **`audio` (AudioSource)**: A voz do objeto. Use `play()` ou `stop()`.
+- **`saude` / `vida`**: Gere a mortalidade. Use `damage(10)` ou `heal(5)`.
+- **`animador` / `animacion`**: O diretor de cinema. Use `play("Correr")` para mudar de estado.
+- **`audio` / `sonido`**: A voz do objeto. Use `play()` ou `stop()`.
 
 ---
 
@@ -142,9 +142,11 @@ difundir("NivelCompletado", { tiempo: 45 });
 
 **Recetor:**
 ```ces
-alRecibir("NivelCompletado", (dados) => {
-    imprimir("Parabéns! Você conseguiu em " + dados.tiempo + " segundos.");
-});
+alEmpezar() {
+    alRecibir("NivelCompletado", (dados) => {
+        imprimir("Parabéns! Você conseguiu em " + dados.tiempo + " segundos.");
+    });
+}
 ```
 
 ---
@@ -152,7 +154,7 @@ alRecibir("NivelCompletado", (dados) => {
 ## 🪄 Capítulo 8: Magia Temporal (Corrotinas e Loops)
 
 ### A arte da espera (`aguardar`)
-No CES, você pode pausar a lógica de um script sem congelar o jogo. Isso é vital para cinemáticas ou efeitos.
+No CES, você pode pausar a lógica de um script sin congelar o jogo. Isso é vital para cinemáticas ou efeitos.
 
 ```ces
 async começar() {
@@ -182,17 +184,19 @@ começar() {
 ## 🍳 Capítulo 9: O Receituário de Soluções (Cookbook)
 
 ### 🏃 Sistema de Movimento de Plataformas Pro
+*(Requer componentes: Rigidbody2D, BoxCollider2D)*
 ```ces
 ve motor;
-publico numero velocidade = 300;
-publico numero forçaSalto = 15;
+publico numero velocidade = 10;
+publico numero forçaSalto = 12;
 
 atualizar(delta) {
     variavel horizontal = 0;
     se (teclaPresionada("d")) horizontal = 1;
     se (teclaPresionada("a")) horizontal = -1;
 
-    fisica.velocity.x = horizontal * (velocidad * delta);
+    // Movimento direto de física
+    fisica.velocity.x = horizontal * velocidade;
 
     se (horizontal != 0) {
         inverterH = (horizontal < 0);
@@ -212,28 +216,29 @@ atualizar(delta) {
 ve motor;
 publico Prefab bala;
 publico numero cadencia = 0.5;
-numero tempoProximoDisparo = 0;
+numero tiempoProximoDisparo = 0;
 
 atualizar(delta) {
     se (teclaPresionada("f") e tempoProximoDisparo <= 0) {
         criar bala;
-        tempoProximoDisparo = cadencia;
+        tiempoProximoDisparo = cadencia;
         reproducir.Disparo();
     }
 
-    se (tempoProximoDisparo > 0) {
-        tempoProximoDisparo -= delta;
+    se (tiempoProximoDisparo > 0) {
+        tiempoProximoDisparo -= delta;
     }
 }
 ```
 
 ### 🔘 Botão UI Interativo
+*(Requer componentes: Button, UIText)*
 ```ces
 ve motor;
 publico texto mensagemAoClicar = "Olá!";
 
 alHacerClick() {
-    textoUI.text = mensajeAoClicar;
+    texto.text = mensajeAoClicar;
     reproducir.ClickSound();
     imprimir("Botão pressionado");
 }
@@ -245,7 +250,7 @@ alHacerClick() {
 
 Para que o seu jogo corra a 60 FPS mesmo em telemóveis, siga estes conselhos:
 
-1. **Use `delta`**: Multiplique sempre os seus movimentos por `delta`. Isso garante que o seu jogo corra à mesma velocidade num PC potente e num antigo.
+1. **Use `delta`**: Multiplique sempre os seus movimentos por `delta` se você alterar a `posição` diretamente. Se você usar `fisica.velocity`, o motor se encarrega.
 2. **Evite `buscar()` em `atualizar`**: Procurar objetos por nome é lento. Faça-o em `começar` e guarde o resultado numa variável.
 3. **Pooling**: Em vez de destruir e criar centenas de balas, tente reutilizá-las.
 4. **Camadas de Colisão**: Configure nos ajustes do projeto quais objetos colidem com quais para poupar processador.
@@ -254,17 +259,14 @@ Para que o seu jogo corra a 60 FPS mesmo em telemóveis, siga estes conselhos:
 
 ## 🛠️ Capítulo 11: Solução de Problemas e FAQ
 
-**P: Meu script não faz nada.**
-R: Certifique-se de que a primeira linha seja `ve motor;` e que o script esteja atribuído a um objeto ativo na cena.
+**P: Meu script lança um erro "Cannot read properties of undefined (reading 'velocity')".**
+R: Este erro ocorre quando você tenta acessar `fisica` mas o objeto não tem um componente **Rigidbody2D**. Certifique-se de adicioná-lo no Inspetor.
 
-**P: O Inspetor não mostra minhas variáveis.**
-R: Você deve declará-las com a palavra `publico` antes do tipo (ex: `publico numero velocidade = 10;`).
+**P: O script não responde às minhas teclas.**
+R: Certifique-se de que o script tenha a linha `ve motor;` no início e que não haja erros de sintaxe no Console.
 
-**P: Posso usar JavaScript normal?**
-R: Sim! O CES é uma camada sobre JS. Você pode usar `Math.random()`, `Array.push()`, etc.
-
-**P: Como destruo o objeto atual?**
-R: Use `destruir(mtr);` ou simplesmente `destruir(materia);`.
+**P: Como acesso a vida de outro objeto?**
+R: Primeiro obtenha a referência (ex: `variavel obj = buscar("Inimigo");`) e use `obj.saude.damage(10);`.
 
 ---
 
@@ -273,8 +275,6 @@ R: Use `destruir(mtr);` ou simplesmente `destruir(materia);`.
 Você terminou o Livro Mestre, mas a sua história como desenvolvedor apenas começa. **Creative Engine** é a tela, e você é o artista.
 
 Não tenha medo de experimentar. Quebre as regras, combine componentes e, acima de tudo, **divirta-se**. Se você pode imaginá-lo, você pode programá-lo aqui.
-
-> "A melhor forma de prever o futuro é criá-lo." — Peter Drucker
 
 ---
 *Dúvidas? Consulte o [Guia de Componentes](README_COMPONENTES.md) ou junte-se à nossa comunidade oficial.*
