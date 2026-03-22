@@ -20,7 +20,7 @@ import { initialize as initializeImportExport } from './editor/ui/PackageImportE
 import { transpile } from './editor/CES_Transpiler.js';
 import * as SceneView from './editor/SceneView.js';
 import * as MathUtils from './engine/MathUtils.js';
-import { setActiveTool } from './editor/SceneView.js';
+import { setActiveTool, getActiveTool } from './editor/SceneView.js';
 import * as CodeEditor from './editor/CodeEditorWindow.js';
 import { initializeFloatingPanels, bringToFront } from './editor/FloatingPanelManager.js';
 import * as DebugPanel from './editor/ui/DebugPanel.js';
@@ -37,6 +37,7 @@ import { TerrenoEditorWindow } from './editor/ui/TerrenoEditorWindow.js';
 import * as EngineAPI from './engine/EngineAPI.js';
 import { getCustomComponentDefinitions } from './editor/EngineAPIExtension.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
+import * as SkeletonImporter from './editor/SkeletonImporter.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
 import { buildProject, runStandalonePreview } from './editor/BuildSystem.js';
 import * as Dialogs from './editor/ui/DialogWindow.js';
@@ -288,7 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'btn-play', 'btn-pause', 'btn-stop', 'btn-exit-prefab', 'btn-save-prefab',
             'tool-tile-brush', 'tool-tile-bucket', 'tool-tile-rectangle-fill', 'tool-tile-eraser',
             // Menubar scene options
-            'menu-new-scene', 'menu-open-scene', 'menu-save-scene', 'menu-build', 'menu-import-asset',
+            'menu-new-scene', 'menu-open-scene', 'menu-save-scene', 'menu-build', 'menu-import-asset', 'menu-import-skeleton',
             // Asset Selector Bubble Elements
             'asset-selector-bubble', 'asset-selector-title', 'asset-selector-breadcrumbs', 'asset-selector-grid-view',
             'asset-selector-toolbar', 'asset-selector-view-modes', 'asset-selector-search',
@@ -304,7 +305,9 @@ document.addEventListener('DOMContentLoaded', () => {
             'markdown-viewer-panel', 'markdown-viewer-title', 'md-preview-btn', 'md-edit-btn', 'md-save-btn',
             'md-preview-content', 'md-edit-content',
             // CHC Editor Elements
-            'chc-integrated-editor', 'chc-human-text', 'chc-run-btn', 'chc-loading-overlay', 'chc-loading-text'
+            'chc-integrated-editor', 'chc-human-text', 'chc-run-btn', 'chc-loading-overlay', 'chc-loading-text',
+            // Animation Skeletal Elements
+            'animation-type-selector', 'animation-record-btn', 'skeletal-timeline', 'animation-time-slider', 'skeletal-tracks'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
@@ -812,6 +815,42 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Open Scene
+        if (e.ctrlKey && e.key.toLowerCase() === 'o') {
+            e.preventDefault();
+            dom.menuOpenScene.click();
+            return;
+        }
+
+        // Create New Materia (Empty)
+        if (e.ctrlKey && e.key.toLowerCase() === 'n') {
+            e.preventDefault();
+            handleHierarchyContextMenuAction('create-empty');
+            return;
+        }
+
+        // Window Shortcuts (Shift + Ctrl + Key)
+        if (e.ctrlKey && e.shiftKey) {
+            const key = e.key.toLowerCase();
+            if (key === 'a') { // Animation Editor
+                e.preventDefault();
+                document.getElementById('menu-window-animation').click();
+            } else if (key === 'c') { // Animation Controller
+                e.preventDefault();
+                document.getElementById('menu-window-animator').click();
+            } else if (key === 's') { // Sprite Editor
+                e.preventDefault();
+                document.getElementById('menu-window-sprite-editor').click();
+            } else if (key === 'l') { // Carl IA
+                e.preventDefault();
+                dom.menubarCarlIaBtn.click();
+            } else if (key === 'b') { // Libraries
+                e.preventDefault();
+                dom.menubarLibrariesBtn.click();
+            }
+            return;
+        }
+
         if (!e.ctrlKey && !e.altKey) {
             switch (e.key.toLowerCase()) {
                 case 'q':
@@ -1025,6 +1064,11 @@ document.addEventListener('DOMContentLoaded', () => {
             currentProjectConfig.ramLimit = 2048;
         }
 
+        // Ensure keystore config exists for newer projects/imports
+        if (!currentProjectConfig.keystore) {
+            currentProjectConfig.keystore = { path: '', pass: '', alias: '', aliasPass: '' };
+        }
+
         // Apply editor preferences from project config if they exist
         if (currentProjectConfig.preferences) {
             loadExternalPreferences(currentProjectConfig.preferences);
@@ -1073,7 +1117,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         const libData = JSON.parse(content);
 
                         if (libData.api_access && libData.api_access.runtime_accessible) {
-                            const scriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
+                            let scriptContent = '';
+                            if (libData.script_base64) {
+                                scriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
+                            } else if (libData.files && libData.mainScript && libData.files[libData.mainScript]) {
+                                scriptContent = decodeURIComponent(escape(atob(libData.files[libData.mainScript])));
+                            }
+
                             const apiObject = (new Function(scriptContent))();
 
                             if (apiObject && typeof apiObject === 'object') {
@@ -1434,6 +1484,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const terreno2D = materia.getComponent(Components.Terreno2D);
                 const water = materia.getComponent(Components.Water);
                 const lineCollider = materia.getComponent(Components.LineCollider2D);
+                const skeleton = materia.getComponent(Components.SkeletonRenderer);
+                const bone = materia.getComponent(Components.Bone);
                 const videoPlayer = materia.getComponent(Components.VideoPlayer);
                 const gyzmo = materia.getComponent(Components.Gyzmo);
                 const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
@@ -1650,6 +1702,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     rendererInstance.drawLineCollider(lineCollider, worldPosition.x, worldPosition.y);
                 } else if (gyzmo) {
                     rendererInstance.drawGyzmo(gyzmo);
+                } else if (skeleton) {
+                    rendererInstance.drawSkeleton(skeleton);
+                } else if (bone) {
+                    rendererInstance.drawBone(bone);
                 }
             }
 
@@ -1827,6 +1883,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const tr = materia.getComponent(Components.TextureRender);
                 if (tr) tr.update(deltaTime);
+
+                const skeleton = materia.getComponent(Components.SkeletonRenderer);
+                if (skeleton) {
+                    if (skeleton.source && skeleton.source !== skeleton._lastLoadedSource) {
+                        skeleton.loadTexture(projectsDirHandle);
+                    }
+                }
 
 
                 // ONLY update Animator and Controller for selected object to avoid performance issues
@@ -2476,6 +2539,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const tabBar = dom.assetsPanel.querySelector('.tab-bar');
         const contentContainer = dom.assetsPanel.querySelector('.panel-content-container');
 
+        // Close menu when clicking outside
+        window.addEventListener('click', (e) => {
+            const menu = document.getElementById('anim-node-context-menu');
+            if (menu && menu.style.display !== 'none' && !menu.contains(e.target)) {
+                menu.style.display = 'none';
+            }
+        });
+
         if (tabBar && contentContainer) {
             tabBar.addEventListener('click', (e) => {
                 if (e.target.matches('.tab-btn')) {
@@ -2609,6 +2680,29 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.menuSaveScene.addEventListener('click', (e) => {
             e.preventDefault();
             saveScene();
+        });
+
+        dom.menuImportSkeleton.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const L = window.Localization;
+            openAssetSelector(async (fileHandle, path, dirHandle) => {
+                const selectedMtr = getSelectedMateria();
+                if (!selectedMtr) {
+                    showNotificationDialog(L.get('AVISO'), L.get('ERROR_IMPORTAR_SIN_OBJETO', 'Selecciona un objeto en la jerarquía para importar el esqueleto como hijo.'));
+                    return;
+                }
+
+                try {
+                    const file = await fileHandle.getFile();
+                    const content = await file.text();
+                    const result = await SkeletonImporter.importSpineJSON(content, selectedMtr, projectsDirHandle);
+                    showNotificationDialog(L.get('EXITO'), L.get('ESQUELETO_IMPORTADO', 'Esqueleto importado correctamente.'));
+                    updateHierarchy();
+                } catch (err) {
+                    console.error("Error importing Spine skeleton:", err);
+                    showNotificationDialog(L.get('ERROR'), 'Error importing Spine JSON.');
+                }
+            }, { filter: ['.json'], title: L.get('IMPORTAR_ESQUELETO_SPINE', 'Import Skeleton (Spine)') });
         });
 
         const reportBugBtn = document.getElementById('menu-report-bug');
@@ -3426,6 +3520,15 @@ Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicán
             document.body.classList.add('mobile-mode');
         }
 
+        // --- Prevent accidental navigation ---
+        window.addEventListener('beforeunload', (e) => {
+            if (SceneManager.isSceneDirty && !window.isSubmittingBuild) {
+                // Standard for showing a "Discard changes?" browser dialog
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
         // Initialize localization
         await Localization.init();
         Localization.updateUI();
@@ -3452,6 +3555,7 @@ Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicán
         window.TerrenoEditorWindow = TerrenoEditorWindow;
         window.AnimationEditorWindow = AnimationEditorWindow;
         window.TilePalette = TilePalette;
+        window.SkeletonImporter = SkeletonImporter;
 
         // --- For Playwright Testing ---
         // This exposes a safe subset of the HierarchyWindow module for programmatic UI creation in tests
@@ -3664,7 +3768,13 @@ public start() {
                                 console.warn(`No se encontró o no se pudo leer el archivo .meta para la librería '${libData.name}'. No se concederán permisos.`);
                             }
 
-                            const scriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
+                            let scriptContent = '';
+                            if (libData.script_base64) {
+                                scriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
+                            } else if (libData.files && libData.mainScript && libData.files[libData.mainScript]) {
+                                scriptContent = decodeURIComponent(escape(atob(libData.files[libData.mainScript])));
+                            }
+
                             const engineAPI = EngineAPI.getEngineAPI();
 
                             // --- API SANDBOXING ---

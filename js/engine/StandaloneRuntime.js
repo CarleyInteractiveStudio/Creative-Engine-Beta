@@ -533,6 +533,8 @@ export class StandaloneRuntime {
                 const vp = materia.getComponent(Components.VideoPlayer);
                 const water = materia.getComponent(Components.Water);
                 const lineCollider = materia.getComponent(Components.LineCollider2D);
+                const skeleton = materia.getComponent(Components.SkeletonRenderer);
+                const bone = materia.getComponent(Components.Bone);
 
                 // --- Parallax Displacement ---
                 let worldPosition = transform.position;
@@ -650,6 +652,10 @@ export class StandaloneRuntime {
                     this.renderer.drawWater(water, worldPosition.x, worldPosition.y);
                 } else if (lineCollider) {
                     this.renderer.drawLineCollider(lineCollider, worldPosition.x, worldPosition.y);
+                } else if (skeleton) {
+                    this.renderer.drawSkeleton(skeleton);
+                } else if (bone) {
+                    this.renderer.drawBone(bone);
                 }
             }
 

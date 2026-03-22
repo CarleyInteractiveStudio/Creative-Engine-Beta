@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder, Terreno2D, Gyzmo, Animator, UIEventTrigger, VideoPlayer, Water, LineCollider2D } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder, Terreno2D, Gyzmo, Animator, UIEventTrigger, VideoPlayer, Water, LineCollider2D, Bone, SkeletonRenderer } from './Components.js';
 import { getAbsoluteRect, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false, isGameView = false) {
@@ -264,6 +264,128 @@ export class Renderer {
 
         this.ctx.restore();
         this.ctx.globalAlpha = 1.0;
+    }
+
+    drawBone(bone) {
+        if (!this.isEditor) return;
+
+        const transform = bone.materia.getComponent(Transform);
+        if (!transform) return;
+
+        const zoom = this.camera?.effectiveZoom || 1;
+        const { length, color, thickness } = bone;
+
+        this.ctx.save();
+        this.ctx.translate(transform.x, transform.y);
+        this.ctx.rotate(transform.rotation * Math.PI / 180);
+
+        // Draw bone shape (a diamond/triangle starting from origin)
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, 0);
+        this.ctx.lineTo(length * 0.1, -thickness / zoom);
+        this.ctx.lineTo(length, 0);
+        this.ctx.lineTo(length * 0.1, thickness / zoom);
+        this.ctx.closePath();
+
+        this.ctx.fillStyle = color || '#00ff00';
+        this.ctx.globalAlpha = 0.6;
+        this.ctx.fill();
+
+        this.ctx.strokeStyle = '#ffffff';
+        this.ctx.lineWidth = 1 / zoom;
+        this.ctx.stroke();
+
+        // Draw joint circle
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, (thickness * 1.5) / zoom, 0, Math.PI * 2);
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fill();
+
+        this.ctx.restore();
+    }
+
+    drawSkeleton(skeleton) {
+        const transform = skeleton.materia.getComponent(Transform);
+        if (!transform || !skeleton.mesh || !skeleton.bones.length) return;
+
+        const { ctx } = this;
+        const mesh = skeleton.mesh;
+        const bindPoses = skeleton.bindPoses;
+
+        if (!skeleton._boneMateriaCache || skeleton._boneMateriaCache.length !== skeleton.bones.length) {
+            skeleton._updateBoneCache();
+        }
+
+        const boneTransforms = skeleton._boneMateriaCache.map(mtr => mtr ? mtr.getComponent(Transform) : null);
+
+        // Compute deformed vertices in WORLD space
+        const deformedVertices = [];
+        for (let i = 0; i < mesh.vertices.length; i += 2) {
+            const vx = mesh.vertices[i];
+            const vy = mesh.vertices[i+1];
+            const weights = mesh.weights[i/2] || [];
+
+            let finalX = 0, finalY = 0;
+            let totalWeight = 0;
+
+            for (const w of weights) {
+                const boneTrans = boneTransforms[w.boneIndex];
+                const bindPose = bindPoses[w.boneIndex];
+                if (!boneTrans || !bindPose) continue;
+
+                // 1. Vertex local to skeleton root -> Vertex local to bone (using bind pose)
+                // We assume vertices are relative to skeleton transform at bind time
+                const dx = vx - (bindPose.x - transform.x);
+                const dy = vy - (bindPose.y - transform.y);
+                const radBind = -bindPose.rotation * Math.PI / 180;
+                const cosB = Math.cos(radBind), sinB = Math.sin(radBind);
+                const lx = (dx * cosB - dy * sinB) / (bindPose.scale?.x || 1);
+                const ly = (dx * sinB + dy * cosB) / (bindPose.scale?.y || 1);
+
+                // 2. Vertex local to bone -> Vertex in world space (using current bone transform)
+                const radBone = boneTrans.rotation * Math.PI / 180;
+                const cosA = Math.cos(radBone), sinA = Math.sin(radBone);
+
+                const tx = (lx * (boneTrans.scale?.x || 1) * cosA - ly * (boneTrans.scale?.y || 1) * sinA) + boneTrans.x;
+                const ty = (lx * (boneTrans.scale?.x || 1) * sinA + ly * (boneTrans.scale?.y || 1) * cosA) + boneTrans.y;
+
+                finalX += tx * w.weight;
+                finalY += ty * w.weight;
+                totalWeight += w.weight;
+            }
+
+            if (totalWeight === 0) {
+                // Fallback to skeleton local -> world
+                const radSkel = transform.rotation * Math.PI / 180;
+                const cosS = Math.cos(radSkel), sinS = Math.sin(radSkel);
+                deformedVertices.push(
+                    (vx * transform.scale.x * cosS - vy * transform.scale.y * sinS) + transform.x,
+                    (vx * transform.scale.x * sinS + vy * transform.scale.y * cosS) + transform.y
+                );
+            } else {
+                deformedVertices.push(finalX / totalWeight, finalY / totalWeight);
+            }
+        }
+
+        const img = skeleton._texture;
+        const hasTexture = img && img.complete && img.naturalWidth > 0;
+
+        // Render Mesh - Context is already in World Space (via beginWorld)
+        for (let i = 0; i < mesh.indices.length; i += 3) {
+            const i0 = mesh.indices[i];
+            const i1 = mesh.indices[i+1];
+            const i2 = mesh.indices[i+2];
+
+            const v0 = { x: deformedVertices[i0*2], y: deformedVertices[i0*2+1], u: mesh.uvs[i0*2], v: mesh.uvs[i0*2+1] };
+            const v1 = { x: deformedVertices[i1*2], y: deformedVertices[i1*2+1], u: mesh.uvs[i1*2], v: mesh.uvs[i1*2+1] };
+            const v2 = { x: deformedVertices[i2*2], y: deformedVertices[i2*2+1], u: mesh.uvs[i2*2], v: mesh.uvs[i2*2+1] };
+
+            if (hasTexture) {
+                this._drawTexturedTriangle(img, v0, v1, v2);
+            } else {
+                this._drawSolidTriangle(v0, v1, v2, skeleton.color || '#ffffff');
+            }
+        }
     }
 
     drawWater(water, x = null, y = null) {

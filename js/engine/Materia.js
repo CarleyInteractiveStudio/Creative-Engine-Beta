@@ -94,6 +94,22 @@ export class Materia {
     }
 
     /**
+     * Busca un hijo por su nombre de forma recursiva.
+     * @param {string} name
+     * @param {boolean} recursive
+     */
+    findChildByName(name, recursive = true) {
+        for (const child of this.children) {
+            if (child.name === name) return child;
+            if (recursive) {
+                const found = child.findChildByName(name, true);
+                if (found) return found;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Busca un script específico en esta Materia por su nombre.
      * @param {string} name - El nombre del script (ej: 'ControladorJugador').
      * @returns {object|null} La instancia del script o null si no se encuentra.

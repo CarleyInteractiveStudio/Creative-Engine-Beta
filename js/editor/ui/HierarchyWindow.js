@@ -223,6 +223,18 @@ export function handleContextMenuAction(action) {
         case 'create-camera':
             newMateria = createCameraObject(selectedMateria);
             break;
+        case 'create-bone':
+            newMateria = createBaseMateria(generateUniqueName(L.get('BONE', 'Hueso')), selectedMateria);
+            newMateria.addComponent(new Components.Bone(newMateria));
+            break;
+        case 'create-skeleton':
+            newMateria = createBaseMateria(generateUniqueName(L.get('SKELETON', 'Esqueleto')), selectedMateria);
+            newMateria.addComponent(new Components.SkeletonRenderer(newMateria));
+            break;
+        case 'create-ik-manager':
+            newMateria = createBaseMateria(generateUniqueName(L.get('IK_MANAGER', 'Gestor IK')), selectedMateria);
+            newMateria.addComponent(new Components.IKManager2D(newMateria));
+            break;
         case 'create-sprite':
             newMateria = createBaseMateria(generateUniqueName(L.get('SPRITE', 'Sprite')), selectedMateria);
             newMateria.addComponent(new Components.SpriteRenderer(newMateria));

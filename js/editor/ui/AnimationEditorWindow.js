@@ -16,6 +16,8 @@ let lastDrawPos = { x: 0, y: 0 };
 let currentAnimationAsset = null; // Holds the parsed .cea file content
 let currentAnimationFileHandle = null; // Holds the file handle for saving
 let currentFrameIndex = -1;
+let currentKeyframeIndex = -1;
+let currentAnimationTime = 0;
 let isAnimationPlaying = false;
 let animationPlaybackId = null;
 
@@ -115,7 +117,6 @@ export function populateTimeline() {
         : currentAnimationAsset;
 
     if (!animation || !animation.frames) return;
-    if (!animation) return;
 
     animation.frames.forEach((frameData, index) => {
         const frameImg = document.createElement('img');
@@ -170,13 +171,12 @@ export async function saveAnimationAsset() {
 
 export async function openAnimationAsset(fileHandle, dirHandle) {
     try {
-        // FIX: The file handle is now passed directly, no need to look it up again.
         currentAnimationFileHandle = fileHandle;
         const file = await currentAnimationFileHandle.getFile();
         const content = await file.text();
         let data = JSON.parse(content);
 
-        // Normalize structure if it's missing the animations array but has frames
+        // Normalize structure
         if (!data.animations && data.frames) {
             data = {
                 name: data.name || fileHandle.name.replace('.cea', ''),
@@ -193,14 +193,17 @@ export async function openAnimationAsset(fileHandle, dirHandle) {
 
         currentAnimationAsset = data;
 
+        if (dom.animationTypeSelector) {
+            dom.animationTypeSelector.value = data.type || 'frame';
+            updateUIForAnimationType();
+        }
+
         dom.animationPanel.classList.remove('hidden');
         dom.animationPanelOverlay.classList.add('hidden');
-        console.log(`Abierto ${currentAnimationFileHandle.name}:`, currentAnimationAsset);
 
         populateTimeline();
 
-        // Select first frame by default if available
-        const anim = data.animations[0];
+        const anim = data.animations ? data.animations[0] : null;
         if (anim && anim.frames && anim.frames.length > 0) {
             currentFrameIndex = 0;
             const img = new Image();
@@ -216,7 +219,7 @@ export async function openAnimationAsset(fileHandle, dirHandle) {
                 ctx.drawImage(img, 0, 0);
                 drawOnionSkin();
                 drawAnimEditorGrid();
-                populateTimeline(); // Refresh active class
+                populateTimeline();
             };
             img.src = anim.frames[0];
         } else {
@@ -295,22 +298,18 @@ function addFramesToAnimation(newFrames) {
         currentFrameIndex = anim.frames.length - 1;
         populateTimeline();
 
-        // Select and draw the last added frame
         const lastFrameData = anim.frames[currentFrameIndex];
         const img = new Image();
         img.onload = () => {
             const w = img.naturalWidth || img.width;
             const h = img.naturalHeight || img.height;
-
             [dom.drawingCanvas, dom.animOnionSkinCanvas, dom.animGridCanvas].forEach(canvas => {
                 canvas.width = w;
                 canvas.height = h;
             });
-
             const ctx = dom.drawingCanvas.getContext('2d');
             ctx.clearRect(0, 0, w, h);
             ctx.drawImage(img, 0, 0);
-
             drawOnionSkin();
             drawAnimEditorGrid();
         };
@@ -379,7 +378,7 @@ async function processImportItems(items) {
             L.get('PROMPT_COMO_IMPORTAR', "¿Cómo quieres importar esta imagen?"),
             [L.get('OPCION_SOLO_FRAME', "Como un solo fotograma"), L.get('OPCION_SPRITESHEET', "Como una hoja de sprites (Slice)")],
             async (value, index) => {
-                if (index === 0) { // Single frame
+                if (index === 0) {
                     try {
                         const dataUrl = item.dataUrl || await imageToDataURL(url);
                         addFramesToAnimation([dataUrl]);
@@ -387,7 +386,7 @@ async function processImportItems(items) {
                         console.error(e);
                         window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_IMPORTAR_IMAGEN', "No se pudo importar la imagen."));
                     }
-                } else { // Spritesheet
+                } else {
                     window.Dialogs.showPrompt(L.get('TITULO_HOJA_SPRITES', "Hoja de Sprites"), L.get('PROMPT_COLUMNAS', "Número de Columnas:"), (cols) => {
                         if (!cols || isNaN(cols) || cols <= 0) return;
                         window.Dialogs.showPrompt(L.get('TITULO_HOJA_SPRITES', "Hoja de Sprites"), L.get('PROMPT_FILAS', "Número de Filas:"), async (rows) => {
@@ -405,9 +404,7 @@ async function processImportItems(items) {
             }
         );
     } else {
-        // Multiple images
         const dataUrls = [];
-        // Sort items by path/name to maintain order
         items.sort((a, b) => a.path.localeCompare(b.path));
 
         for (const item of items) {
@@ -432,7 +429,7 @@ async function processImportItems(items) {
 export function startAnimationPlayback() {
     if (isAnimationPlaying || !currentAnimationAsset) return;
 
-    const animation = currentAnimationAsset.animations[0];
+    const animation = currentAnimationAsset.animations ? currentAnimationAsset.animations[0] : null;
     if (!animation || !animation.frames.length) return;
 
     isAnimationPlaying = true;
@@ -456,7 +453,7 @@ export function startAnimationPlayback() {
 
         const img = frameImages[currentFrame];
         playbackCtx.clearRect(0, 0, dom.animationPlaybackCanvas.width, dom.animationPlaybackCanvas.height);
-        if (img.complete) {
+        if (img && img.complete) {
             playbackCtx.drawImage(img, 0, 0);
         }
 
@@ -473,38 +470,189 @@ export function stopAnimationPlayback() {
     dom.animationPlaybackView.classList.add('hidden');
 }
 
+function drawAnimEditorGrid() {
+    if (!dom.animGridCanvas) return;
+    const canvas = dom.animGridCanvas;
+    const ctx = canvas.getContext('2d');
+    const gridSize = 16;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!animEditorSettings.grid) return;
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = 0; x <= canvas.width; x += gridSize) {
+        ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height);
+    }
+    for (let y = 0; y <= canvas.height; y += gridSize) {
+        ctx.moveTo(0, y); ctx.lineTo(canvas.width, y);
+    }
+    ctx.stroke();
+}
+
+function drawOnionSkin() {
+    if (!dom.animOnionSkinCanvas) return;
+    const canvas = dom.animOnionSkinCanvas;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!animEditorSettings.onionSkin || currentFrameIndex < 1 || !currentAnimationAsset) return;
+
+    const anim = (currentAnimationAsset.animations && currentAnimationAsset.animations.length > 0)
+        ? currentAnimationAsset.animations[0] : null;
+
+    if (!anim || !anim.frames) return;
+    const prevFrameData = anim.frames[currentFrameIndex - 1];
+    if (prevFrameData) {
+        const img = new Image();
+        img.onload = () => { ctx.globalAlpha = 0.3; ctx.drawImage(img, 0, 0); ctx.globalAlpha = 1.0; };
+        img.src = prevFrameData;
+    }
+}
+
+function updateUIForAnimationType() {
+    const type = currentAnimationAsset ? (currentAnimationAsset.type || 'frame') : 'frame';
+    const isFrame = type === 'frame';
+    dom.animationTimeline.classList.toggle('hidden', !isFrame);
+    if (dom.skeletalTimeline) dom.skeletalTimeline.classList.toggle('hidden', isFrame);
+    document.querySelectorAll('.frame-only').forEach(el => {
+        el.style.display = isFrame ? 'inline-block' : 'none';
+    });
+    if (isFrame) populateTimeline();
+    else populateSkeletalTracks();
+}
+
+function recordKeyframe() {
+    if (!currentAnimationAsset || currentAnimationAsset.type !== 'skeletal') return;
+    const time = currentAnimationTime;
+    const scene = window.SceneManager.currentScene;
+    if (!scene) return;
+
+    const selectedMateria = window.getSelectedMateria ? window.getSelectedMateria() : null;
+    if (!selectedMateria) {
+        window.Dialogs.showNotification("Aviso", "Selecciona el objeto raíz (Animator/Esqueleto) para grabar sus huesos.");
+        return;
+    }
+
+    const keyframeData = {};
+    const recordHierarchy = (mtr) => {
+        if (mtr.getComponentByName('Bone') || mtr.getComponentByName('SkeletonRenderer')) {
+            const trans = mtr.getComponentByName('Transform');
+            if (trans) {
+                const key = mtr.name || mtr.id.toString();
+                keyframeData[key] = {
+                    pos: { ...trans.localPosition },
+                    rot: trans.localRotation,
+                    scale: { ...trans.localScale }
+                };
+            }
+        }
+        mtr.children.forEach(recordHierarchy);
+    };
+    recordHierarchy(selectedMateria);
+
+    if (Object.keys(keyframeData).length === 0) {
+        window.Dialogs.showNotification("Aviso", "No se encontraron huesos en la jerarquía.");
+        return;
+    }
+
+    if (!currentAnimationAsset.keyframes) currentAnimationAsset.keyframes = [];
+    const existingIdx = currentAnimationAsset.keyframes.findIndex(k => Math.abs(k.time - time) < 0.001);
+    if (existingIdx >= 0) currentAnimationAsset.keyframes[existingIdx].data = keyframeData;
+    else {
+        currentAnimationAsset.keyframes.push({ time, data: keyframeData });
+        currentAnimationAsset.keyframes.sort((a, b) => a.time - b.time);
+    }
+    currentAnimationAsset.duration = Math.max(currentAnimationAsset.duration || 1.0, time);
+    populateSkeletalTracks();
+}
+
+function populateSkeletalTracks() {
+    if (!dom.skeletalTracks || !currentAnimationAsset) return;
+    dom.skeletalTracks.innerHTML = '';
+    if (!currentAnimationAsset.keyframes) return;
+
+    const track = document.createElement('div');
+    track.className = 'skeletal-track-main';
+    track.style.position = 'relative';
+    track.style.height = '40px';
+    track.style.background = '#222';
+    track.style.width = '100%';
+
+    currentAnimationAsset.keyframes.forEach((kf, idx) => {
+        const marker = document.createElement('div');
+        marker.className = 'keyframe-marker';
+        const percent = (kf.time / (currentAnimationAsset.duration || 1)) * 100;
+        marker.style.left = `${percent}%`;
+        marker.dataset.index = idx;
+        marker.title = `Keyframe at ${kf.time.toFixed(2)}s`;
+
+        marker.onclick = () => {
+            currentKeyframeIndex = idx;
+            currentAnimationTime = kf.time;
+            if (dom.animationTimeSlider) dom.animationTimeSlider.value = currentAnimationTime;
+            previewSkeletalAnimationAt(currentAnimationTime);
+            track.querySelectorAll('.keyframe-marker').forEach(m => m.classList.remove('active'));
+            marker.classList.add('active');
+        };
+        track.appendChild(marker);
+    });
+    dom.skeletalTracks.appendChild(track);
+}
+
+function previewSkeletalAnimationAt(time) {
+    if (!currentAnimationAsset || currentAnimationAsset.type !== 'skeletal' || !currentAnimationAsset.keyframes) return;
+    const scene = window.SceneManager.currentScene;
+    if (!scene) return;
+    const keyframes = currentAnimationAsset.keyframes;
+    if (keyframes.length === 0) return;
+
+    let k1 = keyframes[0], k2 = keyframes[keyframes.length - 1];
+    for (let i = 0; i < keyframes.length - 1; i++) {
+        if (time >= keyframes[i].time && time <= keyframes[i+1].time) {
+            k1 = keyframes[i]; k2 = keyframes[i+1]; break;
+        }
+    }
+
+    const t = (k1 === k2) ? 0 : (time - k1.time) / (k2.time - k1.time);
+    const allKeys = new Set([...Object.keys(k1.data), ...Object.keys(k2.data)]);
+
+    for (const key of allKeys) {
+        let mtr = isNaN(key) ? scene.getAllMaterias().find(m => m.name === key) : scene.findMateriaById(parseInt(key));
+        if (!mtr) continue;
+        const trans = mtr.getComponentByName('Transform');
+        if (!trans) continue;
+        const d1 = k1.data[key] || k2.data[key];
+        const d2 = k2.data[key] || k1.data[key];
+        if (d1 && d2) {
+            trans.localPosition.x = d1.pos.x + (d2.pos.x - d1.pos.x) * t;
+            trans.localPosition.y = d1.pos.y + (d2.pos.y - d1.pos.y) * t;
+            let r1 = d1.rot, r2 = d2.rot;
+            while (r2 - r1 > 180) r2 -= 360; while (r2 - r1 < -180) r2 += 360;
+            trans.localRotation = r1 + (r2 - r1) * t;
+            trans.localScale.x = d1.scale.x + (d2.scale.x - d1.scale.x) * t;
+            trans.localScale.y = d1.scale.y + (d2.scale.y - d1.scale.y) * t;
+        }
+    }
+    if (window.updateScene) window.updateScene();
+}
 
 export function initializeAnimationEditor(dependencies) {
     dom = dependencies.dom;
     projectsDirHandle = dependencies.projectsDirHandle;
-    // The currentDirectoryHandle is no longer needed here,
-    // as it's passed directly to openAnimationAsset when needed.
 
-    console.log("Animation Editor module initialized.");
-
-    // --- Animation Drawing Listeners ---
     const drawingCanvas = dom.drawingCanvas;
     const drawingCtx = drawingCanvas.getContext('2d');
 
-    function getDrawPos(e) {
+    const getDrawPos = (e) => {
         const rect = drawingCanvas.getBoundingClientRect();
-        return {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top
-        };
-    }
+        return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    };
 
-    drawingCanvas.addEventListener('mousedown', (e) => {
-        isDrawing = true;
-        lastDrawPos = getDrawPos(e);
-    });
-
-    const PIXEL_GRID_SIZE = 8;
-
+    drawingCanvas.addEventListener('mousedown', (e) => { isDrawing = true; lastDrawPos = getDrawPos(e); });
     drawingCanvas.addEventListener('mousemove', (e) => {
         if (!isDrawing) return;
         let currentPos = getDrawPos(e);
         if (drawingMode === 'pixel') {
+            const PIXEL_GRID_SIZE = 8;
             drawingCtx.globalCompositeOperation = 'source-over';
             const x = Math.floor(currentPos.x / PIXEL_GRID_SIZE) * PIXEL_GRID_SIZE;
             const y = Math.floor(currentPos.y / PIXEL_GRID_SIZE) * PIXEL_GRID_SIZE;
@@ -512,11 +660,7 @@ export function initializeAnimationEditor(dependencies) {
             if(drawingTool === 'eraser') drawingCtx.clearRect(x,y,PIXEL_GRID_SIZE,PIXEL_GRID_SIZE);
             else drawingCtx.fillRect(x, y, PIXEL_GRID_SIZE, PIXEL_GRID_SIZE);
         } else {
-            if (drawingTool === 'eraser') {
-                drawingCtx.globalCompositeOperation = 'destination-out';
-            } else {
-                drawingCtx.globalCompositeOperation = 'source-over';
-            }
+            drawingCtx.globalCompositeOperation = drawingTool === 'eraser' ? 'destination-out' : 'source-over';
             drawingCtx.beginPath();
             drawingCtx.strokeStyle = drawingColor;
             drawingCtx.lineWidth = drawingTool === 'pencil' ? 2 : 20;
@@ -527,7 +671,6 @@ export function initializeAnimationEditor(dependencies) {
         }
         lastDrawPos = currentPos;
     });
-
     drawingCanvas.addEventListener('mouseup', () => isDrawing = false);
     drawingCanvas.addEventListener('mouseout', () => isDrawing = false);
 
@@ -536,247 +679,104 @@ export function initializeAnimationEditor(dependencies) {
         if (toolButton) {
             if (toolButton.dataset.tool) {
                 dom.drawingTools.querySelectorAll('[data-tool]').forEach(btn => btn.classList.remove('active'));
-                toolButton.classList.add('active');
-                drawingTool = toolButton.dataset.tool;
+                toolButton.classList.add('active'); drawingTool = toolButton.dataset.tool;
             } else if (toolButton.dataset.drawMode) {
                 dom.drawingTools.querySelectorAll('[data-draw-mode]').forEach(btn => btn.classList.remove('active'));
-                toolButton.classList.add('active');
-                drawingMode = toolButton.dataset.drawMode;
+                toolButton.classList.add('active'); drawingMode = toolButton.dataset.drawMode;
             }
         }
     });
 
-    dom.drawingColorPicker.addEventListener('change', (e) => {
-        drawingColor = e.target.value;
-    });
-
-    // --- Panel Toggles & Buttons ---
+    dom.drawingColorPicker.addEventListener('change', (e) => { drawingColor = e.target.value; });
     dom.animBgToggleBtn.addEventListener('click', () => {
         animEditorSettings.bg = (animEditorSettings.bg === 'transparent') ? 'white' : 'transparent';
         dom.drawingCanvasContainer.classList.toggle('bg-white', animEditorSettings.bg === 'white');
         dom.animBgToggleBtn.classList.toggle('active', animEditorSettings.bg === 'white');
     });
-
-function drawAnimEditorGrid() {
-    if (!dom.animGridCanvas) return;
-    const canvas = dom.animGridCanvas;
-    const ctx = canvas.getContext('2d');
-    const gridSize = 16;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    if (!animEditorSettings.grid) {
-        return; // Don't draw if the grid is turned off
-    }
-
-    ctx.strokeStyle = '#555';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-
-    for (let x = 0; x <= canvas.width; x += gridSize) {
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-    }
-
-    for (let y = 0; y <= canvas.height; y += gridSize) {
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-    }
-    ctx.stroke();
-}
-
     dom.animGridToggleBtn.addEventListener('click', () => {
         animEditorSettings.grid = !animEditorSettings.grid;
         dom.animGridToggleBtn.classList.toggle('active', animEditorSettings.grid);
         drawAnimEditorGrid();
     });
-
-function drawOnionSkin() {
-    if (!dom.animOnionSkinCanvas) return;
-    const canvas = dom.animOnionSkinCanvas;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    if (!animEditorSettings.onionSkin || currentFrameIndex < 1 || !currentAnimationAsset) {
-        return; // Don't draw if turned off or if it's the first frame
-    }
-
-    const anim = (currentAnimationAsset.animations && currentAnimationAsset.animations.length > 0)
-        ? currentAnimationAsset.animations[0]
-        : null;
-
-    if (!anim || !anim.frames) return;
-
-    const prevFrameData = anim.frames[currentFrameIndex - 1];
-    if (prevFrameData) {
-        const img = new Image();
-        img.onload = () => {
-            ctx.globalAlpha = 0.3;
-            ctx.drawImage(img, 0, 0);
-            ctx.globalAlpha = 1.0; // Reset alpha
-        };
-        img.src = prevFrameData;
-    }
-}
-
     dom.animOnionToggleBtn.addEventListener('click', () => {
         animEditorSettings.onionSkin = !animEditorSettings.onionSkin;
         dom.animOnionToggleBtn.classList.toggle('active', animEditorSettings.onionSkin);
         drawOnionSkin();
     });
-
     dom.timelineToggleBtn.addEventListener('click', (e) => {
-        const panel = dom.animationPanel;
-        panel.classList.toggle('timeline-collapsed');
+        const panel = dom.animationPanel; panel.classList.toggle('timeline-collapsed');
         e.target.textContent = panel.classList.contains('timeline-collapsed') ? '▼' : '▲';
     });
 
     dom.animationPlayBtn.addEventListener('click', startAnimationPlayback);
     dom.animationStopBtn.addEventListener('click', stopAnimationPlayback);
     dom.animationSaveBtn.addEventListener('click', saveAnimationAsset);
+    if (dom.animationTypeSelector) dom.animationTypeSelector.addEventListener('change', (e) => { if (currentAnimationAsset) { currentAnimationAsset.type = e.target.value; updateUIForAnimationType(); } });
+    if (dom.animationRecordBtn) dom.animationRecordBtn.addEventListener('click', recordKeyframe);
+    if (dom.animationTimeSlider) dom.animationTimeSlider.addEventListener('input', (e) => { currentAnimationTime = parseFloat(e.target.value); previewSkeletalAnimationAt(currentAnimationTime); });
 
     dom.addFrameBtn.addEventListener('click', addFrameFromCanvas);
-    if (dom.animationImportBtn) {
-        dom.animationImportBtn.addEventListener('click', importAssets);
-    }
+    if (dom.animationImportBtn) dom.animationImportBtn.addEventListener('click', importAssets);
 
-    // --- Quick Create from Overlay ---
     const quickCreateBtn = document.getElementById('btn-create-animation-quick');
     const L = window.Localization;
     if (quickCreateBtn) {
         quickCreateBtn.onclick = async () => {
-            if (window.Dialogs) {
-                window.Dialogs.showPrompt(L.get('TITULO_NUEVA_ANIMACION', "Nueva Animación"), L.get('PROMPT_NOMBRE_CEA', "Introduce el nombre del asset (.cea):"), async (name) => {
-                    if (!name) return;
-                    const fileName = name.endsWith('.cea') ? name : `${name}.cea`;
-                    const dirHandle = getCurrentDirectoryHandle ? getCurrentDirectoryHandle() : null;
-                    if (!dirHandle) {
-                        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_DIR_ASSETS', "No se pudo obtener el directorio actual de assets."));
-                        return;
-                    }
-
-                    const emptyAnim = {
-                        name: name,
-                        animations: [{ name: "default", speed: 10, loop: true, frames: [] }]
-                    };
-
-                    const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
-                    const writable = await fileHandle.createWritable();
-                    await writable.write(JSON.stringify(emptyAnim, null, 2));
-                    await writable.close();
-
-                    if (window.updateAssetBrowser) window.updateAssetBrowser();
-                    openAnimationAsset(fileHandle, dirHandle);
-                });
-            }
+            window.Dialogs.showPrompt(L.get('TITULO_NUEVA_ANIMACION', "Nueva Animación"), L.get('PROMPT_NOMBRE_CEA', "Introduce el nombre del asset (.cea):"), async (name) => {
+                if (!name) return;
+                const fileName = name.endsWith('.cea') ? name : `${name}.cea`;
+                const dirHandle = dependencies.currentDirectoryHandle ? dependencies.currentDirectoryHandle() : null;
+                if (!dirHandle) return;
+                const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(JSON.stringify({ name: name, animations: [{ name: "default", speed: 10, loop: true, frames: [] }] }, null, 2));
+                await writable.close();
+                if (window.updateAssetBrowser) window.updateAssetBrowser();
+                openAnimationAsset(fileHandle, dirHandle);
+            });
         };
     }
 
-    // --- Drag and Drop Listeners ---
-    dom.animationPanel.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'copy';
-        dom.animationPanel.classList.add('drag-over');
-    });
-
-    dom.animationPanel.addEventListener('dragleave', () => {
-        dom.animationPanel.classList.remove('drag-over');
-    });
-
+    dom.animationPanel.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; dom.animationPanel.classList.add('drag-over'); });
+    dom.animationPanel.addEventListener('dragleave', () => { dom.animationPanel.classList.remove('drag-over'); });
     dom.animationPanel.addEventListener('drop', async (e) => {
-        e.preventDefault();
-        dom.animationPanel.classList.remove('drag-over');
-
-        if (!currentAnimationAsset) {
-            window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_DROP_ANIM', 'Carga un asset de animación (.cea) antes de soltar imágenes.'));
-            return;
-        }
-
+        e.preventDefault(); dom.animationPanel.classList.remove('drag-over');
+        if (!currentAnimationAsset) return;
         const dataText = e.dataTransfer.getData('text/plain');
-        if (dataText) {
-            try {
-                const data = JSON.parse(dataText);
-                if (data.type === 'Asset' && (data.name.endsWith('.png') || data.name.endsWith('.jpg') || data.name.endsWith('.jpeg'))) {
-                    processImportItems([{ path: data.path }]);
-                }
-            } catch (err) {}
-        } else if (e.dataTransfer.files.length > 0) {
-            const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-            if (files.length > 0) {
-                const items = await Promise.all(files.map(async file => {
-                    const dataUrl = await new Promise(resolve => {
-                        const reader = new FileReader();
-                        reader.onload = (ev) => resolve(ev.target.result);
-                        reader.readAsDataURL(file);
-                    });
-                    return { path: file.name, dataUrl: dataUrl };
-                }));
-                processImportItems(items);
-            }
-        }
+        if (dataText) { try { const data = JSON.parse(dataText); if (data.type === 'Asset' && (data.name.endsWith('.png') || data.name.endsWith('.jpg') || data.name.endsWith('.jpeg'))) processImportItems([{ path: data.path }]); } catch (err) {} }
+        else if (e.dataTransfer.files.length > 0) { const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')); if (files.length > 0) { const items = await Promise.all(files.map(async file => { const dataUrl = await new Promise(resolve => { const reader = new FileReader(); reader.onload = (ev) => resolve(ev.target.result); reader.readAsDataURL(file); }); return { path: file.name, dataUrl: dataUrl }; })); processImportItems(items); } }
     });
 
     dom.deleteFrameBtn.addEventListener('click', () => {
-        if (currentFrameIndex === -1) {
-            window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('AVISO_SELECCION_FRAME', 'Por favor, selecciona un fotograma para borrar.'));
-            return;
-        }
-
-        const anim = (currentAnimationAsset && currentAnimationAsset.animations && currentAnimationAsset.animations.length > 0)
-            ? currentAnimationAsset.animations[0]
-            : null;
-
-        if (anim) {
-            anim.frames.splice(currentFrameIndex, 1);
-            currentFrameIndex = -1; // Deselect
-
-            const ctx = dom.drawingCanvas.getContext('2d');
-            ctx.clearRect(0, 0, dom.drawingCanvas.width, dom.drawingCanvas.height);
-
-            populateTimeline();
-            drawOnionSkin();
+        const type = currentAnimationAsset ? (currentAnimationAsset.type || 'frame') : 'frame';
+        if (type === 'frame') {
+            if (currentFrameIndex === -1) return;
+            const anim = (currentAnimationAsset && currentAnimationAsset.animations && currentAnimationAsset.animations.length > 0) ? currentAnimationAsset.animations[0] : null;
+            if (anim) { anim.frames.splice(currentFrameIndex, 1); currentFrameIndex = -1; populateTimeline(); }
+        } else {
+            if (currentKeyframeIndex === -1) return;
+            currentAnimationAsset.keyframes.splice(currentKeyframeIndex, 1); currentKeyframeIndex = -1; populateSkeletalTracks();
         }
     });
 
     dom.animationTimeline.addEventListener('click', (e) => {
         const frame = e.target.closest('.timeline-frame');
         if (!frame) return;
-
-        const index = parseInt(frame.dataset.index, 10);
-        currentFrameIndex = index;
-
-        // Resize all canvases to match the frame size
-        const w = frame.naturalWidth || frame.width;
-        const h = frame.naturalHeight || frame.height;
-
-        [dom.drawingCanvas, dom.animOnionSkinCanvas, dom.animGridCanvas].forEach(canvas => {
-            if (canvas.width !== w) canvas.width = w;
-            if (canvas.height !== h) canvas.height = h;
-        });
-
-        const ctx = dom.drawingCanvas.getContext('2d');
-        ctx.clearRect(0, 0, dom.drawingCanvas.width, dom.drawingCanvas.height);
-        ctx.drawImage(frame, 0, 0);
-
-        populateTimeline();
-        drawOnionSkin();
-        drawAnimEditorGrid();
+        currentFrameIndex = parseInt(frame.dataset.index, 10);
+        const w = frame.naturalWidth || frame.width, h = frame.naturalHeight || frame.height;
+        [dom.drawingCanvas, dom.animOnionSkinCanvas, dom.animGridCanvas].forEach(canvas => { canvas.width = w; canvas.height = h; });
+        drawingCtx.clearRect(0, 0, w, h); drawingCtx.drawImage(frame, 0, 0);
+        populateTimeline(); drawOnionSkin(); drawAnimEditorGrid();
     });
 
-    drawAnimEditorGrid(); // Draw initial grid
-
-    // Handle showing/hiding the panel from the main menu
     const menuButton = document.getElementById('menu-window-animation');
     if (menuButton) {
         menuButton.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation(); // Avoid double-toggle from editor.js generic listener
+            e.preventDefault(); e.stopPropagation();
             dom.animationPanel.classList.toggle('hidden');
-            // We need a way to update the checkmark in the menu
-            // This will require passing the updateWindowMenuUI function as a dependency
-            if (dependencies.updateWindowMenuUI) {
-                dependencies.updateWindowMenuUI();
-            }
+            if (dependencies.updateWindowMenuUI) dependencies.updateWindowMenuUI();
         });
     }
+
+    drawAnimEditorGrid();
 }

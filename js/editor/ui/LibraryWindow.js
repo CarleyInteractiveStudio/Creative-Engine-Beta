@@ -42,10 +42,20 @@ function scriptToBase64(file) {
         }
         const reader = new FileReader();
         reader.onload = () => {
-            // reader.result contains the file's text content.
-            // We need to encode it to Base64.
-            const base64Content = btoa(unescape(encodeURIComponent(reader.result)));
-            resolve(base64Content);
+            try {
+                // btoa handles Latin1, but our scripts might have UTF-8 (emojis, accented chars)
+                // We use a robust way to convert UTF-8 string to base64
+                const utf8Bytes = new TextEncoder().encode(reader.result);
+                let binary = '';
+                const len = utf8Bytes.byteLength;
+                for (let i = 0; i < len; i++) {
+                    binary += String.fromCharCode(utf8Bytes[i]);
+                }
+                const base64Content = btoa(binary);
+                resolve(base64Content);
+            } catch (e) {
+                reject(e);
+            }
         };
         reader.onerror = reject;
         reader.readAsText(file);
@@ -109,15 +119,17 @@ async function refreshLibraryList() {
         // Render library cards
         libraries.forEach(lib => {
             const card = document.createElement('div');
-            // Use the new main class for the bubble card
             card.className = `library-card ${lib.isActive ? '' : 'inactive'}`;
             card.dataset.libraryName = lib.data.name;
             card.dataset.fileName = lib.name;
 
-            const authorIconSrc = lib.data.author_icon_base64 || 'icons/box.svg';
-            const libraryIconSrc = lib.data.library_icon_base64 || 'icons/box.svg';
+            const authorIconSrc = lib.data.author_icon_base64 || 'image/Paquete.png';
+            const libraryIconSrc = lib.data.library_icon_base64 || 'image/Paquete.png';
 
             card.innerHTML = `
+                <div class="library-select-wrapper">
+                    <input type="checkbox" class="library-select-checkbox" data-lib-name="${lib.name}">
+                </div>
                 <!-- 1. Square library icon -->
                 <img src="${libraryIconSrc}" class="library-icon">
 
@@ -133,6 +145,12 @@ async function refreshLibraryList() {
                     </div>
                 </div>
             `;
+
+            // Prevent click on checkbox from opening details
+            card.querySelector('.library-select-checkbox').addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+
             container.appendChild(card);
         });
 
@@ -357,6 +375,15 @@ export async function createLibraryFile(libData, filesToProcess, iconFile, autho
     }
 
     const fileName = `${libData.name.replace(/\s+/g, '_')}.celib`;
+
+    // For backwards compatibility and single-file mode support
+    if (filesToProcess.length === 1 || libData.mainScript) {
+        const mainFile = libData.mainScript ? filesToProcess.find(f => f.name === libData.mainScript) : filesToProcess[0];
+        if (mainFile) {
+             libData.script_base64 = libData.files[mainFile.name];
+        }
+    }
+
     const fileContent = JSON.stringify(libData, null, 2);
 
     try {

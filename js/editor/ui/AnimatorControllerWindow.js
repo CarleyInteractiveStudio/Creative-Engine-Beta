@@ -31,6 +31,7 @@ let lastPanPos = { x: 0, y: 0 };
 let viewOffset = { x: 0, y: 0 };
 
 let selectedState = null;
+let selectedTransition = null;
 
 // This function is exported and called from other modules (like the asset browser)
 // to open a controller asset in this window.
@@ -148,22 +149,44 @@ function renderTransitions() {
         const fromState = currentControllerData.states.find(s => s.name === trans.from);
         const toState = currentControllerData.states.find(s => s.name === trans.to);
         if (fromState && toState) {
-            drawArrow(fromState.position, toState.position);
+            drawArrow(fromState.position, toState.position, trans);
         }
     });
 }
 
-function drawArrow(fromPos, toPos) {
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    // Offset to center of nodes (assuming node size ~100x40)
+function drawArrow(fromPos, toPos, trans) {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'anim-transition-group');
+    if (selectedTransition === trans) g.classList.add('selected');
+
+    // Thick invisible line for better hit detection
+    const hitLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     const ox = 50, oy = 20;
+    hitLine.setAttribute('x1', fromPos.x + ox);
+    hitLine.setAttribute('y1', fromPos.y + oy);
+    hitLine.setAttribute('x2', toPos.x + ox);
+    hitLine.setAttribute('y2', toPos.y + oy);
+    hitLine.setAttribute('stroke', 'transparent');
+    hitLine.setAttribute('stroke-width', '15');
+    hitLine.style.cursor = 'pointer';
+
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', fromPos.x + ox);
     line.setAttribute('y1', fromPos.y + oy);
     line.setAttribute('x2', toPos.x + ox);
     line.setAttribute('y2', toPos.y + oy);
     line.setAttribute('class', 'anim-transition-line');
     line.setAttribute('marker-end', 'url(#arrowhead)');
-    connectionsLayer.appendChild(line);
+
+    g.appendChild(hitLine);
+    g.appendChild(line);
+
+    g.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectTransition(trans);
+    });
+
+    connectionsLayer.appendChild(g);
 }
 
 function addTransition(from, to) {
@@ -175,6 +198,7 @@ function addTransition(from, to) {
         from: from,
         to: to,
         hasExitTime: true,
+        duration: 0.3, // Default crossfade duration
         conditions: []
     });
     renderAnimatorGraph();
@@ -254,7 +278,16 @@ function deleteState(stateName) {
     if (currentControllerData.entryState === stateName) {
         currentControllerData.entryState = currentControllerData.states.length > 0 ? currentControllerData.states[0].name : "";
     }
+    if (selectedState && selectedState.name === stateName) selectedState = null;
     renderAnimatorGraph();
+}
+
+function selectTransition(trans) {
+    selectedTransition = trans;
+    selectedState = null;
+    renderTransitions(); // Update selection highlight
+    nodesContainer.querySelectorAll('.anim-state-node').forEach(n => n.classList.remove('selected'));
+    updateStateInspector();
 }
 
 async function populateAnimationsList() {
@@ -324,6 +357,9 @@ function populateStatesList() {
 
 function selectState(state) {
     selectedState = state;
+    selectedTransition = null;
+    renderTransitions(); // Clear transition selection
+
     // Highlight in graph and list
     nodesContainer.querySelectorAll('.anim-state-node').forEach(n => n.classList.remove('selected'));
     const node = nodesContainer.querySelector(`[data-name="${state.name}"]`);
@@ -355,16 +391,50 @@ function updateStateInspector() {
         <hr>
     `;
 
-    if (!selectedState) {
+    if (!selectedState && !selectedTransition) {
         container.innerHTML = `
             ${globalSettingsHTML}
             <div class="panel-overlay-message" style="position: static; padding: 20px;">
-                <p data-i18n="HINT_SELECCIONA_ESTADO">${L.get('HINT_SELECCIONA_ESTADO', 'Selecciona un estado para editar sus propiedades.')}</p>
+                <p data-i18n="HINT_SELECCIONA_ELEMENTO">${L.get('HINT_SELECCIONA_ELEMENTO', 'Selecciona un estado o transición para editar.')}</p>
             </div>
         `;
 
         container.querySelector('#anim-ctrl-smart-mode-toggle').onchange = (e) => {
             currentControllerData.smartMode = e.target.checked;
+        };
+        return;
+    }
+
+    if (selectedTransition) {
+        container.innerHTML = `
+            ${globalSettingsHTML}
+            <div class="inspector-section">
+                <div class="inspector-section-header">
+                    <span>Transición: ${selectedTransition.from} &rarr; ${selectedTransition.to}</span>
+                </div>
+                <div class="inspector-row">
+                    <label>Duración (s)</label>
+                    <input type="number" id="anim-trans-duration" value="${selectedTransition.duration !== undefined ? selectedTransition.duration : 0.3}" step="0.05" min="0">
+                </div>
+                <div class="checkbox-field">
+                    <input type="checkbox" id="anim-trans-exit-time" ${selectedTransition.hasExitTime ? 'checked' : ''}>
+                    <label for="anim-trans-exit-time">Esperar a que termine (Exit Time)</label>
+                </div>
+                <button class="primary-btn remove-btn" id="anim-trans-delete-btn" style="width: 100%; margin-top: 10px;">Eliminar Transición</button>
+            </div>
+        `;
+
+        container.querySelector('#anim-trans-duration').oninput = (e) => {
+            selectedTransition.duration = parseFloat(e.target.value) || 0;
+        };
+        container.querySelector('#anim-trans-exit-time').onchange = (e) => {
+            selectedTransition.hasExitTime = e.target.checked;
+        };
+        container.querySelector('#anim-trans-delete-btn').onclick = () => {
+            currentControllerData.transitions = currentControllerData.transitions.filter(t => t !== selectedTransition);
+            selectedTransition = null;
+            renderAnimatorGraph();
+            updateStateInspector();
         };
         return;
     }
@@ -840,6 +910,8 @@ function setupEventListeners() {
         } else {
             if (e.target === graphView || e.target === connectionsLayer || e.target === nodesContainer || e.target === graphContent) {
                 selectedState = null;
+                selectedTransition = null;
+                renderTransitions();
                 nodesContainer.querySelectorAll('.anim-state-node').forEach(n => n.classList.remove('selected'));
                 updateStateInspector();
             }

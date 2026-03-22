@@ -112,6 +112,10 @@ ANADIR_PROYECTO: Añadir Proyecto
 CREAR_PROYECTO: Crear Proyecto
 MIS_PROYECTOS: Mis Proyectos
 CREAR_NUEVO_PROYECTO: Crear Nuevo Proyecto
+TIPO_PROYECTO: Tipo de Proyecto:
+PROYECTO_2D: Proyecto 2D
+PROYECTO_3D: Proyecto 3D
+MUY_PRONTO: Muy pronto
 AVISO_STORAGE: Aviso Importante: Tus proyectos se guardan localmente en la carpeta que elijas. Creative Engine no almacena ninguna información en servidores externos.
 NOMBRE_PROYECTO: Nombre del Proyecto:
 HINT_PROYECTO: Usa letras, números y guiones. Sin espacios ni caracteres especiales.
@@ -276,6 +280,13 @@ AUDIO: Audio
 VIDEO: Video
 WATER: Agua
 LINE_COLLIDER: Colisionador de Líneas
+BONE: Hueso
+SKELETON: Esqueleto (Skinning)
+IK_MANAGER: Gestor IK
+IMPORTAR_ESQUELETO_SPINE: Importar Esqueleto (Spine JSON)
+ERROR_IMPORTAR_SIN_OBJETO: Selecciona un objeto en la jerarquía para importar el esqueleto como hijo.
+ESQUELETO_IMPORTADO: Esqueleto importado correctamente.
+WEIGHT_PAINTER: Pintor de Pesos
 ESCENA_VACIA: La escena está vacía.<br>Click derecho para crear un objeto.
 RENOMBRAR: Renombrar
 DUPLICAR: Duplicar
@@ -335,6 +346,10 @@ DETENER: Detener
 PAUSAR: Pausar
 
 # Preferences
+RESTABLECER_MOTOR: Restablecer Datos del Motor
+CONFIRM_RESTABLECER: ¿Estás seguro de que quieres borrar todos los datos locales del motor? Esto te pedirá elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se verán afectados.
+HINT_RESTABLECER: Borra toda la configuración local (Carpeta de proyectos, claves de IA, etc.). Los archivos de tus proyectos en el disco NO se borrarán.
+OPCIONES_AVANZADAS: Opciones Avanzadas
 APARIENCIA: Apariencia
 IDIOMA: Idioma
 HINT_IDIOMA: Cambia el idioma de la interfaz del motor.
@@ -462,6 +477,10 @@ ANADIR_PROYECTO: Add Project
 CREAR_PROYECTO: Create Project
 MIS_PROYECTOS: My Projects
 CREAR_NUEVO_PROYECTO: Create New Project
+TIPO_PROYECTO: Project Type:
+PROYECTO_2D: 2D Project
+PROYECTO_3D: 3D Project
+MUY_PRONTO: Coming Soon
 AVISO_STORAGE: Important Notice: Your projects are saved locally in the folder you choose. Creative Engine does not store any information on external servers.
 NOMBRE_PROYECTO: Project Name:
 HINT_PROYECTO: Use letters, numbers, and hyphens. No spaces or special characters.
@@ -626,6 +645,13 @@ AUDIO: Audio
 VIDEO: Video
 WATER: Water
 LINE_COLLIDER: Line Collider
+BONE: Bone
+SKELETON: Skeleton (Skinning)
+IK_MANAGER: IK Manager
+IMPORTAR_ESQUELETO_SPINE: Import Skeleton (Spine JSON)
+ERROR_IMPORTAR_SIN_OBJETO: Select an object in the hierarchy to import the skeleton as a child.
+ESQUELETO_IMPORTADO: Skeleton imported successfully.
+WEIGHT_PAINTER: Weight Painter
 ESCENA_VACIA: The scene is empty.<br>Right-click to create an object.
 RENOMBRAR: Rename
 DUPLICAR: Duplicate
@@ -685,6 +711,10 @@ DETENER: Stop
 PAUSAR: Pause
 
 # Preferences
+RESTABLECER_MOTOR: Restablecer Datos del Motor
+CONFIRM_RESTABLECER: ¿Estás seguro de que quieres borrar todos los datos locales del motor? Esto te pedirá elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se verán afectados.
+HINT_RESTABLECER: Borra toda la configuración local (Carpeta de proyectos, claves de IA, etc.). Los archivos de tus proyectos en el disco NO se borrarán.
+OPCIONES_AVANZADAS: Opciones Avanzadas
 APARIENCIA: Appearance
 IDIOMA: Language
 HINT_IDIOMA: Change the engine interface language.
@@ -795,6 +825,10 @@ CARGANDO_RECURSOS: Carregando recursos...
 CARPETA: Pasta
 MIS_PROYECTOS: Meus Projetos
 CREAR_NUEVO_PROYECTO: Criar Novo Projeto
+TIPO_PROYECTO: Tipo de Projeto:
+PROYECTO_2D: Projeto 2D
+PROYECTO_3D: Projeto 3D
+MUY_PRONTO: Em breve
 AVISO_STORAGE: Aviso Importante: Seus projetos são salvos localmente na pasta que você escolher. Creative Engine não armazena nenhuma informação em servidores externos.
 NOMBRE_PROYECTO: Nome do Projeto:
 HINT_PROYECTO: Use letras, números e hifens. Sem espaços ou caracteres especiais.
@@ -997,6 +1031,10 @@ DETENER: Parar
 PAUSAR: Pausar
 
 # Preferences
+RESTABLECER_MOTOR: Restablecer Datos del Motor
+CONFIRM_RESTABLECER: ¿Estás seguro de que quieres borrar todos los datos locales del motor? Esto te pedirá elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se verán afectados.
+HINT_RESTABLECER: Borra toda la configuración local (Carpeta de proyectos, claves de IA, etc.). Los archivos de tus proyectos en el disco NO se borrarán.
+OPCIONES_AVANZADAS: Opciones Avanzadas
 APARIENCIA: Aparência
 IDIOMA: Idioma
 TEMA_EDITOR: Tema do Editor
@@ -1106,6 +1144,10 @@ CARGANDO_RECURSOS: Загрузка ресурсов...
 CARPETA: Папка
 MIS_PROYECTOS: Мои проекты
 CREAR_NUEVO_PROYECTO: Создать новый проект
+TIPO_PROYECTO: Тип проекта:
+PROYECTO_2D: 2D проект
+PROYECTO_3D: 3D проект
+MUY_PRONTO: Скоро
 AVISO_STORAGE: Важное примечание: Ваши проекты сохраняются локально в выбранной вами папке. Creative Engine не хранит информацию на внешних серверах.
 NOMBRE_PROYECTO: Название проекта:
 HINT_PROYECTO: Используйте буквы, цифры и дефисы. Без пробелов и спецсимволов.
@@ -1308,6 +1350,10 @@ DETENER: Стоп
 PAUSAR: Пауза
 
 # Preferences
+RESTABLECER_MOTOR: Restablecer Datos del Motor
+CONFIRM_RESTABLECER: ¿Estás seguro de que quieres borrar todos los datos locales del motor? Esto te pedirá elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se verán afectados.
+HINT_RESTABLECER: Borra toda la configuración local (Carpeta de proyectos, claves de IA, etc.). Los archivos de tus proyectos en el disco NO se borrarán.
+OPCIONES_AVANZADAS: Opciones Avanzadas
 APARIENCIA: Внешний вид
 IDIOMA: Язык
 TEMA_EDITOR: Тема редактора
@@ -1417,6 +1463,10 @@ CARGANDO_RECURSOS: 正在加载资源...
 CARPETA: 文件夹
 MIS_PROYECTOS: 我的项目
 CREAR_NUEVO_PROYECTO: 创建新项目
+TIPO_PROYECTO: 项目类型:
+PROYECTO_2D: 2D 项目
+PROYECTO_3D: 3D 项目
+MUY_PRONTO: 敬请期待
 AVISO_STORAGE: 重要提示：您的项目保存在您选择的本地文件夹中。Creative Engine 不会在外部服务器上存储任何信息。
 NOMBRE_PROYECTO: 项目名称：
 HINT_PROYECTO: 使用字母、数字和连字符。不含空格或特殊字符。
@@ -1619,6 +1669,10 @@ DETENER: 停止
 PAUSAR: 暂停
 
 # Preferences
+RESTABLECER_MOTOR: Restablecer Datos del Motor
+CONFIRM_RESTABLECER: ¿Estás seguro de que quieres borrar todos los datos locales del motor? Esto te pedirá elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se verán afectados.
+HINT_RESTABLECER: Borra toda la configuración local (Carpeta de proyectos, claves de IA, etc.). Los archivos de tus proyectos en el disco NO se borrarán.
+OPCIONES_AVANZADAS: Opciones Avanzadas
 APARIENCIA: 外观
 IDIOMA: 语言
 TEMA_EDITOR: 编辑器主题

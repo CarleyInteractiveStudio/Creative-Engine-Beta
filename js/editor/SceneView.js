@@ -4,6 +4,7 @@ import { getAbsoluteRect, getClosestAnchorPoint, getAnchorPosition } from '../en
 import { TerrenoEditorWindow } from './ui/TerrenoEditorWindow.js';
 import { getCurrentDirectoryHandle, getCurrentDirectoryPath } from './ui/AssetBrowserWindow.js';
 import * as MateriaFactory from './MateriaFactory.js';
+import { WeightPainter } from './WeightPainter.js';
 
 // Dependencies from editor.js
 let dom;
@@ -22,7 +23,7 @@ let getSelectedTile;
 let setPaletteActiveTool = null;
 
 // Module State
-let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan', 'tile-brush', 'tile-eraser', 'terrain-brush'
+let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan', 'tile-brush', 'tile-eraser', 'terrain-brush', 'weight-painter'
 let showGizmoIcons = true;
 let isAddingLayer = false;
 let isDragging = false;
@@ -715,6 +716,8 @@ export function initialize(dependencies) {
     getSelectedTile = dependencies.getSelectedTile;
     setPaletteActiveTool = dependencies.setPaletteActiveTool;
 
+    window.WeightPainter = new WeightPainter(this);
+
     // --- Gizmo Drag Handlers (defined at a higher scope) ---
     const onGizmoDrag = (moveEvent) => {
         moveEvent.preventDefault();
@@ -1310,6 +1313,38 @@ export function initialize(dependencies) {
             return; // Stop further execution to prevent gizmo logic
         }
 
+        // --- Weight Painter Logic (Left-click) ---
+        if (e.button === 0 && activeTool === 'weight-painter') {
+            e.stopPropagation();
+            const wp = window.WeightPainter;
+            if (!wp) return;
+
+            const paintStep = (event) => {
+                const selectedMateria = getSelectedMateria();
+                if (!selectedMateria) return;
+                const skeleton = selectedMateria.getComponent(Components.SkeletonRenderer);
+                if (!skeleton) return;
+
+                const rect = dom.sceneCanvas.getBoundingClientRect();
+                const worldMouse = screenToWorld(event.clientX - rect.left, event.clientY - rect.top);
+
+                wp.paint(worldMouse, skeleton);
+                if (updateScene) updateScene(renderer, false);
+            };
+
+            paintStep(e);
+
+            const onPaintMove = (moveEvent) => paintStep(moveEvent);
+            const onPaintEnd = () => {
+                window.removeEventListener('mousemove', onPaintMove);
+                window.removeEventListener('mouseup', onPaintEnd);
+            };
+
+            window.addEventListener('mousemove', onPaintMove);
+            window.addEventListener('mouseup', onPaintEnd);
+            return;
+        }
+
         // --- Terrain Brush Logic (Left-click) ---
         if (e.button === 0 && activeTool === 'terrain-brush') {
             e.stopPropagation();
@@ -1767,8 +1802,17 @@ export function drawOverlay() {
     drawRaycastGizmos();
 
     drawTerrainBrushGizmo();
+    drawWeightPainterGizmo();
 
     drawBasicAIGizmos();
+}
+
+function drawWeightPainterGizmo() {
+    if (activeTool !== 'weight-painter' || !renderer || !window.WeightPainter) return;
+    const wp = window.WeightPainter;
+    const mousePos = InputManager.getMousePositionInCanvas();
+    const worldMouse = screenToWorld(mousePos.x, mousePos.y);
+    wp.drawBrush(renderer.ctx, worldMouse, renderer.camera.effectiveZoom);
 }
 
 const iconCache = new Map();

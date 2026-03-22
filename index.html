@@ -168,6 +168,26 @@
                 <label for="project-name" data-i18n="NOMBRE_PROYECTO">Nombre del Proyecto:</label>
                 <input id="project-name" type="text" name="projectName" placeholder="Mi-Juego-Genial" required>
                 <p class="modal-hint" data-i18n="HINT_PROYECTO">Usa letras, números y guiones. Sin espacios ni caracteres especiales.</p>
+
+                <label data-i18n="TIPO_PROYECTO">Tipo de Proyecto:</label>
+                <div class="project-type-selector">
+                    <label class="type-card active">
+                        <input type="radio" name="projectType" value="2d" checked>
+                        <div class="card-content">
+                            <img src="icons/layers.svg" class="type-icon">
+                            <span data-i18n="PROYECTO_2D">Proyecto 2D</span>
+                        </div>
+                    </label>
+                    <label class="type-card disabled">
+                        <input type="radio" name="projectType" value="3d" disabled>
+                        <div class="card-content">
+                            <img src="icons/box.svg" class="type-icon">
+                            <span data-i18n="PROYECTO_3D">Proyecto 3D</span>
+                            <span class="soon-badge" data-i18n="MUY_PRONTO">Muy pronto</span>
+                        </div>
+                    </label>
+                </div>
+
                 <button type="submit" class="modal-btn" data-i18n="CREAR">Crear</button>
             </form>
         </div>
@@ -297,6 +317,11 @@
                         <p class="field-description">
                             <a href="https://aistudio.google.com/app/apikey" target="_blank" data-i18n="OBTENER_API_KEY">Obtener una clave en Google AI Studio</a>
                         </p>
+
+                        <hr>
+                        <h2 data-i18n="OPCIONES_AVANZADAS">Opciones Avanzadas</h2>
+                        <button id="btn-reset-engine" class="modal-btn danger small" data-i18n="RESTABLECER_MOTOR">Restablecer Datos del Motor</button>
+                        <p class="field-description" data-i18n="HINT_RESTABLECER">Borra toda la configuración local (Carpeta de proyectos, claves de IA, etc.). Los archivos de tus proyectos en el disco NO se borrarán.</p>
                     </div>
                 </div>
             </div>

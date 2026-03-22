@@ -286,6 +286,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if(closeCreateProject) closeCreateProject.addEventListener('click', closeModal);
 
+    // Project Type Selector Visual Logic
+    const typeCards = document.querySelectorAll('.type-card');
+    typeCards.forEach(card => {
+        card.addEventListener('click', () => {
+            if (card.classList.contains('disabled')) return;
+
+            typeCards.forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+            const radio = card.querySelector('input[type="radio"]');
+            if (radio) radio.checked = true;
+        });
+    });
+
     window.addEventListener('click', (event) => {
         if (event.target == createProjectModal) {
             closeModal();
@@ -293,6 +306,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // --- View Switching & Project Creation ---
+    let isCreatingProject = false;
     if (startButton) {
         startButton.addEventListener('click', () => {
             console.log("Start button clicked. Switching to launcher view.");
@@ -306,6 +320,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if(createProjectForm) createProjectForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (isCreatingProject) return;
 
         const hasPicker = !!window.showDirectoryPicker;
         const hasSandbox = !!(navigator.storage && navigator.storage.getDirectory);
@@ -317,6 +332,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const projectNameInput = document.getElementById('project-name');
         const projectName = projectNameInput.value.trim().replace(/[^a-zA-Z0-9-]/g, '-');
+        const projectType = createProjectForm.querySelector('input[name="projectType"]:checked').value;
 
         if (!projectName) {
             window.Dialogs.showNotification('Entrada Inválida', 'Por favor, introduce un nombre de proyecto válido.');
@@ -324,6 +340,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         try {
+            isCreatingProject = true;
             let dirHandle = await getDirHandle();
             if (!dirHandle) {
                  dirHandle = await window.showDirectoryPicker({ mode: 'readwrite', id: 'creative-engine-projects' });
@@ -344,6 +361,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             const assetsDirHandle = await projectDirHandle.getDirectoryHandle('Assets', { create: true });
             const libDirHandle = await projectDirHandle.getDirectoryHandle('lib', { create: true });
             const tutorialDirHandle = await assetsDirHandle.getDirectoryHandle('tutorial', { create: true });
+
+            // Crear el archivo de configuración base
+            const config = {
+                appName: projectName,
+                appVersion: '1.0.0',
+                projectType: projectType,
+                engineVersion: '0.1.0-beta'
+            };
+            const configFileHandle = await projectDirHandle.getFileHandle('project.ceconfig', { create: true });
+            let writableConfig = await configFileHandle.createWritable();
+            await writableConfig.write(JSON.stringify(config, null, 2));
+            await writableConfig.close();
 
             // Crear el archivo de escena por defecto
             const sceneFileHandle = await assetsDirHandle.getFileHandle('default.ceScene', { create: true });
@@ -417,6 +446,8 @@ Para más detalles, consulta la sección "Ayuda" del editor.`;
                 console.error('Error creando el proyecto:', error);
                 Dialogs.showNotification('Error', 'Ocurrió un error al crear el proyecto.');
             }
+        } finally {
+            isCreatingProject = false;
         }
     });
 
@@ -564,6 +595,41 @@ Para más detalles, consulta la sección "Ayuda" del editor.`;
     window.addEventListener('ce-language-changed', (e) => {
         if (mainLangSelect) mainLangSelect.value = e.detail;
     });
+
+    // --- Reset Engine Logic ---
+    const resetEngineBtn = document.getElementById('btn-reset-engine');
+    if (resetEngineBtn) {
+        resetEngineBtn.addEventListener('click', () => {
+            Dialogs.showConfirmation(
+                Localization.get('RESTABLECER_MOTOR', 'Restablecer Motor'),
+                Localization.get('CONFIRM_RESTABLECER', '¿Estás seguro de que quieres borrar todos los datos locales del motor? Esto te pedirá elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se verán afectados.'),
+                async () => {
+                    try {
+                        // 1. Clear LocalStorage
+                        localStorage.clear();
+
+                        // 2. Delete IndexedDB
+                        const deleteRequest = indexedDB.deleteDatabase(dbName);
+                        deleteRequest.onsuccess = () => {
+                            console.log("IndexedDB deleted successfully.");
+                            window.location.reload();
+                        };
+                        deleteRequest.onerror = () => {
+                            console.error("Error deleting IndexedDB.");
+                            window.location.reload(); // Reload anyway to clear session state
+                        };
+                        deleteRequest.onblocked = () => {
+                            console.warn("IndexedDB delete blocked. Please close other tabs.");
+                            window.location.reload();
+                        };
+                    } catch (e) {
+                        console.error("Error during reset:", e);
+                        window.location.reload();
+                    }
+                }
+            );
+        });
+    }
 
     // AI Key Logic
     const aiKeyInput = document.getElementById('carl-ai-key');

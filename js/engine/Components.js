@@ -68,6 +68,9 @@ const componentAliases = {
     'VehicleTopDown': 'controladorVehiculoTopDown',
     'PlaneController': 'controladorDeAvion',
     'HelicopterController': 'controladorDeHelicoptero',
+    'Bone': 'hueso',
+    'SkeletonRenderer': 'renderizadorDeEsqueleto',
+    'IKManager2D': 'gestorIK2D',
 };
 
 
@@ -1364,8 +1367,11 @@ export class SpriteRenderer extends Leyes {
 export class Animation {
     constructor(name = 'New Animation') {
         this.name = name;
-        this.frames = []; // Array of image source paths
-        this.speed = 10; // Frames per second
+        this.type = 'frame'; // 'frame' or 'skeletal'
+        this.frames = []; // Array of image source paths (for frame-based)
+        this.keyframes = []; // Array of {time, data: {materiaId: {pos, rot, scale}}} (for skeletal)
+        this.duration = 1.0; // Total duration in seconds (for skeletal)
+        this.speed = 10; // Frames per second (for frame-based)
         this.loop = true;
     }
 }
@@ -1384,6 +1390,12 @@ export class Animator extends Leyes {
         this.startFrame = 0;
         this.endFrame = -1; // -1 means play until the end of the clip
         this.frameTimer = 0;
+
+        // Blending State
+        this._isBlending = false;
+        this._blendTimer = 0;
+        this._blendDuration = 0;
+        this._prevPose = null; // Map of boneName -> {pos, rot, scale}
 
         // Importante: Empezar pausado en el editor. El motor llamará a play() al iniciar el juego.
         this.isPlaying = false;
@@ -1441,7 +1453,7 @@ export class Animator extends Leyes {
             }
 
             // Preload frames to avoid flicker
-            if (clip && clip.frames) {
+            if (clip && clip.frames && (!clip.type || clip.type === 'frame')) {
                 this._frameCache = [];
                 const spritesheetCache = new Map(); // Cache for .ceSprite JSONs during preload
 
@@ -1510,6 +1522,42 @@ export class Animator extends Leyes {
         } finally {
             this._isLoading = false;
         }
+    }
+
+    /**
+     * Comienza una transición suave a una nueva animación.
+     * @param {string} path - Ruta al nuevo clip.
+     * @param {number} duration - Duración del crossfade en segundos.
+     * @param {object} options - Opciones adicionales.
+     */
+    crossfade(path, duration = 0.3, options = {}) {
+        if (this.animationClipPath === path && this.isPlaying) return;
+
+        // Capture current skeletal pose
+        this._prevPose = this.captureSkeletalPose();
+        this._isBlending = true;
+        this._blendTimer = 0;
+        this._blendDuration = duration;
+
+        this.play(path, options);
+    }
+
+    captureSkeletalPose() {
+        const pose = new Map();
+        // Capture transforms of all children that might be bones
+        const captureRecursive = (mtr) => {
+            const trans = mtr.getComponent(Transform);
+            if (trans) {
+                pose.set(mtr.name || mtr.id.toString(), {
+                    pos: { ...trans.localPosition },
+                    rot: trans.localRotation,
+                    scale: { ...trans.localScale }
+                });
+            }
+            mtr.children.forEach(captureRecursive);
+        };
+        captureRecursive(this.materia);
+        return pose;
     }
 
     /**
@@ -1611,10 +1659,54 @@ export class Animator extends Leyes {
             this.loadAnimationClip(this.projectsDirHandle || window.projectsDirHandle);
         }
 
+        if (this._isBlending) {
+            this._blendTimer += deltaTime;
+            if (this._blendTimer >= this._blendDuration) {
+                this._isBlending = false;
+                this._prevPose = null;
+            }
+        }
+
         if (!this.isPlaying || !this.animationClip) {
             return;
         }
 
+        const clip = this.animationClip;
+        const isSkeletal = clip.type === 'skeletal' || (clip.keyframes && clip.keyframes.length > 0);
+
+        if (isSkeletal) {
+            this._updateSkeletalAnimation(deltaTime);
+        } else {
+            this._updateFrameAnimation(deltaTime);
+        }
+    }
+
+    _updateSkeletalAnimation(deltaTime) {
+        const clip = this.animationClip;
+        const duration = clip.duration || 1.0;
+        const speed = Math.max(0.1, this.speed || 1.0);
+
+        this.frameTimer += deltaTime * speed;
+
+        if (this.frameTimer >= duration) {
+            if (this.loop) {
+                this.frameTimer %= duration;
+            } else {
+                this.frameTimer = duration;
+                this.stop();
+            }
+            // Trigger events
+            const scripts = this.materia.getComponents(CreativeScript);
+            scripts.forEach(s => {
+                s._safeInvoke('alFinalizarAnimacion', clip.name || this.animationClipPath);
+                s._safeInvoke('OnAnimationEnd', clip.name || this.animationClipPath);
+            });
+        }
+
+        this.applySkeletalFrame(this.frameTimer);
+    }
+
+    _updateFrameAnimation(deltaTime) {
         this.frameTimer += deltaTime;
         const speed = Math.max(0.1, this.speed || 12.0);
         const frameDuration = 1 / speed;
@@ -1655,6 +1747,79 @@ export class Animator extends Leyes {
 
         if (frameChanged) {
             this.applyCurrentFrame();
+        }
+    }
+
+    applySkeletalFrame(time) {
+        const clip = this.animationClip;
+        if (!clip || !clip.keyframes || clip.keyframes.length === 0) return;
+
+        const keyframes = clip.keyframes;
+        let k1 = keyframes[0], k2 = keyframes[keyframes.length - 1];
+        for (let i = 0; i < keyframes.length - 1; i++) {
+            if (time >= keyframes[i].time && time <= keyframes[i+1].time) {
+                k1 = keyframes[i];
+                k2 = keyframes[i+1];
+                break;
+            }
+        }
+
+        const t = (k1 === k2) ? 0 : (time - k1.time) / (k2.time - k1.time);
+        const blendFactor = this._isBlending ? (this._blendTimer / this._blendDuration) : 1.0;
+
+        const allKeys = new Set([...Object.keys(k1.data), ...Object.keys(k2.data)]);
+        for (const key of allKeys) {
+            let mtr = isNaN(key) ? this.materia.findChildByName(key, true) : (this.materia.scene?.findMateriaById(parseInt(key)) || window.SceneManager.currentScene.findMateriaById(parseInt(key)));
+            if (!mtr) continue;
+
+            const trans = mtr.getComponent(Transform);
+            if (!trans) continue;
+
+            // Skipping bones driven by physics ragdoll
+            const bone = mtr.getComponent(Bone);
+            if (bone && bone.isRagdoll) continue;
+
+            const d1 = k1.data[key] || k2.data[key];
+            const d2 = k2.data[key] || k1.data[key];
+
+            if (d1 && d2) {
+                // Target pose from animation
+                let targetPos = {
+                    x: d1.pos.x + (d2.pos.x - d1.pos.x) * t,
+                    y: d1.pos.y + (d2.pos.y - d1.pos.y) * t
+                };
+                let targetRot = d1.rot;
+                let r2 = d2.rot;
+                while (r2 - targetRot > 180) r2 -= 360;
+                while (r2 - targetRot < -180) r2 += 360;
+                targetRot += (r2 - targetRot) * t;
+
+                let targetScale = {
+                    x: d1.scale.x + (d2.scale.x - d1.scale.x) * t,
+                    y: d1.scale.y + (d2.scale.y - d1.scale.y) * t
+                };
+
+                // Apply blending with previous pose if necessary
+                if (this._isBlending && this._prevPose && this._prevPose.has(key)) {
+                    const prev = this._prevPose.get(key);
+
+                    trans.localPosition.x = prev.pos.x + (targetPos.x - prev.pos.x) * blendFactor;
+                    trans.localPosition.y = prev.pos.y + (targetPos.y - prev.pos.y) * blendFactor;
+
+                    let r1 = prev.rot;
+                    let r2_blend = targetRot;
+                    while (r2_blend - r1 > 180) r2_blend -= 360;
+                    while (r2_blend - r1 < -180) r2_blend += 360;
+                    trans.localRotation = r1 + (r2_blend - r1) * blendFactor;
+
+                    trans.localScale.x = prev.scale.x + (targetScale.x - prev.scale.x) * blendFactor;
+                    trans.localScale.y = prev.scale.y + (targetScale.y - prev.scale.y) * blendFactor;
+                } else {
+                    trans.localPosition = targetPos;
+                    trans.localRotation = targetRot;
+                    trans.localScale = targetScale;
+                }
+            }
         }
     }
 
@@ -2873,11 +3038,51 @@ export class AnimatorController extends Leyes {
         for (const trans of this.controller.transitions) {
             if (trans.from === this.currentStateName) {
                 if (this._evaluateConditions(trans.conditions)) {
-                    this.play(trans.to);
+                    if (trans.duration > 0) {
+                        this.crossfade(trans.to, trans.duration);
+                    } else {
+                        this.play(trans.to);
+                    }
                     break;
                 }
             }
         }
+    }
+
+    crossfade(stateName, duration = 0.3, force = false, overrides = {}) {
+        if (!stateName) return;
+        const debug = window.CE_DEBUG_ANIMATION;
+
+        if (!force && this.currentStateName && this.currentStateName !== stateName) {
+            if (!this.canTransitionTo(stateName)) return;
+        }
+
+        if (!this.animator && this.materia) {
+            this.animator = this.materia.getComponent(Animator);
+        }
+
+        if (!this.animator || !this.states.has(stateName)) return;
+
+        const state = this.states.get(stateName);
+        this.currentStateName = stateName;
+
+        const transform = this.materia.getComponent(Transform);
+        if (transform) {
+            transform.flipX = !!state.flipX;
+            transform.flipY = !!state.flipY;
+        }
+
+        if (!state.animationClip) {
+            this.animator.stop();
+            return;
+        }
+
+        this.animator.crossfade(state.animationClip, duration, {
+            loop: overrides.loop !== undefined ? overrides.loop : (state.loop !== undefined ? state.loop : true),
+            speed: overrides.speed || state.speed || 12,
+            source: 'controller',
+            force: force
+        });
     }
 
     _evaluateConditions(conditions) {
@@ -2910,7 +3115,8 @@ export class AnimatorController extends Leyes {
                 // If there are conditions, they must be met
                 if (hasConditions) {
                     if (this._evaluateConditions(trans.conditions)) {
-                        this.play(trans.to);
+                        if (trans.duration > 0) this.crossfade(trans.to, trans.duration);
+                        else this.play(trans.to);
                         transitionFound = true;
                         break;
                     }
@@ -2919,7 +3125,8 @@ export class AnimatorController extends Leyes {
                     // Only follow if the current animation is NOT looping.
                     // This prevents "Idle -> Walk" automatic jumps when the user is just standing still.
                     if (!this.animator.loop) {
-                        this.play(trans.to);
+                        if (trans.duration > 0) this.crossfade(trans.to, trans.duration);
+                        else this.play(trans.to);
                         transitionFound = true;
                         break;
                     }
@@ -6307,3 +6514,201 @@ registerComponent('VerticalLayoutGroup', VerticalLayoutGroup);
 registerComponent('HorizontalLayoutGroup', HorizontalLayoutGroup);
 registerComponent('GridLayoutGroup', GridLayoutGroup);
 registerComponent('ContentSizeFitter', ContentSizeFitter);
+
+/**
+ * Componente Bone (Hueso): Define un hueso en una jerarquía esquelética.
+ */
+export class Bone extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.length = 100;
+        this.color = '#00ff00';
+        this.thickness = 5;
+
+        // Ragdoll Properties
+        this.isRagdoll = false;
+        this.angularLimits = { min: -45, max: 45 };
+        this.stiffness = 0.5;
+        this.damping = 0.1;
+    }
+
+    clone() {
+        const copy = new Bone(null);
+        copy.length = this.length;
+        copy.color = this.color;
+        copy.thickness = this.thickness;
+        copy.isRagdoll = this.isRagdoll;
+        copy.angularLimits = { ...this.angularLimits };
+        copy.stiffness = this.stiffness;
+        copy.damping = this.damping;
+        return copy;
+    }
+}
+registerComponent('Bone', Bone);
+
+/**
+ * Componente SkeletonRenderer: Renderiza una malla deformada por huesos (Skinning).
+ */
+export class SkeletonRenderer extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.source = ''; // Imagen base
+        this.spriteAssetPath = '';
+        this.mesh = {
+            vertices: [], // [x, y, x, y, ...] locales a la materia (bind pose)
+            uvs: [],      // [u, v, u, v, ...]
+            indices: [],  // [0, 1, 2, ...]
+            weights: []   // [[{boneIndex, weight}, ...], ...] (one array per vertex)
+        };
+        this.bones = []; // IDs de las materias que actúan como huesos
+        this.bindPoses = []; // {x, y, rotation, scale} inverse world transforms for each bone
+        this.orderInLayer = 0;
+        this.opacity = 1.0;
+        this.color = '#ffffff';
+
+        this._texture = new Image();
+        this._lastLoadedSource = '';
+        this._boneMateriaCache = []; // Cached Materia references
+    }
+
+    _updateBoneCache() {
+        const scene = this.materia.scene || window.SceneManager.currentScene;
+        this._boneMateriaCache = this.bones.map(key => {
+            if (typeof key === 'number') return scene.findMateriaById(key);
+            return this.materia.findChildByName(key, true);
+        });
+    }
+
+    async setSourcePath(path, projectsDirHandle) {
+        this.source = path;
+        await this.loadTexture(projectsDirHandle);
+    }
+
+    async loadTexture(projectsDirHandle) {
+        if (!this.source) return;
+        const url = await getURLForAssetPath(this.source, projectsDirHandle);
+        if (url) {
+            this._texture.src = url;
+            this._lastLoadedSource = this.source;
+        }
+    }
+
+    clone() {
+        const copy = new SkeletonRenderer(null);
+        copy.source = this.source;
+        copy.spriteAssetPath = this.spriteAssetPath;
+        copy.mesh = JSON.parse(JSON.stringify(this.mesh));
+        copy.bones = [...this.bones];
+        copy.orderInLayer = this.orderInLayer;
+        copy.opacity = this.opacity;
+        copy.color = this.color;
+        return copy;
+    }
+}
+registerComponent('SkeletonRenderer', SkeletonRenderer);
+
+/**
+ * Componente IKManager2D: Gestiona la cinemática inversa en una cadena de huesos.
+ */
+export class IKManager2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.target = null; // ID de la materia objetivo (effector target)
+        this.chainLength = 2;
+        this.iterations = 10;
+        this.tolerance = 0.1;
+    }
+
+    update(deltaTime) {
+        if (!this.isActive || !this.target) return;
+
+        const scene = this.materia.scene || window.SceneManager.currentScene;
+        const targetMtr = scene.findMateriaById(this.target);
+        if (!targetMtr) return;
+
+        const targetPos = targetMtr.getComponent(Transform).position;
+        this.solveFABRIK(targetPos);
+    }
+
+    solveFABRIK(targetPos) {
+        const chain = [];
+        let current = this.materia;
+        for (let i = 0; i < this.chainLength + 1; i++) {
+            if (!current) break;
+            const trans = current.getComponent(Transform);
+            if (!trans) break;
+            chain.push({
+                materia: current,
+                transform: trans,
+                pos: trans.position
+            });
+            current = current.parent;
+        }
+
+        if (chain.length < 2) return;
+
+        const origin = { ...chain[chain.length - 1].pos };
+        const lengths = [];
+        for (let i = 0; i < chain.length - 1; i++) {
+            lengths.push(Math.hypot(chain[i].pos.x - chain[i+1].pos.x, chain[i].pos.y - chain[i+1].pos.y));
+        }
+
+        // FABRIK Algorithm
+        for (let iter = 0; iter < this.iterations; iter++) {
+            // Forward pass
+            chain[0].pos = { ...targetPos };
+            for (let i = 1; i < chain.length; i++) {
+                const dir = { x: chain[i].pos.x - chain[i-1].pos.x, y: chain[i].pos.y - chain[i-1].pos.y };
+                const dist = Math.hypot(dir.x, dir.y) || 1;
+                const ratio = lengths[i-1] / dist;
+                chain[i].pos = {
+                    x: chain[i-1].pos.x + dir.x * ratio,
+                    y: chain[i-1].pos.y + dir.y * ratio
+                };
+            }
+
+            // Backward pass
+            chain[chain.length - 1].pos = { ...origin };
+            for (let i = chain.length - 2; i >= 0; i--) {
+                const dir = { x: chain[i].pos.x - chain[i+1].pos.x, y: chain[i].pos.y - chain[i+1].pos.y };
+                const dist = Math.hypot(dir.x, dir.y) || 1;
+                const ratio = lengths[i] / dist;
+                chain[i].pos = {
+                    x: chain[i+1].pos.x + dir.x * ratio,
+                    y: chain[i+1].pos.y + dir.y * ratio
+                };
+            }
+
+            // Check if close enough
+            if (Math.hypot(chain[0].pos.x - targetPos.x, chain[0].pos.y - targetPos.y) < this.tolerance) break;
+        }
+
+        // Apply results and update rotations
+        for (let i = chain.length - 1; i > 0; i--) {
+            const current = chain[i];
+            const next = chain[i-1];
+
+            // Update position (only for children, root stays put)
+            if (i < chain.length - 1) {
+                current.transform.position = current.pos;
+            }
+
+            // Update rotation to point to next joint
+            const dx = next.pos.x - current.pos.x;
+            const dy = next.pos.y - current.pos.y;
+            current.transform.rotation = Math.atan2(dy, dx) * 180 / Math.PI;
+        }
+        // Final effector position
+        chain[0].transform.position = chain[0].pos;
+    }
+
+    clone() {
+        const copy = new IKManager2D(null);
+        copy.target = this.target;
+        copy.chainLength = this.chainLength;
+        copy.iterations = this.iterations;
+        copy.tolerance = this.tolerance;
+        return copy;
+    }
+}
+registerComponent('IKManager2D', IKManager2D);
