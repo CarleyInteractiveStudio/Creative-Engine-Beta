@@ -186,7 +186,7 @@ function selectTile(event) {
 async function onSave() {
     const L = window.Localization;
     if (!currentMapHandle || !currentMapAsset) {
-        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SIN_MAPA_GUARDAR', 'No hay ningún mapa abierto para guardar.'));
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SIN_MAPA_GUARDAR', 'No hay ningun mapa abierto para guardar.'));
         return;
     }
 
@@ -195,7 +195,7 @@ async function onSave() {
         const jsonString = JSON.stringify(currentMapAsset, null, 2);
         await writable.write(jsonString);
         await writable.close();
-        window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_MAPA_GUARDADO', 'Mapa guardado correctamente')}: ${currentMapHandle.name}`);
+        window.Dialogs.showNotification(L.get('EXITO', 'Exito'), `${L.get('EXITO_MAPA_GUARDADO', 'Mapa guardado correctamente')}: ${currentMapHandle.name}`);
     } catch (err) {
         console.error("Error al guardar el mapa:", err);
         window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_GUARDAR_MAPA', 'No se pudo guardar el mapa.'));
@@ -275,12 +275,12 @@ export function initialize(dependencies) {
     dom.tilemapRemoveLayerBtn.addEventListener('click', () => {
         const L = window.Localization;
         if (!currentMapAsset || currentMapAsset.layers.length <= 1) {
-            window.Dialogs.showNotification(L.get('ACCION_NO_PERMITIDA', 'Acción no permitida'), L.get('ERROR_ELIMINAR_ULTIMA_CAPA', 'No se puede eliminar la última capa.'));
+            window.Dialogs.showNotification(L.get('ACCION_NO_PERMITIDA', 'Accion no permitida'), L.get('ERROR_ELIMINAR_ULTIMA_CAPA', 'No se puede eliminar la ultima capa.'));
             return;
         }
         window.Dialogs.showConfirmation(
-            L.get('TITULO_ELIMINAR_CAPA', 'Confirmar Eliminación'),
-            `${L.get('PROMPT_ELIMINAR_CAPA', '¿Estás seguro de que quieres eliminar la capa')} '${currentMapAsset.layers[activeLayerIndex].name}'?`,
+            L.get('TITULO_ELIMINAR_CAPA', 'Confirmar Eliminacion'),
+            `${L.get('PROMPT_ELIMINAR_CAPA', 'Estas seguro de que quieres eliminar la capa')} '${currentMapAsset.layers[activeLayerIndex].name}'?`,
             () => {
                 currentMapAsset.layers.splice(activeLayerIndex, 1);
                 if (activeLayerIndex >= currentMapAsset.layers.length) {

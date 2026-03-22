@@ -173,7 +173,25 @@ const cesKeywords = [
     { label: "redondear", type: "function" },
     { label: "round", type: "function" },
     { label: "limitar", type: "function" },
-    { label: "clamp", type: "function" }
+    { label: "clamp", type: "function" },
+
+    // Gamepad
+    { label: "mandoBotonPresionado", type: "function" },
+    { label: "mandoBotonRecienPresionado", type: "function" },
+    { label: "mandoBotonLiberado", type: "function" },
+    { label: "mandoEje", type: "function" },
+    { label: "isGamepadConnected", type: "function" },
+
+    // Rigidbody2D Shortcuts
+    { label: "velocidadX", type: "property" },
+    { label: "velocidadY", type: "property" },
+    { label: "masa", type: "property" },
+    { label: "escalaGravedad", type: "property" },
+
+    // Lifecycle Aliases
+    { label: "alChocar", type: "function" },
+    { label: "alClicar", type: "function" },
+    { label: "alPulsar", type: "function" }
 ];
 
 function cesCompletions(context) {
@@ -192,6 +210,9 @@ function scheduleLint(view) {
     lintTimeout = setTimeout(() => {
         if (!currentlyOpenFileHandle || !view || !view.state) return;
 
+        // Performance optimization: skip linting for very large files if needed
+        if (view.state.doc.length > 100000) return;
+
         const code = view.state.doc.toString();
         const result = transpile(code, currentlyOpenFileHandle.name);
 
@@ -201,7 +222,9 @@ function scheduleLint(view) {
             result.errors.forEach(err => {
                 if (err.line) {
                     try {
-                        const line = view.state.doc.line(Math.min(err.line, view.state.doc.lines));
+                        const linesCount = view.state.doc.lines;
+                        const targetLine = Math.max(1, Math.min(err.line, linesCount));
+                        const line = view.state.doc.line(targetLine);
                         effects.push(addErrorHighlight.of({ from: line.from, to: line.to }));
                     } catch(e) {}
                 }
@@ -209,10 +232,13 @@ function scheduleLint(view) {
         }
 
         // Dispatch all changes in a single transaction for efficiency and to avoid focus loops
-        if (view && view.dispatch) {
-            view.dispatch({ effects });
-        }
-    }, 1000);
+        // Use requestAnimationFrame to ensure we don't block the UI thread during heavy typing
+        requestAnimationFrame(() => {
+            if (view && view.dispatch && view.state) {
+                view.dispatch({ effects });
+            }
+        });
+    }, 1500); // Increased debounce to 1.5s for smoother typing experience
 }
 
 
@@ -288,13 +314,13 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
 export async function saveCurrentScript() {
     const L = window.Localization;
     if (!currentlyOpenFileHandle) {
-        window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('ERROR_SIN_SCRIPT_ABIERTO', 'No hay ningún script abierto para guardar.'));
+        window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('ERROR_SIN_SCRIPT_ABIERTO', 'No hay ningun script abierto para guardar.'));
         return;
     }
 
     const isChc = currentlyOpenFileHandle.name.endsWith('.chc');
     if (!isChc && !codeEditor) {
-        window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('ERROR_SIN_SCRIPT_ABIERTO', 'No hay ningún script abierto para guardar.'));
+        window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('ERROR_SIN_SCRIPT_ABIERTO', 'No hay ningun script abierto para guardar.'));
         return;
     }
 
@@ -354,7 +380,7 @@ export async function saveCurrentScript() {
         console.clear(); // Limpia la consola antes de mostrar nuevos errores
         const result = transpile(scriptContent, currentlyOpenFileHandle.name);
         if (result.errors && result.errors.length > 0) {
-            console.error(`${L.get('ERROR_COMPILACION', 'Errores de compilación en')} ${currentlyOpenFileHandle.name}:`);
+            console.error(`${L.get('ERROR_COMPILACION', 'Errores de compilacion en')} ${currentlyOpenFileHandle.name}:`);
             result.errors.forEach(error => window.logToUIConsole(error, 'error', false));
 
             window.Dialogs.showNotification(
@@ -365,7 +391,7 @@ export async function saveCurrentScript() {
             showConsoleCallback(); // Muestra la consola al usuario
         } else {
             console.log(`${currentlyOpenFileHandle.name}: ${L.get('EXITO_COMPILACION', 'Script compilado exitosamente.')}`);
-            window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_SCRIPT_GUARDADO', "Script guardado correctamente")}: '${currentlyOpenFileHandle.name}'.`);
+            window.Dialogs.showNotification(L.get('EXITO', 'Exito'), `${L.get('EXITO_SCRIPT_GUARDADO', "Script guardado correctamente")}: '${currentlyOpenFileHandle.name}'.`);
         }
 
     } catch (error) {
@@ -406,34 +432,34 @@ async function runChc() {
     const apiKey = localStorage.getItem(`creativeEngine_${provider}_apiKey`);
 
     if (!provider || provider === 'none' || !apiKey) {
-        window.Dialogs.showNotification(L.get('TITULO_CONFIG_REQUERIDA', 'Configuración Requerida'), L.get('ERROR_CONFIG_CARL', 'Para usar CHC, debes configurar Carl IA en las Preferencias del motor.'));
+        window.Dialogs.showNotification(L.get('TITULO_CONFIG_REQUERIDA', 'Configuracion Requerida'), L.get('ERROR_CONFIG_CARL', 'Para usar CHC, debes configurar Carl IA en las Preferencias del motor.'));
         return;
     }
 
     dom.chcLoadingOverlay.classList.remove('hidden');
     if (dom.chcLoadingText) dom.chcLoadingText.textContent = L.get('MSG_LLAMANDO_CARL', 'Llamando a Carl IA...');
     dom.chcRunBtn.classList.add('compiling');
-    dom.chcRunBtn.innerHTML = `<img src="icons/bot.svg" class="ce-icon" style="filter: brightness(0) invert(1);"> ${L.get('MSG_CARL_PENSANDO', 'Carl está pensando...')}`;
+    dom.chcRunBtn.innerHTML = `<img src="icons/bot.svg" class="ce-icon" style="filter: brightness(0) invert(1);"> ${L.get('MSG_CARL_PENSANDO', 'Carl esta pensando...')}`;
 
     // Simulate analysis phase for better UX
     await new Promise(r => setTimeout(r, 800));
-    if (dom.chcLoadingText) dom.chcLoadingText.textContent = L.get('MSG_CARL_ANALIZANDO', 'Carl está analizando tu lógica creativa...');
+    if (dom.chcLoadingText) dom.chcLoadingText.textContent = L.get('MSG_CARL_ANALIZANDO', 'Carl esta analizando tu logica creativa...');
 
-    const prompt = `Actúa como el traductor de Creative H-Code (CHC) para Creative Engine.
-Tu tarea es traducir la descripción humana del comportamiento de un objeto en un script válido de Creative Engine (.ces).
+    const prompt = `Actua como el traductor de Creative H-Code (CHC) para Creative Engine.
+Tu tarea es traducir la descripcion humana del comportamiento de un objeto en un script valido de Creative Engine (.ces).
 
-REGLAS TÉCNICAS (Sintaxis CES):
-1. IMPORTACIONES: ¡OBLIGATORIO! Empieza siempre con 've motor;'.
-2. IDIOMA: ¡Usa SIEMPRE el español! (si, sino, mientras, para, retornar, verdadero, falso, variable, constante, materia, mtr, numero, texto, booleano).
+REGLAS TECNICAS (Sintaxis CES):
+1. IMPORTACIONES: OBLIGATORIO! Empieza siempre con 've motor;'.
+2. IDIOMA: Usa SIEMPRE el espanol! (si, sino, mientras, para, retornar, verdadero, falso, variable, constante, materia, mtr, numero, texto, booleano).
 3. ESTRUCTURA DE VARIABLES:
    - 'publico numero velocidad = 5;'
-   - 'publico texto nombre = "Héroe";'
+   - 'publico texto nombre = "Heroe";'
    - 'publico mtr objetivo;'
    - 'publico Sprite icono;'
    - 'publico Audio sonido;'
    - 'publico Prefab enemigo;'
    - 'publico Scene siguienteNivel;'
-4. ACCESO DIRECTO (¡IMPORTANTE! No uses 'this.', 'entrada.' ni 'motor.'):
+4. ACCESO DIRECTO (IMPORTANTE! No uses 'this.', 'entrada.' ni 'motor.'):
    - nombre, tag, posicion, fisica, renderizadorDeSprite, controladorAnimacion, fuenteDeAudio, camara, rejilla, lienzo.
    - Atajos: reproducir.Estado(), voltearH, voltearV.
    - Entrada: teclaPresionada("W"), mandoBotonPresionado("A"), mandoEje("IzquierdaX"), botonMousePresionado(0), obtenerPosicionMouse().
@@ -446,7 +472,7 @@ REGLAS TÉCNICAS (Sintaxis CES):
    - crear miPrefab; o instanciar(miPrefab, posicion);
    - destruir(materia), destroy(materia).
    - difundir("mensaje", datos), broadcast("mensaje", datos).
-8. REGLA DE ORO: Devuelve ÚNICAMENTE el código .ces. Sin explicaciones, sin markdown, sin bloques de código.
+8. REGLA DE ORO: Devuelve UNICAMENTE el codigo .ces. Sin explicaciones, sin markdown, sin bloques de codigo.
 
 EJEMPLO 1 (Movimiento):
 ENTRADA: "Mover a la derecha con D y saltar con Espacio."
@@ -529,37 +555,37 @@ ENTRADA DEL USUARIO:
                 }
             }
 
-            // Validar código generado
+            // Validar codigo generado
             const validation = transpile(generatedCode, currentlyOpenFileHandle.name);
             if (!validation.errors || validation.errors.length === 0) {
                 finalGeneratedCode = generatedCode;
-                console.log(`CHC Traducido con éxito para ${currentlyOpenFileHandle.name} (Intento ${attempts})`);
+                console.log(`CHC Traducido con exito para ${currentlyOpenFileHandle.name} (Intento ${attempts})`);
                 break;
             }
 
             console.warn(`[CHC] Intento ${attempts} fallido con errores de sintaxis:`, validation.errors);
-            if (dom.chcLoadingText) dom.chcLoadingText.textContent = L.get('MSG_CARL_CORRIGIENDO', 'Carl está corrigiendo errores ({attempts})...').replace('{attempts}', attempts);
+            if (dom.chcLoadingText) dom.chcLoadingText.textContent = L.get('MSG_CARL_CORRIGIENDO', 'Carl esta corrigiendo errores ({attempts})...').replace('{attempts}', attempts);
 
-            currentPrompt = `El código que generaste tiene ERRORES DE SINTAXIS. Por favor, corrígelo.
-Asegúrate de:
+            currentPrompt = `El codigo que generaste tiene ERRORES DE SINTAXIS. Por favor, corrigelo.
+Asegurate de:
 - Definir las variables correctamente (ej: variable x = 1;)
-- Definir los métodos correctamente (ej: alActualizar() { ... })
-- NO incluir NINGUNA explicación ni texto fuera del código.
+- Definir los metodos correctamente (ej: alActualizar() { ... })
+- NO incluir NINGUNA explicacion ni texto fuera del codigo.
 
-CÓDIGO CON ERRORES:
+CODIGO CON ERRORES:
 ${generatedCode}
 
 ERRORES ENCONTRADOS:
 ${validation.errors.join('\n')}
 
-Por favor, devuelve solo el código corregido y funcional.`;
+Por favor, devuelve solo el codigo corregido y funcional.`;
         }
 
         if (!finalGeneratedCode) {
-            throw new Error(L.get('ERROR_CARL_FAILED', "Carl IA no pudo generar un código libre de errores tras varios intentos."));
+            throw new Error(L.get('ERROR_CARL_FAILED', "Carl IA no pudo generar un codigo libre de errores tras varios intentos."));
         }
 
-        if (dom.chcLoadingText) dom.chcLoadingText.textContent = L.get('MSG_GUARDANDO_LOGICA', 'Guardando lógica traducida...');
+        if (dom.chcLoadingText) dom.chcLoadingText.textContent = L.get('MSG_GUARDANDO_LOGICA', 'Guardando logica traducida...');
 
         // Save Human text to .chc
         const writable = await currentlyOpenFileHandle.createWritable();
@@ -587,11 +613,11 @@ Por favor, devuelve solo el código corregido y funcional.`;
         await hotReloadCallback(currentlyOpenFileHandle.name);
         await new Promise(r => setTimeout(r, 500));
 
-        window.Dialogs.showNotification(L.get('TITULO_CARL_IA', 'Carl IA'), L.get('MSG_CARL_EXITO', '¡Listo! He traducido tu idea. ¡Mira cómo cobra vida!'));
+        window.Dialogs.showNotification(L.get('TITULO_CARL_IA', 'Carl IA'), L.get('MSG_CARL_EXITO', 'Listo! He traducido tu idea. Mira como cobra vida!'));
 
     } catch (error) {
         console.error("CHC Error:", error);
-        window.Dialogs.showNotification(L.get('ERROR_CARL_PROCESO', 'Error de Carl IA'), `${L.get('ERROR_CARL_PROCESO', "Vaya, algo salió mal al procesar tu lógica")}: ${error.message}`);
+        window.Dialogs.showNotification(L.get('ERROR_CARL_PROCESO', 'Error de Carl IA'), `${L.get('ERROR_CARL_PROCESO', "Vaya, algo salio mal al procesar tu logica")}: ${error.message}`);
     } finally {
         dom.chcLoadingOverlay.classList.add('hidden');
         dom.chcRunBtn.classList.remove('compiling');
@@ -643,7 +669,7 @@ export async function runAutoReparator(targetFileName = null) {
                             const CompClass = window.Components[result.addComponent.componentType];
                             if (CompClass) {
                                 mtr.addComponent(new CompClass(mtr));
-                                window.Dialogs.showNotification(L.get('EXITO'), `Componente ${result.addComponent.componentType} añadido con éxito.`);
+                                window.Dialogs.showNotification(L.get('EXITO'), `Componente ${result.addComponent.componentType} anadido con exito.`);
                                 if (window.updateInspector) window.updateInspector();
                             }
                         }
@@ -651,7 +677,7 @@ export async function runAutoReparator(targetFileName = null) {
                 );
             } else {
                 window.Dialogs.showNotification(
-                    result.success ? L.get('EXITO', 'Éxito') : L.get('AVISO', 'Aviso'),
+                    result.success ? L.get('EXITO', 'Exito') : L.get('AVISO', 'Aviso'),
                     result.message
                 );
             }
@@ -666,7 +692,7 @@ export async function runAutoReparator(targetFileName = null) {
                         const CompClass = window.Components[result.addComponent.componentType];
                         if (CompClass) {
                             mtr.addComponent(new CompClass(mtr));
-                            window.Dialogs.showNotification(L.get('EXITO'), `Componente ${result.addComponent.componentType} añadido con éxito.`);
+                            window.Dialogs.showNotification(L.get('EXITO'), `Componente ${result.addComponent.componentType} anadido con exito.`);
                             if (window.updateInspector) window.updateInspector();
                         }
                     }
@@ -683,7 +709,7 @@ export async function runAutoReparator(targetFileName = null) {
 
 export async function openScriptAtLine(fileName, lineNumber) {
     if (!lineNumber) lineNumber = 1;
-    console.log(`[CodeEditor] Abriendo ${fileName} en la línea ${lineNumber}`);
+    console.log(`[CodeEditor] Abriendo ${fileName} en la linea ${lineNumber}`);
 
     // Switch to assets tab and find the file (approximate)
     // Actually, we can just use the dirHandle if we have it or find it.
@@ -753,7 +779,7 @@ export async function showScriptHistory() {
                 const date = new Date(entry.timestamp).toLocaleString();
                 item.innerHTML = `
                     <div class="item-info">
-                        <span class="item-name">${L.get('VERSION', 'Versión')} ${history.length - index}</span>
+                        <span class="item-name">${L.get('VERSION', 'Version')} ${history.length - index}</span>
                         <span class="item-details">${date}</span>
                     </div>
                     <button class="restore-btn primary-btn" style="padding: 4px 8px; font-size: 0.8em;">${L.get('RESTAURAR', 'Restaurar')}</button>
@@ -769,7 +795,7 @@ export async function showScriptHistory() {
                         });
                     }
                     modal.classList.add('hidden');
-                    window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), L.get('VERSION_RESTAURADA', 'Versión restaurada en el editor. Recuerda guardar para aplicar los cambios.'));
+                    window.Dialogs.showNotification(L.get('EXITO', 'Exito'), L.get('VERSION_RESTAURADA', 'Version restaurada en el editor. Recuerda guardar para aplicar los cambios.'));
                 };
 
                 historyList.appendChild(item);

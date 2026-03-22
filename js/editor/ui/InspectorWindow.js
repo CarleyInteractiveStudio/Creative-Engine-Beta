@@ -250,7 +250,7 @@ async function handleInspectorDrop(e) {
         }
     } else if (data.type === 'Asset') {
         if (data.kind === 'directory') {
-             window.Dialogs.showNotification(L.get('ACCION_NO_PERMITIDA', 'Acción no permitida'), L.get('ERROR_ASIGNAR_CARPETA', 'No se pueden asignar carpetas a variables.'));
+             window.Dialogs.showNotification(L.get('ACCION_NO_PERMITIDA', 'Accion no permitida'), L.get('ERROR_ASIGNAR_CARPETA', 'No se pueden asignar carpetas a variables.'));
              return;
         }
         const fileExtension = `.${data.name.split('.').pop()}`.toLowerCase();
@@ -541,7 +541,7 @@ async function handleInspectorChange(e) {
                         config.tags.push(newTagName);
                         await saveProjectConfig();
                         selectedMateria.tag = newTagName;
-                        showNotification(L.get('EXITO', 'Éxito'), `${L.get('TAG_ANADIDO', 'Tag "{tag}" añadido y seleccionado.').replace('{tag}', newTagName)}`);
+                        showNotification(L.get('EXITO', 'Exito'), `${L.get('TAG_ANADIDO', 'Tag "{tag}" anadido y seleccionado.').replace('{tag}', newTagName)}`);
                         updateInspector();
                     } else {
                         showNotification(L.get('AVISO', 'Aviso'), `${L.get('TAG_EXISTE', 'El tag "{tag}" ya existe.').replace('{tag}', newTagName)}`);
@@ -641,7 +641,7 @@ function handleInspectorClick(e) {
                 });
             }
         } else if (isSceneObjectReference) {
-             window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('HINT_ASIGNAR_COMPONENTE', 'Para asignar un {expectedType}, arrastra un objeto de la jerarquía que tenga dicho componente.').replace('{expectedType}', expectedType));
+             window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('HINT_ASIGNAR_COMPONENTE', 'Para asignar un {expectedType}, arrastra un objeto de la jerarquia que tenga dicho componente.').replace('{expectedType}', expectedType));
         }
         return;
     }
@@ -722,7 +722,7 @@ function handleInspectorClick(e) {
                      );
 
                      if (!hasOtherTransform) {
-                        window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('ERROR_BORRAR_TRANSFORM', 'No puedes eliminar el componente de transformación base.'));
+                        window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('ERROR_BORRAR_TRANSFORM', 'No puedes eliminar el componente de transformacion base.'));
                         return;
                      }
                 }
@@ -874,7 +874,7 @@ function handleInspectorClick(e) {
                 if (collider) collider.generateMesh();
                 updateInspector();
             } else {
-                window.Dialogs.showNotification(L.get('ACCION_NO_PERMITIDA', 'Acción no permitida'), L.get('ERROR_BORRAR_ULTIMA_CAPA', 'No se puede eliminar la última capa.'));
+                window.Dialogs.showNotification(L.get('ACCION_NO_PERMITIDA', 'Accion no permitida'), L.get('ERROR_BORRAR_ULTIMA_CAPA', 'No se puede eliminar la ultima capa.'));
             }
         }
     }
@@ -1144,7 +1144,7 @@ export function refreshInspectorValues() {
                 if (input.type === 'checkbox') {
                     if (input.checked !== !!value) input.checked = !!value;
                 } else if (input.type === 'color') {
-                    // Solo asignar si es un formato hexadecimal válido para evitar errores de consola
+                    // Solo asignar si es un formato hexadecimal valido para evitar errores de consola
                     if (typeof value === 'string' && /^#[0-9A-F]{6}$/i.test(value)) {
                         if (input.value !== value) input.value = value;
                     }
@@ -1167,7 +1167,7 @@ export function refreshInspectorValues() {
 export async function updateInspector() {
     if (!dom.inspectorContent) return;
 
-    // Guardar la posición del scroll antes de limpiar
+    // Guardar la posicion del scroll antes de limpiar
     const savedScrollTop = dom.inspectorContent.scrollTop;
 
     dom.inspectorContent.innerHTML = '';
@@ -1183,10 +1183,10 @@ export async function updateInspector() {
         dom.inspectorContent.innerHTML = `<p class="inspector-placeholder" data-i18n="NADA_SELECCIONADO">${window.Localization.get('NADA_SELECCIONADO', 'Nada seleccionado')}</p>`;
     }
 
-    // Restaurar la posición del scroll con un pequeño retraso para asegurar que el DOM se haya renderizado
+    // Restaurar la posicion del scroll con un pequeno retraso para asegurar que el DOM se haya renderizado
     requestAnimationFrame(() => {
         if (dom.inspectorContent) dom.inspectorContent.scrollTop = savedScrollTop;
-        // Doble verificación para casos asíncronos pesados
+        // Doble verificacion para casos asincronos pesados
         setTimeout(() => {
             if (dom.inspectorContent && dom.inspectorContent.scrollTop !== savedScrollTop) {
                 dom.inspectorContent.scrollTop = savedScrollTop;
@@ -1327,7 +1327,7 @@ function renderActionInput(variable, currentValue, componentType, identifier) {
         commonAttrs += ` data-component="CustomComponent" data-component-id="${identifier}"`;
     }
 
-    let functionsDropdown = `<option value="">-- ${L.get('SIN_FUNCION', 'Sin Función')} --</option>`;
+    let functionsDropdown = `<option value="">-- ${L.get('SIN_FUNCION', 'Sin Funcion')} --</option>`;
 
     if (val.targetId && window.SceneManager.currentScene) {
         const targetMateria = window.SceneManager.currentScene.findMateriaById(val.targetId);
@@ -1474,12 +1474,12 @@ async function updateInspectorForMateria(selectedMateria) {
         // Add a separator and the "Add Tag..." option
         const separator = document.createElement('option');
         separator.disabled = true;
-        separator.textContent = '──────────';
+        separator.textContent = '';
         tagSelect.appendChild(separator);
         const addTagOption = document.createElement('option');
         addTagOption.value = 'add_new_tag';
         addTagOption.dataset.i18n = 'ADD_TAG_ELLIPSIS';
-        addTagOption.textContent = L.get('ADD_TAG_ELLIPSIS', 'Añadir Tag...');
+        addTagOption.textContent = L.get('ADD_TAG_ELLIPSIS', 'Anadir Tag...');
         tagSelect.appendChild(addTagOption);
     }
 
@@ -1499,7 +1499,7 @@ async function updateInspectorForMateria(selectedMateria) {
         // Add a separator and the "Edit Layers..." option
         const separator = document.createElement('option');
         separator.disabled = true;
-        separator.textContent = '──────────';
+        separator.textContent = '';
         layerSelect.appendChild(separator);
         const addLayerOption = document.createElement('option');
         addLayerOption.value = 'edit_layers';
@@ -1688,7 +1688,7 @@ async function updateInspectorForMateria(selectedMateria) {
                             <option value="Fill" ${ley.scalingMode === 'Fill' ? 'selected' : ''} data-i18n="FILL">Fill</option>
                         </select>
                     </div>
-                    <button class="primary-btn inspector-action-btn" data-action="sync-video-size" data-ley-index="${index}" style="width: 100%; margin-top: 10px; font-weight: bold; border-radius: 4px;" title="${L.get('AJUSTAR_TAMANO_VIDEO_DESC', 'Ajusta el tamaño del objeto UI para que coincida con la resolución nativa del video.')}">${L.get('AJUSTAR_TAMANO_AL_VIDEO', 'Ajustar Tamaño al Video')}</button>
+                    <button class="primary-btn inspector-action-btn" data-action="sync-video-size" data-ley-index="${index}" style="width: 100%; margin-top: 10px; font-weight: bold; border-radius: 4px;" title="${L.get('AJUSTAR_TAMANO_VIDEO_DESC', 'Ajusta el tamano del objeto UI para que coincida con la resolucion nativa del video.')}">${L.get('AJUSTAR_TAMANO_AL_VIDEO', 'Ajustar Tamano al Video')}</button>
                 </div>
             `;
         } else if (ley instanceof Components.Health) {
@@ -1696,7 +1696,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader(L.get('HEALTH_COMPONENT', "Vida (Health)"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label data-i18n="MAX_HEALTH">${L.get('MAX_HEALTH', 'Vida Máxima')}</label>
+                        <label data-i18n="MAX_HEALTH">${L.get('MAX_HEALTH', 'Vida Maxima')}</label>
                         <input type="number" class="prop-input" step="1" min="1" data-component="Health" data-prop="maxHealth" value="${ley.maxHealth}">
                     </div>
                     <div class="prop-row-multi">
@@ -1704,7 +1704,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="number" class="prop-input" step="1" min="0" data-component="Health" data-prop="currentHealth" value="${ley.currentHealth}">
                     </div>
                     <div class="inspector-row">
-                        <label data-i18n="DEATH_ANIMATION">${L.get('DEATH_ANIMATION', 'Animación Muerte')}</label>
+                        <label data-i18n="DEATH_ANIMATION">${L.get('DEATH_ANIMATION', 'Animacion Muerte')}</label>
                         ${renderPropertyDropper('Animation', ley.deathAnimation, 'data-component="Health" data-prop="deathAnimation"')}
                     </div>
                     <div class="prop-row-multi">
@@ -1712,7 +1712,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="number" class="prop-input" step="1" min="-1" data-component="Health" data-prop="freezeFrame" value="${ley.freezeFrame}">
                     </div>
                     <div class="prop-row-multi">
-                        <label data-i18n="DESTRUCTION_DELAY">${L.get('DESTRUCTION_DELAY', 'Tiempo Desaparición')}</label>
+                        <label data-i18n="DESTRUCTION_DELAY">${L.get('DESTRUCTION_DELAY', 'Tiempo Desaparicion')}</label>
                         <input type="number" class="prop-input" step="0.1" min="-1" data-component="Health" data-prop="destructionDelay" value="${ley.destructionDelay}">
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
@@ -1760,7 +1760,7 @@ async function updateInspectorForMateria(selectedMateria) {
                                     ${renderPropertyDropper('Animation', atk.animation, `data-component="Attack" data-prop="attacks.${aIdx}.animation"`)}
                                 </div>
                                 <div class="prop-row-multi">
-                                    <label>${L.get('DAMAGE', 'Daño')}</label>
+                                    <label>${L.get('DAMAGE', 'Dano')}</label>
                                     <input type="number" class="prop-input" data-component="Attack" data-prop="attacks.${aIdx}.damage" value="${atk.damage}">
                                 </div>
                                 <div class="prop-row-multi">
@@ -1768,7 +1768,7 @@ async function updateInspectorForMateria(selectedMateria) {
                                     <input type="number" class="prop-input" data-component="Attack" data-prop="attacks.${aIdx}.pushForce" value="${atk.pushForce}">
                                 </div>
                                 <div class="prop-row-multi">
-                                    <label>${L.get('DURATION', 'Duración')}</label>
+                                    <label>${L.get('DURATION', 'Duracion')}</label>
                                     <input type="number" class="prop-input" step="0.05" data-component="Attack" data-prop="attacks.${aIdx}.duration" value="${atk.duration}">
                                 </div>
                             </div>
@@ -1790,11 +1790,11 @@ async function updateInspectorForMateria(selectedMateria) {
                         ${renderPropertyDropper('Materia', ley.fillMateria, 'data-component="ProgressBar" data-prop="fillMateria"')}
                     </div>
                     <div class="prop-row-multi">
-                        <label data-i18n="FULL_SIZE">${L.get('FULL_SIZE', 'Tamaño Total')}</label>
+                        <label data-i18n="FULL_SIZE">${L.get('FULL_SIZE', 'Tamano Total')}</label>
                         <input type="number" class="prop-input" data-component="ProgressBar" data-prop="fullSize" value="${ley.fullSize}">
                     </div>
                     <div class="prop-row-multi">
-                        <label data-i18n="ORIENTATION">${L.get('ORIENTATION', 'Orientación')}</label>
+                        <label data-i18n="ORIENTATION">${L.get('ORIENTATION', 'Orientacion')}</label>
                         <select class="prop-input" data-component="ProgressBar" data-prop="orientation">
                             <option value="Horizontal" ${ley.orientation === 'Horizontal' ? 'selected' : ''} data-i18n="HORIZONTAL">${L.get('HORIZONTAL', 'Horizontal')}</option>
                             <option value="Vertical" ${ley.orientation === 'Vertical' ? 'selected' : ''} data-i18n="VERTICAL">${L.get('VERTICAL', 'Vertical')}</option>
@@ -1814,7 +1814,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="number" class="prop-input" data-component="ProgressBar" data-prop="value" value="${ley.value}">
                     </div>
                     <div class="prop-row-multi">
-                        <label data-i18n="MAX_VALUE">${L.get('MAX_VALUE', 'Valor Máximo')}</label>
+                        <label data-i18n="MAX_VALUE">${L.get('MAX_VALUE', 'Valor Maximo')}</label>
                         <input type="number" class="prop-input" data-component="ProgressBar" data-prop="maxValue" value="${ley.maxValue}">
                     </div>
                 </div>
@@ -1855,13 +1855,13 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley instanceof Components.UIMask) {
             componentHTML = `
-                ${renderComponentHeader(L.get('UI_MASK', "Máscara UI"), icon, index)}
+                ${renderComponentHeader(L.get('UI_MASK', "Mascara UI"), icon, index)}
                 <div class="component-content">
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="UIMask" data-prop="showGizmo" ${ley.showGizmo ? 'checked' : ''}>
                         <label data-i18n="SHOW_GIZMO">${L.get('SHOW_GIZMO', 'Mostrar Gizmo')}</label>
                     </div>
-                    <p class="info-text">${L.get('MASK_INFO', 'Recorta los elementos hijos dentro del área de este objeto.')}</p>
+                    <p class="info-text">${L.get('MASK_INFO', 'Recorta los elementos hijos dentro del area de este objeto.')}</p>
                 </div>
             `;
         } else if (ley instanceof Components.UICollider) {
@@ -1902,7 +1902,7 @@ async function updateInspectorForMateria(selectedMateria) {
             }
             componentHTML = `
             <div class="component-inspector">
-                ${renderComponentHeader(L.get('TRANSFORM', "Posición (Transform)"), icon, index)}
+                ${renderComponentHeader(L.get('TRANSFORM', "Posicion (Transform)"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_POSITION">${L.get('PROP_POSITION', 'Position')}</label>
@@ -1924,7 +1924,7 @@ async function updateInspectorForMateria(selectedMateria) {
                             <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.y" value="${ley.localScale.y}" title="Y">
                         </div>
                     </div>
-                    <div class="inspector-section-header"><span>${L.get('ORIENTATION', 'Orientación')}</span></div>
+                    <div class="inspector-section-header"><span>${L.get('ORIENTATION', 'Orientacion')}</span></div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Transform" data-prop="flipX" ${ley.flipX ? 'checked' : ''}>
                         <label data-i18n="PROP_FLIP_X">${L.get('PROP_FLIP_X', 'Voltear Horizontal')}</label>
@@ -1953,8 +1953,8 @@ async function updateInspectorForMateria(selectedMateria) {
                         </div>
                     </div>
                     <div class="inspector-field-group">
-                        <label data-i18n="VERTICES">${L.get('VERTICES', 'Vértices')} (${ley.vertices?.length || 0})</label>
-                        <p class="field-description" data-i18n="VERTICES_DESC">${L.get('VERTICES_DESC', 'La edición manual de vértices se habilitará próximamente. Actualmente se genera automáticamente para terrenos.')}</p>
+                        <label data-i18n="VERTICES">${L.get('VERTICES', 'Vertices')} (${ley.vertices?.length || 0})</label>
+                        <p class="field-description" data-i18n="VERTICES_DESC">${L.get('VERTICES_DESC', 'La edicion manual de vertices se habilitara proximamente. Actualmente se genera automaticamente para terrenos.')}</p>
                     </div>
                 </div>
             </div>`;
@@ -2322,7 +2322,7 @@ async function updateInspectorForMateria(selectedMateria) {
             componentHTML = `
                 ${renderComponentHeader(`<a href="#">${ley.scriptName}</a>`, icon, index)}
                 <div class="component-content">
-                    ${publicVarsHTML || '<p class="field-description">Este script no tiene variables públicas.</p>'}
+                    ${publicVarsHTML || '<p class="field-description">Este script no tiene variables publicas.</p>'}
                 </div>
             `;
         } else if (ley instanceof Components.Animator) {
@@ -2367,13 +2367,13 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="SMART_MODE_DIRECTIONS">${L.get('SMART_MODE_DIRECTIONS', 'Modo Inteligente (Direcciones)')}</label>
                     </div>
 
-                    <div class="inspector-section-header"><span data-i18n="RESPONSE_CONFIG">${L.get('RESPONSE_CONFIG', 'Configuración de Respuesta')}</span></div>
+                    <div class="inspector-section-header"><span data-i18n="RESPONSE_CONFIG">${L.get('RESPONSE_CONFIG', 'Configuracion de Respuesta')}</span></div>
                     <div class="prop-row-multi">
-                        <label title="${L.get('DEADZONE_DESC', 'Movimiento mínimo para activar dirección')}" data-i18n="DEADZONE">${L.get('DEADZONE', 'Sensibilidad (Deadzone)')}</label>
+                        <label title="${L.get('DEADZONE_DESC', 'Movimiento minimo para activar direccion')}" data-i18n="DEADZONE">${L.get('DEADZONE', 'Sensibilidad (Deadzone)')}</label>
                         <input type="number" class="prop-input" step="0.01" min="0" max="1" data-component="AnimatorController" data-prop="deadZone" value="${ley.deadZone ?? 0.1}">
                     </div>
                     <div class="prop-row-multi">
-                        <label title="${L.get('START_DELAY_DESC', 'Tiempo de espera para empezar animación')}" data-i18n="START_DELAY">${L.get('START_DELAY', 'Retraso Inicio (s)')}</label>
+                        <label title="${L.get('START_DELAY_DESC', 'Tiempo de espera para empezar animacion')}" data-i18n="START_DELAY">${L.get('START_DELAY', 'Retraso Inicio (s)')}</label>
                         <input type="number" class="prop-input" step="0.01" min="0" data-component="AnimatorController" data-prop="startDelay" value="${ley.startDelay ?? 0.02}">
                     </div>
                     <div class="prop-row-multi">
@@ -2381,11 +2381,11 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="number" class="prop-input" step="0.01" min="0" data-component="AnimatorController" data-prop="stopDelay" value="${ley.stopDelay ?? 0.02}">
                     </div>
                     <div class="prop-row-multi">
-                        <label title="${L.get('DIRECTION_DELAY_DESC', 'Tiempo de espera para cambiar dirección')}" data-i18n="DIRECTION_DELAY">${L.get('DIRECTION_DELAY', 'Retraso Giro (s)')}</label>
+                        <label title="${L.get('DIRECTION_DELAY_DESC', 'Tiempo de espera para cambiar direccion')}" data-i18n="DIRECTION_DELAY">${L.get('DIRECTION_DELAY', 'Retraso Giro (s)')}</label>
                         <input type="number" class="prop-input" step="0.01" min="0" data-component="AnimatorController" data-prop="directionDelay" value="${ley.directionDelay ?? 0.05}">
                     </div>
                     <div class="prop-row-multi">
-                        <label title="${L.get('STOP_BUFFER_DESC', 'Tiempo que la animación sigue activa tras soltar')}" data-i18n="STOP_BUFFER">${L.get('STOP_BUFFER', 'Buffer Inercia (s)')}</label>
+                        <label title="${L.get('STOP_BUFFER_DESC', 'Tiempo que la animacion sigue activa tras soltar')}" data-i18n="STOP_BUFFER">${L.get('STOP_BUFFER', 'Buffer Inercia (s)')}</label>
                         <input type="number" class="prop-input" step="0.01" min="0" data-component="AnimatorController" data-prop="stopBuffer" value="${ley.stopBuffer ?? 0.05}">
                     </div>
 
@@ -2543,7 +2543,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         </div>
                     </div>
                     <hr>
-                    <p class="field-description" data-i18n="VERTICES_EDIT_FUTURE">${L.get('VERTICES_EDIT_FUTURE', 'La edición de vértices se implementará en una futura actualización.')}</p>
+                    <p class="field-description" data-i18n="VERTICES_EDIT_FUTURE">${L.get('VERTICES_EDIT_FUTURE', 'La edicion de vertices se implementara en una futura actualizacion.')}</p>
                 </div>
             </div>`;
         } else if (ley instanceof Components.Tilemap) {
@@ -2552,7 +2552,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 componentHTML = `
                     ${renderComponentHeader('Tilemap', 'map', index)}
                     <div class="component-content">
-                        <p class="error-message">Los datos de las capas del Tilemap están corruptos. Vuelva a guardar la escena para intentar repararlos.</p>
+                        <p class="error-message">Los datos de las capas del Tilemap estan corruptos. Vuelva a guardar la escena para intentar repararlos.</p>
                     </div>
                 `;
             } else {
@@ -2584,7 +2584,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="component-content">
                         <div class="checkbox-field">
                             <input type="checkbox" id="tilemap-manual-size-toggle" data-component="Tilemap" ${ley.manualSize ? 'checked' : ''}>
-                            <label for="tilemap-manual-size-toggle" data-i18n="MANUAL_SIZE">${L.get('MANUAL_SIZE', 'Tamaño Manual')}</label>
+                            <label for="tilemap-manual-size-toggle" data-i18n="MANUAL_SIZE">${L.get('MANUAL_SIZE', 'Tamano Manual')}</label>
                         </div>
                         ${sizeInputHTML}
                         <hr>
@@ -2592,7 +2592,7 @@ async function updateInspectorForMateria(selectedMateria) {
                             <div class="layer-list-header">
                                 <h5 data-i18n="LAYERS">${L.get('LAYERS', 'Capas')}</h5>
                                 <div class="layer-controls">
-                                    <button class="layer-btn add" data-action="add-layer" title="${L.get('ADD_LAYER', 'Añadir Capa')}">+</button>
+                                    <button class="layer-btn add" data-action="add-layer" title="${L.get('ADD_LAYER', 'Anadir Capa')}">+</button>
                                     <button class="layer-btn remove" data-action="remove-layer" title="${L.get('REMOVE_SELECTED_LAYER', 'Eliminar Capa Seleccionada')}">-</button>
                                 </div>
                             </div>
@@ -2824,7 +2824,7 @@ async function updateInspectorForMateria(selectedMateria) {
             componentHTML = `
                 ${renderComponentHeader(ley.definition.nombre, 'settings', index)}
                 <div class="component-content">
-                    ${publicVarsHTML || '<p class="field-description">Este componente no tiene propiedades públicas.</p>'}
+                    ${publicVarsHTML || '<p class="field-description">Este componente no tiene propiedades publicas.</p>'}
                 </div>
             `;
         } else if (ley instanceof Components.DrawingOrder) {
@@ -2835,7 +2835,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="ORDER">${L.get('ORDER', 'Orden')}</label>
                         <input type="number" class="prop-input" step="1" data-component="DrawingOrder" data-prop="order" value="${ley.order || 0}">
                     </div>
-                    <p class="field-description" data-i18n="DRAWING_ORDER_DESC">${L.get('DRAWING_ORDER_DESC', 'Valores altos delante, bajos detrás. Sobrescribe el orden por defecto.')}</p>
+                    <p class="field-description" data-i18n="DRAWING_ORDER_DESC">${L.get('DRAWING_ORDER_DESC', 'Valores altos delante, bajos detras. Sobrescribe el orden por defecto.')}</p>
                 </div>
             `;
         } else if (ley instanceof Components.BoxCollider2D) {
@@ -2866,7 +2866,7 @@ async function updateInspectorForMateria(selectedMateria) {
             </div>`;
         } else if (ley instanceof Components.Movement) {
             componentHTML = `
-                ${renderComponentHeader(L.get('MOVEMENT_BASIC', "Movimiento (Básico)"), icon, index)}
+                ${renderComponentHeader(L.get('MOVEMENT_BASIC', "Movimiento (Basico)"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="KEYS_UP_DOWN">${L.get('KEYS_UP_DOWN', 'Teclas (Arriba/Abajo)')}</label>
@@ -2912,7 +2912,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="inspector-row">
                         <label data-i18n="PROJECTILE_PREFAB">${L.get('PROJECTILE_PREFAB', 'Prefab Proyectil')}</label>
                         <div class="file-picker">
-                            <input type="text" class="prop-input" data-component="ProjectileLauncher" data-prop="projectilePrefab" value="${ley.projectilePrefab}" placeholder="${L.get('HINT_ARRIASTRA_PREFAB', 'Arrastra un .ceprefab aquí')}">
+                            <input type="text" class="prop-input" data-component="ProjectileLauncher" data-prop="projectilePrefab" value="${ley.projectilePrefab}" placeholder="${L.get('HINT_ARRIASTRA_PREFAB', 'Arrastra un .ceprefab aqui')}">
                             <button class="panel-tool-btn" onclick="window.openAssetSelector((h, p) => { const input = this.previousElementSibling; input.value = p; input.dispatchEvent(new Event('change', { bubbles: true })); }, '.ceprefab')">...</button>
                         </div>
                     </div>
@@ -2936,7 +2936,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         </div>
                     </div>
                      <div class="prop-row-multi">
-                        <label data-i18n="DIRECTION">${L.get('DIRECTION', 'Dirección')}</label>
+                        <label data-i18n="DIRECTION">${L.get('DIRECTION', 'Direccion')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="0.1" data-component="ProjectileLauncher" data-prop="direction.x" value="${ley.direction.x}" title="X">
                             <input type="number" class="prop-input" step="0.1" data-component="ProjectileLauncher" data-prop="direction.y" value="${ley.direction.y}" title="Y">
@@ -2946,7 +2946,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley instanceof Components.AutoDestroy) {
             componentHTML = `
-                ${renderComponentHeader(L.get('AUTO_DESTROY_COMPONENT', "Destrucción Automática"), icon, index)}
+                ${renderComponentHeader(L.get('AUTO_DESTROY_COMPONENT', "Destruccion Automatica"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="DELAY_SECS">${L.get('DELAY_SECS', 'Retraso (segs)')}</label>
@@ -2956,7 +2956,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley instanceof Components.CameraFollow) {
              componentHTML = `
-                ${renderComponentHeader(L.get('CAMERA_FOLLOW_COMPONENT', "Seguimiento Cámara"), icon, index)}
+                ${renderComponentHeader(L.get('CAMERA_FOLLOW_COMPONENT', "Seguimiento Camara"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label data-i18n="TARGET">${L.get('TARGET', 'Objetivo')}</label>
@@ -2985,18 +2985,18 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley instanceof Components.ParticleSystem) {
             componentHTML = `
-                ${renderComponentHeader(L.get('PARTICLE_SYSTEM', "Sistema de Partículas"), icon, index)}
+                ${renderComponentHeader(L.get('PARTICLE_SYSTEM', "Sistema de Particulas"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
-                        <label data-i18n="PARTICLE_PREFAB">${L.get('PARTICLE_PREFAB', 'Prefab Partícula')}</label>
+                        <label data-i18n="PARTICLE_PREFAB">${L.get('PARTICLE_PREFAB', 'Prefab Particula')}</label>
                         ${renderPropertyDropper('Prefab', ley.prefabPath, 'data-component="ParticleSystem" data-prop="prefabPath"')}
                     </div>
                     <div class="prop-row-multi">
-                        <label data-i18n="MAX_PARTICLES">${L.get('MAX_PARTICLES', 'Max Partículas')}</label>
+                        <label data-i18n="MAX_PARTICLES">${L.get('MAX_PARTICLES', 'Max Particulas')}</label>
                         <input type="number" class="prop-input" step="1" min="1" data-component="ParticleSystem" data-prop="maxParticles" value="${ley.maxParticles}">
                     </div>
                     <div class="prop-row-multi">
-                        <label data-i18n="EMISSION_RATE">${L.get('EMISSION_RATE', 'Emisión (part/seg)')}</label>
+                        <label data-i18n="EMISSION_RATE">${L.get('EMISSION_RATE', 'Emision (part/seg)')}</label>
                         <input type="number" class="prop-input" step="1" min="0" data-component="ParticleSystem" data-prop="emissionRate" value="${ley.emissionRate}">
                     </div>
                     <div class="prop-row-multi">
@@ -3008,7 +3008,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="number" class="prop-input" step="1" data-component="ParticleSystem" data-prop="speed" value="${ley.speed}">
                     </div>
                     <div class="prop-row-multi">
-                        <label data-i18n="SPREAD">${L.get('SPREAD', 'Dispersión (spread)')}</label>
+                        <label data-i18n="SPREAD">${L.get('SPREAD', 'Dispersion (spread)')}</label>
                         <input type="number" class="prop-input" step="1" min="0" max="360" data-component="ParticleSystem" data-prop="spread" value="${ley.spread}">
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
@@ -3067,13 +3067,13 @@ async function updateInspectorForMateria(selectedMateria) {
                             <input type="number" class="prop-input" step="1" data-component="Parallax" data-prop="autoscroll.y" value="${ley.autoscroll.y}" title="Y">
                         </div>
                     </div>
-                    <p class="field-description">${L.get('PARALLAX_DESC', 'Scroll Factor: 0 = Pegado a cámara. 1 = Mundo real.<br>Mirroring: Tamaño de repetición (0 = no repite).')}</p>
+                    <p class="field-description">${L.get('PARALLAX_DESC', 'Scroll Factor: 0 = Pegado a camara. 1 = Mundo real.<br>Mirroring: Tamano de repeticion (0 = no repite).')}</p>
                 </div>
             `;
         } else if (ley instanceof Components.Terreno2D) {
             const settings = TerrenoEditorWindow.settings;
             componentHTML = `
-                ${renderComponentHeader(L.get('TERRAIN_2D_COMPONENT', "Terreno 2D (Píxeles)"), icon, index)}
+                ${renderComponentHeader(L.get('TERRAIN_2D_COMPONENT', "Terreno 2D (Pixeles)"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="CANVAS_SIZE">${L.get('CANVAS_SIZE', 'Canvas Size')}</label>
@@ -3103,7 +3103,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         </select>
                     </div>
                     <div class="prop-row-multi">
-                        <label data-i18n="SIZE">${L.get('SIZE', 'Tamaño')}</label>
+                        <label data-i18n="SIZE">${L.get('SIZE', 'Tamano')}</label>
                         <input type="range" min="1" max="200" value="${settings.brushSize}" oninput="window.TerrenoEditorWindow.setBrushSize(this.value); this.nextElementSibling.innerText = this.value;">
                         <span style="min-width: 30px; text-align: right;">${settings.brushSize}</span>
                     </div>
@@ -3111,7 +3111,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="layer-manager-ui">
                         <div class="layer-list-header">
                             <h5 data-i18n="FILL_TEXTURES">${L.get('FILL_TEXTURES', 'Texturas de Relleno')}</h5>
-                            <button class="layer-btn add" data-action="terrain-add-layer" title="${L.get('ADD_LAYER', 'Añadir Capa')}">+</button>
+                            <button class="layer-btn add" data-action="terrain-add-layer" title="${L.get('ADD_LAYER', 'Anadir Capa')}">+</button>
                         </div>
                         <div class="layer-list">
                             ${ley.layers.map((layer, lIdx) => `
@@ -3124,7 +3124,7 @@ async function updateInspectorForMateria(selectedMateria) {
                             `).join('')}
                         </div>
                     </div>
-                    <p class="field-description">${L.get('TERRAIN_BRUSH_DESC', 'Dibuja libremente en la escena con la herramienta de pincel de terreno activada. Las texturas rellenarán las zonas pintadas.')}</p>
+                    <p class="field-description">${L.get('TERRAIN_BRUSH_DESC', 'Dibuja libremente en la escena con la herramienta de pincel de terreno activada. Las texturas rellenaran las zonas pintadas.')}</p>
                 </div>
             `;
         } else if (ley instanceof Components.TerrenoCollider2D) {
@@ -3135,8 +3135,8 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="MODE">${L.get('MODE', 'Modo')}</label>
                         <select class="prop-input inspector-re-render" data-component="TerrenoCollider2D" data-prop="mode">
-                            <option value="Rectangles" ${ley.mode === 'Rectangles' ? 'selected' : ''}>${L.get('RECTANGLES_GRID', 'Rectángulos (Grilla)')}</option>
-                            <option value="Polygon" ${ley.mode === 'Polygon' ? 'selected' : ''}>${L.get('POLYGON_EXACT', 'Polígono (Exacto)')}</option>
+                            <option value="Rectangles" ${ley.mode === 'Rectangles' ? 'selected' : ''}>${L.get('RECTANGLES_GRID', 'Rectangulos (Grilla)')}</option>
+                            <option value="Polygon" ${ley.mode === 'Polygon' ? 'selected' : ''}>${L.get('POLYGON_EXACT', 'Poligono (Exacto)')}</option>
                         </select>
                     </div>
                     <div class="checkbox-field">
@@ -3144,24 +3144,24 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="IS_TRIGGER">${L.get('IS_TRIGGER', 'Is Trigger')}</label>
                     </div>
                     <div class="prop-row-multi" style="display: ${isPolygon ? 'none' : 'flex'};">
-                        <label data-i18n="RESOLUTION">${L.get('RESOLUTION', 'Resolución')}</label>
+                        <label data-i18n="RESOLUTION">${L.get('RESOLUTION', 'Resolucion')}</label>
                         <input type="number" class="prop-input" step="1" min="4" max="64" data-component="TerrenoCollider2D" data-prop="resolution" value="${ley.resolution || 16}">
                     </div>
                     <div class="prop-row-multi" style="display: ${isPolygon ? 'flex' : 'none'};">
                         <label data-i18n="SIMPLICITY">${L.get('SIMPLICITY', 'Simplicidad')}</label>
                         <input type="number" class="prop-input" step="0.5" min="0" data-component="TerrenoCollider2D" data-prop="simplifyTolerance" value="${ley.simplifyTolerance || 2.0}">
                     </div>
-                    <p class="field-description" data-i18n="${isPolygon ? 'POLYGON_SIMPLICITY_DESC' : 'GRID_RESOLUTION_DESC'}">${isPolygon ? L.get('POLYGON_SIMPLICITY_DESC', 'Mayor simplicidad = menos puntos en el polígono.') : L.get('GRID_RESOLUTION_DESC', 'Cuanto menor sea la resolución, más precisos serán los rectángulos.')}</p>
+                    <p class="field-description" data-i18n="${isPolygon ? 'POLYGON_SIMPLICITY_DESC' : 'GRID_RESOLUTION_DESC'}">${isPolygon ? L.get('POLYGON_SIMPLICITY_DESC', 'Mayor simplicidad = menos puntos en el poligono.') : L.get('GRID_RESOLUTION_DESC', 'Cuanto menor sea la resolucion, mas precisos seran los rectangulos.')}</p>
                     <hr>
                     <button class="primary-btn" data-action="generate-colliders" style="width: 100%;" data-i18n="REGENERATE_COLLISIONS">${L.get('REGENERATE_COLLISIONS', 'Regenerar Colisiones')}</button>
                     <p class="field-description" style="margin-top: 8px;">
-                        ${isPolygon ? `${L.get('ISLANDS_POLYGONS', 'Islas (Polígonos)')}: ${ley.generatedPolygons?.length || 0}` : `${L.get('RECTANGLES', 'Rectángulos')}: ${ley.generatedColliders?.length || 0}`}
+                        ${isPolygon ? `${L.get('ISLANDS_POLYGONS', 'Islas (Poligonos)')}: ${ley.generatedPolygons?.length || 0}` : `${L.get('RECTANGLES', 'Rectangulos')}: ${ley.generatedColliders?.length || 0}`}
                     </p>
                 </div>
             `;
         } else if (ley instanceof Components.Gyzmo) {
             componentHTML = `
-                ${renderComponentHeader(L.get('GYZMO_AREAS', "Gyzmo (Áreas)"), icon, index)}
+                ${renderComponentHeader(L.get('GYZMO_AREAS', "Gyzmo (Areas)"), icon, index)}
                 <div class="component-content">
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Gyzmo" data-prop="showInGame" ${ley.showInGame ? 'checked' : ''}>
@@ -3174,8 +3174,8 @@ async function updateInspectorForMateria(selectedMateria) {
                     <hr>
                     <div class="layer-manager-ui">
                         <div class="layer-list-header">
-                            <h5>${L.get('RECTANGLES', 'Rectángulos')}</h5>
-                            <button class="layer-btn add" data-action="gyzmo-add-layer" title="${L.get('ADD_RECTANGLE', 'Añadir Rectángulo')}">+</button>
+                            <h5>${L.get('RECTANGLES', 'Rectangulos')}</h5>
+                            <button class="layer-btn add" data-action="gyzmo-add-layer" title="${L.get('ADD_RECTANGLE', 'Anadir Rectangulo')}">+</button>
                         </div>
                         <div class="layer-list">
                             ${ley.layers.map((layer, lIdx) => `
@@ -3234,7 +3234,7 @@ async function updateInspectorForMateria(selectedMateria) {
                                     <button class="layer-btn remove" data-action="rallo-remove-ray" data-index="${rIdx}">-</button>
                                 </div>
                                 <div class="prop-row-multi">
-                                    <label data-i18n="ANGLE">${L.get('ANGLE', 'Ángulo')}</label>
+                                    <label data-i18n="ANGLE">${L.get('ANGLE', 'Angulo')}</label>
                                     <input type="number" class="prop-input" data-component="RaycastSource" data-prop="rays.${rIdx}.angle" value="${ray.angle}">
                                 </div>
                                 <div class="prop-row-multi">
@@ -3278,7 +3278,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="PROP_TIDE_AMPLITUDE">${L.get('PROP_TIDE_AMPLITUDE', 'Amplitud')}</label>
                         <input type="number" class="prop-input" data-component="Water" data-prop="tideAmplitude" value="${ley.tideAmplitude}">
                     </div>
-                    <button class="primary-btn" onclick="const w = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.Water); w.generateParticles(); window.updateScene();" style="width: 100%; margin-top: 10px;" data-i18n="REGENERAR_PARTICULAS">${L.get('REGENERAR_PARTICULAS', 'Regenerar Partículas')}</button>
+                    <button class="primary-btn" onclick="const w = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.Water); w.generateParticles(); window.updateScene();" style="width: 100%; margin-top: 10px;" data-i18n="REGENERAR_PARTICULAS">${L.get('REGENERAR_PARTICULAS', 'Regenerar Particulas')}</button>
                 </div>
             `;
         } else if (ley instanceof Components.LineCollider2D) {
@@ -3291,7 +3291,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="inspector-section-header">
                         <span data-i18n="PROP_POINTS">${L.get('PROP_POINTS', 'Puntos')}</span>
-                        <button class="layer-btn add" data-action="line-add-point" data-i18n="PROP_ADD_POINT" title="${L.get('PROP_ADD_POINT', 'Añadir Punto')}">+</button>
+                        <button class="layer-btn add" data-action="line-add-point" data-i18n="PROP_ADD_POINT" title="${L.get('PROP_ADD_POINT', 'Anadir Punto')}">+</button>
                     </div>
                     <div class="layer-list" style="max-height: 200px; overflow-y: auto;">
                         ${ley.points.map((p, pIdx) => `
@@ -3337,15 +3337,15 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="ACTIVAR_AUDIO_ESPACIAL">${L.get('ACTIVAR_AUDIO_ESPACIAL', 'Activar Audio Espacial')}</label>
                     </div>
                     <div class="prop-row-multi">
-                        <label data-i18n="DISTANCIA_MINIMA">${L.get('DISTANCIA_MINIMA', 'Distancia Mínima')}</label>
+                        <label data-i18n="DISTANCIA_MINIMA">${L.get('DISTANCIA_MINIMA', 'Distancia Minima')}</label>
                         <input type="number" class="prop-input" data-component="AudioSource" data-prop="minDistance" value="${ley.minDistance}">
                     </div>
                     <div class="prop-row-multi">
-                        <label data-i18n="DISTANCIA_MAXIMA">${L.get('DISTANCIA_MAXIMA', 'Distancia Máxima')}</label>
+                        <label data-i18n="DISTANCIA_MAXIMA">${L.get('DISTANCIA_MAXIMA', 'Distancia Maxima')}</label>
                         <input type="number" class="prop-input" data-component="AudioSource" data-prop="maxDistance" value="${ley.maxDistance}">
                     </div>
 
-                    <div class="inspector-section-header"><span data-i18n="RANGO_REPRODUCCION">${L.get('RANGO_REPRODUCCION', 'Rango de Reproducción')}</span></div>
+                    <div class="inspector-section-header"><span data-i18n="RANGO_REPRODUCCION">${L.get('RANGO_REPRODUCCION', 'Rango de Reproduccion')}</span></div>
                     <div class="prop-row-multi">
                         <label data-i18n="INICIO_SEG">${L.get('INICIO_SEG', 'Inicio (seg)')}</label>
                         <input type="number" class="prop-input" data-component="AudioSource" data-prop="playbackStart" value="${ley.playbackStart}" step="0.1" min="0">
@@ -3364,13 +3364,13 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="CHASSIS">${L.get('CHASSIS', 'Chasis')}</label>
                         ${renderPropertyDropper('Materia', ley.chasis, 'data-component="SuspensionHC" data-prop="chasis"')}
                     </div>
-                    <div class="inspector-section-header"><span data-i18n="SPRING_SETTINGS">${L.get('SPRING_SETTINGS', 'Configuración de Muelle')}</span></div>
+                    <div class="inspector-section-header"><span data-i18n="SPRING_SETTINGS">${L.get('SPRING_SETTINGS', 'Configuracion de Muelle')}</span></div>
                     <div class="prop-row-multi">
                         <label title="K" data-i18n="STIFFNESS">${L.get('STIFFNESS', 'Dureza')}</label>
                         <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="dureza" value="${ley.dureza}">
                     </div>
                     <div class="prop-row-multi">
-                        <label title="D" data-i18n="DAMPING">${L.get('DAMPING', 'Amortiguación')}</label>
+                        <label title="D" data-i18n="DAMPING">${L.get('DAMPING', 'Amortiguacion')}</label>
                         <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="amortiguacion" value="${ley.amortiguacion}">
                     </div>
                     <div class="prop-row-multi">
@@ -3385,13 +3385,13 @@ async function updateInspectorForMateria(selectedMateria) {
                         </div>
                     </div>
 
-                    <div class="inspector-section-header"><span data-i18n="ENGINE_SETTINGS">${L.get('ENGINE_SETTINGS', 'Configuración de Motor')}</span></div>
+                    <div class="inspector-section-header"><span data-i18n="ENGINE_SETTINGS">${L.get('ENGINE_SETTINGS', 'Configuracion de Motor')}</span></div>
                     <div class="prop-row-multi">
                         <label data-i18n="POWER">${L.get('POWER', 'Potencia')}</label>
                         <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="potenciaMotor" value="${ley.potenciaMotor}">
                     </div>
                     <div class="prop-row-multi">
-                        <label data-i18n="MAX_SPEED">${L.get('MAX_SPEED', 'Velocidad Máx')}</label>
+                        <label data-i18n="MAX_SPEED">${L.get('MAX_SPEED', 'Velocidad Max')}</label>
                         <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="velocidadMaxima" value="${ley.velocidadMaxima}">
                     </div>
                     <div class="prop-row">
@@ -3399,7 +3399,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="number" step="0.01" min="0" max="1" class="prop-input" data-component="SuspensionHC" data-prop="frenadoMotor" value="${ley.frenadoMotor}">
                     </div>
                         <div class="prop-row">
-                            <label title="Controla cuánto se inclina el chasis al acelerar" data-i18n="PITCH_STRENGTH">${L.get('PITCH_STRENGTH', 'Inclinación')}</label>
+                            <label title="Controla cuanto se inclina el chasis al acelerar" data-i18n="PITCH_STRENGTH">${L.get('PITCH_STRENGTH', 'Inclinacion')}</label>
                             <input type="number" step="0.1" class="prop-input" data-component="SuspensionHC" data-prop="fuerzaInclinacion" value="${ley.fuerzaInclinacion}">
                         </div>
                         <div class="prop-row">
@@ -3407,11 +3407,11 @@ async function updateInspectorForMateria(selectedMateria) {
                             <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="controlAire" value="${ley.controlAire}">
                         </div>
                         <div class="prop-row">
-                            <label title="Estabilización automática en el aire (0-1)" data-i18n="AUTO_STABILIZE">${L.get('AUTO_STABILIZE', 'Auto-Estabilizar')}</label>
+                            <label title="Estabilizacion automatica en el aire (0-1)" data-i18n="AUTO_STABILIZE">${L.get('AUTO_STABILIZE', 'Auto-Estabilizar')}</label>
                             <input type="number" step="0.1" min="0" max="1" class="prop-input" data-component="SuspensionHC" data-prop="estabilidadAire" value="${ley.estabilidadAire}">
                         </div>
                         <div class="prop-row">
-                            <label title="Recuperación de posición horizontal en suelo (0-1)" data-i18n="GROUND_CENTERING">${L.get('GROUND_CENTERING', 'Centrado Suelo')}</label>
+                            <label title="Recuperacion de posicion horizontal en suelo (0-1)" data-i18n="GROUND_CENTERING">${L.get('GROUND_CENTERING', 'Centrado Suelo')}</label>
                             <input type="number" step="0.1" min="0" max="1" class="prop-input" data-component="SuspensionHC" data-prop="recuperacionGiro" value="${ley.recuperacionGiro}">
                         </div>
 
@@ -3439,7 +3439,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="number" class="prop-input" data-component="VehicleTopDown" data-prop="potencia" value="${ley.potencia}">
                     </div>
                     <div class="prop-row-multi">
-                        <label data-i18n="MAX_SPEED">${L.get('MAX_SPEED', 'Velocidad Máx')}</label>
+                        <label data-i18n="MAX_SPEED">${L.get('MAX_SPEED', 'Velocidad Max')}</label>
                         <input type="number" class="prop-input" data-component="VehicleTopDown" data-prop="velocidadMaxima" value="${ley.velocidadMaxima}">
                     </div>
                     <div class="prop-row-multi">
@@ -3479,13 +3479,13 @@ async function updateInspectorForMateria(selectedMateria) {
             componentHTML = `
                 ${renderComponentHeader(L.get('PLANE_CONTROLLER', "Plane Controller"), icon, index)}
                 <div class="component-content">
-                    <div class="inspector-section-header"><span data-i18n="FLIGHT_SETTINGS">${L.get('FLIGHT_SETTINGS', 'Configuración de Vuelo')}</span></div>
+                    <div class="inspector-section-header"><span data-i18n="FLIGHT_SETTINGS">${L.get('FLIGHT_SETTINGS', 'Configuracion de Vuelo')}</span></div>
                     <div class="prop-row-multi">
                         <label data-i18n="THRUST">${L.get('THRUST', 'Potencia Motor')}</label>
                         <input type="number" class="prop-input" data-component="PlaneController" data-prop="potenciaMotor" value="${ley.potenciaMotor}">
                     </div>
                     <div class="prop-row-multi">
-                        <label data-i18n="MAX_SPEED">${L.get('MAX_SPEED', 'Velocidad Máx')}</label>
+                        <label data-i18n="MAX_SPEED">${L.get('MAX_SPEED', 'Velocidad Max')}</label>
                         <input type="number" class="prop-input" data-component="PlaneController" data-prop="velocidadMaxima" value="${ley.velocidadMaxima}">
                     </div>
                     <div class="prop-row-multi">
@@ -3493,7 +3493,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="number" class="prop-input" data-component="PlaneController" data-prop="velocidadDespegue" value="${ley.velocidadDespegue}">
                     </div>
                     <div class="prop-row-multi">
-                        <label title="Multiplicador de fuerza ascendente" data-i18n="LIFT_FORCE">${L.get('LIFT_FORCE', 'Sustentación')}</label>
+                        <label title="Multiplicador de fuerza ascendente" data-i18n="LIFT_FORCE">${L.get('LIFT_FORCE', 'Sustentacion')}</label>
                         <input type="number" step="0.1" class="prop-input" data-component="PlaneController" data-prop="fuerzaSustentacion" value="${ley.fuerzaSustentacion}">
                     </div>
                     <div class="prop-row-multi">
@@ -3518,7 +3518,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="text" class="prop-input" data-component="PlaneController" data-prop="teclaBotonFreno" value="${ley.teclaBotonFreno}">
                     </div>
                     <div class="prop-row-multi">
-                        <label data-i18n="KEYS_PITCH">${L.get('KEYS_PITCH', 'Inclinación (Nariz)')}</label>
+                        <label data-i18n="KEYS_PITCH">${L.get('KEYS_PITCH', 'Inclinacion (Nariz)')}</label>
                         <div class="prop-inputs">
                             <input type="text" class="prop-input" data-component="PlaneController" data-prop="teclaNarizArriba" value="${ley.teclaNarizArriba}" title="Arriba">
                             <input type="text" class="prop-input" data-component="PlaneController" data-prop="teclaNarizAbajo" value="${ley.teclaNarizAbajo}" title="Abajo">
@@ -3530,17 +3530,17 @@ async function updateInspectorForMateria(selectedMateria) {
             componentHTML = `
                 ${renderComponentHeader(L.get('HELICOPTER_CONTROLLER', "Helicopter Controller"), icon, index)}
                 <div class="component-content">
-                    <div class="inspector-section-header"><span data-i18n="HELICOPTER_SETTINGS">${L.get('HELICOPTER_SETTINGS', 'Configuración de Helicóptero')}</span></div>
+                    <div class="inspector-section-header"><span data-i18n="HELICOPTER_SETTINGS">${L.get('HELICOPTER_SETTINGS', 'Configuracion de Helicoptero')}</span></div>
                     <div class="prop-row-multi">
                         <label data-i18n="MOTOR_POWER">${L.get('MOTOR_POWER', 'Potencia Motor')}</label>
                         <input type="number" class="prop-input" data-component="HelicopterController" data-prop="potenciaMotor" value="${ley.potenciaMotor}">
                     </div>
                     <div class="prop-row-multi">
-                        <label title="Fuerza base de sustentación" data-i18n="TAKEOFF_POWER">${L.get('TAKEOFF_POWER', 'Potencia Despegue')}</label>
+                        <label title="Fuerza base de sustentacion" data-i18n="TAKEOFF_POWER">${L.get('TAKEOFF_POWER', 'Potencia Despegue')}</label>
                         <input type="number" class="prop-input" data-component="HelicopterController" data-prop="potenciaDespegue" value="${ley.potenciaDespegue}">
                     </div>
                     <div class="prop-row-multi">
-                        <label data-i18n="MAX_SPEED">${L.get('MAX_SPEED', 'Velocidad Máx')}</label>
+                        <label data-i18n="MAX_SPEED">${L.get('MAX_SPEED', 'Velocidad Max')}</label>
                         <input type="number" class="prop-input" data-component="HelicopterController" data-prop="velocidadMaxima" value="${ley.velocidadMaxima}">
                     </div>
                     <div class="prop-row-multi">
@@ -3552,7 +3552,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="AUTO_STABILIZE">${L.get('AUTO_STABILIZE', 'Auto-Estabilizar')}</label>
                     </div>
                     <div class="prop-row-multi" style="display: ${ley.autoEstabilizar ? 'flex' : 'none'};">
-                        <label title="Fuerza de auto-nivelación" data-i18n="STABILITY">${L.get('STABILITY', 'Estabilidad')}</label>
+                        <label title="Fuerza de auto-nivelacion" data-i18n="STABILITY">${L.get('STABILITY', 'Estabilidad')}</label>
                         <input type="number" step="0.1" class="prop-input" data-component="HelicopterController" data-prop="estabilidad" value="${ley.estabilidad}">
                     </div>
                     <div class="prop-row-multi">
@@ -3611,7 +3611,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="range" class="prop-input" data-component="SkeletonRenderer" data-prop="opacity" value="${ley.opacity}" min="0" max="1" step="0.01">
                     </div>
                     <div class="prop-row-multi">
-                        <label data-i18n="VERTICES">${L.get('VERTICES', 'Vértices')}</label>
+                        <label data-i18n="VERTICES">${L.get('VERTICES', 'Vertices')}</label>
                         <span class="field-value">${ley.mesh.vertices.length / 2}</span>
                     </div>
                     <div class="prop-row-multi">
@@ -3619,9 +3619,9 @@ async function updateInspectorForMateria(selectedMateria) {
                         <span class="field-value">${ley.bones.length}</span>
                     </div>
                     <button class="panel-tool-btn" style="width:100%; margin-top: 8px;" onclick="const s = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.SkeletonRenderer); s.bones = window.SceneManager.currentScene.getAllMaterias().filter(m => m.getComponentByName('Bone')).map(m => m.name || m.id); window.updateInspector();" data-i18n="AUTO_ASIGNAR_HUESOS">${L.get('AUTO_ASIGNAR_HUESOS', 'Auto-Asignar Huesos')}</button>
-                    <p class="field-description" data-i18n="AUTO_ASIGNAR_HUESOS_DESC">${L.get('AUTO_ASIGNAR_HUESOS_DESC', 'Asigna automáticamente todos los objetos con componente \'Bone\' de la escena a este renderizador.')}</p>
+                    <p class="field-description" data-i18n="AUTO_ASIGNAR_HUESOS_DESC">${L.get('AUTO_ASIGNAR_HUESOS_DESC', 'Asigna automaticamente todos los objetos con componente \'Bone\' de la escena a este renderizador.')}</p>
                     <hr>
-                    <button class="primary-btn" style="width:100%;" onclick="const s = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.SkeletonRenderer); const scene = window.SceneManager.currentScene; s.bindPoses = s.bones.map(key => { let b; if(typeof key === 'number') b = scene.findMateriaById(key); else b = s.materia.findChildByName(key, true); if(!b) return null; const t = b.getComponentByName('Transform'); return { x: t.x, y: t.y, rotation: t.rotation, scale: { ...t.scale } }; }); window.Dialogs.showNotification(window.Localization.get('EXITO', 'Éxito'), window.Localization.get('POSE_CAPTURADA', 'Pose base capturada.'));" data-i18n="CAPTURAR_POSE_BASE">${L.get('CAPTURAR_POSE_BASE', 'Capturar Pose Base (Bind Pose)')}</button>
+                    <button class="primary-btn" style="width:100%;" onclick="const s = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.SkeletonRenderer); const scene = window.SceneManager.currentScene; s.bindPoses = s.bones.map(key => { let b; if(typeof key === 'number') b = scene.findMateriaById(key); else b = s.materia.findChildByName(key, true); if(!b) return null; const t = b.getComponentByName('Transform'); return { x: t.x, y: t.y, rotation: t.rotation, scale: { ...t.scale } }; }); window.Dialogs.showNotification(window.Localization.get('EXITO', 'Exito'), window.Localization.get('POSE_CAPTURADA', 'Pose base capturada.'));" data-i18n="CAPTURAR_POSE_BASE">${L.get('CAPTURAR_POSE_BASE', 'Capturar Pose Base (Bind Pose)')}</button>
                     <hr>
                     <div class="weight-painter-ui">
                         <button class="panel-tool-btn ${window.SceneView?.getActiveTool() === 'weight-painter' ? 'active' : ''}" style="width: 100%; margin-bottom: 10px;" onclick="const tool = window.SceneView.getActiveTool() === 'weight-painter' ? 'move' : 'weight-painter'; window.SceneView.setActiveTool(tool); window.updateInspector();">
@@ -3635,7 +3635,7 @@ async function updateInspectorForMateria(selectedMateria) {
                             </select>
                         </div>
                         <div class="prop-row-multi">
-                            <label data-i18n="SIZE">${L.get('SIZE', 'Tamaño')}</label>
+                            <label data-i18n="SIZE">${L.get('SIZE', 'Tamano')}</label>
                             <input type="range" min="1" max="200" value="${window.WeightPainter?.brushSize || 50}" oninput="window.WeightPainter.brushSize = parseFloat(this.value); this.nextElementSibling.innerText = this.value;">
                             <span style="min-width: 30px; text-align: right;">${window.WeightPainter?.brushSize || 50}</span>
                         </div>
@@ -3647,7 +3647,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <div class="prop-row-multi">
                             <label data-i18n="MODO">${L.get('MODO', 'Modo')}</label>
                             <select class="prop-input" onchange="window.WeightPainter.mode = this.value;">
-                                <option value="add" ${window.WeightPainter?.mode === 'add' ? 'selected' : ''} data-i18n="ANADIR">${L.get('ANADIR', 'Añadir')}</option>
+                                <option value="add" ${window.WeightPainter?.mode === 'add' ? 'selected' : ''} data-i18n="ANADIR">${L.get('ANADIR', 'Anadir')}</option>
                                 <option value="subtract" ${window.WeightPainter?.mode === 'subtract' ? 'selected' : ''} data-i18n="RESTAR">${L.get('RESTAR', 'Restar')}</option>
                             </select>
                         </div>
@@ -3693,10 +3693,10 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="text" class="prop-input" data-component="SceneLoader" data-prop="triggerKey" value="${ley.triggerKey || ''}">
                     </div>
                     <div class="inspector-row">
-                        <label data-i18n="BUTTON_MATERIA">${L.get('BUTTON_MATERIA', 'Materia Botón')}</label>
+                        <label data-i18n="BUTTON_MATERIA">${L.get('BUTTON_MATERIA', 'Materia Boton')}</label>
                         ${renderPropertyDropper('Materia', ley.buttonMateria, 'data-component="SceneLoader" data-prop="buttonMateria"')}
                     </div>
-                    <p class="field-description">${L.get('SCENE_LOADER_DESC', 'Carga una escena cuando el jugador colisiona, se presiona una tecla o se clica en el botón asignado.')}</p>
+                    <p class="field-description">${L.get('SCENE_LOADER_DESC', 'Carga una escena cuando el jugador colisiona, se presiona una tecla o se clica en el boton asignado.')}</p>
                 </div>
             `;
         } else if (ley instanceof Components.BasicAI) {
@@ -3718,7 +3718,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         if (allFunctions.length > 0) {
                             inputHTML = `
                                 <select class="prop-input" data-component="BasicAI" data-prop="${propName}">
-                                    <option value="">${L.get('SELECT_FUNCTION', '-- Seleccionar Función --')}</option>
+                                    <option value="">${L.get('SELECT_FUNCTION', '-- Seleccionar Funcion --')}</option>
                                     ${allFunctions.map(f => `<option value="${f}" ${ley[propName] === f ? 'selected' : ''}>${f}</option>`).join('')}
                                 </select>
                             `;
@@ -3734,7 +3734,7 @@ async function updateInspectorForMateria(selectedMateria) {
             };
 
             componentHTML = `
-                ${renderComponentHeader(L.get('BASIC_AI', "IA Básica"), icon, index)}
+                ${renderComponentHeader(L.get('BASIC_AI', "IA Basica"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label data-i18n="TARGET">${L.get('TARGET', 'Objetivo')}</label>
@@ -3774,11 +3774,11 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="BasicAI" data-prop="autoRotate" ${ley.autoRotate ? 'checked' : ''}>
-                        <label data-i18n="AUTO_ROTATE">${L.get('AUTO_ROTATE', 'Rotación Automática')}</label>
+                        <label data-i18n="AUTO_ROTATE">${L.get('AUTO_ROTATE', 'Rotacion Automatica')}</label>
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="BasicAI" data-prop="obstacleAvoidance" ${ley.obstacleAvoidance ? 'checked' : ''}>
-                        <label data-i18n="OBSTACLE_AVOIDANCE">${L.get('OBSTACLE_AVOIDANCE', 'Esquivar Obstáculos')}</label>
+                        <label data-i18n="OBSTACLE_AVOIDANCE">${L.get('OBSTACLE_AVOIDANCE', 'Esquivar Obstaculos')}</label>
                     </div>
                     <hr>
                     <div class="inspector-section-header"><span data-i18n="STEERING_RAYS">${L.get('STEERING_RAYS', 'Steering (Rayos)')}</span></div>
@@ -3791,13 +3791,13 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="number" class="prop-input" data-component="BasicAI" data-prop="raySpread" value="${ley.raySpread}">
                     </div>
                     <hr>
-                    <div class="inspector-section-header"><span data-i18n="DETECTION_AND_FUNCTIONS">${L.get('DETECTION_AND_FUNCTIONS', 'Detección y Funciones')}</span></div>
+                    <div class="inspector-section-header"><span data-i18n="DETECTION_AND_FUNCTIONS">${L.get('DETECTION_AND_FUNCTIONS', 'Deteccion y Funciones')}</span></div>
                     <div class="prop-row-multi">
-                        <label data-i18n="DETECTION_DISTANCE">${L.get('DETECTION_DISTANCE', 'Distancia Detección')}</label>
+                        <label data-i18n="DETECTION_DISTANCE">${L.get('DETECTION_DISTANCE', 'Distancia Deteccion')}</label>
                         <input type="number" class="prop-input" data-component="BasicAI" data-prop="detectionDistance" value="${ley.detectionDistance}">
                     </div>
                     <div class="prop-row-multi">
-                        <label data-i18n="DETECTION_TAGS">${L.get('DETECTION_TAGS', 'Tags de Detección')}</label>
+                        <label data-i18n="DETECTION_TAGS">${L.get('DETECTION_TAGS', 'Tags de Deteccion')}</label>
                         <input type="text" class="prop-input" data-component="BasicAI" data-prop="detectionTagsString" value="${(ley.detectionTags || []).join(', ')}" placeholder="${L.get('DETECTION_TAGS_HINT', 'Player, Enemy...')}">
                     </div>
                     <div class="inspector-row">
@@ -3838,7 +3838,7 @@ async function updateInspectorForMateria(selectedMateria) {
     addComponentBtn.id = 'add-component-btn';
     addComponentBtn.className = 'add-component-btn';
     addComponentBtn.dataset.i18n = 'ADD_LEY';
-    addComponentBtn.textContent = L.get('ADD_LEY', 'Añadir Ley');
+    addComponentBtn.textContent = L.get('ADD_LEY', 'Anadir Ley');
     dom.inspectorContent.appendChild(addComponentBtn);
 }
 
@@ -3874,7 +3874,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             try {
                 prefabData = JSON.parse(content);
             } catch (e) {
-                dom.inspectorContent.innerHTML += `<p class="error-message">${L.get('ERROR_READ_PREFAB_JSON', 'Error al leer el prefab: JSON inválido.')}</p>`;
+                dom.inspectorContent.innerHTML += `<p class="error-message">${L.get('ERROR_READ_PREFAB_JSON', 'Error al leer el prefab: JSON invalido.')}</p>`;
                 return;
             }
 
@@ -3920,7 +3920,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
             const sectionComponents = document.createElement('div');
             sectionComponents.className = 'inspector-section';
-            sectionComponents.innerHTML = `<label data-i18n="ROOT_COMPONENTS">${L.get('ROOT_COMPONENTS', 'Componentes (Objeto Raíz)')}</label>`;
+            sectionComponents.innerHTML = `<label data-i18n="ROOT_COMPONENTS">${L.get('ROOT_COMPONENTS', 'Componentes (Objeto Raiz)')}</label>`;
             const compList = document.createElement('div');
             compList.style.background = '#1a1a1a';
             compList.style.padding = '5px';
@@ -4093,8 +4093,8 @@ async function updateInspectorForAsset(assetName, assetPath) {
                         <div class="anim-preview-bubble">
                             <canvas id="anim-preview-canvas" width="128" height="128"></canvas>
                             <div class="anim-preview-controls">
-                                <button id="anim-preview-play">▶️</button>
-                                <button id="anim-preview-stop">⏹️</button>
+                                <button id="anim-preview-play"></button>
+                                <button id="anim-preview-stop"></button>
                                 <input type="number" id="anim-preview-speed" value="${metaData.animSpeed || 10}" min="1" title="FPS">
                             </div>
                         </div>
@@ -4109,7 +4109,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
                             <label for="anim-rows" data-i18n="ROWS">${L.get('ROWS', 'Rows')}</label>
                             <input type="number" id="anim-rows" value="${metaData.animRows || 1}" min="1">
                         </div>
-                         <button id="create-anim-asset-btn" class="primary-btn" style="width: 100%; margin-top: 10px;" data-i18n="CREATE_ANIM_ASSET">${L.get('CREATE_ANIM_ASSET', 'Crear Asset de Animación (.cea)')}</button>
+                         <button id="create-anim-asset-btn" class="primary-btn" style="width: 100%; margin-top: 10px;" data-i18n="CREATE_ANIM_ASSET">${L.get('CREATE_ANIM_ASSET', 'Crear Asset de Animacion (.cea)')}</button>
                     </fieldset>
                 </div>
 
@@ -4159,17 +4159,17 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
                         console.log(`Comprimiendo '${assetName}' con las opciones:`, options);
                         const compressedFile = await imageCompression(originalFile, options);
-                        console.log(`Compresión finalizada. Tamaño original: ${originalFile.size / 1024} KB, Tamaño comprimido: ${compressedFile.size / 1024} KB`);
+                        console.log(`Compresion finalizada. Tamano original: ${originalFile.size / 1024} KB, Tamano comprimido: ${compressedFile.size / 1024} KB`);
 
                         // Overwrite the original file with the compressed version
                         const writable = await originalFileHandle.createWritable();
                         await writable.write(compressedFile);
                         await writable.close();
-                        console.log(`Archivo '${assetName}' sobrescrito con la versión optimizada.`);
+                        console.log(`Archivo '${assetName}' sobrescrito con la version optimizada.`);
 
                     } catch (error) {
-                        console.error("Error durante la optimización de la imagen:", error);
-                        window.Dialogs.showNotification(L.get('ERROR_OPTIMIZACION', 'Error de Optimización'), `${L.get('ERROR_OPTIMIZAR_IMAGEN', 'No se pudo optimizar la imagen')}: ${error.message}`);
+                        console.error("Error durante la optimizacion de la imagen:", error);
+                        window.Dialogs.showNotification(L.get('ERROR_OPTIMIZACION', 'Error de Optimizacion'), `${L.get('ERROR_OPTIMIZAR_IMAGEN', 'No se pudo optimizar la imagen')}: ${error.message}`);
                         return; // Stop if optimization fails
                     }
                 }
@@ -4203,7 +4203,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 }
 
                 await saveAssetMetaCallback(assetName, currentMetaData, dirHandle);
-                window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), L.get('ASSET_META_APLICADOS', 'Optimización y metadatos del asset aplicados.'));
+                window.Dialogs.showNotification(L.get('EXITO', 'Exito'), L.get('ASSET_META_APLICADOS', 'Optimizacion y metadatos del asset aplicados.'));
 
                 // Refresh the asset browser and inspector to show the new file size/preview
                 updateAssetBrowserCallback();
@@ -4298,7 +4298,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 document.getElementById('create-anim-asset-btn').addEventListener('click', async () => {
                     const L = window.Localization;
                     if (!createAssetCallback) {
-                        console.error("createAssetCallback no está disponible.");
+                        console.error("createAssetCallback no esta disponible.");
                         return;
                     }
 
@@ -4308,7 +4308,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
                     const imageUrl = await getURLForAssetPath(assetPath, projectsDirHandle);
                     if (!imageUrl) {
-                        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CARGAR_IMAGEN_ANIM', "No se pudo cargar la imagen para crear la animación."));
+                        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CARGAR_IMAGEN_ANIM', "No se pudo cargar la imagen para crear la animacion."));
                         return;
                     }
 
@@ -4326,7 +4326,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
                     };
 
                     await createAssetCallback(animAssetName, JSON.stringify(animData, null, 2), dirHandle);
-                    window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_CREAR_ANIM_ASSET', 'Asset de animación "{name}" creado.').replace('{name}', animAssetName)}`);
+                    window.Dialogs.showNotification(L.get('EXITO', 'Exito'), `${L.get('EXITO_CREAR_ANIM_ASSET', 'Asset de animacion "{name}" creado.').replace('{name}', animAssetName)}`);
                     if(updateAssetBrowserCallback) updateAssetBrowserCallback();
                 });
             }
@@ -4341,7 +4341,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             try {
                 animData = JSON.parse(content);
             } catch (e) {
-                dom.inspectorContent.innerHTML += `<p class="error-message">Error al parsear archivo de animación (.cea)</p>`;
+                dom.inspectorContent.innerHTML += `<p class="error-message">Error al parsear archivo de animacion (.cea)</p>`;
                 return;
             }
 
@@ -4349,7 +4349,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             const anim = (animData.animations && animData.animations.length > 0) ? animData.animations[0] : animData;
 
             if (!anim || !anim.frames) {
-                dom.inspectorContent.innerHTML += `<p class="error-message">Formato de animación inválido o sin fotogramas.</p>`;
+                dom.inspectorContent.innerHTML += `<p class="error-message">Formato de animacion invalido o sin fotogramas.</p>`;
                 return;
             }
 
@@ -4418,12 +4418,12 @@ async function updateInspectorForAsset(assetName, assetPath) {
                     packageInfo.innerHTML = `
                         <label data-i18n="PACKAGE_TYPE">${L.get('PACKAGE_TYPE', 'Tipo de Paquete')}</label>
                         <input type="text" value="${manifestData.type === 'project' ? 'Proyecto Completo' : 'Asset'}" readonly>
-                        <label data-i18n="DESCRIPTION">${L.get('DESCRIPTION', 'Descripción')}</label>
-                        <textarea readonly rows="5">${manifestData.description || L.get('SIN_DESCRIPCION', 'Sin descripción.')}</textarea>
+                        <label data-i18n="DESCRIPTION">${L.get('DESCRIPTION', 'Descripcion')}</label>
+                        <textarea readonly rows="5">${manifestData.description || L.get('SIN_DESCRIPCION', 'Sin descripcion.')}</textarea>
                     `;
                     dom.inspectorContent.appendChild(packageInfo);
                 } else {
-                    dom.inspectorContent.innerHTML += `<p class="error-message">Este paquete .cep no es válido (falta manifest.json).</p>`;
+                    dom.inspectorContent.innerHTML += `<p class="error-message">Este paquete .cep no es valido (falta manifest.json).</p>`;
                 }
             } catch(e) {
                 console.error("Error al leer el paquete .cep:", e);
@@ -4445,7 +4445,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             preview.innerHTML = `
                 <img src="image/animacion_controler.svg" class="asset-preview-icon">
                 <p><strong>Animation Controller</strong></p>
-                <p data-i18n="OPEN_ANIM_EDITOR_HINT">${L.get('OPEN_ANIM_EDITOR_HINT', 'Doble-click en el Navegador para abrir en el Editor de Animación.')}</p>
+                <p data-i18n="OPEN_ANIM_EDITOR_HINT">${L.get('OPEN_ANIM_EDITOR_HINT', 'Doble-click en el Navegador para abrir en el Editor de Animacion.')}</p>
             `;
             dom.inspectorContent.appendChild(preview);
         } else if (assetName.endsWith('.ceScene')) {
@@ -4476,11 +4476,11 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
             preview.innerHTML = `
                 <img src="${iconSrc}" class="asset-preview-icon" style="width: 64px; height: 64px; border-radius: 5px;">
-                <h3 style="margin-top: 10px; margin-bottom: 5px;">${libData.name || 'Librería sin nombre'}</h3>
+                <h3 style="margin-top: 10px; margin-bottom: 5px;">${libData.name || 'Libreria sin nombre'}</h3>
                 <p style="font-size: 0.9em; color: var(--color-text-secondary);">${libData.author || 'Autor desconocido'}</p>
                 <hr style="margin: 10px 0;">
-                <p>${libData.description || 'Sin descripción.'}</p>
-                <p style="margin-top: 15px; font-style: italic; font-size: 0.8em;">Doble-click en el Navegador para abrir en el panel de Librerías.</p>
+                <p>${libData.description || 'Sin descripcion.'}</p>
+                <p style="margin-top: 15px; font-style: italic; font-size: 0.8em;">Doble-click en el Navegador para abrir en el panel de Librerias.</p>
             `;
             dom.inspectorContent.appendChild(preview);
         } else if (assetName.endsWith('.sprt')) {
@@ -4582,12 +4582,12 @@ export async function showAddComponentModal() {
             const componentItem = document.createElement('div');
             componentItem.className = `component-item ${isPresent ? 'already-added' : ''}`;
             let compTitle = ComponentClass.name;
-            if (compTitle === 'Transform') compTitle = L.get('TRANSFORM', 'Posición (Transform)');
-            else if (compTitle === 'UITransform') compTitle = L.get('UI_TRANSFORM', 'Transformación UI');
+            if (compTitle === 'Transform') compTitle = L.get('TRANSFORM', 'Posicion (Transform)');
+            else if (compTitle === 'UITransform') compTitle = L.get('UI_TRANSFORM', 'Transformacion UI');
             else if (L.get(compTitle.toUpperCase()) !== compTitle.toUpperCase()) compTitle = L.get(compTitle.toUpperCase());
             else if (compTitle === 'Rigidbody2D') compTitle = L.get('RIGIDBODY_2D', 'Rigidbody 2D');
             else if (compTitle === 'SceneLoader') compTitle = L.get('SCENE_LOADER', 'Cargar Escena');
-            else if (compTitle === 'BasicAI') compTitle = L.get('BASIC_AI', 'IA Básica');
+            else if (compTitle === 'BasicAI') compTitle = L.get('BASIC_AI', 'IA Basica');
 
             componentItem.innerHTML = `
                 <span>${compTitle}</span>
@@ -4596,7 +4596,7 @@ export async function showAddComponentModal() {
 
             componentItem.addEventListener('click', () => {
                 if (isPresent) {
-                    window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('COMPONENTE_YA_EXISTE', 'Este componente ya está en el objeto.'));
+                    window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('COMPONENTE_YA_EXISTE', 'Este componente ya esta en el objeto.'));
                     return;
                 }
                 const newComponent = new ComponentClass(selectedMateria);
@@ -4661,7 +4661,7 @@ export async function showAddComponentModal() {
 
             componentItem.addEventListener('click', () => {
                 if (isPresent) {
-                    window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('COMPONENTE_YA_EXISTE', 'Este componente ya está en el objeto.'));
+                    window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('COMPONENTE_YA_EXISTE', 'Este componente ya esta en el objeto.'));
                     return;
                 }
                 const newComponent = new Components.CustomComponent(definition);
@@ -4756,7 +4756,7 @@ export async function showAddComponentModal() {
                     // For scripts, we might want to allow multiple instances?
                     // Usually it's better to avoid it unless necessary.
                     if (isPresent) {
-                        window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('SCRIPT_YA_EXISTE', 'Este script ya está en el objeto.'));
+                        window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('SCRIPT_YA_EXISTE', 'Este script ya esta en el objeto.'));
                         return;
                     }
                     const newScript = new Components.CreativeScript(selectedMateria, fileHandle.name);
@@ -4768,7 +4768,7 @@ export async function showAddComponentModal() {
             });
         }
     } catch (error) {
-        console.error("Error crítico durante el escaneo de scripts:", error);
+        console.error("Error critico durante el escaneo de scripts:", error);
         placeholder.textContent = L.get('ERROR_BUSCAR_SCRIPTS', "Error al buscar scripts.");
         placeholder.className += ' error-message';
     } finally {
@@ -4820,7 +4820,7 @@ async function renderCeSpriteInspector(content, dirHandle, assetPath) {
         container.appendChild(sourceImageLabel);
 
         const createAnimButton = document.createElement('button');
-        createAnimButton.textContent = 'Crear Animación';
+        createAnimButton.textContent = 'Crear Animacion';
         createAnimButton.className = 'primary-btn';
         createAnimButton.style.width = '100%';
         createAnimButton.style.marginTop = '10px';
@@ -4927,11 +4927,11 @@ function openAnimationCreatorModal(spriteAsset, sourceImageUrl) {
     newCreateBtn.addEventListener('click', async () => {
         const L = window.Localization;
         if (selectedFrames.length === 0) {
-            window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('ERROR_ANADIR_FRAME', "Añade al menos un frame a la animación."));
+            window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('ERROR_ANADIR_FRAME', "Anade al menos un frame a la animacion."));
             return;
         }
 
-        const animName = prompt("Nombre para el nuevo clip de animación:", "New Animation");
+        const animName = prompt("Nombre para el nuevo clip de animacion:", "New Animation");
         if (!animName) return;
 
         const animClipAsset = {
@@ -4970,7 +4970,7 @@ function openAnimationCreatorModal(spriteAsset, sourceImageUrl) {
 // Helper function to save the project configuration, adapted from ProjectSettingsWindow
 async function saveProjectConfig() {
     if (!projectsDirHandle) {
-        console.error("No se puede guardar la configuración: el directorio del proyecto no está disponible.");
+        console.error("No se puede guardar la configuracion: el directorio del proyecto no esta disponible.");
         return;
     }
     const config = getCurrentProjectConfig();
@@ -4981,10 +4981,10 @@ async function saveProjectConfig() {
         const writable = await configFileHandle.createWritable();
         await writable.write(JSON.stringify(config, null, 2));
         await writable.close();
-        console.log("Configuración del proyecto guardada desde el Inspector.");
+        console.log("Configuracion del proyecto guardada desde el Inspector.");
     } catch (error) {
-        console.error("Error al guardar la configuración del proyecto desde el Inspector:", error);
-        showNotification(window.Localization.get('ERROR', 'Error'), window.Localization.get('ERROR_GUARDAR_CONFIG', 'No se pudo guardar la configuración del proyecto.'));
+        console.error("Error al guardar la configuracion del proyecto desde el Inspector:", error);
+        showNotification(window.Localization.get('ERROR', 'Error'), window.Localization.get('ERROR_GUARDAR_CONFIG', 'No se pudo guardar la configuracion del proyecto.'));
     }
 }
 
@@ -5008,7 +5008,7 @@ async function renderAudioInspector(assetName, assetPath) {
                 </audio>
                 <div class="audio-info" style="margin-top: 10px; font-size: 0.85em; opacity: 0.8; display: flex; justify-content: space-between;">
                     <span><b>${L.get('FORMAT', 'Formato')}:</b> ${assetName.split('.').pop().toUpperCase()}</span>
-                    <span id="audio-duration-display">${L.get('DURATION', 'Duración')}: ${L.get('LOADING', 'Cargando...')}</span>
+                    <span id="audio-duration-display">${L.get('DURATION', 'Duracion')}: ${L.get('LOADING', 'Cargando...')}</span>
                 </div>
             </div>
         </div>
@@ -5026,7 +5026,7 @@ async function renderAudioInspector(assetName, assetPath) {
     player.onloadedmetadata = () => {
         const mins = Math.floor(player.duration / 60);
         const secs = Math.floor(player.duration % 60);
-        durationDisplay.textContent = `Duración: ${mins}:${secs.toString().padStart(2, '0')}`;
+        durationDisplay.textContent = `Duracion: ${mins}:${secs.toString().padStart(2, '0')}`;
     };
 }
 
@@ -5053,9 +5053,9 @@ async function renderVideoInspector(assetName, assetPath) {
                 </select>
             </div>
             <p class="field-description" style="font-size: 0.8em; opacity: 0.6; margin-top: 8px;">
-                ${L.get('OPCIONES_CALIDAD_DESC', '* Las opciones de calidad se aplicarán al exportar el juego para optimizar el rendimiento y espacio.')}
+                ${L.get('OPCIONES_CALIDAD_DESC', '* Las opciones de calidad se aplicaran al exportar el juego para optimizar el rendimiento y espacio.')}
             </p>
-            <button id="btn-apply-video-meta" class="primary-btn" style="width: 100%; margin-top: 10px; height: 32px; font-weight: bold; border-radius: 4px;">${L.get('APLICAR_CONFIGURACION', 'Aplicar Configuración')}</button>
+            <button id="btn-apply-video-meta" class="primary-btn" style="width: 100%; margin-top: 10px; height: 32px; font-weight: bold; border-radius: 4px;">${L.get('APLICAR_CONFIGURACION', 'Aplicar Configuracion')}</button>
         </div>
 
         <div class="inspector-section">
@@ -5088,8 +5088,8 @@ async function renderVideoInspector(assetName, assetPath) {
             </div>
 
             <div class="video-info" style="width: 100%; padding: 8px 15px; background: var(--bg-secondary); font-size: 0.8em; opacity: 0.7; display: flex; justify-content: space-between; border-top: 1px solid var(--border-color); box-sizing: border-box; color: var(--text-secondary);">
-                <span id="video-res-display">${L.get('RESOLUCION', 'Resolución')}: ...</span>
-                <span id="video-duration-display">${L.get('DURACION', 'Duración')}: ...</span>
+                <span id="video-res-display">${L.get('RESOLUCION', 'Resolucion')}: ...</span>
+                <span id="video-duration-display">${L.get('DURACION', 'Duracion')}: ...</span>
                 <span>${assetName.split('.').pop().toUpperCase()}</span>
             </div>
         </div>
@@ -5138,10 +5138,10 @@ async function renderVideoInspector(assetName, assetPath) {
     };
 
     player.onloadedmetadata = () => {
-        resDisplay.textContent = `Resolución: ${player.videoWidth}x${player.videoHeight}`;
+        resDisplay.textContent = `Resolucion: ${player.videoWidth}x${player.videoHeight}`;
         const mins = Math.floor(player.duration / 60);
         const secs = Math.floor(player.duration % 60);
-        durationDisplay.textContent = `Duración: ${mins}:${secs.toString().padStart(2, '0')}`;
+        durationDisplay.textContent = `Duracion: ${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
     // Load existing metadata
@@ -5157,13 +5157,13 @@ async function renderVideoInspector(assetName, assetPath) {
         const quality = document.getElementById('video-quality-select').value;
         const meta = { quality };
         await saveAssetMetaCallback(assetName, meta, dirHandle);
-        showNotification(window.Localization.get('EXITO', 'Éxito'), window.Localization.get('CAMBIOS_APLICADOS', "Cambios aplicados correctamente."));
+        showNotification(window.Localization.get('EXITO', 'Exito'), window.Localization.get('CAMBIOS_APLICADOS', "Cambios aplicados correctamente."));
     };
 }
 
 /**
- * Analiza una imagen para encontrar el recuadro que contiene píxeles no transparentes
- * y devuelve el pivote que centraría ese recuadro.
+ * Analiza una imagen para encontrar el recuadro que contiene pixeles no transparentes
+ * y devuelve el pivote que centraria ese recuadro.
  */
 function calculateAutoPivot(image) {
     const canvas = document.createElement('canvas');
@@ -5194,7 +5194,7 @@ function calculateAutoPivot(image) {
 
     if (!found) return { x: 0.5, y: 0.5 };
 
-    // El centro geométrico de los píxeles visibles
+    // El centro geometrico de los pixeles visibles
     const centerX = (minX + maxX + 1) / 2;
     const centerY = (minY + maxY + 1) / 2;
 

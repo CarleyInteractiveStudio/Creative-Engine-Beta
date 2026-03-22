@@ -13,9 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (warningDiv) {
         warningDiv.style.display = 'block';
         warningDiv.innerHTML = `
-          <h2>Error de Conexión</h2>
-          <p>No se pudo cargar el cliente de Supabase. La autenticación y el guardado en la nube no funcionarán.</p>
-          <p>Por favor, revisa tu conexión a internet y recarga la página.</p>
+          <h2>Error de Conexion</h2>
+          <p>No se pudo cargar el cliente de Supabase. La autenticacion y el guardado en la nube no funcionaran.</p>
+          <p>Por favor, revisa tu conexion a internet y recarga la pagina.</p>
         `;
     }
     return; // Stop execution of this script
@@ -182,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
       );
     } else {
       window.Dialogs.showNotification(
-        window.Localization ? window.Localization.get('REGISTRO_EXITOSO', '¡Registro Exitoso!') : '¡Registro Exitoso!',
+        window.Localization ? window.Localization.get('REGISTRO_EXITOSO', 'Registro Exitoso!') : 'Registro Exitoso!',
         window.Localization ? window.Localization.get('REGISTRO_MSG', 'Revisa tu correo para verificar tu cuenta.') : 'Revisa tu correo para verificar tu cuenta.'
       );
       showView(loginView);
@@ -200,13 +200,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const originalText = button.textContent;
     button.disabled   = true;
-    button.textContent = window.Localization ? window.Localization.get('INICIANDO_SESION_PROGRESO', 'Iniciando Sesión...') : 'Iniciando Sesión...';
+    button.textContent = window.Localization ? window.Localization.get('INICIANDO_SESION_PROGRESO', 'Iniciando Sesion...') : 'Iniciando Sesion...';
 
     const { error } = await _supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
       window.Dialogs.showNotification(
-        window.Localization ? window.Localization.get('ERROR_LOGIN', 'Error de Inicio de Sesión') : 'Error de Inicio de Sesión',
+        window.Localization ? window.Localization.get('ERROR_LOGIN', 'Error de Inicio de Sesion') : 'Error de Inicio de Sesion',
         error.message
       );
     } else {
@@ -237,8 +237,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     window.Dialogs.showNotification(
-        window.Localization ? window.Localization.get('AUTH_RESET_PASS', 'Recuperar Contraseña') : 'Recuperación de Contraseña',
-        window.Localization ? window.Localization.get('AUTH_RESET_SENT', 'Si existe una cuenta con este correo, se ha enviado un enlace de recuperación.') : 'Si existe una cuenta con este correo, se ha enviado un enlace de recuperación.'
+        window.Localization ? window.Localization.get('AUTH_RESET_PASS', 'Recuperar Contrasena') : 'Recuperacion de Contrasena',
+        window.Localization ? window.Localization.get('AUTH_RESET_SENT', 'Si existe una cuenta con este correo, se ha enviado un enlace de recuperacion.') : 'Si existe una cuenta con este correo, se ha enviado un enlace de recuperacion.'
     );
     showView(loginView);
 
@@ -326,7 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const mockGames = []; // Start with empty to show "no games" state
 
         if (mockGames.length === 0) {
-            gamesListContainer.innerHTML = '<p class="no-projects-message">No has publicado ningún juego todavía.</p>';
+            gamesListContainer.innerHTML = '<p class="no-projects-message">No has publicado ningun juego todavia.</p>';
             return;
         }
 
@@ -358,9 +358,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const deleteBtn = gameItem.querySelector('.delete');
             deleteBtn.onclick = () => {
-                window.Dialogs.showConfirmation('Borrar Juego', `¿Estás seguro de que quieres borrar "${game.name}"?`, async () => {
+                window.Dialogs.showConfirmation('Borrar Juego', `Estas seguro de que quieres borrar "${game.name}"?`, async () => {
                     console.log("Deleting game:", game.id);
-                    window.Dialogs.showNotification('Éxito', 'Juego borrado.');
+                    window.Dialogs.showNotification('Exito', 'Juego borrado.');
                     loadUserGames();
                 });
             };
@@ -443,13 +443,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 verifiedGameName.textContent = config.appName || 'Desconocido';
                 verifiedGameVersion.textContent = config.appVersion || '1.0.0';
                 projectVerifiedDetails.style.display = 'block';
-                window.Dialogs.showNotification('Éxito', 'Proyecto verificado correctamente.');
+                window.Dialogs.showNotification('Exito', 'Proyecto verificado correctamente.');
             } else {
-                throw new Error("No se encontró 'project.ceconfig' en la rama principal de GitHub.");
+                throw new Error("No se encontro 'project.ceconfig' en la rama principal de GitHub.");
             }
         } catch (error) {
             console.error(error);
-            window.Dialogs.showNotification('Error de Verificación', error.message);
+            window.Dialogs.showNotification('Error de Verificacion', error.message);
         } finally {
             btnVerifyProject.disabled = false;
             btnVerifyProject.textContent = window.Localization ? window.Localization.get('VERIFICAR_PROYECTO', 'Verificar Proyecto') : 'Verificar Proyecto';
@@ -463,7 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const { data: { session } } = await _supabase.auth.getSession();
         if (!session) {
-            window.Dialogs.showNotification('Error', 'Debes iniciar sesión para publicar.');
+            window.Dialogs.showNotification('Error', 'Debes iniciar sesion para publicar.');
             return;
         }
 
@@ -484,14 +484,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 user_id: session.user.id
             });
 
-            window.Dialogs.showNotification('¡Éxito!', 'Tu juego ha sido publicado en Creative Games.');
+            window.Dialogs.showNotification('Exito!', 'Tu juego ha sido publicado en Creative Games.');
             publishGameForm.reset();
             projectVerifiedDetails.style.display = 'none';
             publishFormContainer.style.display = 'none';
             loadUserGames();
         } catch (error) {
             console.error(error);
-            window.Dialogs.showNotification('Error', 'Ocurrió un error al publicar el juego.');
+            window.Dialogs.showNotification('Error', 'Ocurrio un error al publicar el juego.');
         } finally {
             submitBtn.disabled = false;
             submitBtn.textContent = window.Localization ? window.Localization.get('SUBIR', 'Subir') : 'Subir';

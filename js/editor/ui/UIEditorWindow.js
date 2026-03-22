@@ -245,7 +245,7 @@ function setupEventListeners() {
             if (!uiEditorFileHandle || !currentUiAsset) {
                 showNotification(
                     window.Localization?.get('ERROR') || 'Error',
-                    window.Localization?.get('ERROR_SIN_UI_ABIERTO') || 'No hay ningún asset de UI abierto para guardar.'
+                    window.Localization?.get('ERROR_SIN_UI_ABIERTO') || 'No hay ningun asset de UI abierto para guardar.'
                 );
                 return;
             }
@@ -254,7 +254,7 @@ function setupEventListeners() {
                 await writable.write(JSON.stringify(currentUiAsset, null, 2));
                 await writable.close();
                 showNotification(
-                    window.Localization?.get('EXITO') || 'Éxito',
+                    window.Localization?.get('EXITO') || 'Exito',
                     (window.Localization?.get('EXITO_ASSET_GUARDADO') || "Asset '{name}' guardado.")
                         .replace('{name}', uiEditorFileHandle.name)
                 );

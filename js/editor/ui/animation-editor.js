@@ -61,7 +61,7 @@ function getDrawingBounds(canvas) {
 
 export function addFrameFromCanvas() {
     if (!currentAnimationAsset) {
-        alert("No hay ningún asset de animación cargado.");
+        alert("No hay ningun asset de animacion cargado.");
         return;
     }
 
@@ -92,7 +92,7 @@ export function addFrameFromCanvas() {
         currentFrameIndex = currentAnimationAsset.animations[0].frames.length - 1;
         populateTimeline();
     } else {
-        alert("El asset de animación no tiene un estado de animación válido.");
+        alert("El asset de animacion no tiene un estado de animacion valido.");
         return;
     }
     drawOnionSkin();
@@ -119,7 +119,7 @@ export function populateTimeline() {
 
 export async function saveAnimationAsset() {
     if (!currentAnimationAsset || !currentAnimationFileHandle) {
-        alert("No hay asset de animación cargado para guardar.");
+        alert("No hay asset de animacion cargado para guardar.");
         return;
     }
     try {
@@ -129,7 +129,7 @@ export async function saveAnimationAsset() {
         await writable.close();
         console.log(`Asset '${currentAnimationFileHandle.name}' guardado.`);
     } catch (error) {
-        console.error("Error al guardar el asset de animación:", error);
+        console.error("Error al guardar el asset de animacion:", error);
         alert("No se pudo guardar el archivo.");
     }
 }
@@ -148,7 +148,7 @@ export async function openAnimationAsset(fileName, dirHandle) {
         populateTimeline();
         // drawOnionSkin();
     } catch(error) {
-        console.error(`Error al abrir el asset de animación '${fileName}':`, error);
+        console.error(`Error al abrir el asset de animacion '${fileName}':`, error);
     }
 };
 
@@ -352,7 +352,7 @@ function drawOnionSkin() {
     dom.timelineToggleBtn.addEventListener('click', (e) => {
         const panel = dom.animationPanel;
         panel.classList.toggle('timeline-collapsed');
-        e.target.textContent = panel.classList.contains('timeline-collapsed') ? '▼' : '▲';
+        e.target.textContent = panel.classList.contains('timeline-collapsed') ? '' : '';
     });
 
     dom.animationPlayBtn.addEventListener('click', startAnimationPlayback);

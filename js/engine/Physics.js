@@ -40,7 +40,7 @@ class Collision {
     get velocidadRelativa() { return this.relativeVelocity; }
 
     /**
-     * Comprueba si la materia involucrada en la colisión tiene un tag específico.
+     * Comprueba si la materia involucrada en la colision tiene un tag especifico.
      * @param {string} tag
      */
     tieneTag(tag) {
@@ -48,7 +48,7 @@ class Collision {
     }
 
     /**
-     * Alias en inglés para tieneTag.
+     * Alias en ingles para tieneTag.
      * @param {string} tag
      */
     hasTag(tag) {
@@ -145,12 +145,12 @@ export class PhysicsSystem {
     }
 
     /**
-     * Lanza un círculo en la escena y devuelve información sobre el primer objeto que impacta.
-     * Implementado mediante multirayo (5 rayos) para cubrir todo el ancho del círculo y evitar "caerse" por bordes finos.
+     * Lanza un circulo en la escena y devuelve informacion sobre el primer objeto que impacta.
+     * Implementado mediante multirayo (5 rayos) para cubrir todo el ancho del circulo y evitar "caerse" por bordes finos.
      * @param {{x: number, y: number}} origin - Centro inicial.
-     * @param {{x: number, y: number}} direction - Dirección del barrido (normalizada).
-     * @param {number} radius - Radio del círculo.
-     * @param {number} maxDistance - Distancia máxima del barrido.
+     * @param {{x: number, y: number}} direction - Direccion del barrido (normalizada).
+     * @param {number} radius - Radio del circulo.
+     * @param {number} maxDistance - Distancia maxima del barrido.
      * @param {string|string[]|number[]|object} [filter] - Opcional, filtrar por tag o excluir IDs/Nodos.
      */
     circleCast(origin, direction, radius, maxDistance = Infinity, filter = null) {
@@ -159,8 +159,8 @@ export class PhysicsSystem {
         const perp = { x: -direction.y, y: direction.x };
         let closestHit = null;
 
-        // Usamos 5 rayos para cubrir el ancho del círculo.
-        // Reducimos el offset a 0.8 para evitar colisiones erróneas con paredes perfectamente verticales
+        // Usamos 5 rayos para cubrir el ancho del circulo.
+        // Reducimos el offset a 0.8 para evitar colisiones erroneas con paredes perfectamente verticales
         const offsets = [-0.8, -0.4, 0, 0.4, 0.8];
 
         for (const offset of offsets) {
@@ -173,10 +173,10 @@ export class PhysicsSystem {
             const hit = this.raycast(rayOrigin, direction, maxDistance + radius, filter);
 
             if (hit) {
-                // El punto del círculo en este offset está a 'baseHeight' por debajo de la línea central.
-                // Usamos Math.abs para el offset para mayor seguridad matemática.
+                // El punto del circulo en este offset esta a 'baseHeight' por debajo de la linea central.
+                // Usamos Math.abs para el offset para mayor seguridad matematica.
                 const baseHeight = Math.sqrt(radius * radius - (radius * offset) * (radius * offset));
-                // La distancia que recorre el CENTRO del círculo hasta que este punto toca es:
+                // La distancia que recorre el CENTRO del circulo hasta que este punto toca es:
                 const adjustedDist = hit.distance - baseHeight;
 
                 if (adjustedDist <= maxDistance && (!closestHit || adjustedDist < closestHit.distance)) {
@@ -260,31 +260,31 @@ export class PhysicsSystem {
                         const depth = Math.max(0, avgY - transform.y);
                         const immersion = Math.min(1.2, (nearbyParticles / 12) + (depth / 50));
 
-                        // Fuerza de flotación suavizada
+                        // Fuerza de flotacion suavizada
                         const buoyancyForce = immersion * water.density * 45.0;
 
                         if (rigidbody.buoyancyWeight > rigidbody.sinkThreshold) {
                             // Se hunde, pero con resistencia
                             rigidbody.velocity.y -= buoyancyForce * 0.2 * deltaTime;
                         } else {
-                            // Flota: lift depende de cuánto esté sumergido
+                            // Flota: lift depende de cuanto este sumergido
                             const lift = buoyancyForce * Math.max(0.5, (2.0 - rigidbody.buoyancyWeight));
                             rigidbody.velocity.y -= lift * deltaTime;
 
-                            // Estabilización en superficie: si está muy arriba, lo atrae un poco hacia abajo
+                            // Estabilizacion en superficie: si esta muy arriba, lo atrae un poco hacia abajo
                             if (transform.y < avgY - 20) {
                                 rigidbody.velocity.y += 10.0 * deltaTime;
                             }
                         }
 
-                        // Resistencia del fluido (Drag) - MUCHO más fuerte para evitar "vuelos"
-                        // Aplicamos un amortiguamiento lineal y cuadrático aproximado
+                        // Resistencia del fluido (Drag) - MUCHO mas fuerte para evitar "vuelos"
+                        // Aplicamos un amortiguamiento lineal y cuadratico aproximado
                         const dragFactor = 1.0 - (0.4 * water.viscosity * immersion);
                         const finalDrag = Math.pow(Math.max(0.1, dragFactor), deltaTime * 60);
                         rigidbody.velocity.x *= finalDrag;
                         rigidbody.velocity.y *= finalDrag;
 
-                        // Amortiguación de impacto (Splash damping)
+                        // Amortiguacion de impacto (Splash damping)
                         if (rigidbody.velocity.y > 5) {
                              rigidbody.velocity.y *= Math.pow(0.8, deltaTime * 60);
                         }
@@ -843,7 +843,7 @@ export class PhysicsSystem {
             } else if (otherCollider instanceof Components.CapsuleCollider2D) {
                 // isBoxVsCapsule(A, B) devuelve B -> A.
                 // colliderMateria (Player) es B, terrain es A.
-                // Así que devuelve Player -> Terrain. Queremos Terrain -> Player. Invertimos:
+                // Asi que devuelve Player -> Terrain. Queremos Terrain -> Player. Invertimos:
                 collisionInfo = this.isBoxVsCapsule(this._tempPartMateria, colliderMateria);
                 if (collisionInfo) {
                     collisionInfo.x = -collisionInfo.x; collisionInfo.y = -collisionInfo.y;
@@ -1028,7 +1028,7 @@ export class PhysicsSystem {
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
 
-        // Centro de la cápsula en el espacio del mundo (incluyendo offset escalado y rotado)
+        // Centro de la capsula en el espacio del mundo (incluyendo offset escalado y rotado)
         const scaledOffsetX = collider.offset.x * transform.scale.x;
         const scaledOffsetY = collider.offset.y * transform.scale.y;
         const worldOffsetX = scaledOffsetX * cos - scaledOffsetY * sin;
@@ -1043,7 +1043,7 @@ export class PhysicsSystem {
         const segmentHeight = Math.max(0, sizeY - sizeX);
         const hh = segmentHeight / 2;
 
-        // Puntos finales en el espacio local (asumiendo cápsula vertical por defecto)
+        // Puntos finales en el espacio local (asumiendo capsula vertical por defecto)
         let p1Local = { x: 0, y: -hh };
         let p2Local = { x: 0, y: hh };
 
@@ -1071,7 +1071,7 @@ export class PhysicsSystem {
         const capA = this._getCapsulePoints(materiaA);
         const capB = this._getCapsulePoints(materiaB);
 
-        // Encontrar los puntos más cercanos entre los dos segmentos de línea
+        // Encontrar los puntos mas cercanos entre los dos segmentos de linea
         const { a, b } = this._closestPointsOnTwoSegments(capA.p1, capA.p2, capB.p1, capB.p2);
 
         const distance = Math.hypot(a.x - b.x, a.y - b.y);
@@ -1152,11 +1152,11 @@ export class PhysicsSystem {
             this._getPolygonVertices(transformP, colliderP) :
             this._getVertices(transformP, colliderP);
 
-        // Encontrar el punto más cercano en el polígono al segmento de la cápsula
+        // Encontrar el punto mas cercano en el poligono al segmento de la capsula
         const polyCenter = { x: transformP.x, y: transformP.y };
         const closestOnSegment = this._closestPointOnSegment(polyCenter, cap.p1, cap.p2);
 
-        // Ahora tenemos un círculo vs polígono
+        // Ahora tenemos un circulo vs poligono
         return this._isCircleVsPolygon(closestOnSegment, cap.radius, vertices);
     }
 
@@ -1164,10 +1164,10 @@ export class PhysicsSystem {
         let minOverlap = Infinity;
         let mtvAxis = null;
 
-        // Ejes: normales de los bordes del polígono
+        // Ejes: normales de los bordes del poligono
         const axes = this._getAxes(vertices);
 
-        // También necesitamos el eje desde el círculo al punto más cercano en el polígono
+        // Tambien necesitamos el eje desde el circulo al punto mas cercano en el poligono
         const closestPoint = this._getClosestPointOnPolygon(circleCenter, vertices);
         const toCircle = { x: circleCenter.x - closestPoint.x, y: circleCenter.y - closestPoint.y };
         if (toCircle.x !== 0 || toCircle.y !== 0) {
@@ -1190,7 +1190,7 @@ export class PhysicsSystem {
             }
         }
 
-        // Asegurar que el eje apunta del círculo al polígono (B a A si A es polígono)
+        // Asegurar que el eje apunta del circulo al poligono (B a A si A es poligono)
         const polyCenter = {
             x: vertices.reduce((sum, v) => sum + v.x, 0) / vertices.length,
             y: vertices.reduce((sum, v) => sum + v.y, 0) / vertices.length
@@ -1230,7 +1230,7 @@ export class PhysicsSystem {
         const colliderB = boxMateria.getComponent(Components.BoxCollider2D);
         const cap = this._getCapsulePoints(capsuleMateria);
 
-        // --- 1. Simplificar a colisión Círculo vs Caja Rotada ---
+        // --- 1. Simplificar a colision Circulo vs Caja Rotada ---
         const bw = colliderB.size.x * transformB.scale.x;
         const bh = colliderB.size.y * transformB.scale.y;
 
@@ -1244,10 +1244,10 @@ export class PhysicsSystem {
 
         const boxCenter = { x: transformB.x + worldOffsetX, y: transformB.y + worldOffsetY };
 
-        // Encontrar el punto más cercano en el segmento de la cápsula al centro de la caja
+        // Encontrar el punto mas cercano en el segmento de la capsula al centro de la caja
         const closestOnSegment = this._closestPointOnSegment(boxCenter, cap.p1, cap.p2);
 
-        // Transformar el punto más cercano al espacio local de la caja (un-rotate)
+        // Transformar el punto mas cercano al espacio local de la caja (un-rotate)
         const relX = closestOnSegment.x - boxCenter.x;
         const relY = closestOnSegment.y - boxCenter.y;
         const localX = relX * cos + relY * sin;
@@ -1269,12 +1269,12 @@ export class PhysicsSystem {
 
         if (dist < cap.radius) {
             const overlap = cap.radius - dist;
-            // Normal apuntando de Cápsula (B) a Caja (A)
+            // Normal apuntando de Capsula (B) a Caja (A)
             let nx = closestInBox.x - closestOnSegment.x;
             let ny = closestInBox.y - closestOnSegment.y;
 
             if (nx === 0 && ny === 0) {
-                // Si están perfectamente superpuestos, usar la dirección desde el centro
+                // Si estan perfectamente superpuestos, usar la direccion desde el centro
                 nx = boxCenter.x - closestOnSegment.x;
                 ny = boxCenter.y - closestOnSegment.y;
                 if (nx === 0 && ny === 0) nx = 1;
@@ -1538,7 +1538,7 @@ export class PhysicsSystem {
     }
 
     /**
-     * Comprueba si un punto está dentro de un polígono convexo.
+     * Comprueba si un punto esta dentro de un poligono convexo.
      * Robusto ante cualquier sentido de giro (CW o CCW).
      */
     _isPointInPolygon(point, vertices) {
@@ -1555,9 +1555,9 @@ export class PhysicsSystem {
             const cross = this._cross(edge, toPoint);
 
             // En coordenadas de pantalla (Y abajo):
-            // Si es CW (area > 0), el interior está a la derecha (cross > 0)
-            // Si es CCW (area < 0), el interior está a la izquierda (cross < 0)
-            // Nota: El signo del cross product depende de la implementación de _cross.
+            // Si es CW (area > 0), el interior esta a la derecha (cross > 0)
+            // Si es CCW (area < 0), el interior esta a la izquierda (cross < 0)
+            // Nota: El signo del cross product depende de la implementacion de _cross.
             // Nuestra _cross(v1, v2) es v1.x * v2.y - v1.y * v2.x
 
             if (isCW && cross < -1e-6) return false;
@@ -1683,7 +1683,7 @@ export class PhysicsSystem {
             if (value.state === state && typeMatch && value.frame === this.currentFrame) {
                 const [id1, id2] = key.split('-').map(Number);
 
-                // Si hay un targetId, filtramos por él. Si no, aceptamos cualquier colisión en la escena.
+                // Si hay un targetId, filtramos por el. Si no, aceptamos cualquier colision en la escena.
                 if (targetId === null || id1 === targetId || id2 === targetId) {
                     const materiaA = this.scene.findMateriaById(id1);
                     const materiaB = this.scene.findMateriaById(id2);
@@ -1699,7 +1699,7 @@ export class PhysicsSystem {
                                 collisions.push(new Collision(thisMateria, otherMateria, this.getCollider(otherMateria)));
                             }
                         } else {
-                            // Búsqueda global por tag
+                            // Busqueda global por tag
                             if (!trimmedTag || materiaA.tag.trim() === trimmedTag || materiaB.tag.trim() === trimmedTag) {
                                 collisions.push(new Collision(materiaA, materiaB, this.getCollider(materiaB)));
                             }
@@ -1712,12 +1712,12 @@ export class PhysicsSystem {
     }
 
     /**
-     * Lanza un rayo en la escena y devuelve información sobre el primer objeto que impacta.
+     * Lanza un rayo en la escena y devuelve informacion sobre el primer objeto que impacta.
      * @param {{x: number, y: number}} origin - Punto de origen.
-     * @param {{x: number, y: number}} direction - Dirección (normalizada).
-     * @param {number} maxDistance - Distancia máxima.
+     * @param {{x: number, y: number}} direction - Direccion (normalizada).
+     * @param {number} maxDistance - Distancia maxima.
      * @param {string|string[]|number[]} [filter] - Opcional, filtrar por tag o excluir IDs.
-     * @returns {object|null} Información del impacto o null.
+     * @returns {object|null} Informacion del impacto o null.
      */
     raycast(origin, direction, maxDistance = Infinity, filter = null) {
         if (!direction || (direction.x === 0 && direction.y === 0)) return null;
@@ -1783,7 +1783,7 @@ export class PhysicsSystem {
                         size: { x: rect.width, y: rect.height },
                         offset: { x: rect.x, y: rect.y }
                     };
-                    // Usamos identity (escala 1) porque los rectángulos ya están escalados a píxeles
+                    // Usamos identity (escala 1) porque los rectangulos ya estan escalados a pixeles
                     const subHit = this._rayVsBox(origin, direction, identity, tempBox);
                     if (subHit && (!hit || subHit.distance < hit.distance)) {
                         hit = subHit;
@@ -1873,7 +1873,7 @@ export class PhysicsSystem {
             // Calcular normal local
             let normalLocal = { x: 0, y: 0 };
             if (inside) {
-                // Si estamos dentro, la normal apunta opuesta a la dirección para empujar "hacia afuera"
+                // Si estamos dentro, la normal apunta opuesta a la direccion para empujar "hacia afuera"
                 const mag = Math.hypot(localDirX, localDirY);
                 normalLocal = mag > 0 ? { x: -localDirX / mag, y: -localDirY / mag } : { x: 0, y: -1 };
             } else {

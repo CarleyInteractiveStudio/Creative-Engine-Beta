@@ -100,15 +100,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function translateErrorMessage(msg) {
         const translations = [
-            { key: 'reading \'velocity\'', value: 'Te falta el componente "Rigidbody2D" (Físicas) en este objeto para poder moverlo.' },
-            { key: 'reading \'x\'', value: 'Intentaste acceder a una posición (.x) de algo que no existe. ¿Añadiste el componente Transform?' },
-            { key: 'reading \'y\'', value: 'Intentaste acceder a una posición (.y) de algo que no existe. ¿Añadiste el componente Transform?' },
+            { key: 'reading \'velocity\'', value: 'Te falta el componente "Rigidbody2D" (Fisicas) en este objeto para poder moverlo.' },
+            { key: 'reading \'x\'', value: 'Intentaste acceder a una posicion (.x) de algo que no existe. Anadiste el componente Transform?' },
+            { key: 'reading \'y\'', value: 'Intentaste acceder a una posicion (.y) de algo que no existe. Anadiste el componente Transform?' },
             { key: 'reading \'play\'', value: 'Te falta el componente "Animator" o "AnimatorController" para reproducir animaciones.' },
-            { key: 'reading \'stop\'', value: 'Te falta el componente "Animator" para detener la animación.' },
-            { key: 'is not a function', value: 'Has intentado llamar a una función que no existe o el nombre está mal escrito.' },
-            { key: 'is not defined', value: 'Estás usando una palabra que el motor no conoce o una variable que no has creado.' },
+            { key: 'reading \'stop\'', value: 'Te falta el componente "Animator" para detener la animacion.' },
+            { key: 'is not a function', value: 'Has intentado llamar a una funcion que no existe o el nombre esta mal escrito.' },
+            { key: 'is not defined', value: 'Estas usando una palabra que el motor no conoce o una variable que no has creado.' },
             { key: 'Unexpected identifier', value: 'Hay una palabra fuera de lugar. Revisa que no falten puntos (.) o comas (,).' },
-            { key: 'Unexpected token', value: 'Símbolo inesperado. Revisa si te falta cerrar un paréntesis ")" o una llave "}".' },
+            { key: 'Unexpected token', value: 'Simbolo inesperado. Revisa si te falta cerrar un parentesis ")" o una llave "}".' },
             { key: 'NotFoundError', value: 'No se pudo encontrar el archivo o carpeta. Revisa que el nombre sea exacto.' },
             { key: 'cannot read property', value: 'Intentaste acceder a algo que es nulo o no existe.' }
         ];
@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 window._CodeEditor.setLastRuntimeError(message);
             }
 
-            const lineStr = message.line ? `[Línea ${message.line}] ` : '';
+            const lineStr = message.line ? `[Linea ${message.line}] ` : '';
             const scriptStr = message.scriptName ? `en '${message.scriptName}' ` : '';
             const friendlyMsg = translateErrorMessage(message.message);
             fullMessage = `${lineStr}${scriptStr}${friendlyMsg}`;
@@ -193,16 +193,16 @@ document.addEventListener('DOMContentLoaded', () => {
         msgEl.style.whiteSpace = 'pre-wrap';
 
         const iconMap = {
-            'log': '🔵',
-            'warn': '⚠️',
-            'error': '❌'
+            'log': '',
+            'warn': '',
+            'error': ''
         };
 
         if (structuredError) {
             msgEl.classList.add('structured-error');
-            const icon = iconMap[type] || '❌';
+            const icon = iconMap[type] || '';
             const isRuntime = !!structuredError.scriptName;
-            const title = isRuntime ? 'Error de Ejecución' : 'Error de Sintaxis';
+            const title = isRuntime ? 'Error de Ejecucion' : 'Error de Sintaxis';
             const categoryClass = isRuntime ? 'cat-runtime' : 'cat-syntax';
 
             let actionButtons = '';
@@ -211,8 +211,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (targetFile) {
                 actionButtons = `
                     <div class="msg-actions">
-                        <button class="console-action-btn" onclick="window._CodeEditor.openScriptAtLine('${targetFile}', ${structuredError.line || 1})">🔍 Ir a la línea</button>
-                        <button class="console-action-btn special" onclick="window._CodeEditor.runAutoReparator('${targetFile}')">🛠️ Auto Reparar</button>
+                        <button class="console-action-btn" onclick="window._CodeEditor.openScriptAtLine('${targetFile}', ${structuredError.line || 1})"> Ir a la linea</button>
+                        <button class="console-action-btn special" onclick="window._CodeEditor.runAutoReparator('${targetFile}')"> Auto Reparar</button>
                     </div>
                 `;
             }
@@ -445,10 +445,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!materia.isActive) continue;
             const scripts = materia.getComponents(Components.CreativeScript).filter(s => s.scriptName === scriptName);
             for (const script of scripts) {
-                // Notificar desactivación antes de reiniciar
+                // Notificar desactivacion antes de reiniciar
                 try { script.onDisable(); } catch(e) {}
 
-                // Marcar como no inicializado para forzar recarga de código
+                // Marcar como no inicializado para forzar recarga de codigo
                 script.isInitialized = false;
                 script.instance = null;
 
@@ -857,7 +857,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return fileHandle;
         } catch (error) {
             console.error(`No se pudo crear el asset '${fileName}':`, error);
-            showNotificationDialog('Error de Creación', `No se pudo crear el asset: ${error.message}`);
+            showNotificationDialog('Error de Creacion', `No se pudo crear el asset: ${error.message}`);
             return null;
         }
     };
@@ -880,12 +880,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function handleKeyboardShortcuts(e) {
-        // Si el juego está en marcha y la vista activa es la del juego, no procesar los atajos del editor.
+        // Si el juego esta en marcha y la vista activa es la del juego, no procesar los atajos del editor.
         if (isGameRunning && activeView === 'game-content') {
             return;
         }
 
-        // Si estamos en la vista de código, permitir solo atajos globales específicos
+        // Si estamos en la vista de codigo, permitir solo atajos globales especificos
         if (activeView === 'code-editor-content') {
             // Permitir Ctrl+S para guardar
             if (e.ctrlKey && e.key.toLowerCase() === 's') {
@@ -893,7 +893,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 CodeEditor.saveCurrentScript();
                 return;
             }
-            // Si el foco está en un elemento de entrada o en el editor (que no es el body), no procesar atajos de la escena
+            // Si el foco esta en un elemento de entrada o en el editor (que no es el body), no procesar atajos de la escena
             if (e.target !== document.body && e.target !== document.documentElement) {
                 return;
             }
@@ -915,7 +915,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 CodeEditor.saveCurrentScript();
             } else if (activeView === 'animation-panel') { // A better check might be needed
                 // saveAnimationAsset(); // This will be handled by the animation editor module
-                console.log("Animación guardada (Ctrl+S).");
+                console.log("Animacion guardada (Ctrl+S).");
             } else if (SceneManager.currentScene) {
                 saveScene();
                 console.log("Escena guardada (Ctrl+S).");
@@ -1045,7 +1045,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'ambiente-control-panel': 'menu-window-ambiente-control',
             'scene-panel': 'menu-window-scene'
         };
-        const checkmark = '✓ ';
+        const checkmark = ' ';
 
         for (const [panelId, menuId] of Object.entries(menuItems)) {
             const panel = document.getElementById(panelId);
@@ -1121,9 +1121,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const content = await file.text();
             currentProjectConfig = JSON.parse(content);
             window.currentProjectConfig = currentProjectConfig;
-            console.log("Configuración del proyecto cargada:", currentProjectConfig);
+            console.log("Configuracion del proyecto cargada:", currentProjectConfig);
         } catch (error) {
-            console.warn("No se encontró 'project.ceconfig'. Creando uno nuevo con valores por defecto.");
+            console.warn("No se encontro 'project.ceconfig'. Creando uno nuevo con valores por defecto.");
             currentProjectConfig = {
                 appName: 'MiJuego',
                 authorName: 'Un Creador',
@@ -1193,7 +1193,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const projectName = new URLSearchParams(window.location.search).get('project');
         if (!projectName || !projectsDirHandle) {
-            console.warn("No se puede cargar librerías sin un proyecto cargado.");
+            console.warn("No se puede cargar librerias sin un proyecto cargado.");
             return;
         }
         const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
@@ -1242,19 +1242,19 @@ document.addEventListener('DOMContentLoaded', () => {
                                     console.log(`Registrando alias para '${libData.name}' como '${fileNameWithoutExt}'.`);
                                 }
                             } else {
-                                console.warn(`La librería '${libData.name}' no devolvió un objeto API.`);
+                                console.warn(`La libreria '${libData.name}' no devolvio un objeto API.`);
                             }
                         }
                     } catch (e) {
-                        console.error(`Error procesando la librería ${entry.name}:`, e);
+                        console.error(`Error procesando la libreria ${entry.name}:`, e);
                     }
                 }
             }
         } catch (error) {
             if (error.name === 'NotFoundError') {
-                console.log("Directorio 'lib' no encontrado. No se cargarán librerías en tiempo de ejecución.");
+                console.log("Directorio 'lib' no encontrado. No se cargaran librerias en tiempo de ejecucion.");
             } else {
-                console.error("Error al acceder al directorio de librerías:", error);
+                console.error("Error al acceder al directorio de librerias:", error);
             }
         }
     };
@@ -1264,7 +1264,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!isEditorReady) {
                 showNotificationDialog(
                     window.Localization?.get('EDITOR_OCUPADO') || 'Editor Ocupado',
-                    window.Localization?.get('EDITOR_OCUPADO_MSG') || 'El editor todavía está procesando archivos en segundo plano. Por favor, espera un momento.'
+                    window.Localization?.get('EDITOR_OCUPADO_MSG') || 'El editor todavia esta procesando archivos en segundo plano. Por favor, espera un momento.'
                 );
                 return;
             }
@@ -1324,7 +1324,7 @@ document.addEventListener('DOMContentLoaded', () => {
             for await (const entry of dirHandle.values()) {
                 console.log(`  - Encontrado: ${entry.name} (Tipo: ${entry.kind})`);
                 if (entry.kind === 'file' && (entry.name.endsWith('.ces') || entry.name.endsWith('.chc'))) {
-                    console.log(`    -> ¡Script encontrado! Añadiendo a la lista.`);
+                    console.log(`    -> Script encontrado! Anadiendo a la lista.`);
                     cesFiles.push({ handle: entry, dir: dirHandle });
                 } else if (entry.kind === 'directory') {
                     await findCesFiles(entry, `${currentPath}/${entry.name}`);
@@ -1339,7 +1339,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (cesFiles.length === 0) {
             console.log("No se encontraron scripts .ces. Iniciando el juego directamente.");
-            originalStartGame(); // Usar la función original que guardamos
+            originalStartGame(); // Usar la funcion original que guardamos
             return;
         }
 
@@ -1349,7 +1349,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const file = await handle.getFile();
                 let code = await file.text();
 
-                // Si es CHC, cargar el código generado de la meta
+                // Si es CHC, cargar el codigo generado de la meta
                 if (handle.name.endsWith('.chc')) {
                     try {
                         const metaHandle = await dir.getFileHandle(`${handle.name}.meta`);
@@ -1357,7 +1357,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const metaData = JSON.parse(await metaFile.text());
                         code = metaData.generatedCode;
                     } catch (e) {
-                        console.warn(`CHC script ${handle.name} no ha sido traducido aún. Omitiendo.`);
+                        console.warn(`CHC script ${handle.name} no ha sido traducido aun. Omitiendo.`);
                         return;
                     }
                 }
@@ -1376,7 +1376,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await Promise.all(transpilationPromises);
 
 
-        // 3. Actuar según el resultado
+        // 3. Actuar segun el resultado
         if (allErrors.length > 0) {
             if (gameWindow) {
                 gameWindow.close();
@@ -1390,15 +1390,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     logToUIConsole(error, 'error', false);
                 }
             }
-            // Cambiar a la pestaña de la consola para que los errores sean visibles
+            // Cambiar a la pestana de la consola para que los errores sean visibles
             dom.assetsPanel.querySelector('[data-tab="console-content"]').click();
         } else {
             console.log("[Build] Build exitoso. Todos los scripts se compilaron sin errores.");
-            // 4. Iniciar el juego. La lógica ahora está en startGame.
+            // 4. Iniciar el juego. La logica ahora esta en startGame.
             originalStartGame();
         }
         } catch (e) {
-            console.error("Error durante la preparación del juego:", e);
+            console.error("Error durante la preparacion del juego:", e);
             showNotificationDialog(
                 window.Localization?.get('ERROR_DE_INICIO') || 'Error de Inicio',
                 (window.Localization?.get('ERROR_INICIAR_JUEGO_MSG') || "No se pudo iniciar el juego: {error}")
@@ -1910,10 +1910,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const filteredCanvases = canvasesToRender.filter(m => !capasExcluidas.includes(m.layer));
                 const excludedCanvases = canvasesToRender.filter(m => capasExcluidas.includes(m.layer));
 
-                // 1. Dibujar objetos que SÍ reciben el filtro/luces
+                // 1. Dibujar objetos que SI reciben el filtro/luces
                 drawObjects(rendererInstance.ctx, camera, filteredMaterias, filteredTilemaps, filteredCanvases);
 
-                // 2. Aplicar atmósfera y luces (multiplicar)
+                // 2. Aplicar atmosfera y luces (multiplicar)
                 drawAtmosphereAndLights(allLights);
 
                 // 3. Dibujar objetos excluidos (encima de la oscuridad)
@@ -2051,7 +2051,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.btnPlay.style.display = 'none';
             dom.btnPause.style.display = 'inline-block';
             dom.btnStop.style.display = 'inline-block';
-            dom.btnPause.textContent = isGamePaused ? '▶️' : '⏸️';
+            dom.btnPause.textContent = isGamePaused ? '' : '';
         } else {
             dom.btnPlay.style.display = 'inline-block';
             dom.btnPause.style.display = 'none';
@@ -2191,7 +2191,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         } catch (error) {
-            console.error("Un error crítico ocurrió durante la inicialización de los scripts:", error);
+            console.error("Un error critico ocurrio durante la inicializacion de los scripts:", error);
         } finally {
             updateGameControlsUI();
         }
@@ -2243,7 +2243,7 @@ document.addEventListener('DOMContentLoaded', () => {
             selectMateria(null); // Deselect everything
             updateInspector();
 
-            // Re-cargar assets para que sean visibles en el editor después de la restauración
+            // Re-cargar assets para que sean visibles en el editor despues de la restauracion
             SceneManager.currentScene.loadAllAssets(projectsDirHandle).then(() => {
                 console.log("Assets de la escena restaurada cargados.");
                 updateScene(renderer, false);
@@ -2251,7 +2251,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             console.log("Escena restaurada.");
         } else {
-            console.warn("No se encontró una snapshot de la escena para restaurar. El estado del editor puede ser inconsistente.");
+            console.warn("No se encontro una snapshot de la escena para restaurar. El estado del editor puede ser inconsistente.");
         }
 
         // --- ARCHITECTURE FIX: Destroy the old PhysicsSystem instance ---
@@ -2358,7 +2358,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const rootMaterias = SceneManager.currentScene.getRootMaterias();
         if (rootMaterias.length === 0) return;
 
-        // Serializamos el primer objeto raíz como el prefab
+        // Serializamos el primer objeto raiz como el prefab
         const prefabData = SceneManager.serializeMateria(rootMaterias[0], true);
 
         try {
@@ -2464,7 +2464,7 @@ document.addEventListener('DOMContentLoaded', () => {
     saveScene = async function() {
         if (isPrefabMode) {
             await savePrefab();
-            showNotificationDialog('Éxito', '¡Prefab guardado!');
+            showNotificationDialog('Exito', 'Prefab guardado!');
             return;
         }
         if (!SceneManager.currentSceneFileHandle) {
@@ -2487,7 +2487,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 SceneManager.setCurrentSceneFileHandle(fileHandle);
                 dom.currentSceneName.textContent = fileHandle.name.replace('.ceScene', '');
                 SceneManager.setSceneDirty(false);
-                showNotificationDialog('Éxito', '¡Escena guardada!');
+                showNotificationDialog('Exito', 'Escena guardada!');
                 updateAssetBrowser(); // Refresh to show the new file
 
                 // Capture thumbnail
@@ -2506,7 +2506,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await writable.write(JSON.stringify(sceneData, null, 2));
                 await writable.close();
                 SceneManager.setSceneDirty(false);
-                showNotificationDialog('Éxito', '¡Escena guardada!');
+                showNotificationDialog('Exito', 'Escena guardada!');
 
                 // Capture thumbnail
                 await captureThumbnail();
@@ -2528,7 +2528,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return new Promise(resolve => {
             showConfirmationDialog(
                 'Cambios sin Guardar',
-                'La escena actual tiene cambios sin guardar. ¿Quieres guardarlos antes de continuar?',
+                'La escena actual tiene cambios sin guardar. Quieres guardarlos antes de continuar?',
                 () => saveScene().then(() => resolve(true)), // Yes, save and continue
                 () => resolve(true), // No, don't save but continue
                 () => resolve(false) // Cancel
@@ -2548,7 +2548,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (menuItem) {
                 const menuContent = menuItem.querySelector('.menu-content');
                 if (menuContent) {
-                    // Si se hizo clic en el botón principal, alternar visibilidad
+                    // Si se hizo clic en el boton principal, alternar visibilidad
                     if (e.target.closest('button')) {
                         const isVisible = menuContent.classList.contains('visible');
                         allMenuContents.forEach(mc => mc.classList.remove('visible'));
@@ -2559,7 +2559,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Cerrar todos si se hace clic fuera o en una opción
+            // Cerrar todos si se hace clic fuera o en una opcion
             allMenuContents.forEach(mc => mc.classList.remove('visible'));
         });
 
@@ -2626,17 +2626,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     return; // Do nothing if the item is disabled
                 }
 
-                console.log(`[Director] Acción de menú contextual detectada: '${action}'`);
+                console.log(`[Director] Accion de menu contextual detectada: '${action}'`);
                 try {
                     if (contextMenu.id === 'context-menu') {
                         handleAssetContextMenuAction(action);
                     } else if (contextMenu.id === 'hierarchy-context-menu') {
                         handleHierarchyContextMenuAction(action);
                     } else {
-                         console.warn(`[Director] No se encontró un manejador para el menú contextual con id '${contextMenu.id}'`);
+                         console.warn(`[Director] No se encontro un manejador para el menu contextual con id '${contextMenu.id}'`);
                     }
                 } catch (error) {
-                    console.error(`[Director] ¡ERROR CRÍTICO! La acción '${action}' falló con una excepción:`, error);
+                    console.error(`[Director] ERROR CRITICO! La accion '${action}' fallo con una excepcion:`, error);
                 } finally {
                     hideContextMenus(); // Always hide the menu after an action
                 }
@@ -2812,7 +2812,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const content = await file.text();
                         openMarkdownViewerCallback(readmePath, content);
                     } catch (err) {
-                        console.warn("No se pudo abrir la documentación local, abriendo sitio externo.");
+                        console.warn("No se pudo abrir la documentacion local, abriendo sitio externo.");
                         window.open('https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/docs/', '_blank');
                     }
                 })();
@@ -2825,7 +2825,7 @@ document.addEventListener('DOMContentLoaded', () => {
             openAssetSelector(async (fileHandle, path, dirHandle) => {
                 const selectedMtr = getSelectedMateria();
                 if (!selectedMtr) {
-                    showNotificationDialog(L.get('AVISO'), L.get('ERROR_IMPORTAR_SIN_OBJETO', 'Selecciona un objeto en la jerarquía para importar el esqueleto como hijo.'));
+                    showNotificationDialog(L.get('AVISO'), L.get('ERROR_IMPORTAR_SIN_OBJETO', 'Selecciona un objeto en la jerarquia para importar el esqueleto como hijo.'));
                     return;
                 }
 
@@ -2847,7 +2847,7 @@ document.addEventListener('DOMContentLoaded', () => {
             reportBugBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 // We use the already available showNotification or a specialized one
-                showNotificationDialog('Reportar Fallo', '¡Gracias por querer ayudarnos! Por favor, envía un mensaje detallado a nuestro correo de soporte o usa el formulario de contacto en el inicio.');
+                showNotificationDialog('Reportar Fallo', 'Gracias por querer ayudarnos! Por favor, envia un mensaje detallado a nuestro correo de soporte o usa el formulario de contacto en el inicio.');
             });
         }
 
@@ -3105,7 +3105,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateEditorLayout();
                 updateWindowMenuUI();
 
-                showNotificationDialog('Diseño Restablecido', 'El diseño de los paneles ha sido restablecido.');
+                showNotificationDialog('Diseno Restablecido', 'El diseno de los paneles ha sido restablecido.');
             });
         }
 
@@ -3122,7 +3122,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
                 if (dom.ksPassword.value.length < 6) {
-                    showNotificationDialog('Contraseña Débil', 'La contraseña de la clave debe tener al menos 6 caracteres.');
+                    showNotificationDialog('Contrasena Debil', 'La contrasena de la clave debe tener al menos 6 caracteres.');
                     return;
                 }
 
@@ -3135,7 +3135,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 dom.ksCommandTextarea.value = command;
                 dom.ksCommandOutput.classList.remove('hidden');
 
-                showNotificationDialog('Comando Generado', 'Comando generado. Cópialo y ejecútalo en una terminal con JDK instalado para crear tu archivo keystore.');
+                showNotificationDialog('Comando Generado', 'Comando generado. Copialo y ejecutalo en una terminal con JDK instalado para crear tu archivo keystore.');
             });
         }
 
@@ -3258,93 +3258,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let knownWorkingModel = {}; // Cache for working models, e.g., { gemini: 'models/gemini-1.5-flash' }
             let carlChatHistory = []; // Memory for the session
 
-            const CARL_SYSTEM_PROMPT_TEMPLATE = `Eres Carl, el asistente inteligente de Creative Engine. Tu personalidad es alegre, servicial y apasionada por ayudar en la creación de videojuegos. Siempre te presentas como Carl. Tu misión es asistir al usuario en sus tareas, proponiendo soluciones y explicando paso a paso cómo lograr sus visiones en el motor.
-
-IMPORTANTE: El idioma actual de la interfaz del motor es {idioma}. Debes responder preferiblemente en este idioma, a menos que el usuario te hable en otro.
-
-CONOCIMIENTO DE LA INTERFAZ (UI):
-- Menú Superior: Archivo (Nueva escena, Abrir, Guardar, Importar/Exportar), Editar (Configuración del Proyecto, Preferencias), Ventana (Jerarquía, Inspector, Navegador, Consola, Editor de Animación, Paleta de Tiles, Editor de Sprites, Control de Ambiente, Vid Spri), Librerías, Carl IA, Donar.
-- Paneles Principales:
-  - Jerarquía: Gestiona los objetos (Materias) en la escena actual. Permite crear cámaras, sprites, luces, UI, etc.
-  - Inspector: Edita propiedades del objeto seleccionado y permite añadir componentes (Leyes).
-  - Navegador (Assets): Gestiona los archivos del proyecto (imágenes, sonidos, scripts, escenas, prefabs).
-  - Consola: Muestra logs del sistema y de los scripts (usando imprimir o consola.imprimir).
-  - Escena: El área central donde se posicionan los objetos visualmente.
-- Herramientas de Edición: Mover (Q), Panear (W), Escalar (E), Rotar (R), Herramienta Universal (T), Terreno (B), Pincel de Tiles.
-- Vistas de Panel Central: Escena, Juego (para probar el juego), Código (editor integrado para .ces y .chc), Terminal.
-
-CONOCIMIENTO DE COMPONENTES (LEYES):
-- Básicos: Transform (posicion), Cámara (camara), AudioSource (fuenteDeAudio), VideoPlayer, CreativeScript.
-- Renderizado: SpriteRenderer (renderizadorDeSprite), TextureRender, ParticleSystem, Water (agua).
-- Físicas 2D: Rigidbody2D (fisica), BoxCollider2D, CapsuleCollider2D, CircleCollider2D, TilemapCollider2D, LineCollider2D.
-- Vehículos y Controladores: SuspensionHC, VehicleTopDown, PlaneController, HelicopterController.
-- Mapas: Tilemap (rejilla), Terreno2D.
-- Iluminación: PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D.
-- Interfaz (UI): Canvas (lienzo), UIImage (imagen), UIText (texto), Button (boton), UIEventTrigger.
-- Animación: Animator (animador), AnimatorController (controlador).
-- Utilidades: CameraFollow, Parallax, DrawingOrder, Layout Groups.
-
-SINTAXIS DE SCRIPTING (CES/CHC) - ¡ACTUALIZADO!:
-0. IMPORTACIONES: 've motor;' (OBLIGATORIO).
-1. PALABRAS CLAVE: si, sino, mientras, para, retornar, funcion, variable, constante, verdadero, falso, nuevo.
-2. DECLARACIÓN: 'publico [tipo] [nombre] = [valor];' (¡OBLIGATORIO para el Inspector!). Tipos: numero, texto, booleano, Materia, Sprite, sonido.
-3. ACCESO DIRECTO: nombre, tag, posicion, fisica, animador, renderizadorDeSprite, fuenteDeAudio, camara, rejilla, lienzo.
-- INPUT API (Sin prefijos): teclaPresionada("espacio"), teclaRecienPresionada("W"), mandoBotonPresionado("A"), mandoEje("IzquierdaX"), botonMousePresionado(0), obtenerPosicionMouse(). NO USES 'entrada.' NI 'motor.'.
-5. EVENTOS: alEmpezar(), alActualizar(delta), actualizarFijo(delta), alEntrarEnColision(otro), alHacerClick().
-6. CONTROL DE TIEMPO: 'cada(segundos) { ... }', 'esperar(segundos);'.
-7. FUNCIONES MOTOR: buscar(nombre), destruir(mtr), crear miPrefab, lanzarRayo(origen, dir, dist, tag), estaTocandoTag(tag).
-8. SISTEMA PROXY (Potente): Llama a animaciones o sonidos por su nombre directamente: 'reproducir.Correr();' o 'play.Explosion();'.
-
-REGLA DE ORO: Devuelve siempre código .ces limpio. Sé motivador y recuerda que eres un agente activo, NO solo un chat. Si el usuario te pide crear algo, ¡hazlo directamente mediante un plan! No solo le des el código.
-
-HABILIDADES AUTÓNOMAS (¡NUEVO!):
-Ahora tienes la capacidad de ejecutar acciones reales en el editor. Cuando el usuario te pida construir, crear, modificar o descargar algo, DEBES:
-1. Crear un PLAN de pasos detallados con comandos ejecutables.
-2. Cada paso puede contener uno o más comandos ejecutables.
-
-Para enviar comandos, inclúyelos al final de tu respuesta en un bloque de código JSON marcado con la etiqueta [PLAN]. Siempre menciona al usuario que debe ir a la pestaña "Actividad" para ejecutar las acciones (o ver el progreso).
-
-Formato del bloque [PLAN]:
-{
-  "plan": [
-    {
-      "title": "Título del paso",
-      "description": "Descripción de lo que harás",
-      "commands": [
-        { "action": "create_materia", "params": { "name": "Cubo", "type": "Sprite" } },
-        { "action": "add_component", "params": { "materiaId": "@last", "type": "Rigidbody2D" } },
-        { "action": "set_property", "params": { "materiaId": "@last", "componentType": "Transform", "propPath": "position.x", "value": 100 } }
-      ]
-    }
-  ]
-}
-
-Comandos Disponibles:
-- create_materia { name, parentId, type: 'Sprite'|'Camera'|'Canvas'|'Audio'|'Empty' }
-- delete_materia { id } // id puede ser el ID numérico o el nombre exacto
-- add_component { materiaId, type, properties: {} } // type puede ser el nombre en inglés o español
-- set_property { materiaId, componentType, propPath, value } // propPath puede ser anidado, ej: 'position.x' o 'color'
-- create_file { path: 'Assets/nombre.ces', content: '...' }
-- download_file { url, path: 'Assets/nombre.png' }
-
-REGLAS DE PROPIEDADES COMUNES:
-- Transform: 'position.x', 'position.y', 'rotation', 'scale.x', 'scale.y'
-- Rigidbody2D: 'gravityScale', 'mass', 'fixedRotation' (booleano)
-- SpriteRenderer: 'color' (hex), 'opacity' (0-1)
-- CameraFollow: 'target' (nombre o id), 'smoothSpeed', 'offset.x', 'offset.y'
-
-NOTIFICACIÓN AL USUARIO:
-Cuando crees un plan, informa al usuario que debe ir a la pestaña "Actividad" dentro de tu panel para revisarlo y ejecutarlo. Especialmente si estás en modo 'Con Permiso'.
-
-MODOS DE EJECUCIÓN (Para tu información):
-1. Con Permiso: El usuario aprueba cada paso manualmente.
-2. Visual: Ejecutas paso a paso con una pequeña pausa para que el usuario vea el progreso.
-3. Automático: Ejecutas todo el plan de corrido.
-
-EFICIENCIA Y OPTIMIZACIÓN:
-Intenta agrupar comandos en el menor número de pasos posible para ahorrar tiempo y recursos. Solo usa la IA para decidir la lógica; la ejecución pesada la hace el motor.
-
-NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto creado en el mismo plan.`;
+                                                const CARL_SYSTEM_PROMPT_TEMPLATE = `Eres Carl, el asistente inteligente de Creative Engine. Tu personalidad es alegre, servicial y apasionada por ayudar en la creacion de videojuegos. Siempre te presentas como Carl. Tu mision es asistir al usuario en sus tareas, proponiendo soluciones y explicando paso a paso como lograr sus visiones en el motor.\n\nIMPORTANTE: El idioma actual de la interfaz del motor es {idioma}. Debes responder preferiblemente en este idioma, a menos que el usuario te hable en otro.\n\nCONOCIMIENTO DE LA INTERFAZ (UI):\n- Menu Superior: Archivo (Nueva escena, Abrir, Guardar, Importar/Exportar), Editar (Configuracion del Proyecto, Preferencias), Ventana (Jerarquia, Inspector, Navegador, Consola, Editor de Animacion, Paleta de Tiles, Editor de Sprites, Control de Ambiente, Vid Spri), Librerias, Carl IA, Donar.\n- Paneles Principales:\n  - Jerarquia: Gestiona los objetos (Materias) en la escena actual. Permite crear camaras, sprites, luces, UI, etc.\n  - Inspector: Edita propiedades del objeto seleccionado y permite anadir componentes (Leyes).\n  - Navegador (Assets): Gestiona los archivos del proyecto (imagenes, sonidos, scripts, escenas, prefabs).\n  - Consola: Muestra logs del sistema y de los scripts (usando imprimir o consola.imprimir).\n  - Escena: El area central donde se posicionan los objetos visualmente.\n- Herramientas de Edicion: Mover (Q), Panear (W), Escalar (E), Rotar (R), Herramienta Universal (T), Terreno (B), Pincel de Tiles.\n- Vistas de Panel Central: Escena, Juego (para probar el juego), Codigo (editor integrado para .ces y .chc), Terminal.\n\nCONOCIMIENTO DE COMPONENTES (LEYES):\n- Basicos: Transform (posicion), Camara (camara), AudioSource (fuenteDeAudio), VideoPlayer, CreativeScript.\n- Renderizado: SpriteRenderer (renderizadorDeSprite), TextureRender, ParticleSystem, Water (agua).\n- Fisicas 2D: Rigidbody2D (fisica), BoxCollider2D, CapsuleCollider2D, CircleCollider2D, TilemapCollider2D, LineCollider2D.\n- Vehiculos y Controladores: SuspensionHC, VehicleTopDown, PlaneController, HelicopterController.\n- Mapas: Tilemap (rejilla), Terreno2D.\n- Iluminacion: PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D.\n- Interfaz (UI): Canvas (lienzo), UIImage (imagen), UIText (texto), Button (boton), UIEventTrigger.\n- Animacion: Animator (animador), AnimatorController (controlador).\n- Utilidades: CameraFollow, Parallax, DrawingOrder, Layout Groups.\n\nSINTAXIS DE SCRIPTING (CES/CHC) - ACTUALIZADO!:\n0. IMPORTACIONES: \'ve motor;\' (OBLIGATORIO).\n1. PALABRAS CLAVE: si, sino, mientras, para, retornar, funcion, variable, constante, verdadero, falso, nuevo.\n2. DECLARACION: \'publico [tipo] [nombre] = [valor];\' (OBLIGATORIO para el Inspector!). Tipos: numero, texto, booleano, Materia, Sprite, sonido.\n3. ACCESO DIRECTO: nombre, tag, posicion, fisica, animador, renderizadorDeSprite, fuenteDeAudio, camara, rejilla, lienzo.\n- INPUT API (Sin prefijos): teclaPresionada(\'espacio\'), teclaRecienPresionada(\'W\'), mandoBotonPresionado(\'A\'), mandoEje(\'IzquierdaX\'), botonMousePresionado(0), obtenerPosicionMouse(). NO USES \'entrada.\' NI \'motor.\'.\n5. EVENTOS: alEmpezar(), alActualizar(delta), actualizarFijo(delta), alEntrarEnColision(otro), alHacerClick().\n6. CONTROL DE TIEMPO: \'cada(segundos) { ... }\', \'esperar(segundos);\'.\n7. FUNCIONES MOTOR: buscar(nombre), destruir(mtr), crear miPrefab, lanzarRayo(origen, dir, dist, tag), estaTocandoTag(tag).\n8. SISTEMA PROXY (Potente): Llama a animaciones o sonidos por su nombre directamente: \'reproducir.Correr();\' o \'play.Explosion();\'.\n\nREGLA DE ORO: Devuelve siempre codigo .ces limpio. Se motivador y recuerda que eres un agente activo, NO solo un chat. Si el usuario te pide crear algo, hazlo directamente mediante un plan! No solo le des el codigo.\n\nHABILIDADES AUTONOMAS (NUEVO!):\nAhora tienes la capacidad de ejecutar acciones reales en el editor. Cuando el usuario te pida construir, crear, modificar o descargar algo, DEBES:\n1. Crear un PLAN de pasos detallados con comandos ejecutables.\n2. Cada paso puede contener uno o mas comandos ejecutables.\n\nPara enviar comandos, incluyelos al final de tu respuesta en un bloque de codigo JSON marcado con la etiqueta [PLAN]. Siempre menciona al usuario que debe ir a la pestana \'Actividad\' para ejecutar las acciones (o ver el progreso).\n\nFormato del bloque [PLAN]:\n{\n  \"plan\": [\n    {\n      \"title\": \"Titulo del paso\",\n      \"description\": \"Descripcion de lo que haras\",\n      \"commands\": [\n        { \"action\": \"create_materia\", \"params\": { \"name\": \"Cubo\", \"type\": \"Sprite\" } },\n        { \"action\": \"add_component\", \"params\": { \"materiaId\": \"@last\", \"type\": \"Rigidbody2D\" } },\n        { \"action\": \"set_property\", \"params\": { \"materiaId\": \"@last\", \"componentType\": \"Transform\", \"propPath\": \"position.x\", \"value\": 100 } }\n      ]\n    }\n  ]\n}\n\nComandos Disponibles:\n- create_materia { name, parentId, type: \'Sprite\'|\'Camera\'|\'Canvas\'|\'Audio\'|\'Empty\' }\n- delete_materia { id } // id puede ser el ID numerico o el nombre exacto\n- add_component { materiaId, type, properties: {} } // type puede ser el nombre en ingles o espanol\n- set_property { materiaId, componentType, propPath, value } // propPath puede ser anidado, ej: \'position.x\' o \'color\'\n- create_file { path: \'Assets/nombre.ces\', content: \'...\' }\n- download_file { url, path: \'Assets/nombre.png\' }\n\nREGLAS DE PROPIEDADES COMUNES:\n- Transform: \'position.x\', \'position.y\', \'rotation\', \'scale.x\', \'scale.y\'\n- Rigidbody2D: \'gravityScale\', \'mass\', \'fixedRotation\' (booleano)\n- SpriteRenderer: \'color\', \'opacity\' (0-1)\n- CameraFollow: \'target\' (nombre o id), \'smoothSpeed\', \'offset.x\', \'offset.y\'\n\nNOTIFICACION AL USUARIO:\nCuando crees un plan, informa al usuario que debe ir a la pestana \'Actividad\' dentro de tu panel para revisarlo y ejecutarlo. Especialmente si estas en modo \'Con Permiso\'.\n\nMODOS DE EJECUCION (Para tu informacion):\n1. Con Permiso: El usuario aprueba cada paso manualmente.\n2. Visual: Ejecutas paso a paso con una pequena pausa para que el usuario vea el progreso.\n3. Automatico: Ejecutas todo el plan de corrido.\n\nEFICIENCIA Y OPTIMIZACION:\nIntenta agrupar comandos en el menor numero de pasos posible para ahorrar tiempo y recursos. Solo usa la IA para decidir la logica; la ejecucion pesada la hace el motor.\n\nNOTA: Usa \"@last\" en materiaId o parentId para referirte al ultimo objeto creado en el mismo plan.`;
 
             const updateCarlIaBrainMenu = () => {
                 const prefs = getPreferences();
@@ -3366,7 +3280,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                 if (!dom.carlIaPanel.classList.contains('hidden') && messagesDiv.children.length <= 1) {
                     const hasWelcome = Array.from(messagesDiv.querySelectorAll('div')).some(d => d.textContent.includes("Soy Carl"));
                     if (!hasWelcome && selectedProvider) {
-                         const welcomeMsg = window.Localization?.get('CARL_WELCOME_MSG') || "¡Hola! Soy Carl, tu asistente de Creative Engine. ¿En qué puedo ayudarte a construir hoy?";
+                         const welcomeMsg = window.Localization?.get('CARL_WELCOME_MSG') || "Hola! Soy Carl, tu asistente de Creative Engine. En que puedo ayudarte a construir hoy?";
                          addMessage(welcomeMsg, 'ia');
                     }
                 }
@@ -3466,7 +3380,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                 }
 
                 if (!selectedProvider) {
-                    showNotificationDialog('Sin Cerebro Seleccionado', 'Por favor, elige un cerebro en el menú o configura Carl IA en Preferencias antes de enviar un mensaje.');
+                    showNotificationDialog('Sin Cerebro Seleccionado', 'Por favor, elige un cerebro en el menu o configura Carl IA en Preferencias antes de enviar un mensaje.');
                     return;
                 }
 
@@ -3478,7 +3392,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                 input.focus();
 
                 if (selectedProvider.type === 'carl-v1') {
-                     const maintMsg = window.Localization?.get('CARL_V1_MANTENIMIENTO') || "Carl V1 está actualmente en mantenimiento cerebral. Por favor, usa un modelo externo (Gemini/OpenAI/Claude) configurándolo en Preferencias.";
+                     const maintMsg = window.Localization?.get('CARL_V1_MANTENIMIENTO') || "Carl V1 esta actualmente en mantenimiento cerebral. Por favor, usa un modelo externo (Gemini/OpenAI/Claude) configurandolo en Preferencias.";
                      addMessage(maintMsg, 'ia', true);
                      return;
                 }
@@ -3487,7 +3401,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                 const apiKey = localStorage.getItem(`creativeEngine_${provider}_apiKey`);
 
                 if (!apiKey) {
-                    const connError = (window.Localization?.get('CARL_ERROR_CONEXION') || "No puedo conectar con {provider}. Por favor, asegúrate de haber configurado tu API Key correctamente en el panel de Preferencias.")
+                    const connError = (window.Localization?.get('CARL_ERROR_CONEXION') || "No puedo conectar con {provider}. Por favor, asegurate de haber configurado tu API Key correctamente en el panel de Preferencias.")
                         .replace('{provider}', selectedProvider.name);
                     addMessage(connError, 'ia', true);
                     return;
@@ -3528,7 +3442,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                                     const actionButtonHtml = `<div style="margin-top: 10px;"><button onclick="window.CarlAgent.switchView('activity')" class="approve-btn" style="width: auto; padding: 6px 15px;">Ver Actividad</button></div>`;
                                     cleanText += actionButtonHtml;
 
-                                    logToUIConsole("¡Carl ha propuesto un nuevo plan!", "log");
+                                    logToUIConsole("Carl ha propuesto un nuevo plan!", "log");
 
                                     // Notify user via Activity tab highlight
                                     const activityBtn = dom.carlIaPanel.querySelector('.carl-view-option[data-view="activity"]');
@@ -3548,7 +3462,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                             }
                         }
 
-                        addMessage(cleanText || "He trazado un plan para ayudarte. Revísalo en la pestaña Actividad.", 'ia', false);
+                        addMessage(cleanText || "He trazado un plan para ayudarte. Revisalo en la pestana Actividad.", 'ia', false);
                         knownWorkingModel[provider] = model;
                         return { status: 'success', error: null, code: 200 };
                     }
@@ -3575,8 +3489,8 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
 
                 const isAccessError = (result.code === 404 || result.code === 400 || (result.error && (result.error.includes("Quota") || result.error.includes("not found"))));
                 if (result.status === 'failed' && isAccessError) {
-                    console.warn(`El modelo por defecto '${modelToUse}' falló. Buscando un modelo compatible...`);
-                    const searchingMsg = window.Localization?.get('CARL_BUSCANDO_MODELO') || "El modelo por defecto no funcionó. Buscando uno compatible para ti...";
+                    console.warn(`El modelo por defecto '${modelToUse}' fallo. Buscando un modelo compatible...`);
+                    const searchingMsg = window.Localization?.get('CARL_BUSCANDO_MODELO') || "El modelo por defecto no funciono. Buscando uno compatible para ti...";
                     addMessage(searchingMsg, 'ia', true);
 
                     const modelsResult = await AIHandler.listModels(provider, apiKey);
@@ -3596,7 +3510,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                             const displayName = modelId.includes('/') ? modelId.split('/')[1] : modelId;
 
                             console.log(`Modelo compatible encontrado: ${modelId}. Reintentando...`);
-                            const foundMsg = (window.Localization?.get('CARL_MODELO_ENCONTRADO') || "¡Encontré un modelo compatible! Usando '{model}'. Reintentando...")
+                            const foundMsg = (window.Localization?.get('CARL_MODELO_ENCONTRADO') || "Encontre un modelo compatible! Usando '{model}'. Reintentando...")
                                 .replace('{model}', displayName);
                             addMessage(foundMsg, 'ia', false);
                             await executeApiCall(modelId, userPrompt);
@@ -3869,52 +3783,52 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                         // File exists, do nothing.
                     } catch (e) {
                     // File does not exist, so we create it.
-                    console.log("Creando README.md para librerías...");
+                    console.log("Creando README.md para librerias...");
                     const readmeContent = `
-# Guía para la Creación y Gestión de Librerías
+# Guia para la Creacion y Gestion de Librerias
 
-Esta carpeta \`/lib\` contiene todas las librerías (.celib) de tu proyecto.
+Esta carpeta \`/lib\` contiene todas las librerias (.celib) de tu proyecto.
 
-## ¿Qué es una Librería?
+## Que es una Libreria?
 
-Una librería es un paquete autocontenido que puede extender la funcionalidad del editor de Creative Engine o proporcionar nuevas funciones para tus scripts de juego (.ces).
-
----
-
-## Gestión de Librerías
-
-### Activación y Desactivación
-- **Para activar o desactivar una librería**, abre el panel "Librerías" desde el menú superior del editor.
-- Cada librería en la lista tiene un botón de estado (Activar/Desactivar).
-- Cuando desactivas una librería, el motor crea un archivo \`.celib.meta\` para guardar su estado. La librería no se cargará la próxima vez que inicies el editor.
-- **Importante:** Debes reiniciar el editor para que los cambios de activación/desactivación surtan efecto.
-
-### Importación
-- Puedes importar librerías arrastrando un archivo \`.celib\` directamente a cualquier parte del "Navegador de Assets" del editor. El archivo se moverá automáticamente a esta carpeta \`/lib\`.
-- También puedes usar el botón "Importar" en el panel de "Librerías".
-
-### Exportación
-- Para compartir tus librerías, puedes seleccionarlas en el panel "Librerías" y usar el botón "Exportar". Esto creará un archivo \`.cep\` que otros pueden importar.
+Una libreria es un paquete autocontenido que puede extender la funcionalidad del editor de Creative Engine o proporcionar nuevas funciones para tus scripts de juego (.ces).
 
 ---
 
-## Creación de Librerías (API)
+## Gestion de Librerias
 
-Las librerías se crean a partir de un único archivo JavaScript. Para una guía detallada y ejemplos de código, haz clic en el botón **"Documentación API"** en el panel de "Librerías" dentro del editor.
+### Activacion y Desactivacion
+- **Para activar o desactivar una libreria**, abre el panel "Librerias" desde el menu superior del editor.
+- Cada libreria en la lista tiene un boton de estado (Activar/Desactivar).
+- Cuando desactivas una libreria, el motor crea un archivo \`.celib.meta\` para guardar su estado. La libreria no se cargara la proxima vez que inicies el editor.
+- **Importante:** Debes reiniciar el editor para que los cambios de activacion/desactivacion surtan efecto.
 
-A continuación, un resumen rápido:
+### Importacion
+- Puedes importar librerias arrastrando un archivo \`.celib\` directamente a cualquier parte del "Navegador de Assets" del editor. El archivo se movera automaticamente a esta carpeta \`/lib\`.
+- Tambien puedes usar el boton "Importar" en el panel de "Librerias".
+
+### Exportacion
+- Para compartir tus librerias, puedes seleccionarlas en el panel "Librerias" y usar el boton "Exportar". Esto creara un archivo \`.cep\` que otros pueden importar.
+
+---
+
+## Creacion de Librerias (API)
+
+Las librerias se crean a partir de un unico archivo JavaScript. Para una guia detallada y ejemplos de codigo, haz clic en el boton **"Documentacion API"** en el panel de "Librerias" dentro del editor.
+
+A continuacion, un resumen rapido:
 
 ### 1. Registrar una Ventana en el Editor
 
-Para que tu librería tenga una interfaz en el editor, usa \`CreativeEngine.API.registrarVentana\`.
+Para que tu libreria tenga una interfaz en el editor, usa \`CreativeEngine.API.registrarVentana\`.
 
 \`\`\`javascript
 (function() {
     CreativeEngine.API.registrarVentana({
         nombre: "Mi Herramienta",
         alAbrir: function(panel) {
-            panel.agregarTexto("¡Hola, mundo!");
-            panel.agregarBoton("Saludar", () => showNotificationDialog('Saludo', '¡Hola!'));
+            panel.agregarTexto("Hola, mundo!");
+            panel.agregarBoton("Saludar", () => showNotificationDialog('Saludo', 'Hola!'));
         }
     });
 })();
@@ -3922,7 +3836,7 @@ Para que tu librería tenga una interfaz en el editor, usa \`CreativeEngine.API.
 
 ### 2. Exponer Funciones a los Scripts (.ces)
 
-Si quieres que tus scripts de juego puedan usar funciones de tu librería, el script de la librería debe devolver un objeto.
+Si quieres que tus scripts de juego puedan usar funciones de tu libreria, el script de la libreria debe devolver un objeto.
 
 \`\`\`javascript
 // mi-libreria.js
@@ -3973,7 +3887,7 @@ public start() {
                         }
 
                         if (!isActive) {
-                            console.log(`Librería '${entry.name}' está inactiva. Omitiendo.`);
+                            console.log(`Libreria '${entry.name}' esta inactiva. Omitiendo.`);
                             continue; // Skip to the next library
                         }
 
@@ -3991,7 +3905,7 @@ public start() {
                                 const metaData = JSON.parse(metaContent);
                                 grantedPermissions = metaData.permissions || {};
                             } catch (e) {
-                                console.warn(`No se encontró o no se pudo leer el archivo .meta para la librería '${libData.name}'. No se concederán permisos.`);
+                                console.warn(`No se encontro o no se pudo leer el archivo .meta para la libreria '${libData.name}'. No se concederan permisos.`);
                             }
 
                             let scriptContent = '';
@@ -4021,9 +3935,9 @@ public start() {
                                 try {
                                     const setupFunction = new Function('CreativeEngine', 'engine', scriptContent);
                                     setupFunction(sandboxedApi, sandboxedApi.API);
-                                    console.log(`Librería de UI '${libData.name}' cargada y configurada con permisos limitados.`);
+                                    console.log(`Libreria de UI '${libData.name}' cargada y configurada con permisos limitados.`);
                                 } catch(e) {
-                                     console.error(`Error ejecutando el script de configuración de UI para ${libData.name}:`, e);
+                                     console.error(`Error ejecutando el script de configuracion de UI para ${libData.name}:`, e);
                                 }
                             }
 
@@ -4045,7 +3959,7 @@ public start() {
                             }
 
                         } catch (e) {
-                            console.error(`Error al cargar la librería ${entry.name}:`, e);
+                            console.error(`Error al cargar la libreria ${entry.name}:`, e);
                         }
                     }
                 }
@@ -4069,7 +3983,7 @@ public start() {
                     dom.currentSceneName.textContent = sceneData.fileHandle.name.replace('.ceScene', '');
                     SceneManager.setSceneDirty(false);
                 } else {
-                    throw new Error("¡Fallo crítico! No se pudo cargar o crear una escena.");
+                    throw new Error("Fallo critico! No se pudo cargar o crear una escena.");
                 }
             } else {
                 // In test/no-handle mode, create a default empty scene
@@ -4078,7 +3992,7 @@ public start() {
                 SceneManager.setSceneDirty(false);
             }
 
-            updateLoadingProgress(40, "Activando sistema de físicas...");
+            updateLoadingProgress(40, "Activando sistema de fisicas...");
             physicsSystem = new PhysicsSystem(SceneManager.currentScene);
             SceneManager.currentScene.physicsSystem = physicsSystem; // Link for components
             EngineAPI.CEEngine.initialize({ physicsSystem }); // Pass physics system to the API
@@ -4100,10 +4014,10 @@ public start() {
                     const fileName = `${animName}.cea`;
                     await createAsset(fileName, JSON.stringify(animationData, null, 2), dirHandle);
                     updateAssetBrowser();
-                    showNotificationDialog('Éxito', `Animación '${animName}' creada correctamente.`);
+                    showNotificationDialog('Exito', `Animacion '${animName}' creada correctamente.`);
                 } catch (error) {
                     console.error("Error al extraer frames:", error);
-                    showNotificationDialog('Error', "No se pudo crear la animación.");
+                    showNotificationDialog('Error', "No se pudo crear la animacion.");
                 }
             };
             const onAssetSelected = (assetName, assetPath, assetKind) => {
@@ -4208,7 +4122,7 @@ public start() {
             const getDeltaTime = () => deltaTime;
             const getActiveTool = () => SceneView.getActiveTool ? SceneView.getActiveTool() : 'move';
 
-            updateLoadingProgress(50, "Configurando módulos del editor...");
+            updateLoadingProgress(50, "Configurando modulos del editor...");
             const exportContext = { type: null, description: '', rootHandle: null, fileName: '' };
             initializeUIEditor(dom);
             initializeMusicPlayer(dom);
@@ -4289,7 +4203,7 @@ public start() {
             // });
 
 
-            updateLoadingProgress(80, "Cargando configuración del proyecto...");
+            updateLoadingProgress(80, "Cargando configuracion del proyecto...");
             if (projectsDirHandle) {
                 await loadProjectConfig();
             } else {
@@ -4339,7 +4253,7 @@ public start() {
             if (dom.btnSavePrefab) {
                 dom.btnSavePrefab.addEventListener('click', async () => {
                     await savePrefab();
-                    showNotificationDialog('Éxito', '¡Prefab guardado!');
+                    showNotificationDialog('Exito', 'Prefab guardado!');
                 });
             }
 
@@ -4347,7 +4261,7 @@ public start() {
             originalStartGame = startGame;
             startGame = runChecksAndPlay;
 
-            updateLoadingProgress(100, "¡Listo!");
+            updateLoadingProgress(100, "Listo!");
 
             // Update the RuntimeAPIManager with the loaded APIs
             const runtimeAPIs = LibraryAPI.getRuntimeAPIs();
@@ -4396,7 +4310,7 @@ public start() {
                 if (renderer) renderer.resize();
                 if (gameRenderer) gameRenderer.resize();
 
-                // --- Habilitar el botón de Play y marcar el editor como listo ---
+                // --- Habilitar el boton de Play y marcar el editor como listo ---
                 dom.btnPlay.disabled = false;
                 isEditorReady = true;
                 window.editorInitialized = true; // Signal for Playwright tests
@@ -4404,7 +4318,7 @@ public start() {
             }, 500);
 
         } catch (error) {
-            console.error("Fallo la inicialización del editor:", error);
+            console.error("Fallo la inicializacion del editor:", error);
             displayCriticalError(error, `Error durante la carga: ${error.message}`);
         }
     }
@@ -4427,7 +4341,7 @@ public start() {
             const progressBarContainer = document.querySelector('.progress-bar-container');
             if (progressBarContainer) progressBarContainer.style.display = 'none';
 
-            errorMessageEl.textContent = `Error: ${message || error.message}. Revisa la consola para más detalles.`;
+            errorMessageEl.textContent = `Error: ${message || error.message}. Revisa la consola para mas detalles.`;
             errorSection.style.display = 'block';
 
             // Attach event listeners for the buttons
@@ -4436,7 +4350,7 @@ public start() {
         } else {
             // Fallback to the old alert method if the new panel isn't found
             document.body.innerHTML = `<div style="color: white; background-color: #1e1e1e; padding: 20px;">
-                <h1>Error Crítico</h1>
+                <h1>Error Critico</h1>
                 <p>${message || error.message}</p>
                 <pre>${error.stack}</pre>
             </div>`;

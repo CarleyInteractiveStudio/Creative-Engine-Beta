@@ -176,10 +176,10 @@ export class Renderer {
 
     beginUI() {
         this.ctx.save();
-        // Restablecer transformaciones para evitar que el zoom de la cámara afecte la UI
+        // Restablecer transformaciones para evitar que el zoom de la camara afecte la UI
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         // Aplicar un escalado uniforme para la UI si es necesario
-        const uiScale = 1; // Ajustar este valor según sea necesario
+        const uiScale = 1; // Ajustar este valor segun sea necesario
         this.ctx.scale(uiScale, uiScale);
     }
 
@@ -258,7 +258,7 @@ export class Renderer {
                 this.ctx.fillStyle = '#ffffff';
                 this.ctx.font = `${12 / zoom}px sans-serif`;
                 this.ctx.textAlign = 'center';
-                this.ctx.fillText(name || "Área", x, y - height / 2 - (5 / zoom));
+                this.ctx.fillText(name || "Area", x, y - height / 2 - (5 / zoom));
             }
         }
 
@@ -392,7 +392,7 @@ export class Renderer {
         const transform = water.materia.getComponent(Transform);
         if (!transform) return;
 
-        // Culling: Si el agua está fuera de la cámara, no procesar renderizado
+        // Culling: Si el agua esta fuera de la camara, no procesar renderizado
         if (this.camera && water.bounds) {
             const b = water.bounds;
             const cam = this.camera;
@@ -462,15 +462,15 @@ export class Renderer {
         pCtx.clearRect(0, 0, bufferW, bufferH);
         bCtx.clearRect(0, 0, bufferW, bufferH);
 
-        // 2. Dibujar partículas RÁPIDO
+        // 2. Dibujar particulas RAPIDO
         const pr = water._particleRadius || 14;
-        const pSize = pr * 3.5; // Dibujar un poco más grande para mejor solapamiento
+        const pSize = pr * 3.5; // Dibujar un poco mas grande para mejor solapamiento
         const pOffset = pSize / 2;
 
         pCtx.fillStyle = 'white';
         for (let i = 0; i < water.particles.length; i++) {
             const p = water.particles[i];
-            // Solo dibujar si está dentro de los límites del buffer actual (en caso de recorte)
+            // Solo dibujar si esta dentro de los limites del buffer actual (en caso de recorte)
             const dx = p.x - bounds.minX;
             const dy = p.y - bounds.minY;
             if (dx >= 0 && dx <= bufferW && dy >= 0 && dy <= bufferH) {
@@ -481,7 +481,7 @@ export class Renderer {
         // 3. Aplicar Blur (Metaball pre-pass)
         const canUseFilter = typeof bCtx.filter === 'string';
         bCtx.save();
-        // Blur moderado combinado con el degradado radial de la partícula
+        // Blur moderado combinado con el degradado radial de la particula
         if (canUseFilter) bCtx.filter = 'blur(6px)';
         bCtx.drawImage(this._particleBuffer, 0, 0);
         bCtx.restore();
@@ -495,8 +495,8 @@ export class Renderer {
 
         // 5. Dibujar buffer final con Contraste (Metaball effect)
         ctx.save();
-        // Contraste alto para crear bordes sólidos y fusionar partículas
-        // Ajustado para que el agua se vea más "gruesa" y no se encoja tanto
+        // Contraste alto para crear bordes solidos y fusionar particulas
+        // Ajustado para que el agua se vea mas "gruesa" y no se encoja tanto
         const contrastVal = this.isEditor ? 25 : 35;
         if (canUseFilter) ctx.filter = `contrast(${contrastVal}) brightness(1.1) saturate(1.2)`;
         else ctx.globalAlpha = 0.8;
@@ -512,7 +512,7 @@ export class Renderer {
         if (this.isEditor) {
             const zoom = this.camera?.effectiveZoom || 1;
 
-            // Feedback visual del área (siempre visible en el editor)
+            // Feedback visual del area (siempre visible en el editor)
             ctx.save();
             if (isWorld) {
                 ctx.fillStyle = 'rgba(52, 152, 219, 0.1)';
@@ -732,7 +732,7 @@ export class Renderer {
                 if (image && image.complete && image.naturalWidth > 0) {
                     const [x, y] = coord.split(',').map(Number);
 
-                    // Comprobar límites: los azulejos fuera del ancho/alto del Tilemap no se dibujan
+                    // Comprobar limites: los azulejos fuera del ancho/alto del Tilemap no se dibujan
                     if (x < 0 || x >= tilemap.width || y < 0 || y >= tilemap.height) continue;
 
                     const dx = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2);
@@ -923,9 +923,9 @@ export class Renderer {
         const video = videoPlayer._video;
         if (!video) return;
 
-        // Si estamos en el editor y no está reproduciendo, intentamos mostrar el primer frame
+        // Si estamos en el editor y no esta reproduciendo, intentamos mostrar el primer frame
         if (this.isEditor && video.paused && video.currentTime === 0) {
-            // Se asume que video.load() ya se llamó
+            // Se asume que video.load() ya se llamo
         }
 
         this.ctx.save();
@@ -935,7 +935,7 @@ export class Renderer {
         let drawWidth = width;
         let drawHeight = height;
 
-        // Implementación de Scaling Modes
+        // Implementacion de Scaling Modes
         if (video.videoWidth > 0 && video.videoHeight > 0) {
             const aspect = video.videoWidth / video.videoHeight;
             const targetAspect = width / height;

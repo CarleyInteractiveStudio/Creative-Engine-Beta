@@ -1,9 +1,9 @@
 /**
  * CarlAgent.js
  *
- * Este módulo actúa como el puente de ejecución para las acciones autónomas de Carl IA.
+ * Este modulo actua como el puente de ejecucion para las acciones autonomas de Carl IA.
  * Permite que Carl ejecute comandos reales en el motor, gestione planes de trabajo
- * y maneje diferentes modos de ejecución (automático, visual, manual).
+ * y maneje diferentes modos de ejecucion (automatico, visual, manual).
  */
 
 import * as SceneManager from '../engine/SceneManager.js';
@@ -27,7 +27,7 @@ let lastCreatedMateriaId = null;
 export function initialize(dom) {
     editorDom = dom;
 
-    // Registrar los manejadores globales para que la terminal y otros módulos los usen
+    // Registrar los manejadores globales para que la terminal y otros modulos los usen
     window.carlCommandHandlers = {
         crearObjeto: async (params) => executeCommand('create_materia', params),
         borrarObjeto: async (params) => executeCommand('delete_materia', params),
@@ -62,7 +62,7 @@ export function initialize(dom) {
 }
 
 /**
- * Define un nuevo plan de acción para Carl.
+ * Define un nuevo plan de accion para Carl.
  * @param {Array} steps - Lista de pasos [{title, description, commands: []}]
  */
 export function setPlan(steps) {
@@ -120,7 +120,7 @@ export function switchView(view) {
 }
 
 /**
- * Ejecuta el siguiente paso del plan según el modo actual.
+ * Ejecuta el siguiente paso del plan segun el modo actual.
  */
 export async function executeNextStep() {
     if (currentStepIndex < 0 || currentStepIndex >= currentPlan.length) return;
@@ -135,7 +135,7 @@ export async function executeNextStep() {
         for (const cmd of step.commands) {
             const result = await executeCommand(cmd.action, cmd.params);
             if (!result.success) {
-                throw new Error(`Comando ${cmd.action} falló: ${result.message}`);
+                throw new Error(`Comando ${cmd.action} fallo: ${result.message}`);
             }
         }
         step.status = 'completed';
@@ -169,12 +169,12 @@ function resolveMateria(idOrName) {
         return SceneManager.currentScene.findMateriaById(id);
     }
 
-    // Búsqueda por nombre
+    // Busqueda por nombre
     return SceneManager.currentScene.getAllMaterias().find(m => m.name === idOrName);
 }
 
 /**
- * Resuelve un nombre de componente (soporta alias bilingües).
+ * Resuelve un nombre de componente (soporta alias bilinges).
  */
 function resolveComponentClass(name) {
     // 1. Intentar acceso directo en el objeto Components
@@ -190,7 +190,7 @@ function resolveComponentClass(name) {
 async function executeCommand(action, params) {
     console.log(`[CarlAgent] Ejecutando comando: ${action}`, params);
 
-    // Pre-procesar parámetros para resolver @last si es necesario (aunque resolveMateria ya lo hace)
+    // Pre-procesar parametros para resolver @last si es necesario (aunque resolveMateria ya lo hace)
     if (params.materiaId === '@last') params.materiaId = lastCreatedMateriaId;
     if (params.parentId === '@last') params.parentId = lastCreatedMateriaId;
 
@@ -208,7 +208,7 @@ async function executeCommand(action, params) {
                 newMtr = MateriaFactory.createCanvasObject();
                 if (name) newMtr.name = name;
             } else if (type === 'Camera' || type === 'camara') {
-                 newMtr = MateriaFactory.createBaseMateria(name || "Nueva Cámara", parent);
+                 newMtr = MateriaFactory.createBaseMateria(name || "Nueva Camara", parent);
                  newMtr.addComponent(new Components.Camera(newMtr));
             } else if (type === 'Audio' || type === 'sonido') {
                 newMtr = MateriaFactory.createAudioObject(parent);
@@ -242,7 +242,7 @@ async function executeCommand(action, params) {
             const ComponentClass = resolveComponentClass(type);
             if (!ComponentClass) return { success: false, message: `Componente '${type}' no reconocido.` };
 
-            // Evitar duplicados si es un componente único
+            // Evitar duplicados si es un componente unico
             if (materia.getComponent(ComponentClass)) {
                 return { success: true, message: `El objeto ya tiene un componente '${type}'.` };
             }
@@ -257,7 +257,7 @@ async function executeCommand(action, params) {
             }
 
             updateInspector();
-            return { success: true, message: `Componente '${type}' añadido a '${materia.name}'.` };
+            return { success: true, message: `Componente '${type}' anadido a '${materia.name}'.` };
         }
 
         case 'set_property': {
@@ -278,11 +278,11 @@ async function executeCommand(action, params) {
                 for (let i = 0; i < paths.length - 1; i++) {
                     const next = target[paths[i]];
                     if (next === undefined || next === null) {
-                        // Intentar crear el objeto intermedio si es común
+                        // Intentar crear el objeto intermedio si es comun
                         if (paths[i] === 'scale' || paths[i] === 'position' || paths[i] === 'offset') {
                             target[paths[i]] = { x: 0, y: 0 };
                         } else {
-                            throw new Error(`Ruta inválida: ${paths[i]}`);
+                            throw new Error(`Ruta invalida: ${paths[i]}`);
                         }
                     }
                     target = target[paths[i]];
@@ -290,7 +290,7 @@ async function executeCommand(action, params) {
 
                 const lastProp = paths[paths.length - 1];
 
-                // Manejo especial de valores numéricos si vienen como string
+                // Manejo especial de valores numericos si vienen como string
                 let finalValue = value;
                 if (typeof value === 'string' && !isNaN(parseFloat(value))) {
                     finalValue = parseFloat(value);
@@ -325,7 +325,7 @@ async function executeCommand(action, params) {
                     return { success: true, message: `Archivo '${path}' creado.` };
                 }
             }
-            return { success: false, message: "Función de creación de archivos no disponible en este contexto." };
+            return { success: false, message: "Funcion de creacion de archivos no disponible en este contexto." };
         }
 
         case 'download_file': {
@@ -350,7 +350,7 @@ async function executeCommand(action, params) {
         }
 
         default:
-            return { success: false, message: `Acción desconocida: ${action}` };
+            return { success: false, message: `Accion desconocida: ${action}` };
     }
 }
 
@@ -396,28 +396,32 @@ function updateActivityUI() {
 
 function getStatusIcon(status) {
     switch (status) {
-        case 'pending': return '⚪';
-        case 'executing': return '🔄';
-        case 'completed': return '✅';
-        case 'failed': return '❌';
-        default: return '❓';
+        case 'pending': return '';
+        case 'executing': return '';
+        case 'completed': return '';
+        case 'failed': return '';
+        default: return '';
     }
 }
 
 function logActivity(message, type = 'info') {
     console.log(`[CarlActivity] ${type.toUpperCase()}: ${message}`);
-    // Podríamos añadir una lista de logs históricos debajo del plan
+    // Podriamos anadir una lista de logs historicos debajo del plan
 }
 
 /**
- * Función global para que la UI apruebe un paso.
+ * Global API for UI and System Prompt integration.
+ * This ensures 'window.CarlAgent' is available for onclick handlers
+ * and matches the naming convention used in the assistant's prompt.
  */
-window.carlAgent = {
+export const AgentAPI = {
+    initialize,
+    setPlan,
+    setExecutionMode,
+    switchView,
     approveStep: () => {
         executeNextStep();
-    },
-    setExecutionMode: (mode) => {
-        executionMode = mode;
-        console.log(`Carl Agent Execution Mode: ${mode}`);
     }
 };
+
+window.CarlAgent = AgentAPI;

@@ -58,7 +58,7 @@ let saveAssetCallback = null;
         saveAssetCallback(currentFilePath, newContent, () => {
             isDirty = false;
             dom.mdSaveBtn.textContent = 'Guardar'; // Reset button text
-            window.Dialogs.showNotification("Éxito", "Archivo guardado correctamente.");
+            window.Dialogs.showNotification("Exito", "Archivo guardado correctamente.");
             // Re-render the preview in the background after saving.
             const html = showdownConverter.makeHtml(newContent);
             dom.mdPreviewContent.innerHTML = html;
@@ -100,7 +100,7 @@ let saveAssetCallback = null;
         if (isDirty) {
             window.Dialogs.showConfirmation(
                 "Cambios sin guardar",
-                "Tienes cambios sin guardar. ¿Estás seguro de que quieres cerrar?",
+                "Tienes cambios sin guardar. Estas seguro de que quieres cerrar?",
                 (confirmed) => {
                     if (confirmed) {
                         dom.markdownViewerPanel.classList.add('hidden');

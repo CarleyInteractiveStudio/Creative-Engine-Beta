@@ -22,7 +22,7 @@ export async function saveProjectConfig(showAlert = true) {
     if (!projectsDirHandle) {
         if(showAlert) showNotification(
             window.Localization?.get('ERROR') || 'Error',
-            window.Localization?.get('ERROR_DIRECTORIO_NO_DISPONIBLE') || 'El directorio del proyecto no está disponible.'
+            window.Localization?.get('ERROR_DIRECTORIO_NO_DISPONIBLE') || 'El directorio del proyecto no esta disponible.'
         );
         return;
     }
@@ -72,16 +72,16 @@ export async function saveProjectConfig(showAlert = true) {
         const writable = await configFileHandle.createWritable();
         await writable.write(JSON.stringify(currentProjectConfig, null, 2));
         await writable.close();
-        console.log("Configuración del proyecto guardada.");
+        console.log("Configuracion del proyecto guardada.");
         if(showAlert) showNotification(
-            window.Localization?.get('EXITO') || 'Éxito',
-            window.Localization?.get('CONFIG_GUARDADA') || '¡Configuración guardada!'
+            window.Localization?.get('EXITO') || 'Exito',
+            window.Localization?.get('CONFIG_GUARDADA') || 'Configuracion guardada!'
         );
     } catch (error) {
-        console.error("Error al guardar la configuración del proyecto:", error);
+        console.error("Error al guardar la configuracion del proyecto:", error);
         if(showAlert) showNotification(
             window.Localization?.get('ERROR') || 'Error',
-            window.Localization?.get('ERROR_GUARDAR_CONFIG') || 'No se pudo guardar la configuración.'
+            window.Localization?.get('ERROR_GUARDAR_CONFIG') || 'No se pudo guardar la configuracion.'
         );
     }
 }
@@ -103,7 +103,7 @@ function populateTagsAndLayers() {
         if (tag !== 'Untagged') {
             const removeBtn = document.createElement('button');
             removeBtn.className = 'remove-layer-btn';
-            removeBtn.textContent = '×';
+            removeBtn.textContent = '';
             removeBtn.title = window.Localization?.get('QUITAR_TAG') || 'Quitar tag';
             removeBtn.addEventListener('click', () => {
                 const index = currentProjectConfig.tags.indexOf(tag);
@@ -381,7 +381,7 @@ function populateCameraList() {
     cameraList.innerHTML = '';
 
     if (cameraMaterias.length === 0) {
-        cameraList.innerHTML = `<p class="field-description">${window.Localization?.get('SIN_CAMARAS_HINT') || 'No hay cámaras en esta escena.'}</p>`;
+        cameraList.innerHTML = `<p class="field-description">${window.Localization?.get('SIN_CAMARAS_HINT') || 'No hay camaras en esta escena.'}</p>`;
         return;
     }
 
@@ -411,7 +411,7 @@ function populateCameraList() {
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = materia.isActive;
-        checkbox.title = 'Activar/Desactivar Cámara';
+        checkbox.title = 'Activar/Desactivar Camara';
         checkbox.addEventListener('change', () => {
             materia.isActive = checkbox.checked;
             if (window.updateScene) window.updateScene();

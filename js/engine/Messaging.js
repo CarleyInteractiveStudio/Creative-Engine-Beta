@@ -6,10 +6,10 @@ class MessageBus {
     }
 
     /**
-     * Suscribe un callback a un mensaje específico.
+     * Suscribe un callback a un mensaje especifico.
      * @param {string} message - Nombre del mensaje.
-     * @param {Function} callback - Función a ejecutar.
-     * @returns {Function} Función para desuscribirse.
+     * @param {Function} callback - Funcion a ejecutar.
+     * @returns {Function} Funcion para desuscribirse.
      */
     subscribe(message, callback) {
         if (!this.listeners.has(message)) {
@@ -26,7 +26,7 @@ class MessageBus {
     }
 
     /**
-     * Envía un mensaje a todos los suscriptores.
+     * Envia un mensaje a todos los suscriptores.
      * @param {string} message - Nombre del mensaje.
      * @param {any} data - Datos opcionales.
      */

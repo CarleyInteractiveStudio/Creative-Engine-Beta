@@ -92,7 +92,7 @@ export function initialize(dependencies) {
     });
 
     localDom.newSpriteBtn.addEventListener('click', () => {
-        Dialogs.showPrompt("Nuevo Sprite", "Introduce el tamaño (ej: 256x256 o solo 256):", (val) => {
+        Dialogs.showPrompt("Nuevo Sprite", "Introduce el tamano (ej: 256x256 o solo 256):", (val) => {
             if (!val) return;
             let [w, h] = val.toLowerCase().split('x').map(n => parseInt(n.trim()));
             if (isNaN(w)) return;
@@ -191,7 +191,7 @@ async function loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCb) 
         const file = await fileHandle.getFile();
         const L = window.Localization;
         if (!file.type.startsWith('image/')) {
-            Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_IMAGEN_INVALIDA', "El archivo seleccionado no es una imagen válida."));
+            Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_IMAGEN_INVALIDA', "El archivo seleccionado no es una imagen valida."));
             return;
         }
 
@@ -373,7 +373,7 @@ function executeSlice() {
 async function createSpriteAsset() {
     const L = window.Localization;
     if (generatedSlices.length === 0) {
-        Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('AVISO_SIN_SLICES', "No hay slices para aplicar. Usa el botón 'Slice' primero."));
+        Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('AVISO_SIN_SLICES', "No hay slices para aplicar. Usa el boton 'Slice' primero."));
         return;
     }
     if (!createAssetCallback || !getAssetsDirectoryHandle || !updateAssetBrowserCallback || !currentFileHandle) {
@@ -457,7 +457,7 @@ async function createSpriteAsset() {
             const message = isEditing
                 ? L.get('EXITO_ASSET_GUARDADO_CON', "Asset '{name}' guardado con {count} sprites.").replace('{name}', assetName).replace('{count}', generatedSlices.length)
                 : L.get('EXITO_ASSET_CREADO_CON', "Asset '{name}' creado con {count} sprites.").replace('{name}', assetName).replace('{count}', generatedSlices.length);
-            Dialogs.showNotification(L.get('EXITO', "Éxito"), message);
+            Dialogs.showNotification(L.get('EXITO', "Exito"), message);
 
             await updateAssetBrowserCallback(); // Refresh to show new/updated file
             localDom.panel.classList.add('hidden');

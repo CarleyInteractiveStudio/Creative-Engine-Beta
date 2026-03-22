@@ -83,7 +83,7 @@ const AmbienteControlWindow = (() => {
                     const ambiente = SceneManager.currentScene.ambiente;
                     ambiente.hora = val.toString();
 
-                    // Sincronizar opacidad automáticamente según la hora (usando keyframes para realismo)
+                    // Sincronizar opacidad automaticamente segun la hora (usando keyframes para realismo)
                     const baseOpacity = getOpacityForHour(val);
                     const intensidad = ambiente.nocheDiaIntensidad !== undefined ? ambiente.nocheDiaIntensidad : 1.0;
                     ambiente.nocheDiaOpacidad = baseOpacity * intensidad;
@@ -124,7 +124,7 @@ const AmbienteControlWindow = (() => {
         if (dom.ambienteCicloAutomatico) {
             dom.ambienteCicloAutomatico.addEventListener('change', (e) => {
                 isCicloAutomatico = e.target.checked;
-                console.log(`[Ambiente] Ciclo Automático: ${isCicloAutomatico}`);
+                console.log(`[Ambiente] Ciclo Automatico: ${isCicloAutomatico}`);
                 if (SceneManager && SceneManager.currentScene) {
                     SceneManager.currentScene.ambiente.cicloAutomatico = isCicloAutomatico;
                     if (typeof window.setSceneDirty === 'function') window.setSceneDirty(true);
@@ -197,7 +197,7 @@ const AmbienteControlWindow = (() => {
         if (hour > 24) hour %= 24;
         if (hour < 0) hour = 0;
 
-        // Keyframes para opacidad (Día -> 0.0, Noche -> 1.0)
+        // Keyframes para opacidad (Dia -> 0.0, Noche -> 1.0)
         const keyframes = {
             0:  1.0,  // Midnight
             5:  0.8,  // Pre-dawn

@@ -9,11 +9,11 @@ export async function repair(code, fileName, runtimeError = null) {
     let repairedCode = code;
     const L = window.Localization;
 
-    console.log(`[AutoReparator] Iniciando reparación de ${fileName}...`);
+    console.log(`[AutoReparator] Iniciando reparacion de ${fileName}...`);
 
     // 0. Runtime Error analysis (NEW)
     if (runtimeError && runtimeError.message) {
-        console.log("[AutoReparator] Analizando error de ejecución:", runtimeError.message);
+        console.log("[AutoReparator] Analizando error de ejecucion:", runtimeError.message);
 
         // Check for missing components based on typical crash patterns
         const missingComps = [
@@ -34,7 +34,7 @@ export async function repair(code, fileName, runtimeError = null) {
                 return {
                     success: true, // Success because we identified the problem
                     code: code,
-                    message: `⚠️ Falta el componente '${check.comp}' en '${runtimeError.materiaName}'. ¿Quieres que lo añada por ti?`,
+                    message: ` Falta el componente '${check.comp}' en '${runtimeError.materiaName}'. Quieres que lo anada por ti?`,
                     addComponent: {
                         materiaId: runtimeError.materiaId,
                         componentType: check.comp
@@ -67,9 +67,9 @@ export async function repair(code, fileName, runtimeError = null) {
     // 1. Common Keyword Misspellings (Fuzzy matching simplified)
     const substitutions = {
         'funcion': ['funsion', 'fucion', 'funcio', 'function'],
-        'publico': ['public', 'pubico', 'público'],
+        'publico': ['public', 'pubico', 'publico'],
         'variable': ['var', 'variabke', 'virable'],
-        'numero': ['num', 'nmero', 'número'],
+        'numero': ['num', 'nmero', 'numero'],
         'verdadero': ['true', 'verdedero'],
         'falso': ['false', 'falsoo'],
         'si': ['if'],
@@ -79,7 +79,7 @@ export async function repair(code, fileName, runtimeError = null) {
         'alEmpezar': ['alInicio', 'alempezar', 'onStart', 'start', 'iniciar'],
         'materia': ['objeto', 'mtr', 'this'],
         'posicion': ['position', 'pos'],
-        'fisica': ['physics', 'rigidbody', 'física'],
+        'fisica': ['physics', 'rigidbody', 'fisica'],
         'imprimir': ['log', 'print', 'console.log']
     };
 
@@ -118,7 +118,7 @@ export async function repair(code, fileName, runtimeError = null) {
         // If the code is very broken (transpilation fails), we try to merge the user variables with the example's structure
         const validation = transpile(repairedCode, fileName);
         if (validation.errors && validation.errors.length > 0) {
-            console.log("[AutoReparator] El código está muy dañado. Intentando reconstrucción estructural...");
+            console.log("[AutoReparator] El codigo esta muy danado. Intentando reconstruccion estructural...");
 
             // Extract user variables
             const userVars = repairedCode.match(/publico\s+\w+\s+\w+\s*=\s*[^;]+;/g) || [];
@@ -154,7 +154,7 @@ export async function repair(code, fileName, runtimeError = null) {
     let validation = transpile(repairedCode, fileName);
 
     if (validation.errors && validation.errors.length > 0) {
-        console.warn("[AutoReparator] Errores detectados tras primera pasada. Intentando cirugía...");
+        console.warn("[AutoReparator] Errores detectados tras primera pasada. Intentando cirugia...");
 
         const lines = repairedCode.split('\n');
         const fatalLines = new Set();
@@ -183,6 +183,6 @@ export async function repair(code, fileName, runtimeError = null) {
     return {
         success: success,
         code: repairedCode,
-        message: success ? L.get('REPARACION_EXITOSA', 'Código reparado con éxito.') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero aún quedan errores complejos.')
+        message: success ? L.get('REPARACION_EXITOSA', 'Codigo reparado con exito.') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero aun quedan errores complejos.')
     };
 }

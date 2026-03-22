@@ -40,7 +40,7 @@ export function createBaseMateria(name, parent = null, useUITransform = false) {
 export function createCanvasObject() {
     const L = window.Localization;
     const name = generateUniqueName(L.get('CANVAS', 'Canvas'));
-    // Un Canvas sigue necesitando un Transform de mundo para su posición base en la escena
+    // Un Canvas sigue necesitando un Transform de mundo para su posicion base en la escena
     const newMateria = createBaseMateria(name);
     newMateria.addComponent(new Components.Canvas(newMateria));
     return newMateria;
@@ -218,7 +218,7 @@ export function createWaterObject(parent = null) {
     const name = generateUniqueName(L.get('WATER', 'Agua'));
     const newMateria = createBaseMateria(name, parent);
     newMateria.tag = 'Agua';
-    newMateria.layer = 4; // Capa Agua (según config por defecto)
+    newMateria.layer = 4; // Capa Agua (segun config por defecto)
     const water = new Components.Water(newMateria);
     water.orderInLayer = 10;
     newMateria.addComponent(water);
@@ -227,7 +227,7 @@ export function createWaterObject(parent = null) {
 
 export function createLineColliderObject(parent = null) {
     const L = window.Localization;
-    const name = generateUniqueName(L.get('LINE_COLLIDER', 'Colisionador de Líneas'));
+    const name = generateUniqueName(L.get('LINE_COLLIDER', 'Colisionador de Lineas'));
     const newMateria = createBaseMateria(name, parent);
     newMateria.addComponent(new Components.LineCollider2D(newMateria));
     return newMateria;
@@ -239,7 +239,7 @@ export function createTerrenoObject(parent = null) {
     const name = generateUniqueName(L.get('TERRENO', 'Terreno'));
     const newMateria = createBaseMateria(name, parent);
     newMateria.addComponent(new Components.Terreno2D(newMateria));
-    console.log("[MateriaFactory] Terreno creado con éxito:", newMateria);
+    console.log("[MateriaFactory] Terreno creado con exito:", newMateria);
     return newMateria;
 }
 

@@ -381,9 +381,9 @@ function updateStateInspector() {
     const globalSettingsHTML = `
         <div class="inspector-section">
             <div class="inspector-section-header">
-                <span data-i18n="CONFIG_GLOBAL">${L.get('CONFIG_GLOBAL', 'Configuración Global')}</span>
+                <span data-i18n="CONFIG_GLOBAL">${L.get('CONFIG_GLOBAL', 'Configuracion Global')}</span>
             </div>
-            <div class="checkbox-field" title="Cambia automáticamente entre animaciones según la dirección de movimiento.">
+            <div class="checkbox-field" title="Cambia automaticamente entre animaciones segun la direccion de movimiento.">
                 <input type="checkbox" id="anim-ctrl-smart-mode-toggle" ${currentControllerData.smartMode ? 'checked' : ''}>
                 <label for="anim-ctrl-smart-mode-toggle" data-i18n="SMART_MODE_DIRECTIONS">${L.get('SMART_MODE_DIRECTIONS', 'Modo Inteligente (Direcciones)')}</label>
             </div>
@@ -395,7 +395,7 @@ function updateStateInspector() {
         container.innerHTML = `
             ${globalSettingsHTML}
             <div class="panel-overlay-message" style="position: static; padding: 20px;">
-                <p data-i18n="HINT_SELECCIONA_ELEMENTO">${L.get('HINT_SELECCIONA_ELEMENTO', 'Selecciona un estado o transición para editar.')}</p>
+                <p data-i18n="HINT_SELECCIONA_ELEMENTO">${L.get('HINT_SELECCIONA_ELEMENTO', 'Selecciona un estado o transicion para editar.')}</p>
             </div>
         `;
 
@@ -410,17 +410,17 @@ function updateStateInspector() {
             ${globalSettingsHTML}
             <div class="inspector-section">
                 <div class="inspector-section-header">
-                    <span>Transición: ${selectedTransition.from} &rarr; ${selectedTransition.to}</span>
+                    <span>Transicion: ${selectedTransition.from} &rarr; ${selectedTransition.to}</span>
                 </div>
                 <div class="inspector-row">
-                    <label>Duración (s)</label>
+                    <label>Duracion (s)</label>
                     <input type="number" id="anim-trans-duration" value="${selectedTransition.duration !== undefined ? selectedTransition.duration : 0.3}" step="0.05" min="0">
                 </div>
                 <div class="checkbox-field">
                     <input type="checkbox" id="anim-trans-exit-time" ${selectedTransition.hasExitTime ? 'checked' : ''}>
                     <label for="anim-trans-exit-time">Esperar a que termine (Exit Time)</label>
                 </div>
-                <button class="primary-btn remove-btn" id="anim-trans-delete-btn" style="width: 100%; margin-top: 10px;">Eliminar Transición</button>
+                <button class="primary-btn remove-btn" id="anim-trans-delete-btn" style="width: 100%; margin-top: 10px;">Eliminar Transicion</button>
             </div>
         `;
 
@@ -447,7 +447,7 @@ function updateStateInspector() {
                 <input type="text" id="anim-state-name" value="${selectedState.name}">
             </div>
             <div class="inspector-row">
-                <label data-i18n="PROP_ANIMACION">${L.get('PROP_ANIMACION', 'Animación')}</label>
+                <label data-i18n="PROP_ANIMACION">${L.get('PROP_ANIMACION', 'Animacion')}</label>
                 <div class="file-picker">
                     <input type="text" id="anim-state-asset" value="${selectedState.animationClip || ''}" readonly>
                     <button id="anim-state-asset-btn">...</button>
@@ -481,7 +481,7 @@ function updateStateInspector() {
             <div class="inspector-section-header">
                 <span data-i18n="MAPEO_MOVIMIENTO">${L.get('MAPEO_MOVIMIENTO', 'Mapeo de Movimiento')}</span>
             </div>
-            <p class="field-description" data-i18n="HINT_MAPEO_MOVIMIENTO">${L.get('HINT_MAPEO_MOVIMIENTO', 'Asigna este estado a una dirección del personaje.')}</p>
+            <p class="field-description" data-i18n="HINT_MAPEO_MOVIMIENTO">${L.get('HINT_MAPEO_MOVIMIENTO', 'Asigna este estado a una direccion del personaje.')}</p>
             <div class="direction-grid-container">
                 <div class="direction-grid" id="anim-direction-grid">
                     ${[0, 1, 2, 3, 4, 5, 6, 7, 8].map(i => {
@@ -541,7 +541,7 @@ function updateStateInspector() {
                         if (anim.loop !== undefined) selectedState.loop = anim.loop;
                     }
                 } catch (e) {
-                    console.warn("[AnimatorController] No se pudo leer el archivo de animación para autoconfiguración:", e);
+                    console.warn("[AnimatorController] No se pudo leer el archivo de animacion para autoconfiguracion:", e);
                 }
 
                 updateStateInspector();
@@ -604,7 +604,7 @@ function updateGraphData() {
 async function saveAnimatorController() {
     const L = window.Localization;
     if (!currentControllerHandle || !currentControllerData) {
-        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SIN_CTRL_GUARDAR', 'No hay ningún controlador seleccionado para guardar.'));
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SIN_CTRL_GUARDAR', 'No hay ningun controlador seleccionado para guardar.'));
         return;
     }
 
@@ -648,7 +648,7 @@ async function saveAnimatorController() {
             });
         }
 
-        window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_CTRL_GUARDADO', 'Controlador guardado correctamente')}: ${savedName}`);
+        window.Dialogs.showNotification(L.get('EXITO', 'Exito'), `${L.get('EXITO_CTRL_GUARDADO', 'Controlador guardado correctamente')}: ${savedName}`);
 
     } catch (error) {
         console.error("Error al guardar el controlador:", error);
@@ -660,7 +660,7 @@ async function createNewAnimatorController() {
     const L = window.Localization;
     window.Dialogs.showPrompt(
         L.get('TITULO_NUEVO_CONTROLADOR', 'Nuevo Controlador'),
-        L.get('PROMPT_NOMBRE_CTRL', 'Introduce el nombre para el nuevo controlador de animación:'),
+        L.get('PROMPT_NOMBRE_CTRL', 'Introduce el nombre para el nuevo controlador de animacion:'),
         async (controllerName) => {
             if (!controllerName) return;
 
@@ -702,7 +702,7 @@ async function createNewAnimatorController() {
                 await openAnimatorController(fileHandle);
 
             } catch (error) {
-                console.error("Error al crear el controlador de animación:", error);
+                console.error("Error al crear el controlador de animacion:", error);
                 window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_ARCHIVO_CTRL', 'No se pudo crear el archivo del controlador.'));
             }
         },

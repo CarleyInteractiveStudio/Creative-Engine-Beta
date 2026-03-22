@@ -35,7 +35,7 @@ export function updateHierarchy() {
     const rootMaterias = SceneManager.currentScene.getRootMaterias();
 
     if (rootMaterias.length === 0) {
-        dom.hierarchyContent.innerHTML = `<p class="empty-message" data-i18n="ESCENA_VACIA">${L.get('ESCENA_VACIA', 'La escena está vacía.<br>Click derecho para crear un objeto.')}</p>`;
+        dom.hierarchyContent.innerHTML = `<p class="empty-message" data-i18n="ESCENA_VACIA">${L.get('ESCENA_VACIA', 'La escena esta vacia.<br>Click derecho para crear un objeto.')}</p>`;
         return;
     }
 
@@ -115,7 +115,7 @@ function createLightObject(name, lightComponent, parent = null) {
 
 function createCameraObject(parent = null) {
     const L = window.Localization;
-    const newMateria = createBaseMateria(generateUniqueName(L.get('CAMARA', 'Cámara')), parent);
+    const newMateria = createBaseMateria(generateUniqueName(L.get('CAMARA', 'Camara')), parent);
     newMateria.addComponent(new Components.Camera(newMateria));
     return newMateria;
 }
@@ -181,7 +181,7 @@ export function handleContextMenuAction(action) {
     switch (action) {
         case 'create-empty':
             // Parenting uses the selected materia, which is intuitive.
-            newMateria = createBaseMateria(generateUniqueName(L.get('MATERIA_VACIA', 'Materia Vacía')), selectedMateria);
+            newMateria = createBaseMateria(generateUniqueName(L.get('MATERIA_VACIA', 'Materia Vacia')), selectedMateria);
             break;
         case 'create-audio':
             newMateria = createAudioObject(selectedMateria);
@@ -269,7 +269,7 @@ export function handleContextMenuAction(action) {
             newMateria = createTilemapObject(selectedMateria);
             break;
         case 'create-terrain':
-            console.log("[Hierarchy] Iniciando creación de terreno...");
+            console.log("[Hierarchy] Iniciando creacion de terreno...");
             newMateria = createTerrenoObject(selectedMateria);
             break;
         case 'create-parallax':

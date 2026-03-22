@@ -1040,7 +1040,7 @@ export function initialize(dependencies) {
                     currentDirHandle = await projectHandle.getDirectoryHandle('Assets', { create: true });
                     currentPath = 'Assets';
                 } catch (err) {
-                    console.error("[SceneView] Error al obtener el directorio raíz de Assets:", err);
+                    console.error("[SceneView] Error al obtener el directorio raiz de Assets:", err);
                 }
             }
 
@@ -1083,7 +1083,7 @@ export function initialize(dependencies) {
                     }
                 }
                 if (updateAssetBrowser) await updateAssetBrowser();
-                console.log("Archivos importados con éxito.");
+                console.log("Archivos importados con exito.");
             }
             return;
         }
@@ -1136,9 +1136,9 @@ export function initialize(dependencies) {
             }
 
             if (newMateria) {
-                // Si el juego está en marcha, inicializar scripts inmediatamente
+                // Si el juego esta en marcha, inicializar scripts inmediatamente
                 if (window.isGameRunning) {
-                    console.log(`[SceneView] Inicializando scripts para nuevo objeto '${newMateria.name}' en tiempo de ejecución.`);
+                    console.log(`[SceneView] Inicializando scripts para nuevo objeto '${newMateria.name}' en tiempo de ejecucion.`);
                     const initScriptsRecursive = async (mtr) => {
                         for (const ley of mtr.leyes) {
                             if (ley instanceof Components.CreativeScript) {
@@ -1186,7 +1186,7 @@ export function initialize(dependencies) {
             const toolBtn = e.target.closest('.toolbar-btn');
             if (toolBtn && toolBtn.id.startsWith('tool-')) {
                 const toolName = toolBtn.id.substring('tool-'.length);
-                console.log(`[DIAGNÓSTICO] Clic en botón de herramienta detectado. Herramienta: '${toolName}'`);
+                console.log(`[DIAGNOSTICO] Clic en boton de herramienta detectado. Herramienta: '${toolName}'`);
                 setActiveTool(toolName);
             }
         });
@@ -1365,7 +1365,7 @@ export function initialize(dependencies) {
                 const worldMouse = screenToWorld(event.clientX - rect.left, event.clientY - rect.top);
                 const settings = TerrenoEditorWindow.settings;
 
-                // Dibujar o borrar terreno según el modo o si se pulsa Shift
+                // Dibujar o borrar terreno segun el modo o si se pulsa Shift
                 const isErase = (settings.mode === 'erase') || event.shiftKey;
                 terreno.paint(worldMouse.x, worldMouse.y, settings.brushSize, isErase, settings.selectedLayer);
 
@@ -1943,7 +1943,7 @@ function drawBasicAIGizmos() {
 
     // Draw steering rays
     if (ai.obstacleAvoidance) {
-        // En el editor, los rayos salen en la dirección de rotación actual
+        // En el editor, los rayos salen en la direccion de rotacion actual
         ctx.rotate(transform.rotation * Math.PI / 180);
         const startAngle = -ai.raySpread / 2;
         const step = ai.rayCount > 1 ? ai.raySpread / (ai.rayCount - 1) : 0;

@@ -1,8 +1,8 @@
 /**
  * PreferencesWindow.js
  *
- * Este módulo gestiona la ventana de Preferencias del editor,
- * incluyendo la carga, guardado y aplicación de las preferencias del usuario.
+ * Este modulo gestiona la ventana de Preferencias del editor,
+ * incluyendo la carga, guardado y aplicacion de las preferencias del usuario.
  */
 
 import { showNotification, showConfirmation } from './DialogWindow.js';
@@ -184,7 +184,7 @@ async function savePreferences() {
 
     applyPreferences();
     showNotification(
-        window.Localization?.get('EXITO') || 'Éxito',
+        window.Localization?.get('EXITO') || 'Exito',
         window.Localization?.get('PREFERENCIAS_GUARDADAS') || 'Preferencias guardadas.'
     );
     _dom.preferencesModal.classList.remove('is-open');
@@ -297,7 +297,7 @@ function setupEventListeners() {
             if (!provider || provider === 'none') {
                 showNotification(
                     window.Localization?.get('ERROR') || 'Error',
-                    window.Localization?.get('SELECCIONA_IA_VALIDO') || 'Por favor, selecciona un proveedor de IA válido.'
+                    window.Localization?.get('SELECCIONA_IA_VALIDO') || 'Por favor, selecciona un proveedor de IA valido.'
                 );
                 return;
             }
@@ -311,7 +311,7 @@ function setupEventListeners() {
 
             localStorage.setItem(`creativeEngine_${provider}_apiKey`, apiKey);
             showNotification(
-                window.Localization?.get('EXITO') || 'Éxito',
+                window.Localization?.get('EXITO') || 'Exito',
                 (window.Localization?.get('API_KEY_GUARDADA') || "API Key para {provider} guardada.")
                     .replace('{provider}', provider)
             );
@@ -324,12 +324,12 @@ function setupEventListeners() {
             const provider = _dom.prefsAiProvider.value;
             showConfirmation(
                 window.Localization?.get('CONFIRMAR_BORRADO') || 'Confirmar Borrado',
-                (window.Localization?.get('BORRAR_API_KEY_CONFIRM') || "¿Estás seguro de que quieres borrar la API Key para {provider}?")
+                (window.Localization?.get('BORRAR_API_KEY_CONFIRM') || "Estas seguro de que quieres borrar la API Key para {provider}?")
                     .replace('{provider}', provider),
                 () => {
                     localStorage.removeItem(`creativeEngine_${provider}_apiKey`);
                     showNotification(
-                        window.Localization?.get('EXITO') || 'Éxito',
+                        window.Localization?.get('EXITO') || 'Exito',
                         (window.Localization?.get('API_KEY_BORRADA') || "API Key para {provider} borrada.")
                             .replace('{provider}', provider)
                     );

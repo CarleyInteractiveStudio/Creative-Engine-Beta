@@ -13,7 +13,7 @@ let lastProjectName = null;
 let exportContext;
 let contextAsset = null; // Asset under the right-click context menu
 let dragCounter = 0; // For robust drag-over UI
-let collapsedFolders = new Set(); // Conjunto de rutas de carpetas contraídas
+let collapsedFolders = new Set(); // Conjunto de rutas de carpetas contraidas
 
 // Callbacks to other modules/editor.js
 let onAssetSelected;
@@ -95,14 +95,14 @@ export async function handleContextMenuAction(action) {
         try {
             targetHandle = await currentDirectoryHandle.handle.getDirectoryHandle(selectedAsset.name);
             targetPathDisplay = `${currentDirectoryHandle.path}/${selectedAsset.name}`;
-            console.log(`[AssetBrowser] Acción '${action}' dirigida a subcarpeta: ${targetPathDisplay}`);
+            console.log(`[AssetBrowser] Accion '${action}' dirigida a subcarpeta: ${targetPathDisplay}`);
         } catch (e) {
             console.warn("[AssetBrowser] No se pudo obtener el handle de la subcarpeta, usando carpeta actual.");
         }
     }
 
     if (!targetHandle) {
-        console.error("[AssetBrowser] No hay una carpeta de destino válida para la acción:", action);
+        console.error("[AssetBrowser] No hay una carpeta de destino valida para la accion:", action);
         return;
     }
 
@@ -127,7 +127,7 @@ export async function handleContextMenuAction(action) {
         }
         case 'create-animator-controller': {
             showPrompt(
-                L.get('CREAR_CONTROLADOR_ANIMACION', 'Crear Controlador de Animación'),
+                L.get('CREAR_CONTROLADOR_ANIMACION', 'Crear Controlador de Animacion'),
                 L.get('NOMBRE_CONTROLADOR_PROMPT', 'Introduce el nombre del nuevo controlador (.ceanim):'),
                 async (ctrlName) => {
                     if (ctrlName) {
@@ -152,7 +152,7 @@ export async function handleContextMenuAction(action) {
                             await writable.close();
                             await updateAssetBrowserCallback();
                         } catch (err) {
-                            console.error("Error al crear el controlador de animación:", err);
+                            console.error("Error al crear el controlador de animacion:", err);
                             showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_CONTROLADOR', 'No se pudo crear el controlador.'));
                         }
                     }
@@ -205,7 +205,7 @@ export async function handleContextMenuAction(action) {
                 async (scriptName) => {
                     if (scriptName) {
                         const fileName = scriptName.endsWith('.chc') ? scriptName : `${scriptName}.chc`;
-                        const defaultContent = `# Mi Script Humano\n\nCuando se presione la tecla W, mover arriba.\nSi hay colisión con un enemigo, destruir este objeto.`;
+                        const defaultContent = `# Mi Script Humano\n\nCuando se presione la tecla W, mover arriba.\nSi hay colision con un enemigo, destruir este objeto.`;
                         try {
                             const fileHandle = await targetHandle.getFileHandle(fileName, { create: true });
                             const writable = await fileHandle.createWritable();
@@ -269,14 +269,14 @@ export async function handleContextMenuAction(action) {
                             const writable = await fileHandle.createWritable();
                             await writable.write(defaultContent);
                             await writable.close();
-                            console.log(`[AssetBrowser] Archivo de escena '${fileName}' creado con éxito.`);
+                            console.log(`[AssetBrowser] Archivo de escena '${fileName}' creado con exito.`);
                             await updateAssetBrowserCallback();
                         } catch (err) {
                             console.error("Error al crear la escena:", err);
                             showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_ESCENA', 'No se pudo crear la escena.'));
                         }
                     } else {
-                        console.log("[AssetBrowser] La creación de la escena fue cancelada o el nombre estaba vacío.");
+                        console.log("[AssetBrowser] La creacion de la escena fue cancelada o el nombre estaba vacio.");
                     }
                 }
             );
@@ -284,7 +284,7 @@ export async function handleContextMenuAction(action) {
         }
         case 'create-animation': {
             showPrompt(
-                L.get('CREAR_ANIMACION', 'Crear Asset de Animación'),
+                L.get('CREAR_ANIMACION', 'Crear Asset de Animacion'),
                 L.get('NOMBRE_ANIMACION_PROMPT', 'Introduce el nombre del nuevo asset (.cea):'),
                 async (animName) => {
                     if (animName) {
@@ -306,8 +306,8 @@ export async function handleContextMenuAction(action) {
                             await writable.close();
                             await updateAssetBrowserCallback();
                         } catch (err) {
-                            console.error("Error al crear el asset de animación:", err);
-                            showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_ANIMACION', 'No se pudo crear el asset de animación.'));
+                            console.error("Error al crear el asset de animacion:", err);
+                            showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_ANIMACION', 'No se pudo crear el asset de animacion.'));
                         }
                     }
                 }
@@ -316,12 +316,12 @@ export async function handleContextMenuAction(action) {
         }
         case 'create-readme': {
             showPrompt(
-                L.get('CREAR_README', 'Crear Archivo Léame'),
+                L.get('CREAR_README', 'Crear Archivo Leame'),
                 L.get('NOMBRE_ARCHIVO_PROMPT', 'Introduce el nombre del archivo:'),
                 async (readmeName) => {
                     if (readmeName) {
                         const fileName = readmeName.endsWith('.md') ? readmeName : `${readmeName}.md`;
-                        const defaultContent = '# Nuevo Archivo Léame\n\nEscribe aquí la documentación...';
+                        const defaultContent = '# Nuevo Archivo Leame\n\nEscribe aqui la documentacion...';
                         try {
                             const fileHandle = await targetHandle.getFileHandle(fileName, { create: true });
                             const writable = await fileHandle.createWritable();
@@ -329,7 +329,7 @@ export async function handleContextMenuAction(action) {
                             await writable.close();
                             await updateAssetBrowserCallback();
                         } catch (err) {
-                            console.error("Error al crear el archivo Léame:", err);
+                            console.error("Error al crear el archivo Leame:", err);
                             showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_ARCHIVO', 'No se pudo crear el archivo.'));
                         }
                     }
@@ -362,7 +362,7 @@ export async function handleContextMenuAction(action) {
             if (selectedAsset) {
                 showConfirmation(
                     L.get('CONFIRMAR_BORRADO', 'Confirmar Borrado'),
-                    `${L.get('BORRAR_ASSET_CONFIRM', '¿Estás seguro de que quieres borrar')} '${selectedAsset.name}'? ${L.get('ACCION_IRREVERSIBLE', 'Esta acción no se puede deshacer.')}`,
+                    `${L.get('BORRAR_ASSET_CONFIRM', 'Estas seguro de que quieres borrar')} '${selectedAsset.name}'? ${L.get('ACCION_IRREVERSIBLE', 'Esta accion no se puede deshacer.')}`,
                     async () => {
                         try {
                             // Delete the main asset
@@ -400,7 +400,7 @@ export async function handleContextMenuAction(action) {
                         if (newName && newName !== oldName) {
                             try {
                                 if (selectedAsset.kind === 'directory') {
-                                    showNotification(L.get('NO_IMPLEMENTADO', 'No Implementado'), L.get('ERROR_RENOMBRAR_CARPETA', 'El renombrado de carpetas aún no está implementado.'));
+                                    showNotification(L.get('NO_IMPLEMENTADO', 'No Implementado'), L.get('ERROR_RENOMBRAR_CARPETA', 'El renombrado de carpetas aun no esta implementado.'));
                                     return;
                                 }
                                 const oldFileHandle = await currentDirectoryHandle.handle.getFileHandle(oldName);
@@ -449,7 +449,7 @@ async function handleImportSpine(item) {
     const L = window.Localization;
     const selectedMateria = window.getSelectedMateria ? window.getSelectedMateria() : null;
     if (!selectedMateria) {
-        showNotification(L.get('AVISO'), "Selecciona una Materia en la jerarquía para ser la raíz del esqueleto.");
+        showNotification(L.get('AVISO'), "Selecciona una Materia en la jerarquia para ser la raiz del esqueleto.");
         return;
     }
 
@@ -470,7 +470,7 @@ async function handleImportSpine(item) {
                     await writable.write(JSON.stringify(anim, null, 2));
                     await writable.close();
                 } catch (e) {
-                    console.warn(`No se pudo guardar la animación ${fileName}`, e);
+                    console.warn(`No se pudo guardar la animacion ${fileName}`, e);
                 }
             }
         }
@@ -503,7 +503,7 @@ export async function updateAssetBrowser() {
         if (projectName !== lastProjectName || !currentDirectoryHandle.handle) {
              currentDirectoryHandle = { handle: assetsHandle, path: 'Assets' };
              lastProjectName = projectName;
-             console.log(`[AssetBrowser] Navegación reseteada a /Assets para el proyecto '${projectName}'`);
+             console.log(`[AssetBrowser] Navegacion reseteada a /Assets para el proyecto '${projectName}'`);
         }
     } catch (err) {
         console.error(`[AssetBrowser] Error al acceder a la carpeta del proyecto '${projectName}':`, err);
@@ -535,18 +535,18 @@ export async function updateAssetBrowser() {
                     const writable = await fileHandle.createWritable();
                     await writable.write(JSON.stringify(prefabData, null, 2));
                     await writable.close();
-                    console.log(`[AssetBrowser] Prefab creado con éxito: ${prefabName} en ${targetPath}`);
+                    console.log(`[AssetBrowser] Prefab creado con exito: ${prefabName} en ${targetPath}`);
 
                     if (updateAssetBrowserCallback) {
                         await updateAssetBrowserCallback();
                     }
-                    showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_CREAR_PREFAB', "Prefab creado correctamente")}: ${materia.name}`);
+                    showNotification(L.get('EXITO', 'Exito'), `${L.get('EXITO_CREAR_PREFAB', "Prefab creado correctamente")}: ${materia.name}`);
                 } catch (err) {
-                    console.error("[AssetBrowser] Error crítico al crear el prefab:", err);
+                    console.error("[AssetBrowser] Error critico al crear el prefab:", err);
                     showNotification(L.get('ERROR', 'Error'), `${L.get('ERROR_CREAR_PREFAB', "No se pudo crear el prefab")}: ${err.message}`);
                 }
             } else {
-                console.warn(`[AssetBrowser] No se encontró la materia con ID ${materiaId} en la escena.`);
+                console.warn(`[AssetBrowser] No se encontro la materia con ID ${materiaId} en la escena.`);
             }
             return;
         }
@@ -636,7 +636,7 @@ export async function updateAssetBrowser() {
         }
 
         if (entries.length === 0) {
-            gridViewContainer.innerHTML = `<p class="empty-folder-message" data-i18n="CARPETA_VACIA">${L.get('CARPETA_VACIA', 'La carpeta está vacía')}</p>`;
+            gridViewContainer.innerHTML = `<p class="empty-folder-message" data-i18n="CARPETA_VACIA">${L.get('CARPETA_VACIA', 'La carpeta esta vacia')}</p>`;
             return;
         }
 
@@ -809,7 +809,7 @@ export async function updateAssetBrowser() {
                 } else {
                     collapsedFolders.add(currentPath);
                 }
-                updateAssetBrowser(); // Refrescar el árbol
+                updateAssetBrowser(); // Refrescar el arbol
             });
         }
         folderItem.appendChild(toggle);
@@ -862,7 +862,7 @@ export async function updateAssetBrowser() {
                     await handleDropOnFolder(dirHandle, currentPath, droppedData);
                 }
             } catch(err) {
-                console.warn("[AssetBrowser] Error al soltar en árbol de carpetas:", err);
+                console.warn("[AssetBrowser] Error al soltar en arbol de carpetas:", err);
             }
         });
 
@@ -933,7 +933,7 @@ async function handleGridDblClick(e) {
             }
             openLibraryDetailsCallback(name);
         } else {
-            console.warn("La funcionalidad de doble clic para librerías no está conectada.");
+            console.warn("La funcionalidad de doble clic para librerias no esta conectada.");
         }
     } else if (name.endsWith('.ceSprite')) {
         const fileHandle = await currentDirectoryHandle.handle.getFileHandle(name);
@@ -1057,8 +1057,8 @@ async function handleExternalFileDrop(e) {
                     await writable.close();
                     librariesImported++;
                 } catch (err) {
-                    console.error(`Error al importar la librería '${file.name}':`, err);
-                    showNotification(L.get('ERROR_IMPORTACION', 'Error de Importación'), `${L.get('ERROR_IMPORTAR_LIB', "No se pudo importar la librería")}: '${file.name}'.`);
+                    console.error(`Error al importar la libreria '${file.name}':`, err);
+                    showNotification(L.get('ERROR_IMPORTACION', 'Error de Importacion'), `${L.get('ERROR_IMPORTAR_LIB', "No se pudo importar la libreria")}: '${file.name}'.`);
                 }
             } else {
                 // Normal file handling
@@ -1070,17 +1070,17 @@ async function handleExternalFileDrop(e) {
                     filesImported++;
                 } catch (err) {
                     console.error(`Error al importar el archivo '${file.name}':`, err);
-                    showNotification(L.get('ERROR_IMPORTACION', 'Error de Importación'), `${L.get('ERROR_IMPORTAR_ARCHIVO', "No se pudo importar el archivo")}: '${file.name}'.`);
+                    showNotification(L.get('ERROR_IMPORTACION', 'Error de Importacion'), `${L.get('ERROR_IMPORTAR_ARCHIVO', "No se pudo importar el archivo")}: '${file.name}'.`);
                 }
             }
         }
 
         if (filesImported > 0) {
-            console.log(`${filesImported} archivo(s) importados con éxito a la carpeta de Assets.`);
+            console.log(`${filesImported} archivo(s) importados con exito a la carpeta de Assets.`);
             await updateAssetBrowserCallback();
         }
         if (librariesImported > 0) {
-            console.log(`${librariesImported} librería(s) importada(s) con éxito a la carpeta /lib.`);
+            console.log(`${librariesImported} libreria(s) importada(s) con exito a la carpeta /lib.`);
             if (refreshLibraryListCallback) {
                 refreshLibraryListCallback();
             }

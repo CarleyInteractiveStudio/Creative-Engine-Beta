@@ -45,7 +45,7 @@ export function update() {
     // Editor State
     const selectedMateria = getSelectedMateria();
     const selectedMateriaName = selectedMateria ? `${selectedMateria.name} (ID: ${selectedMateria.id})` : 'Ninguna';
-    const gameRunningStatus = getIsGameRunning() ? 'Sí' : 'No';
+    const gameRunningStatus = getIsGameRunning() ? 'Si' : 'No';
     const activeTool = getActiveTool();
     const deltaTime = getDeltaTime();
 
@@ -80,15 +80,15 @@ export function update() {
     dom.debugContent.innerHTML = `
         <div class="debug-section">
             <h4>Estado del Editor</h4>
-            <pre>Herramienta Activa: ${activeTool}\nSelección: ${selectedMateriaName}\nJuego Corriendo: ${gameRunningStatus}</pre>
+            <pre>Herramienta Activa: ${activeTool}\nSeleccion: ${selectedMateriaName}\nJuego Corriendo: ${gameRunningStatus}</pre>
         </div>
         <div class="debug-section">
             <h4>Rendimiento</h4>
             <pre>FPS: ${fps}\nDeltaTime: ${dtMs} ms\nRAM: <span>${ramInfo}</span>\n<div class="ram-bar-container"><div class="ram-bar-fill" style="width: ${usagePercent}%; ${ramStyle}"></div></div></pre>
         </div>
         <div class="debug-section">
-            <h4>Estadísticas de Escena</h4>
-            <pre>Materias Totales: ${totalMaterias}\nMaterias Raíz: ${rootMaterias}</pre>
+            <h4>Estadisticas de Escena</h4>
+            <pre>Materias Totales: ${totalMaterias}\nMaterias Raiz: ${rootMaterias}</pre>
         </div>
         <div class="debug-section">
             <button id="btn-debug-optimize" style="width: 100%; padding: 5px; cursor: pointer; background: #333; color: white; border: 1px solid #555; border-radius: 4px;">Optimizar Memoria</button>

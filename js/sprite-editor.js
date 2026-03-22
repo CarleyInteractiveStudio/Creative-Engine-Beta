@@ -18,7 +18,7 @@ class SpriteEditor {
     }
 
     initUI() {
-        // Lógica para mostrar/ocultar el panel desde el menú principal
+        // Logica para mostrar/ocultar el panel desde el menu principal
         const menuButton = document.getElementById('menu-window-sprite-editor');
         if (menuButton) {
             menuButton.addEventListener('click', () => this.panel.classList.remove('hidden'));
@@ -29,7 +29,7 @@ class SpriteEditor {
             closeButton.addEventListener('click', () => this.panel.classList.add('hidden'));
         }
 
-        // Lógica para los botones de la barra de herramientas
+        // Logica para los botones de la barra de herramientas
         document.getElementById('sprite-editor-select-image-btn').addEventListener('click', () => this.loadImage());
         document.getElementById('sprite-editor-save-btn').addEventListener('click', () => this.saveSpriteSheet());
         document.getElementById('sprite-editor-delete-slice-btn').addEventListener('click', () => this.deleteSelectedSprite());
@@ -46,7 +46,7 @@ class SpriteEditor {
     deleteSelectedSprite() {
         if (!this.selectedSpriteName || !this.activeSpriteSheet) return;
 
-        if (confirm(`¿Estás seguro de que quieres eliminar el sprite "${this.selectedSpriteName}"?`)) {
+        if (confirm(`Estas seguro de que quieres eliminar el sprite "${this.selectedSpriteName}"?`)) {
             this.activeSpriteSheet.removeSprite(this.selectedSpriteName);
             this.selectedSpriteName = null;
             this.propertiesView.classList.add('hidden');
@@ -227,7 +227,7 @@ class SpriteEditor {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.drawImage(this.loadedImage, 0, 0);
 
-        // Dibujar los rectángulos de los sprites
+        // Dibujar los rectangulos de los sprites
         if (this.activeSpriteSheet) {
             for (const spriteName in this.activeSpriteSheet.sprites) {
                 const sprite = this.activeSpriteSheet.getSprite(spriteName);
@@ -276,9 +276,9 @@ class SpriteEditor {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
-        alert(`Se han guardado los datos de los sprites. Asegúrate de colocar el archivo "${metaFileName}" en el mismo directorio que tu imagen.`);
+        alert(`Se han guardado los datos de los sprites. Asegurate de colocar el archivo "${metaFileName}" en el mismo directorio que tu imagen.`);
     }
 }
 
-// Se instancia en editor.js cuando el DOM esté listo
+// Se instancia en editor.js cuando el DOM este listo
 export { SpriteEditor };
