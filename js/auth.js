@@ -21,9 +21,8 @@ document.addEventListener('DOMContentLoaded', () => {
     return; // Stop execution of this script
   }
   // --- Initialize Supabase Client ---
-  const { createClient } = window.supabase;
-  const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  console.log('Supabase client initialized successfully.');
+  const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  console.log("Supabase client initialized successfully.");
 
   // --- Create Global Auth Object ---
   // This is now safely created after _supabase is guaranteed to be initialized.
