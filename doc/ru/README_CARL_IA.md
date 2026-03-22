@@ -35,3 +35,10 @@ Inside the Code Editor, the **CHC (Code Helper)** allows you to describe logic i
 - It automatically adds `ve motor;`.
 - It handles complex Spanish/Multilingual keywords for you.
 - It uses the latest engine standards (prefix-less component access).
+- Теперь он также понимает команды геймпада, такие как `mandoBotonPresionado`.
+
+## 🔍 Улучшенное обнаружение ошибок
+Карл и движок теперь работают вместе, чтобы помочь вам программировать:
+- **Подсветка в реальном времени:** Редактор обнаруживает ошибки по мере ввода.
+- **Авторемонт:** Карл может анализировать ошибки выполнения и предлагать автоматические исправления одним кликом.
+- **Умная консоль:** Ошибки категоризированы и позволяют напрямую переходить к коду.

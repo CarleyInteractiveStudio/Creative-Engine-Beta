@@ -17,6 +17,7 @@ Creative Engine es un motor de videojuegos 2D profesional y ligero, diseñado pa
 ### 📜 Scripting Potente (CES)
 - **Lenguaje CES:** Una capa simplificada sobre JavaScript que elimina la burocracia (`this.`, `mtr.`).
 - **Bilingüe por Diseño:** Programa usando términos en tu idioma o en inglés de forma intercambiable.
+- **Gamepad API:** Soporte nativo para mandos con funciones sencillas como `mandoBotonPresionado`.
 - **Inspector Vivo:** Variables públicas que se ajustan en tiempo real sin reiniciar el juego.
 
 ### 🤖 Inteligencia Artificial (Carl IA)

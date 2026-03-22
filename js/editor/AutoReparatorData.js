@@ -24,6 +24,10 @@ export const examples = [
         title: "Seguir a un objetivo",
         code: `ve motor;\npublico mtr objetivo;\npublico numero suavidad = 0.1;\nalActualizar(delta) {\n    si (objetivo) {\n        posicion.x += (objetivo.posicion.x - posicion.x) * suavidad;\n        posicion.y += (objetivo.posicion.y - posicion.y) * suavidad;\n    }\n}`
     },
+    {
+        title: "Movimiento con Mando (Gamepad)",
+        code: \`ve motor;\npublico numero velocidad = 300;\nalActualizar(delta) {\n    variable x = mandoEje("IzquierdaX");\n    variable y = mandoEje("IzquierdaY");\n    posicion.x += x * velocidad * delta;\n    posicion.y += y * velocidad * delta;\n    si (mandoBotonRecienPresionado("A")) {\n        imprimir("¡Salto con mando!");\n    }\n}\`
+    },
     // Adding more systematically to reach 100...
 ];
 

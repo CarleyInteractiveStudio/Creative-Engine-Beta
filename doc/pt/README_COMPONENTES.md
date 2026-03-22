@@ -39,3 +39,17 @@ Controle arcade para carros (vista superior).
 ### 💡 Iluminação 2D
 - **PointLight2D:** Luz em todas as direções.
 - **SpotLight2D:** Luz focal (cone).
+
+---
+
+## 📱 8. Componentes de UI
+
+### 🔘 Button (Botão)
+Deteta cliques do utilizador e navegação por comando.
+- **Navegação**: Os botões suportam automaticamente navegação por comando (D-pad/Sticks) e podem ser pressionados com o botão "A" ou "Cross".
+- **Scripting**:
+  ```ces
+  alHacerClick() {
+      imprimir("Botão pressionado!");
+  }
+  ```

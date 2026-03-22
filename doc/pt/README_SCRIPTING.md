@@ -107,6 +107,13 @@ O motor abstrai a complexidade dos eventos de hardware numa API de consulta dire
 - `botonMouseRecienPresionado(0)`: 0 é esquerdo, 1 central, 2 direito.
 - `obtenerPosicionMouse()`: Devolve um objeto `{x, y}` em coordenadas do mundo.
 
+### 🎮 Comandos (Gamepads)
+O motor suporta múltiplos comandos de PC e telemóveis:
+- `mandoBotonPresionado("A")`: Deteta se o botão está premido. Suporta nomes como "A", "B", "X", "Y", "LB", "RB", "Start", "Select".
+- `mandoBotonRecienPresionado("Cross")`: Útil para saltos ou ações únicas.
+- `mandoEje("IzquierdaX")`: Devolve um valor de -1 a 1 para os sticks analógicos.
+- `getConnectedGamepadCount()`: Quantidade de comandos conectados.
+
 ---
 
 ## 📦 Capítulo 6: A Grande Referência de Componentes (API)
@@ -234,7 +241,22 @@ Este processo garante que escreves código fácil mas executas código profissio
 
 ---
 
-## ❓ Capítulo 12: Solução de Problemas (FAQ)
+## 🛠️ Capítulo 12: Consola Inteligente e Auto-Reparação
+
+Creative Engine inclui ferramentas avançadas para que nunca fiques bloqueado:
+
+### 🧠 Consola Inteligente
+A consola não só te diz o que falhou, mas **onde** e **como** resolvê-lo:
+- **Deteção em Tempo Real**: O editor destaca erros de sintaxe enquanto escreves com uma barra vermelha lateral.
+- **Categorização Clara**: Os erros dividem-se em **Sintaxe** (amarelo) e **Execução** (vermelho).
+- **Tradução de Erros**: Converte erros técnicos em explicações claras em espanhol/português.
+- **Botão "Ir para a linha"**: Abre o editor e destaca a linha exata do erro com um foco de alta visibilidade.
+- **Botão "Auto Reparar"**: Analisa o teu código e propõe uma solução baseada em padrões corretos.
+
+### 📜 Histórico e Backups
+Apagaste algo importante? No Editor de Código, clica em **"Histórico"** para ver e restaurar as últimas 10 versões do teu script.
+
+### ❓ Solução de Problemas (FAQ)
 
 **P: O meu objeto atravessa as paredes.**
 R: Certifica-te de usar `actualizarFijo` para o movimento físico e de que o `Rigidbody2D` está em modo "Continuous" se o objeto for muito rápido.

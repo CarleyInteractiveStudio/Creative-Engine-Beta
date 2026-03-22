@@ -50,3 +50,11 @@ Master these shortcuts to work significantly faster in the Creative Engine.
 - **Play:** Starts the game from the current scene.
 - **Pause:** Freezes execution but keeps state.
 - **Stop:** Returns to the editor and restores the previous scene state.
+
+---
+
+## 🎮 6. Gamepad Navigation (In-Game)
+
+- **D-Pad / Sticks:** Navigate through the game interface (buttons, sliders).
+- **A Button / Cross:** Select / Click on the focused element.
+- **B Button / Circle:** Back action (if implemented by script).

@@ -434,7 +434,7 @@ REGLAS TÉCNICAS (Sintaxis CES):
 4. ACCESO DIRECTO (¡IMPORTANTE! No uses 'this.', 'entrada.' ni 'motor.'):
    - nombre, tag, posicion, fisica, renderizadorDeSprite, controladorAnimacion, fuenteDeAudio, camara, rejilla, lienzo.
    - Atajos: reproducir.Estado(), voltearH, voltearV.
-   - Entrada: teclaPresionada("W"), teclaRecienPresionada("Space"), botonMousePresionado(0), obtenerPosicionMouse().
+   - Entrada: teclaPresionada("W"), mandoBotonPresionado("A"), mandoEje("IzquierdaX"), botonMousePresionado(0), obtenerPosicionMouse().
 5. EVENTOS: 'alEmpezar()', 'alActualizar(delta)', 'actualizarFijo(delta)', 'alEntrarEnColision(otro)', 'alRecibir(mensaje, datos)', 'alHacerClick()'.
 6. TIEMPO Y FLUJO:
    - 'esperar(segundos)' (usa await internamente, pero el usuario escribe esperar(1)).

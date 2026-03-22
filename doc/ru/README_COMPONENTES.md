@@ -47,3 +47,17 @@ Makes the object react to gravity and forces.
 Defines the physical shape for collisions.
 - **Is Trigger:** If true, objects pass through but trigger events.
 - **Friction:** Surface grip.
+
+---
+
+## 📱 8. Компоненты UI
+
+### 🔘 Button (Кнопка)
+Обнаруживает клики пользователя и навигацию с геймпада.
+- **Навигация**: Кнопки автоматически поддерживают навигацию с геймпада (D-pad/стики) и могут быть нажаты кнопкой «A» или «Cross».
+- **Скриптинг**:
+  ```ces
+  alHacerClick() {
+      imprimir("Кнопка нажата!");
+  }
+  ```

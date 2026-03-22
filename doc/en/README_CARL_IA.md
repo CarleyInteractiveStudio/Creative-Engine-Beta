@@ -31,4 +31,10 @@ Carl can execute:
 ---
 
 ## 🛠️ Code Assistance (CHC)
-In the Code Editor, use **CHC (Code Helper)**. Write in human language, and Carl will instantly translate it into valid `.ces` code.
+In the Code Editor, use **CHC (Code Helper)**. Write in human language, and Carl will instantly translate it into valid `.ces` code. He now understands gamepad commands too.
+
+## 🔍 Enhanced Error Detection
+Carl and the engine now work together to help you code:
+- **Real-Time Highlighting:** The editor detects errors as you type.
+- **Auto Repair:** Carl can analyze runtime errors and suggest automatic fixes with one click.
+- **Smart Console:** Errors are categorized and allow direct navigation to the code.

@@ -50,3 +50,11 @@ Master these shortcuts to work significantly faster in the Creative Engine.
 - **Play:** Starts the game from the current scene.
 - **Pause:** Freezes execution but keeps state.
 - **Stop:** Returns to the editor and restores the previous scene state.
+
+---
+
+## 🎮 6. Навигация с геймпада (в игре)
+
+- **D-Pad / Стики**: Навигация по игровому интерфейсу (кнопки, слайдеры).
+- **Кнопка A / Cross**: Выбор / Нажатие на выделенный элемент.
+- **Кнопка B / Circle**: Действие «Назад» (если реализовано скриптом).

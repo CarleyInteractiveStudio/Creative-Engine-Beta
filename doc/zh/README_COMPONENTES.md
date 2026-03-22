@@ -47,3 +47,17 @@ Makes the object react to gravity and forces.
 Defines the physical shape for collisions.
 - **Is Trigger:** If true, objects pass through but trigger events.
 - **Friction:** Surface grip.
+
+---
+
+## 📱 8. UI 组件
+
+### 🔘 Button (按钮)
+检测用户点击和手柄导航。
+- **导航**：按钮自动支持手柄导航（D-pad/摇杆），并可以通过“A”或“Cross”按钮按下。
+- **脚本编写**：
+  ```ces
+  alHacerClick() {
+      imprimir("按钮被按下！");
+  }
+  ```

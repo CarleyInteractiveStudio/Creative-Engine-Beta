@@ -112,6 +112,13 @@ The engine abstracts the complexity of hardware events into a direct query API (
 - `isMouseButtonJustPressed(0)`: 0 is left, 1 central, 2 right.
 - `getMousePosition()`: Returns an `{x, y}` object in world coordinates.
 
+### 🎮 Gamepads
+The engine supports multiple gamepads for PC and mobile:
+- `getGamepadButton("A")`: Detects if the button is held down. Supports names like "A", "B", "X", "Y", "LB", "RB", "Start", "Select".
+- `getGamepadButtonDown("Cross")`: Useful for jumps or single actions.
+- `getGamepadAxis("LeftX")`: Returns a value from -1 to 1 for analog sticks.
+- `getConnectedGamepadCount()`: Number of connected gamepads.
+
 ---
 
 ## 📦 Chapter 6: The Great Component Reference (API)
@@ -251,8 +258,10 @@ Creative Engine includes advanced tools to ensure you never get stuck:
 
 ### 🧠 Smart Console
 The console doesn't just tell you what failed, but **where** and **how** to fix it:
-- **Error Translation**: Technical errors are converted into clear explanations.
-- **"Go to Line" Button**: Opens the editor and highlights the exact line of the failure.
+- **Real-Time Detection**: The editor highlights syntax errors as you type with a red lateral bar.
+- **Clear Categorization**: Errors are divided into **Syntax** (yellow) and **Execution** (red).
+- **Error Translation**: Technical errors are converted into clear, user-friendly explanations.
+- **"Go to Line" Button**: Opens the editor and highlights the exact line of the failure with a high-visibility focus.
 - **"Auto Repair" Button**: Analyzes your code and proposes a solution based on thousands of correct patterns.
 
 ### 📜 History and Backups

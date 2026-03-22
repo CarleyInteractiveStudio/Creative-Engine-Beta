@@ -114,6 +114,13 @@ El motor abstrae la complejidad de los eventos de hardware en una API de consult
 - `botonMouseRecienPresionado(0)`: 0 es izquierdo, 1 central, 2 derecho.
 - `obtenerPosicionMouse()`: Devuelve un objeto `{x, y}` en coordenadas del mundo.
 
+### 🎮 Mandos (Gamepads)
+El motor soporta múltiples mandos de PC y móviles:
+- `mandoBotonPresionado("A")`: Detecta si el botón está hundido. Soporta nombres como "A", "B", "X", "Y", "LB", "RB", "Start", "Select".
+- `mandoBotonRecienPresionado("Cross")`: Útil para saltos o acciones únicas.
+- `mandoEje("IzquierdaX")`: Devuelve un valor de -1 a 1 para los sticks analógicos.
+- `getConnectedGamepadCount()`: Cantidad de mandos conectados.
+
 ---
 
 ## 📦 Capítulo 6: La Gran Referencia de Componentes (API)
@@ -253,8 +260,10 @@ Creative Engine incluye herramientas avanzadas para que nunca te quedes atascado
 
 ### 🧠 Consola Inteligente
 La consola no solo te dice qué falló, sino **dónde** y **cómo** arreglarlo:
+- **Detección en Tiempo Real**: El editor resalta errores de sintaxis mientras escribes con una barra roja lateral.
+- **Categorización Clara**: Los errores se dividen en **Sintaxis** (amarillo) y **Ejecución** (rojo).
 - **Traducción de Errores**: Convierte errores técnicos en explicaciones claras en español.
-- **Botón "Ir a la línea"**: Abre el editor y resalta la línea exacta del fallo.
+- **Botón "Ir a la línea"**: Abre el editor y resalta la línea exacta del fallo con un foco de alta visibilidad.
 - **Botón "Auto Reparar"**: Analiza tu código y propone una solución basada en miles de patrones correctos.
 
 ### 📜 Historial y Backups
