@@ -354,6 +354,36 @@ export class CreativeScriptBehavior {
     get fisica() { return this.obtenerComponente('Rigidbody2D') || this._missingComponentProxy('fisica', 'Rigidbody2D'); }
     get rigidbody2D() { return this.fisica; }
 
+    // --- Rigidbody2D Property Shortcuts ---
+    get velocidad() { return this.fisica.velocity; }
+    set velocidad(v) { this.fisica.velocity = v; }
+    get velocity() { return this.fisica.velocity; }
+    set velocity(v) { this.fisica.velocity = v; }
+    get velocidadX() { return this.fisica.velocity.x; }
+    set velocidadX(v) { this.fisica.velocity.x = v; }
+    get velocidadY() { return this.fisica.velocity.y; }
+    set velocidadY(v) { this.fisica.velocity.y = v; }
+    get velocityX() { return this.fisica.velocity.x; }
+    set velocityX(v) { this.fisica.velocity.x = v; }
+    get velocityY() { return this.fisica.velocity.y; }
+    set velocityY(v) { this.fisica.velocity.y = v; }
+    get velocidadAngular() { return this.fisica.angularVelocity; }
+    set velocidadAngular(v) { this.fisica.angularVelocity = v; }
+    get angularVelocity() { return this.fisica.angularVelocity; }
+    set angularVelocity(v) { this.fisica.angularVelocity = v; }
+    get masa() { return this.fisica.mass; }
+    set masa(v) { this.fisica.mass = v; }
+    get mass() { return this.fisica.mass; }
+    set mass(v) { this.fisica.mass = v; }
+    get escalaGravedad() { return this.fisica.gravityScale; }
+    set escalaGravedad(v) { this.fisica.gravityScale = v; }
+    get gravityScale() { return this.fisica.gravityScale; }
+    set gravityScale(v) { this.fisica.gravityScale = v; }
+    get arrastreAngular() { return this.fisica.angularDrag; }
+    set arrastreAngular(v) { this.fisica.angularDrag = v; }
+    get angularDrag() { return this.fisica.angularDrag; }
+    set angularDrag(v) { this.fisica.angularDrag = v; }
+
     get vida() { return this.obtenerComponente('Health') || this._missingComponentProxy('vida', 'Health'); }
     get salud() { return this.vida; }
     get health() { return this.vida; }

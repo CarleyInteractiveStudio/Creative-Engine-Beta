@@ -4,7 +4,7 @@ import { EditorView, basicSetup } from "https://esm.sh/codemirror@6.0.1";
 import { javascript } from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
 import { oneDark } from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
 import { undo, redo, indentWithTab } from "https://esm.sh/@codemirror/commands@6.3.3";
-import { autocompletion, acceptCompletion } from "https://esm.sh/@codemirror/autocomplete@6.16.0";
+import { autocompletion, acceptCompletion, completionKeymap } from "https://esm.sh/@codemirror/autocomplete@6.16.0";
 import { keymap, Decoration } from "https://esm.sh/@codemirror/view@6.26.3";
 import { StateField, StateEffect } from "https://esm.sh/@codemirror/state@6.4.1";
 import { transpile } from './CES_Transpiler.js';
@@ -190,26 +190,27 @@ let lintTimeout = null;
 function scheduleLint(view) {
     if (lintTimeout) clearTimeout(lintTimeout);
     lintTimeout = setTimeout(() => {
-        if (!currentlyOpenFileHandle) return;
+        if (!currentlyOpenFileHandle || !view || !view.state) return;
+
         const code = view.state.doc.toString();
         const result = transpile(code, currentlyOpenFileHandle.name);
 
-        view.dispatch({ effects: clearErrorHighlights.of() });
+        const effects = [clearErrorHighlights.of()];
 
         if (result.errors && result.errors.length > 0) {
-            const effects = result.errors.map(err => {
+            result.errors.forEach(err => {
                 if (err.line) {
                     try {
                         const line = view.state.doc.line(Math.min(err.line, view.state.doc.lines));
-                        return addErrorHighlight.of({ from: line.from, to: line.to });
+                        effects.push(addErrorHighlight.of({ from: line.from, to: line.to }));
                     } catch(e) {}
                 }
-                return null;
-            }).filter(e => e !== null);
+            });
+        }
 
-            if (effects.length > 0) {
-                view.dispatch({ effects });
-            }
+        // Dispatch all changes in a single transaction for efficiency and to avoid focus loops
+        if (view && view.dispatch) {
+            view.dispatch({ effects });
         }
     }, 1000);
 }
@@ -253,7 +254,8 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
                     }),
                     keymap.of([
                         { key: "Tab", run: acceptCompletion },
-                        indentWithTab
+                        indentWithTab,
+                        ...completionKeymap
                     ])
                 ],
                 parent: dom.codemirrorContainer

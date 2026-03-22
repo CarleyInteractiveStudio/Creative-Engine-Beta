@@ -253,7 +253,9 @@ const componentShortcuts = [
     'mandoBotonPresionado', 'mandoBotonRecienPresionado', 'mandoBotonLiberado', 'mandoEje',
     'isGamepadConnected', 'getConnectedGamepadCount',
     'rotacion', 'rotation', 'escala', 'scale', 'rotar', 'rotate', 'mover', 'move', 'escalar',
-    'velocidadX', 'velocidadY', 'velocityX', 'velocityY', 'alChocar', 'alClicar', 'alPulsar'
+    'velocidadX', 'velocidadY', 'velocityX', 'velocityY', 'velocidadAngular', 'angularVelocity',
+    'masa', 'mass', 'escalaGravedad', 'gravityScale', 'arrastreAngular', 'angularDrag',
+    'alChocar', 'alClicar', 'alPulsar'
 ];
 
 function getDefaultValueForType(canonicalType) {
