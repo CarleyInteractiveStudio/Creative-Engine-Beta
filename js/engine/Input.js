@@ -9,6 +9,9 @@ class InputManager {
     static _keysDown = new Set();
     static _keysUp = new Set();
 
+    static _gamepads = [];
+    static _gamepadStates = new Map(); // index -> state object
+
     static _mouseButtons = new Map();
     static _buttonsDown = new Set();
     static _buttonsUp = new Set();
@@ -77,6 +80,8 @@ class InputManager {
         this._mouseDelta.y = 0;
         this._mouseWheelDelta.x = 0;
         this._mouseWheelDelta.y = 0;
+
+        this._pollGamepads();
 
         // Use the currently active canvas (scene or game) to compute canvas-relative positions
         if (this._activeCanvas) {
@@ -316,6 +321,133 @@ class InputManager {
             }
         }
         return pressed;
+    }
+
+    // --- Gamepad Methods ---
+
+    static _pollGamepads() {
+        const gps = navigator.getGamepads ? navigator.getGamepads() : [];
+        this._gamepads = gps;
+
+        for (let i = 0; i < gps.length; i++) {
+            const gp = gps[i];
+            if (!gp) continue;
+
+            let state = this._gamepadStates.get(i);
+            if (!state) {
+                state = {
+                    buttons: new Array(gp.buttons.length).fill(false),
+                    buttonsDown: new Set(),
+                    buttonsUp: new Set(),
+                    axes: new Array(gp.axes.length).fill(0)
+                };
+                this._gamepadStates.set(i, state);
+            }
+
+            state.buttonsDown.clear();
+            state.buttonsUp.clear();
+
+            for (let b = 0; b < gp.buttons.length; b++) {
+                const pressed = gp.buttons[b].pressed;
+                if (pressed && !state.buttons[b]) {
+                    state.buttonsDown.add(b);
+                } else if (!pressed && state.buttons[b]) {
+                    state.buttonsUp.add(b);
+                }
+                state.buttons[b] = pressed;
+            }
+
+            for (let a = 0; a < gp.axes.length; a++) {
+                // Apply small deadzone
+                let val = gp.axes[a];
+                if (Math.abs(val) < 0.1) val = 0;
+                state.axes[a] = val;
+            }
+        }
+    }
+
+    static _getGamepadButtonIndex(name) {
+        const map = {
+            'a': 0, 'cross': 0,
+            'b': 1, 'circle': 1,
+            'x': 2, 'square': 2,
+            'y': 3, 'triangle': 3,
+            'lb': 4, 'l1': 4,
+            'rb': 5, 'r1': 5,
+            'lt': 6, 'l2': 6,
+            'rt': 7, 'r2': 7,
+            'back': 8, 'select': 8, 'share': 8,
+            'start': 9, 'options': 9,
+            'lsb': 10, 'l3': 10,
+            'rsb': 11, 'r3': 11,
+            'up': 12, 'arriba': 12,
+            'down': 13, 'abajo': 13,
+            'left': 14, 'izquierda': 14,
+            'right': 15, 'derecha': 15,
+            'home': 16, 'guide': 16
+        };
+        return map[name.toLowerCase()];
+    }
+
+    /**
+     * Checks if a gamepad button is currently pressed.
+     */
+    static getGamepadButton(button, gamepadIndex = 0) {
+        const state = this._gamepadStates.get(gamepadIndex);
+        if (!state) return false;
+
+        const index = typeof button === 'string' ? this._getGamepadButtonIndex(button) : button;
+        return !!state.buttons[index];
+    }
+
+    static getGamepadButtonDown(button, gamepadIndex = 0) {
+        const state = this._gamepadStates.get(gamepadIndex);
+        if (!state) return false;
+
+        const index = typeof button === 'string' ? this._getGamepadButtonIndex(button) : button;
+        return state.buttonsDown.has(index);
+    }
+
+    static getGamepadButtonUp(button, gamepadIndex = 0) {
+        const state = this._gamepadStates.get(gamepadIndex);
+        if (!state) return false;
+
+        const index = typeof button === 'string' ? this._getGamepadButtonIndex(button) : button;
+        return state.buttonsUp.has(index);
+    }
+
+    /**
+     * Gets the value of a gamepad axis (-1 to 1).
+     */
+    static getGamepadAxis(axis, gamepadIndex = 0) {
+        const state = this._gamepadStates.get(gamepadIndex);
+        if (!state) return 0;
+
+        let index = axis;
+        if (typeof axis === 'string') {
+            const map = {
+                'leftx': 0, 'izquierdax': 0,
+                'lefty': 1, 'izquierday': 1,
+                'rightx': 2, 'derechax': 2,
+                'righty': 3, 'derechay': 3
+            };
+            index = map[axis.toLowerCase()];
+        }
+        return state.axes[index] || 0;
+    }
+
+    // Spanish Aliases
+    static mandoBotonPresionado(boton, mando = 0) { return this.getGamepadButton(boton, mando); }
+    static mandoBotonRecienPresionado(boton, mando = 0) { return this.getGamepadButtonDown(boton, mando); }
+    static mandoBotonLiberado(boton, mando = 0) { return this.getGamepadButtonUp(boton, mando); }
+    static mandoEje(eje, mando = 0) { return this.getGamepadAxis(eje, mando); }
+
+    static isGamepadConnected(index = 0) {
+        return !!this._gamepads[index];
+    }
+
+    static getConnectedGamepadCount() {
+        return this._gamepads.filter(gp => !!gp).length;
     }
 
     // --- Pointer (Mouse + Touch) Methods ---

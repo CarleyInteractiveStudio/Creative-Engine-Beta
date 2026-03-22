@@ -5046,3 +5046,37 @@ body.game-mode #loading-overlay {
     font-size: 10px;
     opacity: 0.6;
 }
+
+/* --- Console Error Categorization --- */
+.msg-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.msg-category {
+    font-size: 0.75em;
+    font-weight: 800;
+    letter-spacing: 1px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: white;
+}
+
+.cat-syntax .msg-category {
+    background-color: #f3ca58;
+    color: #000;
+}
+
+.cat-runtime .msg-category {
+    background-color: #ff4444;
+}
+
+.structured-error .msg-text {
+    font-size: 1.1em;
+    margin-bottom: 5px;
+    display: block;
+}

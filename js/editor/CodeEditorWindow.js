@@ -17,14 +17,19 @@ let dom;
 let codeEditor = null;
 
 const addErrorHighlight = StateEffect.define();
+const clearErrorHighlights = StateEffect.define();
 const errorHighlightField = StateField.define({
     create() { return Decoration.none },
     update(underlines, tr) {
         underlines = underlines.map(tr.changes);
-        for (let e of tr.effects) if (e.is(addErrorHighlight)) {
-            underlines = underlines.update({
-                add: [errorHighlightMark.range(e.value.from, e.value.to)]
-            });
+        for (let e of tr.effects) {
+            if (e.is(addErrorHighlight)) {
+                underlines = underlines.update({
+                    add: [errorHighlightMark.range(e.value.from, e.value.to)]
+                });
+            } else if (e.is(clearErrorHighlights)) {
+                underlines = Decoration.none;
+            }
         }
         return underlines;
     },
@@ -32,7 +37,7 @@ const errorHighlightField = StateField.define({
 });
 
 const errorHighlightMark = Decoration.line({
-    attributes: { style: "background-color: rgba(255, 0, 0, 0.2); border-left: 3px solid red;" }
+    attributes: { style: "background-color: rgba(255, 0, 0, 0.15); border-left: 5px solid #ff4444; box-shadow: inset 10px 0 10px -10px rgba(255,0,0,0.5);" }
 });
 let currentlyOpenFileHandle = null;
 let currentlyOpenDirHandle = null;
@@ -181,6 +186,34 @@ function cesCompletions(context) {
     };
 }
 
+let lintTimeout = null;
+function scheduleLint(view) {
+    if (lintTimeout) clearTimeout(lintTimeout);
+    lintTimeout = setTimeout(() => {
+        if (!currentlyOpenFileHandle) return;
+        const code = view.state.doc.toString();
+        const result = transpile(code, currentlyOpenFileHandle.name);
+
+        view.dispatch({ effects: clearErrorHighlights.of() });
+
+        if (result.errors && result.errors.length > 0) {
+            const effects = result.errors.map(err => {
+                if (err.line) {
+                    try {
+                        const line = view.state.doc.line(Math.min(err.line, view.state.doc.lines));
+                        return addErrorHighlight.of({ from: line.from, to: line.to });
+                    } catch(e) {}
+                }
+                return null;
+            }).filter(e => e !== null);
+
+            if (effects.length > 0) {
+                view.dispatch({ effects });
+            }
+        }
+    }, 1000);
+}
+
 
 // --- Public API ---
 
@@ -213,6 +246,11 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
                     oneDark,
                     errorHighlightField,
                     autocompletion({ override: [cesCompletions] }),
+                    EditorView.updateListener.of((update) => {
+                        if (update.docChanged) {
+                            scheduleLint(update.view);
+                        }
+                    }),
                     keymap.of([
                         { key: "Tab", run: acceptCompletion },
                         indentWithTab
@@ -677,8 +715,9 @@ export async function openScriptAtLine(fileName, lineNumber) {
         if (codeEditor) {
             const line = codeEditor.state.doc.line(Math.min(lineNumber, codeEditor.state.doc.lines));
             codeEditor.dispatch({
-                selection: { anchor: line.from },
+                selection: { anchor: line.from, head: line.to },
                 effects: [
+                    clearErrorHighlights.of(),
                     EditorView.scrollIntoView(line.from, { y: "center" }),
                     addErrorHighlight.of({ from: line.from, to: line.to })
                 ]

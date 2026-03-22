@@ -201,7 +201,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (structuredError) {
             msgEl.classList.add('structured-error');
             const icon = iconMap[type] || '❌';
-            const title = structuredError.scriptName ? 'Error de Ejecución' : 'Error de Sintaxis';
+            const isRuntime = !!structuredError.scriptName;
+            const title = isRuntime ? 'Error de Ejecución' : 'Error de Sintaxis';
+            const categoryClass = isRuntime ? 'cat-runtime' : 'cat-syntax';
 
             let actionButtons = '';
             // Show action buttons for both syntax (transpile) and runtime errors if filename is known
@@ -209,22 +211,25 @@ document.addEventListener('DOMContentLoaded', () => {
             if (targetFile) {
                 actionButtons = `
                     <div class="msg-actions">
-                        <button class="console-action-btn" onclick="window._CodeEditor.openScriptAtLine('${targetFile}', ${structuredError.line || 1})">Ir a la línea</button>
-                        <button class="console-action-btn special" onclick="window._CodeEditor.runAutoReparator('${targetFile}')">Auto Reparar</button>
+                        <button class="console-action-btn" onclick="window._CodeEditor.openScriptAtLine('${targetFile}', ${structuredError.line || 1})">🔍 Ir a la línea</button>
+                        <button class="console-action-btn special" onclick="window._CodeEditor.runAutoReparator('${targetFile}')">🛠️ Auto Reparar</button>
                     </div>
                 `;
             }
 
             msgEl.innerHTML = `
-                <span class="msg-icon">${icon}</span>
+                <div class="msg-header ${categoryClass}">
+                    <span class="msg-icon">${icon}</span>
+                    <span class="msg-category">${title.toUpperCase()}</span>
+                </div>
                 <div class="msg-body">
-                    <span class="msg-text"><b>${title}:</b> ${fullMessage}</span>
+                    <span class="msg-text">${fullMessage}</span>
                     ${actionButtons}
                 </div>
             `;
 
             msgEl.style.borderLeft = type === 'error' ? "4px solid #ff4444" : "4px solid #f3ca58";
-            msgEl.style.backgroundColor = type === 'error' ? "rgba(255, 68, 68, 0.15)" : "rgba(243, 202, 88, 0.15)";
+            msgEl.style.backgroundColor = "rgba(0, 0, 0, 0.2)";
         } else {
             const icon = iconMap[type] || '>';
             msgEl.innerHTML = `<span class="msg-icon">${icon}</span> <span class="msg-text">${fullMessage}</span>`;
