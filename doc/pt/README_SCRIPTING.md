@@ -107,6 +107,16 @@ O motor abstrai a complexidade dos eventos de hardware numa API de consulta dire
 - `botonMouseRecienPresionado(0)`: 0 é esquerdo, 1 central, 2 direito.
 - `obtenerPosicionMouse()`: Devolve um objeto `{x, y}` em coordenadas do mundo.
 
+### 🎮 Comandos (Gamepad)
+O motor detecta comandos automaticamente. Podes usar até 4 comandos simultâneos.
+- `mandoConectado(indice)`: Devolve `verdadeiro` se houver um comando nessa porta (0-3).
+- `mandoBotonPresionado(boton, indice)`: Verifica se um botão está pressionado.
+- `mandoBotonRecienPresionado(boton, indice)`: Ideal para menus ou saltos.
+- `mandoEje(eje, indice)`: Devolve o valor dos sticks (-1.0 a 1.0).
+
+**Botões comuns:** `"A"`, `"B"`, `"X"`, `"Y"`, `"L1"`, `"R1"`, `"Start"`, `"Select"`.
+**Eixos comuns:** `0` (Stick Esquerdo X), `1` (Stick Esquerdo Y).
+
 ---
 
 ## 📦 Capítulo 6: A Grande Referência de Componentes (API)
@@ -234,7 +244,23 @@ Este processo garante que escreves código fácil mas executas código profissio
 
 ---
 
-## ❓ Capítulo 12: Solução de Problemas (FAQ)
+## 🛠️ Capítulo 12: Consola Inteligente e Auto-Reparação
+
+O Creative Engine inclui ferramentas avançadas para que nunca fiques bloqueado:
+
+### 🧠 Consola Inteligente e Linting
+A consola e o editor trabalham juntos:
+- **Validação em Tempo Real (Linting)**: Enquanto escreves no Editor de Código, o motor realça erros de sintaxe com uma linha vermelha ondulada.
+- **Tradução de Erros**: Converte erros técnicos em explicações claras em português (ex: "Falta o componente Rigidbody2D").
+- **Botão "Ir para a linha"**: Na consola, clica para saltar diretamente para o ficheiro e linha do erro.
+- **Botão "Auto-Reparar"**: Analisa o contexto do teu erro e propõe uma correção automática.
+
+### 📜 Historial e Backups
+Apagaste algo importante? No Editor de Código, clica em **"Historial"** para ver e restaurar as últimas 10 versões guardadas do teu script.
+
+---
+
+## ❓ Capítulo 13: Solução de Problemas (FAQ)
 
 **P: O meu objeto atravessa as paredes.**
 R: Certifica-te de usar `actualizarFijo` para o movimento físico e de que o `Rigidbody2D` está em modo "Continuous" se o objeto for muito rápido.

@@ -10,23 +10,104 @@ let hoveredTriggers = new Set();
 let pressedTriggers = new Set();
 let activeSlider = null;
 let activeScroll = null;
+
+let gamepadFocusedMateria = null;
+let gamepadCooldown = 0;
 let originalSpriteCache = new WeakMap(); // Cache original sprites for sprite swap
 
 export function initialize(scene) {
     activeScene = scene;
     hoveredTriggers.clear();
     pressedTriggers.clear();
+    gamepadFocusedMateria = null;
     RuntimeAPIManager.setUISystem({ checkUIOverlap });
 }
 
 export function update(deltaTime) {
     if (!activeScene) return;
 
+    if (gamepadCooldown > 0) gamepadCooldown -= deltaTime;
+
+    handleGamepadNavigation();
     handleButtonStates();
     handleEventTriggers();
     handleSliders();
     handleScrolls();
     checkForClicks();
+}
+
+function handleGamepadNavigation() {
+    if (!activeScene || Input.getConnectedGamepadCount() === 0) return;
+
+    const moveX = Input.getGamepadAxis('LeftX') || (Input.getGamepadButton('Right') ? 1 : (Input.getGamepadButton('Left') ? -1 : 0));
+    const moveY = Input.getGamepadAxis('LeftY') || (Input.getGamepadButton('Down') ? 1 : (Input.getGamepadButton('Up') ? -1 : 0));
+
+    if (gamepadCooldown <= 0 && (Math.abs(moveX) > 0.5 || Math.abs(moveY) > 0.5)) {
+        navigateWithGamepad(moveX, moveY);
+        gamepadCooldown = 0.2; // Cooldown to prevent rapid jumping
+    }
+
+    if (Input.getGamepadButtonDown('A') || Input.getGamepadButtonDown('Cross')) {
+        if (gamepadFocusedMateria) {
+            const button = gamepadFocusedMateria.getComponent(Components.Button);
+            if (button && button.interactable) {
+                hoveredButton = button; // Temporarily simulate hover for click logic
+                checkForClicks();
+            }
+        }
+    }
+}
+
+function navigateWithGamepad(x, y) {
+    const canvases = activeScene.findAllMateriasWithComponent(Components.Canvas);
+    let allInteractables = [];
+
+    for (const canvasMateria of canvases) {
+        if (!canvasMateria.isActive) continue;
+        const buttons = activeScene.findAllMateriasWithComponent(Components.Button, canvasMateria);
+        const sliders = activeScene.findAllMateriasWithComponent(Components.ProgressBar, canvasMateria);
+        allInteractables.push(...buttons.filter(b => b.isActive && b.getComponent(Components.Button).interactable));
+        allInteractables.push(...sliders.filter(s => s.isActive && s.getComponent(Components.ProgressBar).interactable));
+    }
+
+    if (allInteractables.length === 0) return;
+
+    if (!gamepadFocusedMateria) {
+        gamepadFocusedMateria = allInteractables[0];
+        return;
+    }
+
+    const currentRect = UITransformUtils.getScreenRect(gamepadFocusedMateria, gamepadFocusedMateria.findAncestorWithComponent(Components.Canvas).getComponent(Components.Canvas));
+    const currentCenter = { x: currentRect.x + currentRect.width / 2, y: currentRect.y + currentRect.height / 2 };
+
+    let bestMatch = null;
+    let minScore = Infinity;
+
+    for (const target of allInteractables) {
+        if (target === gamepadFocusedMateria) continue;
+
+        const targetRect = UITransformUtils.getScreenRect(target, target.findAncestorWithComponent(Components.Canvas).getComponent(Components.Canvas));
+        const targetCenter = { x: targetRect.x + targetRect.width / 2, y: targetRect.y + targetRect.height / 2 };
+
+        const dx = targetCenter.x - currentCenter.x;
+        const dy = targetCenter.y - currentCenter.y;
+
+        // Check if the target is in the correct general direction
+        const isCorrectDirection = (Math.abs(x) > Math.abs(y)) ? (Math.sign(dx) === Math.sign(x)) : (Math.sign(dy) === Math.sign(y));
+
+        if (isCorrectDirection) {
+            // Distance score (prefer items in the movement axis)
+            const score = (Math.abs(x) > Math.abs(y)) ? (Math.abs(dx) + Math.abs(dy) * 2) : (Math.abs(dy) + Math.abs(dx) * 2);
+            if (score < minScore) {
+                minScore = score;
+                bestMatch = target;
+            }
+        }
+    }
+
+    if (bestMatch) {
+        gamepadFocusedMateria = bestMatch;
+    }
 }
 
 function handleButtonStates() {
@@ -63,8 +144,10 @@ function handleButtonStates() {
             }
 
             const screenRect = UITransformUtils.getScreenRect(buttonMateria, canvas);
-            const isHovered = mousePos.x >= screenRect.x && mousePos.x <= screenRect.x + screenRect.width &&
+            const isMouseHovered = mousePos.x >= screenRect.x && mousePos.x <= screenRect.x + screenRect.width &&
                             mousePos.y >= screenRect.y && mousePos.y <= screenRect.y + screenRect.height;
+            const isGamepadFocused = gamepadFocusedMateria === buttonMateria;
+            const isHovered = isMouseHovered || isGamepadFocused;
 
             if (isHovered) {
                 currentHoveredButton = button;
@@ -314,8 +397,10 @@ function handleSliders() {
         const canvas = canvasMateria.getComponent(Components.Canvas);
 
         const screenRect = UITransformUtils.getScreenRect(sliderMateria, canvas);
-        const isHovered = mousePos.x >= screenRect.x && mousePos.x <= screenRect.x + screenRect.width &&
+        const isMouseHovered = mousePos.x >= screenRect.x && mousePos.x <= screenRect.x + screenRect.width &&
                         mousePos.y >= screenRect.y && mousePos.y <= screenRect.y + screenRect.height;
+        const isGamepadFocused = gamepadFocusedMateria === sliderMateria;
+        const isHovered = isMouseHovered || isGamepadFocused;
 
         if (isHovered && Input.getMouseButtonDown(0)) {
             activeSlider = sliderMateria;

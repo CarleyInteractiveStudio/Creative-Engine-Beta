@@ -114,6 +114,16 @@ El motor abstrae la complejidad de los eventos de hardware en una API de consult
 - `botonMouseRecienPresionado(0)`: 0 es izquierdo, 1 central, 2 derecho.
 - `obtenerPosicionMouse()`: Devuelve un objeto `{x, y}` en coordenadas del mundo.
 
+### 🎮 Mandos (Gamepad)
+El motor detecta mandos automáticamente. Puedes usar hasta 4 mandos simultáneos.
+- `mandoConectado(indice)`: Devuelve `verdadero` si hay un mando en ese puerto (0-3).
+- `mandoBotonPresionado(boton, indice)`: Verifica si un botón está hundido.
+- `mandoBotonRecienPresionado(boton, indice)`: Ideal para menús o saltos.
+- `mandoEje(eje, indice)`: Devuelve el valor de los sticks (-1.0 a 1.0).
+
+**Botones comunes:** `"A"`, `"B"`, `"X"`, `"Y"`, `"L1"`, `"R1"`, `"Start"`, `"Select"`.
+**Ejes comunes:** `0` (Stick Izquierdo X), `1` (Stick Izquierdo Y).
+
 ---
 
 ## 📦 Capítulo 6: La Gran Referencia de Componentes (API)
@@ -251,11 +261,12 @@ Este proceso asegura que escribas código fácil pero ejecutes código profesion
 
 Creative Engine incluye herramientas avanzadas para que nunca te quedes atascado:
 
-### 🧠 Consola Inteligente
-La consola no solo te dice qué falló, sino **dónde** y **cómo** arreglarlo:
-- **Traducción de Errores**: Convierte errores técnicos en explicaciones claras en español.
-- **Botón "Ir a la línea"**: Abre el editor y resalta la línea exacta del fallo.
-- **Botón "Auto Reparar"**: Analiza tu código y propone una solución basada en miles de patrones correctos.
+### 🧠 Consola Inteligente y Linting
+La consola y el editor trabajan juntos para que nunca te quedes atascado:
+- **Validación en Tiempo Real (Linting)**: Mientras escribes en el Editor de Código, el motor resalta errores de sintaxis con una línea roja ondulada y un icono en el margen. ¡No esperes a darle a Play para saber que te falta un paréntesis!
+- **Traducción de Errores**: Convierte errores crípticos de JavaScript en explicaciones claras en español (ej: "Te falta el componente Rigidbody2D" en lugar de "Cannot read property velocity").
+- **Botón "Ir a la línea"**: En la consola, haz clic para saltar directamente al archivo y línea del error.
+- **Botón "Auto Reparar"**: Analiza el contexto de tu error y propone una corrección automática.
 
 ### 📜 Historial y Backups
 ¿Borraste algo importante? En el Editor de Código, haz clic en **"Historial"** para ver y restaurar las últimas 10 versiones de tu script guardadas en el archivo `.meta`.

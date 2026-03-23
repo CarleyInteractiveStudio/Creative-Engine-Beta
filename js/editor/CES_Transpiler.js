@@ -249,6 +249,8 @@ const componentShortcuts = [
     'agilidadGiro', 'arrastreAire', 'potenciaDespegue', 'autoEstabilizar', 'estabilidad', 'teclaDescenso', 'teclaGiroIzquierda', 'teclaGiroDerecha',
     'teclaBotonFreno', 'frenoEspacio', 'teclaPresionada', 'teclaRecienPresionada', 'teclaLiberada', 'tecla',
     'botonMousePresionado', 'botonMouseRecienPresionado', 'botonMouseLiberado', 'obtenerPosicionMouse',
+    'isGamepadConnected', 'mandoConectado', 'isGamepadButtonPressed', 'mandoBotonPresionado',
+    'isGamepadButtonJustPressed', 'mandoBotonRecienPresionado', 'getGamepadAxis', 'mandoEje',
     'rotacion', 'rotation', 'escala', 'scale', 'rotar', 'rotate', 'mover', 'move', 'escalar',
     'velocidadX', 'velocidadY', 'velocityX', 'velocityY', 'alChocar', 'alClicar', 'alPulsar'
 ];

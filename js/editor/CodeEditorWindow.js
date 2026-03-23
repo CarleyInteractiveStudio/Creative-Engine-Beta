@@ -5,6 +5,7 @@ import { javascript } from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
 import { oneDark } from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
 import { undo, redo, indentWithTab } from "https://esm.sh/@codemirror/commands@6.3.3";
 import { autocompletion, acceptCompletion } from "https://esm.sh/@codemirror/autocomplete@6.16.0";
+import { linter } from "https://esm.sh/@codemirror/lint@6.4.2";
 import { keymap, Decoration } from "https://esm.sh/@codemirror/view@6.26.3";
 import { StateField, StateEffect } from "https://esm.sh/@codemirror/state@6.4.1";
 import { transpile } from './CES_Transpiler.js';
@@ -181,6 +182,43 @@ function cesCompletions(context) {
     };
 }
 
+const cesLinter = linter(view => {
+    const code = view.state.doc.toString();
+    const fileName = currentlyOpenFileHandle ? currentlyOpenFileHandle.name : "temp.ces";
+
+    // Solo linting para archivos .ces
+    if (!fileName.endsWith('.ces')) return [];
+
+    const result = transpile(code, fileName);
+    let diagnostics = [];
+
+    if (result.errors && result.errors.length > 0) {
+        result.errors.forEach(err => {
+            try {
+                const lineNum = Math.max(1, Math.min(err.line || 1, view.state.doc.lines));
+                const line = view.state.doc.line(lineNum);
+
+                diagnostics.push({
+                    from: line.from,
+                    to: line.to,
+                    severity: "error",
+                    message: err.message,
+                    actions: [{
+                        name: "Auto Reparar",
+                        apply(view, from, to) {
+                            runAutoReparator(fileName);
+                        }
+                    }]
+                });
+            } catch (e) {
+                console.warn("Error rendering diagnostic:", e);
+            }
+        });
+    }
+
+    return diagnostics;
+});
+
 
 // --- Public API ---
 
@@ -212,6 +250,7 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
                     javascript(),
                     oneDark,
                     errorHighlightField,
+                    cesLinter,
                     autocompletion({ override: [cesCompletions] }),
                     keymap.of([
                         { key: "Tab", run: acceptCompletion },
