@@ -829,13 +829,13 @@ export function transpile(code, scriptName = 'unnamed.ces') {
 
     publicVars.forEach(pv => {
         let val = pv.value ? transpileBlock(pv.value, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager, customFunctions) : JSON.stringify(pv.defaultValue);
-        val = val.replace(/\bverdadero\b/g, 'true').replace(/\bfalso\b/g, 'false');
+        val = val.replace(/\bverdadero\b/g, 'true').replace(/\bfalso\b/g, 'false').replace(/\bawait\b/g, ''); // Fix: await not allowed in constructor
         jsCode += `            this.${pv.name} = ${val}; // Type: ${pv.type}\n`;
         currentJsLine++;
     });
     privateVars.forEach(pv => {
         let val = pv.value ? transpileBlock(pv.value, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager, customFunctions) : 'null';
-        val = val.replace(/\bverdadero\b/g, 'true').replace(/\bfalso\b/g, 'false');
+        val = val.replace(/\bverdadero\b/g, 'true').replace(/\bfalso\b/g, 'false').replace(/\bawait\b/g, ''); // Fix: await not allowed in constructor
         jsCode += `            this.${pv.name} = ${val};\n`;
         currentJsLine++;
     });

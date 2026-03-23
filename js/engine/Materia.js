@@ -382,7 +382,12 @@ export class Materia {
         newMateria.layer = this.layer;
         newMateria.prefabPath = this.prefabPath;
         newMateria.tag = this.tag;
-        newMateria.flags = JSON.parse(JSON.stringify(this.flags)); // Deep copy
+        try {
+            try { newMateria.flags = JSON.parse(JSON.stringify(this.flags)); } catch (e) { console.warn("[Materia] Error cloning flags:", e); newMateria.flags = {}; } // Deep copy
+        } catch (e) {
+            console.warn(`[Materia] No se pudieron clonar todos los flags para '${this.name}':`, e);
+            newMateria.flags = {};
+        }
 
         // The parent ID is copied directly. The scene clone method will resolve this to an object reference.
         newMateria.parent = this.parent ? (typeof this.parent === 'number' ? this.parent : this.parent.id) : null;

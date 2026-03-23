@@ -17,7 +17,6 @@ import { initialize as initializeAssetBrowser, updateAssetBrowser, getCurrentDir
 import { initialize as initializeUIEditor, openUiAsset, openUiEditor as openUiEditorFromModule, createUiSystemFile } from './editor/ui/UIEditorWindow.js';
 import { initialize as initializeMusicPlayer } from './editor/ui/MusicPlayerWindow.js';
 import { initialize as initializeImportExport } from './editor/ui/PackageImportExportWindow.js';
-import { transpile } from './editor/CES_Transpiler.js';
 import * as SceneView from './editor/SceneView.js';
 import * as MathUtils from './engine/MathUtils.js';
 import { setActiveTool, getActiveTool } from './editor/SceneView.js';
@@ -98,6 +97,15 @@ document.addEventListener('DOMContentLoaded', () => {
             window.dispatchEvent(new CustomEvent('CE_EXTERNAL_RUNNER_READY'));
         }
     });
+
+    // --- Global Error Catching ---
+    window.onerror = function(message, source, lineno, colno, error) {
+        console.error(`[Global] ${message} en ${source}:${lineno}`, error);
+        return false;
+    };
+    window.onunhandledrejection = function(event) {
+        console.error(`[Unhandled Promise] ${event.reason}`);
+    };
 
     // --- Console State & Utilities ---
     const originalLog = console.log, originalWarn = console.warn, originalError = console.error;
@@ -1971,6 +1979,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Calculate deltaTime
             if (lastFrameTime > 0) {
                 deltaTime = (timestamp - lastFrameTime) / 1000;
+                if (isNaN(deltaTime) || deltaTime < 0) deltaTime = 1/60;
+                // Protection against bad timestamp values
                 // Clamp deltaTime to 0.1s to avoid the "spiral of death" and massive physics jumps
                 deltaTime = Math.min(deltaTime, 0.1);
             }
@@ -4285,8 +4295,9 @@ public start() {
                 });
             }
 
-
-            originalStartGame = startGame;
+            if (typeof originalStartGame === 'undefined') {
+                originalStartGame = startGame;
+            }
             startGame = runChecksAndPlay;
 
             updateLoadingProgress(100, "Listo!");

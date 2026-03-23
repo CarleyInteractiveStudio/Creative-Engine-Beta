@@ -1905,7 +1905,9 @@ export class Animator extends Leyes {
         const frameDuration = 1 / speed;
 
         let frameChanged = false;
-        while (this.frameTimer >= frameDuration) {
+        let loopCount = 0;
+        while (this.frameTimer >= frameDuration && loopCount < 10) {
+            loopCount++;
             this.frameTimer -= frameDuration;
             this.currentFrame++;
             frameChanged = true;
@@ -5346,7 +5348,9 @@ export class ParticleSystem extends Leyes {
         this._emissionAccumulator += deltaTime;
         const interval = 1 / Math.max(0.1, this.emissionRate);
 
-        while (this._emissionAccumulator >= interval) {
+        let loopCount = 0;
+        while (this._emissionAccumulator >= interval && loopCount < 10) {
+            loopCount++;
             this.emit();
             this._emissionAccumulator -= interval;
         }
