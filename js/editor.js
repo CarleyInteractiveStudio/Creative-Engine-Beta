@@ -42,8 +42,16 @@ import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
 import * as CarlAgent from './editor/CarlAgent.js';
 import * as NoviceGuide from './editor/ui/NoviceGuideWindow.js';
 import { buildProject, runStandalonePreview } from './editor/BuildSystem.js';
+import {
+    showNotification,
+    showConfirmation,
+    showBuildDialog,
+    showBuildSuccessDialog,
+    showProgressDialog,
+    showPrompt,
+    showSelection
+} from './editor/ui/DialogWindow.js';
 import * as Dialogs from './editor/ui/DialogWindow.js';
-const { showNotification: showNotificationDialog, showConfirmation: showConfirmationDialog, showBuildDialog } = Dialogs;
 import { Localization } from './engine/Localization.js';
 
 // Guarantee window-level access for non-module scripts (like auth.js)
@@ -484,7 +492,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error(`No se pudo guardar el asset '${filePath}':`, error);
-            showNotificationDialog('Error al Guardar', `No se pudo guardar el archivo: ${error.message}`);
+            showNotification('Error al Guardar', `No se pudo guardar el archivo: ${error.message}`);
         }
     };
 
@@ -857,7 +865,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return fileHandle;
         } catch (error) {
             console.error(`No se pudo crear el asset '${fileName}':`, error);
-            showNotificationDialog('Error de Creacion', `No se pudo crear el asset: ${error.message}`);
+            showNotification('Error de Creacion', `No se pudo crear el asset: ${error.message}`);
             return null;
         }
     };
@@ -1262,7 +1270,7 @@ document.addEventListener('DOMContentLoaded', () => {
     runChecksAndPlay = async function() {
         try {
             if (!isEditorReady) {
-                showNotificationDialog(
+                showNotification(
                     window.Localization?.get('EDITOR_OCUPADO') || 'Editor Ocupado',
                     window.Localization?.get('EDITOR_OCUPADO_MSG') || 'El editor todavia esta procesando archivos en segundo plano. Por favor, espera un momento.'
                 );
@@ -1279,7 +1287,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const projectName = new URLSearchParams(window.location.search).get('project') || 'Juego';
                 gameWindow = window.open('runner.html', 'CreativeEngineGame', 'width=800,height=600');
                 if (!gameWindow) {
-                    showNotificationDialog(
+                    showNotification(
                         window.Localization?.get('POPUP_BLOQUEADO') || 'Popup Bloqueado',
                         window.Localization?.get('POPUP_BLOQUEADO_MSG') || 'No se pudo abrir la ventana del juego. Por favor, permite las ventanas emergentes para este sitio en tu navegador.'
                     );
@@ -1390,6 +1398,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     logToUIConsole(error, 'error', false);
                 }
             }
+            showNotification(
+                window.Localization?.get('BUILD_FALLIDO') || 'Build Fallido',
+                window.Localization?.get('BUILD_FALLIDO_MSG') || 'No se puede iniciar el juego porque hay errores en los scripts. Revisa la consola.'
+            );
             // Cambiar a la pestana de la consola para que los errores sean visibles
             dom.assetsPanel.querySelector('[data-tab="console-content"]').click();
         } else {
@@ -1399,7 +1411,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         } catch (e) {
             console.error("Error durante la preparacion del juego:", e);
-            showNotificationDialog(
+            showNotification(
                 window.Localization?.get('ERROR_DE_INICIO') || 'Error de Inicio',
                 (window.Localization?.get('ERROR_INICIAR_JUEGO_MSG') || "No se pudo iniciar el juego: {error}")
                     .replace('{error}', e.message)
@@ -2075,7 +2087,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (!gameWindow) {
-                showNotificationDialog('Error', 'No se pudo abrir la ventana del juego. Por favor, desactiva el bloqueador de ventanas emergentes.');
+                showNotification('Error', 'No se pudo abrir la ventana del juego. Por favor, desactiva el bloqueador de ventanas emergentes.');
                 return;
             }
 
@@ -2369,7 +2381,7 @@ document.addEventListener('DOMContentLoaded', () => {
             SceneManager.setSceneDirty(false);
         } catch (error) {
             console.error("Error al guardar prefab:", error);
-            showNotificationDialog('Error', 'No se pudo guardar el prefab.');
+            showNotification('Error', 'No se pudo guardar el prefab.');
         }
     };
 
@@ -2411,7 +2423,7 @@ document.addEventListener('DOMContentLoaded', () => {
             selectMateria(rootMateria);
         } catch (e) {
             console.error("Error al entrar en modo prefab:", e);
-            showNotificationDialog('Error', 'No se pudo abrir el prefab.');
+            showNotification('Error', 'No se pudo abrir el prefab.');
         }
     };
 
@@ -2464,7 +2476,7 @@ document.addEventListener('DOMContentLoaded', () => {
     saveScene = async function() {
         if (isPrefabMode) {
             await savePrefab();
-            showNotificationDialog('Exito', 'Prefab guardado!');
+            showNotification('Exito', 'Prefab guardado!');
             return;
         }
         if (!SceneManager.currentSceneFileHandle) {
@@ -2487,7 +2499,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 SceneManager.setCurrentSceneFileHandle(fileHandle);
                 dom.currentSceneName.textContent = fileHandle.name.replace('.ceScene', '');
                 SceneManager.setSceneDirty(false);
-                showNotificationDialog('Exito', 'Escena guardada!');
+                showNotification('Exito', 'Escena guardada!');
                 updateAssetBrowser(); // Refresh to show the new file
 
                 // Capture thumbnail
@@ -2495,7 +2507,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 if (error.name !== 'AbortError') {
                     console.error("Error en 'Guardar Como':", error);
-                    showNotificationDialog('Error', 'No se pudo guardar la escena.');
+                    showNotification('Error', 'No se pudo guardar la escena.');
                 }
             }
         } else {
@@ -2506,13 +2518,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 await writable.write(JSON.stringify(sceneData, null, 2));
                 await writable.close();
                 SceneManager.setSceneDirty(false);
-                showNotificationDialog('Exito', 'Escena guardada!');
+                showNotification('Exito', 'Escena guardada!');
 
                 // Capture thumbnail
                 await captureThumbnail();
             } catch (error) {
                 console.error("Error al guardar la escena:", error);
-                showNotificationDialog('Error', 'No se pudo guardar la escena.');
+                showNotification('Error', 'No se pudo guardar la escena.');
             }
         }
     };
@@ -2526,7 +2538,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return true;
         }
         return new Promise(resolve => {
-            showConfirmationDialog(
+            showConfirmation(
                 'Cambios sin Guardar',
                 'La escena actual tiene cambios sin guardar. Quieres guardarlos antes de continuar?',
                 () => saveScene().then(() => resolve(true)), // Yes, save and continue
@@ -2825,7 +2837,7 @@ document.addEventListener('DOMContentLoaded', () => {
             openAssetSelector(async (fileHandle, path, dirHandle) => {
                 const selectedMtr = getSelectedMateria();
                 if (!selectedMtr) {
-                    showNotificationDialog(L.get('AVISO'), L.get('ERROR_IMPORTAR_SIN_OBJETO', 'Selecciona un objeto en la jerarquia para importar el esqueleto como hijo.'));
+                    showNotification(L.get('AVISO'), L.get('ERROR_IMPORTAR_SIN_OBJETO', 'Selecciona un objeto en la jerarquia para importar el esqueleto como hijo.'));
                     return;
                 }
 
@@ -2833,11 +2845,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const file = await fileHandle.getFile();
                     const content = await file.text();
                     const result = await SkeletonImporter.importSpineJSON(content, selectedMtr, projectsDirHandle);
-                    showNotificationDialog(L.get('EXITO'), L.get('ESQUELETO_IMPORTADO', 'Esqueleto importado correctamente.'));
+                    showNotification(L.get('EXITO'), L.get('ESQUELETO_IMPORTADO', 'Esqueleto importado correctamente.'));
                     updateHierarchy();
                 } catch (err) {
                     console.error("Error importing Spine skeleton:", err);
-                    showNotificationDialog(L.get('ERROR'), 'Error importing Spine JSON.');
+                    showNotification(L.get('ERROR'), 'Error importing Spine JSON.');
                 }
             }, { filter: ['.json'], title: L.get('IMPORTAR_ESQUELETO_SPINE', 'Import Skeleton (Spine)') });
         });
@@ -2847,7 +2859,7 @@ document.addEventListener('DOMContentLoaded', () => {
             reportBugBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 // We use the already available showNotification or a specialized one
-                showNotificationDialog('Reportar Fallo', 'Gracias por querer ayudarnos! Por favor, envia un mensaje detallado a nuestro correo de soporte o usa el formulario de contacto en el inicio.');
+                showNotification('Reportar Fallo', 'Gracias por querer ayudarnos! Por favor, envia un mensaje detallado a nuestro correo de soporte o usa el formulario de contacto en el inicio.');
             });
         }
 
@@ -2863,7 +2875,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const L = window.Localization;
             const currentDirHandle = getCurrentDirectoryHandle();
             if (!currentDirHandle) {
-                showNotificationDialog(L?.get('AVISO') || "Aviso", L?.get('SELECCIONAR_CARPETA_IMPORTAR') || "Selecciona primero una carpeta en el navegador de assets para importar archivos.");
+                showNotification(L?.get('AVISO') || "Aviso", L?.get('SELECCIONAR_CARPETA_IMPORTAR') || "Selecciona primero una carpeta en el navegador de assets para importar archivos.");
                 return;
             }
 
@@ -3105,7 +3117,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateEditorLayout();
                 updateWindowMenuUI();
 
-                showNotificationDialog('Diseno Restablecido', 'El diseno de los paneles ha sido restablecido.');
+                showNotification('Diseno Restablecido', 'El diseno de los paneles ha sido restablecido.');
             });
         }
 
@@ -3117,12 +3129,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (const id of requiredFields) {
                     const element = document.getElementById(id);
                     if (!element.value) {
-                        showNotificationDialog('Campo Obligatorio', `El campo '${element.previousElementSibling.textContent}' es obligatorio.`);
+                        showNotification('Campo Obligatorio', `El campo '${element.previousElementSibling.textContent}' es obligatorio.`);
                         return;
                     }
                 }
                 if (dom.ksPassword.value.length < 6) {
-                    showNotificationDialog('Contrasena Debil', 'La contrasena de la clave debe tener al menos 6 caracteres.');
+                    showNotification('Contrasena Debil', 'La contrasena de la clave debe tener al menos 6 caracteres.');
                     return;
                 }
 
@@ -3135,7 +3147,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 dom.ksCommandTextarea.value = command;
                 dom.ksCommandOutput.classList.remove('hidden');
 
-                showNotificationDialog('Comando Generado', 'Comando generado. Copialo y ejecutalo en una terminal con JDK instalado para crear tu archivo keystore.');
+                showNotification('Comando Generado', 'Comando generado. Copialo y ejecutalo en una terminal con JDK instalado para crear tu archivo keystore.');
             });
         }
 
@@ -3380,7 +3392,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (!selectedProvider) {
-                    showNotificationDialog('Sin Cerebro Seleccionado', 'Por favor, elige un cerebro en el menu o configura Carl IA en Preferencias antes de enviar un mensaje.');
+                    showNotification('Sin Cerebro Seleccionado', 'Por favor, elige un cerebro en el menu o configura Carl IA en Preferencias antes de enviar un mensaje.');
                     return;
                 }
 
@@ -3828,7 +3840,7 @@ Para que tu libreria tenga una interfaz en el editor, usa \`CreativeEngine.API.r
         nombre: "Mi Herramienta",
         alAbrir: function(panel) {
             panel.agregarTexto("Hola, mundo!");
-            panel.agregarBoton("Saludar", () => showNotificationDialog('Saludo', 'Hola!'));
+            panel.agregarBoton("Saludar", () => showNotification('Saludo', 'Hola!'));
         }
     });
 })();
@@ -4014,10 +4026,10 @@ public start() {
                     const fileName = `${animName}.cea`;
                     await createAsset(fileName, JSON.stringify(animationData, null, 2), dirHandle);
                     updateAssetBrowser();
-                    showNotificationDialog('Exito', `Animacion '${animName}' creada correctamente.`);
+                    showNotification('Exito', `Animacion '${animName}' creada correctamente.`);
                 } catch (error) {
                     console.error("Error al extraer frames:", error);
-                    showNotificationDialog('Error', "No se pudo crear la animacion.");
+                    showNotification('Error', "No se pudo crear la animacion.");
                 }
             };
             const onAssetSelected = (assetName, assetPath, assetKind) => {
@@ -4054,7 +4066,7 @@ public start() {
                         openMarkdownViewerCallback(options.path, content);
                     } catch (e) {
                         console.error(`Error reading Markdown file ${name}:`, e);
-                        showNotificationDialog("Error", `Could not read file: ${name}`);
+                        showNotification("Error", `Could not read file: ${name}`);
                     }
                     return;
                 }
@@ -4253,7 +4265,7 @@ public start() {
             if (dom.btnSavePrefab) {
                 dom.btnSavePrefab.addEventListener('click', async () => {
                     await savePrefab();
-                    showNotificationDialog('Exito', 'Prefab guardado!');
+                    showNotification('Exito', 'Prefab guardado!');
                 });
             }
 
