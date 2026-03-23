@@ -176,6 +176,10 @@ export class CreativeScriptBehavior {
     async esperar(segundos) {
         return new Promise(resolve => setTimeout(resolve, segundos * 1000));
     }
+    async wait(segundos) { return await this.esperar(segundos); }
+    async esperarPT(segundos) { return await this.esperar(segundos); }
+    async ждать(segundos) { return await this.esperar(segundos); }
+    async 等待(segundos) { return await this.esperar(segundos); }
 
     /**
      * @private
@@ -266,8 +270,11 @@ export class CreativeScriptBehavior {
         return engine ? engine.getDeltaTime() : 0;
     }
 
-    /** Alias en español */
+    /** Alias Multilingües */
     get tiempoDelta() { return this.deltaTime; }
+    get tempoDelta() { return this.deltaTime; }
+    get дельтаВремя() { return this.deltaTime; }
+    get 增量时间() { return this.deltaTime; }
 
     get estaActivado() { return this.materia ? this.materia.isActive : false; }
     set estaActivado(v) { if (this.materia) this.materia.isActive = v; }
@@ -276,8 +283,21 @@ export class CreativeScriptBehavior {
 
     get nombre() { return this.materia ? this.materia.name : ''; }
     set nombre(v) { if (this.materia) this.materia.name = v; }
+    get nome() { return this.nombre; }
+    set nome(v) { this.nombre = v; }
+    get имя() { return this.nombre; }
+    set имя(v) { this.nombre = v; }
+    get 名称() { return this.nombre; }
+    set 名称(v) { this.nombre = v; }
+
     get tag() { return this.materia ? this.materia.tag : ''; }
     set tag(v) { if (this.materia) this.materia.tag = v; }
+    get etiqueta() { return this.tag; }
+    set etiqueta(v) { this.tag = v; }
+    get тег() { return this.tag; }
+    set тег(v) { this.tag = v; }
+    get 标签() { return this.tag; }
+    set 标签(v) { this.tag = v; }
 
     get voltearH() { return this.transform ? this.transform.flipX : false; }
     set voltearH(v) { if (this.transform) this.transform.flipX = v; }
@@ -297,10 +317,21 @@ export class CreativeScriptBehavior {
     set rotacion(v) { if (this.transform) this.transform.rotation = v; }
     get rotation() { return this.rotacion; }
     set rotation(v) { this.rotacion = v; }
+    get rotacao() { return this.rotacion; }
+    set rotacao(v) { this.rotacion = v; }
+    get вращение() { return this.rotacion; }
+    set вращение(v) { this.rotacion = v; }
+    get 旋转() { return this.rotacion; }
+    set 旋转(v) { this.rotacion = v; }
+
     get escala() { return this.transform ? this.transform.scale : { x: 1, y: 1 }; }
     set escala(v) { if (this.transform) this.transform.scale = v; }
     get scale() { return this.escala; }
     set scale(v) { this.escala = v; }
+    get масштаб() { return this.escala; }
+    set масштаб(v) { this.escala = v; }
+    get 缩放() { return this.escala; }
+    set 缩放(v) { this.escala = v; }
 
     // --- Transform Proxy Methods ---
     mover(x, y) { if (this.transform) { if (typeof x === 'object') { this.transform.x += x.x || 0; this.transform.y += x.y || 0; } else { this.transform.x += x; this.transform.y += (y || 0); } } }
@@ -309,8 +340,19 @@ export class CreativeScriptBehavior {
 
     // English Aliases
     move(x, y) { this.mover(x, y); }
+    moverPT(x, y) { this.mover(x, y); }
+    переместить(x, y) { this.mover(x, y); }
+    移动(x, y) { this.mover(x, y); }
+
     rotate(deg) { this.rotar(deg); }
+    rotarPT(deg) { this.rotar(deg); }
+    вращать(deg) { this.rotar(deg); }
+    旋转(deg) { this.rotar(deg); }
+
     scale(x, y) { this.escalar(x, y); }
+    escalarPT(x, y) { this.escalar(x, y); }
+    масштабировать(x, y) { this.escalar(x, y); }
+    缩放(x, y) { this.escalar(x, y); }
 
     get motor() { return this; }
     get engine() { return this; }
@@ -423,10 +465,39 @@ export class CreativeScriptBehavior {
         return null;
     }
 
-    // English Aliases
+    // --- Multilingual Aliases ---
+
+    // Scripts & Components
     getScript(name) { return this.obtenerScript(name); }
+    obterScript(name) { return this.obtenerScript(name); }
+    получитьСкрипт(name) { return this.obtenerScript(name); }
+    获取脚本(name) { return this.obtenerScript(name); }
+
+    getComponent(type) { return this.obtenerComponente(type); }
+    obterComponente(type) { return this.obtenerComponente(type); }
+    получитьКомпонент(type) { return this.obtenerComponente(type); }
+    获取组件(type) { return this.obtenerComponente(type); }
+
+    getComponentInParent(type) { return this.obtenerComponenteEnPadre(type); }
+    obterComponenteNoPai(type) { return this.obtenerComponenteEnPadre(type); }
+    получитьКомпонентВРодителе(type) { return this.obtenerComponenteEnPadre(type); }
+    在父级中获取组件(type) { return this.obtenerComponenteEnPadre(type); }
+
+    getComponentInChildren(type) { return this.obtenerComponenteEnHijos(type); }
+    obterComponenteNosFilhos(type) { return this.obtenerComponenteEnHijos(type); }
+    получитьКомпонентВДочерних(type) { return this.obtenerComponenteEnHijos(type); }
+    在子级中获取组件(type) { return this.obtenerComponenteEnHijos(type); }
+
+    // Lifecycle & Creation
     destroy(materia) { this.destruir(materia); }
+    destruirPT(materia) { this.destruir(materia); }
+    уничтожить(materia) { this.destruir(materia); }
+    销毁(materia) { this.destruir(materia); }
+
     instantiate(original, x, y) { return this.instanciar(original, x, y); }
+    instanciarPT(original, x, y) { return this.instanciar(original, x, y); }
+    экземпляр(original, x, y) { return this.instanciar(original, x, y); }
+    实例化(original, x, y) { return this.instanciar(original, x, y); }
 
     /**
      * Crea una instancia de un prefab a partir de su ruta.
@@ -443,6 +514,47 @@ export class CreativeScriptBehavior {
     }
 
     async create(ruta, x, y) { return await this.crear(ruta, x, y); }
+    async criar(ruta, x, y) { return await this.crear(ruta, x, y); }
+    async создать(ruta, x, y) { return await this.crear(ruta, x, y); }
+    async 创建(ruta, x, y) { return await this.crear(ruta, x, y); }
+
+    // Tags & Health
+    hasTag(tag) { return this.tieneTag(tag); }
+    temTag(tag) { return this.tieneTag(tag); }
+    имеетТег(tag) { return this.tieneTag(tag); }
+    有标签(tag) { return this.tieneTag(tag); }
+
+    damage(materia, amount) { this.danar(materia, amount); }
+    danarPT(materia, amount) { this.danar(materia, amount); }
+    нанестиУрон(materia, amount) { this.danar(materia, amount); }
+    造成伤害(materia, amount) { this.danar(materia, amount); }
+
+    heal(materia, amount) { this.curar(materia, amount); }
+    curarPT(materia, amount) { this.curar(materia, amount); }
+    лечить(materia, amount) { this.curar(materia, amount); }
+    治疗(materia, amount) { this.curar(materia, amount); }
+
+    // Search & Raycast
+    find(name) { return this.buscar(name); }
+    procurar(name) { return this.buscar(name); }
+    найти(name) { return this.buscar(name); }
+    查找(name) { return this.buscar(name); }
+
+    raycast(origin, direction, distance, tag) { return this.lanzarRayo(origin, direction, distance, tag); }
+    lancarRaio(origin, direction, distance, tag) { return this.lanzarRayo(origin, direction, distance, tag); }
+    пускатьЛуч(origin, direction, distance, tag) { return this.lanzarRayo(origin, direction, distance, tag); }
+    射线检测(origin, direction, distance, tag) { return this.lanzarRayo(origin, direction, distance, tag); }
+
+    // Messaging
+    broadcast(message, data) { this.difundir(message, data); }
+    difundirPT(message, data) { this.difundir(message, data); }
+    вещать(message, data) { this.difundir(message, data); }
+    广播(message, data) { this.difundir(message, data); }
+
+    onReceive(message, callback) { this.alRecibir(message, callback); }
+    aoReceber(message, callback) { this.alRecibir(message, callback); }
+    приПолучении(message, callback) { this.alRecibir(message, callback); }
+    收到时(message, callback) { this.alRecibir(message, callback); }
 
     /**
      * Ejecuta una acción (objeto con targetId y functionName).
@@ -551,14 +663,66 @@ export class CreativeScriptBehavior {
     botonMouseLiberado(b) { return this.input ? this.input.isMouseButtonReleased(b) : false; }
     obtenerPosicionMouse() { return this.input ? this.input.getMousePosition() : { x: 0, y: 0 }; }
 
-    // English Aliases
+    // Multilingual Aliases
     isKeyPressed(k) { return this.teclaPresionada(k); }
+    teclaPressionada(k) { return this.teclaPresionada(k); }
+    клавишаНажата(k) { return this.teclaPresionada(k); }
+    按键按下(k) { return this.teclaPresionada(k); }
+
     isKeyJustPressed(k) { return this.teclaRecienPresionada(k); }
+    teclaRecemPressionada(k) { return this.teclaRecienPresionada(k); }
+    клавишаТолькоЧтоНажата(k) { return this.teclaRecienPresionada(k); }
+    按键刚刚按下(k) { return this.teclaRecienPresionada(k); }
+
     isKeyReleased(k) { return this.teclaLiberada(k); }
+    teclaLiberadaPT(k) { return this.teclaLiberada(k); }
+    клавишаОтпущена(k) { return this.teclaLiberada(k); }
+    按键释放(k) { return this.teclaLiberada(k); }
+
     isMouseButtonPressed(b) { return this.botonMousePresionado(b); }
+    botaoMousePressionado(b) { return this.botonMousePresionado(b); }
+    кнопкаМышиНажата(b) { return this.botonMousePresionado(b); }
+    鼠标按钮按下(b) { return this.botonMousePresionado(b); }
+
     isMouseButtonJustPressed(b) { return this.botonMouseRecienPresionado(b); }
+    botaoMouseRecemPressionado(b) { return this.botonMouseRecienPresionado(b); }
+    кнопкаМышиТолькоЧтоНажата(b) { return this.botonMouseRecienPresionado(b); }
+    鼠标按钮刚刚按下(b) { return this.botonMouseRecienPresionado(b); }
+
     isMouseButtonReleased(b) { return this.botonMouseLiberado(b); }
+    botaoMouseLiberado(b) { return this.botonMouseLiberado(b); }
+    кнопкаМышиОтпущена(b) { return this.botonMouseLiberado(b); }
+    鼠标按钮释放(b) { return this.isMouseButtonReleased(b); }
+
     getMousePosition() { return this.obtenerPosicionMouse(); }
+    obterPosicaoMouse() { return this.obtenerPosicionMouse(); }
+    получитьПозициюМыши() { return this.obtenerPosicionMouse(); }
+    获取鼠标位置() { return this.obtenerPosicionMouse(); }
+
+    // Gamepad API
+    isGamepadConnected(index) { return this.input ? this.input.isGamepadConnected(index) : false; }
+    mandoConectado(index) { return this.isGamepadConnected(index); }
+    controleConectado(index) { return this.isGamepadConnected(index); }
+    джойстикПодключен(index) { return this.isGamepadConnected(index); }
+    手柄已连接(index) { return this.isGamepadConnected(index); }
+
+    getGamepadButton(btn, index) { return this.input ? this.input.getGamepadButton(btn, index) : false; }
+    mandoBotonPresionado(btn, index) { return this.getGamepadButton(btn, index); }
+    controleBotaoPressionado(btn, index) { return this.getGamepadButton(btn, index); }
+    кнопкаДжойстикаНажата(btn, index) { return this.getGamepadButton(btn, index); }
+    手柄按钮按下(btn, index) { return this.getGamepadButton(btn, index); }
+
+    getGamepadButtonDown(btn, index) { return this.input ? this.input.getGamepadButtonDown(btn, index) : false; }
+    mandoBotonRecienPresionado(btn, index) { return this.getGamepadButtonDown(btn, index); }
+    controleBotaoRecemPressionado(btn, index) { return this.getGamepadButtonDown(btn, index); }
+    кнопкаДжойстикаТолькоЧтоНажата(btn, index) { return this.getGamepadButtonDown(btn, index); }
+    手柄按钮刚刚按下(btn, index) { return this.getGamepadButtonDown(btn, index); }
+
+    getGamepadAxis(axis, index) { return this.input ? this.input.getGamepadAxis(axis, index) : 0; }
+    mandoEje(axis, index) { return this.getGamepadAxis(axis, index); }
+    controleEixo(axis, index) { return this.getGamepadAxis(axis, index); }
+    осьДжойстика(axis, index) { return this.getGamepadAxis(axis, index); }
+    手柄轴(axis, index) { return this.getGamepadAxis(axis, index); }
 
     _cleanupSubscriptions() {
         this._messageSubscriptions.forEach(unsub => unsub());
@@ -630,8 +794,11 @@ export class CreativeScriptBehavior {
         }
     }
 
-    /** Alias en inglés */
+    /** Alias Multilingües */
     playAnimation(path, loop, speed) { this.reproducirAnimacion(path, loop, speed); }
+    reproduzirAnimacao(path, loop, speed) { this.reproducirAnimacion(path, loop, speed); }
+    игратьАнимацию(path, loop, speed) { this.reproducirAnimacion(path, loop, speed); }
+    播放动画(path, loop, speed) { this.reproducirAnimacion(path, loop, speed); }
 
     /**
      * Reproduce un estado del AnimatorController si existe una conexión.
@@ -651,8 +818,11 @@ export class CreativeScriptBehavior {
         }
     }
 
-    /** Alias en inglés */
+    /** Alias Multilingües */
     play(estado, opciones) { this.reproducir(estado, opciones); }
+    reproduzir(estado, opciones) { this.reproducir(estado, opciones); }
+    играть(estado, opciones) { this.reproducir(estado, opciones); }
+    播放(estado, opciones) { this.reproducir(estado, opciones); }
 
     /**
      * Detiene la animación actual.
@@ -665,8 +835,11 @@ export class CreativeScriptBehavior {
         }
     }
 
-    /** Alias en inglés */
+    /** Alias Multilingües */
     stopAnimation() { this.detenerAnimacion(); }
+    pararAnimacao() { this.detenerAnimacion(); }
+    остановитьАнимацию() { this.detenerAnimacion(); }
+    停止动画() { this.detenerAnimacion(); }
 
     // --- Collision & Trigger Event Stubs ---
     alEntrarEnColision(colision) {}
@@ -829,8 +1002,11 @@ export class Transform extends Leyes {
         this.rotation = Math.atan2(dy, dx) * 180 / Math.PI;
     }
 
-    /** Alias en español */
+    /** Alias Multilingües */
     mirarA(x, y) { this.lookAt(x, y); }
+    olharPara(x, y) { this.lookAt(x, y); }
+    смотретьНа(x, y) { this.lookAt(x, y); }
+    看向(x, y) { this.lookAt(x, y); }
 
     clone() {
         const newTransform = new Transform(null);
@@ -1153,22 +1329,69 @@ export class Rigidbody2D extends Leyes {
 
     get velocidad() { return this.velocity; }
     set velocidad(v) { this.velocity = v; }
+    get velocidade() { return this.velocity; }
+    set velocidade(v) { this.velocity = v; }
+    get скорость() { return this.velocity; }
+    set скорость(v) { this.velocity = v; }
+    get 速度() { return this.velocity; }
+    set 速度(v) { this.velocity = v; }
+
     get velocidadX() { return this.velocity.x; }
     set velocidadX(v) { this.velocity.x = v; }
+    get velocidadeX() { return this.velocity.x; }
+    set velocidadeX(v) { this.velocity.x = v; }
+    get скоростьX() { return this.velocity.x; }
+    set скоростьX(v) { this.velocity.x = v; }
+    get 速度X() { return this.velocity.x; }
+    set 速度X(v) { this.velocity.x = v; }
+
     get velocidadY() { return this.velocity.y; }
     set velocidadY(v) { this.velocity.y = v; }
+    get velocidadeY() { return this.velocity.y; }
+    set velocidadY(v) { this.velocity.y = v; }
+    get скоростьY() { return this.velocity.y; }
+    set скоростьY(v) { this.velocity.y = v; }
+    get 速度Y() { return this.velocity.y; }
+    set 速度Y(v) { this.velocity.y = v; }
+
     get velocityX() { return this.velocity.x; }
     set velocityX(v) { this.velocity.x = v; }
     get velocityY() { return this.velocity.y; }
     set velocityY(v) { this.velocity.y = v; }
+
     get velocidadAngular() { return this.angularVelocity; }
     set velocidadAngular(v) { this.angularVelocity = v; }
+    get velocidadeAngular() { return this.angularVelocity; }
+    set velocidadeAngular(v) { this.angularVelocity = v; }
+    get угловаяСкорость() { return this.angularVelocity; }
+    set угловаяСкорость(v) { this.angularVelocity = v; }
+    get 角速度() { return this.angularVelocity; }
+    set 角速度(v) { this.angularVelocity = v; }
+
     get masa() { return this.mass; }
     set masa(m) { this.mass = m; }
+    get масса() { return this.mass; }
+    set масса(m) { this.mass = m; }
+    get 质量() { return this.mass; }
+    set 质量(m) { this.mass = m; }
+
     get escalaGravedad() { return this.gravityScale; }
     set escalaGravedad(s) { this.gravityScale = s; }
+    get escalaGravidade() { return this.gravityScale; }
+    set escalaGravidade(s) { this.gravityScale = s; }
+    get гравитация() { return this.gravityScale; }
+    set гравитация(s) { this.gravityScale = s; }
+    get 重力缩放() { return this.gravityScale; }
+    set 重力缩放(s) { this.gravityScale = s; }
+
     get arrastreAngular() { return this.angularDrag; }
     set arrastreAngular(a) { this.angularDrag = a; }
+    get arrastoAngular() { return this.angularDrag; }
+    set arrastoAngular(a) { this.angularDrag = a; }
+    get угловоеСопротивление() { return this.angularDrag; }
+    set угловоеСопротивление(a) { this.angularDrag = a; }
+    get 角阻力() { return this.angularDrag; }
+    set 角阻力(a) { this.angularDrag = a; }
 
     addForce(xOrObj = 0, y = 0) {
         let fx = 0, fy = 0;
@@ -1221,8 +1444,11 @@ export class Rigidbody2D extends Leyes {
     }
 
     aplicarTorque(torque) { this.addTorque(torque); }
+    aplicarTorquePT(torque) { this.addTorque(torque); }
+    приложитьКрутящийМомент(torque) { this.addTorque(torque); }
+    施加扭矩(torque) { this.addTorque(torque); }
 
-    setVelocity(xOrObj = 0, y = 0) {
+    establecerVelocidad(xOrObj = 0, y = 0) {
         if (typeof xOrObj === 'object') {
             this.velocity.x = xOrObj.x || 0;
             this.velocity.y = xOrObj.y || 0;
@@ -1232,12 +1458,24 @@ export class Rigidbody2D extends Leyes {
         }
     }
 
-    // --- Aliases ---
+    // --- Multilingual Aliases ---
     applyForce(x, y) { this.addForce(x, y); }
+    aplicarForca(x, y) { this.addForce(x, y); }
+    приложитьСилу(x, y) { this.addForce(x, y); }
+    施加力(x, y) { this.addForce(x, y); }
+
     applyImpulse(x, y) { this.addImpulse(x, y); }
+    aplicarImpulsoPT(x, y) { this.addImpulse(x, y); }
+    приложитьИмпульс(x, y) { this.addImpulse(x, y); }
+    施加脉冲(x, y) { this.addImpulse(x, y); }
+
     aplicarFuerza(x, y) { this.addForce(x, y); }
     aplicarImpulso(x, y) { this.addImpulse(x, y); }
-    establecerVelocidad(x, y) { this.setVelocity(x, y); }
+
+    setVelocity(xOrObj, y) { this.establecerVelocidad(xOrObj, y); }
+    definirVelocidade(xOrObj, y) { this.establecerVelocidad(xOrObj, y); }
+    установитьСкорость(xOrObj, y) { this.establecerVelocidad(xOrObj, y); }
+    设置速度(xOrObj, y) { this.establecerVelocidad(xOrObj, y); }
 
     clone() {
         const newRb = new Rigidbody2D(null);
@@ -1805,10 +2043,21 @@ export class Animator extends Leyes {
         this.isPlaying = false;
     }
 
-    /** Alias en español */
+    /** Alias Multilingües */
     reproducir(ruta, opciones) { this.play(ruta, opciones); }
+    reproduzir(ruta, opciones) { this.play(ruta, opciones); }
+    играть(ruta, opciones) { this.play(ruta, opciones); }
+    播放(ruta, opciones) { this.play(ruta, opciones); }
+
     detener() { this.stop(); }
+    parar() { this.stop(); }
+    остановить() { this.stop(); }
+    停止() { this.stop(); }
+
     reiniciar() { this.reset(); }
+    reiniciarPT() { this.reset(); }
+    сбросить() { this.reset(); }
+    重置() { this.reset(); }
 
     update(deltaTime) {
         const debug = window.CE_DEBUG_ANIMATION;
@@ -2372,10 +2621,21 @@ export class AudioSource extends Leyes {
         }
     }
 
-    // --- Spanish Aliases ---
+    // --- Multilingual Aliases ---
     reproducir(tiempoInicio) { this.play(tiempoInicio); }
+    reproduzir(tiempoInicio) { this.play(tiempoInicio); }
+    играть(tiempoInicio) { this.play(tiempoInicio); }
+    播放(tiempoInicio) { this.play(tiempoInicio); }
+
     detener() { this.stop(); }
+    parar() { this.stop(); }
+    остановить() { this.stop(); }
+    停止() { this.stop(); }
+
     pausar() { this.pause(); }
+    pausarPT() { this.pause(); }
+    пауза() { this.pause(); }
+    暂停() { this.pause(); }
 
     get volumen() { return this.volume; }
     set volumen(v) { this.volume = v; if (this._audio && !this.spatial) this._audio.volume = v; }
@@ -2580,11 +2840,26 @@ export class VideoPlayer extends Leyes {
         if (this._video) this._video.currentTime = time;
     }
 
-    // --- Spanish Aliases ---
+    // --- Multilingual Aliases ---
     reproducir() { this.play(); }
+    reproduzir() { this.play(); }
+    играть() { this.play(); }
+    播放() { this.play(); }
+
     pausar() { this.pause(); }
+    pausarPT() { this.pause(); }
+    пауза() { this.pause(); }
+    暂停() { this.pause(); }
+
     detener() { this.stop(); }
+    parar() { this.stop(); }
+    остановить() { this.stop(); }
+    停止() { this.stop(); }
+
     buscarTiempo(t) { this.seek(t); }
+    buscarTempo(t) { this.seek(t); }
+    перемотать(t) { this.seek(t); }
+    跳转时间(t) { this.seek(t); }
 
     get fuente() { return this.source; }
     set fuente(v) { this.source = v; }
@@ -4907,6 +5182,9 @@ export class Health extends Leyes {
     }
 
     danar(cantidad) { this.damage(cantidad); }
+    causarDano(cantidad) { this.damage(cantidad); }
+    нанестиУрон(cantidad) { this.damage(cantidad); }
+    造成伤害(cantidad) { this.damage(cantidad); }
 
     heal(amount) {
         if (this.isDead) return;
@@ -4917,6 +5195,9 @@ export class Health extends Leyes {
     }
 
     curar(cantidad) { this.heal(cantidad); }
+    curarPT(cantidad) { this.heal(cantidad); }
+    лечить(cantidad) { this.heal(cantidad); }
+    治疗(cantidad) { this.heal(cantidad); }
 
     onDeath() {
         if (this.isDead) return;
@@ -4970,8 +5251,21 @@ export class Health extends Leyes {
 
     get vidaMaxima() { return this.maxHealth; }
     set vidaMaxima(v) { this.maxHealth = v; }
+    get vidaMaximaPT() { return this.maxHealth; }
+    set vidaMaximaPT(v) { this.maxHealth = v; }
+    get максЗдоровье() { return this.maxHealth; }
+    set максЗдоровье(v) { this.maxHealth = v; }
+    get 最大健康() { return this.maxHealth; }
+    set 最大健康(v) { this.maxHealth = v; }
+
     get vidaActual() { return this.currentHealth; }
     set vidaActual(v) { this.currentHealth = v; }
+    get vidaAtual() { return this.currentHealth; }
+    set vidaAtual(v) { this.currentHealth = v; }
+    get текущееЗдоровье() { return this.currentHealth; }
+    set текущееЗдоровье(v) { this.currentHealth = v; }
+    get 当前健康() { return this.currentHealth; }
+    set 当前健康(v) { this.currentHealth = v; }
     get animacionMuerte() { return this.deathAnimation; }
     set animacionMuerte(v) { this.deathAnimation = v; }
     get fotogramaCongelado() { return this.freezeFrame; }
@@ -5093,15 +5387,47 @@ export class Attack extends Leyes {
         }
     }
 
-    // Spanish Aliases
+    cargar() { this.load(); }
+    carregar() { this.load(); }
+    загрузить() { this.load(); }
+    加载() { this.load(); }
+
+    // Multilingual Aliases
     get ataques() { return this.attacks; }
     set ataques(v) { this.attacks = v; }
+    get ataquesPT() { return this.attacks; }
+    set ataquesPT(v) { this.attacks = v; }
+    get атаки() { return this.attacks; }
+    set атаки(v) { this.attacks = v; }
+    get 攻击列表() { return this.attacks; }
+    set 攻击列表(v) { this.attacks = v; }
+
     get materiaColisionador() { return this.colliderMateria; }
     set materiaColisionador(v) { this.colliderMateria = v; }
+    get materiaColisor() { return this.colliderMateria; }
+    set materiaColisor(v) { this.colliderMateria = v; }
+    get материяКоллайдера() { return this.colliderMateria; }
+    set материяКоллайдера(v) { this.colliderMateria = v; }
+    get 碰撞体物质() { return this.colliderMateria; }
+    set 碰撞体物质(v) { this.colliderMateria = v; }
+
     get tiempoEspera() { return this.cooldown; }
     set tiempoEspera(v) { this.cooldown = v; }
+    get tempoEspera() { return this.cooldown; }
+    set tempoEspera(v) { this.cooldown = v; }
+    get времяОжидания() { return this.cooldown; }
+    set времяОжидания(v) { this.cooldown = v; }
+    get 冷却时间() { return this.cooldown; }
+    set 冷却时间(v) { this.cooldown = v; }
+
     get teclaCiclo() { return this.cycleKey; }
     set teclaCiclo(v) { this.cycleKey = v; }
+    get teclaCicloPT() { return this.cycleKey; }
+    set teclaCicloPT(v) { this.cycleKey = v; }
+    get клавишаЦикла() { return this.cycleKey; }
+    set клавишаЦикла(v) { this.cycleKey = v; }
+    get 循环按键() { return this.cycleKey; }
+    set 循环按键(v) { this.cycleKey = v; }
 
     clone() {
         const newAtk = new Attack(null);
@@ -5167,17 +5493,51 @@ export class ProgressBar extends Leyes {
         }
     }
 
-    // Spanish Aliases
+    // Multilingual Aliases
     get valor() { return this.value; }
     set valor(v) { this.value = v; }
+    get valorPT() { return this.value; }
+    set valorPT(v) { this.value = v; }
+    get значение() { return this.value; }
+    set значение(v) { this.value = v; }
+    get 值() { return this.value; }
+    set 值(v) { this.value = v; }
+
     get valorMaximo() { return this.maxValue; }
     set valorMaximo(v) { this.maxValue = v; }
+    get valorMaximoPT() { return this.maxValue; }
+    set valorMaximoPT(v) { this.maxValue = v; }
+    get максЗначение() { return this.maxValue; }
+    set максЗначение(v) { this.maxValue = v; }
+    get 最大值() { return this.maxValue; }
+    set 最大值(v) { this.maxValue = v; }
+
     get materiaObjetivo() { return this.targetMateria; }
     set materiaObjetivo(v) { this.targetMateria = v; }
+    get materiaObjetivoPT() { return this.targetMateria; }
+    set materiaObjetivoPT(v) { this.targetMateria = v; }
+    get целеваяМатерия() { return this.targetMateria; }
+    set целеваяМатерия(v) { this.targetMateria = v; }
+    get 目标物质() { return this.targetMateria; }
+    set 目标物质(v) { this.targetMateria = v; }
+
     get materiaRelleno() { return this.fillMateria; }
     set materiaRelleno(v) { this.fillMateria = v; }
+    get materiaPreenchimento() { return this.fillMateria; }
+    set materiaPreenchimento(v) { this.fillMateria = v; }
+    get заполняющаяМатерия() { return this.fillMateria; }
+    set заполняющаяМатерия(v) { this.fillMateria = v; }
+    get 填充物质() { return this.fillMateria; }
+    set 填充物质(v) { this.fillMateria = v; }
+
     get tamanoTotal() { return this.fullSize; }
     set tamanoTotal(v) { this.fullSize = v; }
+    get tamanhoTotal() { return this.fullSize; }
+    set tamanhoTotal(v) { this.fullSize = v; }
+    get общийРазмер() { return this.fullSize; }
+    set общийРазмер(v) { this.fullSize = v; }
+    get 总大小() { return this.fullSize; }
+    set 总大小(v) { this.fullSize = v; }
 
     clone() {
         const newPb = new ProgressBar(null);
@@ -5246,10 +5606,30 @@ export class Patrol extends Leyes {
 
     get velocidad() { return this.speed; }
     set velocidad(v) { this.speed = v; }
+    get velocidade() { return this.speed; }
+    set velocidade(v) { this.speed = v; }
+    get скорость() { return this.speed; }
+    set скорость(v) { this.speed = v; }
+    get 速度() { return this.speed; }
+    set 速度(v) { this.speed = v; }
+
     get distancia() { return this.distance; }
     set distancia(v) { this.distance = v; }
+    get distanciaPT() { return this.distance; }
+    set distanciaPT(v) { this.distance = v; }
+    get дистанция() { return this.distance; }
+    set дистанция(v) { this.distance = v; }
+    get 距离() { return this.distance; }
+    set 距离(v) { this.distance = v; }
+
     get tiempoPausa() { return this.pauseTime; }
     set tiempoPausa(v) { this.pauseTime = v; }
+    get tempoPausa() { return this.pauseTime; }
+    set tempoPausa(v) { this.pauseTime = v; }
+    get времяПаузы() { return this.pauseTime; }
+    set времяПаузы(v) { this.pauseTime = v; }
+    get 暂停时间() { return this.pauseTime; }
+    set 暂停时间(v) { this.pauseTime = v; }
 
     clone() {
         const newPatrol = new Patrol(null);
@@ -5297,7 +5677,14 @@ export class ParticleSystem extends Leyes {
     }
 
     reproducir() { this.play(); }
+    reproduzir() { this.play(); }
+    играть() { this.play(); }
+    播放() { this.play(); }
+
     detener() { this.stop(); }
+    parar() { this.stop(); }
+    остановить() { this.stop(); }
+    停止() { this.stop(); }
 
     update(deltaTime) {
         // Gestionar vida de partículas activas en el pool
@@ -5369,23 +5756,76 @@ export class ParticleSystem extends Leyes {
         }
     }
 
-    // --- Spanish Aliases ---
+    // --- Multilingual Aliases ---
     get prefab() { return this.prefabPath; }
     set prefab(v) { this.prefabPath = v; }
+    get префаб() { return this.prefabPath; }
+    set префаб(v) { this.prefabPath = v; }
+    get 预制件() { return this.prefabPath; }
+    set 预制件(v) { this.prefabPath = v; }
+
     get maxParticulas() { return this.maxParticles; }
     set maxParticulas(v) { this.maxParticles = v; }
+    get maxParticulasPT() { return this.maxParticles; }
+    set maxParticulasPT(v) { this.maxParticles = v; }
+    get максЧастиц() { return this.maxParticles; }
+    set максЧастиц(v) { this.maxParticles = v; }
+    get 最大粒子数() { return this.maxParticles; }
+    set 最大粒子数(v) { this.maxParticles = v; }
+
     get tasaEmision() { return this.emissionRate; }
     set tasaEmision(v) { this.emissionRate = v; }
+    get taxaEmissao() { return this.emissionRate; }
+    set taxaEmissao(v) { this.emissionRate = v; }
+    get скоростьЭмиссии() { return this.emissionRate; }
+    set скоростьЭмиссии(v) { this.emissionRate = v; }
+    get 发射率() { return this.emissionRate; }
+    set 发射率(v) { this.emissionRate = v; }
+
     get vidaParticula() { return this.lifetime; }
     set vidaParticula(v) { this.lifetime = v; }
+    get vidaParticulaPT() { return this.lifetime; }
+    set vidaParticulaPT(v) { this.lifetime = v; }
+    get времяЖизни() { return this.lifetime; }
+    set времяЖизни(v) { this.lifetime = v; }
+    get 粒子寿命() { return this.lifetime; }
+    set 粒子寿命(v) { this.lifetime = v; }
+
     get velocidad() { return this.speed; }
     set velocidad(v) { this.speed = v; }
+    get velocidade() { return this.speed; }
+    set velocidade(v) { this.speed = v; }
+    get скорость() { return this.speed; }
+    set скорость(v) { this.speed = v; }
+    get 速度() { return this.speed; }
+    set 速度(v) { this.speed = v; }
+
     get dispersion() { return this.spread; }
     set dispersion(v) { this.spread = v; }
+    get dispersao() { return this.spread; }
+    set dispersao(v) { this.spread = v; }
+    get разброс() { return this.spread; }
+    set разброс(v) { this.spread = v; }
+    get 扩散() { return this.spread; }
+    set 扩散(v) { this.spread = v; }
+
     get bucle() { return this.loop; }
     set bucle(v) { this.loop = v; }
+    get loopPT() { return this.loop; }
+    set loopPT(v) { this.loop = v; }
+    get цикл() { return this.loop; }
+    set цикл(v) { this.loop = v; }
+    get 循环() { return this.loop; }
+    set 循环(v) { this.loop = v; }
+
     get reproducirAlEmpezar() { return this.playOnAwake; }
     set reproducirAlEmpezar(v) { this.playOnAwake = v; }
+    get reproduzirAoIniciar() { return this.playOnAwake; }
+    set reproduzirAoIniciar(v) { this.playOnAwake = v; }
+    get игратьПриЗапуске() { return this.playOnAwake; }
+    set игратьПриЗапуске(v) { this.playOnAwake = v; }
+    get 唤醒时播放() { return this.playOnAwake; }
+    set 唤醒时播放(v) { this.playOnAwake = v; }
 
     onDestroy() {
         // Limpiar el pool
@@ -5504,21 +5944,69 @@ export class Water extends Leyes {
         this._spacing = 18;      // Mayor espacio inicial
     }
 
-    // --- Spanish Aliases ---
+    // --- Multilingual Aliases ---
     get ancho() { return this.width; }
     set ancho(v) { this.width = v; this.generateParticles(); }
+    get largura() { return this.width; }
+    set largura(v) { this.width = v; this.generateParticles(); }
+    get ширина() { return this.width; }
+    set ширина(v) { this.width = v; this.generateParticles(); }
+    get 宽度() { return this.width; }
+    set 宽度(v) { this.width = v; this.generateParticles(); }
+
     get alto() { return this.height; }
     set alto(v) { this.height = v; this.generateParticles(); }
+    get altura() { return this.height; }
+    set altura(v) { this.height = v; this.generateParticles(); }
+    get высота() { return this.height; }
+    set высота(v) { this.height = v; this.generateParticles(); }
+    get 高度() { return this.height; }
+    set 高度(v) { this.height = v; this.generateParticles(); }
+
     get densidad() { return this.density; }
     set densidad(v) { this.density = v; }
+    get densidade() { return this.density; }
+    set densidade(v) { this.density = v; }
+    get плотность() { return this.density; }
+    set плотность(v) { this.density = v; }
+    get 密度() { return this.density; }
+    set 密度(v) { this.density = v; }
+
     get viscosidad() { return this.viscosity; }
     set viscosidad(v) { this.viscosity = v; }
+    get viscosidade() { return this.viscosity; }
+    set viscosidade(v) { this.viscosity = v; }
+    get вязкость() { return this.viscosity; }
+    set вязкость(v) { this.viscosity = v; }
+    get 粘度() { return this.viscosity; }
+    set 粘度(v) { this.viscosity = v; }
+
     get mostrarMareas() { return this.showTides; }
     set mostrarMareas(v) { this.showTides = v; }
+    get mostrarMares() { return this.showTides; }
+    set mostrarMares(v) { this.showTides = v; }
+    get показыватьПриливы() { return this.showTides; }
+    set показыватьПриливы(v) { this.showTides = v; }
+    get 显示潮汐() { return this.showTides; }
+    set 显示潮汐(v) { this.showTides = v; }
+
     get amplitudMarea() { return this.tideAmplitude; }
     set amplitudMarea(v) { this.tideAmplitude = v; }
+    get amplitudeMarea() { return this.tideAmplitude; }
+    set amplitudeMarea(v) { this.tideAmplitude = v; }
+    get амплитудаПрилива() { return this.tideAmplitude; }
+    set амплитудаПрилива(v) { this.tideAmplitude = v; }
+    get 潮汐幅度() { return this.tideAmplitude; }
+    set 潮汐幅度(v) { this.tideAmplitude = v; }
+
     get velocidadMarea() { return this.tideSpeed; }
     set velocidadMarea(v) { this.tideSpeed = v; }
+    get velocidadeMarea() { return this.tideSpeed; }
+    set velocidadeMarea(v) { this.tideSpeed = v; }
+    get скоростьПрилива() { return this.tideSpeed; }
+    set скоростьПрилива(v) { this.tideSpeed = v; }
+    get 潮汐速度() { return this.tideSpeed; }
+    set 潮汐速度(v) { this.tideSpeed = v; }
 
     start() {
         this.generateParticles();
@@ -5862,17 +6350,51 @@ export class HelicopterController extends Leyes {
         this.giroActual = 0;
     }
 
-    // --- Spanish Aliases ---
+    // --- Multilingual Aliases ---
     get potencia() { return this.potenciaMotor; }
     set potencia(v) { this.potenciaMotor = v; }
+    get potenciaPT() { return this.potenciaMotor; }
+    set potenciaPT(v) { this.potenciaMotor = v; }
+    get мощность() { return this.potenciaMotor; }
+    set мощность(v) { this.potenciaMotor = v; }
+    get 功率() { return this.potenciaMotor; }
+    set 功率(v) { this.potenciaMotor = v; }
+
     get vDespegue() { return this.potenciaDespegue; }
     set vDespegue(v) { this.potenciaDespegue = v; }
+    get vDecolagem() { return this.potenciaDespegue; }
+    set vDecolagem(v) { this.potenciaDespegue = v; }
+    get скоростьВзлета() { return this.potenciaDespegue; }
+    set скоростьВзлета(v) { this.potenciaDespegue = v; }
+    get 起飞速度() { return this.potenciaDespegue; }
+    set 起飞速度(v) { this.potenciaDespegue = v; }
+
     get giro() { return this.agilidadGiro; }
     set giro(v) { this.agilidadGiro = v; }
+    get agilidadeGiro() { return this.agilidadGiro; }
+    set agilidadeGiro(v) { this.agilidadGiro = v; }
+    get маневренность() { return this.agilidadGiro; }
+    set маневренность(v) { this.agilidadGiro = v; }
+    get 转向灵敏度() { return this.agilidadGiro; }
+    set 转向灵敏度(v) { this.agilidadGiro = v; }
+
     get autoEstabilidad() { return this.autoEstabilizar; }
     set autoEstabilidad(v) { this.autoEstabilizar = v; }
+    get autoEstabilidade() { return this.autoEstabilizar; }
+    set autoEstabilidade(v) { this.autoEstabilizar = v; }
+    get автоСтабилизация() { return this.autoEstabilizar; }
+    set автоСтабилизация(v) { this.autoEstabilizar = v; }
+    get 自动稳定() { return this.autoEstabilizar; }
+    set 自动稳定(v) { this.autoEstabilizar = v; }
+
     get arrastre() { return this.arrastreAire; }
     set arrastre(v) { this.arrastreAire = v; }
+    get arrasto() { return this.arrastreAire; }
+    set arrasto(v) { this.arrastreAire = v; }
+    get сопротивление() { return this.arrastreAire; }
+    set сопротивление(v) { this.arrastreAire = v; }
+    get 阻力() { return this.arrastreAire; }
+    set 阻力(v) { this.arrastreAire = v; }
 
     get controladorDeHelicoptero() { return this; }
 
@@ -6012,17 +6534,51 @@ export class VehicleTopDown extends Leyes {
         this._isInitialized = false;
     }
 
-    // --- Spanish Aliases ---
+    // --- Multilingual Aliases ---
     get potenciaMotor() { return this.potencia; }
     set potenciaMotor(v) { this.potencia = v; }
+    get potenciaPT() { return this.potencia; }
+    set potenciaPT(v) { this.potencia = v; }
+    get мощностьДвигателя() { return this.potencia; }
+    set мощностьДвигателя(v) { this.potencia = v; }
+    get 发动机功率() { return this.potencia; }
+    set 发动机功率(v) { this.potencia = v; }
+
     get velocidadLimite() { return this.velocidadMaxima; }
     set velocidadLimite(v) { this.velocidadMaxima = v; }
+    get velocidadeLimite() { return this.velocidadMaxima; }
+    set velocidadeLimite(v) { this.velocidadMaxima = v; }
+    get пределСкорости() { return this.velocidadMaxima; }
+    set пределСкорости(v) { this.velocidadMaxima = v; }
+    get 速度限制() { return this.velocidadMaxima; }
+    set 速度限制(v) { this.velocidadMaxima = v; }
+
     get giro() { return this.velocidadGiro; }
     set giro(v) { this.velocidadGiro = v; }
+    get curva() { return this.velocidadGiro; }
+    set curva(v) { this.velocidadGiro = v; }
+    get поворот() { return this.velocidadGiro; }
+    set поворот(v) { this.velocidadGiro = v; }
+    get 转向() { return this.velocidadGiro; }
+    set 转向(v) { this.velocidadGiro = v; }
+
     get derrape() { return this.intensidadDerrape; }
     set derrape(v) { this.intensidadDerrape = v; }
+    get derrapagem() { return this.intensidadDerrape; }
+    set derrapagem(v) { this.intensidadDerrape = v; }
+    get занос() { return this.intensidadDerrape; }
+    set занос(v) { this.intensidadDerrape = v; }
+    get 漂移() { return this.intensidadDerrape; }
+    set 漂移(v) { this.intensidadDerrape = v; }
+
     get freno() { return this.frenadoMotor; }
     set freno(v) { this.frenadoMotor = v; }
+    get freio() { return this.frenadoMotor; }
+    set freio(v) { this.frenadoMotor = v; }
+    get тормоз() { return this.frenadoMotor; }
+    set тормоз(v) { this.frenadoMotor = v; }
+    get 制动() { return this.frenadoMotor; }
+    set 制动(v) { this.frenadoMotor = v; }
 
     fixedUpdate(deltaTime) {
         const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
@@ -6126,19 +6682,60 @@ export class PlaneController extends Leyes {
         this.velocidadAvance = 0;
     }
 
-    // --- Spanish Aliases ---
+    // --- Multilingual Aliases ---
     get potencia() { return this.potenciaMotor; }
     set potencia(v) { this.potenciaMotor = v; }
+    get potenciaPT() { return this.potenciaMotor; }
+    set potenciaPT(v) { this.potenciaMotor = v; }
+    get мощность() { return this.potenciaMotor; }
+    set мощность(v) { this.potenciaMotor = v; }
+    get 功率() { return this.potenciaMotor; }
+    set 功率(v) { this.potenciaMotor = v; }
+
     get vDespegue() { return this.velocidadDespegue; }
     set vDespegue(v) { this.velocidadDespegue = v; }
+    get vDecolagem() { return this.velocidadDespegue; }
+    set vDecolagem(v) { this.velocidadDespegue = v; }
+    get скоростьВзлета() { return this.velocidadDespegue; }
+    set скоростьВзлета(v) { this.velocidadDespegue = v; }
+    get 起飞速度() { return this.velocidadDespegue; }
+    set 起飞速度(v) { this.velocidadDespegue = v; }
+
     get sustentacion() { return this.fuerzaSustentacion; }
     set sustentacion(v) { this.fuerzaSustentacion = v; }
+    get sustentacao() { return this.fuerzaSustentacion; }
+    set sustentacao(v) { this.fuerzaSustentacion = v; }
+    get подъемнаяСила() { return this.fuerzaSustentacion; }
+    set подъемнаяСила(v) { this.fuerzaSustentacion = v; }
+    get 升力() { return this.fuerzaSustentacion; }
+    set 升力(v) { this.fuerzaSustentacion = v; }
+
     get giro() { return this.agilidadGiro; }
     set giro(v) { this.agilidadGiro = v; }
+    get agilidadeGiro() { return this.agilidadGiro; }
+    set agilidadeGiro(v) { this.agilidadGiro = v; }
+    get маневренность() { return this.agilidadGiro; }
+    set маневренность(v) { this.agilidadGiro = v; }
+    get 转向灵敏度() { return this.agilidadGiro; }
+    set 转向灵敏度(v) { this.agilidadGiro = v; }
+
     get arrastre() { return this.arrastreAire; }
     set arrastre(v) { this.arrastreAire = v; }
+    get arrasto() { return this.arrastreAire; }
+    set arrasto(v) { this.arrastreAire = v; }
+    get сопротивление() { return this.arrastreAire; }
+    set сопротивление(v) { this.arrastreAire = v; }
+    get 阻力() { return this.arrastreAire; }
+    set 阻力(v) { this.arrastreAire = v; }
+
     get frenoEspacio() { return this.teclaBotonFreno; }
     set frenoEspacio(v) { this.teclaBotonFreno = v; }
+    get freioEspaco() { return this.teclaBotonFreno; }
+    set freioEspaco(v) { this.teclaBotonFreno = v; }
+    get пробелТормоз() { return this.teclaBotonFreno; }
+    set пробелТормоз(v) { this.teclaBotonFreno = v; }
+    get 空格制动() { return this.teclaBotonFreno; }
+    set 空格制动(v) { this.teclaBotonFreno = v; }
 
     get controladorDeAvion() { return this; }
 
@@ -6300,22 +6897,69 @@ export class SuspensionHC extends Leyes {
         this._isInitialized = false;
     }
 
-    // --- Spanish Aliases ---
+    // --- Multilingual Aliases ---
     get potencia() { return this.potenciaMotor; }
     set potencia(v) { this.potenciaMotor = v; }
+    get potenciaPT() { return this.potenciaMotor; }
+    set potenciaPT(v) { this.potenciaMotor = v; }
+    get мощность() { return this.potenciaMotor; }
+    set мощность(v) { this.potenciaMotor = v; }
+    get 功率() { return this.potenciaMotor; }
+    set 功率(v) { this.potenciaMotor = v; }
+
     get velocidadLimite() { return this.velocidadMaxima; }
     set velocidadLimite(v) { this.velocidadMaxima = v; }
+    get velocidadeLimite() { return this.velocidadMaxima; }
+    set velocidadeLimite(v) { this.velocidadMaxima = v; }
+    get пределСкорости() { return this.velocidadMaxima; }
+    set пределСкорости(v) { this.velocidadMaxima = v; }
+    get 速度限制() { return this.velocidadMaxima; }
+    set 速度限制(v) { this.velocidadMaxima = v; }
+
     get frenado() { return this.frenadoMotor; }
     set frenado(v) { this.frenadoMotor = v; }
+    get freio() { return this.frenadoMotor; }
+    set freio(v) { this.frenadoMotor = v; }
+    get торможение() { return this.frenadoMotor; }
+    set торможение(v) { this.frenadoMotor = v; }
+    get 制动() { return this.frenadoMotor; }
+    set 制动(v) { this.frenadoMotor = v; }
 
     get inclinacionAire() { return this.controlAire; }
     set inclinacionAire(v) { this.controlAire = v; }
+    get inclinacaoAr() { return this.controlAire; }
+    set inclinacaoAr(v) { this.controlAire = v; }
+    get наклонВВоздухе() { return this.controlAire; }
+    set наклонВВоздухе(v) { this.controlAire = v; }
+    get 空中倾斜() { return this.controlAire; }
+    set 空中倾斜(v) { this.controlAire = v; }
+
     get inclinacion() { return this.fuerzaInclinacion; }
     set inclinacion(v) { this.fuerzaInclinacion = v; }
+    get inclinacao() { return this.fuerzaInclinacion; }
+    set inclinacao(v) { this.fuerzaInclinacion = v; }
+    get наклон() { return this.fuerzaInclinacion; }
+    set наклон(v) { this.fuerzaInclinacion = v; }
+    get 倾斜() { return this.fuerzaInclinacion; }
+    set 倾斜(v) { this.fuerzaInclinacion = v; }
+
     get autoEstabilidad() { return this.estabilidadAire; }
     set autoEstabilidad(v) { this.estabilidadAire = v; }
+    get autoEstabilidade() { return this.estabilidadAire; }
+    set autoEstabilidade(v) { this.estabilidadAire = v; }
+    get автоСтабилизация() { return this.estabilidadAire; }
+    set автоСтабилизация(v) { this.estabilidadAire = v; }
+    get 自动稳定() { return this.estabilidadAire; }
+    set 自动稳定(v) { this.estabilidadAire = v; }
+
     get centradoGiro() { return this.recuperacionGiro; }
     set centradoGiro(v) { this.recuperacionGiro = v; }
+    get centradoGiroPT() { return this.recuperacionGiro; }
+    set centradoGiroPT(v) { this.recuperacionGiro = v; }
+    get центрированиеПоворота() { return this.recuperacionGiro; }
+    set центрированиеПоворота(v) { this.recuperacionGiro = v; }
+    get 转向居中() { return this.recuperacionGiro; }
+    set 转向居中(v) { this.recuperacionGiro = v; }
 
     get suspensionHC() { return this; }
 
@@ -7181,12 +7825,39 @@ export class SceneLoader extends Leyes {
     // Spanish Aliases
     get rutaEscena() { return this.scenePath; }
     set rutaEscena(v) { this.scenePath = v; }
+    get caminhoCena() { return this.scenePath; }
+    set caminhoCena(v) { this.scenePath = v; }
+    get путьКПроекту() { return this.scenePath; }
+    set путьКПроекту(v) { this.scenePath = v; }
+    get 场景路径() { return this.scenePath; }
+    set 场景路径(v) { this.scenePath = v; }
+
     get tagActivador() { return this.triggerTag; }
     set tagActivador(v) { this.triggerTag = v; }
+    get etiquetaAtivadora() { return this.triggerTag; }
+    set etiquetaAtivadora(v) { this.triggerTag = v; }
+    get активирующийТег() { return this.triggerTag; }
+    set активирующийТег(v) { this.triggerTag = v; }
+    get 激活标签() { return this.triggerTag; }
+    set 激活标签(v) { this.triggerTag = v; }
+
     get teclaActivadora() { return this.triggerKey; }
     set teclaActivadora(v) { this.triggerKey = v; }
+    get teclaAtivadora() { return this.triggerKey; }
+    set teclaAtivadora(v) { this.triggerKey = v; }
+    get активирующаяКлавиша() { return this.triggerKey; }
+    set активирующаяКлавиша(v) { this.triggerKey = v; }
+    get 激活按键() { return this.triggerKey; }
+    set 激活按键(v) { this.triggerKey = v; }
+
     get materiaBoton() { return this.buttonMateria; }
     set materiaBoton(v) { this.buttonMateria = v; }
+    get materiaBotao() { return this.buttonMateria; }
+    set materiaBotao(v) { this.buttonMateria = v; }
+    get материяКнопки() { return this.buttonMateria; }
+    set материяКнопки(v) { this.buttonMateria = v; }
+    get 按钮物质() { return this.buttonMateria; }
+    set 按钮物质(v) { this.buttonMateria = v; }
 
     clone() {
         const copy = new SceneLoader(null);
