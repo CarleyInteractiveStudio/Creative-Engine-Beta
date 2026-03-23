@@ -1525,7 +1525,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Update physics (non-fixed as currently implemented)
         if (physicsSystem) {
-            physicsSystem.update(deltaTime);
+            try {
+                physicsSystem.update(deltaTime);
+            } catch (e) {
+                console.error("[Physics] Error durante la actualizacion:", e);
+            }
         }
 
         // Update all game objects scripts (frame-dependent)
@@ -1534,7 +1538,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // The context is now handled automatically by the script instance itself.
             // No need to set it globally anymore.
-            materia.update(deltaTime);
+            try {
+                materia.update(deltaTime);
+            } catch (e) {
+                console.error(`Error actualizando el objeto '${materia.name}':`, e);
+            }
         }
     };
 
@@ -1958,102 +1966,108 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const editorLoop = (timestamp) => {
-        frameCount++;
-        // Calculate deltaTime
-        if (lastFrameTime > 0) {
-            deltaTime = (timestamp - lastFrameTime) / 1000;
-            // Clamp deltaTime to 0.1s to avoid the "spiral of death" and massive physics jumps
-            deltaTime = Math.min(deltaTime, 0.1);
-        }
-        lastFrameTime = timestamp;
-
-        // Enable verbose animation debugging in the editor
-        window.CE_DEBUG_ANIMATION = true;
-
-        SceneView.update(); // Handle all editor input logic
-        AmbienteControlWindow.update(deltaTime, isGameRunning);
-        EngineAPI.CEEngine.update(deltaTime);
-        if (uiSystem) {
-            try {
-                uiSystem.update(deltaTime);
-            } catch (e) {
-                console.error("[UISystem] Error during update:", e);
+        try {
+            frameCount++;
+            // Calculate deltaTime
+            if (lastFrameTime > 0) {
+                deltaTime = (timestamp - lastFrameTime) / 1000;
+                // Clamp deltaTime to 0.1s to avoid the "spiral of death" and massive physics jumps
+                deltaTime = Math.min(deltaTime, 0.1);
             }
-        }
+            lastFrameTime = timestamp;
 
-        if (isGameRunning) {
-            // Update inspector values every 10 frames while playing
-            if (frameCount % 10 === 0) {
-                refreshInspectorValues();
+            // Enable verbose animation debugging in the editor
+            window.CE_DEBUG_ANIMATION = true;
+
+            SceneView.update(); // Handle all editor input logic
+            AmbienteControlWindow.update(deltaTime, isGameRunning);
+            EngineAPI.CEEngine.update(deltaTime);
+            if (uiSystem) {
+                try {
+                    uiSystem.update(deltaTime);
+                } catch (e) {
+                    console.error("[UISystem] Error during update:", e);
+                }
             }
-        }
-        DebugPanel.update();
 
-        // Update layouts before game logic and rendering
-        runLayoutUpdate();
+            if (isGameRunning) {
+                // Update inspector values every 10 frames while playing
+                if (frameCount % 10 === 0) {
+                    refreshInspectorValues();
+                }
+            }
+            DebugPanel.update();
 
-        // Update components even in the editor
-        if (!isGameRunning && SceneManager.currentScene) {
-            // We update ALL renderers to ensure assets are loaded even for non-selected objects
-            for (const materia of SceneManager.currentScene.getAllMaterias()) {
-                if (!materia.isActive) continue;
+            // Update layouts before game logic and rendering
+            runLayoutUpdate();
 
-                // Always update renderers for asset loading logic
-                const sr = materia.getComponent(Components.SpriteRenderer);
-                if (sr) sr.update(deltaTime);
-                const ui = materia.getComponent(Components.UIImage);
-                if (ui) ui.update(deltaTime);
+            // Update components even in the editor
+            if (!isGameRunning && SceneManager.currentScene) {
+                // We update ALL renderers to ensure assets are loaded even for non-selected objects
+                for (const materia of SceneManager.currentScene.getAllMaterias()) {
+                    if (!materia.isActive) continue;
 
-                const water = materia.getComponent(Components.Water);
-                if (water) water.update(deltaTime);
+                    // Always update renderers for asset loading logic
+                    const sr = materia.getComponent(Components.SpriteRenderer);
+                    if (sr) sr.update(deltaTime);
+                    const ui = materia.getComponent(Components.UIImage);
+                    if (ui) ui.update(deltaTime);
 
-                const tr = materia.getComponent(Components.TextureRender);
-                if (tr) tr.update(deltaTime);
+                    const water = materia.getComponent(Components.Water);
+                    if (water) water.update(deltaTime);
 
-                const skeleton = materia.getComponent(Components.SkeletonRenderer);
-                if (skeleton) {
-                    if (skeleton.source && skeleton.source !== skeleton._lastLoadedSource) {
-                        skeleton.loadTexture(projectsDirHandle);
+                    const tr = materia.getComponent(Components.TextureRender);
+                    if (tr) tr.update(deltaTime);
+
+                    const skeleton = materia.getComponent(Components.SkeletonRenderer);
+                    if (skeleton) {
+                        if (skeleton.source && skeleton.source !== skeleton._lastLoadedSource) {
+                            skeleton.loadTexture(projectsDirHandle);
+                        }
+                    }
+
+
+                    // ONLY update Animator and Controller for selected object to avoid performance issues
+                    // but allow the user to see the character animate when selected.
+                    if (materia === selectedMateria) {
+                        const ctrl = materia.getComponent(Components.AnimatorController);
+                        if (ctrl) ctrl.update(deltaTime);
+                        const anim = materia.getComponent(Components.Animator);
+                        if (anim) anim.update(deltaTime);
                     }
                 }
+            }
 
 
-                // ONLY update Animator and Controller for selected object to avoid performance issues
-                // but allow the user to see the character animate when selected.
-                if (materia === selectedMateria) {
-                    const ctrl = materia.getComponent(Components.AnimatorController);
-                    if (ctrl) ctrl.update(deltaTime);
-                    const anim = materia.getComponent(Components.Animator);
-                    if (anim) anim.update(deltaTime);
+            // Ensure game canvas is always resized correctly when active
+            if (activeView === 'game-content' && gameRenderer) {
+                gameRenderer.resize();
+            }
+
+            if (isGameRunning && !isGamePaused) {
+                runGameLoop();
+                if (renderer) {
+                    updateScene(renderer, false);
+                }
+                if (gameRenderer) {
+                    gameRenderer.resize(); // Ensure canvas dimensions are correct
+                    updateScene(gameRenderer, true);
+                }
+            } else {
+                if (activeView === 'scene-content' && renderer) {
+                    updateScene(renderer, false);
+                } else if (activeView === 'game-content' && gameRenderer) {
+                    updateScene(gameRenderer, true);
                 }
             }
+
+            // Update InputManager at the very end of the frame
+            InputManager.update();
+        } catch (error) {
+            console.error("Error critico en el bucle del editor:", error);
+            // We don't stop the loop here, we let it continue to keep the editor alive
+            // but the specific frame content failed.
         }
-
-
-        // Ensure game canvas is always resized correctly when active
-        if (activeView === 'game-content' && gameRenderer) {
-            gameRenderer.resize();
-        }
-
-        if (isGameRunning && !isGamePaused) {
-            runGameLoop();
-            if (renderer) {
-                updateScene(renderer, false);
-            }
-            if (gameRenderer) {
-                gameRenderer.resize(); // Ensure canvas dimensions are correct
-                updateScene(gameRenderer, true);
-            }
-        } else {
-            if (activeView === 'scene-content' && renderer) {
-                updateScene(renderer, false);
-            } else if (activeView === 'game-content' && gameRenderer) {
-                updateScene(gameRenderer, true);
-            }
-        }
-
-        // Update InputManager at the very end of the frame
-        InputManager.update();
 
         editorLoopId = requestAnimationFrame(editorLoop);
     };
@@ -2180,14 +2194,16 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                             // 2. Specific Component Initialization
                             else if (ley instanceof Components.AnimatorController) {
-                                await ley.initialize(projectsDirHandle);
+                                try { await ley.initialize(projectsDirHandle); } catch (e) { console.error(`Error inicializando AnimatorController en '${materia.name}':`, e); }
                             } else if (ley instanceof Components.Animator) {
                                 if (!materia.getComponent(Components.AnimatorController)) {
-                                    await ley.loadAnimationClip(projectsDirHandle);
-                                    if (ley.playOnAwake) ley.play();
+                                    try {
+                                        await ley.loadAnimationClip(projectsDirHandle);
+                                        if (ley.playOnAwake) ley.play();
+                                    } catch (e) { console.error(`Error inicializando Animator en '${materia.name}':`, e); }
                                 }
                             } else if (ley instanceof Components.Terreno2D) {
-                                await ley.loadTextures(projectsDirHandle);
+                                try { await ley.loadTextures(projectsDirHandle); } catch (e) { console.error(`Error inicializando Terreno2D en '${materia.name}':`, e); }
                             }
 
                             // 3. Generic start for all non-script components (including AnimatorController)
