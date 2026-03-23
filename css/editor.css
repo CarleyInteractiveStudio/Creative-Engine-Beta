@@ -2738,6 +2738,42 @@ body.mobile-mode .grid-item {
     height: 100px;
 }
 
+/* Mobile Usability Fixes */
+body.mobile-mode {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+body.mobile-mode input,
+body.mobile-mode textarea,
+body.mobile-mode [contenteditable="true"],
+body.mobile-mode .cm-editor,
+body.mobile-mode #terminal-input {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+}
+
+body.mobile-mode .hierarchy-item,
+body.mobile-mode .grid-item,
+body.mobile-mode .folder-item,
+body.mobile-mode .tab-btn,
+body.mobile-mode .menu-btn,
+body.mobile-mode .panel-header,
+body.mobile-mode .inspector-row {
+    -webkit-tap-highlight-color: transparent;
+}
+
+body.mobile-mode .hierarchy-item:active,
+body.mobile-mode .grid-item:active,
+body.mobile-mode .folder-item:active,
+body.mobile-mode .asset-item:active,
+body.mobile-mode .component-item:active {
+    background-color: rgba(14, 99, 156, 0.4) !important;
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+}
+
 .hierarchy-item.active {
     background-color: var(--accent-color);
     color: white;
