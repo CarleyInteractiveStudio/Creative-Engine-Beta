@@ -92,11 +92,6 @@ class DialogWindow {
 // --- Public API ---
 
 /**
- * Displays a simple notification with an "OK" button.
- * @param {string} title The title of the dialog.
- * @param {string} message The message to display.
- */
-/**
  * Displays a dialog with a progress bar.
  * @param {string} title The title of the dialog.
  * @param {string} message The message to display above the progress bar.
@@ -125,6 +120,11 @@ export function showProgressDialog(title, message) {
     };
 }
 
+/**
+ * Displays a simple notification with an "OK" button.
+ * @param {string} title The title of the dialog.
+ * @param {string} message The message to display.
+ */
 export function showNotification(title, message) {
     const L = window.Localization;
     // Replace newlines with <br> for HTML content

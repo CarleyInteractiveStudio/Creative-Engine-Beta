@@ -26,7 +26,7 @@ export const examples = [
     },
     {
         title: "Movimiento con Mando (Gamepad)",
-        code: \`ve motor;\npublico numero velocidad = 300;\nalActualizar(delta) {\n    variable x = mandoEje("IzquierdaX");\n    variable y = mandoEje("IzquierdaY");\n    posicion.x += x * velocidad * delta;\n    posicion.y += y * velocidad * delta;\n    si (mandoBotonRecienPresionado("A")) {\n        imprimir("Salto con mando!");\n    }\n}\`
+        code: `ve motor;\npublico numero velocidad = 300;\nalActualizar(delta) {\n    variable x = mandoEje("IzquierdaX");\n    variable y = mandoEje("IzquierdaY");\n    posicion.x += x * velocidad * delta;\n    posicion.y += y * velocidad * delta;\n    si (mandoBotonRecienPresionado("A")) {\n        imprimir("Salto con mando!");\n    }\n}`
     },
     // Adding more systematically to reach 100...
 ];

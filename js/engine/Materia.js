@@ -7,7 +7,7 @@ import { currentScene } from './SceneManager.js';
 let MATERIA_ID_COUNTER = 0;
 export class Materia {
     constructor(name = 'Materia') {
-        this.id = MATERIA_ID_COUNTER++;
+        this._id = MATERIA_ID_COUNTER++;
         this.name = `${name}`;
         this.isActive = true;
         this.isCollapsed = false; // For hierarchy view
@@ -26,6 +26,14 @@ export class Materia {
 
     getFlag(key) {
         return this.flags[key];
+    }
+
+    get id() { return this._id; }
+    set id(value) {
+        this._id = value;
+        if (value >= MATERIA_ID_COUNTER) {
+            MATERIA_ID_COUNTER = value + 1;
+        }
     }
 
     // --- Spanish Aliases for Scripting ---

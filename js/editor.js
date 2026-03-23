@@ -42,8 +42,16 @@ import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
 import * as CarlAgent from './editor/CarlAgent.js';
 import * as NoviceGuide from './editor/ui/NoviceGuideWindow.js';
 import { buildProject, runStandalonePreview } from './editor/BuildSystem.js';
+import {
+    showNotification,
+    showConfirmation,
+    showBuildDialog,
+    showBuildSuccessDialog,
+    showProgressDialog,
+    showPrompt,
+    showSelection
+} from './editor/ui/DialogWindow.js';
 import * as Dialogs from './editor/ui/DialogWindow.js';
-const { showNotification: showNotificationDialog, showConfirmation: showConfirmationDialog, showBuildDialog } = Dialogs;
 import { Localization } from './engine/Localization.js';
 
 // Guarantee window-level access for non-module scripts (like auth.js)
@@ -484,7 +492,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error(`No se pudo guardar el asset '${filePath}':`, error);
-            showNotificationDialog('Error al Guardar', `No se pudo guardar el archivo: ${error.message}`);
+            showNotification('Error al Guardar', `No se pudo guardar el archivo: ${error.message}`);
         }
     };
 
@@ -857,7 +865,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return fileHandle;
         } catch (error) {
             console.error(`No se pudo crear el asset '${fileName}':`, error);
-            showNotificationDialog('Error de Creacion', `No se pudo crear el asset: ${error.message}`);
+            showNotification('Error de Creacion', `No se pudo crear el asset: ${error.message}`);
             return null;
         }
     };
@@ -1262,7 +1270,7 @@ document.addEventListener('DOMContentLoaded', () => {
     runChecksAndPlay = async function() {
         try {
             if (!isEditorReady) {
-                showNotificationDialog(
+                showNotification(
                     window.Localization?.get('EDITOR_OCUPADO') || 'Editor Ocupado',
                     window.Localization?.get('EDITOR_OCUPADO_MSG') || 'El editor todavia esta procesando archivos en segundo plano. Por favor, espera un momento.'
                 );
@@ -1279,7 +1287,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const projectName = new URLSearchParams(window.location.search).get('project') || 'Juego';
                 gameWindow = window.open('runner.html', 'CreativeEngineGame', 'width=800,height=600');
                 if (!gameWindow) {
-                    showNotificationDialog(
+                    showNotification(
                         window.Localization?.get('POPUP_BLOQUEADO') || 'Popup Bloqueado',
                         window.Localization?.get('POPUP_BLOQUEADO_MSG') || 'No se pudo abrir la ventana del juego. Por favor, permite las ventanas emergentes para este sitio en tu navegador.'
                     );
@@ -1390,6 +1398,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     logToUIConsole(error, 'error', false);
                 }
             }
+            showNotification(
+                window.Localization?.get('BUILD_FALLIDO') || 'Build Fallido',
+                window.Localization?.get('BUILD_FALLIDO_MSG') || 'No se puede iniciar el juego porque hay errores en los scripts. Revisa la consola.'
+            );
             // Cambiar a la pestana de la consola para que los errores sean visibles
             dom.assetsPanel.querySelector('[data-tab="console-content"]').click();
         } else {
@@ -1399,7 +1411,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         } catch (e) {
             console.error("Error durante la preparacion del juego:", e);
-            showNotificationDialog(
+            showNotification(
                 window.Localization?.get('ERROR_DE_INICIO') || 'Error de Inicio',
                 (window.Localization?.get('ERROR_INICIAR_JUEGO_MSG') || "No se pudo iniciar el juego: {error}")
                     .replace('{error}', e.message)
@@ -1513,7 +1525,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Update physics (non-fixed as currently implemented)
         if (physicsSystem) {
-            physicsSystem.update(deltaTime);
+            try {
+                physicsSystem.update(deltaTime);
+            } catch (e) {
+                console.error("[Physics] Error durante la actualizacion:", e);
+            }
         }
 
         // Update all game objects scripts (frame-dependent)
@@ -1522,7 +1538,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // The context is now handled automatically by the script instance itself.
             // No need to set it globally anymore.
-            materia.update(deltaTime);
+            try {
+                materia.update(deltaTime);
+            } catch (e) {
+                console.error(`Error actualizando el objeto '${materia.name}':`, e);
+            }
         }
     };
 
@@ -1946,102 +1966,108 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const editorLoop = (timestamp) => {
-        frameCount++;
-        // Calculate deltaTime
-        if (lastFrameTime > 0) {
-            deltaTime = (timestamp - lastFrameTime) / 1000;
-            // Clamp deltaTime to 0.1s to avoid the "spiral of death" and massive physics jumps
-            deltaTime = Math.min(deltaTime, 0.1);
-        }
-        lastFrameTime = timestamp;
-
-        // Enable verbose animation debugging in the editor
-        window.CE_DEBUG_ANIMATION = true;
-
-        SceneView.update(); // Handle all editor input logic
-        AmbienteControlWindow.update(deltaTime, isGameRunning);
-        EngineAPI.CEEngine.update(deltaTime);
-        if (uiSystem) {
-            try {
-                uiSystem.update(deltaTime);
-            } catch (e) {
-                console.error("[UISystem] Error during update:", e);
+        try {
+            frameCount++;
+            // Calculate deltaTime
+            if (lastFrameTime > 0) {
+                deltaTime = (timestamp - lastFrameTime) / 1000;
+                // Clamp deltaTime to 0.1s to avoid the "spiral of death" and massive physics jumps
+                deltaTime = Math.min(deltaTime, 0.1);
             }
-        }
+            lastFrameTime = timestamp;
 
-        if (isGameRunning) {
-            // Update inspector values every 10 frames while playing
-            if (frameCount % 10 === 0) {
-                refreshInspectorValues();
+            // Enable verbose animation debugging in the editor
+            window.CE_DEBUG_ANIMATION = true;
+
+            SceneView.update(); // Handle all editor input logic
+            AmbienteControlWindow.update(deltaTime, isGameRunning);
+            EngineAPI.CEEngine.update(deltaTime);
+            if (uiSystem) {
+                try {
+                    uiSystem.update(deltaTime);
+                } catch (e) {
+                    console.error("[UISystem] Error during update:", e);
+                }
             }
-        }
-        DebugPanel.update();
 
-        // Update layouts before game logic and rendering
-        runLayoutUpdate();
+            if (isGameRunning) {
+                // Update inspector values every 10 frames while playing
+                if (frameCount % 10 === 0) {
+                    refreshInspectorValues();
+                }
+            }
+            DebugPanel.update();
 
-        // Update components even in the editor
-        if (!isGameRunning && SceneManager.currentScene) {
-            // We update ALL renderers to ensure assets are loaded even for non-selected objects
-            for (const materia of SceneManager.currentScene.getAllMaterias()) {
-                if (!materia.isActive) continue;
+            // Update layouts before game logic and rendering
+            runLayoutUpdate();
 
-                // Always update renderers for asset loading logic
-                const sr = materia.getComponent(Components.SpriteRenderer);
-                if (sr) sr.update(deltaTime);
-                const ui = materia.getComponent(Components.UIImage);
-                if (ui) ui.update(deltaTime);
+            // Update components even in the editor
+            if (!isGameRunning && SceneManager.currentScene) {
+                // We update ALL renderers to ensure assets are loaded even for non-selected objects
+                for (const materia of SceneManager.currentScene.getAllMaterias()) {
+                    if (!materia.isActive) continue;
 
-                const water = materia.getComponent(Components.Water);
-                if (water) water.update(deltaTime);
+                    // Always update renderers for asset loading logic
+                    const sr = materia.getComponent(Components.SpriteRenderer);
+                    if (sr) sr.update(deltaTime);
+                    const ui = materia.getComponent(Components.UIImage);
+                    if (ui) ui.update(deltaTime);
 
-                const tr = materia.getComponent(Components.TextureRender);
-                if (tr) tr.update(deltaTime);
+                    const water = materia.getComponent(Components.Water);
+                    if (water) water.update(deltaTime);
 
-                const skeleton = materia.getComponent(Components.SkeletonRenderer);
-                if (skeleton) {
-                    if (skeleton.source && skeleton.source !== skeleton._lastLoadedSource) {
-                        skeleton.loadTexture(projectsDirHandle);
+                    const tr = materia.getComponent(Components.TextureRender);
+                    if (tr) tr.update(deltaTime);
+
+                    const skeleton = materia.getComponent(Components.SkeletonRenderer);
+                    if (skeleton) {
+                        if (skeleton.source && skeleton.source !== skeleton._lastLoadedSource) {
+                            skeleton.loadTexture(projectsDirHandle);
+                        }
+                    }
+
+
+                    // ONLY update Animator and Controller for selected object to avoid performance issues
+                    // but allow the user to see the character animate when selected.
+                    if (materia === selectedMateria) {
+                        const ctrl = materia.getComponent(Components.AnimatorController);
+                        if (ctrl) ctrl.update(deltaTime);
+                        const anim = materia.getComponent(Components.Animator);
+                        if (anim) anim.update(deltaTime);
                     }
                 }
+            }
 
 
-                // ONLY update Animator and Controller for selected object to avoid performance issues
-                // but allow the user to see the character animate when selected.
-                if (materia === selectedMateria) {
-                    const ctrl = materia.getComponent(Components.AnimatorController);
-                    if (ctrl) ctrl.update(deltaTime);
-                    const anim = materia.getComponent(Components.Animator);
-                    if (anim) anim.update(deltaTime);
+            // Ensure game canvas is always resized correctly when active
+            if (activeView === 'game-content' && gameRenderer) {
+                gameRenderer.resize();
+            }
+
+            if (isGameRunning && !isGamePaused) {
+                runGameLoop();
+                if (renderer) {
+                    updateScene(renderer, false);
+                }
+                if (gameRenderer) {
+                    gameRenderer.resize(); // Ensure canvas dimensions are correct
+                    updateScene(gameRenderer, true);
+                }
+            } else {
+                if (activeView === 'scene-content' && renderer) {
+                    updateScene(renderer, false);
+                } else if (activeView === 'game-content' && gameRenderer) {
+                    updateScene(gameRenderer, true);
                 }
             }
+
+            // Update InputManager at the very end of the frame
+            InputManager.update();
+        } catch (error) {
+            console.error("Error critico en el bucle del editor:", error);
+            // We don't stop the loop here, we let it continue to keep the editor alive
+            // but the specific frame content failed.
         }
-
-
-        // Ensure game canvas is always resized correctly when active
-        if (activeView === 'game-content' && gameRenderer) {
-            gameRenderer.resize();
-        }
-
-        if (isGameRunning && !isGamePaused) {
-            runGameLoop();
-            if (renderer) {
-                updateScene(renderer, false);
-            }
-            if (gameRenderer) {
-                gameRenderer.resize(); // Ensure canvas dimensions are correct
-                updateScene(gameRenderer, true);
-            }
-        } else {
-            if (activeView === 'scene-content' && renderer) {
-                updateScene(renderer, false);
-            } else if (activeView === 'game-content' && gameRenderer) {
-                updateScene(gameRenderer, true);
-            }
-        }
-
-        // Update InputManager at the very end of the frame
-        InputManager.update();
 
         editorLoopId = requestAnimationFrame(editorLoop);
     };
@@ -2075,7 +2101,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (!gameWindow) {
-                showNotificationDialog('Error', 'No se pudo abrir la ventana del juego. Por favor, desactiva el bloqueador de ventanas emergentes.');
+                showNotification('Error', 'No se pudo abrir la ventana del juego. Por favor, desactiva el bloqueador de ventanas emergentes.');
                 return;
             }
 
@@ -2168,14 +2194,16 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                             // 2. Specific Component Initialization
                             else if (ley instanceof Components.AnimatorController) {
-                                await ley.initialize(projectsDirHandle);
+                                try { await ley.initialize(projectsDirHandle); } catch (e) { console.error(`Error inicializando AnimatorController en '${materia.name}':`, e); }
                             } else if (ley instanceof Components.Animator) {
                                 if (!materia.getComponent(Components.AnimatorController)) {
-                                    await ley.loadAnimationClip(projectsDirHandle);
-                                    if (ley.playOnAwake) ley.play();
+                                    try {
+                                        await ley.loadAnimationClip(projectsDirHandle);
+                                        if (ley.playOnAwake) ley.play();
+                                    } catch (e) { console.error(`Error inicializando Animator en '${materia.name}':`, e); }
                                 }
                             } else if (ley instanceof Components.Terreno2D) {
-                                await ley.loadTextures(projectsDirHandle);
+                                try { await ley.loadTextures(projectsDirHandle); } catch (e) { console.error(`Error inicializando Terreno2D en '${materia.name}':`, e); }
                             }
 
                             // 3. Generic start for all non-script components (including AnimatorController)
@@ -2369,7 +2397,7 @@ document.addEventListener('DOMContentLoaded', () => {
             SceneManager.setSceneDirty(false);
         } catch (error) {
             console.error("Error al guardar prefab:", error);
-            showNotificationDialog('Error', 'No se pudo guardar el prefab.');
+            showNotification('Error', 'No se pudo guardar el prefab.');
         }
     };
 
@@ -2411,7 +2439,7 @@ document.addEventListener('DOMContentLoaded', () => {
             selectMateria(rootMateria);
         } catch (e) {
             console.error("Error al entrar en modo prefab:", e);
-            showNotificationDialog('Error', 'No se pudo abrir el prefab.');
+            showNotification('Error', 'No se pudo abrir el prefab.');
         }
     };
 
@@ -2464,7 +2492,7 @@ document.addEventListener('DOMContentLoaded', () => {
     saveScene = async function() {
         if (isPrefabMode) {
             await savePrefab();
-            showNotificationDialog('Exito', 'Prefab guardado!');
+            showNotification('Exito', 'Prefab guardado!');
             return;
         }
         if (!SceneManager.currentSceneFileHandle) {
@@ -2487,7 +2515,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 SceneManager.setCurrentSceneFileHandle(fileHandle);
                 dom.currentSceneName.textContent = fileHandle.name.replace('.ceScene', '');
                 SceneManager.setSceneDirty(false);
-                showNotificationDialog('Exito', 'Escena guardada!');
+                showNotification('Exito', 'Escena guardada!');
                 updateAssetBrowser(); // Refresh to show the new file
 
                 // Capture thumbnail
@@ -2495,7 +2523,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 if (error.name !== 'AbortError') {
                     console.error("Error en 'Guardar Como':", error);
-                    showNotificationDialog('Error', 'No se pudo guardar la escena.');
+                    showNotification('Error', 'No se pudo guardar la escena.');
                 }
             }
         } else {
@@ -2506,13 +2534,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 await writable.write(JSON.stringify(sceneData, null, 2));
                 await writable.close();
                 SceneManager.setSceneDirty(false);
-                showNotificationDialog('Exito', 'Escena guardada!');
+                showNotification('Exito', 'Escena guardada!');
 
                 // Capture thumbnail
                 await captureThumbnail();
             } catch (error) {
                 console.error("Error al guardar la escena:", error);
-                showNotificationDialog('Error', 'No se pudo guardar la escena.');
+                showNotification('Error', 'No se pudo guardar la escena.');
             }
         }
     };
@@ -2526,7 +2554,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return true;
         }
         return new Promise(resolve => {
-            showConfirmationDialog(
+            showConfirmation(
                 'Cambios sin Guardar',
                 'La escena actual tiene cambios sin guardar. Quieres guardarlos antes de continuar?',
                 () => saveScene().then(() => resolve(true)), // Yes, save and continue
@@ -2825,7 +2853,7 @@ document.addEventListener('DOMContentLoaded', () => {
             openAssetSelector(async (fileHandle, path, dirHandle) => {
                 const selectedMtr = getSelectedMateria();
                 if (!selectedMtr) {
-                    showNotificationDialog(L.get('AVISO'), L.get('ERROR_IMPORTAR_SIN_OBJETO', 'Selecciona un objeto en la jerarquia para importar el esqueleto como hijo.'));
+                    showNotification(L.get('AVISO'), L.get('ERROR_IMPORTAR_SIN_OBJETO', 'Selecciona un objeto en la jerarquia para importar el esqueleto como hijo.'));
                     return;
                 }
 
@@ -2833,11 +2861,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const file = await fileHandle.getFile();
                     const content = await file.text();
                     const result = await SkeletonImporter.importSpineJSON(content, selectedMtr, projectsDirHandle);
-                    showNotificationDialog(L.get('EXITO'), L.get('ESQUELETO_IMPORTADO', 'Esqueleto importado correctamente.'));
+                    showNotification(L.get('EXITO'), L.get('ESQUELETO_IMPORTADO', 'Esqueleto importado correctamente.'));
                     updateHierarchy();
                 } catch (err) {
                     console.error("Error importing Spine skeleton:", err);
-                    showNotificationDialog(L.get('ERROR'), 'Error importing Spine JSON.');
+                    showNotification(L.get('ERROR'), 'Error importing Spine JSON.');
                 }
             }, { filter: ['.json'], title: L.get('IMPORTAR_ESQUELETO_SPINE', 'Import Skeleton (Spine)') });
         });
@@ -2847,7 +2875,7 @@ document.addEventListener('DOMContentLoaded', () => {
             reportBugBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 // We use the already available showNotification or a specialized one
-                showNotificationDialog('Reportar Fallo', 'Gracias por querer ayudarnos! Por favor, envia un mensaje detallado a nuestro correo de soporte o usa el formulario de contacto en el inicio.');
+                showNotification('Reportar Fallo', 'Gracias por querer ayudarnos! Por favor, envia un mensaje detallado a nuestro correo de soporte o usa el formulario de contacto en el inicio.');
             });
         }
 
@@ -2863,7 +2891,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const L = window.Localization;
             const currentDirHandle = getCurrentDirectoryHandle();
             if (!currentDirHandle) {
-                showNotificationDialog(L?.get('AVISO') || "Aviso", L?.get('SELECCIONAR_CARPETA_IMPORTAR') || "Selecciona primero una carpeta en el navegador de assets para importar archivos.");
+                showNotification(L?.get('AVISO') || "Aviso", L?.get('SELECCIONAR_CARPETA_IMPORTAR') || "Selecciona primero una carpeta en el navegador de assets para importar archivos.");
                 return;
             }
 
@@ -3105,7 +3133,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateEditorLayout();
                 updateWindowMenuUI();
 
-                showNotificationDialog('Diseno Restablecido', 'El diseno de los paneles ha sido restablecido.');
+                showNotification('Diseno Restablecido', 'El diseno de los paneles ha sido restablecido.');
             });
         }
 
@@ -3117,12 +3145,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (const id of requiredFields) {
                     const element = document.getElementById(id);
                     if (!element.value) {
-                        showNotificationDialog('Campo Obligatorio', `El campo '${element.previousElementSibling.textContent}' es obligatorio.`);
+                        showNotification('Campo Obligatorio', `El campo '${element.previousElementSibling.textContent}' es obligatorio.`);
                         return;
                     }
                 }
                 if (dom.ksPassword.value.length < 6) {
-                    showNotificationDialog('Contrasena Debil', 'La contrasena de la clave debe tener al menos 6 caracteres.');
+                    showNotification('Contrasena Debil', 'La contrasena de la clave debe tener al menos 6 caracteres.');
                     return;
                 }
 
@@ -3135,7 +3163,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 dom.ksCommandTextarea.value = command;
                 dom.ksCommandOutput.classList.remove('hidden');
 
-                showNotificationDialog('Comando Generado', 'Comando generado. Copialo y ejecutalo en una terminal con JDK instalado para crear tu archivo keystore.');
+                showNotification('Comando Generado', 'Comando generado. Copialo y ejecutalo en una terminal con JDK instalado para crear tu archivo keystore.');
             });
         }
 
@@ -3380,7 +3408,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (!selectedProvider) {
-                    showNotificationDialog('Sin Cerebro Seleccionado', 'Por favor, elige un cerebro en el menu o configura Carl IA en Preferencias antes de enviar un mensaje.');
+                    showNotification('Sin Cerebro Seleccionado', 'Por favor, elige un cerebro en el menu o configura Carl IA en Preferencias antes de enviar un mensaje.');
                     return;
                 }
 
@@ -3828,7 +3856,7 @@ Para que tu libreria tenga una interfaz en el editor, usa \`CreativeEngine.API.r
         nombre: "Mi Herramienta",
         alAbrir: function(panel) {
             panel.agregarTexto("Hola, mundo!");
-            panel.agregarBoton("Saludar", () => showNotificationDialog('Saludo', 'Hola!'));
+            panel.agregarBoton("Saludar", () => showNotification('Saludo', 'Hola!'));
         }
     });
 })();
@@ -4014,10 +4042,10 @@ public start() {
                     const fileName = `${animName}.cea`;
                     await createAsset(fileName, JSON.stringify(animationData, null, 2), dirHandle);
                     updateAssetBrowser();
-                    showNotificationDialog('Exito', `Animacion '${animName}' creada correctamente.`);
+                    showNotification('Exito', `Animacion '${animName}' creada correctamente.`);
                 } catch (error) {
                     console.error("Error al extraer frames:", error);
-                    showNotificationDialog('Error', "No se pudo crear la animacion.");
+                    showNotification('Error', "No se pudo crear la animacion.");
                 }
             };
             const onAssetSelected = (assetName, assetPath, assetKind) => {
@@ -4054,7 +4082,7 @@ public start() {
                         openMarkdownViewerCallback(options.path, content);
                     } catch (e) {
                         console.error(`Error reading Markdown file ${name}:`, e);
-                        showNotificationDialog("Error", `Could not read file: ${name}`);
+                        showNotification("Error", `Could not read file: ${name}`);
                     }
                     return;
                 }
@@ -4253,7 +4281,7 @@ public start() {
             if (dom.btnSavePrefab) {
                 dom.btnSavePrefab.addEventListener('click', async () => {
                     await savePrefab();
-                    showNotificationDialog('Exito', 'Prefab guardado!');
+                    showNotification('Exito', 'Prefab guardado!');
                 });
             }
 

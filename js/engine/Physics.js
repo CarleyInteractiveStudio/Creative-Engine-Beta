@@ -213,7 +213,12 @@ export class PhysicsSystem {
                 rigidbody.velocity.x = this._clamp(rigidbody.velocity.x, -this.MAX_VELOCITY, this.MAX_VELOCITY);
                 rigidbody.velocity.y = this._clamp(rigidbody.velocity.y, -this.MAX_VELOCITY, this.MAX_VELOCITY);
 
+                const prevVelY = rigidbody.velocity.y;
                 rigidbody.velocity.y += this.gravity.y * rigidbody.gravityScale * deltaTime;
+
+                if (window.CE_PHYSICS_DEBUG && this.currentFrame % 60 === 0) {
+                    console.log(`[Physics] Object '${materia.name}' gravity update: velY ${prevVelY.toFixed(3)} -> ${rigidbody.velocity.y.toFixed(3)}`);
+                }
 
                 // --- Apply buoyancy if in water (PARTICLE-BASED) ---
                 for (let wIdx = 0; wIdx < waterComponents.length; wIdx++) {
