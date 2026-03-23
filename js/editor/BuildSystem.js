@@ -103,7 +103,7 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
     if (typeof JSZip === 'undefined') {
         showNotification(
             window.Localization?.get('ERROR_DE_BUILD') || 'Error de Build',
-            window.Localization?.get('ERROR_JSZIP_FALTANTE') || 'La libreria JSZip no esta cargada.'
+            window.Localization?.get('ERROR_JSZIP_FALTANTE') || 'La librería JSZip no está cargada.'
         );
         return;
     }
@@ -124,7 +124,7 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
 
         if (options.exportTarget === 'folder') {
             if (!window.showDirectoryPicker) {
-                throw new Error("Su navegador no soporta la exportacion a carpetas locales. Por favor, use la opcion ZIP.");
+                throw new Error("Su navegador no soporta la exportación a carpetas locales. Por favor, use la opción ZIP.");
             }
             outputHandle = await window.showDirectoryPicker();
         } else {
@@ -133,7 +133,7 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
 
         const progress = showProgressDialog(
             window.Localization?.get('BUILD_EN_PROGRESO') || 'Build en Progreso',
-            window.Localization?.get('BUILD_GENERANDO_') || 'Generando paquete de juego independiente...'
+            window.Localization?.get('BUILD_GENERANDO_独立') || 'Generando paquete de juego independiente...'
         );
         let currentStep = 0;
         const totalSteps = 10;
@@ -199,7 +199,7 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
         await addAssetsToZip(zip || outputHandle, assetsHandle, 'Assets', usedAssets);
 
         // 5. Export project libraries
-        updateProgress("Exportando librerias...");
+        updateProgress("Exportando librerías...");
         try {
             const libHandle = await projectHandle.getDirectoryHandle('lib');
             await addAssetsToZip(zip || outputHandle, libHandle, 'lib'); // Add all .celib files
@@ -253,7 +253,7 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
         `);
 
         // 9. Final Project Configuration
-        updateProgress("Finalizando configuracion...");
+        updateProgress("Finalizando configuración...");
         const buildConfig = await prepareBuildConfig(projectHandle, mergedConfig);
 
         await writeFile('project.json', JSON.stringify(buildConfig, null, 2));
@@ -281,7 +281,7 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
         console.error('Build Error:', error);
         showNotification(
             window.Localization?.get('ERROR_DE_BUILD') || 'Error de Build',
-            `Ocurrio un error: ${error.message}`
+            `Ocurrió un error: ${error.message}`
         );
     }
 }
@@ -309,8 +309,8 @@ function generateIndexHtml(config) {
 </head>
 <body>
     <div id="cors-warning">
-        <h1> Accion Requerida</h1>
-        <p>Parece que estas intentando abrir el juego directamente desde tus archivos.</p>
+        <h1>⚠️ Acción Requerida</h1>
+        <p>Parece que estás intentando abrir el juego directamente desde tus archivos.</p>
         <p>Por razones de seguridad, los navegadores modernos bloquean la carga de scripts del motor cuando se abren de esta manera.</p>
         <p><strong>Para jugar:</strong> Sube estos archivos a un servidor (GitHub Pages, Itch.io) o usa un servidor local (ej. Live Server).</p>
         <button onclick="document.getElementById('cors-warning').style.display='none'" style="padding: 10px 20px; cursor: pointer; border: none; background: #444; color: white; border-radius: 5px;">Intentar de todas formas</button>
@@ -487,7 +487,7 @@ async function collectUsedAssets(projectHandle) {
 export async function runStandalonePreview(config) {
     const previewWindow = window.open('runner.html?standalone=true&preview=true', 'CreativeEngineStandalonePreview', 'width=800,height=600');
     if (!previewWindow) {
-        showNotification('Error', 'No se pudo abrir la ventana de previsualizacion. Comprueba el bloqueador de popups.');
+        showNotification('Error', 'No se pudo abrir la ventana de previsualización. Comprueba el bloqueador de popups.');
         return;
     }
 

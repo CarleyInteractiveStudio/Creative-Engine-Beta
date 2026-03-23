@@ -159,9 +159,8 @@ Permite cambiar de nivel o escena automáticamente.
 El contenedor principal para todos los elementos de interfaz. Soporta modo Pantalla o Espacio de Mundo.
 
 ### 🔘 Button (Botón)
-Detecta clics del usuario y navegación por mando.
+Detecta clics del usuario.
 - **Uso en Inspector:** Permite definir colores para los estados (Normal, Presionado, Desactivado).
-- **Navegación:** Los botones soportan automáticamente navegación por mando (D-pad/Sticks) y pueden ser pulsados con el botón "A" o "Cross".
 - **Scripting:**
   ```ces
   alHacerClick() {

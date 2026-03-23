@@ -26,7 +26,7 @@ function playTrack(index) {
         // Stop playback if playlist ends
         audioElement.pause();
         currentTrackIndex = -1;
-        dom.nowPlayingTitle.textContent = window.Localization?.get('NO_REPRODUCIENDO') || "Nada en reproduccion";
+        dom.nowPlayingTitle.textContent = window.Localization?.get('NO_REPRODUCIENDO') || "Nada en reproducción";
         if (dom.musicPlayPauseBtn) dom.musicPlayPauseBtn.innerHTML = '<img src="icons/play.svg" class="ce-icon">';
         updatePlaylistUI();
         return;

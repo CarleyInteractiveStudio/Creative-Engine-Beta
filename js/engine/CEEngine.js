@@ -63,7 +63,7 @@ function getCollisionEnter(materia, tag = null) {
     // Si solo se pasa un argumento y es un string, asumimos que es el tag
     if (tag === null && typeof materia === 'string') {
         tag = materia;
-        materia = null; // El sistema lo resolvera al objeto que llama si es posible, o fallara elegantemente
+        materia = null; // El sistema lo resolverá al objeto que llama si es posible, o fallará elegantemente
     }
     return physicsSystem.getCollisionInfo(materia, 'enter', 'collision', tag);
 }
@@ -87,8 +87,8 @@ function getCollisionExit(materia, tag = null) {
 }
 
 /**
- * Comprueba si un objeto esta tocando a otro con un tag especifico.
- * Busca tanto en colisiones fisicas como en gatillos (triggers), y tanto
+ * Comprueba si un objeto está tocando a otro con un tag específico.
+ * Busca tanto en colisiones físicas como en gatillos (triggers), y tanto
  * en el frame de inicio como en los de permanencia.
  */
 function isTouchingTag(materia, tag = null) {

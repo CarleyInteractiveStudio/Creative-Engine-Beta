@@ -29,8 +29,3 @@ Este documento detalla los atajos de teclado disponibles para agilizar tu flujo 
 ## Editor de Código
 - **Ctrl + Z**: Deshacer.
 - **Ctrl + Y**: Rehacer.
-
-## 🎮 Navegación con Mando (Juego)
-- **D-Pad / Sticks**: Navegar por la interfaz del juego (botones, sliders).
-- **Botón A / Cross**: Seleccionar / Hacer clic en el elemento enfocado.
-- **Botón B / Circle**: Acción de retroceso (si el script lo implementa).

@@ -113,11 +113,14 @@ The engine abstracts the complexity of hardware events into a direct query API (
 - `getMousePosition()`: Returns an `{x, y}` object in world coordinates.
 
 ### 🎮 Gamepads
-The engine supports multiple gamepads for PC and mobile:
-- `getGamepadButton("A")`: Detects if the button is held down. Supports names like "A", "B", "X", "Y", "LB", "RB", "Start", "Select".
-- `getGamepadButtonDown("Cross")`: Useful for jumps or single actions.
-- `getGamepadAxis("LeftX")`: Returns a value from -1 to 1 for analog sticks.
-- `getConnectedGamepadCount()`: Number of connected gamepads.
+The engine detects gamepads automatically. You can use up to 4 simultaneous controllers.
+- `isGamepadConnected(index)`: Returns `true` if there is a controller in that port (0-3).
+- `isGamepadButtonPressed(button, index)`: Checks if a button is held down.
+- `isGamepadButtonJustPressed(button, index)`: Ideal for menus or jumps.
+- `getGamepadAxis(axis, index)`: Returns the value of the sticks (-1.0 to 1.0).
+
+**Common buttons:** `"A"`, `"B"`, `"X"`, `"Y"`, `"L1"`, `"R1"`, `"Start"`, `"Select"`.
+**Common axes:** `0` (Left Stick X), `1` (Left Stick Y).
 
 ---
 
@@ -256,13 +259,12 @@ This process ensures you write easy code but run professional code.
 
 Creative Engine includes advanced tools to ensure you never get stuck:
 
-### 🧠 Smart Console
-The console doesn't just tell you what failed, but **where** and **how** to fix it:
-- **Real-Time Detection**: The editor highlights syntax errors as you type with a red lateral bar.
-- **Clear Categorization**: Errors are divided into **Syntax** (yellow) and **Execution** (red).
-- **Error Translation**: Technical errors are converted into clear, user-friendly explanations.
-- **"Go to Line" Button**: Opens the editor and highlights the exact line of the failure with a high-visibility focus.
-- **"Auto Repair" Button**: Analyzes your code and proposes a solution based on thousands of correct patterns.
+### 🧠 Smart Console and Linting
+The console and editor work together so you never get stuck:
+- **Real-Time Validation (Linting)**: While you type in the Code Editor, the engine highlights syntax errors with a red squiggly line and an icon in the margin. Don't wait to hit Play to find out you're missing a parenthesis!
+- **Error Translation**: Converts cryptic JavaScript errors into clear explanations (e.g., "You're missing the Rigidbody2D component" instead of "Cannot read property velocity").
+- **"Go to Line" Button**: In the console, click to jump directly to the file and line of the error.
+- **"Auto Repair" Button**: Analyzes the context of your error and proposes an automatic fix.
 
 ### 📜 History and Backups
 Did you delete something important? In the Code Editor, click on **"History"** to view and restore the last 10 saved versions of your script.

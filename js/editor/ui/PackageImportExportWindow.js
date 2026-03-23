@@ -72,8 +72,8 @@ async function exportPackage(filesToExport, manifest) {
 
         const content = await zip.generateAsync({type: 'blob'});
         downloadBlob(content, exportContext.fileName);
-        console.log("Paquete exportado con exito.");
-        showNotification(L.get('EXITO', 'Exito'), L.get('EXITO_PAQUETE_EXPORTADO', 'Paquete exportado con exito.'));
+        console.log("Paquete exportado con éxito.");
+        showNotification(L.get('EXITO', 'Éxito'), L.get('EXITO_PAQUETE_EXPORTADO', 'Paquete exportado con éxito.'));
         dom.packageFileTreeModal.classList.remove('is-open');
 
     } catch(error) {
@@ -110,13 +110,13 @@ async function confirmImport(zip, dirHandle) {
                 await writable.close();
             }
         }
-        showNotification(L.get('EXITO', 'Exito'), L.get('EXITO_IMPORT_COMPLETO', 'Importacion completada con exito!'));
+        showNotification(L.get('EXITO', 'Éxito'), L.get('EXITO_IMPORT_COMPLETO', '¡Importación completada con éxito!'));
         dom.packageFileTreeModal.classList.remove('is-open');
         await updateAssetBrowser();
 
     } catch (error) {
-        console.error("Error durante la importacion de archivos:", error);
-        showNotification(L.get('ERROR', 'Error'), L.get('ERROR_IMPORT_PAQUETE', 'Ocurrio un error al importar los archivos. Revisa la consola.'));
+        console.error("Error durante la importación de archivos:", error);
+        showNotification(L.get('ERROR', 'Error'), L.get('ERROR_IMPORT_PAQUETE', 'Ocurrió un error al importar los archivos. Revisa la consola.'));
     }
 }
 
@@ -133,7 +133,7 @@ async function handleImport() {
         const manifestFile = zip.file('manifest.json');
 
         if (!manifestFile) {
-            showNotification(L.get('PAQUETE_INVALIDO', 'Paquete Invalido'), L.get('ERROR_PAQUETE_INVALIDO', 'Este no es un paquete valido. Falta el archivo manifest.json.'));
+            showNotification(L.get('PAQUETE_INVALIDO', 'Paquete Inválido'), L.get('ERROR_PAQUETE_INVALIDO', 'Este no es un paquete válido. Falta el archivo manifest.json.'));
             return;
         }
 
@@ -142,7 +142,7 @@ async function handleImport() {
 
         // Configure and show the package modal for IMPORT
         dom.packageModalTitle.textContent = L.get('TITULO_IMPORTAR_PAQUETE', 'Importar Paquete');
-        dom.packageModalDescription.innerHTML = `<p><b data-i18n="DESCRIPCION">${L.get('DESCRIPCION', 'Descripcion')}:</b> ${manifest.description || 'N/A'}</p>`;
+        dom.packageModalDescription.innerHTML = `<p><b data-i18n="DESCRIPCION">${L.get('DESCRIPCION', 'Descripción')}:</b> ${manifest.description || 'N/A'}</p>`;
         dom.packageExportControls.style.display = 'none';
         dom.packageImportControls.style.display = 'flex';
 
@@ -178,7 +178,7 @@ async function handleImport() {
         };
 
     } catch(err) {
-        console.log("Importacion cancelada o fallida:", err);
+        console.log("Importación cancelada o fallida:", err);
     }
 }
 
@@ -241,7 +241,7 @@ function setupEventListeners() {
             await populateFileTree(dom.packageFileTreeContainer, root, pathPrefix);
 
         } catch (error) {
-            console.error("Error detallado al poblar el arbol de archivos:", error);
+            console.error("Error detallado al poblar el árbol de archivos:", error);
             dom.packageFileTreeContainer.innerHTML = `<p class="error-message">${L.get('ERROR_LOAD_FILES_CONSOLA', 'No se pudieron cargar los archivos. Revisa la consola.')}</p>`;
         }
     });
@@ -285,7 +285,7 @@ function setupEventListeners() {
 async function exportLibrariesAsPackage(libraryNames) {
     const L = window.Localization;
     if (!libraryNames || libraryNames.length === 0) {
-        showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SIN_LIBS_EXPORT', 'No se seleccionaron librerias para exportar.'));
+        showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SIN_LIBS_EXPORT', 'No se seleccionaron librerías para exportar.'));
         return;
     }
 
@@ -293,7 +293,7 @@ async function exportLibrariesAsPackage(libraryNames) {
         const zip = new JSZip();
         const manifest = {
             type: 'library_package',
-            description: L.get('DESC_PAQUETE_LIBS', 'Paquete de librerias de Creative Engine.'),
+            description: L.get('DESC_PAQUETE_LIBS', 'Paquete de librerías de Creative Engine.'),
             fileList: []
         };
 
@@ -325,12 +325,12 @@ async function exportLibrariesAsPackage(libraryNames) {
         const content = await zip.generateAsync({ type: 'blob' });
         const defaultFilename = `librerias_${new Date().toISOString().slice(0, 10)}.cep`;
         downloadBlob(content, defaultFilename);
-        console.log("Paquete de librerias exportado con exito.");
-        showNotification(L.get('EXITO', 'Exito'), L.get('EXITO_LIBS_EXPORTADAS', 'Paquete de librerias exportado con exito.'));
+        console.log("Paquete de librerías exportado con éxito.");
+        showNotification(L.get('EXITO', 'Éxito'), L.get('EXITO_LIBS_EXPORTADAS', 'Paquete de librerías exportado con éxito.'));
 
     } catch (error) {
-        console.error(`Error al exportar el paquete de librerias:`, error);
-        showNotification(L.get('ERROR', 'Error'), L.get('ERROR_EXPORT_LIBS', 'No se pudo exportar el paquete de librerias.'));
+        console.error(`Error al exportar el paquete de librerías:`, error);
+        showNotification(L.get('ERROR', 'Error'), L.get('ERROR_EXPORT_LIBS', 'No se pudo exportar el paquete de librerías.'));
     }
 }
 

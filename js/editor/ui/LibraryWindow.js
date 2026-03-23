@@ -109,8 +109,8 @@ async function refreshLibraryList() {
         if (libraries.length === 0) {
             container.innerHTML = `
                 <div class="panel-overlay-message">
-                    <p data-i18n="SIN_LIBRERIAS">No se encontraron librerias en la carpeta /lib del proyecto.</p>
-                    <p data-i18n="SIN_LIBRERIAS_HINT">Usa 'Crear' para empezar una nueva o 'Importar' para anadir un archivo .celib existente.</p>
+                    <p data-i18n="SIN_LIBRERIAS">No se encontraron librerías en la carpeta /lib del proyecto.</p>
+                    <p data-i18n="SIN_LIBRERIAS_HINT">Usa 'Crear' para empezar una nueva o 'Importar' para añadir un archivo .celib existente.</p>
                 </div>`;
             if (window.Localization) window.Localization.applyToElement(container);
             return;
@@ -141,7 +141,7 @@ async function refreshLibraryList() {
                     <!-- 3. Author Info (Icon + Name) -->
                     <div class="library-author">
                         <img src="${authorIconSrc}" class="author-icon">
-                        <span class="author-name">${lib.data.author || window.Localization?.get('ANONIMO') || 'Anonimo'}</span>
+                        <span class="author-name">${lib.data.author || window.Localization?.get('ANONIMO') || 'Anónimo'}</span>
                     </div>
                 </div>
             `;
@@ -155,7 +155,7 @@ async function refreshLibraryList() {
         });
 
     } catch (error) {
-        console.error("Error al cargar la lista de librerias:", error);
+        console.error("Error al cargar la lista de librerías:", error);
         container.innerHTML = `<div class="panel-overlay-message"><p data-i18n="ERROR_ACCESO_LIB">Error al acceder al directorio 'lib'.</p></div>`;
         if (window.Localization) window.Localization.applyToElement(container);
     }
@@ -187,12 +187,12 @@ async function handleImportLibrary(fileHandleToImport = null) {
                 // Version comparison logic (simple string comparison for now)
                 if (newLibData.version > existingLibData.version) {
                     // Automatically update
-                    console.log(`Actualizando libreria '${newLibData.name}' de v${existingLibData.version} a v${newLibData.version}.`);
+                    console.log(`Actualizando librería '${newLibData.name}' de v${existingLibData.version} a v${newLibData.version}.`);
                 } else if (newLibData.version < existingLibData.version) {
                     shouldWriteFile = await new Promise(resolve => {
                         showConfirmation(
-                            window.Localization?.get('TITULO_VERSION_ANTERIOR') || 'Version Anterior',
-                            (window.Localization?.get('PROMPT_VERSION_ANTERIOR') || "Ya tienes una version mas reciente ({v_existing}) de '{name}'. Seguro que quieres instalar esta version anterior ({v_new})?")
+                            window.Localization?.get('TITULO_VERSION_ANTERIOR') || 'Versión Anterior',
+                            (window.Localization?.get('PROMPT_VERSION_ANTERIOR') || "Ya tienes una versión más reciente ({v_existing}) de '{name}'. ¿Seguro que quieres instalar esta versión anterior ({v_new})?")
                                 .replace('{v_existing}', existingLibData.version)
                                 .replace('{name}', newLibData.name)
                                 .replace('{v_new}', newLibData.version),
@@ -204,7 +204,7 @@ async function handleImportLibrary(fileHandleToImport = null) {
                 } else {
                     showNotification(
                         window.Localization?.get('TITULO_SIN_CAMBIOS') || 'Sin Cambios',
-                        (window.Localization?.get('MSG_LIB_MISMA_VERSION') || "La libreria '{name}' ya esta en la version {version}. No se requiere ninguna accion.")
+                        (window.Localization?.get('MSG_LIB_MISMA_VERSION') || "La librería '{name}' ya está en la versión {version}. No se requiere ninguna acción.")
                             .replace('{name}', newLibData.name)
                             .replace('{version}', newLibData.version)
                     );
@@ -247,13 +247,13 @@ async function handleImportLibrary(fileHandleToImport = null) {
             let userApproved = true;
             if (requestedPermissions.length > 0) {
                 const permissionListHTML = `<ul>${requestedPermissions.map(p => `<li>${p}</li>`).join('')}</ul>`;
-                const confirmationMessage = (window.Localization?.get('MSG_LIB_REQUEST_PERMISSIONS') || "La libreria '{name}' solicita los siguientes permisos para funcionar correctamente: {list} Confias en el autor y quieres conceder estos permisos?")
+                const confirmationMessage = (window.Localization?.get('MSG_LIB_REQUEST_PERMISSIONS') || "La librería '{name}' solicita los siguientes permisos para funcionar correctamente: {list} ¿Confías en el autor y quieres conceder estos permisos?")
                     .replace('{name}', newLibData.name)
                     .replace('{list}', permissionListHTML);
 
                 userApproved = await new Promise(resolve => {
                     showConfirmation(
-                        window.Localization?.get('TITULO_PERMISOS_LIB') || 'Permisos de la Libreria',
+                        window.Localization?.get('TITULO_PERMISOS_LIB') || 'Permisos de la Librería',
                         confirmationMessage,
                         () => resolve(true),  // On 'Yes'
                         () => resolve(false), // On 'No'
@@ -264,7 +264,7 @@ async function handleImportLibrary(fileHandleToImport = null) {
 
             if (!userApproved) {
                 showNotification(
-                    window.Localization?.get('TITULO_IMPORT_CANCELADO') || 'Importacion Cancelada',
+                    window.Localization?.get('TITULO_IMPORT_CANCELADO') || 'Importación Cancelada',
                     window.Localization?.get('MSG_PERMISOS_DENEGADOS') || 'No se concedieron los permisos necesarios.'
                 );
                 return; // Stop the import process
@@ -290,8 +290,8 @@ async function handleImportLibrary(fileHandleToImport = null) {
 
 
             showNotification(
-                window.Localization?.get('TITULO_IMPORT_EXITO') || 'Importacion Exitosa',
-                (window.Localization?.get('MSG_LIB_IMPORTADA') || "Libreria '{name}' importada y activada con exito como '{file}'.")
+                window.Localization?.get('TITULO_IMPORT_EXITO') || 'Importación Exitosa',
+                (window.Localization?.get('MSG_LIB_IMPORTADA') || "Librería '{name}' importada y activada con éxito como '{file}'.")
                     .replace('{name}', newLibData.name)
                     .replace('{file}', finalFileName)
             );
@@ -299,10 +299,10 @@ async function handleImportLibrary(fileHandleToImport = null) {
         }
         } catch (err) {
             if (err.name !== 'AbortError') {
-                console.error("Error al procesar el archivo de la libreria:", err);
+                console.error("Error al procesar el archivo de la librería:", err);
                 showNotification(
                     window.Localization?.get('ERROR') || 'Error',
-                    window.Localization?.get('ERROR_PROC_LIB') || 'Ocurrio un error durante el procesamiento del archivo.'
+                    window.Localization?.get('ERROR_PROC_LIB') || 'Ocurrió un error durante el procesamiento del archivo.'
                 );
             }
         }
@@ -313,7 +313,7 @@ async function handleImportLibrary(fileHandleToImport = null) {
     } else {
         openAssetSelector(processFile, {
             filter: ['.celib'],
-            title: window.Localization?.get('IMPORTAR_LIBRERIA') || 'Importar Libreria'
+            title: window.Localization?.get('IMPORTAR_LIBRERIA') || 'Importar Librería'
         });
     }
 }
@@ -330,22 +330,22 @@ export async function createLibraryFile(libData, filesToProcess, iconFile, autho
     if (!projectsDirHandle) {
         showNotification(
             window.Localization?.get('ERROR_ENTORNO_LIB') || 'Error de Entorno',
-            window.Localization?.get('ERROR_ENTORNO_LIB_MSG') || 'La funcion de creacion de librerias no esta disponible porque no se pudo acceder al directorio de proyectos.'
+            window.Localization?.get('ERROR_ENTORNO_LIB_MSG') || 'La función de creación de librerías no está disponible porque no se pudo acceder al directorio de proyectos.'
         );
-        console.error("createLibraryFile fallo because projectsDirHandle is null.");
+        console.error("createLibraryFile falló because projectsDirHandle is null.");
         return false;
     }
     if (!libData.name) {
         showNotification(
             window.Localization?.get('ERROR_INTERNO_LIB') || 'Error Interno',
-            window.Localization?.get('ERROR_INTERNO_LIB_MSG') || 'El nombre de la libreria es requerido en createLibraryFile.'
+            window.Localization?.get('ERROR_INTERNO_LIB_MSG') || 'El nombre de la librería es requerido en createLibraryFile.'
         );
         return false;
     }
      if (filesToProcess.length === 0) {
         showNotification(
             window.Localization?.get('CAMPO_OBLIGATORIO') || 'Campo Obligatorio',
-            window.Localization?.get('MSG_LIB_MIN_ONE_FILE') || 'Se debe anadir al menos un archivo de script (.js o .ces).'
+            window.Localization?.get('MSG_LIB_MIN_ONE_FILE') || 'Se debe añadir al menos un archivo de script (.js o .ces).'
         );
         return false;
     }
@@ -414,7 +414,7 @@ async function handleCreateLibrary() {
     if (!libName) {
         showNotification(
             window.Localization?.get('CAMPO_OBLIGATORIO') || 'Campo Obligatorio',
-            window.Localization?.get('MSG_LIB_NAME_REQUIRED') || 'El nombre de la libreria es obligatorio.'
+            window.Localization?.get('MSG_LIB_NAME_REQUIRED') || 'El nombre de la librería es obligatorio.'
         );
         return;
     }
@@ -442,8 +442,8 @@ async function handleCreateLibrary() {
 
     if (success) {
         showNotification(
-            window.Localization?.get('EXITO') || 'Exito',
-            (window.Localization?.get('MSG_LIB_CREADA_EXITO') || "Libreria '{name}' creada con exito.")
+            window.Localization?.get('EXITO') || 'Éxito',
+            (window.Localization?.get('MSG_LIB_CREADA_EXITO') || "Librería '{name}' creada con éxito.")
                 .replace('{name}', libName)
         );
         dom.createLibraryModal.classList.remove('is-open');
@@ -486,7 +486,7 @@ export function initialize(editorDom, handle, exportFunc, openAssetSelectorCallb
             libraryFiles = [];
             mainScriptFile = null;
             if (dom.libCreateFileList) dom.libCreateFileList.innerHTML = '';
-            if (dom.libCreateDropZone) dom.libCreateDropZone.querySelector('p').textContent = window.Localization?.get('DROP_ARCHIVOS') || 'Arrastra y suelta los archivos aqui, o haz clic para seleccionar.';
+            if (dom.libCreateDropZone) dom.libCreateDropZone.querySelector('p').textContent = window.Localization?.get('DROP_ARCHIVOS') || 'Arrastra y suelta los archivos aquí, o haz clic para seleccionar.';
 
             dom.createLibraryModal.classList.add('is-open');
         });
@@ -577,23 +577,23 @@ export function initialize(editorDom, handle, exportFunc, openAssetSelectorCallb
 
             showNotification(
                 window.Localization?.get('TITULO_ESTADO_CAMBIADO') || 'Estado Cambiado',
-                (window.Localization?.get('MSG_LIB_ESTADO_ACTUALIZADO') || "La libreria ha sido {state}. Por favor, reinicia el editor para aplicar los cambios.")
+                (window.Localization?.get('MSG_LIB_ESTADO_ACTUALIZADO') || "La librería ha sido {state}. Por favor, reinicia el editor para aplicar los cambios.")
                     .replace('{state}', newState ? (window.Localization?.get('ACTIVADA') || 'activada') : (window.Localization?.get('DESACTIVADA') || 'desactivada'))
             );
             refreshLibraryList();
 
         } catch (error) {
-            console.error(`Error al actualizar el estado de la libreria '${libName}':`, error);
+            console.error(`Error al actualizar el estado de la librería '${libName}':`, error);
             showNotification(
                 window.Localization?.get('ERROR') || 'Error',
-                window.Localization?.get('ERROR_UPDATE_LIB_STATUS') || 'No se pudo actualizar el estado de la libreria.'
+                window.Localization?.get('ERROR_UPDATE_LIB_STATUS') || 'No se pudo actualizar el estado de la librería.'
             );
         }
     }
     async function handleDeleteLibrary(libName) {
         showConfirmation(
-            window.Localization?.get('TITULO_CONFIRMAR_ELIMINAR_LIB') || 'Confirmar Eliminacion',
-            (window.Localization?.get('PROMPT_ELIMINAR_LIB') || "Estas seguro de que quieres eliminar la libreria '{name}' del proyecto? Esta accion no se puede deshacer.")
+            window.Localization?.get('TITULO_CONFIRMAR_ELIMINAR_LIB') || 'Confirmar Eliminación',
+            (window.Localization?.get('PROMPT_ELIMINAR_LIB') || "¿Estás seguro de que quieres eliminar la librería '{name}' del proyecto? Esta acción no se puede deshacer.")
                 .replace('{name}', libName),
             async () => {
                 try {
@@ -603,7 +603,7 @@ export function initialize(editorDom, handle, exportFunc, openAssetSelectorCallb
 
                     // Delete .celib file
                     await libDirHandle.removeEntry(libName);
-                    console.log(`Libreria '${libName}' eliminada.`);
+                    console.log(`Librería '${libName}' eliminada.`);
 
                     // Try to delete .meta file, ignore if it doesn't exist
                     try {
@@ -614,16 +614,16 @@ export function initialize(editorDom, handle, exportFunc, openAssetSelectorCallb
                     }
 
                     showNotification(
-                        window.Localization?.get('TITULO_LIB_ELIMINADA') || 'Libreria Eliminada',
-                        window.Localization?.get('MSG_LIB_ELIMINADA_RESTART') || 'Libreria eliminada. Reinicia el editor para que los cambios surtan efecto.'
+                        window.Localization?.get('TITULO_LIB_ELIMINADA') || 'Librería Eliminada',
+                        window.Localization?.get('MSG_LIB_ELIMINADA_RESTART') || 'Librería eliminada. Reinicia el editor para que los cambios surtan efecto.'
                     );
                     refreshLibraryList();
 
                 } catch (error) {
-                    console.error(`Error al eliminar la libreria '${libName}':`, error);
+                    console.error(`Error al eliminar la librería '${libName}':`, error);
                     showNotification(
                         window.Localization?.get('ERROR') || 'Error',
-                        window.Localization?.get('ERROR_ELIMINAR_LIB') || 'No se pudo eliminar la libreria.'
+                        window.Localization?.get('ERROR_ELIMINAR_LIB') || 'No se pudo eliminar la librería.'
                     );
                 }
             }
@@ -637,7 +637,7 @@ export function initialize(editorDom, handle, exportFunc, openAssetSelectorCallb
         if (libraryNames.length === 0) {
             showNotification(
                 window.Localization?.get('ERROR') || 'Error',
-                window.Localization?.get('ERROR_EXPORT_LIBS_SELECTION') || 'Por favor, selecciona al menos una libreria para exportar.'
+                window.Localization?.get('ERROR_EXPORT_LIBS_SELECTION') || 'Por favor, selecciona al menos una librería para exportar.'
             );
             return;
         }
@@ -645,10 +645,10 @@ export function initialize(editorDom, handle, exportFunc, openAssetSelectorCallb
         if (exportLibrariesAsPackage) {
             exportLibrariesAsPackage(libraryNames);
         } else {
-            console.error("La funcion de exportacion no esta disponible.");
+            console.error("La función de exportación no está disponible.");
             showNotification(
                 window.Localization?.get('ERROR') || 'Error',
-                window.Localization?.get('ERROR_EXPORT_LIBS_LOAD') || 'La funcionalidad de exportacion de paquetes no se ha cargado correctamente.'
+                window.Localization?.get('ERROR_EXPORT_LIBS_LOAD') || 'La funcionalidad de exportación de paquetes no se ha cargado correctamente.'
             );
         }
     }
@@ -731,10 +731,10 @@ export function initialize(editorDom, handle, exportFunc, openAssetSelectorCallb
             document.getElementById('details-lib-name').textContent = libData.name || window.Localization?.get('SIN_NOMBRE') || 'Sin Nombre';
             document.getElementById('details-lib-version').textContent = `v${libData.version || '0.0.0'}`;
             document.getElementById('details-author-icon').src = libData.author_icon_base64 || 'image/Paquete.png';
-            document.getElementById('details-author-name').textContent = libData.author || window.Localization?.get('ANONIMO') || 'Anonimo';
+            document.getElementById('details-author-name').textContent = libData.author || window.Localization?.get('ANONIMO') || 'Anónimo';
 
             // --- Populate Description Bubble ---
-            document.getElementById('details-lib-description').textContent = libData.description || window.Localization?.get('SIN_DESCRIPCION') || 'Sin descripcion.';
+            document.getElementById('details-lib-description').textContent = libData.description || window.Localization?.get('SIN_DESCRIPCION') || 'Sin descripción.';
 
             // --- Populate Status & Permissions Bubble ---
             const statusToggle = document.getElementById('details-status-toggle');
@@ -761,10 +761,10 @@ export function initialize(editorDom, handle, exportFunc, openAssetSelectorCallb
             document.getElementById('library-details-modal').classList.add('is-open');
 
         } catch (error) {
-            console.error(`Error al abrir los detalles de la libreria '${fileName}':`, error);
+            console.error(`Error al abrir los detalles de la librería '${fileName}':`, error);
             showNotification(
                 window.Localization?.get('ERROR') || 'Error',
-                window.Localization?.get('ERROR_LOAD_LIB_DETAILS') || 'No se pudieron cargar los detalles de la libreria.'
+                window.Localization?.get('ERROR_LOAD_LIB_DETAILS') || 'No se pudieron cargar los detalles de la librería.'
             );
         }
     }
@@ -806,13 +806,13 @@ export function initialize(editorDom, handle, exportFunc, openAssetSelectorCallb
 
             document.getElementById('library-details-modal').classList.remove('is-open');
             showNotification(
-                window.Localization?.get('EXITO') || 'Exito',
+                window.Localization?.get('EXITO') || 'Éxito',
                 window.Localization?.get('MSG_LIB_ESTADO_ACTUALIZADO_RESTART') || 'Cambios guardados. Por favor, reinicia el editor para aplicar todos los cambios.'
             );
             refreshLibraryList(); // Refresh the main view to show active/inactive state
 
         } catch (error) {
-            console.error(`Error al guardar los cambios de la libreria '${selectedLibraryForDetails}':`, error);
+            console.error(`Error al guardar los cambios de la librería '${selectedLibraryForDetails}':`, error);
             showNotification(
                 window.Localization?.get('ERROR') || 'Error',
                 window.Localization?.get('ERROR_SAVE_CHANGES') || 'No se pudieron guardar los cambios.'
@@ -824,7 +824,7 @@ export function initialize(editorDom, handle, exportFunc, openAssetSelectorCallb
         document.getElementById('library-details-modal').classList.remove('is-open');
     });
 
-    console.log("Modulo de la Ventana de Librerias inicializado.");
+    console.log("Módulo de la Ventana de Librerías inicializado.");
 
     // Return the refresh function so other modules can trigger an update
     return {
@@ -907,7 +907,7 @@ function setupDragAndDrop() {
                     }
                 } else {
                     showNotification(
-                        window.Localization?.get('TITULO_ARCHIVO_INVALIDO') || 'Archivo no valido',
+                        window.Localization?.get('TITULO_ARCHIVO_INVALIDO') || 'Archivo no válido',
                         (window.Localization?.get('MSG_JS_CES_ONLY') || "Solo se permiten archivos .js y .ces. {file} fue ignorado.")
                             .replace('{file}', file.name)
                     );
@@ -920,9 +920,9 @@ function setupDragAndDrop() {
     function updateFileList() {
         fileList.innerHTML = '';
         if (libraryFiles.length === 0) {
-            dropZone.querySelector('p').textContent = 'Arrastra y suelta los archivos aqui, o haz clic para seleccionar.';
+            dropZone.querySelector('p').textContent = 'Arrastra y suelta los archivos aquí, o haz clic para seleccionar.';
         } else {
-            dropZone.querySelector('p').textContent = `${libraryFiles.length} archivo(s) anadidos. Anade mas si lo necesitas.`;
+            dropZone.querySelector('p').textContent = `${libraryFiles.length} archivo(s) añadidos. Añade más si lo necesitas.`;
         }
 
         libraryFiles.forEach(file => {

@@ -2,7 +2,7 @@
 
 /**
  * @namespace CreativeEngine.API
- * @description API para que las librerias interactuen y extiendan el editor.
+ * @description API para que las librerías interactúen y extiendan el editor.
  */
 
 import { createFloatingPanel } from './FloatingPanelManager.js';
@@ -11,15 +11,15 @@ const registeredWindows = [];
 const runtimeAPIs = {};
 
 /**
- * Registra una nueva ventana de libreria en el menu principal "Ventana > Librerias".
+ * Registra una nueva ventana de librería en el menú principal "Ventana > Librerías".
  */
 function registrarVentana(options) {
     if (!options || !options.nombre || typeof options.alAbrir !== 'function') {
-        console.error("Error al registrar la ventana: el nombre y la funcion 'alAbrir' son obligatorios.");
+        console.error("Error al registrar la ventana: el nombre y la función 'alAbrir' son obligatorios.");
         return;
     }
     registeredWindows.push(options);
-    console.log(`Ventana de libreria registrada: "${options.nombre}"`);
+    console.log(`Ventana de librería registrada: "${options.nombre}"`);
 }
 
 /**
@@ -34,7 +34,7 @@ function crearPanel(options) {
     if (options.estilo === 'moderno') className = 'ce-window-modern';
 
     const panelElement = createFloatingPanel(panelId, {
-        title: options.titulo || 'Panel de Libreria',
+        title: options.titulo || 'Panel de Librería',
         content: '',
         width: options.width || options.ancho || 400,
         height: options.height || options.alto || 300,
@@ -318,7 +318,7 @@ function registrarRuntimeAPI(nombre, apiObject) {
         return;
     }
     if (runtimeAPIs[nombre]) {
-        console.warn(`Una API de runtime con el nombre "${nombre}" ya ha sido registrada. Sera sobrescrita.`);
+        console.warn(`Una API de runtime con el nombre "${nombre}" ya ha sido registrada. Será sobrescrita.`);
     }
     runtimeAPIs[nombre] = apiObject;
     console.log(`API de runtime registrada: "${nombre}"`);

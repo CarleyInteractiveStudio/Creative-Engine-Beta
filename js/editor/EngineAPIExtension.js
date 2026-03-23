@@ -8,27 +8,27 @@ import { showNotification } from './ui/DialogWindow.js';
 
 /**
  * @namespace engine
- * @description La nueva API extendida para que las librerias interactuen con el nucleo del motor.
+ * @description La nueva API extendida para que las librerías interactúen con el núcleo del motor.
  */
 
 // Registro central para las definiciones de componentes personalizados.
 const customComponentDefinitions = new Map();
 
 /**
- * Registra una nueva definicion de componente personalizado para que este disponible en el editor.
- * @param {object} definition - La definicion del componente.
- * @param {string} definition.nombre - El nombre unico del componente.
- * @param {object} definition.propiedades - Un objeto que define las propiedades publicas del componente.
- * @param {string} definition.script - El script en formato .ces que define la logica del componente.
+ * Registra una nueva definición de componente personalizado para que esté disponible en el editor.
+ * @param {object} definition - La definición del componente.
+ * @param {string} definition.nombre - El nombre único del componente.
+ * @param {object} definition.propiedades - Un objeto que define las propiedades públicas del componente.
+ * @param {string} definition.script - El script en formato .ces que define la lógica del componente.
  * @returns {boolean} - Devuelve true si el registro fue exitoso, false en caso contrario.
  */
 function registrarComponente(definition) {
     if (!definition || !definition.nombre) {
-        console.error("Error al registrar el componente: La definicion debe incluir un nombre.");
+        console.error("Error al registrar el componente: La definición debe incluir un nombre.");
         return false;
     }
     if (customComponentDefinitions.has(definition.nombre)) {
-        console.warn(`Se esta sobrescribiendo un componente personalizado ya registrado: "${definition.nombre}"`);
+        console.warn(`Se está sobrescribiendo un componente personalizado ya registrado: "${definition.nombre}"`);
     }
 
     let cesCode = '';
@@ -66,11 +66,11 @@ function registrarComponente(definition) {
     // Registrar el componente en el sistema global de Componentes
     Components.registerComponent(definition.nombre, Components.CustomComponent);
 
-    console.log(`Componente personalizado "${definition.nombre}" registrado y transpilado con exito.`);
+    console.log(`Componente personalizado "${definition.nombre}" registrado y transpilado con éxito.`);
     return true;
 }
 
-// El objeto `engine` que se expondra a las librerias.
+// El objeto `engine` que se expondrá a las librerías.
 const engineAPI = {
     registrarComponente,
     crearMateria: (nombre) => {

@@ -1,7 +1,7 @@
 /**
  * AIHandler.js
  *
- * Este modulo centraliza la comunicacion con las APIs de IA externas (Gemini, OpenAI, etc.).
+ * Este módulo centraliza la comunicación con las APIs de IA externas (Gemini, OpenAI, etc.).
  */
 
 /**
@@ -169,7 +169,7 @@ export async function callGenerativeAI(provider, modelName, apiKey, prompt, syst
         if (textResponse) {
             return { success: true, text: textResponse };
         } else {
-            return { success: false, error: "No se pudo extraer una respuesta valida de la API." };
+            return { success: false, error: "No se pudo extraer una respuesta válida de la API." };
         }
 
     } catch (error) {

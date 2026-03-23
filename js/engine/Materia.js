@@ -183,7 +183,7 @@ export class Materia {
     }
 
     /**
-     * Busca un script especifico en esta Materia por su nombre.
+     * Busca un script específico en esta Materia por su nombre.
      * @param {string} name - El nombre del script (ej: 'ControladorJugador').
      * @returns {object|null} La instancia del script o null si no se encuentra.
      */
@@ -192,18 +192,18 @@ export class Materia {
         return scriptComp ? scriptComp.instance : null;
     }
 
-    // Alias en ingles
+    // Alias en inglés
     getScript(name) { return this.obtenerScript(name); }
 
     /**
-     * Comprueba si esta materia tiene un tag especifico.
+     * Comprueba si esta materia tiene un tag específico.
      * @param {string} tag
      */
     tieneTag(tag) {
         return this.tag === tag;
     }
 
-    // Alias en ingles
+    // Alias en inglés
     hasTag(tag) { return this.tieneTag(tag); }
 
     findAncestorWithComponent(componentClass) {
@@ -324,7 +324,7 @@ export class Materia {
      */
     destruir() { this.destroy(); }
     destroy() {
-        // Notificar destruccion a los componentes de esta materia
+        // Notificar destrucción a los componentes de esta materia
         for (const ley of this.leyes) {
             if (typeof ley.onDestroy === 'function') {
                 try {

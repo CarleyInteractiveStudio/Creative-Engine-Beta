@@ -169,8 +169,8 @@ export class CreativeScriptBehavior {
     update(deltaTime) { /* To be overridden by user scripts */ } // Kept for compatibility; user scripts receive deltaTime now
 
     /**
-     * Pausa la ejecucion del script por una cantidad determinada de segundos.
-     * Solo funciona dentro de metodos marcados como 'async' (todos los metodos .ces lo son por defecto).
+     * Pausa la ejecución del script por una cantidad determinada de segundos.
+     * Solo funciona dentro de métodos marcados como 'async' (todos los métodos .ces lo son por defecto).
      * @param {number} segundos - Tiempo a esperar en segundos.
      */
     async esperar(segundos) {
@@ -179,7 +179,7 @@ export class CreativeScriptBehavior {
 
     /**
      * @private
-     * Ejecuta una funcion repetidamente cada X segundos.
+     * Ejecuta una función repetidamente cada X segundos.
      */
     _runInterval(segundos, callback) {
         const intervalId = setInterval(async () => {
@@ -232,7 +232,7 @@ export class CreativeScriptBehavior {
     }
 
     /**
-     * Comprueba si la materia tiene una etiqueta especifica.
+     * Comprueba si la materia tiene una etiqueta específica.
      */
     tieneTag(tag) {
         return this.materia && this.materia.tag === tag;
@@ -259,14 +259,14 @@ export class CreativeScriptBehavior {
     getComponentInChildren(type) { return this.obtenerComponenteEnHijos(type); }
 
     /**
-     * Devuelve el tiempo transcurrido desde el ultimo frame.
+     * Devuelve el tiempo transcurrido desde el último frame.
      */
     get deltaTime() {
         const engine = RuntimeAPIManager.getAPI('engine');
         return engine ? engine.getDeltaTime() : 0;
     }
 
-    /** Alias en espanol */
+    /** Alias en español */
     get tiempoDelta() { return this.deltaTime; }
 
     get estaActivado() { return this.materia ? this.materia.isActive : false; }
@@ -333,13 +333,13 @@ export class CreativeScriptBehavior {
     _missingComponentProxy(name, technicalName) {
         const handler = {
             get: (target, prop) => {
-                throw new Error(`Intentaste usar '${name}', pero el componente '${technicalName}' no esta anadido a este objeto en el Inspector.`);
+                throw new Error(`Intentaste usar '${name}', pero el componente '${technicalName}' no está añadido a este objeto en el Inspector.`);
             },
             set: (target, prop, value) => {
                 throw new Error(`No puedes asignar '${prop}' en '${name}' porque el componente '${technicalName}' no existe en este objeto.`);
             },
             apply: (target, thisArg, args) => {
-                throw new Error(`Intentaste llamar a '${name}' como funcion, pero el componente '${technicalName}' no existe.`);
+                throw new Error(`Intentaste llamar a '${name}' como función, pero el componente '${technicalName}' no existe.`);
             }
         };
         // We use a dummy function so it's also "callable" for proxies that might be used as functions
@@ -353,36 +353,6 @@ export class CreativeScriptBehavior {
 
     get fisica() { return this.obtenerComponente('Rigidbody2D') || this._missingComponentProxy('fisica', 'Rigidbody2D'); }
     get rigidbody2D() { return this.fisica; }
-
-    // --- Rigidbody2D Property Shortcuts ---
-    get velocidad() { return this.fisica.velocity; }
-    set velocidad(v) { this.fisica.velocity = v; }
-    get velocity() { return this.fisica.velocity; }
-    set velocity(v) { this.fisica.velocity = v; }
-    get velocidadX() { return this.fisica.velocity.x; }
-    set velocidadX(v) { this.fisica.velocity.x = v; }
-    get velocidadY() { return this.fisica.velocity.y; }
-    set velocidadY(v) { this.fisica.velocity.y = v; }
-    get velocityX() { return this.fisica.velocity.x; }
-    set velocityX(v) { this.fisica.velocity.x = v; }
-    get velocityY() { return this.fisica.velocity.y; }
-    set velocityY(v) { this.fisica.velocity.y = v; }
-    get velocidadAngular() { return this.fisica.angularVelocity; }
-    set velocidadAngular(v) { this.fisica.angularVelocity = v; }
-    get angularVelocity() { return this.fisica.angularVelocity; }
-    set angularVelocity(v) { this.fisica.angularVelocity = v; }
-    get masa() { return this.fisica.mass; }
-    set masa(v) { this.fisica.mass = v; }
-    get mass() { return this.fisica.mass; }
-    set mass(v) { this.fisica.mass = v; }
-    get escalaGravedad() { return this.fisica.gravityScale; }
-    set escalaGravedad(v) { this.fisica.gravityScale = v; }
-    get gravityScale() { return this.fisica.gravityScale; }
-    set gravityScale(v) { this.fisica.gravityScale = v; }
-    get arrastreAngular() { return this.fisica.angularDrag; }
-    set arrastreAngular(v) { this.fisica.angularDrag = v; }
-    get angularDrag() { return this.fisica.angularDrag; }
-    set angularDrag(v) { this.fisica.angularDrag = v; }
 
     get vida() { return this.obtenerComponente('Health') || this._missingComponentProxy('vida', 'Health'); }
     get salud() { return this.vida; }
@@ -440,7 +410,7 @@ export class CreativeScriptBehavior {
     }
 
     /**
-     * Crea una copia de una Materia (objeto) existente y la anade a la escena actual.
+     * Crea una copia de una Materia (objeto) existente y la añade a la escena actual.
      */
     instanciar(original, x, y) {
         // We import it dynamically or just use the global/RuntimeManager if available.
@@ -475,8 +445,8 @@ export class CreativeScriptBehavior {
     async create(ruta, x, y) { return await this.crear(ruta, x, y); }
 
     /**
-     * Ejecuta una accion (objeto con targetId y functionName).
-     * @param {object} accion - La accion a ejecutar.
+     * Ejecuta una acción (objeto con targetId y functionName).
+     * @param {object} accion - La acción a ejecutar.
      * @param {...any} args - Argumentos adicionales.
      */
     ejecutarAccion(accion, ...args) {
@@ -490,7 +460,7 @@ export class CreativeScriptBehavior {
         });
     }
 
-    /** Alias en ingles */
+    /** Alias en inglés */
     executeAction(action, ...args) { this.ejecutarAccion(action, ...args); }
 
     /**
@@ -503,7 +473,7 @@ export class CreativeScriptBehavior {
     find(nombre) { return this.buscar(nombre); }
 
     /**
-     * Detecta objetos en una linea.
+     * Detecta objetos en una línea.
      */
     lanzarRayo(origen, direccion, distancia, tag) {
         const engine = RuntimeAPIManager.getAPI('engine');
@@ -559,7 +529,7 @@ export class CreativeScriptBehavior {
     /**
      * Se suscribe a un mensaje global.
      * @param {string} mensaje - Nombre del mensaje.
-     * @param {Function} callback - Funcion a ejecutar.
+     * @param {Function} callback - Función a ejecutar.
      */
     alRecibir(mensaje, callback) {
         const unsub = MessageBus.subscribe(mensaje, callback.bind(this));
@@ -646,11 +616,11 @@ export class CreativeScriptBehavior {
     distancia(x1, y1, x2, y2) { return this.distance(x1, y1, x2, y2); }
 
     /**
-     * Reproduce una animacion especifica en esta materia.
-     * Si hay un AnimatorController, esto sobrescribira el estado actual temporalmente.
+     * Reproduce una animación específica en esta materia.
+     * Si hay un AnimatorController, esto sobrescribirá el estado actual temporalmente.
      * @param {string} path - Ruta al archivo .cea o .ceanimclip
-     * @param {boolean} [loop=true] - Si la animacion debe repetirse
-     * @param {number} [speed=12] - Velocidad de reproduccion
+     * @param {boolean} [loop=true] - Si la animación debe repetirse
+     * @param {number} [speed=12] - Velocidad de reproducción
      */
     reproducirAnimacion(path, loop = true, speed = 12) {
         if (!this.materia) return;
@@ -660,13 +630,13 @@ export class CreativeScriptBehavior {
         }
     }
 
-    /** Alias en ingles */
+    /** Alias en inglés */
     playAnimation(path, loop, speed) { this.reproducirAnimacion(path, loop, speed); }
 
     /**
-     * Reproduce un estado del AnimatorController si existe una conexion.
+     * Reproduce un estado del AnimatorController si existe una conexión.
      * @param {string} estado - Nombre del estado.
-     * @param {boolean|object} [opciones] - Si es boolean, es el parametro 'force'. Si es objeto, son overrides (loop, speed, etc).
+     * @param {boolean|object} [opciones] - Si es boolean, es el parámetro 'force'. Si es objeto, son overrides (loop, speed, etc).
      */
     reproducir(estado, opciones = false) {
         if (!this.materia) return;
@@ -681,11 +651,11 @@ export class CreativeScriptBehavior {
         }
     }
 
-    /** Alias en ingles */
+    /** Alias en inglés */
     play(estado, opciones) { this.reproducir(estado, opciones); }
 
     /**
-     * Detiene la animacion actual.
+     * Detiene la animación actual.
      */
     detenerAnimacion() {
         if (!this.materia) return;
@@ -695,7 +665,7 @@ export class CreativeScriptBehavior {
         }
     }
 
-    /** Alias en ingles */
+    /** Alias en inglés */
     stopAnimation() { this.detenerAnimacion(); }
 
     // --- Collision & Trigger Event Stubs ---
@@ -720,7 +690,7 @@ export class Transform extends Leyes {
         this.flipY = false;
     }
 
-    // --- Posicion Global (World Position) ---
+    // --- Posición Global (World Position) ---
     get position() {
         if (!this.materia || !this.materia.parent) {
             return { ...this.localPosition };
@@ -736,7 +706,7 @@ export class Transform extends Leyes {
         const cos = Math.cos(parentRotRad);
         const sin = Math.sin(parentRotRad);
 
-        // Aplicar escala y rotacion del padre a la posicion local
+        // Aplicar escala y rotación del padre a la posición local
         const rotatedX = (this.localPosition.x * parentScale.x * cos) - (this.localPosition.y * parentScale.y * sin);
         const rotatedY = (this.localPosition.x * parentScale.x * sin) + (this.localPosition.y * parentScale.y * cos);
 
@@ -759,14 +729,14 @@ export class Transform extends Leyes {
 
         const parentPos = parentTransform.position;
         const parentScale = parentTransform.scale;
-        const parentRotRad = -parentTransform.rotation * (Math.PI / 180); // Rotacion inversa
+        const parentRotRad = -parentTransform.rotation * (Math.PI / 180); // Rotación inversa
         const cos = Math.cos(parentRotRad);
         const sin = Math.sin(parentRotRad);
 
         const relativeX = worldPosition.x - parentPos.x;
         const relativeY = worldPosition.y - parentPos.y;
 
-        // Aplicar rotacion y escala inversas
+        // Aplicar rotación y escala inversas
         const unrotatedX = (relativeX * cos) - (relativeY * sin);
         const unrotatedY = (relativeX * sin) + (relativeY * cos);
 
@@ -776,7 +746,7 @@ export class Transform extends Leyes {
         };
     }
 
-    // --- Rotacion Global (World Rotation) ---
+    // --- Rotación Global (World Rotation) ---
     get rotation() {
         if (!this.materia || !this.materia.parent) {
             return this.localRotation;
@@ -841,9 +811,9 @@ export class Transform extends Leyes {
     set y(value) { this.position = { x: this.position.x, y: value }; }
 
     /**
-     * Hace que el objeto mire hacia una posicion especifica.
-     * @param {number|{x:number, y:number}} xOrObj - Posicion X o vector.
-     * @param {number} [y] - Posicion Y.
+     * Hace que el objeto mire hacia una posición específica.
+     * @param {number|{x:number, y:number}} xOrObj - Posición X o vector.
+     * @param {number} [y] - Posición Y.
      */
     lookAt(xOrObj, y) {
         let tx = 0, ty = 0;
@@ -859,7 +829,7 @@ export class Transform extends Leyes {
         this.rotation = Math.atan2(dy, dx) * 180 / Math.PI;
     }
 
-    /** Alias en espanol */
+    /** Alias en español */
     mirarA(x, y) { this.lookAt(x, y); }
 
     clone() {
@@ -1002,7 +972,7 @@ export class CreativeScript extends Leyes {
             }
 
             if (!transpiledCode) {
-                throw new Error(`No se encontro codigo transpilado para '${this.scriptName}'.`);
+                throw new Error(`No se encontró código transpilado para '${this.scriptName}'.`);
             }
 
             const factory = (new Function(`return ${transpiledCode}`))();
@@ -1065,10 +1035,10 @@ export class CreativeScript extends Leyes {
                 // --- End API Injection ---
 
 
-                // --- LOGICA DE ASIGNACION DE VARIABLES PUBLICAS REVISADA ---
+                // --- LÓGICA DE ASIGNACIÓN DE VARIABLES PÚBLICAS REVISADA ---
                 // El constructor de la instancia del script (generado por el transpilador) ya asigna
-                // los valores por defecto definidos en el codigo.
-                // Aqui, SOLO sobrescribimos esos valores si hay un valor diferente
+                // los valores por defecto definidos en el código.
+                // Aquí, SOLO sobrescribimos esos valores si hay un valor diferente
                 // guardado en la escena (proveniente del Inspector).
 
                 if (this.publicVars) {
@@ -1077,12 +1047,12 @@ export class CreativeScript extends Leyes {
                     const metadataMap = new Map(metadata.publicVars.map(p => [p.name, p]));
 
                     for (const varName in this.publicVars) {
-                        // Comprobar que la variable guardada todavia existe en el script
+                        // Comprobar que la variable guardada todavía existe en el script
                         if (this.publicVars.hasOwnProperty(varName) && metadataMap.has(varName)) {
                             let savedValue = this.publicVars[varName];
 
                             // Asignar solo si el valor guardado no es nulo o indefinido.
-                            // Un string vacio "" se considera un valor valido.
+                            // Un string vacío "" se considera un valor válido.
                             if (savedValue !== null && savedValue !== undefined) {
                                 const metaVar = metadataMap.get(varName);
 
@@ -1094,7 +1064,7 @@ export class CreativeScript extends Leyes {
                                             if (metaVar.type === 'Materia') {
                                                 savedValue = targetMateria;
                                             } else {
-                                                // Intentar obtener el componente especifico por nombre
+                                                // Intentar obtener el componente específico por nombre
                                                 savedValue = targetMateria.getComponentByName(metaVar.type) || targetMateria;
                                             }
                                         }
@@ -1103,15 +1073,15 @@ export class CreativeScript extends Leyes {
                                     }
                                 }
 
-                                // Reconstruccion de tipos complejos (Vector2, Color) si es necesario
+                                // Reconstrucción de tipos complejos (Vector2, Color) si es necesario
                                 // Por ahora se asume que son objetos planos {x,y} o {r,g,b,a}
-                                // pero aqui se podria anadir logica de 'new Vector2()' si las clases estuvieran disponibles.
+                                // pero aquí se podría añadir lógica de 'new Vector2()' si las clases estuvieran disponibles.
 
                                 // Sobrescribir el valor por defecto con el valor guardado
                                 try {
                                     this.instance[varName] = savedValue;
                                 } catch (e) {
-                                    console.warn(`No se pudo asignar la variable publica guardada '${varName}' en el script '${this.scriptName}':`, e);
+                                    console.warn(`No se pudo asignar la variable pública guardada '${varName}' en el script '${this.scriptName}':`, e);
                                 }
                             }
                         }
@@ -1120,7 +1090,7 @@ export class CreativeScript extends Leyes {
 
                 // Mark initialized
                 this.isInitialized = true;
-                console.log(`Script '${this.scriptName}' instanciado con exito.`);
+                console.log(`Script '${this.scriptName}' instanciado con éxito.`);
             } else {
                 throw new Error(`El script '${this.scriptName}' no exporta una clase por defecto.`);
             }
@@ -1173,7 +1143,7 @@ export class Rigidbody2D extends Leyes {
             freezePositionY: false,
             freezeRotation: false
         };
-        this.buoyancyWeight = 1.0; // Peso del objeto para flotacion
+        this.buoyancyWeight = 1.0; // Peso del objeto para flotación
         this.sinkThreshold = 1.5; // Densidad a la que empieza a hundirse (buoyancy density)
 
         // Internal state, not exposed in inspector
@@ -1581,7 +1551,7 @@ export class Animator extends Leyes {
         this._blendDuration = 0;
         this._prevPose = null; // Map of boneName -> {pos, rot, scale}
 
-        // Importante: Empezar pausado en el editor. El motor llamara a play() al iniciar el juego.
+        // Importante: Empezar pausado en el editor. El motor llamará a play() al iniciar el juego.
         this.isPlaying = false;
         this.spriteRenderer = null;
         this.projectsDirHandle = null;
@@ -1709,9 +1679,9 @@ export class Animator extends Leyes {
     }
 
     /**
-     * Comienza una transicion suave a una nueva animacion.
+     * Comienza una transición suave a una nueva animación.
      * @param {string} path - Ruta al nuevo clip.
-     * @param {number} duration - Duracion del crossfade en segundos.
+     * @param {number} duration - Duración del crossfade en segundos.
      * @param {object} options - Opciones adicionales.
      */
     clone() {
@@ -1754,7 +1724,7 @@ export class Animator extends Leyes {
     }
 
     /**
-     * Reproduce una animacion.
+     * Reproduce una animación.
      * @param {string} [path] - Ruta opcional a un nuevo clip.
      * @param {object} [options] - Opciones: { loop, speed, startFrame, endFrame, source, force }
      */
@@ -1771,7 +1741,7 @@ export class Animator extends Leyes {
         if (!options.force && isSamePath && this.isPlaying && (options.source === undefined || options.source === this._controlSource)) {
             // If already loading or already has clip, just update properties but don't reset timer/frame
             if (this.animationClip || this._isLoading) {
-                if (debug) console.log(`[Animator] Ignorando play() redundante (esta en curso o cargado) para mantener el frame actual.`);
+                if (debug) console.log(`[Animator] Ignorando play() redundante (está en curso o cargado) para mantener el frame actual.`);
 
                 const rangeChanged = (options.startFrame !== undefined && options.startFrame !== this.startFrame) ||
                                      (options.endFrame !== undefined && options.endFrame !== this.endFrame);
@@ -1805,7 +1775,7 @@ export class Animator extends Leyes {
         if (options.endFrame !== undefined) this.endFrame = options.endFrame;
         if (options.source !== undefined) this._controlSource = options.source;
 
-        if (debug) console.log(`[Animator] Iniciando reproduccion: ${this.animationClipPath}, source=${this._controlSource}, loop=${this.loop}`);
+        if (debug) console.log(`[Animator] Iniciando reproducción: ${this.animationClipPath}, source=${this._controlSource}, loop=${this.loop}`);
 
         this.isPlaying = true;
         this.hasError = false;
@@ -1830,12 +1800,12 @@ export class Animator extends Leyes {
 
     stop() {
         if (this.isPlaying && window.CE_DEBUG_ANIMATION) {
-            console.log(`[Animator] Deteniendo animacion`);
+            console.log(`[Animator] Deteniendo animación`);
         }
         this.isPlaying = false;
     }
 
-    /** Alias en espanol */
+    /** Alias en español */
     reproducir(ruta, opciones) { this.play(ruta, opciones); }
     detener() { this.stop(); }
     reiniciar() { this.reset(); }
@@ -2855,7 +2825,7 @@ export class AnimatorController extends Leyes {
         // Check transitions if not forced and not the first state
         if (!force && this.currentStateName && this.currentStateName !== stateName) {
             if (!this.canTransitionTo(stateName)) {
-                if (debug) console.warn(`[AnimatorController] Transicion denegada: No hay conexion de '${this.currentStateName}' a '${stateName}'.`);
+                if (debug) console.warn(`[AnimatorController] Transición denegada: No hay conexión de '${this.currentStateName}' a '${stateName}'.`);
                 return;
             }
         }
@@ -2914,7 +2884,7 @@ export class AnimatorController extends Leyes {
         });
     }
 
-    /** Alias en espanol */
+    /** Alias en español */
     reproducir(nombreEstado) { this.play(nombreEstado); }
 
     async refresh() {
@@ -2983,7 +2953,7 @@ export class AnimatorController extends Leyes {
 
         // Fallback to Principal (Entry State) on animation failure
         if (this.animator.hasError && this.controller.entryState && this.currentStateName !== this.controller.entryState) {
-            if (debug) console.log(`[AnimatorController] Fallback a estado principal '${this.controller.entryState}' por error en animacion.`);
+            if (debug) console.log(`[AnimatorController] Fallback a estado principal '${this.controller.entryState}' por error en animación.`);
             this.play(this.controller.entryState, true); // force fallback
             this.animator.hasError = false; // reset error after fallback
         }
@@ -3004,7 +2974,7 @@ export class AnimatorController extends Leyes {
             horiz = movement.lastMove.x;
             vert = movement.lastMove.y;
             moving = true;
-            if (debug && Math.random() < 0.05) console.log(`[AnimatorController] Movimiento detectado via componente Movement: ${horiz.toFixed(2)}, ${vert.toFixed(2)}`);
+            if (debug && Math.random() < 0.05) console.log(`[AnimatorController] Movimiento detectado vía componente Movement: ${horiz.toFixed(2)}, ${vert.toFixed(2)}`);
         }
 
         // 2. Check Rigidbody velocity (Fallback if Movement didn't provide input)
@@ -3021,7 +2991,7 @@ export class AnimatorController extends Leyes {
                 horiz = rb.velocity.x;
                 vert = rb.velocity.y;
                 moving = true;
-                if (debug && Math.random() < 0.02) console.log(`[AnimatorController] Movimiento detectado via Rigidbody2D: H=${horiz.toFixed(2)}, V=${vert.toFixed(2)} (Threshold: ${rbThreshold})`);
+                if (debug && Math.random() < 0.02) console.log(`[AnimatorController] Movimiento detectado vía Rigidbody2D: H=${horiz.toFixed(2)}, V=${vert.toFixed(2)} (Threshold: ${rbThreshold})`);
             }
         }
 
@@ -3043,7 +3013,7 @@ export class AnimatorController extends Leyes {
                         horiz = dx;
                         vert = dy;
                         moving = true;
-                        if (debug && Math.random() < 0.02) console.log(`[AnimatorController] Movimiento detectado via DeltaPos: H=${horiz.toFixed(2)}, V=${vert.toFixed(2)} (Threshold: ${threshold})`);
+                        if (debug && Math.random() < 0.02) console.log(`[AnimatorController] Movimiento detectado vía DeltaPos: H=${horiz.toFixed(2)}, V=${vert.toFixed(2)} (Threshold: ${threshold})`);
                     }
                 } else {
                     // In editor, use absolute distance threshold to avoid jitter from clicking/dragging
@@ -3057,7 +3027,7 @@ export class AnimatorController extends Leyes {
                 }
 
                 if (moving && debug && Math.random() < 0.05) {
-                    console.log(`[AnimatorController] Movimiento detectado via DeltaPos: ${horiz}, ${vert}`);
+                    console.log(`[AnimatorController] Movimiento detectado vía DeltaPos: ${horiz}, ${vert}`);
                 }
             }
         }
@@ -3187,7 +3157,7 @@ export class AnimatorController extends Leyes {
                     // if it's connected, as requested by the user.
                     const idleState = this.controller.movementMapping[4] || this.controller.entryState;
                     if (idleState && idleState !== this.currentStateName && this.canTransitionTo(idleState)) {
-                        if (debug) console.log(`[AnimatorController] SmartMode: Transicion a '${stateName}' denegada. Volviendo a Idle '${idleState}'.`);
+                        if (debug) console.log(`[AnimatorController] SmartMode: Transición a '${stateName}' denegada. Volviendo a Idle '${idleState}'.`);
                         this.play(idleState);
                     } else if (idleState && idleState !== this.currentStateName) {
                         // If even fallback to idle is denied by graph, but we are stuck in a non-looping finished animation
@@ -3221,7 +3191,7 @@ export class AnimatorController extends Leyes {
 
                 if (fallbackState && (this.currentStateName !== fallbackState || !this.animator.isPlaying)) {
                     if (this.canTransitionTo(fallbackState)) {
-                        if (debug) console.log(`[AnimatorController] SmartMode Fallback: Usando '${fallbackState}' por falta de mapeo o denegacion.`);
+                        if (debug) console.log(`[AnimatorController] SmartMode Fallback: Usando '${fallbackState}' por falta de mapeo o denegación.`);
                         this.play(fallbackState);
                     }
                 }
@@ -3348,7 +3318,7 @@ export class AnimatorController extends Leyes {
         // Safety fallback: If a non-looping animation finished and no transition was found,
         // automatically return to the Principal (entryState) to avoid staying "frozen" on the last frame.
         if (!transitionFound && !this.animator.loop && this.controller.entryState && this.currentStateName !== this.controller.entryState) {
-            if (window.CE_DEBUG_ANIMATION) console.log(`[AnimatorController] No hay transicion de salida para '${this.currentStateName}'. Volviendo a Principal.`);
+            if (window.CE_DEBUG_ANIMATION) console.log(`[AnimatorController] No hay transición de salida para '${this.currentStateName}'. Volviendo a Principal.`);
             this.play(this.controller.entryState, true); // Use force to bypass any connection issues for safety fallback
         }
     }
@@ -3494,7 +3464,7 @@ export class UIEventTrigger extends Leyes {
 registerComponent('UIEventTrigger', UIEventTrigger);
 
 /**
- * Componente UIMask: Recorta los hijos de este objeto para que solo sean visibles dentro de su area.
+ * Componente UIMask: Recorta los hijos de este objeto para que solo sean visibles dentro de su área.
  */
 export class UIMask extends Leyes {
     constructor(materia) {
@@ -3536,7 +3506,7 @@ export class UIScrollRect extends Leyes {
             this._velocity.y *= this.inertia;
         }
 
-        // Aplicar posicion al contenido
+        // Aplicar posición al contenido
         let content = this.contentMateria;
         if (typeof content === 'number') content = this.materia.scene.findMateriaById(content);
         else if (typeof content === 'string') content = this.materia.findChildByName(content, true);
@@ -3545,7 +3515,7 @@ export class UIScrollRect extends Leyes {
             const ui = content.getComponent(UITransform);
             const myUI = this.materia.getComponent(UITransform);
             if (ui && myUI) {
-                // Limitar scroll segun el tamano del contenido
+                // Limitar scroll según el tamaño del contenido
                 const maxScrollX = Math.max(0, ui.size.width - myUI.size.width);
                 const maxScrollY = Math.max(0, ui.size.height - myUI.size.height);
 
@@ -3593,7 +3563,7 @@ export class UIScrollRect extends Leyes {
 registerComponent('UIScrollRect', UIScrollRect);
 
 /**
- * Componente UICollider: Define un area de colision especifica para elementos UI.
+ * Componente UICollider: Define un área de colisión específica para elementos UI.
  */
 export class UICollider extends Leyes {
     constructor(materia) {
@@ -4026,7 +3996,7 @@ export class TilemapCollider2D extends Leyes {
         const grid = this.materia.getComponentInParent(Grid) || this.materia.getComponent(Grid) || this.materia.getComponentInChildren(Grid);
 
         if (!tilemap || !grid) {
-            console.warn("[TilemapCollider2D] No se encontro el componente Tilemap o Grid para generar colisiones.");
+            console.warn("[TilemapCollider2D] No se encontró el componente Tilemap o Grid para generar colisiones.");
             this._cachedMesh.clear();
             this.generatedColliders = [];
             this.isDirty = false;
@@ -4180,7 +4150,7 @@ export class CompositeCollider2D extends Leyes {
 registerComponent('CompositeCollider2D', CompositeCollider2D);
 
 /**
- * Componente Terreno2D: Permite dibujar formas de terreno arbitrarias (pixeles/mascara).
+ * Componente Terreno2D: Permite dibujar formas de terreno arbitrarias (píxeles/máscara).
  */
 export class Terreno2D extends Leyes {
     constructor(materia) {
@@ -4203,7 +4173,7 @@ export class Terreno2D extends Leyes {
 
     async loadTextures(projectsDirHandle) {
         for (const layer of this.layers) {
-            // Inicializar canvas de mascara si no existe
+            // Inicializar canvas de máscara si no existe
             if (!layer.maskCanvas) {
                 this._initializeLayerCanvas(layer);
             }
@@ -4225,7 +4195,7 @@ export class Terreno2D extends Leyes {
                 }
             }
 
-            // Cargar mascara serializada si existe
+            // Cargar máscara serializada si existe
             if (layer.serializedMask) {
                 const img = new Image();
                 img.src = layer.serializedMask;
@@ -4280,7 +4250,7 @@ export class Terreno2D extends Leyes {
     }
 
     /**
-     * Pinta en la mascara de una capa especifica del terreno.
+     * Pinta en la máscara de una capa específica del terreno.
      * @param {number} worldX
      * @param {number} worldY
      * @param {number} radius
@@ -4313,7 +4283,7 @@ export class Terreno2D extends Leyes {
             this._paintOnLayer(this.layers[layerIndex], localX, localY, radius, false);
         }
 
-        // Notificar al colisionador que debe regenerarse automaticamente
+        // Notificar al colisionador que debe regenerarse automáticamente
         const collider = this.materia.getComponent(TerrenoCollider2D);
         if (collider) {
             // Usar un debounce simple para no saturar el hilo principal durante el pintado
@@ -4365,7 +4335,7 @@ export class Terreno2D extends Leyes {
 registerComponent('Terreno2D', Terreno2D);
 
 /**
- * Componente TerrenoCollider2D: Genera colisiones automaticas a partir de la mascara de Terreno2D.
+ * Componente TerrenoCollider2D: Genera colisiones automáticas a partir de la máscara de Terreno2D.
  */
 export class TerrenoCollider2D extends Leyes {
     constructor(materia) {
@@ -4377,7 +4347,7 @@ export class TerrenoCollider2D extends Leyes {
         this.generatedColliders = [];
         this.generatedPolygons = [];
         this.debugPolygons = []; // Contornos completos para renderizado
-        this._resolution = 16; // Tamano del bloque para simplificar colisiones (en pixeles)
+        this._resolution = 16; // Tamaño del bloque para simplificar colisiones (en píxeles)
         this._simplifyTolerance = 2.0;
     }
 
@@ -4416,7 +4386,7 @@ export class TerrenoCollider2D extends Leyes {
         this.generatedPolygons = [];
         this.debugPolygons = [];
 
-        // Crear un canvas temporal para combinar todas las mascaras
+        // Crear un canvas temporal para combinar todas las máscaras
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = width;
         tempCanvas.height = height;
@@ -4467,7 +4437,7 @@ export class TerrenoCollider2D extends Leyes {
     _isEar(p1, p2, p3, allVertices) {
         // En coordenadas de pantalla (Y abajo), cross > 0 es CW.
         // Pero queremos triangles CCW para consistencia.
-        // Un angulo es convexo si el giro es hacia la "izquierda".
+        // Un ángulo es convexo si el giro es hacia la "izquierda".
         const cross = (p2.x - p1.x) * (p3.y - p2.y) - (p2.y - p1.y) * (p3.x - p2.x);
         if (cross >= 0) return false; // Es CW o colineal (no convexo)
 
@@ -4508,7 +4478,7 @@ export class TerrenoCollider2D extends Leyes {
                 }
             }
             if (!earFound) {
-                console.warn("[TerrenoCollider2D] No se pudo encontrar una oreja en la triangulacion.");
+                console.warn("[TerrenoCollider2D] No se pudo encontrar una oreja en la triangulación.");
                 break;
             }
             iterations++;
@@ -4579,12 +4549,12 @@ export class TerrenoCollider2D extends Leyes {
                 }
             }
         }
-        console.log(`[TerrenoCollider2D] Generados ${this.generatedColliders.length} rectangulos.`);
+        console.log(`[TerrenoCollider2D] Generados ${this.generatedColliders.length} rectángulos.`);
     }
 
     _generatePolygonColliders(imgData) {
         const { width, height, data } = imgData;
-        // Rejilla de booleanos para rastrear pixeles visitados al buscar contornos
+        // Rejilla de booleanos para rastrear píxeles visitados al buscar contornos
         const visited = new Uint8Array(width * height);
 
         const getAlpha = (x, y) => {
@@ -4594,26 +4564,26 @@ export class TerrenoCollider2D extends Leyes {
 
         const isBoundary = (x, y) => {
             if (getAlpha(x, y) <= 128) return false;
-            // Si tiene algun vecino vacio, es borde
+            // Si tiene algún vecino vacío, es borde
             return getAlpha(x - 1, y) <= 128 || getAlpha(x + 1, y) <= 128 ||
                    getAlpha(x, y - 1) <= 128 || getAlpha(x, y + 1) <= 128;
         };
 
-        // Escanear con un paso mayor para mejorar rendimiento (minimo 2px)
+        // Escanear con un paso mayor para mejorar rendimiento (mínimo 2px)
         const step = Math.max(2, Math.floor(this._resolution / 4));
 
         for (let y = 0; y < height; y += step) {
             for (let x = 0; x < width; x += step) {
                 const idx = y * width + x;
-                // Solo iniciamos trazado si es un pixel solido no visitado Y esta en el borde
+                // Solo iniciamos trazado si es un píxel sólido no visitado Y está en el borde
                 if (data[idx * 4 + 3] > 128 && !visited[idx] && isBoundary(x, y)) {
-                    // Encontramos un pixel de borde solido no visitado, trazar su contorno
+                    // Encontramos un píxel de borde sólido no visitado, trazar su contorno
                     const contour = this._traceContour(x, y, width, height, data, visited);
                     if (contour && contour.length > 3) {
                         // Simplificar el contorno
                         const simplified = this._ramerDouglasPeucker(contour, this._simplifyTolerance);
                         if (simplified.length > 2) {
-                            // Centrar vertices respecto al terreno
+                            // Centrar vértices respecto al terreno
                             const centered = simplified.map(v => ({
                                 x: v.x - width / 2,
                                 y: v.y - height / 2
@@ -4622,11 +4592,11 @@ export class TerrenoCollider2D extends Leyes {
                             // Comprobar si es una isla o un hueco
                             // En coordenadas de pantalla (Y abajo), CW > 0 es isla, CCW < 0 es hueco
                             const area = this._getPolygonArea(centered);
-                            if (area > 10) { // Ignorar islas minusculas (menos de 10px aprox)
-                                // Guardar el poligono completo para el gizmo
+                            if (area > 10) { // Ignorar islas minúsculas (menos de 10px² aprox)
+                                // Guardar el polígono completo para el gizmo
                                 this.debugPolygons.push({ vertices: centered });
 
-                                // Solo triangular e incluir si es una isla (area positiva)
+                                // Solo triangular e incluir si es una isla (área positiva)
                                 const triangles = this._triangulate(centered);
                                 for (const tri of triangles) {
                                     this.generatedPolygons.push({ vertices: tri });
@@ -4637,7 +4607,7 @@ export class TerrenoCollider2D extends Leyes {
                 }
             }
         }
-        console.log(`[TerrenoCollider2D] Generados ${this.generatedPolygons.length} poligonos.`);
+        console.log(`[TerrenoCollider2D] Generados ${this.generatedPolygons.length} polígonos.`);
     }
 
     _traceContour(startX, startY, width, height, data, globalVisited) {
@@ -4676,8 +4646,8 @@ export class TerrenoCollider2D extends Leyes {
                 const nextY = currY + dy[dir];
 
                 if (getAlpha(nextX, nextY) > 128) {
-                    // Marcar pixeles internos como visitados para no empezar nuevas islas dentro
-                    // (Simplificacion: marcar una pequena area alrededor)
+                    // Marcar píxeles internos como visitados para no empezar nuevas islas dentro
+                    // (Simplificación: marcar una pequeña área alrededor)
                     for (let sy = -1; sy <= 1; sy++) {
                         for (let sx = -1; sx <= 1; sx++) {
                             const vx = currX + sx;
@@ -4761,7 +4731,7 @@ export class TerrenoCollider2D extends Leyes {
 registerComponent('TerrenoCollider2D', TerrenoCollider2D);
 
 /**
- * Componente Gyzmo: Define areas rectangulares para diseno y logica.
+ * Componente Gyzmo: Define áreas rectangulares para diseño y lógica.
  */
 export class Gyzmo extends Leyes {
     constructor(materia) {
@@ -4771,7 +4741,7 @@ export class Gyzmo extends Leyes {
         this.orderInLayer = 0;
 
         if (materia) {
-            this.addLayer("Area Principal", 0, 0, 200, 200, "#00ff00");
+            this.addLayer("Área Principal", 0, 0, 200, 200, "#00ff00");
         }
     }
 
@@ -4883,7 +4853,7 @@ export class ProjectileLauncher extends Leyes {
 }
 
 /**
- * Componente que destruye el objeto automaticamente despues de un tiempo.
+ * Componente que destruye el objeto automáticamente después de un tiempo.
  */
 export class AutoDestroy extends Leyes {
     constructor(materia) {
@@ -5293,14 +5263,14 @@ export class Patrol extends Leyes {
 
 
 /**
- * Componente que emite prefabs como particulas con optimizacion de pooling.
+ * Componente que emite prefabs como partículas con optimización de pooling.
  */
 export class ParticleSystem extends Leyes {
     constructor(materia) {
         super(materia);
         this.prefabPath = "";
         this.maxParticles = 50;
-        this.emissionRate = 5; // particulas por segundo
+        this.emissionRate = 5; // partículas por segundo
         this.lifetime = 2.0;
         this.speed = 200;
         this.spread = 45; // grados
@@ -5330,7 +5300,7 @@ export class ParticleSystem extends Leyes {
     detener() { this.stop(); }
 
     update(deltaTime) {
-        // Gestionar vida de particulas activas en el pool
+        // Gestionar vida de partículas activas en el pool
         for (let i = 0; i < this._pool.length; i++) {
             const p = this._pool[i];
             if (p.isActive) {
@@ -5355,13 +5325,13 @@ export class ParticleSystem extends Leyes {
     async emit() {
         if (!this.prefabPath) return;
 
-        // Buscar una particula inactiva en el pool
+        // Buscar una partícula inactiva en el pool
         let p = this._pool.find(item => !item.isActive);
 
         if (!p) {
             if (this._pool.length >= this.maxParticles) return;
 
-            // Crear nueva particula si hay espacio en el pool
+            // Crear nueva partícula si hay espacio en el pool
             if (window.SceneManager && window.SceneManager.instantiatePrefabFromPath) {
                 p = await window.SceneManager.instantiatePrefabFromPath(this.prefabPath);
                 if (p) {
@@ -5377,7 +5347,7 @@ export class ParticleSystem extends Leyes {
             if (transform && pTransform) {
                 pTransform.position = { x: transform.x, y: transform.y };
 
-                // Calcular direccion aleatoria segun spread
+                // Calcular dirección aleatoria según spread
                 const baseRotation = transform.rotation;
                 const randomAngle = (Math.random() - 0.5) * this.spread;
                 const finalRotation = (baseRotation + randomAngle) * (Math.PI / 180);
@@ -5389,7 +5359,7 @@ export class ParticleSystem extends Leyes {
                 if (rb) {
                     rb.setVelocity(vx, vy);
                 } else {
-                    // Si no tiene fisicas, podriamos anadir logica de movimiento simple aqui
+                    // Si no tiene físicas, podríamos añadir lógica de movimiento simple aquí
                     // o dejar que el prefab se mueva solo.
                 }
 
@@ -5442,7 +5412,7 @@ export class ParticleSystem extends Leyes {
 }
 
 /**
- * Componente RaycastSource (Rallo): Lanza multiples rayos para deteccion.
+ * Componente RaycastSource (Rallo): Lanza múltiples rayos para detección.
  */
 export class RaycastSource extends Leyes {
     constructor(materia) {
@@ -5452,7 +5422,7 @@ export class RaycastSource extends Leyes {
         this.showGizmo = true;
         this.autoRotate = false; // Si debe rotar el objeto hacia el primer impacto
         this.rotationSpeed = 5;
-        this.lastHits = []; // Resultados del ultimo frame
+        this.lastHits = []; // Resultados del último frame
     }
 
     update(deltaTime) {
@@ -5474,7 +5444,7 @@ export class RaycastSource extends Leyes {
             return null;
         });
 
-        // Rotacion automatica hacia el impacto mas cercano si esta habilitado
+        // Rotación automática hacia el impacto más cercano si está habilitado
         if (this.autoRotate && (window.isGameRunning || window.CE_Standalone_Scripts)) {
             const firstHit = this.lastHits.find(h => h !== null);
             if (firstHit) {
@@ -5494,16 +5464,16 @@ export class RaycastSource extends Leyes {
         return copy;
     }
 
-    // Alias en espanol
+    // Alias en español
     get rallo() { return this; }
     get rayos() { return this.rays; }
 }
 
 /**
- * Componente BasicAI (IA Basica): Comportamientos simples de seguimiento y evasion.
+ * Componente BasicAI (IA Básica): Comportamientos simples de seguimiento y evasión.
  */
 /**
- * Componente Water (Agua): Simulacion de fluidos basada en particulas.
+ * Componente Water (Agua): Simulación de fluidos basada en partículas.
  */
 export class Water extends Leyes {
     constructor(materia) {
@@ -5526,10 +5496,10 @@ export class Water extends Leyes {
 
         this._initializedWorldSpace = false;
 
-        // Simulacion interna
+        // Simulación interna
         this.particles = []; // {x, y, vx, vy, prevX, prevY, rho}
-        this._particleRadius = 14; // Un poco mas grandes para volumen visual
-        this._restDensity = 1.2; // Reducido para evitar sobre-compresion
+        this._particleRadius = 14; // Un poco más grandes para volumen visual
+        this._restDensity = 1.2; // Reducido para evitar sobre-compresión
         this._stiffness = 0.15;  // Aumentado para mayor estabilidad y empuje
         this._spacing = 18;      // Mayor espacio inicial
     }
@@ -5606,7 +5576,7 @@ export class Water extends Leyes {
         const scene = this.materia.scene;
         const rbWater = this.materia.getComponent(Rigidbody2D);
 
-        // --- 1. Inicializacion de Particulas en Espacio Mundial (si es la primera vez) ---
+        // --- 1. Inicialización de Partículas en Espacio Mundial (si es la primera vez) ---
         if (this.particles.length > 0 && !this._initializedWorldSpace) {
             for (const p of this.particles) {
                 p.x += transform.x;
@@ -5622,7 +5592,7 @@ export class Water extends Leyes {
             tideOffset = Math.sin(this.tidePhase) * this.tideAmplitude;
         }
 
-        // --- 3. Obtener Colisionadores del Mundo (Optimizado: con filtrado por cercania) ---
+        // --- 3. Obtener Colisionadores del Mundo (Optimizado: con filtrado por cercanía) ---
         const colliders = [];
         const dynamicBodies = [];
         if (scene) {
@@ -5658,7 +5628,7 @@ export class Water extends Leyes {
         const hSq = h * h;
         const invH = 1 / h;
 
-        // --- 4. Simulacion de Particulas (Pre-paso) ---
+        // --- 4. Simulación de Partículas (Pre-paso) ---
         for (let i = 0; i < this.particles.length; i++) {
             const p = this.particles[i];
 
@@ -5667,7 +5637,7 @@ export class Water extends Leyes {
             p.vy *= (1 - this.viscosity * deltaTime);
             p.vy += gravityY * deltaTime;
 
-            // Interaccion con Objetos Dinamicos
+            // Interacción con Objetos Dinámicos
             for (let j = 0; j < dynamicBodies.length; j++) {
                 const {trans, rb} = dynamicBodies[j];
                 const dx = p.x - trans.x;
@@ -5690,7 +5660,7 @@ export class Water extends Leyes {
             p.x += p.vx * deltaTime;
             p.y += p.vy * deltaTime;
 
-            // --- 4.1 Colision con el Mundo (Suelo y Paredes) ---
+            // --- 4.1 Colisión con el Mundo (Suelo y Paredes) ---
             for (let j = 0; j < colliders.length; j++) {
                 const {col, trans} = colliders[j];
                 const colType = col.constructor.name;
@@ -5726,7 +5696,7 @@ export class Water extends Leyes {
             cell.push(i);
         }
 
-        // --- 6. Resolucion de Densidad (Paso 1: Calcular Densidades) ---
+        // --- 6. Resolución de Densidad (Paso 1: Calcular Densidades) ---
         for (let i = 0; i < this.particles.length; i++) {
             const pi = this.particles[i];
             pi.rho = 0;
@@ -5753,7 +5723,7 @@ export class Water extends Leyes {
             }
         }
 
-        // --- 6.1 Resolucion de Presion (Paso 2: Aplicar Desplazamientos) ---
+        // --- 6.1 Resolución de Presión (Paso 2: Aplicar Desplazamientos) ---
         for (let i = 0; i < this.particles.length; i++) {
             const pi = this.particles[i];
             const pressure = (pi.rho - this._restDensity) * this._stiffness;
@@ -5777,7 +5747,7 @@ export class Water extends Leyes {
                         if (dSq < hSq && dSq > 0.0001) {
                             const dist = Math.sqrt(dSq);
                             const weight = 1 - dist * invH;
-                            // Presion compartida para estabilidad
+                            // Presión compartida para estabilidad
                             const sharedPressure = (pressure + (pj.rho - this._restDensity) * this._stiffness) / 2;
                             const displacement = sharedPressure * weight * (0.5 / dist);
                             pi.x += dx * displacement;
@@ -5801,7 +5771,7 @@ export class Water extends Leyes {
             }
         }
 
-        // --- 7. Recalculo de Velocidad y Limpieza ---
+        // --- 7. Recálculo de Velocidad y Limpieza ---
         const invDt = 1 / deltaTime;
         for (let i = 0; i < this.particles.length; i++) {
             const p = this.particles[i];
@@ -5867,18 +5837,18 @@ export class Water extends Leyes {
 }
 
 /**
- * Componente HelicopterController: Controlador de helicoptero en vista lateral.
- * Maneja potencia vertical, potencia de despegue y giro (inclinacion).
+ * Componente HelicopterController: Controlador de helicóptero en vista lateral.
+ * Maneja potencia vertical, potencia de despegue y giro (inclinación).
  */
 export class HelicopterController extends Leyes {
     constructor(materia) {
         super(materia);
         this.potenciaMotor = 2000;
-        this.potenciaDespegue = 1000; // Fuerza base de sustentacion
+        this.potenciaDespegue = 1000; // Fuerza base de sustentación
         this.velocidadMaxima = 1000;
         this.agilidadGiro = 150;
         this.autoEstabilizar = true;
-        this.estabilidad = 0.5; // Fuerza de auto-nivelacion
+        this.estabilidad = 0.5; // Fuerza de auto-nivelación
         this.arrastreAire = 0.1;
 
         // Controles
@@ -5925,9 +5895,9 @@ export class HelicopterController extends Leyes {
         this.potenciaActual = thrustInput;
 
         const rad = transform.rotation * Math.PI / 180;
-        const up = { x: Math.sin(rad), y: -Math.cos(rad) }; // Direccion "arriba" relativa al helicoptero
+        const up = { x: Math.sin(rad), y: -Math.cos(rad) }; // Dirección "arriba" relativa al helicóptero
 
-        // Fuerza de sustentacion (Lift)
+        // Fuerza de sustentación (Lift)
         // Combinamos la potencia de despegue (base) con el input del motor
         let liftForceMagnitude = this.potenciaDespegue;
         if (thrustInput > 0) {
@@ -5936,14 +5906,14 @@ export class HelicopterController extends Leyes {
             liftForceMagnitude += thrustInput * (this.potenciaDespegue * 0.8); // Descenso controlado
         }
 
-        // Aplicar fuerza en el eje local UP del helicoptero
+        // Aplicar fuerza en el eje local UP del helicóptero
         const finalForce = {
             x: up.x * liftForceMagnitude * deltaTime * 10,
             y: up.y * liftForceMagnitude * deltaTime * 10
         };
         rb.addForce(finalForce.x, finalForce.y);
 
-        // 2. Manejar Giro (Inclinacion / Pitch)
+        // 2. Manejar Giro (Inclinación / Pitch)
         let steerInput = 0;
         if (input.isKeyPressed(this.teclaGiroIzquierda)) steerInput = -1;
         if (input.isKeyPressed(this.teclaGiroDerecha)) steerInput = 1;
@@ -5954,7 +5924,7 @@ export class HelicopterController extends Leyes {
             const torque = steerInput * this.agilidadGiro * 5000 * deltaTime;
             rb.addTorque(torque);
         } else if (this.autoEstabilizar) {
-            // Auto-nivelacion: intentar mantener la rotacion en 0
+            // Auto-nivelación: intentar mantener la rotación en 0
             let currentRot = transform.rotation % 360;
             if (currentRot > 180) currentRot -= 360;
             if (currentRot < -180) currentRot += 360;
@@ -5962,7 +5932,7 @@ export class HelicopterController extends Leyes {
             const stabilityTorque = -currentRot * this.estabilidad * 2000 * deltaTime;
             rb.addTorque(stabilityTorque);
 
-            // Amortiguar rotacion para evitar balanceo infinito
+            // Amortiguar rotación para evitar balanceo infinito
             rb.angularVelocity *= Math.pow(0.9, deltaTime * 60);
         }
 
@@ -5974,7 +5944,7 @@ export class HelicopterController extends Leyes {
             rb.angularVelocity *= drag;
         }
 
-        // 4. Limitar Velocidad Maxima
+        // 4. Limitar Velocidad Máxima
         const speed = Math.sqrt(rb.velocity.x**2 + rb.velocity.y**2);
         if (speed > (this.velocidadMaxima / 50)) {
             const ratio = (this.velocidadMaxima / 50) / speed;
@@ -5995,7 +5965,7 @@ export class HelicopterController extends Leyes {
 }
 
 /**
- * LineCollider2D: Colisionador compuesto por multiples lineas (cadenas).
+ * LineCollider2D: Colisionador compuesto por múltiples líneas (cadenas).
  */
 export class LineCollider2D extends Leyes {
     constructor(materia) {
@@ -6015,11 +5985,11 @@ export class LineCollider2D extends Leyes {
 }
 
 /**
- * Componente SuspensionHC: Sistema de amortiguacion tipo Hill Climb Racing.
- * Se anade a las ruedas y las conecta con un chasis.
+ * Componente SuspensionHC: Sistema de amortiguación tipo Hill Climb Racing.
+ * Se añade a las ruedas y las conecta con un chasis.
  */
 /**
- * Componente VehicleTopDown: Controlador de vehiculo arcade en vista cenital (2D).
+ * Componente VehicleTopDown: Controlador de vehículo arcade en vista cenital (2D).
  * Inspirado en Reckless Getaway 2.
  */
 export class VehicleTopDown extends Leyes {
@@ -6065,7 +6035,7 @@ export class VehicleTopDown extends Leyes {
         const input = RuntimeAPIManager.getAPI('input');
         if (!input) return;
 
-        // 1. Manejar Giro (Rotacion)
+        // 1. Manejar Giro (Rotación)
         let steerInput = 0;
         if (input.isKeyPressed(this.teclaIzquierda)) steerInput -= 1;
         if (input.isKeyPressed(this.teclaDerecha)) steerInput += 1;
@@ -6077,7 +6047,7 @@ export class VehicleTopDown extends Leyes {
             transform.rotation += rotationStep;
         }
 
-        // 2. Manejar Aceleracion
+        // 2. Manejar Aceleración
         let accelInput = this.autoAcelerar ? 1 : 0;
         if (input.isKeyPressed(this.teclaAcelerar)) accelInput = 1;
         if (input.isKeyPressed(this.teclaFrenar)) accelInput = -1;
@@ -6101,8 +6071,8 @@ export class VehicleTopDown extends Leyes {
             }
         }
 
-        // 3. Simulacion de Derrape (Drifting)
-        // Calculamos la velocidad lateral (cuanto se desliza hacia los lados)
+        // 3. Simulación de Derrape (Drifting)
+        // Calculamos la velocidad lateral (cuánto se desliza hacia los lados)
         const lateralVelocity = rb.velocity.x * right.x + rb.velocity.y * right.y;
 
         // El agarre arcade: eliminamos parte de la velocidad lateral cada frame
@@ -6110,11 +6080,11 @@ export class VehicleTopDown extends Leyes {
         // intensidadDerrape 1 = sin agarre (mantiene velocidad lateral)
         const gripFactor = 1.0 - this.intensidadDerrape;
 
-        // Aplicamos la friccion lateral restando velocidad en el eje 'right'
+        // Aplicamos la fricción lateral restando velocidad en el eje 'right'
         const lateralForce = -lateralVelocity * gripFactor * 20; // Multiplicador arcade
         rb.addForce(right.x * lateralForce * deltaTime * 60, right.y * lateralForce * deltaTime * 60);
 
-        // 4. Limitar velocidad maxima absoluta por seguridad fisica
+        // 4. Limitar velocidad máxima absoluta por seguridad física
         const speed = Math.sqrt(rb.velocity.x**2 + rb.velocity.y**2);
         if (speed > (this.velocidadMaxima / 50)) {
             const ratio = (this.velocidadMaxima / 50) / speed;
@@ -6132,7 +6102,7 @@ export class VehicleTopDown extends Leyes {
 
 /**
  * Componente PlaneController: Controlador de vuelo lateral (Side-scroller).
- * Maneja potencia, sustentacion, giro y coordina con la suspension de las ruedas.
+ * Maneja potencia, sustentación, giro y coordina con la suspensión de las ruedas.
  */
 export class PlaneController extends Leyes {
     constructor(materia) {
@@ -6184,8 +6154,8 @@ export class PlaneController extends Leyes {
         const engine = RuntimeAPIManager.getAPI('engine');
         if (!input) return;
 
-        // 1. Deteccion de Suelo
-        // El avion esta en el suelo si ALGUNA de sus ruedas (hijos con SuspensionHC) toca algo
+        // 1. Detección de Suelo
+        // El avión está en el suelo si ALGUNA de sus ruedas (hijos con SuspensionHC) toca algo
         this.estaEnSuelo = false;
         const suspensiones = this.materia.getChildrenWithComponent(SuspensionHC);
         for (const susp of suspensiones) {
@@ -6209,13 +6179,13 @@ export class PlaneController extends Leyes {
         // 2.1 Manejar Frenado (Brake)
         const isBraking = input.isKeyPressed(this.teclaBotonFreno);
         if (isBraking) {
-            // Deceleracion aerodinamica y de motor suave
+            // Deceleración aerodinámica y de motor suave
             // Reducido brakeStrength de 2.0 a 0.8 para evitar paradas "en seco" irreales
             const brakeStrength = 0.8;
             rb.velocity.x *= Math.exp(-brakeStrength * deltaTime);
             rb.velocity.y *= Math.exp(-brakeStrength * deltaTime);
 
-            // Amortiguar rotacion ligeramente durante el frenado para estabilidad
+            // Amortiguar rotación ligeramente durante el frenado para estabilidad
             rb.angularVelocity *= Math.exp(-0.5 * deltaTime);
         }
 
@@ -6226,7 +6196,7 @@ export class PlaneController extends Leyes {
                 const force = thrustInput * this.potenciaMotor * thrustMult * deltaTime * 10;
                 rb.addForce(forward.x * force, forward.y * force);
 
-                // Si estamos en el suelo, tambien damos potencia a las ruedas para taxear
+                // Si estamos en el suelo, también damos potencia a las ruedas para taxear
                 if (this.estaEnSuelo) {
                     for (const susp of suspensiones) {
                         const rbRueda = susp.materia.getComponent(Rigidbody2D);
@@ -6238,7 +6208,7 @@ export class PlaneController extends Leyes {
             }
         }
 
-        // 3. Manejar Rotacion (Pitch)
+        // 3. Manejar Rotación (Pitch)
         let pitchInput = 0;
         if (input.isKeyPressed(this.teclaNarizArriba)) pitchInput = -1; // En muchos juegos A es subir nariz
         if (input.isKeyPressed(this.teclaNarizAbajo)) pitchInput = 1;
@@ -6250,38 +6220,38 @@ export class PlaneController extends Leyes {
             rb.addTorque(torque);
         }
 
-        // 4. Fisica de Sustentacion (Lift) y Direccionalidad
+        // 4. Física de Sustentación (Lift) y Direccionalidad
         const speedKmh = Math.abs(this.velocidadAvance) * 100;
 
-        // Arrastre parasito (aumenta con el cuadrado de la velocidad)
+        // Arrastre parásito (aumenta con el cuadrado de la velocidad)
         const dragFactor = (speedKmh / 1000) ** 2;
         rb.addForce(-rb.velocity.x * this.arrastreAire * dragFactor * deltaTime * 100,
                     -rb.velocity.y * this.arrastreAire * dragFactor * deltaTime * 100);
 
         if (speedKmh > this.velocidadDespegue * 0.5) {
-            // Factor de sustentacion mejorado: decae si el angulo de ataque es demasiado alto (stall)
+            // Factor de sustentación mejorado: decae si el ángulo de ataque es demasiado alto (stall)
             const AoA = Math.abs(transform.rotation % 360); // Simplificado
             const stallFactor = (AoA > 60 && AoA < 300) ? 0.2 : 1.0;
 
             const liftFactor = Math.min(1.5, (speedKmh - this.velocidadDespegue * 0.5) / 400) * stallFactor;
 
-            // Fuerza hacia arriba relativa al avion (sustentacion pura)
+            // Fuerza hacia arriba relativa al avión (sustentación pura)
             const liftDir = { x: forward.y, y: -forward.x };
             const liftMag = liftFactor * this.fuerzaSustentacion * 600 * deltaTime;
             rb.addForce(liftDir.x * liftMag, liftDir.y * liftMag);
 
-            // 4.1 Alineacion Aerodinamica (Seguir la nariz)
-            // Esto hace que el vector de velocidad se incline hacia donde apunta el avion
+            // 4.1 Alineación Aerodinámica (Seguir la nariz)
+            // Esto hace que el vector de velocidad se incline hacia donde apunta el avión
             const velMag = Math.sqrt(rb.velocity.x**2 + rb.velocity.y**2);
             if (velMag > 0.5) {
-                // Mezclamos la velocidad actual con la direccion 'forward'
-                // Factor de alineacion mas agresivo para evitar que "salga volando" de lado
+                // Mezclamos la velocidad actual con la dirección 'forward'
+                // Factor de alineación más agresivo para evitar que "salga volando" de lado
                 const alignmentStrength = Math.min(0.2, (speedKmh / 1500) * deltaTime * 15);
                 rb.velocity.x = rb.velocity.x * (1 - alignmentStrength) + (forward.x * velMag) * alignmentStrength;
                 rb.velocity.y = rb.velocity.y * (1 - alignmentStrength) + (forward.y * velMag) * alignmentStrength;
             }
 
-            // Efecto de estabilidad: el avion tiende a nivelarse solo si no hay input y tiene velocidad
+            // Efecto de estabilidad: el avión tiende a nivelarse solo si no hay input y tiene velocidad
             if (pitchInput === 0) {
                 rb.angularVelocity *= Math.pow(0.85, deltaTime * 60);
             }
@@ -6309,19 +6279,19 @@ export class SuspensionHC extends Leyes {
         this.chasis = null; // ID de la materia o referencia al objeto
         this.dureza = 50;  // Reducido para evitar explosiones iniciales
         this.amortiguacion = 2; // Reducido
-        this.longitudReposo = 60; // Un poco mas largo para que se vea la suspension
-        this.eje = { x: 0, y: 1 }; // Direccion local de la suspension (hacia abajo)
+        this.longitudReposo = 60; // Un poco más largo para que se vea la suspensión
+        this.eje = { x: 0, y: 1 }; // Dirección local de la suspensión (hacia abajo)
 
-        this.potenciaMotor = 1000; // Aumentado para mejor traccion
+        this.potenciaMotor = 1000; // Aumentado para mejor tracción
         this.velocidadMaxima = 2000;
         this.frenadoMotor = 0.5; // Resistencia al rodamiento/frenado (0-1)
 
         this.fuerzaInclinacion = 1.0; // Multiplicador para el "caballito"
-        this.controlAire = 500;       // Fuerza de rotacion manual
-        this.estabilidadAire = 0.5;   // Fuerza de auto-nivelacion (0-1)
+        this.controlAire = 500;       // Fuerza de rotación manual
+        this.estabilidadAire = 0.5;   // Fuerza de auto-nivelación (0-1)
         this.recuperacionGiro = 0.5;  // Fuerza de centrado del chasis en suelo (0-1)
 
-        // Configuracion de controles
+        // Configuración de controles
         this.teclaAcelerar = 'd';
         this.teclaFrenar = 'a';
 
@@ -6352,7 +6322,7 @@ export class SuspensionHC extends Leyes {
     update(deltaTime) {
         const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
 
-        // Siempre marcar como rueda para que el sistema de colisiones lo sepa en el editor tambien
+        // Siempre marcar como rueda para que el sistema de colisiones lo sepa en el editor también
         this.materia.isWheel = true;
 
         if (!isGame) return;
@@ -6404,11 +6374,11 @@ export class SuspensionHC extends Leyes {
             y: this.eje.x * sinC + this.eje.y * cosC
         };
 
-        // 3. Fisica de muelle amortiguado
+        // 3. Física de muelle amortiguado
         const diff = { x: transRueda.x - worldAnchor.x, y: transRueda.y - worldAnchor.y };
         const currentLength = diff.x * worldAxis.x + diff.y * worldAxis.y;
 
-        // Velocidades en escala fisica (unidades/s)
+        // Velocidades en escala física (unidades/s)
         const vRueda = { x: rbRueda.velocity.x * 100, y: rbRueda.velocity.y * 100 };
         const vChasis = { x: rbChasis.velocity.x * 100, y: rbChasis.velocity.y * 100 };
 
@@ -6419,7 +6389,7 @@ export class SuspensionHC extends Leyes {
         const dampingForce = -relVelAlongAxis * this.amortiguacion;
         let totalForce = springForce + dampingForce;
 
-        // Limitar la fuerza maxima para evitar explosiones fisicas
+        // Limitar la fuerza máxima para evitar explosiones físicas
         const maxForce = 5000;
         totalForce = Math.max(-maxForce, Math.min(maxForce, totalForce));
 
@@ -6432,18 +6402,18 @@ export class SuspensionHC extends Leyes {
         rbRueda.addForce(forceVec.x * forceScale, forceVec.y * forceScale);
         rbChasis.addForce(-forceVec.x * forceScale, -forceVec.y * forceScale);
 
-        // 4. Restriccion lateral (Mantiene la rueda alineada con el eje de suspension)
+        // 4. Restricción lateral (Mantiene la rueda alineada con el eje de suspensión)
         const perpAxis = { x: -worldAxis.y, y: worldAxis.x };
         const lateralDiff = diff.x * perpAxis.x + diff.y * perpAxis.y;
         const lateralVel = relVel.x * perpAxis.x + relVel.y * perpAxis.y;
 
-        // Multiplicadores reducidos drasticamente (de 1000/50 a 100/10)
+        // Multiplicadores reducidos drásticamente (de 1000/50 a 100/10)
         const lateralCorrection = -lateralDiff * 100 - lateralVel * 10;
         rbRueda.addForce(perpAxis.x * lateralCorrection * forceScale, perpAxis.y * lateralCorrection * forceScale);
         rbChasis.addForce(-perpAxis.x * lateralCorrection * forceScale, -perpAxis.y * lateralCorrection * forceScale);
 
-        // 5. Control de Motor e Inclinacion
-        // PRIORIDAD: Si hay un PlaneController en un ancestro, el manda.
+        // 5. Control de Motor e Inclinación
+        // PRIORIDAD: Si hay un PlaneController en un ancestro, él manda.
         const planeCtrl = this.materia.findAncestorWithComponent(PlaneController);
         if (planeCtrl) return;
 
@@ -6454,7 +6424,7 @@ export class SuspensionHC extends Leyes {
         if (input.isKeyPressed(this.teclaAcelerar)) moveInput += 1;
         if (input.isKeyPressed(this.teclaFrenar)) moveInput -= 1;
 
-        // 5. Control de Motor e Inclinacion
+        // 5. Control de Motor e Inclinación
         const engine = RuntimeAPIManager.getAPI('engine');
         const isGrounded = engine ? (engine.alPermanecerEnColision(this.materia).length > 0 ||
                                     engine.alEntrarEnColision(this.materia).length > 0) : false;
@@ -6470,18 +6440,18 @@ export class SuspensionHC extends Leyes {
                     const torque = moveInput * this.potenciaMotor * torqueScale * deltaTime;
                     rbRueda.addTorque(torque);
 
-                    // Efecto de inclinacion mejorado con control de fuerza
+                    // Efecto de inclinación mejorado con control de fuerza
                     const reactionTorque = -moveInput * this.potenciaMotor * (torqueScale * 1.5) * this.fuerzaInclinacion * deltaTime;
                     rbChasis.addTorque(reactionTorque);
                 }
             } else {
                 // Frenado de motor / Resistencia al rodamiento
                 if (this.frenadoMotor > 0) {
-                    // Usamos una caida exponencial para mayor estabilidad con valores altos (>1.0)
+                    // Usamos una caída exponencial para mayor estabilidad con valores altos (>1.0)
                     rbRueda.angularVelocity *= Math.exp(-this.frenadoMotor * deltaTime * 10);
                 }
 
-                // Centrado del chasis (Recuperar posicion horizontal en suelo)
+                // Centrado del chasis (Recuperar posición horizontal en suelo)
                 if (this.recuperacionGiro > 0) {
                     let currentRot = transChasis.rotation % 360;
                     if (currentRot > 180) currentRot -= 360;
@@ -6494,11 +6464,11 @@ export class SuspensionHC extends Leyes {
         } else {
             // Control en el aire
             if (moveInput !== 0) {
-                // Rotacion manual
+                // Rotación manual
                 const airTorque = -moveInput * this.controlAire * 2000 * deltaTime;
                 rbChasis.addTorque(airTorque);
             } else if (this.estabilidadAire > 0) {
-                // Auto-nivelacion: intentar mantener el chasis horizontal (rotacion 0)
+                // Auto-nivelación: intentar mantener el chasis horizontal (rotación 0)
                 let currentRot = transChasis.rotation % 360;
                 if (currentRot > 180) currentRot -= 360;
                 if (currentRot < -180) currentRot += 360;
@@ -6507,7 +6477,7 @@ export class SuspensionHC extends Leyes {
                 const stabilityTorque = -currentRot * this.estabilidadAire * 1000 * deltaTime;
                 rbChasis.addTorque(stabilityTorque);
 
-                // Amortiguar rotacion para evitar oscilaciones infinitas
+                // Amortiguar rotación para evitar oscilaciones infinitas
                 rbChasis.angularVelocity *= Math.pow(0.95, deltaTime * 60);
             }
         }
@@ -6576,10 +6546,10 @@ export class BasicAI extends Leyes {
             targetObj = this.target;
         }
 
-        // --- 1. Deteccion y ejecucion de funciones ---
+        // --- 1. Detección y ejecución de funciones ---
         const bestTarget = this._handleAdvancedDetection(scene, transform, targetObj);
 
-        // --- 2. Logica de movimiento y Steering ---
+        // --- 2. Lógica de movimiento y Steering ---
         let desiredVelocity = { x: 0, y: 0 };
         let currentTargetPos = null;
 
@@ -6631,7 +6601,7 @@ export class BasicAI extends Leyes {
         // --- 5. Aplicar movimiento ---
         this._applyMovement(desiredVelocity, deltaTime, transform);
 
-        // --- 6. Rotacion automatica ---
+        // --- 6. Rotación automática ---
         if (this.autoRotate) {
             if (Math.hypot(desiredVelocity.x, desiredVelocity.y) > 1) {
                 const targetRot = Math.atan2(desiredVelocity.y, desiredVelocity.x) * 180 / Math.PI;
@@ -6667,7 +6637,7 @@ export class BasicAI extends Leyes {
             const hit = engine.raycast(transform.position, dir, this.rayLength, [this.materia.id]);
 
             if (hit && hit.materia) {
-                // Si es algo que no esta en detectionTags, es un obstaculo
+                // Si es algo que no está en detectionTags, es un obstáculo
                 if (!this.detectionTags.includes(hit.materia.tag)) {
                     const weight = (1.0 - hit.distance / this.rayLength);
                     avoidanceForce.x += hit.normal.x * weight * this.speed * 2;
@@ -6681,7 +6651,7 @@ export class BasicAI extends Leyes {
             velocity.x += avoidanceForce.x;
             velocity.y += avoidanceForce.y;
 
-            // Normalizar de nuevo a la velocidad maxima
+            // Normalizar de nuevo a la velocidad máxima
             const mag = Math.hypot(velocity.x, velocity.y);
             if (mag > 0) {
                 velocity.x = (velocity.x / mag) * this.speed;
@@ -6770,7 +6740,7 @@ export class BasicAI extends Leyes {
 
         // Si estamos en modo Follow y no tenemos un target fijo, seguir al detectado
         if (this.behavior === 'Follow' && !this.target && bestTarget) {
-            // No asignamos this.target permanentemente para permitir cambiar de objetivo dinamicamente
+            // No asignamos this.target permanentemente para permitir cambiar de objetivo dinámicamente
             // Pero usamos bestTarget para las notificaciones y el movimiento de este frame
         }
 
@@ -6845,7 +6815,7 @@ export class CustomComponent extends Leyes {
             this.definitionName = definitionOrName.nombre;
         } else {
             this.definitionName = null;
-            console.error("CustomComponent Creado con definicion o nombre invalido.");
+            console.error("CustomComponent Creado con definición o nombre inválido.");
         }
 
         this.publicVars = {};
@@ -6862,7 +6832,7 @@ export class CustomComponent extends Leyes {
             this._definition = window.CE_Custom_Components ? window.CE_Custom_Components[this.definitionName] : (editorLogic ? editorLogic.getComponentDefinition(this.definitionName) : null);
 
             if (!this._definition) {
-                console.error(`[CustomComponent] Definicion '${this.definitionName}' no encontrada.`);
+                console.error(`[CustomComponent] Definición '${this.definitionName}' no encontrada.`);
                 // Return a dummy definition to prevent further errors
                 return { nombre: this.definitionName, publicVars: [] };
             }
@@ -6882,7 +6852,7 @@ export class CustomComponent extends Leyes {
         try {
             const componentDefinition = this.definition; // Use the getter
             if (!componentDefinition || !componentDefinition.transpiledCode) {
-                 throw new Error(`No se encontro codigo transpilado para el componente personalizado '${this.definitionName}'.`);
+                 throw new Error(`No se encontró código transpilado para el componente personalizado '${this.definitionName}'.`);
             }
 
             const factory = (new Function(`return ${componentDefinition.transpiledCode}`))();
@@ -7141,7 +7111,7 @@ export class SceneLoader extends Leyes {
         this.scenePath = ""; // Ruta a la escena (ej: Assets/Nivel2.ceScene)
         this.triggerTag = "Player"; // Tag que debe colisionar
         this.triggerKey = ""; // Tecla opcional (ej: 'Enter')
-        this.buttonMateria = null; // ID o nombre de la Materia UI (Boton)
+        this.buttonMateria = null; // ID o nombre de la Materia UI (Botón)
 
         this._isSceneLoaded = false;
         this._buttonListenerAdded = false;
@@ -7164,7 +7134,7 @@ export class SceneLoader extends Leyes {
             }
         }
 
-        // 2. Detectar Boton UI y registrar listener
+        // 2. Detectar Botón UI y registrar listener
         if (this.buttonMateria && !this._buttonListenerAdded) {
             const scene = this.materia.scene;
             if (scene) {
@@ -7230,7 +7200,7 @@ export class SceneLoader extends Leyes {
 registerComponent('SceneLoader', SceneLoader);
 
 /**
- * Componente Bone (Hueso): Define un hueso en una jerarquia esqueletica.
+ * Componente Bone (Hueso): Define un hueso en una jerarquía esquelética.
  */
 export class Bone extends Leyes {
     constructor(materia) {
@@ -7274,7 +7244,7 @@ export class SkeletonRenderer extends Leyes {
             indices: [],  // [0, 1, 2, ...]
             weights: []   // [[{boneIndex, weight}, ...], ...] (one array per vertex)
         };
-        this.bones = []; // IDs de las materias que actuan como huesos
+        this.bones = []; // IDs de las materias que actúan como huesos
         this.bindPoses = []; // {x, y, rotation, scale} inverse world transforms for each bone
         this.orderInLayer = 0;
         this.opacity = 1.0;
@@ -7322,7 +7292,7 @@ export class SkeletonRenderer extends Leyes {
 registerComponent('SkeletonRenderer', SkeletonRenderer);
 
 /**
- * Componente IKManager2D: Gestiona la cinematica inversa en una cadena de huesos.
+ * Componente IKManager2D: Gestiona la cinemática inversa en una cadena de huesos.
  */
 export class IKManager2D extends Leyes {
     constructor(materia) {

@@ -256,7 +256,7 @@ function updatePrompt() {
 
 function clearScreen() {
     if (!dom.output) return;
-    dom.output.innerHTML = '<span>Creative Engine Terminal [Version 0.1.0]</span><br><span>(c) Carley Interactive Studio. Todos los derechos reservados.</span><br><br>';
+    dom.output.innerHTML = '<span>Creative Engine Terminal [Versión 0.1.0]</span><br><span>(c) Carley Interactive Studio. Todos los derechos reservados.</span><br><br>';
 }
 
 // --- Command Implementations ---
@@ -368,7 +368,7 @@ function registerCoreCommands() {
     registerCommand('help', () => {
         log(window.Localization?.get('COMANDOS_DISPONIBLES') || 'Comandos disponibles:');
         Object.entries(commands).sort().forEach(([name, { description }]) => {
-            log(`  <span style="color: #8be9fd;">${name.padEnd(10)}</span> - ${description || window.Localization?.get('SIN_DESCRIPCION') || 'Sin descripcion.'}`);
+            log(`  <span style="color: #8be9fd;">${name.padEnd(10)}</span> - ${description || window.Localization?.get('SIN_DESCRIPCION') || 'Sin descripción.'}`);
         });
 
         log('<br>Comandos de Escena (Bridge):');
@@ -376,10 +376,10 @@ function registerCoreCommands() {
         log('  <span style="color: #50fa7b;">mkobj     </span> - Crea un objeto. Uso: mkobj &lt;nombre&gt;');
         log('  <span style="color: #50fa7b;">rmobj     </span> - Borra un objeto. Uso: rmobj &lt;id&gt;');
         log('  <span style="color: #50fa7b;">inspect   </span> - Detalles de objeto. Uso: inspect &lt;id&gt;');
-        log('  <span style="color: #50fa7b;">addcomp   </span> - Anade componente. Uso: addcomp &lt;id&gt; &lt;tipo&gt;');
+        log('  <span style="color: #50fa7b;">addcomp   </span> - Añade componente. Uso: addcomp &lt;id&gt; &lt;tipo&gt;');
         log('  <span style="color: #50fa7b;">setprop   </span> - Cambia propiedad. Uso: setprop &lt;id&gt; &lt;comp&gt; &lt;prop&gt; &lt;valor&gt;');
     }, window.Localization?.get('AYUDA_DESC') || 'Muestra esta lista de ayuda.');
-    registerCommand('version', () => log('Creative Engine Version: 0.1.0-beta'), window.Localization?.get('VERSION_DESC') || 'Muestra la version del motor.');
+    registerCommand('version', () => log('Creative Engine Version: 0.1.0-beta'), window.Localization?.get('VERSION_DESC') || 'Muestra la versión del motor.');
 
     // Filesystem commands
     registerCommand('ls', lsCommand, window.Localization?.get('LS_DESC') || 'Lista los archivos y directorios.');

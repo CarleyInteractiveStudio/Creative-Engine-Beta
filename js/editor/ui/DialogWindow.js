@@ -151,19 +151,19 @@ export function showBuildSuccessDialog(projectName, zipBlob) {
     const L = window.Localization;
     const content = `
         <div class="build-success-content">
-            <p style="color: #4caf50; font-weight: bold; font-size: 1.1em;"> Tu juego esta listo para ser compartido!</p>
+            <p style="color: #4caf50; font-weight: bold; font-size: 1.1em;">✨ ¡Tu juego está listo para ser compartido!</p>
             <p>Se ha generado el archivo <strong>${projectName}_Build.zip</strong>.</p>
 
             <div class="sharing-options" style="margin-top: 20px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
-                <h4 style="margin-top: 0;">Como comparto mi juego?</h4>
+                <h4 style="margin-top: 0;">¿Cómo comparto mi juego?</h4>
                 <ul style="padding-left: 20px; font-size: 0.9em; line-height: 1.4;">
                     <li><strong>itch.io:</strong> Sube el archivo ZIP y selecciona "This file will be played in the browser".</li>
                     <li><strong>GitHub Pages:</strong> Descomprime el ZIP en un repositorio y activa las Pages.</li>
-                    <li><strong>Hosting Estatico:</strong> Puedes usar Netlify, Vercel o Firebase Hosting simplemente arrastrando la carpeta.</li>
+                    <li><strong>Hosting Estático:</strong> Puedes usar Netlify, Vercel o Firebase Hosting simplemente arrastrando la carpeta.</li>
                 </ul>
             </div>
 
-            <p style="font-size: 0.85em; margin-top: 15px; color: #aaa;">Nota: Para que otros jueguen, los archivos deben estar en un servidor web (CORS/Modulos ES).</p>
+            <p style="font-size: 0.85em; margin-top: 15px; color: #aaa;">Nota: Para que otros jueguen, los archivos deben estar en un servidor web (CORS/Módulos ES).</p>
         </div>
     `;
 
@@ -242,14 +242,14 @@ export async function showBuildDialog(projectConfig, onConfirm) {
                     </div>
                 </div>
                 <div class="dialog-row" style="margin-bottom:15px;">
-                    <label style="display:block; margin-bottom:5px;">${L.get('BUILD_METHOD', 'Metodo de Build:')}</label>
+                    <label style="display:block; margin-bottom:5px;">${L.get('BUILD_METHOD', 'Método de Build:')}</label>
                     <select id="build-method" style="width:100%; padding:8px; background:#222; border:1px solid #444; color:white;">
                         <option value="web">Web (HTML/JS/CSS)</option>
-                        <option value="cgame" disabled>.Cgame (Creative Game) - Proximamente</option>
-                        <option value="exe" disabled>Windows (.exe) - Proximamente</option>
-                        <option value="apk" disabled>Android (.apk) - Proximamente</option>
-                        <option value="linux" disabled>Linux - Proximamente</option>
-                        <option value="ios" disabled>iOS - Proximamente</option>
+                        <option value="cgame" disabled>.Cgame (Creative Game) - Próximamente</option>
+                        <option value="exe" disabled>Windows (.exe) - Próximamente</option>
+                        <option value="apk" disabled>Android (.apk) - Próximamente</option>
+                        <option value="linux" disabled>Linux - Próximamente</option>
+                        <option value="ios" disabled>iOS - Próximamente</option>
                     </select>
                 </div>
             </div>
@@ -278,7 +278,7 @@ export async function showBuildDialog(projectConfig, onConfirm) {
                         <input type="checkbox" id="show-engine-logo" ${projectConfig.splashScreens?.showEngineLogo !== false ? 'checked' : ''} style="margin-right:10px;">
                         <label>${L.get('SHOW_ENGINE_LOGO', 'Mostrar Logo del Motor')}</label>
                         <div style="flex:1; text-align:right;">
-                            <label style="font-size:0.8em; margin-right:5px;">${L.get('DURACION', 'Duracion')}:</label>
+                            <label style="font-size:0.8em; margin-right:5px;">${L.get('DURACION', 'Duración')}:</label>
                             <input type="number" id="engine-logo-duration" value="${projectConfig.splashScreens?.engineLogoDuration || 10}" style="width:40px; font-size:0.8em; background:#111; border:1px solid #333; color:white;">s
                         </div>
                     </div>
@@ -288,11 +288,11 @@ export async function showBuildDialog(projectConfig, onConfirm) {
                             <div class="splash-item" style="padding:5px; border-bottom:1px solid #333; display:flex; align-items:center; gap:5px;">
                                 <input type="text" class="splash-path" value="${s.path}" style="flex:1; font-size:0.8em; background:#111; border:1px solid #333; color:white;" readonly>
                                 <input type="number" class="splash-duration" value="${s.duration}" style="width:40px; font-size:0.8em; background:#111; border:1px solid #333; color:white;">s
-                                <button class="btn-remove-splash" style="background:none; border:none; color:#ff4444; cursor:pointer;"></button>
+                                <button class="btn-remove-splash" style="background:none; border:none; color:#ff4444; cursor:pointer;">×</button>
                             </div>
                         `).join('')}
                     </div>
-                    <button id="btn-add-splash" class="dialog-button" style="width:100%; font-size:0.8em;">${L.get('ANADIR_LOGO', '+ Anadir Logo')}</button>
+                    <button id="btn-add-splash" class="dialog-button" style="width:100%; font-size:0.8em;">${L.get('AÑADIR_LOGO', '+ Añadir Logo')}</button>
                 </div>
             </div>
 
@@ -311,7 +311,7 @@ export async function showBuildDialog(projectConfig, onConfirm) {
                 <hr style="border:0; border-top:1px solid #444;">
                 <div class="dialog-row">
                     <input type="checkbox" id="include-unused" ${projectConfig.includeUnusedAssets ? 'checked' : ''} style="margin-right:10px;">
-                    <label>${L.get('INCLUDE_ALL_ASSETS', 'Incluir todos los archivos (ignorar optimizacion)')}</label>
+                    <label>${L.get('INCLUDE_ALL_ASSETS', 'Incluir todos los archivos (ignorar optimización)')}</label>
                 </div>
                 <div class="dialog-row" style="margin-top:10px;">
                     <input type="checkbox" id="run-after" checked style="margin-right:10px;">
@@ -321,7 +321,7 @@ export async function showBuildDialog(projectConfig, onConfirm) {
                 <div class="dialog-row">
                     <label style="display:block; margin-bottom:5px;">${L.get('RESOURCE_LOADING_MODE', 'Modo de Carga de Recursos')}:</label>
                     <select id="resource-loading-mode" style="width:100%; padding:8px; background:#222; border:1px solid #444; color:white;">
-                        <option value="lazy" ${projectConfig.resourceLoadingMode === 'lazy' ? 'selected' : ''}>${L.get('LAZY_LOAD_FAST', 'Carga Perezosa (Inicio Rapido)')}</option>
+                        <option value="lazy" ${projectConfig.resourceLoadingMode === 'lazy' ? 'selected' : ''}>${L.get('LAZY_LOAD_FAST', 'Carga Perezosa (Inicio Rápido)')}</option>
                         <option value="preload" ${projectConfig.resourceLoadingMode === 'preload' ? 'selected' : ''}>${L.get('PRELOAD_STABLE', 'Precarga (Estable)')}</option>
                     </select>
                 </div>
@@ -329,7 +329,7 @@ export async function showBuildDialog(projectConfig, onConfirm) {
         </div>
     `;
 
-    const dialog = new DialogWindow(L.get('BUILD_CONFIG', 'Configuracion Avanzada de Build'), content, [
+    const dialog = new DialogWindow(L.get('BUILD_CONFIG', 'Configuración Avanzada de Build'), content, [
         {
             text: L.get('CONSTRUIR_JUEGO', 'Construir Juego'),
             callback: async () => {
@@ -398,11 +398,11 @@ export async function showBuildDialog(projectConfig, onConfirm) {
                 item.innerHTML = `
                     <input type="text" class="splash-path" value="${path}" style="flex:1; font-size:0.8em; background:#111; border:1px solid #333; color:white;" readonly>
                     <input type="number" class="splash-duration" value="3" style="width:40px; font-size:0.8em; background:#111; border:1px solid #333; color:white;">s
-                    <button class="btn-remove-splash" style="background:none; border:none; color:#ff4444; cursor:pointer;"></button>
+                    <button class="btn-remove-splash" style="background:none; border:none; color:#ff4444; cursor:pointer;">×</button>
                 `;
                 item.querySelector('.btn-remove-splash').onclick = () => item.remove();
                 list.appendChild(item);
-            }, { filter: ['.png', '.jpg', '.jpeg', '.ceSprite'], title: L.get('ANADIR_SPLASH', 'Anadir Logo de Splash') });
+            }, { filter: ['.png', '.jpg', '.jpeg', '.ceSprite'], title: L.get('AÑADIR_SPLASH', 'Añadir Logo de Splash') });
         }
     };
 

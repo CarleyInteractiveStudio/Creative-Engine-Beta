@@ -161,7 +161,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             if (projects.length === 0) {
-                projectList.innerHTML = `<p class="no-projects-message">${Localization.get('SIN_PROYECTOS', 'No hay proyectos en esta carpeta. Crea uno!')}</p>`;
+                projectList.innerHTML = `<p class="no-projects-message">${Localization.get('SIN_PROYECTOS', 'No hay proyectos en esta carpeta. ¡Crea uno!')}</p>`;
                 return;
             }
 
@@ -199,14 +199,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const openFolderBtn = document.createElement('button');
                 openFolderBtn.className = 'project-action-btn location';
                 openFolderBtn.innerHTML = '<img src="icons/folder.svg" class="ce-icon">';
-                openFolderBtn.title = Localization.get('VER_UBICACION', 'Ver ubicacion');
+                openFolderBtn.title = Localization.get('VER_UBICACION', 'Ver ubicación');
                 openFolderBtn.onclick = async (e) => {
                     e.stopPropagation();
                     const workspace = await getDirHandle();
                     const workspaceName = workspace ? (workspace.name || 'Creative Engine Projects') : '...';
 
                     Dialogs.showNotification(
-                        Localization.get('UBICACION_DEL_PROYECTO', 'Ubicacion del Proyecto'),
+                        Localization.get('UBICACION_DEL_PROYECTO', 'Ubicación del Proyecto'),
                         `${Localization.get('HINT_RUTA_PROYECTO', 'El proyecto se encuentra en la carpeta de proyectos configurada, dentro de la subcarpeta:')}\n\n[${workspaceName}] / ${entry.name}`
                     );
                 };
@@ -263,7 +263,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 await navigator.share({
                     title: 'Creative Engine',
-                    text: 'Crea tus propios videojuegos 2D directamente en el navegador con Creative Engine!',
+                    text: '¡Crea tus propios videojuegos 2D directamente en el navegador con Creative Engine!',
                     url: window.location.href
                 });
                 console.log('Engine shared successfully');
@@ -336,7 +336,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const isNewUser = document.getElementById('is-new-user').checked;
 
         if (!projectName) {
-            window.Dialogs.showNotification('Entrada Invalida', 'Por favor, introduce un nombre de proyecto valido.');
+            window.Dialogs.showNotification('Entrada Inválida', 'Por favor, introduce un nombre de proyecto válido.');
             return;
         }
 
@@ -363,7 +363,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const libDirHandle = await projectDirHandle.getDirectoryHandle('lib', { create: true });
             const tutorialDirHandle = await assetsDirHandle.getDirectoryHandle('tutorial', { create: true });
 
-            // Crear el archivo de configuracion base
+            // Crear el archivo de configuración base
             const config = {
                 appName: projectName,
                 appVersion: '1.0.0',
@@ -382,32 +382,32 @@ document.addEventListener('DOMContentLoaded', async () => {
             await writable.write(JSON.stringify({ materias: [] }, null, 2));
             await writable.close();
 
-            // Cargar y escribir los archivos de documentacion
+            // Cargar y escribir los archivos de documentación
             try {
-                // README de Librerias
-                const libReadmeContent = `# Carpeta de Librerias (/lib)
+                // README de Librerías
+                const libReadmeContent = `# Carpeta de Librerías (/lib)
 
-Esta carpeta esta destinada a tus librerias personalizadas (.celib).
-Las librerias te permiten extender la funcionalidad del editor y del motor.
+Esta carpeta está destinada a tus librerías personalizadas (.celib).
+Las librerías te permiten extender la funcionalidad del editor y del motor.
 
-## Como usar la nueva API Simplificada
+## Cómo usar la nueva API Simplificada
 
-Dentro de tu script JavaScript (IIFE), puedes usar estas funciones para crear interfaces increibles:
+Dentro de tu script JavaScript (IIFE), puedes usar estas funciones para crear interfaces increíbles:
 
 \`\`\`javascript
 CreativeEngine.API.registrarVentana({
     nombre: "Mi Herramienta",
     estilo: "carl", // "carl" o "moderno"
     alAbrir: (panel) => {
-        panel.texto("Hola Mundo!");
+        panel.texto("¡Hola Mundo!");
         panel.boton("Ejecutar", () => {
-            window.Dialogs.showNotification("Aviso", "Accion ejecutada");
+            window.Dialogs.showNotification("Aviso", "Acción ejecutada");
         });
     }
 });
 \`\`\`
 
-Para mas detalles, consulta la seccion "Ayuda" del editor.`;
+Para más detalles, consulta la sección "Ayuda" del editor.`;
 
                 const libReadmeHandle = await libDirHandle.getFileHandle('README.md', { create: true });
                 writable = await libReadmeHandle.createWritable();
@@ -434,19 +434,19 @@ Para mas detalles, consulta la seccion "Ayuda" del editor.`;
                     await writable.close();
                 }
             } catch (docsError) {
-                console.warn("No se pudieron crear los archivos de documentacion:", docsError);
+                console.warn("No se pudieron crear los archivos de documentación:", docsError);
                 // No mostramos un error al usuario por esto, es un extra.
             }
 
             projectNameInput.value = '';
             closeModal();
-            Dialogs.showNotification('Exito!', `Proyecto "${projectName}" creado con exito.`);
+            Dialogs.showNotification('¡Éxito!', `Proyecto "${projectName}" creado con éxito.`);
             loadProjects();
 
         } catch (error) {
             if (error.name !== 'AbortError') {
                 console.error('Error creando el proyecto:', error);
-                Dialogs.showNotification('Error', 'Ocurrio un error al crear el proyecto.');
+                Dialogs.showNotification('Error', 'Ocurrió un error al crear el proyecto.');
             }
         } finally {
             isCreatingProject = false;
@@ -460,13 +460,13 @@ Para mas detalles, consulta la seccion "Ayuda" del editor.`;
         if (!currentProjectName) return;
 
         Dialogs.showConfirmation(
-            'Confirmar Eliminacion',
-            `Estas seguro de que quieres eliminar el proyecto "${currentProjectName}"? Esta accion no se puede deshacer.`,
+            'Confirmar Eliminación',
+            `¿Estás seguro de que quieres eliminar el proyecto "${currentProjectName}"? Esta acción no se puede deshacer.`,
             async () => {
                 try {
                     const dirHandle = await getDirHandle();
                     await dirHandle.removeEntry(currentProjectName, { recursive: true });
-                    Dialogs.showNotification('Exito', `Proyecto "${currentProjectName}" eliminado.`);
+                    Dialogs.showNotification('Éxito', `Proyecto "${currentProjectName}" eliminado.`);
                     loadProjects();
                 } catch (err) {
                     console.error('Error deleting project:', err);
@@ -486,7 +486,7 @@ Para mas detalles, consulta la seccion "Ayuda" del editor.`;
                 const sanitizedName = newName.trim().replace(/[^a-zA-Z0-9-]/g, '-');
 
                 if (!sanitizedName || sanitizedName === currentProjectName) {
-                    window.Dialogs.showNotification('Renombrado Cancelado', 'El nombre no es valido o es el mismo que el actual.');
+                    window.Dialogs.showNotification('Renombrado Cancelado', 'El nombre no es válido o es el mismo que el actual.');
                     return;
                 }
 
@@ -513,12 +513,12 @@ Para mas detalles, consulta la seccion "Ayuda" del editor.`;
                     // 3. Eliminar el directorio antiguo
                     await dirHandle.removeEntry(currentProjectName, { recursive: true });
 
-                    window.Dialogs.showNotification('Exito', `El proyecto fue renombrado a "${sanitizedName}".`);
+                    window.Dialogs.showNotification('Éxito', `El proyecto fue renombrado a "${sanitizedName}".`);
                     loadProjects(); // Recargar la lista
 
                 } catch (error) {
                     console.error("Error al renombrar el proyecto:", error);
-                    window.Dialogs.showNotification('Error', 'Ocurrio un error inesperado al renombrar.');
+                    window.Dialogs.showNotification('Error', 'Ocurrió un error inesperado al renombrar.');
                 }
             },
             currentProjectName // Valor por defecto en el input
@@ -548,7 +548,7 @@ Para mas detalles, consulta la seccion "Ayuda" del editor.`;
             // Remove this listener so it only runs once
             document.body.removeEventListener('click', startMusic);
         }).catch(error => {
-            console.log("La musica no pudo iniciarse automaticamente, se requiere interaccion del usuario.", error);
+            console.log("La música no pudo iniciarse automáticamente, se requiere interacción del usuario.", error);
         });
     }
 
@@ -604,7 +604,7 @@ Para mas detalles, consulta la seccion "Ayuda" del editor.`;
         resetEngineBtn.addEventListener('click', () => {
             Dialogs.showConfirmation(
                 Localization.get('RESTABLECER_MOTOR', 'Restablecer Motor'),
-                Localization.get('CONFIRM_RESTABLECER', 'Estas seguro de que quieres borrar todos los datos locales del motor? Esto te pedira elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se veran afectados.'),
+                Localization.get('CONFIRM_RESTABLECER', '¿Estás seguro de que quieres borrar todos los datos locales del motor? Esto te pedirá elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se verán afectados.'),
                 async () => {
                     try {
                         // 1. Clear LocalStorage
@@ -647,7 +647,7 @@ Para mas detalles, consulta la seccion "Ayuda" del editor.`;
             const key = aiKeyInput.value.trim();
             if (key) {
                 localStorage.setItem('creativeEngine_gemini_apiKey', key);
-                Dialogs.showNotification('Exito', 'Clave de API guardada correctamente.');
+                Dialogs.showNotification('Éxito', 'Clave de API guardada correctamente.');
             } else {
                 localStorage.removeItem('creativeEngine_gemini_apiKey');
                 Dialogs.showNotification('Aviso', 'Clave de API eliminada.');

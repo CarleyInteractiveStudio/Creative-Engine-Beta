@@ -1,14 +1,14 @@
 /**
- * Almacena los datos de un unico sprite recortado de una hoja de sprites.
- * Es el analogo a la estructura SpriteMetaData de Unity.
+ * Almacena los datos de un único sprite recortado de una hoja de sprites.
+ * Es el análogo a la estructura SpriteMetaData de Unity.
  */
 export class SpriteData {
     /**
      * @param {string} name - El nombre identificador del sprite.
-     * @param {number} x - La coordenada X del rectangulo de recorte en la textura.
-     * @param {number} y - La coordenada Y del rectangulo de recorte en la textura.
-     * @param {number} width - El ancho del rectangulo de recorte.
-     * @param {number} height - La altura del rectangulo de recorte.
+     * @param {number} x - La coordenada X del rectángulo de recorte en la textura.
+     * @param {number} y - La coordenada Y del rectángulo de recorte en la textura.
+     * @param {number} width - El ancho del rectángulo de recorte.
+     * @param {number} height - La altura del rectángulo de recorte.
      */
     constructor(name, x, y, width, height) {
         this.name = name;
@@ -17,14 +17,14 @@ export class SpriteData {
         // Pivote (normalizado de 0.0 a 1.0). (0.5, 0.5) es el centro.
         this.pivot = { x: 0.5, y: 0.5 };
 
-        // Bordes para 9-slicing (en pixeles).
+        // Bordes para 9-slicing (en píxeles).
         this.border = { left: 0, top: 0, right: 0, bottom: 0 };
     }
 }
 
 /**
  * Representa una hoja de sprites completa, que es una textura
- * junto con la definicion de todos los sprites individuales que contiene.
+ * junto con la definición de todos los sprites individuales que contiene.
  */
 export class SpriteSheet {
     /**
@@ -37,8 +37,8 @@ export class SpriteSheet {
     }
 
     /**
-     * Anade un nuevo sprite a la hoja.
-     * @param {SpriteData} spriteData - La instancia de SpriteData a anadir.
+     * Añade un nuevo sprite a la hoja.
+     * @param {SpriteData} spriteData - La instancia de SpriteData a añadir.
      */
     addSprite(spriteData) {
         this.sprites[spriteData.name] = spriteData;

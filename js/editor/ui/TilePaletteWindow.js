@@ -240,7 +240,7 @@ function setupEventListeners() {
                 currentPalette.associatedSpritePacks.push(fullPath);
                 await loadAndDisplayAssociatedSprites();
             } else {
-                showNotification(L.get('AVISO', 'Aviso'), L.get('AVISO_SPRITE_ASOCIADO', 'Este paquete de sprites ya esta asociado.'));
+                showNotification(L.get('AVISO', 'Aviso'), L.get('AVISO_SPRITE_ASOCIADO', 'Este paquete de sprites ya está asociado.'));
             }
         }, ['.ceSprite', 'image', '.cea']);
     });
@@ -284,7 +284,7 @@ function setupEventListeners() {
                     await loadAndDisplayAssociatedSprites();
                     drawTiles(); // Redraw canvas to ensure UI consistency.
 
-                    showNotification(L.get('EXITO', 'Exito'), `${L.get('EXITO_PACK_DISASOCIADO', 'El paquete ha sido desasociado. Los tiles existentes en la paleta no han sido modificados.')}: ${shortName}`);
+                    showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_PACK_DISASOCIADO', 'El paquete ha sido desasociado. Los tiles existentes en la paleta no han sido modificados.')}: ${shortName}`);
                 } catch (error) {
                     console.error(`Error during disassociation of ${fullPath}:`, error);
                     showNotification(L.get('ERROR', 'Error'), `${L.get('ERROR_DISASOCIAR_PACK', 'No se pudo desasociar el paquete')}: ${error.message}`);
@@ -456,7 +456,7 @@ async function saveCurrentPalette() {
         const writable = await currentFileHandle.createWritable();
         await writable.write(JSON.stringify(currentPalette, null, 2));
         await writable.close();
-        showNotification(L.get('EXITO', 'Exito'), L.get('EXITO_PALETA_GUARDADA', 'Paleta guardada exitosamente.'));
+        showNotification(L.get('EXITO', 'Éxito'), L.get('EXITO_PALETA_GUARDADA', 'Paleta guardada exitosamente.'));
     } catch (error) {
         console.error("Error saving palette:", error);
         showNotification(L.get('ERROR', 'Error'), `${L.get('ERROR_GUARDAR_PALETA', 'Fallo al guardar la paleta')}: ${error.message}`);
@@ -714,7 +714,7 @@ async function loadAndDisplayAssociatedSprites() {
         currentPalette.associatedSpritePacks = validSpritePacks;
         showNotification(
             L.get('TITULO_PALETA_LIMPIADA', 'Paleta Limpiada'),
-            L.get('MSG_PALETA_LIMPIADA', 'Se eliminaron las asociaciones de sprites no validas o corruptas. Guarda la paleta para aplicar los cambios.')
+            L.get('MSG_PALETA_LIMPIADA', 'Se eliminaron las asociaciones de sprites no válidas o corruptas. Guarda la paleta para aplicar los cambios.')
         );
     }
 }
@@ -860,8 +860,8 @@ function drawPaintMode() {
         dom.gridCanvas.height = dom.viewContainer.clientHeight;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
         ctx.textAlign = 'center';
-        ctx.fillText(L.get('MSG_PALETA_VACIA', "Esta paleta esta vacia."), dom.gridCanvas.width / 2, 50);
-        ctx.fillText(L.get('MSG_MODO_EDICION_HINT', "Entra en 'Modo Edicion' para asociar sprites y anadirlos."), dom.gridCanvas.width / 2, 70);
+        ctx.fillText(L.get('MSG_PALETA_VACIA', "Esta paleta está vacía."), dom.gridCanvas.width / 2, 50);
+        ctx.fillText(L.get('MSG_MODO_EDICION_HINT', "Entra en 'Modo Edición' para asociar sprites y añadirlos."), dom.gridCanvas.width / 2, 70);
         return;
     }
 

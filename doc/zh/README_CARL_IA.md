@@ -31,14 +31,7 @@ In **Edit > Preferences**, you can set Carl's autonomy:
 ---
 
 ## 📜 Scripting Assistance (CHC)
-Inside the Code Editor, the **CHC (Code Helper)** allows you to describe logic in natural language, and Carl will translate it into a valid `.ces` script instantly。
-- 自动添加 `ve motor;`。
-- 为你处理复杂的西班牙语/多语言关键字。
-- 使用最新的引擎标准（无前缀的组件访问）。
-- 现在还支持手柄命令，如 `mandoBotonPresionado`。
-
-## 🔍 增强的错误检测
-Carl 和引擎现在通力合作，帮助你编写代码：
-- **实时高亮**：编辑器在你输入时检测错误。
-- **自动修复**：Carl 可以分析运行错误并一键建议自动修复。
-- **智能控制台**：错误已分类，并允许直接导航到代码。
+Inside the Code Editor, the **CHC (Code Helper)** allows you to describe logic in natural language, and Carl will translate it into a valid `.ces` script instantly.
+- It automatically adds `ve motor;`.
+- It handles complex Spanish/Multilingual keywords for you.
+- It uses the latest engine standards (prefix-less component access).

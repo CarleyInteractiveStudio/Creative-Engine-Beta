@@ -182,7 +182,7 @@ export class Scene {
 
     /**
      * Re-carga todos los assets necesarios para los componentes en la escena.
-     * Util despues de restaurar una escena desde un snapshot o cargarla por primera vez.
+     * Útil después de restaurar una escena desde un snapshot o cargarla por primera vez.
      */
     async loadAllAssets(projectsDirHandle) {
         loadingProgress = 0;
@@ -553,7 +553,7 @@ export async function instanciarPrefabDesdeRuta(path, x, y) {
     }
 }
 
-// Alias en ingles
+// Alias en inglés
 export const instantiatePrefabFromPath = instanciarPrefabDesdeRuta;
 
 /**
@@ -595,15 +595,15 @@ export async function loadSceneByPath(path) {
 }
 
 /**
- * Crea una copia de una Materia (objeto) existente y la anade a la escena actual.
+ * Crea una copia de una Materia (objeto) existente y la añade a la escena actual.
  * @param {Materia} original - El objeto a copiar.
- * @param {number} [x] - Posicion X opcional.
- * @param {number} [y] - Posicion Y opcional.
+ * @param {number} [x] - Posición X opcional.
+ * @param {number} [y] - Posición Y opcional.
  * @returns {Materia} La nueva instancia creada.
  */
 export function instanciar(original, x, y) {
     if (!original || !(original instanceof Materia)) {
-        console.error("instanciar: Se requiere una Materia valida para copiar.");
+        console.error("instanciar: Se requiere una Materia válida para copiar.");
         return null;
     }
     const copia = original.clone(false); // false = generar nuevos IDs
@@ -615,7 +615,7 @@ export function instanciar(original, x, y) {
     return copia;
 }
 
-// Alias en ingles
+// Alias en inglés
 export const instantiate = instanciar;
 
 /**
@@ -677,7 +677,7 @@ export async function initialize(projectsDirHandle) {
         return await loadScene(fileHandle, projectsDirHandle);
     } else {
         // If no scene files exist, create a default one with a camera
-        console.warn("No se encontro ninguna escena en el proyecto. Creando una nueva por defecto con una camara.");
+        console.warn("No se encontró ninguna escena en el proyecto. Creando una nueva por defecto con una cámara.");
         try {
             const fileHandle = await assetsHandle.getFileHandle(defaultSceneName, { create: true });
             const writable = await fileHandle.createWritable();
@@ -689,7 +689,7 @@ export async function initialize(projectsDirHandle) {
             await writable.write(JSON.stringify(sceneData, null, 2));
             await writable.close();
 
-            console.log(`Escena por defecto '${defaultSceneName}' creada con exito.`);
+            console.log(`Escena por defecto '${defaultSceneName}' creada con éxito.`);
             const newFileHandle = await assetsHandle.getFileHandle(defaultSceneName);
             return await loadScene(newFileHandle, projectsDirHandle);
         } catch (createError) {

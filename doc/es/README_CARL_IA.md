@@ -33,13 +33,7 @@ Carl puede ejecutar comandos como:
 ---
 
 ## 🛠️ Asistencia en Código (CHC)
-Dentro del Editor de Código, puedes usar el **CHC (Code Helper)**. Escribe en lenguaje humano lo que quieres que haga tu script, y Carl lo traducirá instantáneamente a código `.ces` válido, siguiendo todos los estándares del motor (como el uso obligatorio de `ve motor;`). Ahora también soporta comandos de mando como `mandoBotonPresionado`.
-
-## 🔍 Detección de Errores Mejorada
-Carl y el motor ahora trabajan juntos para ayudarte a programar:
-- **Resaltado en Tiempo Real:** El editor detecta errores mientras escribes.
-- **Auto Reparación:** Carl puede analizar errores de ejecución y proponer arreglos automáticos con un solo clic.
-- **Consola Inteligente:** Los errores están categorizados y permiten navegar directamente al problema en el código.
+Dentro del Editor de Código, puedes usar el **CHC (Code Helper)**. Escribe en lenguaje humano lo que quieres que haga tu script, y Carl lo traducirá instantáneamente a código `.ces` válido, siguiendo todos los estándares del motor (como el uso obligatorio de `ve motor;`).
 
 ---
 

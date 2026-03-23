@@ -2,22 +2,22 @@
 
 /**
  * @module RuntimeAPIManager
- * @description Gestiona las APIs de las librerias que estan disponibles en tiempo de ejecucion para los scripts .ces.
+ * @description Gestiona las APIs de las librerías que están disponibles en tiempo de ejecución para los scripts .ces.
  */
 
 const registeredAPIs = new Map();
 
 /**
- * Registra las funciones exportadas por una libreria.
- * @param {string} libraryName - El nombre de la libreria (ej: "MiLibreriaDeFisicas").
- * @param {object} apiObject - El objeto devuelto por el script de la libreria, que contiene las funciones a exponer.
+ * Registra las funciones exportadas por una librería.
+ * @param {string} libraryName - El nombre de la librería (ej: "MiLibreriaDeFisicas").
+ * @param {object} apiObject - El objeto devuelto por el script de la librería, que contiene las funciones a exponer.
  */
 export function registerAPI(libraryName, apiObject) {
     if (registeredAPIs.has(libraryName)) {
-        console.warn(`La libreria '${libraryName}' ya esta registrada. Se va a sobreescribir su API.`);
+        console.warn(`La librería '${libraryName}' ya está registrada. Se va a sobreescribir su API.`);
     }
     registeredAPIs.set(libraryName, apiObject);
-    console.log(`API registrada para la libreria en tiempo de ejecucion: '${libraryName}'`);
+    console.log(`API registrada para la librería en tiempo de ejecución: '${libraryName}'`);
 }
 
 /**
@@ -37,8 +37,8 @@ export function findFunctionInAPIs(functionName, importedAPIs) {
 }
 
 /**
- * Obtiene el objeto API para una libreria especifica.
- * @param {string} libraryName - El nombre de la libreria.
+ * Obtiene el objeto API para una librería específica.
+ * @param {string} libraryName - El nombre de la librería.
  * @returns {object | undefined} El objeto API o undefined si no se encuentra.
  */
 export function getAPI(libraryName) {
@@ -47,7 +47,7 @@ export function getAPI(libraryName) {
 
 /**
  * Devuelve un mapa con todas las APIs registradas.
- * Utilizado por el transpilador para saber que funciones de librerias estan disponibles.
+ * Utilizado por el transpilador para saber qué funciones de librerías están disponibles.
  * @returns {Map<string, object>} El mapa de APIs.
  */
 export function getAPIs() {
@@ -56,11 +56,11 @@ export function getAPIs() {
 
 /**
  * Limpia todas las APIs registradas.
- * Es util al cambiar de proyecto o recargar el editor.
+ * Es útil al cambiar de proyecto o recargar el editor.
  */
 export function clearAPIs() {
     registeredAPIs.clear();
-    console.log("Todas las APIs de tiempo de ejecucion han sido eliminadas.");
+    console.log("Todas las APIs de tiempo de ejecución han sido eliminadas.");
 }
 
 let uiSystem = null;

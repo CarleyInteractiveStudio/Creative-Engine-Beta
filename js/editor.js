@@ -110,7 +110,15 @@ document.addEventListener('DOMContentLoaded', () => {
             { key: 'Unexpected identifier', value: 'Hay una palabra fuera de lugar. Revisa que no falten puntos (.) o comas (,).' },
             { key: 'Unexpected token', value: 'Simbolo inesperado. Revisa si te falta cerrar un parentesis ")" o una llave "}".' },
             { key: 'NotFoundError', value: 'No se pudo encontrar el archivo o carpeta. Revisa que el nombre sea exacto.' },
-            { key: 'cannot read property', value: 'Intentaste acceder a algo que es nulo o no existe.' }
+            { key: 'cannot read property', value: 'Intentaste acceder a algo que es nulo o no existe.' },
+            { key: 'materia is not defined', value: 'Has usado la palabra "materia" (con m minuscula), pero en el motor se escribe con M mayuscula: "Materia".' },
+            { key: 'unexpected token ;', value: 'Pusiste un punto y coma ";" donde no va. Revisa las llaves "{ }" de tus funciones.' },
+            { key: 'missing ) after argument list', value: 'Te falta cerrar un parentesis ")" en una funcion o condicion.' },
+            { key: 'identifier starts immediately after numeric literal', value: 'Hay un numero pegado a una palabra. Deja un espacio, ej: "10 + x" en lugar de "10+x" si da error.' },
+            { key: 'assignment to constant variable', value: 'Estas intentando cambiar el valor de una "constante". Usa "variable" si quieres que cambie.' },
+            { key: 'too much recursion', value: 'Error de bucle infinito. Una funcion se esta llamando a si misma sin parar.' },
+            { key: 'out of memory', value: 'El juego se ha quedado sin memoria. Hay demasiados objetos o un bucle infinito?' },
+            { key: 'script error', value: 'Error desconocido en el script. Revisa la sintaxis general.' }
         ];
 
         for (const entry of translations) {
@@ -193,43 +201,54 @@ document.addEventListener('DOMContentLoaded', () => {
         msgEl.style.whiteSpace = 'pre-wrap';
 
         const iconMap = {
-            'log': '',
-            'warn': '',
-            'error': ''
+            'log': '🔵',
+            'warn': '⚠️',
+            'error': '❌'
         };
 
         if (structuredError) {
             msgEl.classList.add('structured-error');
-            const icon = iconMap[type] || '';
             const isRuntime = !!structuredError.scriptName;
+            const icon = isRuntime ? '⚙️' : '📝';
             const title = isRuntime ? 'Error de Ejecucion' : 'Error de Sintaxis';
-            const categoryClass = isRuntime ? 'cat-runtime' : 'cat-syntax';
+            const errorClass = isRuntime ? 'runtime-error' : 'syntax-error';
+            msgEl.classList.add(errorClass);
 
             let actionButtons = '';
-            // Show action buttons for both syntax (transpile) and runtime errors if filename is known
             const targetFile = structuredError.scriptName;
             if (targetFile) {
                 actionButtons = `
                     <div class="msg-actions">
-                        <button class="console-action-btn" onclick="window._CodeEditor.openScriptAtLine('${targetFile}', ${structuredError.line || 1})"> Ir a la linea</button>
-                        <button class="console-action-btn special" onclick="window._CodeEditor.runAutoReparator('${targetFile}')"> Auto Reparar</button>
+                        <button class="console-action-btn" onclick="window._CodeEditor.openScriptAtLine('${targetFile}', ${structuredError.line || 1})">
+                            🔍 Ir a la linea
+                        </button>
+                        <button class="console-action-btn special" onclick="window._CodeEditor.runAutoReparator('${targetFile}')">
+                            🛠️ Auto Reparar
+                        </button>
                     </div>
                 `;
             }
 
             msgEl.innerHTML = `
-                <div class="msg-header ${categoryClass}">
-                    <span class="msg-icon">${icon}</span>
-                    <span class="msg-category">${title.toUpperCase()}</span>
-                </div>
+                <span class="msg-icon">${icon}</span>
                 <div class="msg-body">
-                    <span class="msg-text">${fullMessage}</span>
+                    <div class="msg-header">
+                        <span class="error-title">${title}</span>
+                        ${structuredError.line ? `<span class="error-line">Linea ${structuredError.line}</span>` : ''}
+                    </div>
+                    <span class="msg-text">${translateErrorMessage(structuredError.message)}</span>
+                    ${structuredError.scriptName ? `<div class="error-context">Archivo: <code>${structuredError.scriptName}</code></div>` : ''}
                     ${actionButtons}
                 </div>
             `;
 
-            msgEl.style.borderLeft = type === 'error' ? "4px solid #ff4444" : "4px solid #f3ca58";
-            msgEl.style.backgroundColor = "rgba(0, 0, 0, 0.2)";
+            if (isRuntime) {
+                msgEl.style.borderLeft = "4px solid #ff9f43";
+                msgEl.style.backgroundColor = "rgba(255, 159, 67, 0.15)";
+            } else {
+                msgEl.style.borderLeft = "4px solid #ff4d4d";
+                msgEl.style.backgroundColor = "rgba(255, 77, 77, 0.15)";
+            }
         } else {
             const icon = iconMap[type] || '>';
             msgEl.innerHTML = `<span class="msg-icon">${icon}</span> <span class="msg-text">${fullMessage}</span>`;
@@ -1045,7 +1064,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'ambiente-control-panel': 'menu-window-ambiente-control',
             'scene-panel': 'menu-window-scene'
         };
-        const checkmark = ' ';
+        const checkmark = '✓ ';
 
         for (const [panelId, menuId] of Object.entries(menuItems)) {
             const panel = document.getElementById(panelId);
@@ -2051,7 +2070,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.btnPlay.style.display = 'none';
             dom.btnPause.style.display = 'inline-block';
             dom.btnStop.style.display = 'inline-block';
-            dom.btnPause.textContent = isGamePaused ? '' : '';
+            dom.btnPause.textContent = isGamePaused ? '▶️' : '⏸️';
         } else {
             dom.btnPlay.style.display = 'inline-block';
             dom.btnPause.style.display = 'none';
@@ -3258,7 +3277,101 @@ document.addEventListener('DOMContentLoaded', () => {
             let knownWorkingModel = {}; // Cache for working models, e.g., { gemini: 'models/gemini-1.5-flash' }
             let carlChatHistory = []; // Memory for the session
 
-                                                const CARL_SYSTEM_PROMPT_TEMPLATE = `Eres Carl, el asistente inteligente de Creative Engine. Tu personalidad es alegre, servicial y apasionada por ayudar en la creacion de videojuegos. Siempre te presentas como Carl. Tu mision es asistir al usuario en sus tareas, proponiendo soluciones y explicando paso a paso como lograr sus visiones en el motor.\n\nIMPORTANTE: El idioma actual de la interfaz del motor es {idioma}. Debes responder preferiblemente en este idioma, a menos que el usuario te hable en otro.\n\nCONOCIMIENTO DE LA INTERFAZ (UI):\n- Menu Superior: Archivo (Nueva escena, Abrir, Guardar, Importar/Exportar), Editar (Configuracion del Proyecto, Preferencias), Ventana (Jerarquia, Inspector, Navegador, Consola, Editor de Animacion, Paleta de Tiles, Editor de Sprites, Control de Ambiente, Vid Spri), Librerias, Carl IA, Donar.\n- Paneles Principales:\n  - Jerarquia: Gestiona los objetos (Materias) en la escena actual. Permite crear camaras, sprites, luces, UI, etc.\n  - Inspector: Edita propiedades del objeto seleccionado y permite anadir componentes (Leyes).\n  - Navegador (Assets): Gestiona los archivos del proyecto (imagenes, sonidos, scripts, escenas, prefabs).\n  - Consola: Muestra logs del sistema y de los scripts (usando imprimir o consola.imprimir).\n  - Escena: El area central donde se posicionan los objetos visualmente.\n- Herramientas de Edicion: Mover (Q), Panear (W), Escalar (E), Rotar (R), Herramienta Universal (T), Terreno (B), Pincel de Tiles.\n- Vistas de Panel Central: Escena, Juego (para probar el juego), Codigo (editor integrado para .ces y .chc), Terminal.\n\nCONOCIMIENTO DE COMPONENTES (LEYES):\n- Basicos: Transform (posicion), Camara (camara), AudioSource (fuenteDeAudio), VideoPlayer, CreativeScript.\n- Renderizado: SpriteRenderer (renderizadorDeSprite), TextureRender, ParticleSystem, Water (agua).\n- Fisicas 2D: Rigidbody2D (fisica), BoxCollider2D, CapsuleCollider2D, CircleCollider2D, TilemapCollider2D, LineCollider2D.\n- Vehiculos y Controladores: SuspensionHC, VehicleTopDown, PlaneController, HelicopterController.\n- Mapas: Tilemap (rejilla), Terreno2D.\n- Iluminacion: PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D.\n- Interfaz (UI): Canvas (lienzo), UIImage (imagen), UIText (texto), Button (boton), UIEventTrigger.\n- Animacion: Animator (animador), AnimatorController (controlador).\n- Utilidades: CameraFollow, Parallax, DrawingOrder, Layout Groups.\n\nSINTAXIS DE SCRIPTING (CES/CHC) - ACTUALIZADO!:\n0. IMPORTACIONES: \'ve motor;\' (OBLIGATORIO).\n1. PALABRAS CLAVE: si, sino, mientras, para, retornar, funcion, variable, constante, verdadero, falso, nuevo.\n2. DECLARACION: \'publico [tipo] [nombre] = [valor];\' (OBLIGATORIO para el Inspector!). Tipos: numero, texto, booleano, Materia, Sprite, sonido.\n3. ACCESO DIRECTO: nombre, tag, posicion, fisica, animador, renderizadorDeSprite, fuenteDeAudio, camara, rejilla, lienzo.\n- INPUT API (Sin prefijos): teclaPresionada(\'espacio\'), teclaRecienPresionada(\'W\'), mandoBotonPresionado(\'A\'), mandoEje(\'IzquierdaX\'), botonMousePresionado(0), obtenerPosicionMouse(). NO USES \'entrada.\' NI \'motor.\'.\n5. EVENTOS: alEmpezar(), alActualizar(delta), actualizarFijo(delta), alEntrarEnColision(otro), alHacerClick().\n6. CONTROL DE TIEMPO: \'cada(segundos) { ... }\', \'esperar(segundos);\'.\n7. FUNCIONES MOTOR: buscar(nombre), destruir(mtr), crear miPrefab, lanzarRayo(origen, dir, dist, tag), estaTocandoTag(tag).\n8. SISTEMA PROXY (Potente): Llama a animaciones o sonidos por su nombre directamente: \'reproducir.Correr();\' o \'play.Explosion();\'.\n\nREGLA DE ORO: Devuelve siempre codigo .ces limpio. Se motivador y recuerda que eres un agente activo, NO solo un chat. Si el usuario te pide crear algo, hazlo directamente mediante un plan! No solo le des el codigo.\n\nHABILIDADES AUTONOMAS (NUEVO!):\nAhora tienes la capacidad de ejecutar acciones reales en el editor. Cuando el usuario te pida construir, crear, modificar o descargar algo, DEBES:\n1. Crear un PLAN de pasos detallados con comandos ejecutables.\n2. Cada paso puede contener uno o mas comandos ejecutables.\n\nPara enviar comandos, incluyelos al final de tu respuesta en un bloque de codigo JSON marcado con la etiqueta [PLAN]. Siempre menciona al usuario que debe ir a la pestana \'Actividad\' para ejecutar las acciones (o ver el progreso).\n\nFormato del bloque [PLAN]:\n{\n  \"plan\": [\n    {\n      \"title\": \"Titulo del paso\",\n      \"description\": \"Descripcion de lo que haras\",\n      \"commands\": [\n        { \"action\": \"create_materia\", \"params\": { \"name\": \"Cubo\", \"type\": \"Sprite\" } },\n        { \"action\": \"add_component\", \"params\": { \"materiaId\": \"@last\", \"type\": \"Rigidbody2D\" } },\n        { \"action\": \"set_property\", \"params\": { \"materiaId\": \"@last\", \"componentType\": \"Transform\", \"propPath\": \"position.x\", \"value\": 100 } }\n      ]\n    }\n  ]\n}\n\nComandos Disponibles:\n- create_materia { name, parentId, type: \'Sprite\'|\'Camera\'|\'Canvas\'|\'Audio\'|\'Empty\' }\n- delete_materia { id } // id puede ser el ID numerico o el nombre exacto\n- add_component { materiaId, type, properties: {} } // type puede ser el nombre en ingles o espanol\n- set_property { materiaId, componentType, propPath, value } // propPath puede ser anidado, ej: \'position.x\' o \'color\'\n- create_file { path: \'Assets/nombre.ces\', content: \'...\' }\n- download_file { url, path: \'Assets/nombre.png\' }\n\nREGLAS DE PROPIEDADES COMUNES:\n- Transform: \'position.x\', \'position.y\', \'rotation\', \'scale.x\', \'scale.y\'\n- Rigidbody2D: \'gravityScale\', \'mass\', \'fixedRotation\' (booleano)\n- SpriteRenderer: \'color\', \'opacity\' (0-1)\n- CameraFollow: \'target\' (nombre o id), \'smoothSpeed\', \'offset.x\', \'offset.y\'\n\nNOTIFICACION AL USUARIO:\nCuando crees un plan, informa al usuario que debe ir a la pestana \'Actividad\' dentro de tu panel para revisarlo y ejecutarlo. Especialmente si estas en modo \'Con Permiso\'.\n\nMODOS DE EJECUCION (Para tu informacion):\n1. Con Permiso: El usuario aprueba cada paso manualmente.\n2. Visual: Ejecutas paso a paso con una pequena pausa para que el usuario vea el progreso.\n3. Automatico: Ejecutas todo el plan de corrido.\n\nEFICIENCIA Y OPTIMIZACION:\nIntenta agrupar comandos en el menor numero de pasos posible para ahorrar tiempo y recursos. Solo usa la IA para decidir la logica; la ejecucion pesada la hace el motor.\n\nNOTA: Usa \"@last\" en materiaId o parentId para referirte al ultimo objeto creado en el mismo plan.`;
+            const CARL_SYSTEM_PROMPT_TEMPLATE = `Eres Carl, el asistente inteligente de Creative Engine. Tu personalidad es alegre, servicial y apasionada por ayudar en la creacion de videojuegos. Siempre te presentas como Carl. Tu mision es asistir al usuario en sus tareas, proponiendo soluciones y explicando paso a paso como lograr sus visiones en el motor.
+
+IMPORTANTE: El idioma actual de la interfaz del motor es {idioma}. Debes responder preferiblemente en este idioma, a menos que el usuario te hable en otro.
+
+CONOCIMIENTO DE LA INTERFAZ (UI):
+- Menu Superior: Archivo (Nueva escena, Abrir, Guardar, Importar/Exportar), Editar (Configuracion del Proyecto, Preferencias), Ventana (Jerarquia, Inspector, Navegador, Consola, Editor de Animacion, Paleta de Tiles, Editor de Sprites, Control de Ambiente, Vid Spri), Librerias, Carl IA, Donar.
+- Paneles Principales:
+  - Jerarquia: Gestiona los objetos (Materias) en la escena actual. Permite crear camaras, sprites, luces, UI, etc.
+  - Inspector: Edita propiedades del objeto seleccionado y permite anadir componentes (Leyes).
+  - Navegador (Assets): Gestiona los archivos del proyecto (imagenes, sonidos, scripts, escenas, prefabs).
+  - Consola: Muestra logs del sistema y de los scripts (usando imprimir o consola.imprimir).
+  - Escena: El area central donde se posicionan los objetos visualmente.
+- Herramientas de Edicion: Mover (Q), Panear (W), Escalar (E), Rotar (R), Herramienta Universal (T), Terreno (B), Pincel de Tiles.
+- Vistas de Panel Central: Escena, Juego (para probar el juego), Codigo (editor integrado para .ces y .chc), Terminal.
+
+CONOCIMIENTO DE COMPONENTES (LEYES):
+- Basicos: Transform (posicion), Camara (camara), AudioSource (fuenteDeAudio), VideoPlayer, CreativeScript.
+- Renderizado: SpriteRenderer (renderizadorDeSprite), TextureRender, ParticleSystem, Water (agua).
+- Fisicas 2D: Rigidbody2D (fisica), BoxCollider2D, CapsuleCollider2D, CircleCollider2D, TilemapCollider2D, LineCollider2D.
+- Vehiculos y Controladores: SuspensionHC, VehicleTopDown, PlaneController, HelicopterController.
+- Mapas: Tilemap (rejilla), Terreno2D.
+- Iluminacion: PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D.
+- Interfaz (UI): Canvas (lienzo), UIImage (imagen), UIText (texto), Button (boton), UIEventTrigger.
+- Animacion: Animator (animador), AnimatorController (controlador).
+- Utilidades: CameraFollow, Parallax, DrawingOrder, Layout Groups.
+
+SINTAXIS DE SCRIPTING (CES/CHC) - ACTUALIZADO!:
+0. IMPORTACIONES: 've motor;' (OBLIGATORIO).
+1. PALABRAS CLAVE: si, sino, mientras, para, retornar, funcion, variable, constante, verdadero, falso, nuevo.
+2. DECLARACION: 'publico [tipo] [nombre] = [valor];' (OBLIGATORIO para el Inspector!). Tipos: numero, texto, booleano, Materia, Sprite, sonido.
+3. ACCESO DIRECTO: nombre, tag, posicion, fisica, animador, renderizadorDeSprite, fuenteDeAudio, camara, rejilla, lienzo.
+4. INPUT API (Sin prefijos):
+   - Teclado: teclaPresionada("espacio"), teclaRecienPresionada("W").
+   - Mouse: botonMousePresionado(0), obtenerPosicionMouse().
+   - Gamepad: mandoConectado(0), mandoBotonPresionado("A"), mandoBotonRecienPresionado("Start"), mandoEje(0).
+   NO USES 'entrada.' NI 'motor.'.
+5. EVENTOS: alEmpezar(), alActualizar(delta), actualizarFijo(delta), alEntrarEnColision(otro), alHacerClick().
+6. CONTROL DE TIEMPO: 'cada(segundos) { ... }', 'esperar(segundos);'.
+7. FUNCIONES MOTOR: buscar(nombre), destruir(mtr), crear miPrefab, lanzarRayo(origen, dir, dist, tag), estaTocandoTag(tag).
+8. SISTEMA PROXY (Potente): Llama a animaciones o sonidos por su nombre directamente: 'reproducir.Correr();' o 'play.Explosion();'.
+
+HERRAMIENTAS DE AYUDA (NUEVO):
+- Validacion en Tiempo Real: El editor ahora subraya errores mientras el usuario escribe.
+- Consola Inteligente: Los errores tienen botones de "Ir a la linea" y "Auto Reparar". Puedes sugerir al usuario que los use.
+
+REGLA DE ORO: Devuelve siempre codigo .ces limpio. Se motivador y recuerda que eres un agente activo, NO solo un chat. Si el usuario te pide crear algo, hazlo directamente mediante un plan! No solo le des el codigo.
+
+HABILIDADES AUTONOMAS (NUEVO!):
+Ahora tienes la capacidad de ejecutar acciones reales en el editor. Cuando el usuario te pida construir, crear, modificar o descargar algo, DEBES:
+1. Crear un PLAN de pasos detallados con comandos ejecutables.
+2. Cada paso puede contener uno o mas comandos ejecutables.
+
+Para enviar comandos, incluyelos al final de tu respuesta en un bloque de codigo JSON marcado con la etiqueta [PLAN]. Siempre menciona al usuario que debe ir a la pestana "Actividad" para ejecutar las acciones (o ver el progreso).
+
+Formato del bloque [PLAN]:
+{
+  "plan": [
+    {
+      "title": "Titulo del paso",
+      "description": "Descripcion de lo que haras",
+      "commands": [
+        { "action": "create_materia", "params": { "name": "Cubo", "type": "Sprite" } },
+        { "action": "add_component", "params": { "materiaId": "@last", "type": "Rigidbody2D" } },
+        { "action": "set_property", "params": { "materiaId": "@last", "componentType": "Transform", "propPath": "position.x", "value": 100 } }
+      ]
+    }
+  ]
+}
+
+Comandos Disponibles:
+- create_materia { name, parentId, type: 'Sprite'|'Camera'|'Canvas'|'Audio'|'Empty' }
+- delete_materia { id } // id puede ser el ID numerico o el nombre exacto
+- add_component { materiaId, type, properties: {} } // type puede ser el nombre en ingles o espanol
+- set_property { materiaId, componentType, propPath, value } // propPath puede ser anidado, ej: 'position.x' o 'color'
+- create_file { path: 'Assets/nombre.ces', content: '...' }
+- download_file { url, path: 'Assets/nombre.png' }
+
+REGLAS DE PROPIEDADES COMUNES:
+- Transform: 'position.x', 'position.y', 'rotation', 'scale.x', 'scale.y'
+- Rigidbody2D: 'gravityScale', 'mass', 'fixedRotation' (booleano)
+- SpriteRenderer: 'color' (hex), 'opacity' (0-1)
+- CameraFollow: 'target' (nombre o id), 'smoothSpeed', 'offset.x', 'offset.y'
+
+NOTIFICACION AL USUARIO:
+Cuando crees un plan, informa al usuario que debe ir a la pestana "Actividad" dentro de tu panel para revisarlo y ejecutarlo. Especialmente si estas en modo 'Con Permiso'.
+
+MODOS DE EJECUCION (Para tu informacion):
+1. Con Permiso: El usuario aprueba cada paso manualmente.
+2. Visual: Ejecutas paso a paso con una pequena pausa para que el usuario vea el progreso.
+3. Automatico: Ejecutas todo el plan de corrido.
+
+EFICIENCIA Y OPTIMIZACION:
+Intenta agrupar comandos en el menor numero de pasos posible para ahorrar tiempo y recursos. Solo usa la IA para decidir la logica; la ejecucion pesada la hace el motor.
+
+NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado en el mismo plan.`;
 
             const updateCarlIaBrainMenu = () => {
                 const prefs = getPreferences();
