@@ -23,6 +23,12 @@ CUENTA: Cuenta
 DONAR_BOTON: Donar
 QUE_HACEMOS_DONACIONES: ¿Qué hacemos con sus donaciones?
 NUESTROS_CANALES: Nuestros Canales
+CANALES: Canales
+SOLUCION_RAPIDA: Soluciones Rápidas
+PROYECTO_COLABORATIVO: Proyecto Colaborativo
+COMPARTIR_CON_CARLEY: Compartir con Carley
+COMPARTIR_CON_CARLEY_HINT: Comparte tus códigos cada vez que publicas un videojuego
+COMPARTIR_CON_CARLEY_DESC: Agradeceremos mucho que compartas tus códigos CES porque nos va a ayudar a entrenar nuestro modelo de IA Carley Creative code que fue diseñado desde 0 especialmente para el motor. El modelo consumirá menos de 1 GB de RAM, lo que hará que su uso sea menos costoso en los servidores y no tengamos que pagar mucho. También hará que más usuarios tengan acceso a la IA y está hecho de forma que programar en el motor sea muy fácil y sencillo. No compartimos su código con nadie, solo lo usaremos con fines de entrenamiento para que en un futuro cercano solo digas al motor lo que quieres y lo convierta en realidad.
 LICENCIA: Licencia
 POLITICA_PRIVACIDAD: Política de Privacidad
 COOKIES: Cookies
@@ -507,6 +513,12 @@ CUENTA: Account
 DONAR_BOTON: Donate
 QUE_HACEMOS_DONACIONES: What do we do with your donations?
 NUESTROS_CANALES: Our Channels
+CANALES: Channels
+SOLUCION_RAPIDA: Quick Solutions
+PROYECTO_COLABORATIVO: Collaborative Project
+COMPARTIR_CON_CARLEY: Share with Carley
+COMPARTIR_CON_CARLEY_HINT: Share your codes every time you publish a video game
+COMPARTIR_CON_CARLEY_DESC: We would greatly appreciate you sharing your CES codes because it will help us train our AI model, Carley Creative Code, which was designed from scratch specifically for the engine. The model will consume less than 1 GB of RAM, which will make its use less costly on servers and we won't have to pay as much. It will also allow more users to have access to the AI and is made so that programming in the engine is very easy and simple. We do not share your code with anyone; we will only use it for training purposes so that in the near future you can just tell the engine what you want and it will make it a reality.
 LICENCIA: License
 POLITICA_PRIVACIDAD: Privacy Policy
 COOKIES: Cookies
@@ -988,6 +1000,12 @@ CUENTA: Conta
 DONAR_BOTON: Doar
 QUE_HACEMOS_DONACIONES: O que fazemos com as suas doações?
 NUESTROS_CANALES: Nossos Canais
+CANALES: Canais
+SOLUCION_RAPIDA: Soluções Rápidas
+PROYECTO_COLABORATIVO: Projeto Colaborativo
+COMPARTIR_CON_CARLEY: Compartilhar com Carley
+COMPARTIR_CON_CARLEY_HINT: Compartilhe seus códigos toda vez que publicar um videogame
+COMPARTIR_CON_CARLEY_DESC: Agradeceríamos muito se você compartilhasse seus códigos CES, pois isso nos ajudará a treinar nosso modelo de IA Carley Creative Code, que foi projetado do zero especialmente para o motor. O modelo consumirá menos de 1 GB de RAM, o que tornará seu uso menos dispendioso nos servidores e não teremos que pagar muito. Também permitirá que mais usuários tenham acesso à IA e é feito de forma que programar no motor seja muito fácil e simples. Não compartilhamos seu código com ninguém; só o usaremos para fins de treinamento para que, em um futuro próximo, você apenas diga ao motor o que deseja e ele o torne realidade.
 LICENCIA: Licença
 POLITICA_PRIVACIDAD: Política de Privacidade
 COOKIES: Cookies
@@ -1378,6 +1396,12 @@ CUENTA: Аккаунт
 DONAR_BOTON: Пожертвовать
 QUE_HACEMOS_DONACIONES: Что мы делаем с вашими пожертвованиями?
 NUESTROS_CANALES: Наши каналы
+CANALES: Каналы
+SOLUCION_RAPIDA: Быстрые решения
+PROYECTO_COLABORATIVO: Совместный проект
+COMPARTIR_CON_CARLEY: Поделиться с Carley
+COMPARTIR_CON_CARLEY_HINT: Делитесь своими кодами каждый раз, когда публикуете видеоигру
+COMPARTIR_CON_CARLEY_DESC: Мы будем очень признательны, если вы поделитесь своими кодами CES, потому что это поможет нам обучить нашу модель ИИ Carley Creative Code, которая была разработана с нуля специально для движка. Модель будет потреблять менее 1 ГБ оперативной памяти, что сделает её использование на серверах менее затратным, и нам не придется много платить. Это также позволит большему количеству пользователей получить доступ к ИИ и сделано так, чтобы программирование на движке было очень простым и понятным. Мы ни с кем не делимся вашим кодом; мы будем использовать его только в целях обучения, чтобы в ближайшем будущем вы могли просто сказать движку, чего хотите, и он воплотил это в реальность.
 LICENCIA: Лицензия
 POLITICA_PRIVACIDAD: Политика конфиденциальности
 COOKIES: Cookies
@@ -1768,6 +1792,12 @@ CUENTA: 账户
 DONAR_BOTON: 捐赠
 QUE_HACEMOS_DONACIONES: 我们如何处理您的捐赠？
 NUESTROS_CANALES: 我们的频道
+CANALES: 频道
+SOLUCION_RAPIDA: 快速解决方案
+PROYECTO_COLABORATIVO: 协作项目
+COMPARTIR_CON_CARLEY: 与 Carley 分享
+COMPARTIR_CON_CARLEY_HINT: 每次发布视频游戏时分享您的代码
+COMPARTIR_CON_CARLEY_DESC: 我们非常感谢您分享您的 CES 代码，因为这将帮助我们训练我们的 AI 模型 Carley Creative Code，它是专门为该引擎从头开始设计的。该模型将消耗不到 1 GB 的 RAM，这将降低其在服务器上的使用成本，使我们不必支付太多费用。它还将让更多用户能够访问 AI，并且其设计使得在引擎中编程变得非常容易和简单。我们不会与任何人分享您的代码；我们只会将其用于培训目的，以便在不久的将来，您只需告诉引擎您想要什么，它就会将其变为现实。
 LICENCIA: 许可证
 POLITICA_PRIVACIDAD: 隐私政策
 COOKIES: Cookies

@@ -37,7 +37,8 @@ const defaultPrefs = {
     },
     showTerminal: false,
     executionMode: 'integrated',
-    autoCloseGameWindow: true
+    autoCloseGameWindow: true,
+    shareWithCarley: false
 };
 
 export function getPreferences() {
@@ -168,6 +169,7 @@ async function savePreferences() {
     currentPreferences.showTerminal = _dom.prefsShowTerminal.checked;
     currentPreferences.executionMode = _dom.prefsExecutionMode.value;
     currentPreferences.autoCloseGameWindow = _dom.prefsAutoCloseGameWindow.checked;
+    currentPreferences.shareWithCarley = _dom.prefsShareWithCarley.checked;
 
     // Save to LocalStorage for Editor-wide defaults
     localStorage.setItem('creativeEnginePrefs', JSON.stringify(currentPreferences));
@@ -237,6 +239,7 @@ function loadPreferences() {
     if (_dom.prefsShowTerminal) _dom.prefsShowTerminal.checked = currentPreferences.showTerminal;
     if (_dom.prefsExecutionMode) _dom.prefsExecutionMode.value = currentPreferences.executionMode || 'integrated';
     if (_dom.prefsAutoCloseGameWindow) _dom.prefsAutoCloseGameWindow.checked = currentPreferences.autoCloseGameWindow !== false;
+    if (_dom.prefsShareWithCarley) _dom.prefsShareWithCarley.checked = !!currentPreferences.shareWithCarley;
 
 
     if (_dom.prefsTheme) {
