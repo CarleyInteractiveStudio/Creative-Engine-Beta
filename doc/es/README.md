@@ -6,12 +6,14 @@
 
 ## 📚 Secciones de la Documentación
 
+### 📔 [El Libro Maestro Ultra-Detallado](README_MASTER_BOOK.md)
+**¡Tu punto de partida ideal!** Una guía completa diseñada para principiantes absolutos que explica los conceptos de Materias y Leyes, cómo construir mundos y cómo usar todas las herramientas visuales sin escribir una sola línea de código.
+
 ### 📕 [El Libro Maestro del Scripting (CES)](README_SCRIPTING.md)
-**Nuestra joya de la corona.** Un manual completo en 12 capítulos que te enseña a programar desde cero usando el potente lenguaje CES. Incluye:
-- Conceptos básicos y filosofía.
+**Para los arquitectos de código.** Un manual técnico en 12 capítulos que te enseña a programar desde cero usando el lenguaje CES. Incluye:
 - Referencia completa de la API.
-- **Cookbook:** Recetas de código listas para usar (movimiento, disparo, UI).
-- Guía de optimización.
+- **Cookbook:** Recetas de código listas para usar.
+- Guía de optimización de grado industrial.
 
 ### 🚀 [Guía de Solución Rápida (FAQ)](README_SOLUCIONES.md)
 **Tu primer aliado ante errores.** Más de 50 soluciones a problemas comunes en scripting, físicas, UI y el propio editor. ¡Si algo no funciona, la respuesta está aquí!
@@ -46,8 +48,8 @@ Para los desarrolladores que quieren llegar más lejos:
 ## 🚀 ¿Por dónde empezar?
 
 Si eres nuevo, te recomendamos seguir este orden:
-1. Lee el **Capítulo 0** del [Libro Maestro del Scripting](README_SCRIPTING.md) para ver tu primer código funcionando.
-2. Explora la [Guía de Componentes](README_COMPONENTES.md) para entender qué puede hacer tu objeto.
+1. Lee el [**Libro Maestro Ultra-Detallado**](README_MASTER_BOOK.md) para entender cómo funciona el motor.
+2. Explora el **Capítulo 0** del [Libro Maestro del Scripting](README_SCRIPTING.md) si quieres empezar a programar.
 3. ¡Empieza a crear y diviértete!
 
 ---
