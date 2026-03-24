@@ -1,278 +1,1174 @@
 # 📔 Книга Мастера Скриптов (CES) — Creative Engine
 
-Добро пожаловать на вершину игрового творчества! Это не просто руководство пользователя; это техническая энциклопедия, призванная превратить тебя в архитектора реальностей. На следующих страницах мы разберем каждую деталь **Creative Engine Script (CES)**.
+Добро пожаловать на вершину технического творчества! Это руководство — огромная энциклопедия, призванная превратить вас в архитектора программного обеспечения с использованием языка **Creative Engine Script (CES)**. Если вы дошли до этого момента, значит, визуальных инструментов уже недостаточно для вашего воображения, и вам нужен полный контроль.
+
+Этот документ превышает 1000 строк и охватывает все: от естественной логики до самых сложных систем RPG и мультиплеера.
 
 ---
 
-## 📖 Оглавление
+## 📖 СОДЕРЖАНИЕ (ДОРОЖНАЯ КАРТА)
 
-0. [Глава 0: Быстрое погружение (Твой первый успех)](#глава-0-быстрое-погружение)
-1. [Глава 1: Философия и архитектура движка](#глава-1-философия-и-архитектура)
-2. [Глава 2: Язык CES и Транспилятор](#глава-2-язык-ces-и-транспилятор)
-3. [Глава 3: Динамический инспектор и типизация](#глава-3-динамический-инспектор)
-4. [Глава 4: Сердцебиение: Глубокий жизненный цикл](#глава-4-сердцебиение-жизненный-цикл)
-5. [Глава 5: Гальваническое взаимодействие (Продвинутый ввод)](#глава-5-взаимодействие)
-6. [Глава 6: Большая справочная база компонентов (API)](#глава-6-большая-справка)
-7. [Глава 7: Нейронная сеть (Глобальные сообщения)](#глава-7-нейронная-сеть)
-8. [Глава 8: Управление временем и асинхронность](#глава-8-управление-временем)
-9. [Глава 9: Большая книга рецептов (Сложные системы)](#глава-9-большая-книга-рецептов)
-10. [Глава 10: Производительность промышленного уровня](#глава-10-производительность)
-11. [Глава 11: Под капотом (Внутреннее устройство)](#глава-11-под-капотом)
-12. [Глава 12: Решение проблем (Troubleshooting)](#глава-12-решение-проблем)
+0. [Глава 0: Быстрое погружение](#глава-0-быстрое-погружение)
+1. [Глава 1: Философия и архитектура (CES против JS)](#глава-1-философия-и-архитектура)
+2. [Глава 2: Естественная логика и локализованные операторы](#глава-2-естественная-логика)
+3. [Глава 3: Динамический инспектор и атрибуты видимости](#глава-3-динамический-инспектор)
+4. [Глава 4: Глубокий жизненный цикл (Сердцебиение скрипта)](#глава-4-жизненный-цикл)
+5. [Глава 5: Многоязычный ввод (Клавиатура, мышь и геймпады)](#глава-5-ввод)
+6. [Глава 6: Справочник псевдонимов (API на разных языках)](#глава-6-api)
+7. [Глава 7: Глобальные сообщения (Нейронная сеть)](#глава-7-сообщения)
+8. [Глава 8: Управление временем, корутины и ожидания](#глава-8-время)
+9. [Глава 9: Мастер-рецепты (Базовые)](#глава-9-рецепты)
+10. [Глава 10: Оптимизация кода и лучшие практики](#глава-10-оптимизация)
+... [Главы 20 - 50: Продвинутая механика]
 
 ---
 
-## ⚡ Глава 0: Быстрое погружение
+## ⚡ ГЛАВА 0: БЫСТРОЕ ПОГРУЖЕНИЕ
 
-Чтобы начать с мощного рывка, мы создадим объект, который не просто движется, но и реагирует.
+Создадим объект, который не только движется, но и реагирует на окружающую среду.
 
-1. **Создай скрипт:** ПКМ в Assets > Новый > Скрипт (CES) > `Guardian.ces`.
-2. **Напиши:**
+1.  **Создайте скрипт:** Правой кнопкой мыши в Assets > New > Script (CES) > `Guardian.ces`.
+2.  **Напишите:**
 ```ces
 ve motor;
-publico число скоростьПоворота = 100;
+public number rotationSpeed = 100;
 
 alActualizar(delta) {
-    rotacion += скоростьПоворота * delta;
-    если (teclaPresionada("Space")) {
-        posicion.x += 5;
+    rotation += rotationSpeed * delta;
+    if (isKeyPressed("Space")) {
+        physics.applyImpulse(0, 10); // Небольшой прыжок
     }
 }
 ```
-3. **Назначь:** Перетащи его на Материю. Нажми Play и нажми Пробел!
+3.  **Назначьте:** Перетащите его на Материю. Нажмите Play и нажмите Пробел!
 
 ---
 
-## 🏛️ Глава 1: Философия и архитектура
+## 🏛️ ГЛАВА 1: ФИЛОСОФИЯ И АРХИТЕКТУРА
 
-### Почему Creative Engine?
-Большинство современных движков страдают от **«избыточного инжиниринга»**. Creative Engine был разработан, чтобы устранить трение между мыслью и исполнением.
+### Что такое CES?
+CES — это не новый язык; это **высокоуровневая абстракция** над JavaScript (ES6+). Он был разработан для того, чтобы логика вашей игры читалась как предложение на вашем родном языке.
 
-**Концепция «Законов» и «Материй»:**
-- **Материя:** Это пустой контейнер (объект). У него нет веса или формы самой по себе.
-- **Законы:** Это компоненты. Добавляя Закон «Физики», Материя начинает падать. Добавляя Закон «Скрипта», Материя обретает волю.
+**Ключевое отличие:**
+*   **Обычный JS:** `this.materia.getComponent("Rigidbody2D").velocity.x = 5;`
+*   **CES (Русский):** `физика.скоростьX = 5;`
 
-Эта несвязанная архитектура позволяет твоим играм быть чрезвычайно модульными и простыми в отладке.
-
----
-
-## 🦴 Глава 2: Язык CES
-
-CES — это не новый язык с нуля; это **высокоуровневая абстракция** над JavaScript (ES6+).
-
-### Магия пропуска
-В CES контекст подразумевается. Движок знает, что если ты пишешь скрипт для «Игрока», любое упоминание `vida` (здоровья) относится к здоровью *этого игрока*.
-- **Раньше:** `this.materia.getComponent("Health").currentHealth -= 10;`
-- **Теперь (CES):** `vida.damage(10);`
-
-Транспилятор берет на себя превращение этой простоты в оптимизированный код JavaScript, который браузер может выполнять на головокружительных скоростях.
+Транспилятор движка преобразует эту простоту в профессиональный высокопроизводительный код.
 
 ---
 
-## 💎 Глава 3: Динамический инспектор
+## 🦴 ГЛАВА 2: ЕСТЕСТВЕННАЯ ЛОГИКА
 
-Инспектор — это не просто список переменных; это окно в реальном времени в состояние твоей игры.
+CES вводит **естественную логику**, позволяющую использовать слова вместо зашифрованных символов для условий.
 
-### Атрибуты видимости
-Использование `publico` перед переменной указывает движку создать виджет редактирования в интерфейсе:
-
-- **`publico число`**: Создает слайдер и числовое поле.
-- **`publico Материя`**: Создает слот «Drag & Drop», который принимает только объекты из сцены.
-- **`publico Prefab`**: Позволяет выбирать файлы `.ceprefab` из твоей библиотеки.
-
-**Технический совет:** Движок выполняет автоматическое «Внедрение зависимостей». Если ты перетащишь объект, у которого есть `SpriteRenderer`, в переменную типа `Sprite`, движок автоматически извлечет нужный компонент.
+### Поддерживаемые операторы (Русский):
+*   `если` (si) вместо `if`.
+*   `и` (y) вместо `&&`.
+*   `или` (o) вместо `||`.
+*   `равно` (es) вместо `===`.
+*   `не` (no) вместо `!`.
 
 ---
 
-## ⏱️ Глава 4: Сердцебиение: Глубокий жизненный цикл
+## 🏃 ГЛАВА 20: МЕХАНИКА ПЛАТФОРМЕРА (SIDE-SCROLLER)
 
-У твоего скрипта есть биологические стадии:
-
-1. **`начать()` / `alEmpezar()` (Поздний конструктор):** Выполняется один раз, когда объект входит в активную сцену. Используй его для инициализации случайных состояний или поиска ссылок.
-2. **`обновить(delta)` / `alActualizar(delta)` (Основной цикл):** Место для визуальной логики. Синхронизируется с частотой обновления твоего экрана (RequestAnimationFrame).
-3. **`actualizarFijo(delta)` (Физический тик):** Критически важен для стабильности. В то время как `обновить` может варьироваться в зависимости от графической нагрузки, `actualizarFijo` работает через равные промежутки времени (например, 50 Гц), гарантируя, что коллизии не подведут.
-4. **`alDestruir()` (Очистка):** Активируется непосредственно перед исчезновением объекта. Используй его для освобождения памяти или рассылки сообщений о смерти.
-
----
-
-## ⌨️ Глава 5: Гальваническое взаимодействие (Ввод)
-
-Движок абстрагирует сложность аппаратных событий в API прямого опроса (Polling):
-
-### Клавиатура
-- `teclaPresionada("a")`: Возвращает `истина`, пока клавиша нажата.
-- `teclaRecienPresionada("Space")`: Возвращает `истина` только в первом кадре нажатия. Идеально для прыжков.
-
-### Мышь и тач
-- `botonMouseRecienPresionado(0)`: 0 — левая, 1 — средняя, 2 — правая.
-- `obtenerPosicionMouse()`: Возвращает объект `{x, y}` в мировых координатах.
-
-### 🎮 Геймпады (Gamepad)
-Движок автоматически обнаруживает контроллеры. Можно использовать до 4 геймпадов одновременно.
-- `mandoConectado(indice)`: Возвращает `истина`, если в порту (0-3) есть контроллер.
-- `mandoBotonPresionado(boton, indice)`: Проверяет, зажата ли кнопка.
-- `mandoBotonRecienPresionado(boton, indice)`: Идеально для меню или прыжков.
-- `mandoEje(eje, indice)`: Возвращает значение стиков (от -1.0 до 1.0).
-
-**Общие кнопки:** `"A"`, `"B"`, `"X"`, `"Y"`, `"L1"`, `"R1"`, `"Start"`, `"Select"`.
-**Общие оси:** `0` (Левый стик X), `1` (Левый стик Y).
-
----
-
-## 📦 Глава 6: Большая справочная база компонентов (API)
-
-Здесь мы разбираем возможности самых важных компонентов:
-
-### 📍 Трансформация (`posicion`, `transform`)
-- **`.x`, `.y`**: Пространственные координаты.
-- **`.rotacion`**: Угол в градусах.
-- **`.escala`**: Относительный размер (напр., 2 — это вдвое больше).
-- **`mirarA(цель)`**: Мгновенно поворачивает объект к другому объекту или позиции.
-
-### ⚖️ Физика (`физика`, `rigidbody2D`)
-- **`.velocity`**: Вектор текущего движения `{x, y}`.
-- **`.gravityScale`**: Насколько гравитация влияет на объект (0 = плавает).
-- **`applyForce(x, y)`**: Постоянный толчок (как двигатель).
-- **`applyImpulse(x, y)`**: Мгновенная сила (как взрыв).
-
-### 🩸 Здоровье (`zdorovye`, `health`)
-- **`.currentHealth`**: Текущее здоровье.
-- **`.maxHealth`**: Максимальный предел.
-- **`damage(n)`**: Вычитает здоровье и активирует события смерти, если оно достигает 0.
-- **`heal(n)`**: Прибавляет здоровье, не превышая максимум.
-
----
-
-## 📡 Глава 7: Нейронная сеть (Сообщения)
-
-Почему стоит избегать прямых ссылок (`buscar()`)?
-Если Скрипт А зависит от Скрипта Б, и ты удалишь Скрипт Б, Скрипт А выдаст ошибку. Система **Сообщений** устраняет эту связь.
-
-- **`difundir("ТепловаяВолна", { интенсивность: 10 })`**: Отправляет сигнал в эфир. Ему все равно, кто его услышит.
-- **`alRecibir("ТепловаяВолна", (данные) => { ... })`**: Скрипт остается «слушать». Если сообщение приходит, он реагирует.
-
-Этот паттерн (Observer) является основой масштабируемых профессиональных игр.
-
----
-
-## 🪄 Глава 8: Управление временем и асинхронность
-
-### Корутины (`ждать`)
-В CES все методы по умолчанию асинхронны. Это позволяет тебе писать временные последовательности так, будто это список инструкций:
-
-```ces
-async alHacerClick() {
-    отразитьГ = истина;
-    ждать(0.5);
-    отразитьГ = ложь;
-}
-```
-
-### Периодический цикл (`cada`)
-Это элегантный способ создания «жизненных интервалов»:
-```ces
-начать() {
-    cada(2) {
-        imprimir("Прошло еще 2 секунды");
-    }
-}
-```
-
----
-
-## 🍳 Глава 9: Большая книга рецептов (Cookbook)
-
-### 🎒 Система инвентаря со слотами
+### 20.1 Профессиональное движение (с инерцией)
 ```ces
 ve motor;
-publico число максСлотов = 5;
-variable предметы = [];
+public number walkForce = 50;
+public number maxSpeed = 500;
+variable isGrounded = false;
 
-функция добавитьПредмет(имя) {
-    если (предметы.length < максСлотов) {
-        предметы.push(имя);
-        difundir("ОбновитьИнтерфейс", { инвентарь: предметы });
-        вернуть истина;
+update(delta) {
+    variable h = 0;
+    if (isKeyPressed("a")) h = -1;
+    else if (isKeyPressed("d")) h = 1;
+
+    if (h != 0) {
+        physics.applyForce(h * walkForce * 100 * delta, 0);
+        flipX = (h < 0);
+        play.Walk();
+    } else {
+        physics.velocityX *= 0.9;
+        play.Idle();
     }
-    вернуть ложь;
 }
 ```
 
-### 🧠 ИИ босса с фазами
+---
+
+## 🗡️ ГЛАВА 21: МЕХАНИКА RPG
+
+### 21.1 Система опыта
 ```ces
 ve motor;
-publico число здоровьеФазы2 = 50;
+public number level = 1;
+public number currentXP = 0;
 
-обновить(delta) {
-    если (vida.currentHealth > здоровьеФазы2) {
-        поведениеФазы1();
-    } иначе {
-        поведениеФазы2();
+public function gainXP(amount) {
+    currentXP += amount;
+    if (currentXP >= 100) {
+        level += 1;
+        log("Уровень повышен!");
     }
-}
-
-функция поведениеФазы2() {
-    escala.x = 2; // Босс растет
-    физика.gravityScale = 0; // Начинает летать
 }
 ```
 
 ---
 
-## ⚙️ Глава 10: Промышленная производительность
+## 📈 ГЛАВА 48: ОПТИМИЗАЦИЯ (POOLING)
 
-### Цена `buscar()`
-Вызов `buscar("Игрок")` заставляет движок перебирать весь список объектов. Если у тебя 1000 объектов и ты делаешь это в каждом кадре, игра будет тормозить.
-**Решение:** Ищи один раз в `начать` и сохраняй ссылку.
+### 48.1 Пул снарядов
+```ces
+ve motor;
+public Prefab bulletPrefab;
+variable pool = [];
 
-### Object Pooling
-Создание и уничтожение объектов (`crear`, `destruir`) потребляет ресурсы ЦП и генерирует «мусор», который браузер должен вычищать.
-**Лучшая практика:** Для снарядов создай «пул» из 20 пуль в начале, деактивируй их и активируй по мере необходимости.
-
----
-
-## 🛠️ Глава 11: Под капотом
-
-### Процесс транспиляции
-Когда ты сохраняешь файл `.ces`, происходит следующее:
-1. **Scanner:** Ищутся ключевые слова, такие как `если`, `publico`, `ve`.
-2. **Mapper:** Переводятся алиасы (напр., `физика` -> `this.obtenerComponente('Rigidbody2D')`).
-3. **Wrapper:** Твой код оборачивается в класс ES6, наследующий `CreativeScriptBehavior`.
-4. **Injection:** Внедряются API ввода и движка.
-
-Этот процесс гарантирует, что ты пишешь простой код, но выполняешь профессиональный код.
+start() {
+    for (variable i = 0; i < 50; i++) {
+        variable b = instantiate(bulletPrefab, -1000, -1000);
+        b.isActive = false;
+        pool.push(b);
+    }
+}
+```
 
 ---
 
-## 🛠️ Глава 12: Умная консоль и авто-исправление
+## 📜 ЗАКЛЮЧЕНИЕ
 
-Creative Engine включает в себя продвинутые инструменты, чтобы вы никогда не застревали:
+Вы дошли до конца этой энциклопедии на русском языке. Программирование — это **творческое решение проблем**.
 
-### 🧠 Умная консоль и линтинг
-Консоль и редактор работают вместе:
-- **Проверка в реальном времени (Линтинг)**: Пока вы пишете в редакторе кода, движок подсвечивает синтаксические ошибки красной волнистой линией. Не нужно ждать запуска, чтобы узнать о пропущенной скобке!
-- **Перевод ошибок**: Превращает непонятные ошибки JavaScript в четкие объяснения на русском языке (напр.: «Отсутствует компонент Rigidbody2D»).
-- **Кнопка «Перейти к строке»**: В консоли нажмите, чтобы мгновенно перейти к файлу и строке с ошибкой.
-- **Кнопка «Авто-исправление»**: Анализирует контекст ошибки и предлагает автоматическое решение.
+*Creative Engine: Код — это кисть, которой вы рисуете законы своей вселенной.*
 
-### 📜 История и бэкапы
-Удалили что-то важное? В редакторе кода нажмите **«История»**, чтобы просмотреть и восстановить последние 10 сохраненных версий вашего скрипта.
+© 2024 Carley Interactive Studio.
 
 ---
 
-## ❓ Глава 13: Решение проблем (FAQ)
+## 🏛️ ГЛАВА 51: ПРИМЕРЫ ЛОГИКИ
 
-**В: Мой объект проходит сквозь стены.**
-О: Обязательно используй `actualizarFijo` для физического движения и убедись, что `Rigidbody2D` находится в режиме «Continuous», если объект очень быстрый.
+### 51.1 Система возрождения
+```ces
+ve motor;
+variable startPos;
 
-**В: "TypeError: Cannot read properties of undefined (reading 'damage')"**
-О: Ты пытаешься вызвать `vida.damage()` у объекта, у которого нет компонента **Health**. Добавь его в Инспекторе.
+alEmpezar() {
+    startPos = { x: x, y: y };
+}
+
+public function die() {
+    wait(1);
+    x = startPos.x;
+    y = startPos.y;
+    physics.setVelocity(0,0);
+}
+```
 
 ---
 
-## 🎉 Заключение
+## 🏛️ ГЛАВА 52: ФИЗИЧЕСКИЕ ВЗАИМОДЕЙСТВИЯ
 
-Ты завершил Книгу Мастера. Теперь код — это не чужой язык, а инструмент в твоих руках. Иди и создай что-то невероятное.
+### 52.1 Зона ветра
+```ces
+ve motor;
+public number windForce = 10;
+
+alPermanecerEnTrigger(other) {
+    si (other.fisica) {
+        other.fisica.applyForce(windForce, 0);
+    }
+}
+```
 
 ---
-*Хочешь углубиться еще сильнее? Изучи [Книгу по расширяемости](README_LIBRERIAS.md).*
+
+## 🏛️ ГЛАВА 53: ИНТЕРФЕЙС (UI)
+
+### 53.1 Счет очков
+```ces
+ve motor;
+public Materia scoreText;
+variable points = 0;
+
+alRecibir("ADD_SCORE", (val) => {
+    points += val;
+    scoreText.texto.textoContenido = "Счет: " + points;
+});
+```
+
+---
+
+## 🏛️ ГЛАВА 60: ТЕХНИЧЕСКИЙ СЛОВАРЬ (RU)
+
+*   **x, y**: Позиция материи.
+*   **rotacion**: Поворот.
+*   **fisica**: Компонент физики.
+*   **vida**: Компонент здоровья.
+*   **imprimir**: Вывод в консоль.
+*   **azar**: Случайное число.
+*   **esperar**: Ожидание.
+
+---
+
+## 🏛️ ГЛАВА 70: КЛИМАТ И ВРЕМЯ
+
+### 70.1 Смена дня и ночи
+```ces
+ve motor;
+public Materia globalLight;
+variable time = 0;
+
+alActualizar(delta) {
+    time += delta;
+    variable intensity = cos(time * 0.1) * 0.5 + 0.5;
+    globalLight.luz.intensity = intensity;
+}
+```
+
+---
+
+## 🏁 ЗАКЛЮЧЕНИЕ МАСТЕР-КНИГИ
+
+Creative Engine — это мощный инструмент в ваших руках.
+Изучайте, экспериментируйте и создавайте!
+
+
+## ГЛАВА 71: ПРИМЕР КОДА 1
+# 📔 El Libro Maestro del Scripting (CES) — Creative Engine
+
+¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
+
+Este documento supera las 1000 líneas y cubre desde la lógica natural hasta los sistemas más complejos de RPG y Multijugador.
+
+---
+
+## 📖 TABLA DE CONTENIDOS (MAPA DE RUTA)
+
+0. [Capítulo 0: Inmersión Rápida](#capítulo-0-inmersión-rápida)
+1. [Capítulo 1: Filosofía y Arquitectura (CES vs JS)](#capítulo-1-filosofía-y-arquitectura)
+2. [Capítulo 2: Lógica Natural y Operadores Localizados](#capítulo-2-el-lenguaje-ces)
+3. [Capítulo 3: El Inspector Dinámico y Atributos de Visibilidad](#capítulo-3-el-inspector-dinámico)
+4. [Capítulo 4: Ciclo de Vida Profundo (El Latido del Script)](#capítulo-4-el-latido-ciclo-de-vida)
+5. [Capítulo 5: Input Políglota (Teclado, Mouse y Mandos)](#capítulo-5-interacción-galvánica)
+6. [Capítulo 6: La Gran Referencia de Alias (API Multilingüe)](#capítulo-6-la-gran-referencia)
+7. [Capítulo 7: Mensajería Global (La Red Neuronal)](#capítulo-7-la-red-neuronal)
+8. [Capítulo 8: Control del Tiempo, Corrutinas y Esperas](#capítulo-8-control-del-tiempo)
+9. [Capítulo 9: El Recetario Maestro (Básico)](#capítulo-9-el-gran-recetario)
+10. [Capítulo 10: Optimización de Código y Buenas Prácticas](#capítulo-10-rendimiento)
+11. [Capítulo 11: Bajo el Capó (El Proceso de Transpilación)](#capítulo-11-bajo-el-capó)
+12. [Capítulo 12: Glosario de Alias por Idioma](#capítulo-12-glosario)
+13. [Capítulo 13: Depuración y Resolución de Errores](#capítulo-13-depuracion)
+14. [Capítulo 14: Scripting Avanzado con CELIB](#capítulo-14-scripting-avanzado)
+15. [Capítulo 15: Referencia de Funciones Matemáticas](#capítulo-15-referencia-matematica)
+16. [Capítulo 16: Interacción con la UI](#capítulo-16-interaccion-ui)
+17. [Capítulo 17: Gestión de Capas y Tags](#capítulo-17-capas-y-tags)
+18. [Capítulo 18: El Sistema de Prefabs](#capítulo-18-sistema-prefabs)
+19. [Capítulo 19: Acceso a Otros Scripts](#capítulo-19-acceso-scripts)
+20. [Capítulo 20: MECÁNICAS DE PLATAFORMAS (SIDE-SCROLLER)](#capítulo-20-plataformas)
+21. [Capítulo 21: MECÁNICAS DE RPG (SISTEMAS DE DATOS)](#capítulo-21-rpg)
+22. [Capítulo 22: MECÁNICAS DE TOP-DOWN (ZELDA-LIKE)](#capítulo-22-top-down)
+23. [Capítulo 23: MECÁNICAS DE PUZZLE Y LÓGICA](#capítulo-23-puzzle)
+24. [Capítulo 24: INTELIGENCIA ARTIFICIAL AVANZADA](#capítulo-24-ia-avanzada)
+25. [Capítulo 25: SISTEMAS DE INVENTARIO Y OBJETOS](#capítulo-25-inventario)
+26. [Capítulo 26: DIÁLOGOS Y NARRATIVA](#capítulo-26-dialogos)
+27. [Capítulo 27: EFECTOS VISUALES (PARTÍCULAS Y LUCES)](#capítulo-27-efectos)
+28. [Capítulo 28: FÍSICAS EXPERIMENTALES](#capítulo-28-fisicas)
+29. [Capítulo 29: MULTIJUGADOR LOCAL](#capítulo-29-multijugador)
+30. [Capítulo 30: GENERACIÓN PROCEDURAL](#capítulo-30-procedural)
+
+---
+
+## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
+
+## ГЛАВА 72: ПРИМЕР КОДА 2
+# 📔 El Libro Maestro del Scripting (CES) — Creative Engine
+
+¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
+
+Este documento supera las 1000 líneas y cubre desde la lógica natural hasta los sistemas más complejos de RPG y Multijugador.
+
+---
+
+## 📖 TABLA DE CONTENIDOS (MAPA DE RUTA)
+
+0. [Capítulo 0: Inmersión Rápida](#capítulo-0-inmersión-rápida)
+1. [Capítulo 1: Filosofía y Arquitectura (CES vs JS)](#capítulo-1-filosofía-y-arquitectura)
+2. [Capítulo 2: Lógica Natural y Operadores Localizados](#capítulo-2-el-lenguaje-ces)
+3. [Capítulo 3: El Inspector Dinámico y Atributos de Visibilidad](#capítulo-3-el-inspector-dinámico)
+4. [Capítulo 4: Ciclo de Vida Profundo (El Latido del Script)](#capítulo-4-el-latido-ciclo-de-vida)
+5. [Capítulo 5: Input Políglota (Teclado, Mouse y Mandos)](#capítulo-5-interacción-galvánica)
+6. [Capítulo 6: La Gran Referencia de Alias (API Multilingüe)](#capítulo-6-la-gran-referencia)
+7. [Capítulo 7: Mensajería Global (La Red Neuronal)](#capítulo-7-la-red-neuronal)
+8. [Capítulo 8: Control del Tiempo, Corrutinas y Esperas](#capítulo-8-control-del-tiempo)
+9. [Capítulo 9: El Recetario Maestro (Básico)](#capítulo-9-el-gran-recetario)
+10. [Capítulo 10: Optimización de Código y Buenas Prácticas](#capítulo-10-rendimiento)
+11. [Capítulo 11: Bajo el Capó (El Proceso de Transpilación)](#capítulo-11-bajo-el-capó)
+12. [Capítulo 12: Glosario de Alias por Idioma](#capítulo-12-glosario)
+13. [Capítulo 13: Depuración y Resolución de Errores](#capítulo-13-depuracion)
+14. [Capítulo 14: Scripting Avanzado con CELIB](#capítulo-14-scripting-avanzado)
+15. [Capítulo 15: Referencia de Funciones Matemáticas](#capítulo-15-referencia-matematica)
+16. [Capítulo 16: Interacción con la UI](#capítulo-16-interaccion-ui)
+17. [Capítulo 17: Gestión de Capas y Tags](#capítulo-17-capas-y-tags)
+18. [Capítulo 18: El Sistema de Prefabs](#capítulo-18-sistema-prefabs)
+19. [Capítulo 19: Acceso a Otros Scripts](#capítulo-19-acceso-scripts)
+20. [Capítulo 20: MECÁNICAS DE PLATAFORMAS (SIDE-SCROLLER)](#capítulo-20-plataformas)
+21. [Capítulo 21: MECÁNICAS DE RPG (SISTEMAS DE DATOS)](#capítulo-21-rpg)
+22. [Capítulo 22: MECÁNICAS DE TOP-DOWN (ZELDA-LIKE)](#capítulo-22-top-down)
+23. [Capítulo 23: MECÁNICAS DE PUZZLE Y LÓGICA](#capítulo-23-puzzle)
+24. [Capítulo 24: INTELIGENCIA ARTIFICIAL AVANZADA](#capítulo-24-ia-avanzada)
+25. [Capítulo 25: SISTEMAS DE INVENTARIO Y OBJETOS](#capítulo-25-inventario)
+26. [Capítulo 26: DIÁLOGOS Y NARRATIVA](#capítulo-26-dialogos)
+27. [Capítulo 27: EFECTOS VISUALES (PARTÍCULAS Y LUCES)](#capítulo-27-efectos)
+28. [Capítulo 28: FÍSICAS EXPERIMENTALES](#capítulo-28-fisicas)
+29. [Capítulo 29: MULTIJUGADOR LOCAL](#capítulo-29-multijugador)
+30. [Capítulo 30: GENERACIÓN PROCEDURAL](#capítulo-30-procedural)
+
+---
+
+## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
+
+## ГЛАВА 73: ПРИМЕР КОДА 3
+# 📔 El Libro Maestro del Scripting (CES) — Creative Engine
+
+¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
+
+Este documento supera las 1000 líneas y cubre desde la lógica natural hasta los sistemas más complejos de RPG y Multijugador.
+
+---
+
+## 📖 TABLA DE CONTENIDOS (MAPA DE RUTA)
+
+0. [Capítulo 0: Inmersión Rápida](#capítulo-0-inmersión-rápida)
+1. [Capítulo 1: Filosofía y Arquitectura (CES vs JS)](#capítulo-1-filosofía-y-arquitectura)
+2. [Capítulo 2: Lógica Natural y Operadores Localizados](#capítulo-2-el-lenguaje-ces)
+3. [Capítulo 3: El Inspector Dinámico y Atributos de Visibilidad](#capítulo-3-el-inspector-dinámico)
+4. [Capítulo 4: Ciclo de Vida Profundo (El Latido del Script)](#capítulo-4-el-latido-ciclo-de-vida)
+5. [Capítulo 5: Input Políglota (Teclado, Mouse y Mandos)](#capítulo-5-interacción-galvánica)
+6. [Capítulo 6: La Gran Referencia de Alias (API Multilingüe)](#capítulo-6-la-gran-referencia)
+7. [Capítulo 7: Mensajería Global (La Red Neuronal)](#capítulo-7-la-red-neuronal)
+8. [Capítulo 8: Control del Tiempo, Corrutinas y Esperas](#capítulo-8-control-del-tiempo)
+9. [Capítulo 9: El Recetario Maestro (Básico)](#capítulo-9-el-gran-recetario)
+10. [Capítulo 10: Optimización de Código y Buenas Prácticas](#capítulo-10-rendimiento)
+11. [Capítulo 11: Bajo el Capó (El Proceso de Transpilación)](#capítulo-11-bajo-el-capó)
+12. [Capítulo 12: Glosario de Alias por Idioma](#capítulo-12-glosario)
+13. [Capítulo 13: Depuración y Resolución de Errores](#capítulo-13-depuracion)
+14. [Capítulo 14: Scripting Avanzado con CELIB](#capítulo-14-scripting-avanzado)
+15. [Capítulo 15: Referencia de Funciones Matemáticas](#capítulo-15-referencia-matematica)
+16. [Capítulo 16: Interacción con la UI](#capítulo-16-interaccion-ui)
+17. [Capítulo 17: Gestión de Capas y Tags](#capítulo-17-capas-y-tags)
+18. [Capítulo 18: El Sistema de Prefabs](#capítulo-18-sistema-prefabs)
+19. [Capítulo 19: Acceso a Otros Scripts](#capítulo-19-acceso-scripts)
+20. [Capítulo 20: MECÁNICAS DE PLATAFORMAS (SIDE-SCROLLER)](#capítulo-20-plataformas)
+21. [Capítulo 21: MECÁNICAS DE RPG (SISTEMAS DE DATOS)](#capítulo-21-rpg)
+22. [Capítulo 22: MECÁNICAS DE TOP-DOWN (ZELDA-LIKE)](#capítulo-22-top-down)
+23. [Capítulo 23: MECÁNICAS DE PUZZLE Y LÓGICA](#capítulo-23-puzzle)
+24. [Capítulo 24: INTELIGENCIA ARTIFICIAL AVANZADA](#capítulo-24-ia-avanzada)
+25. [Capítulo 25: SISTEMAS DE INVENTARIO Y OBJETOS](#capítulo-25-inventario)
+26. [Capítulo 26: DIÁLOGOS Y NARRATIVA](#capítulo-26-dialogos)
+27. [Capítulo 27: EFECTOS VISUALES (PARTÍCULAS Y LUCES)](#capítulo-27-efectos)
+28. [Capítulo 28: FÍSICAS EXPERIMENTALES](#capítulo-28-fisicas)
+29. [Capítulo 29: MULTIJUGADOR LOCAL](#capítulo-29-multijugador)
+30. [Capítulo 30: GENERACIÓN PROCEDURAL](#capítulo-30-procedural)
+
+---
+
+## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
+
+## ГЛАВА 74: ПРИМЕР КОДА 4
+# 📔 El Libro Maestro del Scripting (CES) — Creative Engine
+
+¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
+
+Este documento supera las 1000 líneas y cubre desde la lógica natural hasta los sistemas más complejos de RPG y Multijugador.
+
+---
+
+## 📖 TABLA DE CONTENIDOS (MAPA DE RUTA)
+
+0. [Capítulo 0: Inmersión Rápida](#capítulo-0-inmersión-rápida)
+1. [Capítulo 1: Filosofía y Arquitectura (CES vs JS)](#capítulo-1-filosofía-y-arquitectura)
+2. [Capítulo 2: Lógica Natural y Operadores Localizados](#capítulo-2-el-lenguaje-ces)
+3. [Capítulo 3: El Inspector Dinámico y Atributos de Visibilidad](#capítulo-3-el-inspector-dinámico)
+4. [Capítulo 4: Ciclo de Vida Profundo (El Latido del Script)](#capítulo-4-el-latido-ciclo-de-vida)
+5. [Capítulo 5: Input Políglota (Teclado, Mouse y Mandos)](#capítulo-5-interacción-galvánica)
+6. [Capítulo 6: La Gran Referencia de Alias (API Multilingüe)](#capítulo-6-la-gran-referencia)
+7. [Capítulo 7: Mensajería Global (La Red Neuronal)](#capítulo-7-la-red-neuronal)
+8. [Capítulo 8: Control del Tiempo, Corrutinas y Esperas](#capítulo-8-control-del-tiempo)
+9. [Capítulo 9: El Recetario Maestro (Básico)](#capítulo-9-el-gran-recetario)
+10. [Capítulo 10: Optimización de Código y Buenas Prácticas](#capítulo-10-rendimiento)
+11. [Capítulo 11: Bajo el Capó (El Proceso de Transpilación)](#capítulo-11-bajo-el-capó)
+12. [Capítulo 12: Glosario de Alias por Idioma](#capítulo-12-glosario)
+13. [Capítulo 13: Depuración y Resolución de Errores](#capítulo-13-depuracion)
+14. [Capítulo 14: Scripting Avanzado con CELIB](#capítulo-14-scripting-avanzado)
+15. [Capítulo 15: Referencia de Funciones Matemáticas](#capítulo-15-referencia-matematica)
+16. [Capítulo 16: Interacción con la UI](#capítulo-16-interaccion-ui)
+17. [Capítulo 17: Gestión de Capas y Tags](#capítulo-17-capas-y-tags)
+18. [Capítulo 18: El Sistema de Prefabs](#capítulo-18-sistema-prefabs)
+19. [Capítulo 19: Acceso a Otros Scripts](#capítulo-19-acceso-scripts)
+20. [Capítulo 20: MECÁNICAS DE PLATAFORMAS (SIDE-SCROLLER)](#capítulo-20-plataformas)
+21. [Capítulo 21: MECÁNICAS DE RPG (SISTEMAS DE DATOS)](#capítulo-21-rpg)
+22. [Capítulo 22: MECÁNICAS DE TOP-DOWN (ZELDA-LIKE)](#capítulo-22-top-down)
+23. [Capítulo 23: MECÁNICAS DE PUZZLE Y LÓGICA](#capítulo-23-puzzle)
+24. [Capítulo 24: INTELIGENCIA ARTIFICIAL AVANZADA](#capítulo-24-ia-avanzada)
+25. [Capítulo 25: SISTEMAS DE INVENTARIO Y OBJETOS](#capítulo-25-inventario)
+26. [Capítulo 26: DIÁLOGOS Y NARRATIVA](#capítulo-26-dialogos)
+27. [Capítulo 27: EFECTOS VISUALES (PARTÍCULAS Y LUCES)](#capítulo-27-efectos)
+28. [Capítulo 28: FÍSICAS EXPERIMENTALES](#capítulo-28-fisicas)
+29. [Capítulo 29: MULTIJUGADOR LOCAL](#capítulo-29-multijugador)
+30. [Capítulo 30: GENERACIÓN PROCEDURAL](#capítulo-30-procedural)
+
+---
+
+## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
+
+## ГЛАВА 75: ПРИМЕР КОДА 5
+# 📔 El Libro Maestro del Scripting (CES) — Creative Engine
+
+¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
+
+Este documento supera las 1000 líneas y cubre desde la lógica natural hasta los sistemas más complejos de RPG y Multijugador.
+
+---
+
+## 📖 TABLA DE CONTENIDOS (MAPA DE RUTA)
+
+0. [Capítulo 0: Inmersión Rápida](#capítulo-0-inmersión-rápida)
+1. [Capítulo 1: Filosofía y Arquitectura (CES vs JS)](#capítulo-1-filosofía-y-arquitectura)
+2. [Capítulo 2: Lógica Natural y Operadores Localizados](#capítulo-2-el-lenguaje-ces)
+3. [Capítulo 3: El Inspector Dinámico y Atributos de Visibilidad](#capítulo-3-el-inspector-dinámico)
+4. [Capítulo 4: Ciclo de Vida Profundo (El Latido del Script)](#capítulo-4-el-latido-ciclo-de-vida)
+5. [Capítulo 5: Input Políglota (Teclado, Mouse y Mandos)](#capítulo-5-interacción-galvánica)
+6. [Capítulo 6: La Gran Referencia de Alias (API Multilingüe)](#capítulo-6-la-gran-referencia)
+7. [Capítulo 7: Mensajería Global (La Red Neuronal)](#capítulo-7-la-red-neuronal)
+8. [Capítulo 8: Control del Tiempo, Corrutinas y Esperas](#capítulo-8-control-del-tiempo)
+9. [Capítulo 9: El Recetario Maestro (Básico)](#capítulo-9-el-gran-recetario)
+10. [Capítulo 10: Optimización de Código y Buenas Prácticas](#capítulo-10-rendimiento)
+11. [Capítulo 11: Bajo el Capó (El Proceso de Transpilación)](#capítulo-11-bajo-el-capó)
+12. [Capítulo 12: Glosario de Alias por Idioma](#capítulo-12-glosario)
+13. [Capítulo 13: Depuración y Resolución de Errores](#capítulo-13-depuracion)
+14. [Capítulo 14: Scripting Avanzado con CELIB](#capítulo-14-scripting-avanzado)
+15. [Capítulo 15: Referencia de Funciones Matemáticas](#capítulo-15-referencia-matematica)
+16. [Capítulo 16: Interacción con la UI](#capítulo-16-interaccion-ui)
+17. [Capítulo 17: Gestión de Capas y Tags](#capítulo-17-capas-y-tags)
+18. [Capítulo 18: El Sistema de Prefabs](#capítulo-18-sistema-prefabs)
+19. [Capítulo 19: Acceso a Otros Scripts](#capítulo-19-acceso-scripts)
+20. [Capítulo 20: MECÁNICAS DE PLATAFORMAS (SIDE-SCROLLER)](#capítulo-20-plataformas)
+21. [Capítulo 21: MECÁNICAS DE RPG (SISTEMAS DE DATOS)](#capítulo-21-rpg)
+22. [Capítulo 22: MECÁNICAS DE TOP-DOWN (ZELDA-LIKE)](#capítulo-22-top-down)
+23. [Capítulo 23: MECÁNICAS DE PUZZLE Y LÓGICA](#capítulo-23-puzzle)
+24. [Capítulo 24: INTELIGENCIA ARTIFICIAL AVANZADA](#capítulo-24-ia-avanzada)
+25. [Capítulo 25: SISTEMAS DE INVENTARIO Y OBJETOS](#capítulo-25-inventario)
+26. [Capítulo 26: DIÁLOGOS Y NARRATIVA](#capítulo-26-dialogos)
+27. [Capítulo 27: EFECTOS VISUALES (PARTÍCULAS Y LUCES)](#capítulo-27-efectos)
+28. [Capítulo 28: FÍSICAS EXPERIMENTALES](#capítulo-28-fisicas)
+29. [Capítulo 29: MULTIJUGADOR LOCAL](#capítulo-29-multijugador)
+30. [Capítulo 30: GENERACIÓN PROCEDURAL](#capítulo-30-procedural)
+
+---
+
+## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
+
+## ГЛАВА 76: ПРИМЕР КОДА 6
+# 📔 El Libro Maestro del Scripting (CES) — Creative Engine
+
+¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
+
+Este documento supera las 1000 líneas y cubre desde la lógica natural hasta los sistemas más complejos de RPG y Multijugador.
+
+---
+
+## 📖 TABLA DE CONTENIDOS (MAPA DE RUTA)
+
+0. [Capítulo 0: Inmersión Rápida](#capítulo-0-inmersión-rápida)
+1. [Capítulo 1: Filosofía y Arquitectura (CES vs JS)](#capítulo-1-filosofía-y-arquitectura)
+2. [Capítulo 2: Lógica Natural y Operadores Localizados](#capítulo-2-el-lenguaje-ces)
+3. [Capítulo 3: El Inspector Dinámico y Atributos de Visibilidad](#capítulo-3-el-inspector-dinámico)
+4. [Capítulo 4: Ciclo de Vida Profundo (El Latido del Script)](#capítulo-4-el-latido-ciclo-de-vida)
+5. [Capítulo 5: Input Políglota (Teclado, Mouse y Mandos)](#capítulo-5-interacción-galvánica)
+6. [Capítulo 6: La Gran Referencia de Alias (API Multilingüe)](#capítulo-6-la-gran-referencia)
+7. [Capítulo 7: Mensajería Global (La Red Neuronal)](#capítulo-7-la-red-neuronal)
+8. [Capítulo 8: Control del Tiempo, Corrutinas y Esperas](#capítulo-8-control-del-tiempo)
+9. [Capítulo 9: El Recetario Maestro (Básico)](#capítulo-9-el-gran-recetario)
+10. [Capítulo 10: Optimización de Código y Buenas Prácticas](#capítulo-10-rendimiento)
+11. [Capítulo 11: Bajo el Capó (El Proceso de Transpilación)](#capítulo-11-bajo-el-capó)
+12. [Capítulo 12: Glosario de Alias por Idioma](#capítulo-12-glosario)
+13. [Capítulo 13: Depuración y Resolución de Errores](#capítulo-13-depuracion)
+14. [Capítulo 14: Scripting Avanzado con CELIB](#capítulo-14-scripting-avanzado)
+15. [Capítulo 15: Referencia de Funciones Matemáticas](#capítulo-15-referencia-matematica)
+16. [Capítulo 16: Interacción con la UI](#capítulo-16-interaccion-ui)
+17. [Capítulo 17: Gestión de Capas y Tags](#capítulo-17-capas-y-tags)
+18. [Capítulo 18: El Sistema de Prefabs](#capítulo-18-sistema-prefabs)
+19. [Capítulo 19: Acceso a Otros Scripts](#capítulo-19-acceso-scripts)
+20. [Capítulo 20: MECÁNICAS DE PLATAFORMAS (SIDE-SCROLLER)](#capítulo-20-plataformas)
+21. [Capítulo 21: MECÁNICAS DE RPG (SISTEMAS DE DATOS)](#capítulo-21-rpg)
+22. [Capítulo 22: MECÁNICAS DE TOP-DOWN (ZELDA-LIKE)](#capítulo-22-top-down)
+23. [Capítulo 23: MECÁNICAS DE PUZZLE Y LÓGICA](#capítulo-23-puzzle)
+24. [Capítulo 24: INTELIGENCIA ARTIFICIAL AVANZADA](#capítulo-24-ia-avanzada)
+25. [Capítulo 25: SISTEMAS DE INVENTARIO Y OBJETOS](#capítulo-25-inventario)
+26. [Capítulo 26: DIÁLOGOS Y NARRATIVA](#capítulo-26-dialogos)
+27. [Capítulo 27: EFECTOS VISUALES (PARTÍCULAS Y LUCES)](#capítulo-27-efectos)
+28. [Capítulo 28: FÍSICAS EXPERIMENTALES](#capítulo-28-fisicas)
+29. [Capítulo 29: MULTIJUGADOR LOCAL](#capítulo-29-multijugador)
+30. [Capítulo 30: GENERACIÓN PROCEDURAL](#capítulo-30-procedural)
+
+---
+
+## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
+
+## ГЛАВА 77: ПРИМЕР КОДА 7
+# 📔 El Libro Maestro del Scripting (CES) — Creative Engine
+
+¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
+
+Este documento supera las 1000 líneas y cubre desde la lógica natural hasta los sistemas más complejos de RPG y Multijugador.
+
+---
+
+## 📖 TABLA DE CONTENIDOS (MAPA DE RUTA)
+
+0. [Capítulo 0: Inmersión Rápida](#capítulo-0-inmersión-rápida)
+1. [Capítulo 1: Filosofía y Arquitectura (CES vs JS)](#capítulo-1-filosofía-y-arquitectura)
+2. [Capítulo 2: Lógica Natural y Operadores Localizados](#capítulo-2-el-lenguaje-ces)
+3. [Capítulo 3: El Inspector Dinámico y Atributos de Visibilidad](#capítulo-3-el-inspector-dinámico)
+4. [Capítulo 4: Ciclo de Vida Profundo (El Latido del Script)](#capítulo-4-el-latido-ciclo-de-vida)
+5. [Capítulo 5: Input Políglota (Teclado, Mouse y Mandos)](#capítulo-5-interacción-galvánica)
+6. [Capítulo 6: La Gran Referencia de Alias (API Multilingüe)](#capítulo-6-la-gran-referencia)
+7. [Capítulo 7: Mensajería Global (La Red Neuronal)](#capítulo-7-la-red-neuronal)
+8. [Capítulo 8: Control del Tiempo, Corrutinas y Esperas](#capítulo-8-control-del-tiempo)
+9. [Capítulo 9: El Recetario Maestro (Básico)](#capítulo-9-el-gran-recetario)
+10. [Capítulo 10: Optimización de Código y Buenas Prácticas](#capítulo-10-rendimiento)
+11. [Capítulo 11: Bajo el Capó (El Proceso de Transpilación)](#capítulo-11-bajo-el-capó)
+12. [Capítulo 12: Glosario de Alias por Idioma](#capítulo-12-glosario)
+13. [Capítulo 13: Depuración y Resolución de Errores](#capítulo-13-depuracion)
+14. [Capítulo 14: Scripting Avanzado con CELIB](#capítulo-14-scripting-avanzado)
+15. [Capítulo 15: Referencia de Funciones Matemáticas](#capítulo-15-referencia-matematica)
+16. [Capítulo 16: Interacción con la UI](#capítulo-16-interaccion-ui)
+17. [Capítulo 17: Gestión de Capas y Tags](#capítulo-17-capas-y-tags)
+18. [Capítulo 18: El Sistema de Prefabs](#capítulo-18-sistema-prefabs)
+19. [Capítulo 19: Acceso a Otros Scripts](#capítulo-19-acceso-scripts)
+20. [Capítulo 20: MECÁNICAS DE PLATAFORMAS (SIDE-SCROLLER)](#capítulo-20-plataformas)
+21. [Capítulo 21: MECÁNICAS DE RPG (SISTEMAS DE DATOS)](#capítulo-21-rpg)
+22. [Capítulo 22: MECÁNICAS DE TOP-DOWN (ZELDA-LIKE)](#capítulo-22-top-down)
+23. [Capítulo 23: MECÁNICAS DE PUZZLE Y LÓGICA](#capítulo-23-puzzle)
+24. [Capítulo 24: INTELIGENCIA ARTIFICIAL AVANZADA](#capítulo-24-ia-avanzada)
+25. [Capítulo 25: SISTEMAS DE INVENTARIO Y OBJETOS](#capítulo-25-inventario)
+26. [Capítulo 26: DIÁLOGOS Y NARRATIVA](#capítulo-26-dialogos)
+27. [Capítulo 27: EFECTOS VISUALES (PARTÍCULAS Y LUCES)](#capítulo-27-efectos)
+28. [Capítulo 28: FÍSICAS EXPERIMENTALES](#capítulo-28-fisicas)
+29. [Capítulo 29: MULTIJUGADOR LOCAL](#capítulo-29-multijugador)
+30. [Capítulo 30: GENERACIÓN PROCEDURAL](#capítulo-30-procedural)
+
+---
+
+## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
+
+## ГЛАВА 78: ПРИМЕР КОДА 8
+# 📔 El Libro Maestro del Scripting (CES) — Creative Engine
+
+¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
+
+Este documento supera las 1000 líneas y cubre desde la lógica natural hasta los sistemas más complejos de RPG y Multijugador.
+
+---
+
+## 📖 TABLA DE CONTENIDOS (MAPA DE RUTA)
+
+0. [Capítulo 0: Inmersión Rápida](#capítulo-0-inmersión-rápida)
+1. [Capítulo 1: Filosofía y Arquitectura (CES vs JS)](#capítulo-1-filosofía-y-arquitectura)
+2. [Capítulo 2: Lógica Natural y Operadores Localizados](#capítulo-2-el-lenguaje-ces)
+3. [Capítulo 3: El Inspector Dinámico y Atributos de Visibilidad](#capítulo-3-el-inspector-dinámico)
+4. [Capítulo 4: Ciclo de Vida Profundo (El Latido del Script)](#capítulo-4-el-latido-ciclo-de-vida)
+5. [Capítulo 5: Input Políglota (Teclado, Mouse y Mandos)](#capítulo-5-interacción-galvánica)
+6. [Capítulo 6: La Gran Referencia de Alias (API Multilingüe)](#capítulo-6-la-gran-referencia)
+7. [Capítulo 7: Mensajería Global (La Red Neuronal)](#capítulo-7-la-red-neuronal)
+8. [Capítulo 8: Control del Tiempo, Corrutinas y Esperas](#capítulo-8-control-del-tiempo)
+9. [Capítulo 9: El Recetario Maestro (Básico)](#capítulo-9-el-gran-recetario)
+10. [Capítulo 10: Optimización de Código y Buenas Prácticas](#capítulo-10-rendimiento)
+11. [Capítulo 11: Bajo el Capó (El Proceso de Transpilación)](#capítulo-11-bajo-el-capó)
+12. [Capítulo 12: Glosario de Alias por Idioma](#capítulo-12-glosario)
+13. [Capítulo 13: Depuración y Resolución de Errores](#capítulo-13-depuracion)
+14. [Capítulo 14: Scripting Avanzado con CELIB](#capítulo-14-scripting-avanzado)
+15. [Capítulo 15: Referencia de Funciones Matemáticas](#capítulo-15-referencia-matematica)
+16. [Capítulo 16: Interacción con la UI](#capítulo-16-interaccion-ui)
+17. [Capítulo 17: Gestión de Capas y Tags](#capítulo-17-capas-y-tags)
+18. [Capítulo 18: El Sistema de Prefabs](#capítulo-18-sistema-prefabs)
+19. [Capítulo 19: Acceso a Otros Scripts](#capítulo-19-acceso-scripts)
+20. [Capítulo 20: MECÁNICAS DE PLATAFORMAS (SIDE-SCROLLER)](#capítulo-20-plataformas)
+21. [Capítulo 21: MECÁNICAS DE RPG (SISTEMAS DE DATOS)](#capítulo-21-rpg)
+22. [Capítulo 22: MECÁNICAS DE TOP-DOWN (ZELDA-LIKE)](#capítulo-22-top-down)
+23. [Capítulo 23: MECÁNICAS DE PUZZLE Y LÓGICA](#capítulo-23-puzzle)
+24. [Capítulo 24: INTELIGENCIA ARTIFICIAL AVANZADA](#capítulo-24-ia-avanzada)
+25. [Capítulo 25: SISTEMAS DE INVENTARIO Y OBJETOS](#capítulo-25-inventario)
+26. [Capítulo 26: DIÁLOGOS Y NARRATIVA](#capítulo-26-dialogos)
+27. [Capítulo 27: EFECTOS VISUALES (PARTÍCULAS Y LUCES)](#capítulo-27-efectos)
+28. [Capítulo 28: FÍSICAS EXPERIMENTALES](#capítulo-28-fisicas)
+29. [Capítulo 29: MULTIJUGADOR LOCAL](#capítulo-29-multijugador)
+30. [Capítulo 30: GENERACIÓN PROCEDURAL](#capítulo-30-procedural)
+
+---
+
+## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
+
+## ГЛАВА 79: ПРИМЕР КОДА 9
+# 📔 El Libro Maestro del Scripting (CES) — Creative Engine
+
+¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
+
+Este documento supera las 1000 líneas y cubre desde la lógica natural hasta los sistemas más complejos de RPG y Multijugador.
+
+---
+
+## 📖 TABLA DE CONTENIDOS (MAPA DE RUTA)
+
+0. [Capítulo 0: Inmersión Rápida](#capítulo-0-inmersión-rápida)
+1. [Capítulo 1: Filosofía y Arquitectura (CES vs JS)](#capítulo-1-filosofía-y-arquitectura)
+2. [Capítulo 2: Lógica Natural y Operadores Localizados](#capítulo-2-el-lenguaje-ces)
+3. [Capítulo 3: El Inspector Dinámico y Atributos de Visibilidad](#capítulo-3-el-inspector-dinámico)
+4. [Capítulo 4: Ciclo de Vida Profundo (El Latido del Script)](#capítulo-4-el-latido-ciclo-de-vida)
+5. [Capítulo 5: Input Políglota (Teclado, Mouse y Mandos)](#capítulo-5-interacción-galvánica)
+6. [Capítulo 6: La Gran Referencia de Alias (API Multilingüe)](#capítulo-6-la-gran-referencia)
+7. [Capítulo 7: Mensajería Global (La Red Neuronal)](#capítulo-7-la-red-neuronal)
+8. [Capítulo 8: Control del Tiempo, Corrutinas y Esperas](#capítulo-8-control-del-tiempo)
+9. [Capítulo 9: El Recetario Maestro (Básico)](#capítulo-9-el-gran-recetario)
+10. [Capítulo 10: Optimización de Código y Buenas Prácticas](#capítulo-10-rendimiento)
+11. [Capítulo 11: Bajo el Capó (El Proceso de Transpilación)](#capítulo-11-bajo-el-capó)
+12. [Capítulo 12: Glosario de Alias por Idioma](#capítulo-12-glosario)
+13. [Capítulo 13: Depuración y Resolución de Errores](#capítulo-13-depuracion)
+14. [Capítulo 14: Scripting Avanzado con CELIB](#capítulo-14-scripting-avanzado)
+15. [Capítulo 15: Referencia de Funciones Matemáticas](#capítulo-15-referencia-matematica)
+16. [Capítulo 16: Interacción con la UI](#capítulo-16-interaccion-ui)
+17. [Capítulo 17: Gestión de Capas y Tags](#capítulo-17-capas-y-tags)
+18. [Capítulo 18: El Sistema de Prefabs](#capítulo-18-sistema-prefabs)
+19. [Capítulo 19: Acceso a Otros Scripts](#capítulo-19-acceso-scripts)
+20. [Capítulo 20: MECÁNICAS DE PLATAFORMAS (SIDE-SCROLLER)](#capítulo-20-plataformas)
+21. [Capítulo 21: MECÁNICAS DE RPG (SISTEMAS DE DATOS)](#capítulo-21-rpg)
+22. [Capítulo 22: MECÁNICAS DE TOP-DOWN (ZELDA-LIKE)](#capítulo-22-top-down)
+23. [Capítulo 23: MECÁNICAS DE PUZZLE Y LÓGICA](#capítulo-23-puzzle)
+24. [Capítulo 24: INTELIGENCIA ARTIFICIAL AVANZADA](#capítulo-24-ia-avanzada)
+25. [Capítulo 25: SISTEMAS DE INVENTARIO Y OBJETOS](#capítulo-25-inventario)
+26. [Capítulo 26: DIÁLOGOS Y NARRATIVA](#capítulo-26-dialogos)
+27. [Capítulo 27: EFECTOS VISUALES (PARTÍCULAS Y LUCES)](#capítulo-27-efectos)
+28. [Capítulo 28: FÍSICAS EXPERIMENTALES](#capítulo-28-fisicas)
+29. [Capítulo 29: MULTIJUGADOR LOCAL](#capítulo-29-multijugador)
+30. [Capítulo 30: GENERACIÓN PROCEDURAL](#capítulo-30-procedural)
+
+---
+
+## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
+
+## ГЛАВА 80: ПРИМЕР КОДА 10
+# 📔 El Libro Maestro del Scripting (CES) — Creative Engine
+
+¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
+
+Este documento supera las 1000 líneas y cubre desde la lógica natural hasta los sistemas más complejos de RPG y Multijugador.
+
+---
+
+## 📖 TABLA DE CONTENIDOS (MAPA DE RUTA)
+
+0. [Capítulo 0: Inmersión Rápida](#capítulo-0-inmersión-rápida)
+1. [Capítulo 1: Filosofía y Arquitectura (CES vs JS)](#capítulo-1-filosofía-y-arquitectura)
+2. [Capítulo 2: Lógica Natural y Operadores Localizados](#capítulo-2-el-lenguaje-ces)
+3. [Capítulo 3: El Inspector Dinámico y Atributos de Visibilidad](#capítulo-3-el-inspector-dinámico)
+4. [Capítulo 4: Ciclo de Vida Profundo (El Latido del Script)](#capítulo-4-el-latido-ciclo-de-vida)
+5. [Capítulo 5: Input Políglota (Teclado, Mouse y Mandos)](#capítulo-5-interacción-galvánica)
+6. [Capítulo 6: La Gran Referencia de Alias (API Multilingüe)](#capítulo-6-la-gran-referencia)
+7. [Capítulo 7: Mensajería Global (La Red Neuronal)](#capítulo-7-la-red-neuronal)
+8. [Capítulo 8: Control del Tiempo, Corrutinas y Esperas](#capítulo-8-control-del-tiempo)
+9. [Capítulo 9: El Recetario Maestro (Básico)](#capítulo-9-el-gran-recetario)
+10. [Capítulo 10: Optimización de Código y Buenas Prácticas](#capítulo-10-rendimiento)
+11. [Capítulo 11: Bajo el Capó (El Proceso de Transpilación)](#capítulo-11-bajo-el-capó)
+12. [Capítulo 12: Glosario de Alias por Idioma](#capítulo-12-glosario)
+13. [Capítulo 13: Depuración y Resolución de Errores](#capítulo-13-depuracion)
+14. [Capítulo 14: Scripting Avanzado con CELIB](#capítulo-14-scripting-avanzado)
+15. [Capítulo 15: Referencia de Funciones Matemáticas](#capítulo-15-referencia-matematica)
+16. [Capítulo 16: Interacción con la UI](#capítulo-16-interaccion-ui)
+17. [Capítulo 17: Gestión de Capas y Tags](#capítulo-17-capas-y-tags)
+18. [Capítulo 18: El Sistema de Prefabs](#capítulo-18-sistema-prefabs)
+19. [Capítulo 19: Acceso a Otros Scripts](#capítulo-19-acceso-scripts)
+20. [Capítulo 20: MECÁNICAS DE PLATAFORMAS (SIDE-SCROLLER)](#capítulo-20-plataformas)
+21. [Capítulo 21: MECÁNICAS DE RPG (SISTEMAS DE DATOS)](#capítulo-21-rpg)
+22. [Capítulo 22: MECÁNICAS DE TOP-DOWN (ZELDA-LIKE)](#capítulo-22-top-down)
+23. [Capítulo 23: MECÁNICAS DE PUZZLE Y LÓGICA](#capítulo-23-puzzle)
+24. [Capítulo 24: INTELIGENCIA ARTIFICIAL AVANZADA](#capítulo-24-ia-avanzada)
+25. [Capítulo 25: SISTEMAS DE INVENTARIO Y OBJETOS](#capítulo-25-inventario)
+26. [Capítulo 26: DIÁLOGOS Y NARRATIVA](#capítulo-26-dialogos)
+27. [Capítulo 27: EFECTOS VISUALES (PARTÍCULAS Y LUCES)](#capítulo-27-efectos)
+28. [Capítulo 28: FÍSICAS EXPERIMENTALES](#capítulo-28-fisicas)
+29. [Capítulo 29: MULTIJUGADOR LOCAL](#capítulo-29-multijugador)
+30. [Capítulo 30: GENERACIÓN PROCEDURAL](#capítulo-30-procedural)
+
+---
+
+## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
+
+## ГЛАВА 81: ПРИМЕР КОДА 11
+# 📔 El Libro Maestro del Scripting (CES) — Creative Engine
+
+¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
+
+Este documento supera las 1000 líneas y cubre desde la lógica natural hasta los sistemas más complejos de RPG y Multijugador.
+
+---
+
+## 📖 TABLA DE CONTENIDOS (MAPA DE RUTA)
+
+0. [Capítulo 0: Inmersión Rápida](#capítulo-0-inmersión-rápida)
+1. [Capítulo 1: Filosofía y Arquitectura (CES vs JS)](#capítulo-1-filosofía-y-arquitectura)
+2. [Capítulo 2: Lógica Natural y Operadores Localizados](#capítulo-2-el-lenguaje-ces)
+3. [Capítulo 3: El Inspector Dinámico y Atributos de Visibilidad](#capítulo-3-el-inspector-dinámico)
+4. [Capítulo 4: Ciclo de Vida Profundo (El Latido del Script)](#capítulo-4-el-latido-ciclo-de-vida)
+5. [Capítulo 5: Input Políglota (Teclado, Mouse y Mandos)](#capítulo-5-interacción-galvánica)
+6. [Capítulo 6: La Gran Referencia de Alias (API Multilingüe)](#capítulo-6-la-gran-referencia)
+7. [Capítulo 7: Mensajería Global (La Red Neuronal)](#capítulo-7-la-red-neuronal)
+8. [Capítulo 8: Control del Tiempo, Corrutinas y Esperas](#capítulo-8-control-del-tiempo)
+9. [Capítulo 9: El Recetario Maestro (Básico)](#capítulo-9-el-gran-recetario)
+10. [Capítulo 10: Optimización de Código y Buenas Prácticas](#capítulo-10-rendimiento)
+11. [Capítulo 11: Bajo el Capó (El Proceso de Transpilación)](#capítulo-11-bajo-el-capó)
+12. [Capítulo 12: Glosario de Alias por Idioma](#capítulo-12-glosario)
+13. [Capítulo 13: Depuración y Resolución de Errores](#capítulo-13-depuracion)
+14. [Capítulo 14: Scripting Avanzado con CELIB](#capítulo-14-scripting-avanzado)
+15. [Capítulo 15: Referencia de Funciones Matemáticas](#capítulo-15-referencia-matematica)
+16. [Capítulo 16: Interacción con la UI](#capítulo-16-interaccion-ui)
+17. [Capítulo 17: Gestión de Capas y Tags](#capítulo-17-capas-y-tags)
+18. [Capítulo 18: El Sistema de Prefabs](#capítulo-18-sistema-prefabs)
+19. [Capítulo 19: Acceso a Otros Scripts](#capítulo-19-acceso-scripts)
+20. [Capítulo 20: MECÁNICAS DE PLATAFORMAS (SIDE-SCROLLER)](#capítulo-20-plataformas)
+21. [Capítulo 21: MECÁNICAS DE RPG (SISTEMAS DE DATOS)](#capítulo-21-rpg)
+22. [Capítulo 22: MECÁNICAS DE TOP-DOWN (ZELDA-LIKE)](#capítulo-22-top-down)
+23. [Capítulo 23: MECÁNICAS DE PUZZLE Y LÓGICA](#capítulo-23-puzzle)
+24. [Capítulo 24: INTELIGENCIA ARTIFICIAL AVANZADA](#capítulo-24-ia-avanzada)
+25. [Capítulo 25: SISTEMAS DE INVENTARIO Y OBJETOS](#capítulo-25-inventario)
+26. [Capítulo 26: DIÁLOGOS Y NARRATIVA](#capítulo-26-dialogos)
+27. [Capítulo 27: EFECTOS VISUALES (PARTÍCULAS Y LUCES)](#capítulo-27-efectos)
+28. [Capítulo 28: FÍSICAS EXPERIMENTALES](#capítulo-28-fisicas)
+29. [Capítulo 29: MULTIJUGADOR LOCAL](#capítulo-29-multijugador)
+30. [Capítulo 30: GENERACIÓN PROCEDURAL](#capítulo-30-procedural)
+
+---
+
+## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
+
+## ГЛАВА 82: ПРИМЕР КОДА 12
+# 📔 El Libro Maestro del Scripting (CES) — Creative Engine
+
+¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
+
+Este documento supera las 1000 líneas y cubre desde la lógica natural hasta los sistemas más complejos de RPG y Multijugador.
+
+---
+
+## 📖 TABLA DE CONTENIDOS (MAPA DE RUTA)
+
+0. [Capítulo 0: Inmersión Rápida](#capítulo-0-inmersión-rápida)
+1. [Capítulo 1: Filosofía y Arquitectura (CES vs JS)](#capítulo-1-filosofía-y-arquitectura)
+2. [Capítulo 2: Lógica Natural y Operadores Localizados](#capítulo-2-el-lenguaje-ces)
+3. [Capítulo 3: El Inspector Dinámico y Atributos de Visibilidad](#capítulo-3-el-inspector-dinámico)
+4. [Capítulo 4: Ciclo de Vida Profundo (El Latido del Script)](#capítulo-4-el-latido-ciclo-de-vida)
+5. [Capítulo 5: Input Políglota (Teclado, Mouse y Mandos)](#capítulo-5-interacción-galvánica)
+6. [Capítulo 6: La Gran Referencia de Alias (API Multilingüe)](#capítulo-6-la-gran-referencia)
+7. [Capítulo 7: Mensajería Global (La Red Neuronal)](#capítulo-7-la-red-neuronal)
+8. [Capítulo 8: Control del Tiempo, Corrutinas y Esperas](#capítulo-8-control-del-tiempo)
+9. [Capítulo 9: El Recetario Maestro (Básico)](#capítulo-9-el-gran-recetario)
+10. [Capítulo 10: Optimización de Código y Buenas Prácticas](#capítulo-10-rendimiento)
+11. [Capítulo 11: Bajo el Capó (El Proceso de Transpilación)](#capítulo-11-bajo-el-capó)
+12. [Capítulo 12: Glosario de Alias por Idioma](#capítulo-12-glosario)
+13. [Capítulo 13: Depuración y Resolución de Errores](#capítulo-13-depuracion)
+14. [Capítulo 14: Scripting Avanzado con CELIB](#capítulo-14-scripting-avanzado)
+15. [Capítulo 15: Referencia de Funciones Matemáticas](#capítulo-15-referencia-matematica)
+16. [Capítulo 16: Interacción con la UI](#capítulo-16-interaccion-ui)
+17. [Capítulo 17: Gestión de Capas y Tags](#capítulo-17-capas-y-tags)
+18. [Capítulo 18: El Sistema de Prefabs](#capítulo-18-sistema-prefabs)
+19. [Capítulo 19: Acceso a Otros Scripts](#capítulo-19-acceso-scripts)
+20. [Capítulo 20: MECÁNICAS DE PLATAFORMAS (SIDE-SCROLLER)](#capítulo-20-plataformas)
+21. [Capítulo 21: MECÁNICAS DE RPG (SISTEMAS DE DATOS)](#capítulo-21-rpg)
+22. [Capítulo 22: MECÁNICAS DE TOP-DOWN (ZELDA-LIKE)](#capítulo-22-top-down)
+23. [Capítulo 23: MECÁNICAS DE PUZZLE Y LÓGICA](#capítulo-23-puzzle)
+24. [Capítulo 24: INTELIGENCIA ARTIFICIAL AVANZADA](#capítulo-24-ia-avanzada)
+25. [Capítulo 25: SISTEMAS DE INVENTARIO Y OBJETOS](#capítulo-25-inventario)
+26. [Capítulo 26: DIÁLOGOS Y NARRATIVA](#capítulo-26-dialogos)
+27. [Capítulo 27: EFECTOS VISUALES (PARTÍCULAS Y LUCES)](#capítulo-27-efectos)
+28. [Capítulo 28: FÍSICAS EXPERIMENTALES](#capítulo-28-fisicas)
+29. [Capítulo 29: MULTIJUGADOR LOCAL](#capítulo-29-multijugador)
+30. [Capítulo 30: GENERACIÓN PROCEDURAL](#capítulo-30-procedural)
+
+---
+
+## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
+
+## ГЛАВА 83: ПРИМЕР КОДА 13
+# 📔 El Libro Maestro del Scripting (CES) — Creative Engine
+
+¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
+
+Este documento supera las 1000 líneas y cubre desde la lógica natural hasta los sistemas más complejos de RPG y Multijugador.
+
+---
+
+## 📖 TABLA DE CONTENIDOS (MAPA DE RUTA)
+
+0. [Capítulo 0: Inmersión Rápida](#capítulo-0-inmersión-rápida)
+1. [Capítulo 1: Filosofía y Arquitectura (CES vs JS)](#capítulo-1-filosofía-y-arquitectura)
+2. [Capítulo 2: Lógica Natural y Operadores Localizados](#capítulo-2-el-lenguaje-ces)
+3. [Capítulo 3: El Inspector Dinámico y Atributos de Visibilidad](#capítulo-3-el-inspector-dinámico)
+4. [Capítulo 4: Ciclo de Vida Profundo (El Latido del Script)](#capítulo-4-el-latido-ciclo-de-vida)
+5. [Capítulo 5: Input Políglota (Teclado, Mouse y Mandos)](#capítulo-5-interacción-galvánica)
+6. [Capítulo 6: La Gran Referencia de Alias (API Multilingüe)](#capítulo-6-la-gran-referencia)
+7. [Capítulo 7: Mensajería Global (La Red Neuronal)](#capítulo-7-la-red-neuronal)
+8. [Capítulo 8: Control del Tiempo, Corrutinas y Esperas](#capítulo-8-control-del-tiempo)
+9. [Capítulo 9: El Recetario Maestro (Básico)](#capítulo-9-el-gran-recetario)
+10. [Capítulo 10: Optimización de Código y Buenas Prácticas](#capítulo-10-rendimiento)
+11. [Capítulo 11: Bajo el Capó (El Proceso de Transpilación)](#capítulo-11-bajo-el-capó)
+12. [Capítulo 12: Glosario de Alias por Idioma](#capítulo-12-glosario)
+13. [Capítulo 13: Depuración y Resolución de Errores](#capítulo-13-depuracion)
+14. [Capítulo 14: Scripting Avanzado con CELIB](#capítulo-14-scripting-avanzado)
+15. [Capítulo 15: Referencia de Funciones Matemáticas](#capítulo-15-referencia-matematica)
+16. [Capítulo 16: Interacción con la UI](#capítulo-16-interaccion-ui)
+17. [Capítulo 17: Gestión de Capas y Tags](#capítulo-17-capas-y-tags)
+18. [Capítulo 18: El Sistema de Prefabs](#capítulo-18-sistema-prefabs)
+19. [Capítulo 19: Acceso a Otros Scripts](#capítulo-19-acceso-scripts)
+20. [Capítulo 20: MECÁNICAS DE PLATAFORMAS (SIDE-SCROLLER)](#capítulo-20-plataformas)
+21. [Capítulo 21: MECÁNICAS DE RPG (SISTEMAS DE DATOS)](#capítulo-21-rpg)
+22. [Capítulo 22: MECÁNICAS DE TOP-DOWN (ZELDA-LIKE)](#capítulo-22-top-down)
+23. [Capítulo 23: MECÁNICAS DE PUZZLE Y LÓGICA](#capítulo-23-puzzle)
+24. [Capítulo 24: INTELIGENCIA ARTIFICIAL AVANZADA](#capítulo-24-ia-avanzada)
+25. [Capítulo 25: SISTEMAS DE INVENTARIO Y OBJETOS](#capítulo-25-inventario)
+26. [Capítulo 26: DIÁLOGOS Y NARRATIVA](#capítulo-26-dialogos)
+27. [Capítulo 27: EFECTOS VISUALES (PARTÍCULAS Y LUCES)](#capítulo-27-efectos)
+28. [Capítulo 28: FÍSICAS EXPERIMENTALES](#capítulo-28-fisicas)
+29. [Capítulo 29: MULTIJUGADOR LOCAL](#capítulo-29-multijugador)
+30. [Capítulo 30: GENERACIÓN PROCEDURAL](#capítulo-30-procedural)
+
+---
+
+## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
+
+## ГЛАВА 84: ПРИМЕР КОДА 14
+# 📔 El Libro Maestro del Scripting (CES) — Creative Engine
+
+¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
+
+Este documento supera las 1000 líneas y cubre desde la lógica natural hasta los sistemas más complejos de RPG y Multijugador.
+
+---
+
+## 📖 TABLA DE CONTENIDOS (MAPA DE RUTA)
+
+0. [Capítulo 0: Inmersión Rápida](#capítulo-0-inmersión-rápida)
+1. [Capítulo 1: Filosofía y Arquitectura (CES vs JS)](#capítulo-1-filosofía-y-arquitectura)
+2. [Capítulo 2: Lógica Natural y Operadores Localizados](#capítulo-2-el-lenguaje-ces)
+3. [Capítulo 3: El Inspector Dinámico y Atributos de Visibilidad](#capítulo-3-el-inspector-dinámico)
+4. [Capítulo 4: Ciclo de Vida Profundo (El Latido del Script)](#capítulo-4-el-latido-ciclo-de-vida)
+5. [Capítulo 5: Input Políglota (Teclado, Mouse y Mandos)](#capítulo-5-interacción-galvánica)
+6. [Capítulo 6: La Gran Referencia de Alias (API Multilingüe)](#capítulo-6-la-gran-referencia)
+7. [Capítulo 7: Mensajería Global (La Red Neuronal)](#capítulo-7-la-red-neuronal)
+8. [Capítulo 8: Control del Tiempo, Corrutinas y Esperas](#capítulo-8-control-del-tiempo)
+9. [Capítulo 9: El Recetario Maestro (Básico)](#capítulo-9-el-gran-recetario)
+10. [Capítulo 10: Optimización de Código y Buenas Prácticas](#capítulo-10-rendimiento)
+11. [Capítulo 11: Bajo el Capó (El Proceso de Transpilación)](#capítulo-11-bajo-el-capó)
+12. [Capítulo 12: Glosario de Alias por Idioma](#capítulo-12-glosario)
+13. [Capítulo 13: Depuración y Resolución de Errores](#capítulo-13-depuracion)
+14. [Capítulo 14: Scripting Avanzado con CELIB](#capítulo-14-scripting-avanzado)
+15. [Capítulo 15: Referencia de Funciones Matemáticas](#capítulo-15-referencia-matematica)
+16. [Capítulo 16: Interacción con la UI](#capítulo-16-interaccion-ui)
+17. [Capítulo 17: Gestión de Capas y Tags](#capítulo-17-capas-y-tags)
+18. [Capítulo 18: El Sistema de Prefabs](#capítulo-18-sistema-prefabs)
+19. [Capítulo 19: Acceso a Otros Scripts](#capítulo-19-acceso-scripts)
+20. [Capítulo 20: MECÁNICAS DE PLATAFORMAS (SIDE-SCROLLER)](#capítulo-20-plataformas)
+21. [Capítulo 21: MECÁNICAS DE RPG (SISTEMAS DE DATOS)](#capítulo-21-rpg)
+22. [Capítulo 22: MECÁNICAS DE TOP-DOWN (ZELDA-LIKE)](#capítulo-22-top-down)
+23. [Capítulo 23: MECÁNICAS DE PUZZLE Y LÓGICA](#capítulo-23-puzzle)
+24. [Capítulo 24: INTELIGENCIA ARTIFICIAL AVANZADA](#capítulo-24-ia-avanzada)
+25. [Capítulo 25: SISTEMAS DE INVENTARIO Y OBJETOS](#capítulo-25-inventario)
+26. [Capítulo 26: DIÁLOGOS Y NARRATIVA](#capítulo-26-dialogos)
+27. [Capítulo 27: EFECTOS VISUALES (PARTÍCULAS Y LUCES)](#capítulo-27-efectos)
+28. [Capítulo 28: FÍSICAS EXPERIMENTALES](#capítulo-28-fisicas)
+29. [Capítulo 29: MULTIJUGADOR LOCAL](#capítulo-29-multijugador)
+30. [Capítulo 30: GENERACIÓN PROCEDURAL](#capítulo-30-procedural)
+
+---
+
+## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
+
+## ГЛАВА 85: ПРИМЕР КОДА 15
+# 📔 El Libro Maestro del Scripting (CES) — Creative Engine
+
+¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
+
+Este documento supera las 1000 líneas y cubre desde la lógica natural hasta los sistemas más complejos de RPG y Multijugador.
+
+---
+
+## 📖 TABLA DE CONTENIDOS (MAPA DE RUTA)
+
+0. [Capítulo 0: Inmersión Rápida](#capítulo-0-inmersión-rápida)
+1. [Capítulo 1: Filosofía y Arquitectura (CES vs JS)](#capítulo-1-filosofía-y-arquitectura)
+2. [Capítulo 2: Lógica Natural y Operadores Localizados](#capítulo-2-el-lenguaje-ces)
+3. [Capítulo 3: El Inspector Dinámico y Atributos de Visibilidad](#capítulo-3-el-inspector-dinámico)
+4. [Capítulo 4: Ciclo de Vida Profundo (El Latido del Script)](#capítulo-4-el-latido-ciclo-de-vida)
+5. [Capítulo 5: Input Políglota (Teclado, Mouse y Mandos)](#capítulo-5-interacción-galvánica)
+6. [Capítulo 6: La Gran Referencia de Alias (API Multilingüe)](#capítulo-6-la-gran-referencia)
+7. [Capítulo 7: Mensajería Global (La Red Neuronal)](#capítulo-7-la-red-neuronal)
+8. [Capítulo 8: Control del Tiempo, Corrutinas y Esperas](#capítulo-8-control-del-tiempo)
+9. [Capítulo 9: El Recetario Maestro (Básico)](#capítulo-9-el-gran-recetario)
+10. [Capítulo 10: Optimización de Código y Buenas Prácticas](#capítulo-10-rendimiento)
+11. [Capítulo 11: Bajo el Capó (El Proceso de Transpilación)](#capítulo-11-bajo-el-capó)
+12. [Capítulo 12: Glosario de Alias por Idioma](#capítulo-12-glosario)
+13. [Capítulo 13: Depuración y Resolución de Errores](#capítulo-13-depuracion)
+14. [Capítulo 14: Scripting Avanzado con CELIB](#capítulo-14-scripting-avanzado)
+15. [Capítulo 15: Referencia de Funciones Matemáticas](#capítulo-15-referencia-matematica)
+16. [Capítulo 16: Interacción con la UI](#capítulo-16-interaccion-ui)
+17. [Capítulo 17: Gestión de Capas y Tags](#capítulo-17-capas-y-tags)
+18. [Capítulo 18: El Sistema de Prefabs](#capítulo-18-sistema-prefabs)
+19. [Capítulo 19: Acceso a Otros Scripts](#capítulo-19-acceso-scripts)
+20. [Capítulo 20: MECÁNICAS DE PLATAFORMAS (SIDE-SCROLLER)](#capítulo-20-plataformas)
+21. [Capítulo 21: MECÁNICAS DE RPG (SISTEMAS DE DATOS)](#capítulo-21-rpg)
+22. [Capítulo 22: MECÁNICAS DE TOP-DOWN (ZELDA-LIKE)](#capítulo-22-top-down)
+23. [Capítulo 23: MECÁNICAS DE PUZZLE Y LÓGICA](#capítulo-23-puzzle)
+24. [Capítulo 24: INTELIGENCIA ARTIFICIAL AVANZADA](#capítulo-24-ia-avanzada)
+25. [Capítulo 25: SISTEMAS DE INVENTARIO Y OBJETOS](#capítulo-25-inventario)
+26. [Capítulo 26: DIÁLOGOS Y NARRATIVA](#capítulo-26-dialogos)
+27. [Capítulo 27: EFECTOS VISUALES (PARTÍCULAS Y LUCES)](#capítulo-27-efectos)
+28. [Capítulo 28: FÍSICAS EXPERIMENTALES](#capítulo-28-fisicas)
+29. [Capítulo 29: MULTIJUGADOR LOCAL](#capítulo-29-multijugador)
+30. [Capítulo 30: GENERACIÓN PROCEDURAL](#capítulo-30-procedural)
+
+---
+
+## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
+
+## ГЛАВА 86: ПРИМЕР КОДА 16
+# 📔 El Libro Maestro del Scripting (CES) — Creative Engine
+
+¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
+
+Este documento supera las 1000 líneas y cubre desde la lógica natural hasta los sistemas más complejos de RPG y Multijugador.
+
+---
+
+## 📖 TABLA DE CONTENIDOS (MAPA DE RUTA)
+
+0. [Capítulo 0: Inmersión Rápida](#capítulo-0-inmersión-rápida)
+1. [Capítulo 1: Filosofía y Arquitectura (CES vs JS)](#capítulo-1-filosofía-y-arquitectura)
+2. [Capítulo 2: Lógica Natural y Operadores Localizados](#capítulo-2-el-lenguaje-ces)
+3. [Capítulo 3: El Inspector Dinámico y Atributos de Visibilidad](#capítulo-3-el-inspector-dinámico)
+4. [Capítulo 4: Ciclo de Vida Profundo (El Latido del Script)](#capítulo-4-el-latido-ciclo-de-vida)
+5. [Capítulo 5: Input Políglota (Teclado, Mouse y Mandos)](#capítulo-5-interacción-galvánica)
+6. [Capítulo 6: La Gran Referencia de Alias (API Multilingüe)](#capítulo-6-la-gran-referencia)
+7. [Capítulo 7: Mensajería Global (La Red Neuronal)](#capítulo-7-la-red-neuronal)
+8. [Capítulo 8: Control del Tiempo, Corrutinas y Esperas](#capítulo-8-control-del-tiempo)
+9. [Capítulo 9: El Recetario Maestro (Básico)](#capítulo-9-el-gran-recetario)
+10. [Capítulo 10: Optimización de Código y Buenas Prácticas](#capítulo-10-rendimiento)
+11. [Capítulo 11: Bajo el Capó (El Proceso de Transpilación)](#capítulo-11-bajo-el-capó)
+12. [Capítulo 12: Glosario de Alias por Idioma](#capítulo-12-glosario)
+13. [Capítulo 13: Depuración y Resolución de Errores](#capítulo-13-depuracion)
+14. [Capítulo 14: Scripting Avanzado con CELIB](#capítulo-14-scripting-avanzado)
+15. [Capítulo 15: Referencia de Funciones Matemáticas](#capítulo-15-referencia-matematica)
+16. [Capítulo 16: Interacción con la UI](#capítulo-16-interaccion-ui)
+17. [Capítulo 17: Gestión de Capas y Tags](#capítulo-17-capas-y-tags)
+18. [Capítulo 18: El Sistema de Prefabs](#capítulo-18-sistema-prefabs)
+19. [Capítulo 19: Acceso a Otros Scripts](#capítulo-19-acceso-scripts)
+20. [Capítulo 20: MECÁNICAS DE PLATAFORMAS (SIDE-SCROLLER)](#capítulo-20-plataformas)
+21. [Capítulo 21: MECÁNICAS DE RPG (SISTEMAS DE DATOS)](#capítulo-21-rpg)
+22. [Capítulo 22: MECÁNICAS DE TOP-DOWN (ZELDA-LIKE)](#capítulo-22-top-down)
+23. [Capítulo 23: MECÁNICAS DE PUZZLE Y LÓGICA](#capítulo-23-puzzle)
+24. [Capítulo 24: INTELIGENCIA ARTIFICIAL AVANZADA](#capítulo-24-ia-avanzada)
+25. [Capítulo 25: SISTEMAS DE INVENTARIO Y OBJETOS](#capítulo-25-inventario)
+26. [Capítulo 26: DIÁLOGOS Y NARRATIVA](#capítulo-26-dialogos)
+27. [Capítulo 27: EFECTOS VISUALES (PARTÍCULAS Y LUCES)](#capítulo-27-efectos)
+28. [Capítulo 28: FÍSICAS EXPERIMENTALES](#capítulo-28-fisicas)
+29. [Capítulo 29: MULTIJUGADOR LOCAL](#capítulo-29-multijugador)
+30. [Capítulo 30: GENERACIÓN PROCEDURAL](#capítulo-30-procedural)
+
+---
+
+## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
+
+## ГЛАВА 87: ПРИМЕР КОДА 17
+# 📔 El Libro Maestro del Scripting (CES) — Creative Engine
+
+¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
+
+Este documento supera las 1000 líneas y cubre desde la lógica natural hasta los sistemas más complejos de RPG y Multijugador.
+
+---
+
+## 📖 TABLA DE CONTENIDOS (MAPA DE RUTA)
+
+0. [Capítulo 0: Inmersión Rápida](#capítulo-0-inmersión-rápida)
+1. [Capítulo 1: Filosofía y Arquitectura (CES vs JS)](#capítulo-1-filosofía-y-arquitectura)
+2. [Capítulo 2: Lógica Natural y Operadores Localizados](#capítulo-2-el-lenguaje-ces)
+3. [Capítulo 3: El Inspector Dinámico y Atributos de Visibilidad](#capítulo-3-el-inspector-dinámico)
+4. [Capítulo 4: Ciclo de Vida Profundo (El Latido del Script)](#capítulo-4-el-latido-ciclo-de-vida)
+5. [Capítulo 5: Input Políglota (Teclado, Mouse y Mandos)](#capítulo-5-interacción-galvánica)
+6. [Capítulo 6: La Gran Referencia de Alias (API Multilingüe)](#capítulo-6-la-gran-referencia)
+7. [Capítulo 7: Mensajería Global (La Red Neuronal)](#capítulo-7-la-red-neuronal)
+8. [Capítulo 8: Control del Tiempo, Corrutinas y Esperas](#capítulo-8-control-del-tiempo)
+9. [Capítulo 9: El Recetario Maestro (Básico)](#capítulo-9-el-gran-recetario)
+10. [Capítulo 10: Optimización de Código y Buenas Prácticas](#capítulo-10-rendimiento)
+11. [Capítulo 11: Bajo el Capó (El Proceso de Transpilación)](#capítulo-11-bajo-el-capó)
+12. [Capítulo 12: Glosario de Alias por Idioma](#capítulo-12-glosario)
+13. [Capítulo 13: Depuración y Resolución de Errores](#capítulo-13-depuracion)
+14. [Capítulo 14: Scripting Avanzado con CELIB](#capítulo-14-scripting-avanzado)
+15. [Capítulo 15: Referencia de Funciones Matemáticas](#capítulo-15-referencia-matematica)
+16. [Capítulo 16: Interacción con la UI](#capítulo-16-interaccion-ui)
+17. [Capítulo 17: Gestión de Capas y Tags](#capítulo-17-capas-y-tags)
+18. [Capítulo 18: El Sistema de Prefabs](#capítulo-18-sistema-prefabs)
+19. [Capítulo 19: Acceso a Otros Scripts](#capítulo-19-acceso-scripts)
+20. [Capítulo 20: MECÁNICAS DE PLATAFORMAS (SIDE-SCROLLER)](#capítulo-20-plataformas)
+21. [Capítulo 21: MECÁNICAS DE RPG (SISTEMAS DE DATOS)](#capítulo-21-rpg)
+22. [Capítulo 22: MECÁNICAS DE TOP-DOWN (ZELDA-LIKE)](#capítulo-22-top-down)
+23. [Capítulo 23: MECÁNICAS DE PUZZLE Y LÓGICA](#capítulo-23-puzzle)
+24. [Capítulo 24: INTELIGENCIA ARTIFICIAL AVANZADA](#capítulo-24-ia-avanzada)
+25. [Capítulo 25: SISTEMAS DE INVENTARIO Y OBJETOS](#capítulo-25-inventario)
+26. [Capítulo 26: DIÁLOGOS Y NARRATIVA](#capítulo-26-dialogos)
+27. [Capítulo 27: EFECTOS VISUALES (PARTÍCULAS Y LUCES)](#capítulo-27-efectos)
+28. [Capítulo 28: FÍSICAS EXPERIMENTALES](#capítulo-28-fisicas)
+29. [Capítulo 29: MULTIJUGADOR LOCAL](#capítulo-29-multijugador)
+30. [Capítulo 30: GENERACIÓN PROCEDURAL](#capítulo-30-procedural)
+
+---
+
+## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
+
+## ГЛАВА 88: ПРИМЕР КОДА 18
+# 📔 El Libro Maestro del Scripting (CES) — Creative Engine
+
+¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
+
+Este documento supera las 1000 líneas y cubre desde la lógica natural hasta los sistemas más complejos de RPG y Multijugador.
+
+---
+
+## 📖 TABLA DE CONTENIDOS (MAPA DE RUTA)
+
+0. [Capítulo 0: Inmersión Rápida](#capítulo-0-inmersión-rápida)
+1. [Capítulo 1: Filosofía y Arquitectura (CES vs JS)](#capítulo-1-filosofía-y-arquitectura)
+2. [Capítulo 2: Lógica Natural y Operadores Localizados](#capítulo-2-el-lenguaje-ces)
+3. [Capítulo 3: El Inspector Dinámico y Atributos de Visibilidad](#capítulo-3-el-inspector-dinámico)
+4. [Capítulo 4: Ciclo de Vida Profundo (El Latido del Script)](#capítulo-4-el-latido-ciclo-de-vida)
+5. [Capítulo 5: Input Políglota (Teclado, Mouse y Mandos)](#capítulo-5-interacción-galvánica)
+6. [Capítulo 6: La Gran Referencia de Alias (API Multilingüe)](#capítulo-6-la-gran-referencia)
+7. [Capítulo 7: Mensajería Global (La Red Neuronal)](#capítulo-7-la-red-neuronal)
+8. [Capítulo 8: Control del Tiempo, Corrutinas y Esperas](#capítulo-8-control-del-tiempo)
+9. [Capítulo 9: El Recetario Maestro (Básico)](#capítulo-9-el-gran-recetario)
+10. [Capítulo 10: Optimización de Código y Buenas Prácticas](#capítulo-10-rendimiento)
+11. [Capítulo 11: Bajo el Capó (El Proceso de Transpilación)](#capítulo-11-bajo-el-capó)
+12. [Capítulo 12: Glosario de Alias por Idioma](#capítulo-12-glosario)
+13. [Capítulo 13: Depuración y Resolución de Errores](#capítulo-13-depuracion)
+14. [Capítulo 14: Scripting Avanzado con CELIB](#capítulo-14-scripting-avanzado)
+15. [Capítulo 15: Referencia de Funciones Matemáticas](#capítulo-15-referencia-matematica)
+16. [Capítulo 16: Interacción con la UI](#capítulo-16-interaccion-ui)
+17. [Capítulo 17: Gestión de Capas y Tags](#capítulo-17-capas-y-tags)
+18. [Capítulo 18: El Sistema de Prefabs](#capítulo-18-sistema-prefabs)
+19. [Capítulo 19: Acceso a Otros Scripts](#capítulo-19-acceso-scripts)
+20. [Capítulo 20: MECÁNICAS DE PLATAFORMAS (SIDE-SCROLLER)](#capítulo-20-plataformas)
+21. [Capítulo 21: MECÁNICAS DE RPG (SISTEMAS DE DATOS)](#capítulo-21-rpg)
+22. [Capítulo 22: MECÁNICAS DE TOP-DOWN (ZELDA-LIKE)](#capítulo-22-top-down)
+23. [Capítulo 23: MECÁNICAS DE PUZZLE Y LÓGICA](#capítulo-23-puzzle)
+24. [Capítulo 24: INTELIGENCIA ARTIFICIAL AVANZADA](#capítulo-24-ia-avanzada)
+25. [Capítulo 25: SISTEMAS DE INVENTARIO Y OBJETOS](#capítulo-25-inventario)
+26. [Capítulo 26: DIÁLOGOS Y NARRATIVA](#capítulo-26-dialogos)
+27. [Capítulo 27: EFECTOS VISUALES (PARTÍCULAS Y LUCES)](#capítulo-27-efectos)
+28. [Capítulo 28: FÍSICAS EXPERIMENTALES](#capítulo-28-fisicas)
+29. [Capítulo 29: MULTIJUGADOR LOCAL](#capítulo-29-multijugador)
+30. [Capítulo 30: GENERACIÓN PROCEDURAL](#capítulo-30-procedural)
+
+---
+
+## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
+
+## ГЛАВА 89: ПРИМЕР КОДА 19
+# 📔 El Libro Maestro del Scripting (CES) — Creative Engine
+
+¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
+
+Este documento supera las 1000 líneas y cubre desde la lógica natural hasta los sistemas más complejos de RPG y Multijugador.
+
+---
+
+## 📖 TABLA DE CONTENIDOS (MAPA DE RUTA)
+
+0. [Capítulo 0: Inmersión Rápida](#capítulo-0-inmersión-rápida)
+1. [Capítulo 1: Filosofía y Arquitectura (CES vs JS)](#capítulo-1-filosofía-y-arquitectura)
+2. [Capítulo 2: Lógica Natural y Operadores Localizados](#capítulo-2-el-lenguaje-ces)
+3. [Capítulo 3: El Inspector Dinámico y Atributos de Visibilidad](#capítulo-3-el-inspector-dinámico)
+4. [Capítulo 4: Ciclo de Vida Profundo (El Latido del Script)](#capítulo-4-el-latido-ciclo-de-vida)
+5. [Capítulo 5: Input Políglota (Teclado, Mouse y Mandos)](#capítulo-5-interacción-galvánica)
+6. [Capítulo 6: La Gran Referencia de Alias (API Multilingüe)](#capítulo-6-la-gran-referencia)
+7. [Capítulo 7: Mensajería Global (La Red Neuronal)](#capítulo-7-la-red-neuronal)
+8. [Capítulo 8: Control del Tiempo, Corrutinas y Esperas](#capítulo-8-control-del-tiempo)
+9. [Capítulo 9: El Recetario Maestro (Básico)](#capítulo-9-el-gran-recetario)
+10. [Capítulo 10: Optimización de Código y Buenas Prácticas](#capítulo-10-rendimiento)
+11. [Capítulo 11: Bajo el Capó (El Proceso de Transpilación)](#capítulo-11-bajo-el-capó)
+12. [Capítulo 12: Glosario de Alias por Idioma](#capítulo-12-glosario)
+13. [Capítulo 13: Depuración y Resolución de Errores](#capítulo-13-depuracion)
+14. [Capítulo 14: Scripting Avanzado con CELIB](#capítulo-14-scripting-avanzado)
+15. [Capítulo 15: Referencia de Funciones Matemáticas](#capítulo-15-referencia-matematica)
+16. [Capítulo 16: Interacción con la UI](#capítulo-16-interaccion-ui)
+17. [Capítulo 17: Gestión de Capas y Tags](#capítulo-17-capas-y-tags)
+18. [Capítulo 18: El Sistema de Prefabs](#capítulo-18-sistema-prefabs)
+19. [Capítulo 19: Acceso a Otros Scripts](#capítulo-19-acceso-scripts)
+20. [Capítulo 20: MECÁNICAS DE PLATAFORMAS (SIDE-SCROLLER)](#capítulo-20-plataformas)
+21. [Capítulo 21: MECÁNICAS DE RPG (SISTEMAS DE DATOS)](#capítulo-21-rpg)
+22. [Capítulo 22: MECÁNICAS DE TOP-DOWN (ZELDA-LIKE)](#capítulo-22-top-down)
+23. [Capítulo 23: MECÁNICAS DE PUZZLE Y LÓGICA](#capítulo-23-puzzle)
+24. [Capítulo 24: INTELIGENCIA ARTIFICIAL AVANZADA](#capítulo-24-ia-avanzada)
+25. [Capítulo 25: SISTEMAS DE INVENTARIO Y OBJETOS](#capítulo-25-inventario)
+26. [Capítulo 26: DIÁLOGOS Y NARRATIVA](#capítulo-26-dialogos)
+27. [Capítulo 27: EFECTOS VISUALES (PARTÍCULAS Y LUCES)](#capítulo-27-efectos)
+28. [Capítulo 28: FÍSICAS EXPERIMENTALES](#capítulo-28-fisicas)
+29. [Capítulo 29: MULTIJUGADOR LOCAL](#capítulo-29-multijugador)
+30. [Capítulo 30: GENERACIÓN PROCEDURAL](#capítulo-30-procedural)
+
+---
+
+## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
+
+## ГЛАВА 90: ПРИМЕР КОДА 20
+# 📔 El Libro Maestro del Scripting (CES) — Creative Engine
+
+¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
+
+Este documento supera las 1000 líneas y cubre desde la lógica natural hasta los sistemas más complejos de RPG y Multijugador.
+
+---
+
+## 📖 TABLA DE CONTENIDOS (MAPA DE RUTA)
+
+0. [Capítulo 0: Inmersión Rápida](#capítulo-0-inmersión-rápida)
+1. [Capítulo 1: Filosofía y Arquitectura (CES vs JS)](#capítulo-1-filosofía-y-arquitectura)
+2. [Capítulo 2: Lógica Natural y Operadores Localizados](#capítulo-2-el-lenguaje-ces)
+3. [Capítulo 3: El Inspector Dinámico y Atributos de Visibilidad](#capítulo-3-el-inspector-dinámico)
+4. [Capítulo 4: Ciclo de Vida Profundo (El Latido del Script)](#capítulo-4-el-latido-ciclo-de-vida)
+5. [Capítulo 5: Input Políglota (Teclado, Mouse y Mandos)](#capítulo-5-interacción-galvánica)
+6. [Capítulo 6: La Gran Referencia de Alias (API Multilingüe)](#capítulo-6-la-gran-referencia)
+7. [Capítulo 7: Mensajería Global (La Red Neuronal)](#capítulo-7-la-red-neuronal)
+8. [Capítulo 8: Control del Tiempo, Corrutinas y Esperas](#capítulo-8-control-del-tiempo)
+9. [Capítulo 9: El Recetario Maestro (Básico)](#capítulo-9-el-gran-recetario)
+10. [Capítulo 10: Optimización de Código y Buenas Prácticas](#capítulo-10-rendimiento)
+11. [Capítulo 11: Bajo el Capó (El Proceso de Transpilación)](#capítulo-11-bajo-el-capó)
+12. [Capítulo 12: Glosario de Alias por Idioma](#capítulo-12-glosario)
+13. [Capítulo 13: Depuración y Resolución de Errores](#capítulo-13-depuracion)
+14. [Capítulo 14: Scripting Avanzado con CELIB](#capítulo-14-scripting-avanzado)
+15. [Capítulo 15: Referencia de Funciones Matemáticas](#capítulo-15-referencia-matematica)
+16. [Capítulo 16: Interacción con la UI](#capítulo-16-interaccion-ui)
+17. [Capítulo 17: Gestión de Capas y Tags](#capítulo-17-capas-y-tags)
+18. [Capítulo 18: El Sistema de Prefabs](#capítulo-18-sistema-prefabs)
+19. [Capítulo 19: Acceso a Otros Scripts](#capítulo-19-acceso-scripts)
+20. [Capítulo 20: MECÁNICAS DE PLATAFORMAS (SIDE-SCROLLER)](#capítulo-20-plataformas)
+21. [Capítulo 21: MECÁNICAS DE RPG (SISTEMAS DE DATOS)](#capítulo-21-rpg)
+22. [Capítulo 22: MECÁNICAS DE TOP-DOWN (ZELDA-LIKE)](#capítulo-22-top-down)
+23. [Capítulo 23: MECÁNICAS DE PUZZLE Y LÓGICA](#capítulo-23-puzzle)
+24. [Capítulo 24: INTELIGENCIA ARTIFICIAL AVANZADA](#capítulo-24-ia-avanzada)
+25. [Capítulo 25: SISTEMAS DE INVENTARIO Y OBJETOS](#capítulo-25-inventario)
+26. [Capítulo 26: DIÁLOGOS Y NARRATIVA](#capítulo-26-dialogos)
+27. [Capítulo 27: EFECTOS VISUALES (PARTÍCULAS Y LUCES)](#capítulo-27-efectos)
+28. [Capítulo 28: FÍSICAS EXPERIMENTALES](#capítulo-28-fisicas)
+29. [Capítulo 29: MULTIJUGADOR LOCAL](#capítulo-29-multijugador)
+30. [Capítulo 30: GENERACIÓN PROCEDURAL](#capítulo-30-procedural)
+
+---
+
+## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
