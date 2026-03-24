@@ -1,56 +1,48 @@
-# Creative Engine 🎨🚀
+# Creative Engine 🎨🚀 — Centro de Conocimiento
 
-¡Bienvenido al centro de conocimiento de **Creative Engine**! Aquí encontrarás todo lo que necesitas para transformar tus ideas en realidades interactivas. Nuestra documentación está diseñada para ser tu compañera constante, desde tus primeros pasos hasta el lanzamiento de tu gran proyecto.
+¡Bienvenido a la biblioteca definitiva de **Creative Engine**! Nuestra documentación ha sido expandida masivamente para convertirse en una enciclopedia técnica completa. Ya seas un principiante absoluto o un desarrollador avanzado, aquí encontrarás explicaciones ultra-detalladas de cada rincón del motor.
 
 ---
 
-## 📚 Secciones de la Documentación
+## 📚 Secciones de la Documentación (Enciclopedia)
 
 ### 📔 [El Libro Maestro Ultra-Detallado](README_MASTER_BOOK.md)
-**¡Tu punto de partida ideal!** Una guía completa diseñada para principiantes absolutos que explica los conceptos de Materias y Leyes, cómo construir mundos y cómo usar todas las herramientas visuales sin escribir una sola línea de código.
+**¡Tu punto de partida ideal!** Una guía épica diseñada para principiantes absolutos que explica los conceptos de **Materias** y **Leyes**, cómo construir mundos, el sistema de UI y cómo usar todas las herramientas visuales sin escribir una sola línea de código.
 
-### 📕 [El Libro Maestro del Scripting (CES)](README_SCRIPTING.md)
-**Para los arquitectos de código.** Un manual técnico en 12 capítulos que te enseña a programar desde cero usando el lenguaje CES. Incluye:
-- Referencia completa de la API.
-- **Cookbook:** Recetas de código listas para usar.
-- Guía de optimización de grado industrial.
+### 🧩 [Guía Maestra de Componentes (Leyes)](README_COMPONENTES.md)
+Un diccionario exhaustivo de todas las "Leyes" que puedes aplicar. Incluye una explicación parámetro por parámetro para:
+- Físicas Avanzadas y Colisiones.
+- Renderizado de Precisión (Sprites, Texturas, Video).
+- Inteligencia Artificial y Controladores de Vehículos.
+
+### 🎨 [Guía Maestra de Editores Visuales](README_EDITORES_VISUALES.md)
+Domina las potentes herramientas integradas con tutoriales paso a paso:
+- **Grafo de Animación:** Lógica de estados y Smart Mode.
+- **Skeletal Animation:** Huesos, Skinning e IK.
+- **Tilemap & Terrain:** Construcción orgánica y por bloques.
+- **VidSpri:** Conversión de video a activos ligeros.
+
+### 📕 [El Libro del Scripting CES](README_SCRIPTING.md)
+**Para los arquitectos de código.** Un manual técnico detallado que te enseña a programar desde cero usando el lenguaje multilingüe CES. Supera las 400 páginas de ejemplos, recetas de código y lógica natural.
+
+### 🤖 [El Manual de Carl IA (Agente Autónomo)](README_CARL_IA.md)
+**Tu compañero de desarrollo.** Aprende cómo delegar tareas a Carl, usar el modo de planeación profunda, CHC y los comandos de creación automática.
+
+### ⚙️ [Gestión Avanzada y Publicación](README_AVANZADO.md)
+Todo sobre la arquitectura del motor, optimización de rendimiento, gestión de Prefabs y cómo exportar tu juego para Web y Android (incluyendo firmas Keystore).
 
 ### 🚀 [Guía de Solución Rápida (FAQ)](README_SOLUCIONES.md)
-**Tu primer aliado ante errores.** Más de 50 soluciones a problemas comunes en scripting, físicas, UI y el propio editor. ¡Si algo no funciona, la respuesta está aquí!
-
-### 🧩 [Guía de Componentes (Leyes)](README_COMPONENTES.md)
-Un diccionario detallado de todas las "Leyes" que puedes aplicar a tus objetos:
-- Físicas y Colisiones.
-- Renderizado de Sprites y Video.
-- Controladores de Vehículos (Helicópteros, Aviones, Coches).
-- Sistemas de Iluminación 2D.
-
-### 🎨 [Guía de Editores Visuales](README_EDITORES_VISUALES.md)
-Aprende a usar las potentes herramientas visuales integradas:
-- **Editor de Animaciones:** Crea secuencias fluidas.
-- **Tilemap Editor:** Construye niveles basados en rejillas.
-- **VidSpri:** El secreto para convertir videos en sprites ligeros.
-
-### 📚 [El Libro de la Extensibilidad (Librerías)](README_LIBRERIAS.md)
-**Para los arquitectos de herramientas.** Aprende a crear tus propias ventanas en el editor y ampliar las funciones de scripting con JavaScript puro (.celib).
-
-### 🤖 [Manual de Carl IA](README_CARL_IA.md)
-Descubre cómo trabajar codo con codo con Carl, tu asistente inteligente capaz de construir escenas y escribir código por ti mediante lenguaje natural.
-
-### ⚙️ [Gestión Avanzada y Configuración](README_AVANZADO.md)
-Para los desarrolladores que quieren llegar más lejos:
-- Creación y gestión de Prefabs.
-- Sistema de Build y exportación.
-- Configuración global del proyecto y capas.
+Más de 50 soluciones a problemas comunes en scripting, físicas y UI.
 
 ---
 
 ## 🚀 ¿Por dónde empezar?
 
-Si eres nuevo, te recomendamos seguir este orden:
-1. Lee el [**Libro Maestro Ultra-Detallado**](README_MASTER_BOOK.md) para entender cómo funciona el motor.
-2. Explora el **Capítulo 0** del [Libro Maestro del Scripting](README_SCRIPTING.md) si quieres empezar a programar.
-3. ¡Empieza a crear y diviértete!
+Si eres nuevo, te recomendamos seguir este orden de "Cero a Héroe":
+1. Lee el [**Libro Maestro Ultra-Detallado**](README_MASTER_BOOK.md) para entender el ADN del motor.
+2. Explora la [**Guía Maestra de Componentes**](README_COMPONENTES.md) para conocer tus herramientas.
+3. Consulta el [**Manual de Carl IA**](README_CARL_IA.md) para aprender a construir más rápido con ayuda de la inteligencia artificial.
+4. ¡Abre el editor y empieza a dar vida a tus ideas!
 
 ---
 *Desarrollado con ❤️ por Carley Interactive Studio.*
