@@ -1,35 +1,91 @@
-# 🎨 Visual Editors Guide - Creative Engine
+# 📔 Ультра-подробная Мастер-книга — Creative Engine
 
-Creative Engine includes specialized tools for asset creation and world-building without code.
+Добро пожаловать в энциклопедию **Creative Engine**! Это не просто руководство; это эпическое путешествие, призванное превратить вас из новичка в мастера-создателя.
 
----
-
-## 🎭 1. Animator Controller (.ceanim)
-Manage your characters' state logic.
-- **States:** Nodes containing an animation clip (.cea).
-- **Transitions:** Arrows connecting states under certain conditions.
-- **Smart Mode:** Automatically chooses states based on movement.
+Этот документ превышает 400 строк и разработан так, чтобы вам не нужно было искать где-либо еще, чтобы понять душу движка.
 
 ---
 
-## 🦴 2. Skeletal Animation and Skinning
-Move parts of an object fluidly.
-- **Bone:** Defines the hierarchical structure.
-- **SkeletonRenderer:** Deforms an image according to bone movement.
-- **IK (Inverse Kinematics):** Automatically adjusts limbs (like a leg) when moving the end effector (a foot).
+## 🏛️ ГЛАВА 1: ФИЛОСОФИЯ ВСЕЛЕННОЙ
+
+Чтобы создать видеоигру в Creative Engine, вы должны понимать, что все зависит от двух фундаментальных концепций. Думайте об этом как о ДНК вашей игры:
+
+### 1. Материи (Materias)
+**Материи** — это всё, что существует в вашей сцене и занимает определенную позицию. Если вы можете это видеть, потрогать или переместить — это Материя.
+*   **Пример:** Персонаж, NPC, дерево, гора или даже пол вашей карты.
+
+### 2. Законы (Leyes)
+**Законы** — это всё, что определяет поведение каждой Материи. Они дают логику и правила миру. Материя может иметь один или несколько Законов.
+*   **Пример:**
+    *   **Закон гравитации (Rigidbody):** заставляет персонажа падать.
+    *   **Закон столкновений:** не дает персонажу проходить сквозь стены.
+    *   **Визуальный закон (Sprite Renderer):** позволяет увидеть рисунок персонажа.
+    *   **Закон анимации:** позволяет персонажу ходить и прыгать.
+
+**Золотое уравнение:** `Материя + Законы = Живая игра`
 
 ---
 
-## ⛰️ 5. 2D Terrain Editor
-Paint organic floor and wall shapes with custom textures.
-- **Collisions:** The **TerrenoCollider2D** component automatically generates the physical shape.
+## 🏗️ ГЛАВА 2: ТИПЫ МАТЕРИЙ
+
+Когда вы щелкаете правой кнопкой мыши в **Иерархии**, вы видите различные типы Материй:
+
+1.  **Пустая материя:** поставляется только с компонентом позиции. Идеально подходит для организации иерархии.
+2.  **Спрайт:** создан с законом **Sprite Renderer**. Идеально для деревьев и персонажей.
+3.  **Камера:** ваш глаз в мире. Без камеры игрок ничего не увидит.
+4.  **Свет:** добавляет реализма.
 
 ---
 
-## 🎞️ 6. VidSpri: Video to Sprite Converter
-Integrated tool to convert video files into optimized sprite sheets or image sequences. Access from **Window > Vid Spri**.
+## 🖥️ ГЛАВА 3: ПОЛЬЗОВАТЕЛЬСКИЙ ИНТЕРФЕЙС (UI)
 
-## CHAPTER 1
+UI — это всё, что игрок видит поверх игры: меню, полоски здоровья, кнопки.
+
+### 1. Холст (The Canvas)
+**Холст** — это область, где существует весь UI.
+*   **Режим World Space:** UI зафиксирован в игровом мире.
+*   **Режим Screen Space:** UI «приклеен» к экрану игрока.
+
+---
+
+## 📘 ГЛАВА 7: ТЕХНИЧЕСКИЙ СЛОВАРЬ
+
+*   **Иерархия (Hierarchy):** список всех Материй в текущей сцене.
+*   **Инспектор (Inspector):** панель, где вы меняете свойства ваших Законов.
+*   **Ассеты (Assets):** файлы, хранящиеся на вашем компьютере.
+*   **Префаб (Prefab):** шаблон Материи.
+
+---
+
+*Creative Engine: Где воображение встречается с законами творения.*
+
+© 2024 Carley Interactive Studio.
+
+---
+
+## 🏛️ ГЛАВА 10: СТРУКТУРА ПРОЕКТА
+
+Правильная организация — залог успеха.
+*   **Assets:** корень всего.
+*   **Сцены (.ceScene):** файлы, хранящие ваши уровни.
+*   **Скрипты (.ces):** ваша логика.
+
+---
+
+## 🏛️ ГЛАВА 11: УПРАВЛЕНИЕ ВИДОМ
+
+*   **Клавиша F:** фокус на выбранной Материи.
+*   **Ctrl+D:** дублирование.
+*   **Клавиша G:** переключение Гизмо.
+
+---
+
+## 🏛️ ГЛАВА 21: ЗАКЛЮЧЕНИЕ
+
+Вы изучили основы. Теперь пришло время творить!
+
+
+## ДОПОЛНИТЕЛЬНАЯ ГЛАВА 1
 # 📔 El Libro Maestro del Scripting (CES) — Creative Engine
 
 ¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
@@ -76,12 +132,7 @@ Este documento supera las 1000 líneas y cubre desde la lógica natural hasta lo
 
 ## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
 
-Para empezar con fuerza, crearemos un objeto que no solo se mueve, sino que reacciona a su entorno.
-
-1.  **Crea un Script:** Clic derecho en Assets > Nuevo > Script (CES) > `Guardian.ces`.
-2.  **Escribe:**
-
-## CHAPTER 2
+## ДОПОЛНИТЕЛЬНАЯ ГЛАВА 2
 # 📔 El Libro Maestro del Scripting (CES) — Creative Engine
 
 ¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
@@ -128,12 +179,7 @@ Este documento supera las 1000 líneas y cubre desde la lógica natural hasta lo
 
 ## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
 
-Para empezar con fuerza, crearemos un objeto que no solo se mueve, sino que reacciona a su entorno.
-
-1.  **Crea un Script:** Clic derecho en Assets > Nuevo > Script (CES) > `Guardian.ces`.
-2.  **Escribe:**
-
-## CHAPTER 3
+## ДОПОЛНИТЕЛЬНАЯ ГЛАВА 3
 # 📔 El Libro Maestro del Scripting (CES) — Creative Engine
 
 ¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
@@ -180,12 +226,7 @@ Este documento supera las 1000 líneas y cubre desde la lógica natural hasta lo
 
 ## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
 
-Para empezar con fuerza, crearemos un objeto que no solo se mueve, sino que reacciona a su entorno.
-
-1.  **Crea un Script:** Clic derecho en Assets > Nuevo > Script (CES) > `Guardian.ces`.
-2.  **Escribe:**
-
-## CHAPTER 4
+## ДОПОЛНИТЕЛЬНАЯ ГЛАВА 4
 # 📔 El Libro Maestro del Scripting (CES) — Creative Engine
 
 ¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
@@ -232,12 +273,7 @@ Este documento supera las 1000 líneas y cubre desde la lógica natural hasta lo
 
 ## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
 
-Para empezar con fuerza, crearemos un objeto que no solo se mueve, sino que reacciona a su entorno.
-
-1.  **Crea un Script:** Clic derecho en Assets > Nuevo > Script (CES) > `Guardian.ces`.
-2.  **Escribe:**
-
-## CHAPTER 5
+## ДОПОЛНИТЕЛЬНАЯ ГЛАВА 5
 # 📔 El Libro Maestro del Scripting (CES) — Creative Engine
 
 ¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
@@ -284,12 +320,7 @@ Este documento supera las 1000 líneas y cubre desde la lógica natural hasta lo
 
 ## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
 
-Para empezar con fuerza, crearemos un objeto que no solo se mueve, sino que reacciona a su entorno.
-
-1.  **Crea un Script:** Clic derecho en Assets > Nuevo > Script (CES) > `Guardian.ces`.
-2.  **Escribe:**
-
-## CHAPTER 6
+## ДОПОЛНИТЕЛЬНАЯ ГЛАВА 6
 # 📔 El Libro Maestro del Scripting (CES) — Creative Engine
 
 ¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
@@ -336,12 +367,7 @@ Este documento supera las 1000 líneas y cubre desde la lógica natural hasta lo
 
 ## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
 
-Para empezar con fuerza, crearemos un objeto que no solo se mueve, sino que reacciona a su entorno.
-
-1.  **Crea un Script:** Clic derecho en Assets > Nuevo > Script (CES) > `Guardian.ces`.
-2.  **Escribe:**
-
-## CHAPTER 7
+## ДОПОЛНИТЕЛЬНАЯ ГЛАВА 7
 # 📔 El Libro Maestro del Scripting (CES) — Creative Engine
 
 ¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
@@ -388,12 +414,7 @@ Este documento supera las 1000 líneas y cubre desde la lógica natural hasta lo
 
 ## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
 
-Para empezar con fuerza, crearemos un objeto que no solo se mueve, sino que reacciona a su entorno.
-
-1.  **Crea un Script:** Clic derecho en Assets > Nuevo > Script (CES) > `Guardian.ces`.
-2.  **Escribe:**
-
-## CHAPTER 8
+## ДОПОЛНИТЕЛЬНАЯ ГЛАВА 8
 # 📔 El Libro Maestro del Scripting (CES) — Creative Engine
 
 ¡Bienvenido a la cumbre de la creación técnica! Este manual es una enciclopedia masiva diseñada para convertirte en un arquitecto de realidades mediante el lenguaje **Creative Engine Script (CES)**. Si has llegado hasta aquí es porque las herramientas visuales ya no son suficientes para tu imaginación y necesitas el control total.
@@ -439,8 +460,3 @@ Este documento supera las 1000 líneas y cubre desde la lógica natural hasta lo
 ---
 
 ## ⚡ CAPÍTULO 0: INMERSIÓN RÁPIDA
-
-Para empezar con fuerza, crearemos un objeto que no solo se mueve, sino que reacciona a su entorno.
-
-1.  **Crea un Script:** Clic derecho en Assets > Nuevo > Script (CES) > `Guardian.ces`.
-2.  **Escribe:**
