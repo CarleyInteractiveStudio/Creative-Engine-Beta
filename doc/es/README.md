@@ -23,7 +23,7 @@ Domina las potentes herramientas integradas con tutoriales paso a paso:
 - **VidSpri:** Conversión de video a activos ligeros.
 
 ### 📕 [El Libro del Scripting CES](README_SCRIPTING.md)
-**Para los arquitectos de código.** Un manual técnico detallado que te enseña a programar desde cero usando el lenguaje multilingüe CES. Supera las 400 páginas de ejemplos, recetas de código y lógica natural.
+**Para los arquitectos de código.** Un manual técnico detallado que te enseña a programar desde cero usando el lenguaje multilingüe CES. Esta enciclopedia de más de 1000 líneas incluye recetas para todo tipo de géneros (RPG, Plataformas, Shooters) y sistemas avanzados.
 
 ### 🤖 [El Manual de Carl IA (Agente Autónomo)](README_CARL_IA.md)
 **Tu compañero de desarrollo.** Aprende cómo delegar tareas a Carl, usar el modo de planeación profunda, CHC y los comandos de creación automática.
