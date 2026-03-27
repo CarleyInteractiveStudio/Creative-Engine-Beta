@@ -34,7 +34,8 @@ export function createBaseMateria(name, parent = null) {
 }
 
 export function createCanvasObject() {
-    const name = generateUniqueName('Canvas');
+    const L = window.Localization;
+    const name = generateUniqueName(L.get('CANVAS', 'Canvas'));
     const newMateria = createBaseMateria(name); // createBaseMateria adds Transform
     newMateria.addComponent(new Components.Canvas(newMateria));
     return newMateria;
@@ -45,7 +46,8 @@ export function createImageObject(parent) {
         console.error("createImageObject requiere un padre.");
         return null;
     }
-    const name = generateUniqueName('Image');
+    const L = window.Localization;
+    const name = generateUniqueName(L.get('IMAGE', 'Image'));
     const newMateria = new Materia(name);
     // UI elements get a UITransform, not a regular Transform
     newMateria.addComponent(new Components.UITransform(newMateria));
@@ -57,7 +59,8 @@ export function createImageObject(parent) {
 
 export function createTerrenoObject(parent = null) {
     console.log("[MateriaFactory] Creando objeto de terreno...");
-    const name = generateUniqueName('Terreno');
+    const L = window.Localization;
+    const name = generateUniqueName(L.get('TERRENO', 'Terreno'));
     const newMateria = createBaseMateria(name, parent);
     newMateria.addComponent(new Components.Terreno2D(newMateria));
     console.log("[MateriaFactory] Terreno creado con éxito:", newMateria);
@@ -69,7 +72,8 @@ export function createTextObject(parent) {
         console.error("createTextObject requiere un padre que sea un Canvas.");
         return null;
     }
-    const name = generateUniqueName('Texto');
+    const L = window.Localization;
+    const name = generateUniqueName(L.get('TEXTO', 'Texto'));
     const newMateria = new Materia(name);
 
     newMateria.addComponent(new Components.UITransform(newMateria));
@@ -84,7 +88,8 @@ export function createButtonObject(parent) {
         console.error("createButtonObject requiere un padre que sea un Canvas.");
         return null;
     }
-    const buttonName = generateUniqueName('Button');
+    const L = window.Localization;
+    const buttonName = generateUniqueName(L.get('BOTON', 'Button'));
     const buttonMateria = new Materia(buttonName);
 
     buttonMateria.addComponent(new Components.UITransform(buttonMateria));
@@ -94,7 +99,7 @@ export function createButtonObject(parent) {
     parent.addChild(buttonMateria);
 
     // Create a child Text object
-    const textName = generateUniqueName('Text');
+    const textName = generateUniqueName(L.get('TEXTO', 'Text'));
     const textMateria = new Materia(textName);
     const uiTransform = new Components.UITransform(textMateria);
     // Anchor the text to stretch across the button
@@ -103,7 +108,7 @@ export function createButtonObject(parent) {
     textMateria.addComponent(uiTransform);
 
     const uiText = new Components.UIText(textMateria);
-    uiText.text = 'Button';
+    uiText.text = L.get('BOTON', 'Button');
     uiText.horizontalAlign = 'center';
     textMateria.addComponent(uiText);
 
@@ -118,7 +123,8 @@ export function createPanelObject(parent) {
         console.error("createPanelObject requiere un padre que sea un Canvas.");
         return null;
     }
-    const name = generateUniqueName('Panel');
+    const L = window.Localization;
+    const name = generateUniqueName(L.get('PANEL', 'Panel'));
     const newMateria = new Materia(name);
 
     newMateria.addComponent(new Components.UITransform(newMateria));

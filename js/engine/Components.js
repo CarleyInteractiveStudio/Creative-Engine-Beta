@@ -54,7 +54,9 @@ const componentAliases = {
     'Terreno2D': 'terreno2D',
     'TerrenoCollider2D': 'colisionadorTerreno2D',
     'PolygonCollider2D': 'colisionadorPoligono2D',
-    'Gyzmo': 'gyzmo'
+    'Gyzmo': 'gyzmo',
+    'RaycastSource': 'rallo',
+    'BasicAI': 'iaBasica'
 };
 
 
@@ -314,6 +316,25 @@ export class CreativeScriptBehavior {
     }
 
     async create(ruta, x, y) { return await this.crear(ruta, x, y); }
+
+    /**
+     * Ejecuta una acción (objeto con targetId y functionName).
+     * @param {object} accion - La acción a ejecutar.
+     * @param {...any} args - Argumentos adicionales.
+     */
+    ejecutarAccion(accion, ...args) {
+        if (!accion || !accion.targetId || !accion.functionName) return;
+        const target = this.materia.scene ? this.materia.scene.findMateriaById(accion.targetId) : null;
+        if (!target) return;
+        target.getComponents(CreativeScript).forEach(s => {
+            if (s.instance && typeof s.instance[accion.functionName] === 'function') {
+                s._safeInvoke(accion.functionName, ...args);
+            }
+        });
+    }
+
+    /** Alias en inglés */
+    executeAction(action, ...args) { this.ejecutarAccion(action, ...args); }
 
     /**
      * Busca un objeto en la escena por su nombre.
@@ -1017,7 +1038,9 @@ export class Rigidbody2D extends Leyes {
         newRb.sleepingMode = this.sleepingMode;
         newRb.interpolate = this.interpolate;
         newRb.constraints = { ...this.constraints };
-        newRb.velocity = { ...this.velocity };
+        // Reset velocity to zero for clones created in editor (duplication)
+        newRb.velocity = { x: 0, y: 0 };
+        newRb.angularVelocity = 0;
         return newRb;
     }
 }
@@ -1028,7 +1051,7 @@ export class BoxCollider2D extends Leyes {
         this.usedByComposite = false;
         this.isTrigger = false;
         this.offset = { x: 0, y: 0 };
-        this.size = { x: 1.0, y: 1.0 };
+        this.size = { x: 50.0, y: 50.0 };
         this.edgeRadius = 0.0;
     }
     clone() {
@@ -1068,7 +1091,7 @@ export class CapsuleCollider2D extends Leyes {
         super(materia);
         this.isTrigger = false;
         this.offset = { x: 0, y: 0 };
-        this.size = { x: 1.0, y: 1.0 };
+        this.size = { x: 50.0, y: 50.0 };
         this.direction = 'Vertical'; // 'Vertical' or 'Horizontal'
     }
     clone() {
@@ -2528,6 +2551,12 @@ export class AnimatorController extends Leyes {
     clone() {
         const newController = new AnimatorController(null);
         newController.controllerPath = this.controllerPath;
+        newController.smartMode = this.smartMode;
+        newController.deadZone = this.deadZone;
+        newController.startDelay = this.startDelay;
+        newController.stopDelay = this.stopDelay;
+        newController.directionDelay = this.directionDelay;
+        newController.stopBuffer = this.stopBuffer;
         return newController;
     }
 }
@@ -4149,6 +4178,241 @@ export class ParticleSystem extends Leyes {
     }
 }
 registerComponent('ParticleSystem', ParticleSystem);
+
+/**
+ * Componente RaycastSource (Rallo): Lanza múltiples rayos para detección.
+ */
+export class RaycastSource extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.rays = [{ angle: 0, length: 200 }];
+        this.multiHit = false;
+        this.showGizmo = true;
+        this.autoRotate = false; // Si debe rotar el objeto hacia el primer impacto
+        this.rotationSpeed = 5;
+        this.lastHits = []; // Resultados del último frame
+    }
+
+    update(deltaTime) {
+        const scene = this.materia.scene;
+        if (!scene || !scene.physicsSystem) return;
+
+        const transform = this.materia.getComponent(Transform);
+        if (!transform) return;
+
+        const origin = transform.position;
+        const baseRotation = transform.rotation;
+
+        this.lastHits = this.rays.map(ray => {
+            const rad = (baseRotation + ray.angle) * Math.PI / 180;
+            const direction = { x: Math.cos(rad), y: Math.sin(rad) };
+            return scene.physicsSystem.raycast(origin, direction, ray.length);
+        });
+
+        // Rotación automática hacia el impacto más cercano si está habilitado
+        if (this.autoRotate && (window.isGameRunning || window.CE_Standalone_Scripts)) {
+            const firstHit = this.lastHits.find(h => h !== null);
+            if (firstHit) {
+                const dx = firstHit.point.x - transform.x;
+                const dy = firstHit.point.y - transform.y;
+                const targetRot = Math.atan2(dy, dx) * 180 / Math.PI;
+                transform.rotation += (targetRot - transform.rotation) * (this.rotationSpeed * deltaTime);
+            }
+        }
+    }
+
+    clone() {
+        const copy = new RaycastSource(null);
+        copy.rays = this.rays.map(r => ({ ...r }));
+        copy.multiHit = this.multiHit;
+        copy.showGizmo = this.showGizmo;
+        return copy;
+    }
+
+    // Alias en español
+    get rallo() { return this; }
+    get rayos() { return this.rays; }
+}
+registerComponent('RaycastSource', RaycastSource);
+
+/**
+ * Componente BasicAI (IA Básica): Comportamientos simples de seguimiento y evasión.
+ */
+export class BasicAI extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.target = null; // ID de la materia objetivo
+        this.behavior = 'Follow'; // 'Follow', 'Escape', 'Wander'
+        this.movementType = 'Top-Down'; // 'Top-Down' or 'Platformer'
+        this.speed = 100;
+        this.autoRotate = true;
+        this.rotationSpeed = 0.1;
+        this.obstacleAvoidance = true;
+        this.detectionTags = ['Player'];
+        this.detectionDistance = 400;
+        this.scriptTarget = null; // Materia con el script a ejecutar
+        this.functionName = ''; // Nombre de la función
+
+        this._wanderAngle = Math.random() * 360;
+        this._wanderTimer = 0;
+        this._velocity = { x: 0, y: 0 };
+    }
+
+    update(deltaTime) {
+        if (typeof window !== 'undefined' && !window.isGameRunning && !window.CE_Standalone_Scripts) return;
+
+        const scene = this.materia.scene;
+        if (!scene) return;
+
+        const transform = this.materia.getComponent(Transform);
+        if (!transform) return;
+
+        let targetObj = null;
+        if (typeof this.target === 'number') {
+            targetObj = scene.findMateriaById(this.target);
+        } else if (this.target instanceof Materia) {
+            targetObj = this.target;
+        }
+
+        // --- 1. Detección y ejecución de funciones ---
+        this._handleDetection(scene, transform);
+
+        // --- 2. Lógica de movimiento ---
+        let desiredVelocity = { x: 0, y: 0 };
+
+        if (this.behavior === 'Follow' && targetObj) {
+            const dx = targetObj.getComponent(Transform).x - transform.x;
+            const dy = (this.movementType === 'Platformer') ? 0 : (targetObj.getComponent(Transform).y - transform.y);
+            const dist = Math.hypot(dx, dy);
+            if (dist > 10) {
+                desiredVelocity = { x: (dx / dist) * this.speed, y: (dy / dist) * this.speed };
+            }
+        } else if (this.behavior === 'Escape' && targetObj) {
+            const dx = transform.x - targetObj.getComponent(Transform).x;
+            const dy = (this.movementType === 'Platformer') ? 0 : (transform.y - targetObj.getComponent(Transform).y);
+            const dist = Math.hypot(dx, dy);
+            if (dist < 500) {
+                desiredVelocity = { x: (dx / dist) * this.speed, y: (dy / dist) * this.speed };
+            }
+        } else if (this.behavior === 'Wander') {
+            this._wanderTimer -= deltaTime;
+            if (this._wanderTimer <= 0) {
+                this._wanderAngle += (Math.random() - 0.5) * 90;
+                this._wanderTimer = 1 + Math.random() * 2;
+            }
+            const rad = this._wanderAngle * Math.PI / 180;
+            desiredVelocity = { x: Math.cos(rad) * this.speed, y: Math.sin(rad) * this.speed };
+        }
+
+        // --- 3. Esquivar obstáculos y decisiones por Raycast ---
+        const raySource = this.materia.getComponent(RaycastSource);
+        if (raySource && raySource.lastHits) {
+            raySource.lastHits.forEach((hit, idx) => {
+                if (hit) {
+                    // Evitación de obstáculos
+                    if (this.obstacleAvoidance && hit.distance < 100) {
+                        desiredVelocity.x += hit.normal.x * this.speed * 2;
+                        desiredVelocity.y += hit.normal.y * this.speed * 2;
+                    }
+
+                    // Cambio de comportamiento dinámico según tags detectados por rayos
+                    if (this.detectionTags.includes(hit.materia.tag)) {
+                        if (hit.distance < 150) {
+                            // Si está muy cerca de algo que detecta, prioriza escapar o atacar
+                            if (this.behavior === 'Wander') this.behavior = 'Escape';
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- 4. Aplicar movimiento ---
+        const rb = this.materia.getComponent(Rigidbody2D);
+        if (rb && rb.bodyType === 'Dynamic') {
+            rb.velocity.x = desiredVelocity.x / 100;
+            // En modo Plataformas, no sobreescribimos la velocidad Y para dejar que la gravedad actúe
+            if (this.movementType !== 'Platformer') {
+                rb.velocity.y = desiredVelocity.y / 100;
+            }
+        } else {
+            transform.x += desiredVelocity.x * deltaTime;
+            if (this.movementType !== 'Platformer') {
+                transform.y += desiredVelocity.y * deltaTime;
+            }
+        }
+
+        // --- 5. Rotación automática ---
+        if (this.autoRotate) {
+            if (Math.hypot(desiredVelocity.x, desiredVelocity.y) > 1) {
+                const targetRot = Math.atan2(desiredVelocity.y, desiredVelocity.x) * 180 / Math.PI;
+                transform.rotation += (targetRot - transform.rotation) * this.rotationSpeed;
+            }
+        }
+    }
+
+    _handleDetection(scene, transform) {
+        if (!this.functionName) return;
+
+        let scriptTargetObj = null;
+        if (typeof this.scriptTarget === 'number') {
+            scriptTargetObj = scene.findMateriaById(this.scriptTarget);
+        } else if (this.scriptTarget instanceof Materia) {
+            scriptTargetObj = this.scriptTarget;
+        }
+        if (!scriptTargetObj) return;
+
+        // Comprobar si algún objeto con los tags de detección está cerca
+        const raySource = this.materia.getComponent(RaycastSource);
+        let detected = false;
+
+        if (raySource && raySource.lastHits) {
+            detected = raySource.lastHits.some(hit => hit && this.detectionTags.includes(hit.materia.tag));
+        }
+
+        if (!detected) {
+            // Detección por proximidad simple como fallback o complemento
+            const materias = scene.getAllMaterias();
+            for (const m of materias) {
+                if (this.detectionTags.includes(m.tag)) {
+                    const mTrans = m.getComponent(Transform);
+                    if (mTrans) {
+                        const dist = Math.hypot(mTrans.x - transform.x, mTrans.y - transform.y);
+                        if (dist < this.detectionDistance) {
+                            detected = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (detected) {
+            // Ejecutar función en los scripts del objetivo
+            scriptTargetObj.getComponents(CreativeScript).forEach(script => {
+                if (script.instance && typeof script.instance[this.functionName] === 'function') {
+                    script._safeInvoke(this.functionName, this.materia);
+                }
+            });
+        }
+    }
+
+    clone() {
+        const copy = new BasicAI(null);
+        copy.target = this.target;
+        copy.behavior = this.behavior;
+        copy.movementType = this.movementType;
+        copy.speed = this.speed;
+        copy.autoRotate = this.autoRotate;
+        copy.rotationSpeed = this.rotationSpeed;
+        copy.obstacleAvoidance = this.obstacleAvoidance;
+        copy.detectionTags = [...this.detectionTags];
+        copy.detectionDistance = this.detectionDistance;
+        copy.scriptTarget = this.scriptTarget;
+        copy.functionName = this.functionName;
+        return copy;
+    }
+}
+registerComponent('BasicAI', BasicAI);
 
 export class CustomComponent extends Leyes {
     constructor(materia, definitionOrName) {

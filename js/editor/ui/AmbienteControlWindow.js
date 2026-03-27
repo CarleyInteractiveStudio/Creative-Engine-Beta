@@ -92,7 +92,7 @@ const AmbienteControlWindow = (() => {
 
                     if (currentProjectConfig && currentProjectConfig.rendererMode !== 'realista') {
                         const newColor = getColorForHour(val);
-                        ambiente.luzAmbiental = newColor;
+                            ambiente.nocheDiaColor = newColor; // Fixed property name
                         if (editorRenderer) editorRenderer.setAmbientLight(newColor);
                         if (gameRenderer) gameRenderer.setAmbientLight(newColor);
                     }

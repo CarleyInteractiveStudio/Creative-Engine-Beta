@@ -62,8 +62,9 @@ function getDrawingBounds(canvas) {
 }
 
 export function addFrameFromCanvas() {
+    const L = window.Localization;
     if (!currentAnimationAsset) {
-        window.Dialogs.showNotification('Error', 'No hay ningún asset de animación cargado.');
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SIN_ANIM_CARGADA', 'No hay ningún asset de animación cargado.'));
         return;
     }
 
@@ -98,7 +99,7 @@ export function addFrameFromCanvas() {
         currentFrameIndex = anim.frames.length - 1;
         populateTimeline();
     } else {
-        window.Dialogs.showNotification('Error', 'El asset de animación no tiene un estado de animación válido.');
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_ANIM_ESTADO_INVALIDO', 'El asset de animación no tiene un estado de animación válido.'));
         return;
     }
     drawOnionSkin();
@@ -129,8 +130,9 @@ export function populateTimeline() {
 }
 
 export async function saveAnimationAsset() {
+    const L = window.Localization;
     if (!currentAnimationAsset || !currentAnimationFileHandle) {
-        window.Dialogs.showNotification('Error', 'No hay asset de animación cargado para guardar.');
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SIN_ANIM_GUARDAR', 'No hay asset de animación cargado para guardar.'));
         return;
     }
     try {
@@ -159,10 +161,10 @@ export async function saveAnimationAsset() {
             });
         }
 
-        window.Dialogs.showNotification('Éxito', `Asset '${currentAnimationFileHandle.name}' guardado.`);
+        window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_ANIM_GUARDADA', 'Asset guardado correctamente')}: ${currentAnimationFileHandle.name}`);
     } catch (error) {
         console.error("Error al guardar el asset de animación:", error);
-        window.Dialogs.showNotification('Error', 'No se pudo guardar el archivo.');
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_GUARDAR_ARCHIVO', 'No se pudo guardar el archivo.'));
     }
 }
 
@@ -235,6 +237,7 @@ export function resetAnimationPanel() {
 }
 
 async function imageToDataURL(url) {
+    const L = window.Localization;
     return new Promise((resolve, reject) => {
         const img = new Image();
         img.crossOrigin = "Anonymous";
@@ -246,12 +249,13 @@ async function imageToDataURL(url) {
             ctx.drawImage(img, 0, 0);
             resolve(canvas.toDataURL('image/png'));
         };
-        img.onerror = () => reject(new Error("No se pudo cargar la imagen."));
+        img.onerror = () => reject(new Error(L.get('ERROR_CARGAR_IMAGEN', "No se pudo cargar la imagen.")));
         img.src = url;
     });
 }
 
 async function extractFramesFromImage(imageUrl, cols, rows) {
+    const L = window.Localization;
     return new Promise((resolve, reject) => {
         const img = new Image();
         img.crossOrigin = "Anonymous";
@@ -275,7 +279,7 @@ async function extractFramesFromImage(imageUrl, cols, rows) {
             }
             resolve(frames);
         };
-        img.onerror = () => reject(new Error("No se pudo cargar la imagen para extraer los fotogramas."));
+        img.onerror = () => reject(new Error(L.get('ERROR_EXTRAER_FRAMES', "No se pudo cargar la imagen para extraer los fotogramas.")));
         img.src = imageUrl;
     });
 }
@@ -315,8 +319,9 @@ function addFramesToAnimation(newFrames) {
 }
 
 export async function importAssets() {
+    const L = window.Localization;
     if (!currentAnimationAsset) {
-        window.Dialogs.showNotification('Error', 'No hay ningún asset de animación cargado.');
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SIN_ANIM_CARGADA', 'No hay ningún asset de animación cargado.'));
         return;
     }
 
@@ -325,7 +330,7 @@ export async function importAssets() {
             if (!selectedItems || selectedItems.length === 0) return;
             const items = Array.isArray(selectedItems) ? selectedItems : [selectedItems];
             processImportItems(items);
-        }, { multiple: true, filter: ['image'], title: "Importar Imagen(es) de Assets" });
+        }, { multiple: true, filter: ['image'], title: L.get('TITULO_IMPORTAR_ASSETS', "Importar Imagen(es) de Assets") });
     };
 
     const pickFromDisk = () => {
@@ -351,9 +356,9 @@ export async function importAssets() {
     };
 
     window.Dialogs.showSelection(
-        "Importar Imágenes",
-        "¿De dónde quieres importar las fotos?",
-        ["De la Carpeta Assets (Proyecto)", "De mi Computadora (Disco)"],
+        L.get('TITULO_IMPORTAR_IMAGENES', "Importar Imágenes"),
+        L.get('PROMPT_IMPORTAR_FOTOS', "¿De dónde quieres importar las fotos?"),
+        [L.get('OPCION_DE_ASSETS', "De la Carpeta Assets (Proyecto)"), L.get('OPCION_DE_DISCO', "De mi Computadora (Disco)")],
         (value, index) => {
             if (index === 0) pickFromAssets();
             else pickFromDisk();
@@ -362,6 +367,7 @@ export async function importAssets() {
 }
 
 async function processImportItems(items) {
+    const L = window.Localization;
     const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
     if (items.length === 1) {
         const item = items[0];
@@ -369,9 +375,9 @@ async function processImportItems(items) {
         if (!url) return;
 
         window.Dialogs.showSelection(
-            "Importar Imagen",
-            "¿Cómo quieres importar esta imagen?",
-            ["Como un solo fotograma", "Como una hoja de sprites (Slice)"],
+            L.get('TITULO_IMPORTAR_IMAGEN', "Importar Imagen"),
+            L.get('PROMPT_COMO_IMPORTAR', "¿Cómo quieres importar esta imagen?"),
+            [L.get('OPCION_SOLO_FRAME', "Como un solo fotograma"), L.get('OPCION_SPRITESHEET', "Como una hoja de sprites (Slice)")],
             async (value, index) => {
                 if (index === 0) { // Single frame
                     try {
@@ -379,19 +385,19 @@ async function processImportItems(items) {
                         addFramesToAnimation([dataUrl]);
                     } catch (e) {
                         console.error(e);
-                        window.Dialogs.showNotification("Error", "No se pudo importar la imagen.");
+                        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_IMPORTAR_IMAGEN', "No se pudo importar la imagen."));
                     }
                 } else { // Spritesheet
-                    window.Dialogs.showPrompt("Hoja de Sprites", "Número de Columnas:", (cols) => {
+                    window.Dialogs.showPrompt(L.get('TITULO_HOJA_SPRITES', "Hoja de Sprites"), L.get('PROMPT_COLUMNAS', "Número de Columnas:"), (cols) => {
                         if (!cols || isNaN(cols) || cols <= 0) return;
-                        window.Dialogs.showPrompt("Hoja de Sprites", "Número de Filas:", async (rows) => {
+                        window.Dialogs.showPrompt(L.get('TITULO_HOJA_SPRITES', "Hoja de Sprites"), L.get('PROMPT_FILAS', "Número de Filas:"), async (rows) => {
                             if (!rows || isNaN(rows) || rows <= 0) return;
                             try {
                                 const frames = await extractFramesFromImage(url, parseInt(cols), parseInt(rows));
                                 addFramesToAnimation(frames);
                             } catch (e) {
                                 console.error(e);
-                                window.Dialogs.showNotification("Error", "No se pudieron extraer los fotogramas.");
+                                window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_EXTRAER_FOTOGRAMAS', "No se pudieron extraer los fotogramas."));
                             }
                         });
                     });
@@ -636,15 +642,16 @@ function drawOnionSkin() {
 
     // --- Quick Create from Overlay ---
     const quickCreateBtn = document.getElementById('btn-create-animation-quick');
+    const L = window.Localization;
     if (quickCreateBtn) {
         quickCreateBtn.onclick = async () => {
             if (window.Dialogs) {
-                window.Dialogs.showPrompt("Nueva Animación", "Introduce el nombre del asset (.cea):", async (name) => {
+                window.Dialogs.showPrompt(L.get('TITULO_NUEVA_ANIMACION', "Nueva Animación"), L.get('PROMPT_NOMBRE_CEA', "Introduce el nombre del asset (.cea):"), async (name) => {
                     if (!name) return;
                     const fileName = name.endsWith('.cea') ? name : `${name}.cea`;
                     const dirHandle = getCurrentDirectoryHandle ? getCurrentDirectoryHandle() : null;
                     if (!dirHandle) {
-                        window.Dialogs.showNotification("Error", "No se pudo obtener el directorio actual de assets.");
+                        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_DIR_ASSETS', "No se pudo obtener el directorio actual de assets."));
                         return;
                     }
 
@@ -681,7 +688,7 @@ function drawOnionSkin() {
         dom.animationPanel.classList.remove('drag-over');
 
         if (!currentAnimationAsset) {
-            window.Dialogs.showNotification('Error', 'Carga un asset de animación (.cea) antes de soltar imágenes.');
+            window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_DROP_ANIM', 'Carga un asset de animación (.cea) antes de soltar imágenes.'));
             return;
         }
 
@@ -711,7 +718,7 @@ function drawOnionSkin() {
 
     dom.deleteFrameBtn.addEventListener('click', () => {
         if (currentFrameIndex === -1) {
-            window.Dialogs.showNotification('Aviso', 'Por favor, selecciona un fotograma para borrar.');
+            window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('AVISO_SELECCION_FRAME', 'Por favor, selecciona un fotograma para borrar.'));
             return;
         }
 

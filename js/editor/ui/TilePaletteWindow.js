@@ -77,7 +77,8 @@ export async function createNewPalette(name, dirHandle) {
         await openPalette(fileHandle);
     } catch (error) {
         console.error(`Error creating new palette file ${name}:`, error);
-        showNotification('Error', `Failed to create palette: ${error.message}`);
+        const L = window.Localization;
+        showNotification(L.get('ERROR', 'Error'), `${L.get('ERROR_CREAR_PALETA', 'Fallo al crear la paleta')}: ${error.message}`);
     }
 }
 
@@ -89,6 +90,7 @@ export async function openPalette(fileHandle) {
         currentFileHandle = fileHandle;
 
         // --- Compatibility Check & Conversion ---
+        const L = window.Localization;
         if (paletteData.spritePacks) { // This is a legacy palette
             console.log("Legacy palette detected. Converting to new format in memory.");
             const newTiles = {};
@@ -100,7 +102,7 @@ export async function openPalette(fileHandle) {
                 tiles: {}, // User will need to re-populate this.
                 associatedSpritePacks: paletteData.spritePacks
             };
-            showNotification('Paleta Actualizada', 'Formato de paleta antiguo detectado. Se ha actualizado al nuevo formato. Por favor, organiza y guarda la paleta.');
+            showNotification(L.get('TITULO_PALETA_ACTUALIZADA', 'Paleta Actualizada'), L.get('MSG_PALETA_OLD_FORMAT', 'Formato de paleta antiguo detectado. Se ha actualizado al nuevo formato. Por favor, organiza y guarda la paleta.'));
         }
 
         currentPalette = paletteData;
@@ -138,7 +140,8 @@ export async function openPalette(fileHandle) {
 
     } catch (error) {
         console.error(`Error opening palette ${fileHandle.name}:`, error);
-        showNotification('Error', `No se pudo abrir la paleta: ${error.message}`);
+        const L = window.Localization;
+        showNotification(L.get('ERROR', 'Error'), `${L.get('ERROR_ABRIR_PALETA', 'No se pudo abrir la paleta')}: ${error.message}`);
         currentPalette = null;
         currentFileHandle = null;
         dom.fileNameSpan.textContent = 'Error';
@@ -231,12 +234,13 @@ function setupEventListeners() {
 
     dom.associateSpriteBtn.addEventListener('click', () => {
         if (!currentPalette) return;
+        const L = window.Localization;
         openAssetSelectorCallback(async (fileHandle, fullPath) => {
             if (!currentPalette.associatedSpritePacks.includes(fullPath)) {
                 currentPalette.associatedSpritePacks.push(fullPath);
                 await loadAndDisplayAssociatedSprites();
             } else {
-                showNotification('Aviso', 'Este paquete de sprites ya está asociado.');
+                showNotification(L.get('AVISO', 'Aviso'), L.get('AVISO_SPRITE_ASOCIADO', 'Este paquete de sprites ya está asociado.'));
             }
         }, ['.ceSprite', 'image', '.cea']);
     });
@@ -258,8 +262,9 @@ function setupEventListeners() {
     });
 
     dom.disassociateSpriteBtn.addEventListener('click', () => {
+        const L = window.Localization;
         if (!currentPalette || !currentPalette.associatedSpritePacks || currentPalette.associatedSpritePacks.length === 0) {
-            showNotification('Aviso', 'No hay paquetes de sprites asociados para eliminar.');
+            showNotification(L.get('AVISO', 'Aviso'), L.get('AVISO_SIN_PACKS_DISASOCIAR', 'No hay paquetes de sprites asociados para eliminar.'));
             return;
         }
 
@@ -279,14 +284,14 @@ function setupEventListeners() {
                     await loadAndDisplayAssociatedSprites();
                     drawTiles(); // Redraw canvas to ensure UI consistency.
 
-                    showNotification('Éxito', `El paquete '${shortName}' ha sido desasociado. Los tiles existentes en la paleta no han sido modificados.`);
+                    showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_PACK_DISASOCIADO', 'El paquete ha sido desasociado. Los tiles existentes en la paleta no han sido modificados.')}: ${shortName}`);
                 } catch (error) {
                     console.error(`Error during disassociation of ${fullPath}:`, error);
-                    showNotification('Error', `No se pudo desasociar el paquete: ${error.message}`);
+                    showNotification(L.get('ERROR', 'Error'), `${L.get('ERROR_DISASOCIAR_PACK', 'No se pudo desasociar el paquete')}: ${error.message}`);
                 }
             },
             {
-                title: 'Seleccionar Pack para Desasociar',
+                title: L.get('TITULO_SELECT_PACK_DISASOCIAR', 'Seleccionar Pack para Desasociar'),
                 fileList: currentPalette.associatedSpritePacks,
                 filter: ['.ceSprite']
             }
@@ -438,6 +443,7 @@ function toggleOrganizeMode() {
 
 async function saveCurrentPalette() {
     if (!currentFileHandle || !currentPalette) return;
+    const L = window.Localization;
     try {
         // Update the paintOrder array based on the current `allTiles` order
         currentPalette.paintOrder = allTiles.map(tile => tile.coord);
@@ -445,10 +451,10 @@ async function saveCurrentPalette() {
         const writable = await currentFileHandle.createWritable();
         await writable.write(JSON.stringify(currentPalette, null, 2));
         await writable.close();
-        showNotification('Éxito', 'Paleta guardada exitosamente.');
+        showNotification(L.get('EXITO', 'Éxito'), L.get('EXITO_PALETA_GUARDADA', 'Paleta guardada exitosamente.'));
     } catch (error) {
         console.error("Error saving palette:", error);
-        showNotification('Error', `Failed to save palette: ${error.message}`);
+        showNotification(L.get('ERROR', 'Error'), `${L.get('ERROR_GUARDAR_PALETA', 'Fallo al guardar la paleta')}: ${error.message}`);
     }
 }
 
@@ -545,10 +551,11 @@ function handleCanvasMouseDown(event) {
                 selectedTileIds = [];
 
                 const clickedIndex = getTileIndexFromEvent(event);
+                const L = window.Localization;
                 if (clickedIndex >= 0 && clickedIndex < allTiles.length) {
                     selectedTileId = (selectedTileId === clickedIndex) ? -1 : clickedIndex;
                     // Use "1 Tile" for consistency with rectangle selection counter
-                    dom.selectedTileIdSpan.textContent = selectedTileId === -1 ? '-' : '1 Tile';
+                    dom.selectedTileIdSpan.textContent = selectedTileId === -1 ? '-' : L.get('TILE_COUNT_1', '1 Tile');
                     if (selectedTileId !== -1 && setActiveToolCallback) {
                         setActiveToolCallback(activeTool);
                     }
@@ -697,11 +704,12 @@ async function loadAndDisplayAssociatedSprites() {
         }
     }
 
+    const L = window.Localization;
     if (wasCleaned) {
         currentPalette.associatedSpritePacks = validSpritePacks;
         showNotification(
-            'Paleta Limpiada',
-            'Se eliminaron las asociaciones de sprites no válidas o corruptas. Guarda la paleta para aplicar los cambios.'
+            L.get('TITULO_PALETA_LIMPIADA', 'Paleta Limpiada'),
+            L.get('MSG_PALETA_LIMPIADA', 'Se eliminaron las asociaciones de sprites no válidas o corruptas. Guarda la paleta para aplicar los cambios.')
         );
     }
 }
@@ -782,10 +790,11 @@ function handleCanvasMouseUp(event) {
         });
 
         // MY CHANGE: Use "Tiles" for counter consistency
+        const L = window.Localization;
         if (selectedTileIds.length === 0) {
             dom.selectedTileIdSpan.textContent = '-';
         } else {
-            dom.selectedTileIdSpan.textContent = `${selectedTileIds.length} Tiles`;
+            dom.selectedTileIdSpan.textContent = L.get('TILE_COUNT_MULTI', '{count} Tiles').replace('{count}', selectedTileIds.length);
         }
 
         rectStartPoint = null;
@@ -840,13 +849,14 @@ function drawPaintMode() {
     const TOTAL_CELL_SIZE = TILE_SIZE + PADDING;
 
     if (allTiles.length === 0) {
+        const L = window.Localization;
         ctx.clearRect(0, 0, dom.gridCanvas.width, dom.gridCanvas.height);
         dom.gridCanvas.width = dom.viewContainer.clientWidth;
         dom.gridCanvas.height = dom.viewContainer.clientHeight;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
         ctx.textAlign = 'center';
-        ctx.fillText("Esta paleta está vacía.", dom.gridCanvas.width / 2, 50);
-        ctx.fillText("Entra en 'Modo Edición' para asociar sprites y añadirlos.", dom.gridCanvas.width / 2, 70);
+        ctx.fillText(L.get('MSG_PALETA_VACIA', "Esta paleta está vacía."), dom.gridCanvas.width / 2, 50);
+        ctx.fillText(L.get('MSG_MODO_EDICION_HINT', "Entra en 'Modo Edición' para asociar sprites y añadirlos."), dom.gridCanvas.width / 2, 70);
         return;
     }
 

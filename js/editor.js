@@ -41,6 +41,7 @@ import { getCustomComponentDefinitions } from './editor/EngineAPIExtension.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
 import { buildProject } from './editor/BuildSystem.js';
+import { Localization } from './engine/Localization.js';
 
 // Debug configuration
 window.CE_DEBUG_ANIMATION = false;
@@ -218,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'ks-alias', 'ks-password', 'ks-validity', 'ks-cn', 'ks-ou', 'ks-o', 'ks-l', 'ks-st', 'ks-c', 'ks-filename',
             'ks-storepass', 'ks-command-output', 'ks-command-textarea', 'ks-generate-btn', 'settings-sorting-layer-list',
             'new-sorting-layer-name', 'add-sorting-layer-btn', 'settings-collision-layer-list', 'new-collision-layer-name',
-            'add-collision-layer-btn', 'settings-tag-list', 'new-tag-name', 'add-tag-btn', 'settings-layer-list', 'prefs-theme', 'prefs-custom-theme-picker', 'prefs-color-bg', 'prefs-color-header',
+            'add-collision-layer-btn', 'settings-tag-list', 'new-tag-name', 'add-tag-btn', 'settings-layer-list', 'prefs-lang', 'prefs-theme', 'prefs-custom-theme-picker', 'prefs-color-bg', 'prefs-color-header',
             'prefs-color-accent', 'prefs-autosave-toggle', 'prefs-autosave-interval-group', 'prefs-autosave-interval',
             'prefs-save-btn', 'prefs-script-lang', 'prefs-show-scene-grid', 'prefs-snapping-toggle', 'prefs-snapping-grid-size-group',
             'prefs-snapping-grid-size', 'prefs-zoom-speed', 'prefs-reset-layout-btn',
@@ -445,7 +446,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentViewMode === 'folders' && !isFileListMode && currentPath !== 'Assets') {
                  const upItem = document.createElement('div');
                 upItem.className = 'grid-item';
-                upItem.innerHTML = `<div class="icon" style="font-size: 2.5em;">⤴️</div><div class="name">..</div>`;
+                upItem.innerHTML = `<div class="icon" style="font-size: 2em;"><img src="icons/skip-back.svg" class="ce-icon" style="transform: rotate(90deg); width: 32px; height: 32px;"></div><div class="name">..</div>`;
                 upItem.addEventListener('dblclick', async () => {
                     const parentPath = currentPath.substring(0, currentPath.lastIndexOf('/'));
                     const projectName = new URLSearchParams(window.location.search).get('project');
@@ -482,7 +483,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 uiItem.dataset.name = name;
 
                 if (kind === 'directory') {
-                    uiItem.innerHTML = `<div class="icon">📁</div><div class="name">${name}</div>`;
+                    uiItem.innerHTML = `<div class="icon"><img src="icons/folder.svg" class="ce-icon" style="width: 32px; height: 32px;"></div><div class="name">${name}</div>`;
                     uiItem.addEventListener('dblclick', async () => {
                         currentDirHandle = await currentDirHandle.getDirectoryHandle(name);
                         currentPath = `${currentPath}/${name}`;
@@ -495,17 +496,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // Specific icons for known file types
                     if (name.endsWith('.cea')) {
-                        iconContainer.innerHTML = '🎞️';
+                        iconContainer.innerHTML = `<img src="icons/clapperboard.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                     } else if (name.endsWith('.ceanim')) {
-                        iconContainer.innerHTML = '🕹️';
+                        iconContainer.innerHTML = `<img src="icons/gamepad.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                     } else if (name.endsWith('.ceprefab')) {
-                        iconContainer.innerHTML = '🧊';
+                        iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                     } else if (name.endsWith('.ceScene')) {
-                        iconContainer.innerHTML = '🎬';
+                        iconContainer.innerHTML = `<img src="icons/clapperboard.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                     } else if (name.endsWith('.ces')) {
-                        iconContainer.innerHTML = '📜';
+                        iconContainer.innerHTML = `<img src="icons/scroll.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                     } else if (name.endsWith('.chc')) {
-                        iconContainer.innerHTML = '🤖';
+                        iconContainer.innerHTML = `<img src="icons/bot.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                     } else {
                         const imgIcon = document.createElement('img');
                         imgIcon.className = 'icon-preview';
@@ -514,7 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 imgIcon.src = url;
                                 iconContainer.appendChild(imgIcon);
                             } else {
-                                iconContainer.textContent = '📄';
+                                iconContainer.innerHTML = `<img src="icons/file.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                             }
                         });
                     }
@@ -681,7 +682,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
         // Dynamic title generation
-        let titleText = (options && options.title) ? options.title : 'Seleccionar Archivo';
+        let titleText = (options && options.title) ? options.title : (window.Localization?.get('SELECCIONAR_ARCHIVO') || 'Seleccionar Archivo');
         if (!options.title && !isFileListMode) { // Don't override title in file list mode unless specified
             if (typeof filter === 'string') {
                 titleText = `Seleccionar ${filter.charAt(0).toUpperCase() + filter.slice(1)}`;
@@ -862,7 +863,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'verification-system-panel': 'menu-window-verification-system',
             'ambiente-control-panel': 'menu-window-ambiente-control'
         };
-        const checkmark = '✅ ';
+        const checkmark = '✓ ';
 
         for (const [panelId, menuId] of Object.entries(menuItems)) {
             const panel = document.getElementById(panelId);
@@ -1043,7 +1044,10 @@ document.addEventListener('DOMContentLoaded', () => {
     runChecksAndPlay = async function() {
         try {
             if (!isEditorReady) {
-                showNotificationDialog('Editor Ocupado', 'El editor todavía está procesando archivos en segundo plano. Por favor, espera un momento.');
+                showNotificationDialog(
+                    window.Localization?.get('EDITOR_OCUPADO') || 'Editor Ocupado',
+                    window.Localization?.get('EDITOR_OCUPADO_MSG') || 'El editor todavía está procesando archivos en segundo plano. Por favor, espera un momento.'
+                );
                 return;
             }
 
@@ -1057,7 +1061,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const projectName = new URLSearchParams(window.location.search).get('project') || 'Juego';
                 gameWindow = window.open('runner.html', 'CreativeEngineGame', 'width=800,height=600');
                 if (!gameWindow) {
-                    showNotificationDialog('Popup Bloqueado', 'No se pudo abrir la ventana del juego. Por favor, permite las ventanas emergentes para este sitio en tu navegador.');
+                    showNotificationDialog(
+                        window.Localization?.get('POPUP_BLOQUEADO') || 'Popup Bloqueado',
+                        window.Localization?.get('POPUP_BLOQUEADO_MSG') || 'No se pudo abrir la ventana del juego. Por favor, permite las ventanas emergentes para este sitio en tu navegador.'
+                    );
                     return;
                 }
 
@@ -1162,13 +1169,17 @@ document.addEventListener('DOMContentLoaded', () => {
             // Cambiar a la pestaña de la consola para que los errores sean visibles
             dom.assetsPanel.querySelector('[data-tab="console-content"]').click();
         } else {
-            console.log("✅ Build exitoso. Todos los scripts se compilaron sin errores.");
+            console.log("[Build] Build exitoso. Todos los scripts se compilaron sin errores.");
             // 4. Iniciar el juego. La lógica ahora está en startGame.
             originalStartGame();
         }
         } catch (e) {
             console.error("Error durante la preparación del juego:", e);
-            showNotificationDialog('Error de Inicio', `No se pudo iniciar el juego: ${e.message}`);
+            showNotificationDialog(
+                window.Localization?.get('ERROR_DE_INICIO') || 'Error de Inicio',
+                (window.Localization?.get('ERROR_INICIAR_JUEGO_MSG') || "No se pudo iniciar el juego: {error}")
+                    .replace('{error}', e.message)
+            );
         }
     };
 
@@ -3129,6 +3140,10 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
 
     // --- 7. Initial Setup ---
     async function initializeEditor() {
+        // Initialize localization
+        await Localization.init();
+        Localization.updateUI();
+
         // Inject editor logic into engine components for editor mode
         Components.setEditorLogic({
             getTranspiledCode: (name) => CES_Transpiler.getTranspiledCode(name),

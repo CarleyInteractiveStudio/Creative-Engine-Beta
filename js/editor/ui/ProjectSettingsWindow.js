@@ -20,7 +20,10 @@ export function initialize(editorDom, editorProjectsDirHandle, config, getPrefsF
 
 export async function saveProjectConfig(showAlert = true) {
     if (!projectsDirHandle) {
-        if(showAlert) showNotification('Error', 'El directorio del proyecto no está disponible.');
+        if(showAlert) showNotification(
+            window.Localization?.get('ERROR') || 'Error',
+            window.Localization?.get('ERROR_DIRECTORIO_NO_DISPONIBLE') || 'El directorio del proyecto no está disponible.'
+        );
         return;
     }
 
@@ -70,10 +73,16 @@ export async function saveProjectConfig(showAlert = true) {
         await writable.write(JSON.stringify(currentProjectConfig, null, 2));
         await writable.close();
         console.log("Configuración del proyecto guardada.");
-        if(showAlert) showNotification('Éxito', '¡Configuración guardada!');
+        if(showAlert) showNotification(
+            window.Localization?.get('EXITO') || 'Éxito',
+            window.Localization?.get('CONFIG_GUARDADA') || '¡Configuración guardada!'
+        );
     } catch (error) {
         console.error("Error al guardar la configuración del proyecto:", error);
-        if(showAlert) showNotification('Error', 'No se pudo guardar la configuración.');
+        if(showAlert) showNotification(
+            window.Localization?.get('ERROR') || 'Error',
+            window.Localization?.get('ERROR_GUARDAR_CONFIG') || 'No se pudo guardar la configuración.'
+        );
     }
 }
 
@@ -95,7 +104,7 @@ function populateTagsAndLayers() {
             const removeBtn = document.createElement('button');
             removeBtn.className = 'remove-layer-btn';
             removeBtn.textContent = '×';
-            removeBtn.title = 'Quitar tag';
+            removeBtn.title = window.Localization?.get('QUITAR_TAG') || 'Quitar tag';
             removeBtn.addEventListener('click', () => {
                 const index = currentProjectConfig.tags.indexOf(tag);
                 if (index > -1) {
@@ -165,7 +174,7 @@ function addLogoToList(fileOrPath, duration = 5) {
     if (typeof fileOrPath === 'string') {
         fileName.textContent = fileOrPath;
         listItem.dataset.path = fileOrPath;
-        img.src = 'image/Paquete.png';
+        img.src = 'icons/box.svg';
     } else {
         fileName.textContent = fileOrPath.name;
         listItem.dataset.path = fileOrPath.name;
@@ -188,7 +197,7 @@ function addLogoToList(fileOrPath, duration = 5) {
     });
 
     const removeBtn = document.createElement('button');
-    removeBtn.textContent = 'Quitar';
+    removeBtn.textContent = window.Localization?.get('QUITAR') || 'Quitar';
     removeBtn.className = 'danger-btn';
     removeBtn.addEventListener('click', () => {
         listItem.remove();
@@ -346,7 +355,7 @@ export function populateUI(config) {
 
     if (dom.settingsIconPreview && currentProjectConfig.iconPath) {
         dom.settingsIconPreview.style.display = 'block';
-        dom.settingsIconPreview.src = 'image/Paquete.png';
+        dom.settingsIconPreview.src = 'icons/box.svg';
     }
 
     dom.settingsLogoList.innerHTML = '';

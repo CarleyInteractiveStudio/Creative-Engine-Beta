@@ -27,49 +27,68 @@ let enterAddTilemapLayerMode = () => {}; // Callback to notify SceneView
 const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
-    'Renderizado': [Components.SpriteRenderer, Components.TextureRender, Components.DrawingOrder],
-    'Mapa': [Components.Grid, Components.Tilemap, Components.TilemapRenderer, Components.Parallax, Components.Terreno2D],
-    'Iluminación': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
-    'Utilidades': [Components.Gyzmo],
-    'Animación': [Components.Animator, Components.AnimatorController],
-    'Cámara': [Components.Camera],
-    'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D],
-    'UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button],
-    'Basico': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem],
-    'Scripting': [Components.CreativeScript]
+    'CAT_RENDERIZADO': [Components.SpriteRenderer, Components.TextureRender, Components.DrawingOrder],
+    'CAT_MAPA': [Components.Grid, Components.Tilemap, Components.TilemapRenderer, Components.Parallax, Components.Terreno2D],
+    'CAT_ILUMINACION': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
+    'CAT_UTILIDADES': [Components.Gyzmo],
+    'CAT_ANIMACION': [Components.Animator, Components.AnimatorController],
+    'CAT_CAMARA': [Components.Camera],
+    'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D],
+    'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button],
+    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI],
+    'CAT_SCRIPTING': [Components.CreativeScript]
 };
 
 const componentIcons = {
-    Transform: '✥', Rigidbody2D: '🏋️', BoxCollider2D: '🟩', CapsuleCollider2D: '💊', PolygonCollider2D: '⬡', SpriteRenderer: '🖼️',
-    Animator: '🏃', AnimatorController: '🕹️', Camera: '📷', CreativeScript: '📜',
-    UITransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
-    Grid: '▦', Tilemap: '🗺️', TilemapRenderer: '🖌️', TilemapCollider2D: '▦',
-    Terreno2D: '⛰️', TerrenoCollider2D: '⛰️',
-    Button: '🖲️', UIText: '📝', Canvas: '🖼️',
-    Movement: '🏃', CameraFollow: '📹', Parallax: '🏔️', DrawingOrder: '🥞', ProjectileLauncher: '🚀', AutoDestroy: '⏱️', Health: '❤️', Patrol: '🛤️',
-    'ParticleSystem': '✨',
-    'Gyzmo': '🎯'
+    Transform: 'move', Rigidbody2D: 'weight', BoxCollider2D: 'square', CapsuleCollider2D: 'pill', PolygonCollider2D: 'hexagon', SpriteRenderer: 'image',
+    Animator: 'run', AnimatorController: 'gamepad', Camera: 'camera', CreativeScript: 'scroll',
+    UITransform: 'box', UICanvas: 'image', UIImage: 'image', PointLight2D: 'lightbulb', SpotLight2D: 'flashlight', FreeformLight2D: 'pencil', SpriteLight2D: 'sparkles',
+    Grid: 'grid', Tilemap: 'map', TilemapRenderer: 'brush', TilemapCollider2D: 'grid',
+    Terreno2D: 'mountain', TerrenoCollider2D: 'mountain',
+    Button: 'mouse-pointer', UIText: 'type', Canvas: 'image',
+    Movement: 'run', CameraFollow: 'video', Parallax: 'mountain-snow', DrawingOrder: 'layers', ProjectileLauncher: 'rocket', AutoDestroy: 'timer', Health: 'heart', Patrol: 'route',
+    'ParticleSystem': 'sparkles',
+    'Gyzmo': 'target',
+    'RaycastSource': 'route',
+    'BasicAI': 'bot'
 };
 
 const fileIcons = {
-    png: '🖼️', jpg: '🖼️', jpeg: '🖼️',
-    mp3: '🔊', wav: '🔊',
-    ceprefab: '🧊',
-    ceScene: '🎬',
-    ces: '📜',
-    chc: '🤖',
-    cea: '🎞️'
+    png: 'image', jpg: 'image', jpeg: 'image',
+    mp3: 'music', wav: 'music',
+    ceprefab: 'box',
+    ceScene: 'clapperboard',
+    ces: 'scroll',
+    chc: 'bot',
+    cea: 'clapperboard'
+};
+
+const getIconHTML = (iconName) => {
+    if (!iconName) return '';
+    if (iconName.startsWith('<')) return iconName;
+    const path = iconName.includes('/') ? iconName : `icons/${iconName}.svg`;
+    return `<img src="${path}" class="ce-icon">`;
 };
 
 const typeExtensionMap = {
     'Sprite': ['.png', '.jpg', '.jpeg', '.ceSprite'],
+    'sprite': ['.png', '.jpg', '.jpeg', '.ceSprite'],
     'Audio': ['.mp3', '.wav'],
+    'audio': ['.mp3', '.wav'],
     'Prefab': ['.ceprefab'],
+    'prefab': ['.ceprefab'],
     'Scene': ['.ceScene'],
+    'escena': ['.ceScene'],
     'Font': ['.ttf', '.otf', '.woff', '.woff2'],
     'Animation': ['.ceanimclip', '.cea'],
+    'animacion': ['.ceanimclip', '.cea'],
     'AnimatorController': ['.ceanim'],
-    'CreativeScript': ['.ces', '.chc']
+    'controlador': ['.ceanim'],
+    'CreativeScript': ['.ces', '.chc'],
+    'script': ['.ces', '.chc'],
+    'UI': ['.ceui'],
+    'ui': ['.ceui'],
+    'UIImage': ['.png', '.jpg', '.jpeg', '.ceSprite']
 };
 
 // --- Initialization ---
@@ -155,14 +174,62 @@ async function handleInspectorDrop(e) {
         if (expectedType === 'Materia' || expectedType === 'any') {
             valueToAssign = droppedMateriaId;
             isValid = true;
-        } else if (componentIcons[expectedType]) {
-            // Check if dropped Materia has the required component
-            const component = droppedMateria.getComponent(Components[expectedType]);
-            if (component) {
-                valueToAssign = droppedMateriaId;
-                isValid = true;
-            } else {
-                window.Dialogs.showNotification('Componente Faltante', `El objeto '${droppedMateria.name}' no tiene un componente ${expectedType}.`);
+        } else if (expectedType === 'Tag' || expectedType === 'tag') {
+            valueToAssign = droppedMateria.tag;
+            isValid = true;
+        } else if (expectedType === 'Layer' || expectedType === 'layer') {
+            valueToAssign = droppedMateria.layer;
+            isValid = true;
+        } else {
+            // --- Smart Component Search ---
+            const typeToSearch = {
+                'Sprite': Components.SpriteRenderer,
+                'sprite': Components.SpriteRenderer,
+                'Audio': Components.AudioSource,
+                'audio': Components.AudioSource,
+                'Animation': Components.Animator,
+                'animacion': Components.Animator,
+                'AnimatorController': Components.AnimatorController,
+                'controlador': Components.AnimatorController,
+                'UI': Components.UITransform,
+                'ui': Components.UITransform,
+                'UIImage': Components.UIImage,
+                'imagen': Components.UIImage,
+                'CreativeScript': Components.CreativeScript,
+                'script': Components.CreativeScript,
+                'Rigidbody2D': Components.Rigidbody2D,
+                'fisica': Components.Rigidbody2D,
+                'Camera': Components.Camera,
+                'camara': Components.Camera,
+                'RaycastSource': Components.RaycastSource,
+                'rallo': Components.RaycastSource,
+                'BasicAI': Components.BasicAI,
+                'iaBasica': Components.BasicAI
+            }[expectedType] || Components[expectedType];
+
+            if (typeToSearch) {
+                const component = droppedMateria.getComponent(typeToSearch);
+                if (component) {
+                    valueToAssign = droppedMateriaId;
+                    isValid = true;
+                } else {
+                    // Si no encuentra el componente exacto, buscamos si tiene alguno que empiece por el nombre (para alias)
+                    const found = droppedMateria.leyes.find(l => l.constructor.name === expectedType || l.constructor.name.toLowerCase() === expectedType.toLowerCase());
+                    if (found) {
+                        valueToAssign = droppedMateriaId;
+                        isValid = true;
+                    } else {
+                        window.Dialogs.showNotification('Componente Faltante', `El objeto '${droppedMateria.name}' no tiene un componente compatible con '${expectedType}'.`);
+                    }
+                }
+            } else if (componentIcons[expectedType]) {
+                const component = droppedMateria.getComponent(Components[expectedType]);
+                if (component) {
+                    valueToAssign = droppedMateriaId;
+                    isValid = true;
+                } else {
+                    window.Dialogs.showNotification('Componente Faltante', `El objeto '${droppedMateria.name}' no tiene un componente ${expectedType}.`);
+                }
             }
         }
     } else if (data.type === 'Asset') {
@@ -325,6 +392,11 @@ function handleInspectorInput(e) {
         component.cellSize.x = value;
         component.cellSize.y = value;
         return; // Early return to avoid nested property logic
+    }
+
+    if (componentName === 'BasicAI' && propPath === 'detectionTagsString') {
+        component.detectionTags = value.split(',').map(s => s.trim()).filter(s => s !== '');
+        return;
     }
 
     // Handle nested properties like scale.x
@@ -645,6 +717,26 @@ function handleInspectorClick(e) {
         if (tilemap) {
             tilemap.addLayer();
             updateInspector();
+        }
+    }
+
+    // --- RaycastSource (Rallo) Management ---
+    if (e.target.matches('[data-action="rallo-add-ray"]')) {
+        const rallo = selectedMateria.getComponent(Components.RaycastSource);
+        if (rallo) {
+            rallo.rays.push({ angle: 0, length: 200 });
+            updateInspector();
+            if (updateSceneCallback) updateSceneCallback();
+        }
+    }
+
+    if (e.target.matches('[data-action="rallo-remove-ray"]')) {
+        const rallo = selectedMateria.getComponent(Components.RaycastSource);
+        const index = parseInt(e.target.dataset.index, 10);
+        if (rallo && !isNaN(index)) {
+            rallo.rays.splice(index, 1);
+            updateInspector();
+            if (updateSceneCallback) updateSceneCallback();
         }
     }
 
@@ -1005,15 +1097,16 @@ export async function updateInspector() {
     } else if (selectedAsset) {
         await updateInspectorForAsset(selectedAsset.name, selectedAsset.path);
     } else {
-        dom.inspectorContent.innerHTML = '<p class="inspector-placeholder">Nada seleccionado</p>';
+        dom.inspectorContent.innerHTML = `<p class="inspector-placeholder" data-i18n="NADA_SELECCIONADO">${window.Localization.get('NADA_SELECCIONADO', 'Nada seleccionado')}</p>`;
     }
 }
 
 function renderComponentHeader(title, icon, leyIndex, canRemove = true) {
+    const iconHTML = getIconHTML(icon);
     return `
         <div class="component-header" data-ley-index="${leyIndex}">
             <div class="component-header-main">
-                <span class="component-icon">${icon}</span>
+                <span class="component-icon">${iconHTML}</span>
                 <h4>${title}</h4>
             </div>
             <div class="component-header-controls">
@@ -1055,7 +1148,7 @@ function renderLightColorPresets(componentName) {
 
 function renderPropertyDropper(type, currentValue, commonAttrs) {
     let displayName = 'None';
-    let icon = '❓';
+    let icon = 'help-circle';
 
     // Handle Materia object or ID
     let value = currentValue;
@@ -1071,26 +1164,28 @@ function renderPropertyDropper(type, currentValue, commonAttrs) {
             const materia = window.SceneManager.currentScene.findMateriaById(value);
             displayName = materia ? materia.name : `Objeto #${value}`;
             // If type is a specific component, use its icon, otherwise use generic Materia icon
-            icon = componentIcons[type] || '✥';
+            icon = componentIcons[type] || 'move';
         } else if (typeof value === 'string') {
             // Assume Asset Path
             displayName = currentValue.split('/').pop();
             const ext = currentValue.split('.').pop().toLowerCase();
-            icon = fileIcons[ext] || '📄';
+            icon = fileIcons[ext] || 'file';
 
             // Check if it's a reference to a Materia by name (old system)
             if (type === 'Materia' && !currentValue.includes('/')) {
-                icon = '✥';
+                icon = 'move';
             }
         }
     } else {
         displayName = `Ninguno (${type})`;
-        icon = componentIcons[type] || '❓';
-        if (type === 'Sprite') icon = '🖼️';
-        if (type === 'Audio') icon = '🔊';
-        if (type === 'Prefab') icon = '📦';
-        if (type === 'Scene') icon = '🎬';
+        icon = componentIcons[type] || 'help-circle';
+        if (type === 'Sprite') icon = 'image';
+        if (type === 'Audio') icon = 'music';
+        if (type === 'Prefab') icon = 'box';
+        if (type === 'Scene') icon = 'clapperboard';
     }
+
+    const iconHTML = getIconHTML(icon);
 
     // Ensure commonAttrs includes the class but doesn't double it
     if (!commonAttrs.includes('class=')) {
@@ -1104,9 +1199,47 @@ function renderPropertyDropper(type, currentValue, commonAttrs) {
     return `
         <div ${commonAttrs} data-expected-type="${type}">
             <div class="dropper-main">
-                <span class="dropper-icon">${icon}</span>
+                <span class="dropper-icon">${iconHTML}</span>
                 <span class="dropper-name" title="${currentValue || ''}">${displayName}</span>
             </div>
+        </div>
+    `;
+}
+
+function renderActionInput(variable, currentValue, componentType, identifier) {
+    const L = window.Localization;
+    const val = currentValue || { targetId: null, functionName: '' };
+
+    let commonAttrs = `data-prop="${variable.name}"`;
+    if (componentType === 'CreativeScript') {
+        commonAttrs += ` data-component="CreativeScript" data-script-name="${identifier}"`;
+    } else if (componentType === 'CustomComponent') {
+        commonAttrs += ` data-component="CustomComponent" data-component-id="${identifier}"`;
+    }
+
+    let functionsDropdown = `<option value="">-- ${L.get('SIN_FUNCION', 'Sin Función')} --</option>`;
+
+    if (val.targetId) {
+        const targetMateria = window.SceneManager.currentScene.findMateriaById(val.targetId);
+        if (targetMateria) {
+            const scripts = targetMateria.getComponents(Components.CreativeScript);
+            let allFunctions = [];
+            scripts.forEach(s => {
+                const metadata = CES_Transpiler.getScriptMetadata(s.scriptName);
+                if (metadata && metadata.publicFunctions) {
+                    allFunctions = allFunctions.concat(metadata.publicFunctions);
+                }
+            });
+            functionsDropdown += allFunctions.map(f => `<option value="${f}" ${val.functionName === f ? 'selected' : ''}>${f}</option>`).join('');
+        }
+    }
+
+    return `
+        <div class="action-input-group" style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
+            ${renderPropertyDropper('Materia', val.targetId, `class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.targetId"`)}`)}
+            <select class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.functionName"`)}>
+                ${functionsDropdown}
+            </select>
         </div>
     `;
 }
@@ -1138,12 +1271,39 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
                     <input type="number" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.y"`)} value="${currentValue?.y || 0}" title="Y">
                 </div>
             `;
+        case 'Tag':
+            {
+                const config = getCurrentProjectConfig();
+                const tags = config.tags || ['Untagged'];
+                return `
+                    <select ${commonAttrs}>
+                        ${tags.map(t => `<option value="${t}" ${currentValue === t ? 'selected' : ''}>${t}</option>`).join('')}
+                    </select>
+                `;
+            }
+        case 'Layer':
+            {
+                const config = getCurrentProjectConfig();
+                const layers = config.layers?.sortingLayers || ['Default'];
+                return `
+                    <select ${commonAttrs}>
+                        ${layers.map((l, i) => l ? `<option value="${i}" ${currentValue == i ? 'selected' : ''}>${i}: ${l}</option>` : '').join('')}
+                    </select>
+                `;
+            }
         case 'Sprite':
         case 'Audio':
         case 'Prefab':
         case 'Scene':
         case 'Materia':
+        case 'Animation':
+        case 'AnimatorController':
+        case 'UI':
+        case 'UIImage':
+        case 'CreativeScript':
             return renderPropertyDropper(variable.type, currentValue, commonAttrs);
+        case 'Action':
+            return renderActionInput(variable, currentValue, componentType, identifier);
         default:
             // Check if it's a component type
             if (componentIcons[variable.type]) {
@@ -1157,20 +1317,21 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
 
 async function updateInspectorForMateria(selectedMateria) {
     const config = getCurrentProjectConfig();
+    const L = window.Localization;
 
     // Name input and active toggle
     dom.inspectorContent.innerHTML = `
         <div class="inspector-materia-header">
-            <input type="checkbox" id="materia-active-toggle" title="Activar/Desactivar Materia" ${selectedMateria.isActive ? 'checked' : ''}>
+            <input type="checkbox" id="materia-active-toggle" title="${L.get('ACTIVAR_DESACTIVAR_MATERIA', 'Activar/Desactivar Materia')}" ${selectedMateria.isActive ? 'checked' : ''}>
             <input type="text" id="materia-name-input" value="${selectedMateria.name}">
         </div>
         <div class="tag-layer-container">
             <div class="inspector-row">
-                <label for="materia-tag-select">Tag</label>
+                <label for="materia-tag-select" data-i18n="TAG">Tag</label>
                 <select id="materia-tag-select"></select>
             </div>
             <div class="inspector-row">
-                <label for="materia-layer-select">Layer</label>
+                <label for="materia-layer-select" data-i18n="LAYER">Layer</label>
                 <select id="materia-layer-select"></select>
             </div>
         </div>
@@ -1195,7 +1356,8 @@ async function updateInspectorForMateria(selectedMateria) {
         tagSelect.appendChild(separator);
         const addTagOption = document.createElement('option');
         addTagOption.value = 'add_new_tag';
-        addTagOption.textContent = 'Añadir Tag...';
+        addTagOption.dataset.i18n = 'ADD_TAG_ELLIPSIS';
+        addTagOption.textContent = L.get('ADD_TAG_ELLIPSIS', 'Añadir Tag...');
         tagSelect.appendChild(addTagOption);
     }
 
@@ -1219,7 +1381,8 @@ async function updateInspectorForMateria(selectedMateria) {
         layerSelect.appendChild(separator);
         const addLayerOption = document.createElement('option');
         addLayerOption.value = 'edit_layers';
-        addLayerOption.textContent = 'Editar Layers...';
+        addLayerOption.dataset.i18n = 'EDIT_LAYERS_ELLIPSIS';
+        addLayerOption.textContent = L.get('EDIT_LAYERS_ELLIPSIS', 'Editar Layers...');
         layerSelect.appendChild(addLayerOption);
     }
 
@@ -1232,27 +1395,27 @@ async function updateInspectorForMateria(selectedMateria) {
         console.log(`[DEBUG] Inspector: Intentando renderizar componente #${index}: ${ley.constructor.name}`);
         let componentHTML = '';
         const componentName = ley.constructor.name;
-        const icon = componentIcons[componentName] || '⚙️';
-        const iconHTML = `<span class="component-icon">${icon}</span>`;
+        const icon = componentIcons[componentName] || 'settings';
+        const iconHTML = `<span class="component-icon">${getIconHTML(icon)}</span>`;
 
         if (ley instanceof Components.TextureRender) {
             let dimensionsHTML = '';
             if (ley.shape === 'Rectangle' || ley.shape === 'Triangle' || ley.shape === 'Capsule') {
                 dimensionsHTML = `
                     <div class="prop-row-multi">
-                        <label>Dimensions</label>
+                        <label data-i18n="PROP_DIMENSIONS">${L.get('PROP_DIMENSIONS', 'Dimensions')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="width" value="${ley.width}" title="Width">
-                            <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="height" value="${ley.height}" title="Height">
+                            <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="width" value="${ley.width}" title="${L.get('PROP_WIDTH', 'Width')}">
+                            <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="height" value="${ley.height}" title="${L.get('PROP_HEIGHT', 'Height')}">
                         </div>
                     </div>
                 `;
             } else if (ley.shape === 'Circle') {
                 dimensionsHTML = `
                     <div class="prop-row-multi">
-                        <label>Radius</label>
+                        <label data-i18n="PROP_RADIUS">${L.get('PROP_RADIUS', 'Radius')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="radius" value="${ley.radius}" title="Radius">
+                            <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="radius" value="${ley.radius}" title="${L.get('PROP_RADIUS', 'Radius')}">
                         </div>
                     </div>
                 `;
@@ -1262,7 +1425,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader("Texture Render", icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>Shape</label>
+                        <label data-i18n="PROP_SHAPE">${L.get('PROP_SHAPE', 'Shape')}</label>
                         <div class="prop-inputs">
                             <select class="prop-input inspector-re-render" data-component="TextureRender" data-prop="shape">
                                 <option value="Rectangle" ${ley.shape === 'Rectangle' ? 'selected' : ''}>Rectangle</option>
@@ -1274,18 +1437,18 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     ${dimensionsHTML}
                     <div class="prop-row-multi">
-                        <label>Color</label>
+                        <label data-i18n="PROP_COLOR">${L.get('PROP_COLOR', 'Color')}</label>
                         <div class="prop-inputs">
                             <input type="color" class="prop-input" data-component="TextureRender" data-prop="color" value="${ley.color || '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
                             <input type="text" class="prop-input hex-input" data-component="TextureRender" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
                         </div>
                     </div>
                     <div class="inspector-row">
-                        <label>Texture</label>
+                        <label data-i18n="PROP_TEXTURE">${L.get('PROP_TEXTURE', 'Texture')}</label>
                         ${renderPropertyDropper('Sprite', ley.texturePath, 'data-component="TextureRender" data-prop="texturePath"')}
                     </div>
                     <div class="prop-row-multi">
-                        <label>Order in Layer</label>
+                        <label data-i18n="PROP_ORDER_IN_LAYER">${L.get('PROP_ORDER_IN_LAYER', 'Order in Layer')}</label>
                         <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
                     </div>
                 </div>
@@ -1338,26 +1501,26 @@ async function updateInspectorForMateria(selectedMateria) {
             }
             componentHTML = `
             <div class="component-inspector">
-                ${renderComponentHeader("Posición (Transform)", icon, index)}
+                ${renderComponentHeader(L.get('TRANSFORM', "Posición (Transform)"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>Position</label>
+                        <label data-i18n="PROP_POSITION">${L.get('PROP_POSITION', 'Position')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.x" value="${ley.localPosition.x}" title="Local Position X">
-                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.y" value="${ley.localPosition.y}" title="Local Position Y">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.x" value="${ley.localPosition.x}" title="X">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.y" value="${ley.localPosition.y}" title="Y">
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>Rotation</label>
+                        <label data-i18n="PROP_ROTATION">${L.get('PROP_ROTATION', 'Rotation')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localRotation" value="${ley.localRotation || 0}" title="Local Rotation Z">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localRotation" value="${ley.localRotation || 0}" title="Z">
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>Scale</label>
+                        <label data-i18n="PROP_SCALE">${L.get('PROP_SCALE', 'Scale')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.x" value="${ley.localScale.x}" title="Local Scale X">
-                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.y" value="${ley.localScale.y}" title="Local Scale Y">
+                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.x" value="${ley.localScale.x}" title="X">
+                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.y" value="${ley.localScale.y}" title="Y">
                         </div>
                     </div>
                 </div>
@@ -1435,7 +1598,7 @@ async function updateInspectorForMateria(selectedMateria) {
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
             componentHTML = `${renderComponentHeader("UI Image", icon, index)}
             <div class="component-content">
-                <div class="prop-row-multi"><label>Source</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="UIImage">🎯</button></div></div>
+                <div class="prop-row-multi"><label>Source</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="UIImage">${getIconHTML('target')}</button></div></div>
                 <div class="prop-row-multi">
                     <label>Color</label>
                     <div class="prop-inputs">
@@ -1447,7 +1610,7 @@ async function updateInspectorForMateria(selectedMateria) {
         } else if (ley instanceof Components.UIText) {
             const fontName = ley.fontAssetPath ? ley.fontAssetPath.split('/').pop() : 'Default';
             componentHTML = `
-                ${renderComponentHeader("UI Text", "📝", index)}
+                ${renderComponentHeader("UI Text", "type", index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Text</label>
@@ -1491,7 +1654,7 @@ async function updateInspectorForMateria(selectedMateria) {
             const ssResolution = ley.referenceResolution || { width: 800, height: 600 };
 
             componentHTML = `
-                ${renderComponentHeader("Canvas", "🖼️", index)}
+                ${renderComponentHeader("Canvas", "image", index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Render Mode</label>
@@ -1538,7 +1701,7 @@ async function updateInspectorForMateria(selectedMateria) {
             const isSpriteSwap = ley.transition === 'Sprite Swap';
             const isAnimation = ley.transition === 'Animation';
             componentHTML = `
-                ${renderComponentHeader("Button", "🖲️", index)}
+                ${renderComponentHeader("Button", "mouse-pointer", index)}
                 <div class="component-content">
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Button" data-prop="interactable" ${ley.interactable ? 'checked' : ''}>
@@ -1647,7 +1810,7 @@ async function updateInspectorForMateria(selectedMateria) {
 
                 spriteSelectorHTML = `
                     <div class="inspector-row">
-                        <label for="sprite-name-select">Sprite</label>
+                        <label for="sprite-name-select" data-i18n="SPRITE">Sprite</label>
                         <select id="sprite-name-select" class="prop-input inspector-re-render" data-component="SpriteRenderer" data-prop="spriteName">
                             ${options}
                         </select>
@@ -1659,39 +1822,39 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader("Sprite Renderer", icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
-                        <label>Source</label>
+                        <label data-i18n="PROP_SOURCE">${L.get('PROP_SOURCE', 'Source')}</label>
                         ${renderPropertyDropper('Sprite', ley.spriteAssetPath || ley.source, 'data-component="SpriteRenderer" data-prop="source"')}
                     </div>
                     ${spriteSelectorHTML}
                     <div class="prop-row-multi">
-                        <label>Color</label>
+                        <label data-i18n="PROP_COLOR">${L.get('PROP_COLOR', 'Color')}</label>
                         <div class="prop-inputs">
                             <input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color || '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
                             <input type="text" class="prop-input hex-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>Opacity</label>
+                        <label data-i18n="PROP_OPACITY">${L.get('PROP_OPACITY', 'Opacity')}</label>
                         <div class="prop-inputs">
                             <input type="range" class="prop-input" data-component="SpriteRenderer" data-prop="opacity" value="${ley.opacity ?? 1}" min="0" max="1" step="0.01" style="flex-grow: 1;" oninput="this.nextElementSibling.innerText = Math.round(this.value * 100) + '%'">
                             <span style="min-width: 30px; text-align: right;">${Math.round((ley.opacity ?? 1) * 100)}%</span>
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>Pivot</label>
+                        <label data-i18n="PROP_PIVOT">${L.get('PROP_PIVOT', 'Pivot')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="0.01" data-component="SpriteRenderer" data-prop="pivot.x" value="${ley.pivot?.x ?? 0.5}" title="Pivot X">
                             <input type="number" class="prop-input" step="0.01" data-component="SpriteRenderer" data-prop="pivot.y" value="${ley.pivot?.y ?? 0.5}" title="Pivot Y">
-                            <button class="small-btn" data-action="center-sprite-pivot" title="Centrar Pivot (0.5, 0.5)">🎯</button>
+                            <button class="small-btn" data-action="center-sprite-pivot" title="Centrar Pivot (0.5, 0.5)">${getIconHTML('target')}</button>
                             <button class="small-btn" data-action="auto-pivot-sprite" title="Ajustar al Contenido (Auto-Pivot)" style="font-size: 10px; padding: 2px 4px;">AUTO</button>
                         </div>
                     </div>
                     <div class="inspector-row">
                         <label></label>
-                        <button class="inspector-btn" data-action="reset-sprite-scale" style="width: 100%; margin-top: 4px;">Restablecer Escala (1:1)</button>
+                        <button class="inspector-btn" data-action="reset-sprite-scale" style="width: 100%; margin-top: 4px;" data-i18n="PROP_RESET_SCALE">${L.get('PROP_RESET_SCALE', 'Restablecer Escala (1:1)')}</button>
                     </div>
                     <div class="prop-row-multi">
-                        <label>Order in Layer</label>
+                        <label data-i18n="PROP_ORDER_IN_LAYER">${L.get('PROP_ORDER_IN_LAYER', 'Order in Layer')}</label>
                         <input type="number" class="prop-input" step="1" data-component="SpriteRenderer" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
                     </div>
                 </div>`;
@@ -1946,7 +2109,7 @@ async function updateInspectorForMateria(selectedMateria) {
             // Safeguard against corrupted layer data from old scene files
             if (!ley.layers || !Array.isArray(ley.layers)) {
                 componentHTML = `
-                    ${renderComponentHeader('Tilemap', '🗺️', index)}
+                    ${renderComponentHeader('Tilemap', 'map', index)}
                     <div class="component-content">
                         <p class="error-message">Los datos de las capas del Tilemap están corruptos. Vuelva a guardar la escena para intentar repararlos.</p>
                     </div>
@@ -1976,7 +2139,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 }
 
                 componentHTML = `
-                    ${renderComponentHeader('Tilemap', '🗺️', index)}
+                    ${renderComponentHeader('Tilemap', 'map', index)}
                     <div class="component-content">
                         <div class="checkbox-field">
                             <input type="checkbox" id="tilemap-manual-size-toggle" data-component="Tilemap" ${ley.manualSize ? 'checked' : ''}>
@@ -2005,7 +2168,7 @@ async function updateInspectorForMateria(selectedMateria) {
             }
         } else if (ley instanceof Components.TilemapRenderer) {
             componentHTML = `
-                ${renderComponentHeader('Tilemap Renderer', '🖌️', index)}
+                ${renderComponentHeader('Tilemap Renderer', 'brush', index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Order in Layer</label>
@@ -2023,7 +2186,7 @@ async function updateInspectorForMateria(selectedMateria) {
             }
 
             componentHTML = `
-                ${renderComponentHeader('Tilemap Collider 2D', '▦', index)}
+                ${renderComponentHeader('Tilemap Collider 2D', 'grid', index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label for="collider-source-layer">Capa de Origen</label>
@@ -2124,7 +2287,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label>Sprite</label>
                         <div class="sprite-dropper">
                             <div class="sprite-preview">${previewImg}</div>
-                            <button class="sprite-select-btn" data-component="SpriteLight2D">🎯</button>
+                            <button class="sprite-select-btn" data-component="SpriteLight2D">${getIconHTML('target')}</button>
                         </div>
                     </div>
                     <div class="prop-row-multi">
@@ -2209,7 +2372,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 }
             }
             componentHTML = `
-                ${renderComponentHeader(ley.definition.nombre, '⚙️', index)}
+                ${renderComponentHeader(ley.definition.nombre, 'settings', index)}
                 <div class="component-content">
                     ${publicVarsHTML || '<p class="field-description">Este componente no tiene propiedades públicas.</p>'}
                 </div>
@@ -2601,6 +2764,118 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
+        } else if (ley instanceof Components.RaycastSource) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('RAYCAST_SOURCE', "Raycast Source (Rallo)"), icon, index)}
+                <div class="component-content">
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="RaycastSource" data-prop="showGizmo" ${ley.showGizmo ? 'checked' : ''}>
+                        <label data-i18n="SHOW_RAYS">${L.get('SHOW_RAYS', 'Mostrar Rayos')}</label>
+                    </div>
+                    <div class="inspector-section-header">
+                        <span data-i18n="RAYS">${L.get('RAYS', 'Rayos')}</span>
+                        <button class="layer-btn add" data-action="rallo-add-ray">+</button>
+                    </div>
+                    <div class="layer-list">
+                        ${ley.rays.map((ray, rIdx) => `
+                            <div class="layer-item" style="flex-direction: column; align-items: stretch; gap: 5px; padding: 10px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>${L.get('RAY', 'Rayo')} ${rIdx}</span>
+                                    <button class="layer-btn remove" data-action="rallo-remove-ray" data-index="${rIdx}">-</button>
+                                </div>
+                                <div class="prop-row-multi">
+                                    <label data-i18n="ANGLE">${L.get('ANGLE', 'Ángulo')}</label>
+                                    <input type="number" class="prop-input" data-component="RaycastSource" data-prop="rays.${rIdx}.angle" value="${ray.angle}">
+                                </div>
+                                <div class="prop-row-multi">
+                                    <label data-i18n="LENGTH">${L.get('LENGTH', 'Longitud')}</label>
+                                    <input type="number" class="prop-input" data-component="RaycastSource" data-prop="rays.${rIdx}.length" value="${ray.length}">
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.BasicAI) {
+            let functionsDropdownHTML = `<input type="text" class="prop-input" data-component="BasicAI" data-prop="functionName" value="${ley.functionName || ''}" placeholder="ej: alDetectarEnemigo">`;
+
+            if (ley.scriptTarget) {
+                const targetMateria = window.SceneManager.currentScene.findMateriaById(ley.scriptTarget);
+                if (targetMateria) {
+                    const scripts = targetMateria.getComponents(Components.CreativeScript);
+                    let allFunctions = [];
+                    scripts.forEach(s => {
+                        const metadata = CES_Transpiler.getScriptMetadata(s.scriptName);
+                        if (metadata && metadata.publicFunctions) {
+                            allFunctions = allFunctions.concat(metadata.publicFunctions);
+                        }
+                    });
+
+                    if (allFunctions.length > 0) {
+                        functionsDropdownHTML = `
+                            <select class="prop-input" data-component="BasicAI" data-prop="functionName">
+                                <option value="">${L.get('SELECT_FUNCTION', '-- Seleccionar Función --')}</option>
+                                ${allFunctions.map(f => `<option value="${f}" ${ley.functionName === f ? 'selected' : ''}>${f}</option>`).join('')}
+                            </select>
+                        `;
+                    }
+                }
+            }
+
+            componentHTML = `
+                ${renderComponentHeader(L.get('BASIC_AI', "IA Básica"), icon, index)}
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label data-i18n="TARGET">${L.get('TARGET', 'Objetivo')}</label>
+                        ${renderPropertyDropper('Materia', ley.target, 'data-component="BasicAI" data-prop="target"')}
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="BEHAVIOR">${L.get('BEHAVIOR', 'Comportamiento')}</label>
+                        <select class="prop-input" data-component="BasicAI" data-prop="behavior">
+                            <option value="Follow" ${ley.behavior === 'Follow' ? 'selected' : ''} data-i18n="FOLLOW">${L.get('FOLLOW', 'Seguir')}</option>
+                            <option value="Escape" ${ley.behavior === 'Escape' ? 'selected' : ''} data-i18n="ESCAPE">${L.get('ESCAPE', 'Escapar')}</option>
+                            <option value="Wander" ${ley.behavior === 'Wander' ? 'selected' : ''} data-i18n="WANDER">${L.get('WANDER', 'Vagar')}</option>
+                        </select>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="MOVEMENT_TYPE">${L.get('MOVEMENT_TYPE', 'Tipo Movimiento')}</label>
+                        <select class="prop-input" data-component="BasicAI" data-prop="movementType">
+                            <option value="Top-Down" ${ley.movementType === 'Top-Down' ? 'selected' : ''} data-i18n="TOP_DOWN">Top-Down</option>
+                            <option value="Platformer" ${ley.movementType === 'Platformer' ? 'selected' : ''} data-i18n="PLATFORMER">${L.get('PLATFORMER', 'Plataformas')}</option>
+                        </select>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="SPEED">${L.get('SPEED', 'Velocidad')}</label>
+                        <input type="number" class="prop-input" data-component="BasicAI" data-prop="speed" value="${ley.speed}">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="BasicAI" data-prop="autoRotate" ${ley.autoRotate ? 'checked' : ''}>
+                        <label data-i18n="AUTO_ROTATE">${L.get('AUTO_ROTATE', 'Rotación Automática')}</label>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="BasicAI" data-prop="obstacleAvoidance" ${ley.obstacleAvoidance ? 'checked' : ''}>
+                        <label data-i18n="OBSTACLE_AVOIDANCE">${L.get('OBSTACLE_AVOIDANCE', 'Esquivar Obstáculos')}</label>
+                    </div>
+                    <hr>
+                    <div class="inspector-section-header"><span data-i18n="DETECTION_AND_FUNCTIONS">${L.get('DETECTION_AND_FUNCTIONS', 'Detección y Funciones')}</span></div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="DETECTION_DISTANCE">${L.get('DETECTION_DISTANCE', 'Distancia Detección')}</label>
+                        <input type="number" class="prop-input" data-component="BasicAI" data-prop="detectionDistance" value="${ley.detectionDistance}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="DETECTION_TAGS">${L.get('DETECTION_TAGS', 'Tags de Detección')}</label>
+                        <input type="text" class="prop-input" data-component="BasicAI" data-prop="detectionTagsString" value="${(ley.detectionTags || []).join(', ')}" placeholder="Player, Enemy...">
+                    </div>
+                    <div class="inspector-row">
+                        <label data-i18n="EXECUTE_ON">${L.get('EXECUTE_ON', 'Ejecutar en')}</label>
+                        ${renderPropertyDropper('Materia', ley.scriptTarget, 'data-component="BasicAI" data-prop="scriptTarget"')}
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="FUNCTION">${L.get('FUNCTION', 'Función')}</label>
+                        ${functionsDropdownHTML}
+                    </div>
+                </div>
+            `;
         }
 
 
@@ -2622,7 +2897,8 @@ async function updateInspectorForMateria(selectedMateria) {
     const addComponentBtn = document.createElement('button');
     addComponentBtn.id = 'add-component-btn';
     addComponentBtn.className = 'add-component-btn';
-    addComponentBtn.textContent = 'Añadir Ley';
+    addComponentBtn.dataset.i18n = 'ADD_LEY';
+    addComponentBtn.textContent = L.get('ADD_LEY', 'Añadir Ley');
     dom.inspectorContent.appendChild(addComponentBtn);
     console.log('7. Inspector update complete.');
 }
@@ -2998,6 +3274,8 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 const canvas = document.getElementById('anim-preview-canvas');
                 const playBtn = document.getElementById('anim-preview-play');
                 const stopBtn = document.getElementById('anim-preview-stop');
+            if (playBtn) playBtn.innerHTML = getIconHTML('play');
+            if (stopBtn) stopBtn.innerHTML = getIconHTML('stop');
                 const speedInput = document.getElementById('anim-preview-speed');
                 const colsInput = document.getElementById('anim-columns');
                 const rowsInput = document.getElementById('anim-rows');
@@ -3149,7 +3427,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
             const controls = document.createElement('div');
             const playBtn = document.createElement('button');
-            playBtn.textContent = '▶️ Play';
+            playBtn.innerHTML = `${getIconHTML('play')} Play`;
 
             let isPlaying = false;
             let playbackId = null;
@@ -3158,7 +3436,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             playBtn.addEventListener('click', () => {
                 isPlaying = !isPlaying;
                 if (isPlaying) {
-                    playBtn.textContent = '⏹️ Stop';
+                    playBtn.innerHTML = `${getIconHTML('stop')} Stop`;
                     let lastTime = performance.now();
 
                     function loop(time) {
@@ -3173,7 +3451,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
                     playbackId = requestAnimationFrame(loop);
 
                 } else {
-                    playBtn.textContent = '▶️ Play';
+                    playBtn.innerHTML = `${getIconHTML('play')} Play`;
                     cancelAnimationFrame(playbackId);
                     timeline.childNodes.forEach(node => node.style.border = 'none');
                 }
@@ -3232,7 +3510,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             const preview = document.createElement('div');
             preview.className = 'asset-preview';
             preview.innerHTML = `
-                <span class="asset-preview-icon" style="font-size: 48px;">🎬</span>
+                <span class="asset-preview-icon" style="display: block; width: 48px; height: 48px; margin: 0 auto;">${getIconHTML('clapperboard')}</span>
                 <p><strong>Scene</strong></p>
                 <p>Doble-click en el Navegador para abrir la escena.</p>
             `;
@@ -3332,10 +3610,11 @@ export async function showAddComponentModal() {
     const existingScripts = new Set(selectedMateria.leyes.filter(ley => ley instanceof Components.CreativeScript).map(ley => ley.scriptName));
 
     // --- 1. Render Built-in Components ---
+    const L = window.Localization;
     for (const category in availableComponents) {
-        if (category === 'Scripting') continue;
+        if (category === 'CAT_SCRIPTING') continue;
         const categoryHeader = document.createElement('h4');
-        categoryHeader.textContent = category;
+        categoryHeader.textContent = L.get(category, category);
         dom.componentList.appendChild(categoryHeader);
 
         availableComponents[category].forEach(ComponentClass => {
@@ -3344,7 +3623,7 @@ export async function showAddComponentModal() {
             componentItem.className = `component-item ${isPresent ? 'already-added' : ''}`;
             componentItem.innerHTML = `
                 <span>${ComponentClass.name}</span>
-                ${isPresent ? '<span class="component-item-indicator">✓</span>' : ''}
+                ${isPresent ? `<span class="component-item-indicator">${getIconHTML('check')}</span>` : ''}
             `;
 
             componentItem.addEventListener('click', () => {
@@ -3384,7 +3663,7 @@ export async function showAddComponentModal() {
     const customComponentDefinitions = getCustomComponentDefinitions();
     if (customComponentDefinitions.size > 0) {
         const customHeader = document.createElement('h4');
-        customHeader.textContent = 'Componentes Personalizados';
+        customHeader.textContent = L.get('COMPONENTES_PERSONALIZADOS', 'Componentes Personalizados');
         dom.componentList.appendChild(customHeader);
 
         for (const [name, definition] of customComponentDefinitions.entries()) {
@@ -3393,7 +3672,7 @@ export async function showAddComponentModal() {
             componentItem.className = `component-item ${isPresent ? 'already-added' : ''}`;
             componentItem.innerHTML = `
                 <span>${name}</span>
-                ${isPresent ? '<span class="component-item-indicator">✓</span>' : ''}
+                ${isPresent ? `<span class="component-item-indicator">${getIconHTML('check')}</span>` : ''}
             `;
 
             componentItem.addEventListener('click', () => {
@@ -3416,7 +3695,7 @@ export async function showAddComponentModal() {
 
     // --- 3. Find and Render Custom Scripts Asynchronously ---
     const scriptsCategoryHeader = document.createElement('h4');
-    scriptsCategoryHeader.textContent = 'Scripts';
+    scriptsCategoryHeader.textContent = L.get('SCRIPTS', 'Scripts');
     dom.componentList.appendChild(scriptsCategoryHeader);
 
     const placeholder = document.createElement('p');
@@ -3428,12 +3707,12 @@ export async function showAddComponentModal() {
         return;
     }
     if (isScanningForComponents) {
-        placeholder.textContent = 'Escaneo de scripts ya en progreso...';
+        placeholder.textContent = L.get('ESCANEO_PROGRESO', 'Escaneo de scripts ya en progreso...');
         return;
     }
 
     isScanningForComponents = true;
-    placeholder.textContent = 'Buscando scripts...';
+    placeholder.textContent = L.get('BUSCANDO_SCRIPTS', 'Buscando scripts...');
 
     try {
         const scriptFiles = [];
@@ -3459,7 +3738,7 @@ export async function showAddComponentModal() {
         placeholder.remove();
 
         if (scriptFiles.length === 0) {
-            dom.componentList.appendChild(Object.assign(document.createElement('p'), { textContent: "No se encontraron scripts (.ces) en la carpeta Assets." }));
+            dom.componentList.appendChild(Object.assign(document.createElement('p'), { textContent: L.get('SIN_SCRIPTS_HINT', "No se encontraron scripts (.ces) en la carpeta Assets.") }));
         } else {
             scriptFiles.forEach(fileHandle => {
                 const isPresent = existingScripts.has(fileHandle.name);
@@ -3467,7 +3746,7 @@ export async function showAddComponentModal() {
                 componentItem.className = `component-item ${isPresent ? 'already-added' : ''}`;
                 componentItem.innerHTML = `
                     <span>${fileHandle.name}</span>
-                    ${isPresent ? '<span class="component-item-indicator">✓</span>' : ''}
+                ${isPresent ? `<span class="component-item-indicator">${getIconHTML('check')}</span>` : ''}
                 `;
 
                 componentItem.addEventListener('click', () => {
@@ -3487,7 +3766,7 @@ export async function showAddComponentModal() {
         }
     } catch (error) {
         console.error("Error crítico durante el escaneo de scripts:", error);
-        placeholder.textContent = "Error al buscar scripts.";
+        placeholder.textContent = L.get('ERROR_BUSCAR_SCRIPTS', "Error al buscar scripts.");
         placeholder.className += ' error-message';
     } finally {
         isScanningForComponents = false;

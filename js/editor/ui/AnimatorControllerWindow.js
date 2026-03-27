@@ -58,12 +58,13 @@ export async function openAnimatorController(fileHandle) {
 
         // Ensure default mapping exists
         if (!currentControllerData.movementMapping) {
+            const L = window.Localization;
             currentControllerData.movementMapping = {
-                "4": "Parado",
-                "1": "Arriba",
-                "7": "Abajo",
-                "3": "Izquierda",
-                "5": "Derecha"
+                "4": L.get('PARADO', "Parado"),
+                "1": L.get('ARRIBA', "Arriba"),
+                "7": L.get('ABAJO', "Abajo"),
+                "3": L.get('IZQUIERDA', "Izquierda"),
+                "5": L.get('DERECHA', "Derecha")
             };
         }
 
@@ -71,7 +72,8 @@ export async function openAnimatorController(fileHandle) {
         renderAnimatorGraph();
     } catch (error) {
         console.error(`Error al cargar el controlador '${fileHandle.name}':`, error);
-        window.Dialogs.showNotification('Error', 'No se pudo cargar el controlador.');
+        const L = window.Localization;
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CARGAR_CTRL', 'No se pudo cargar el controlador.'));
     }
 }
 
@@ -185,6 +187,7 @@ function showNodeContextMenu(e, state) {
 
     // Clear and add items
     menu.innerHTML = '';
+    const L = window.Localization;
     const addItem = (label, action) => {
         const li = document.createElement('li');
         li.textContent = label;
@@ -192,16 +195,16 @@ function showNodeContextMenu(e, state) {
         menu.appendChild(li);
     };
 
-    addItem('Establecer como Principal', () => {
+    addItem(L.get('CONTEXT_SET_PRINCIPAL', 'Establecer como Principal'), () => {
         currentControllerData.entryState = state.name;
         renderAnimatorGraph();
     });
 
-    addItem('Conectar', () => {
+    addItem(L.get('CONTEXT_CONECTAR', 'Conectar'), () => {
         startConnecting(state);
     });
 
-    addItem('Eliminar Estado', () => {
+    addItem(L.get('CONTEXT_ELIMINAR_ESTADO', 'Eliminar Estado'), () => {
         deleteState(state.name);
     });
 }
@@ -280,13 +283,14 @@ function populateStatesList() {
     list.innerHTML = '';
 
     if (!currentControllerData) return;
+    const L = window.Localization;
 
     currentControllerData.states.forEach(state => {
         const item = document.createElement('div');
         item.className = 'state-list-item';
         item.innerHTML = `
             <span class="state-name">${state.name}</span>
-            <span class="state-anim">${state.animationClip ? state.animationClip.split('/').pop() : 'Ninguna'}</span>
+            <span class="state-anim">${state.animationClip ? state.animationClip.split('/').pop() : L.get('NINGUNA', 'Ninguna')}</span>
         `;
         item.onclick = () => selectState(state);
         list.appendChild(item);
@@ -311,15 +315,16 @@ function selectState(state) {
 function updateStateInspector() {
     const container = dom.animatorControllerPanel.querySelector('#animator-state-inspector .list-content');
     if (!container) return;
+    const L = window.Localization;
 
     const globalSettingsHTML = `
         <div class="inspector-section">
             <div class="inspector-section-header">
-                <span>Configuración Global</span>
+                <span data-i18n="CONFIG_GLOBAL">${L.get('CONFIG_GLOBAL', 'Configuración Global')}</span>
             </div>
             <div class="checkbox-field" title="Cambia automáticamente entre animaciones según la dirección de movimiento.">
                 <input type="checkbox" id="anim-ctrl-smart-mode-toggle" ${currentControllerData.smartMode ? 'checked' : ''}>
-                <label for="anim-ctrl-smart-mode-toggle">Modo Inteligente (Direcciones)</label>
+                <label for="anim-ctrl-smart-mode-toggle" data-i18n="SMART_MODE_DIRECTIONS">${L.get('SMART_MODE_DIRECTIONS', 'Modo Inteligente (Direcciones)')}</label>
             </div>
         </div>
         <hr>
@@ -329,7 +334,7 @@ function updateStateInspector() {
         container.innerHTML = `
             ${globalSettingsHTML}
             <div class="panel-overlay-message" style="position: static; padding: 20px;">
-                <p>Selecciona un estado para editar sus propiedades.</p>
+                <p data-i18n="HINT_SELECCIONA_ESTADO">${L.get('HINT_SELECCIONA_ESTADO', 'Selecciona un estado para editar sus propiedades.')}</p>
             </div>
         `;
 
@@ -343,52 +348,57 @@ function updateStateInspector() {
         ${globalSettingsHTML}
         <div class="inspector-section">
             <div class="inspector-row">
-                <label>Nombre</label>
+                <label data-i18n="PROP_NOMBRE">${L.get('PROP_NOMBRE', 'Nombre')}</label>
                 <input type="text" id="anim-state-name" value="${selectedState.name}">
             </div>
             <div class="inspector-row">
-                <label>Animación</label>
+                <label data-i18n="PROP_ANIMACION">${L.get('PROP_ANIMACION', 'Animación')}</label>
                 <div class="file-picker">
                     <input type="text" id="anim-state-asset" value="${selectedState.animationClip || ''}" readonly>
                     <button id="anim-state-asset-btn">...</button>
                 </div>
             </div>
             <div class="inspector-row">
-                <label>Velocidad</label>
+                <label data-i18n="PROP_VELOCIDAD">${L.get('PROP_VELOCIDAD', 'Velocidad')}</label>
                 <input type="number" id="anim-state-speed" value="${selectedState.speed !== undefined ? selectedState.speed : 12.0}" step="0.1">
             </div>
             <div class="inspector-row">
-                <label>Fotograma Inicio</label>
+                <label data-i18n="PROP_FRAME_INICIO">${L.get('PROP_FRAME_INICIO', 'Fotograma Inicio')}</label>
                 <input type="number" id="anim-state-start" value="${selectedState.startFrame || 0}" min="0">
             </div>
             <div class="inspector-row">
-                <label>Fotograma Fin</label>
+                <label data-i18n="PROP_FRAME_FIN">${L.get('PROP_FRAME_FIN', 'Fotograma Fin')}</label>
                 <input type="number" id="anim-state-end" value="${selectedState.endFrame !== undefined ? selectedState.endFrame : -1}" min="-1">
             </div>
             <div class="checkbox-field">
                 <input type="checkbox" id="anim-state-loop" ${selectedState.loop !== false ? 'checked' : ''}>
-                <label for="anim-state-loop">Bucle (Loop)</label>
+                <label for="anim-state-loop" data-i18n="PROP_LOOP">${L.get('PROP_LOOP', 'Bucle (Loop)')}</label>
             </div>
             <div class="checkbox-field">
                 <input type="checkbox" id="anim-state-flip-x" ${selectedState.flipX ? 'checked' : ''}>
-                <label for="anim-state-flip-x">Voltear Horizontal</label>
+                <label for="anim-state-flip-x" data-i18n="PROP_VOLTEAR_H">${L.get('PROP_VOLTEAR_H', 'Voltear Horizontal')}</label>
             </div>
             <div class="checkbox-field">
                 <input type="checkbox" id="anim-state-flip-y" ${selectedState.flipY ? 'checked' : ''}>
-                <label for="anim-state-flip-y">Voltear Vertical</label>
+                <label for="anim-state-flip-y" data-i18n="PROP_VOLTEAR_V">${L.get('PROP_VOLTEAR_V', 'Voltear Vertical')}</label>
             </div>
             <hr>
             <div class="inspector-section-header">
-                <span>Mapeo de Movimiento</span>
+                <span data-i18n="MAPEO_MOVIMIENTO">${L.get('MAPEO_MOVIMIENTO', 'Mapeo de Movimiento')}</span>
             </div>
-            <p class="field-description">Asigna este estado a una dirección del personaje.</p>
+            <p class="field-description" data-i18n="HINT_MAPEO_MOVIMIENTO">${L.get('HINT_MAPEO_MOVIMIENTO', 'Asigna este estado a una dirección del personaje.')}</p>
             <div class="direction-grid-container">
                 <div class="direction-grid" id="anim-direction-grid">
                     ${[0, 1, 2, 3, 4, 5, 6, 7, 8].map(i => {
                         const isAssigned = currentControllerData.movementMapping[i] === selectedState.name;
-                        const icons = ['↖️', '⬆️', '↗️', '⬅️', '⏹️', '➡️', '↙️', '⬇️', '↘️'];
-                        const labels = ['Noroeste', 'Norte', 'Noreste', 'Oeste', 'Quieto', 'Este', 'Suroeste', 'Sur', 'Sureste'];
-                        return `<div class="direction-cell ${isAssigned ? 'active' : ''}" data-index="${i}" title="${labels[i]}">${icons[i]}</div>`;
+                        const iconNames = ['arrow-up-left', 'arrow-up', 'arrow-up-right', 'arrow-left', 'stop', 'arrow-right', 'arrow-down-left', 'arrow-down', 'arrow-down-right'];
+                        const labels = [
+                            L.get('NW', 'Noroeste'), L.get('N', 'Norte'), L.get('NE', 'Noreste'),
+                            L.get('W', 'Oeste'), L.get('STOP', 'Quieto'), L.get('E', 'Este'),
+                            L.get('SW', 'Suroeste'), L.get('S', 'Sur'), L.get('SE', 'Sureste')
+                        ];
+                        const iconHTML = `<img src="icons/${iconNames[i]}.svg" class="ce-icon" style="width: 20px; height: 20px;">`;
+                        return `<div class="direction-cell ${isAssigned ? 'active' : ''}" data-index="${i}" title="${labels[i]}">${iconHTML}</div>`;
                     }).join('')}
                 </div>
             </div>
@@ -497,8 +507,9 @@ function updateGraphData() {
 }
 
 async function saveAnimatorController() {
+    const L = window.Localization;
     if (!currentControllerHandle || !currentControllerData) {
-        window.Dialogs.showNotification('Error', 'No hay ningún controlador seleccionado para guardar.');
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SIN_CTRL_GUARDAR', 'No hay ningún controlador seleccionado para guardar.'));
         return;
     }
 
@@ -542,40 +553,41 @@ async function saveAnimatorController() {
             });
         }
 
-        window.Dialogs.showNotification('Éxito', `Controlador '${savedName}' guardado.`);
+        window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_CTRL_GUARDADO', 'Controlador guardado correctamente')}: ${savedName}`);
 
     } catch (error) {
         console.error("Error al guardar el controlador:", error);
-        window.Dialogs.showNotification('Error', 'No se pudo guardar el controlador. Intenta abrirlo de nuevo.');
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_GUARDAR_CTRL', 'No se pudo guardar el controlador. Intenta abrirlo de nuevo.'));
     }
 }
 
 async function createNewAnimatorController() {
+    const L = window.Localization;
     window.Dialogs.showPrompt(
-        'Nuevo Controlador',
-        'Introduce el nombre para el nuevo controlador de animación:',
+        L.get('TITULO_NUEVO_CONTROLADOR', 'Nuevo Controlador'),
+        L.get('PROMPT_NOMBRE_CTRL', 'Introduce el nombre para el nuevo controlador de animación:'),
         async (controllerName) => {
             if (!controllerName) return;
 
             const fileName = `${controllerName}.ceanim`;
             const defaultContent = {
                 name: controllerName,
-                entryState: "Parado",
+                entryState: L.get('PARADO', "Parado"),
                 smartMode: true,
                 states: [
-                    { name: "Parado", animationClip: "", speed: 12.0, position: { x: 300, y: 200 }, flipX: false, flipY: false },
-                    { name: "Arriba", animationClip: "", speed: 12.0, position: { x: 300, y: 50 }, flipX: false, flipY: false },
-                    { name: "Abajo", animationClip: "", speed: 12.0, position: { x: 300, y: 350 }, flipX: false, flipY: false },
-                    { name: "Izquierda", animationClip: "", speed: 12.0, position: { x: 100, y: 200 }, flipX: false, flipY: false },
-                    { name: "Derecha", animationClip: "", speed: 12.0, position: { x: 500, y: 200 }, flipX: false, flipY: false }
+                    { name: L.get('PARADO', "Parado"), animationClip: "", speed: 12.0, position: { x: 300, y: 200 }, flipX: false, flipY: false },
+                    { name: L.get('ARRIBA', "Arriba"), animationClip: "", speed: 12.0, position: { x: 300, y: 50 }, flipX: false, flipY: false },
+                    { name: L.get('ABAJO', "Abajo"), animationClip: "", speed: 12.0, position: { x: 300, y: 350 }, flipX: false, flipY: false },
+                    { name: L.get('IZQUIERDA', "Izquierda"), animationClip: "", speed: 12.0, position: { x: 100, y: 200 }, flipX: false, flipY: false },
+                    { name: L.get('DERECHA', "Derecha"), animationClip: "", speed: 12.0, position: { x: 500, y: 200 }, flipX: false, flipY: false }
                 ],
                 transitions: [],
                 movementMapping: {
-                    "4": "Parado",
-                    "1": "Arriba",
-                    "7": "Abajo",
-                    "3": "Izquierda",
-                    "5": "Derecha"
+                    "4": L.get('PARADO', "Parado"),
+                    "1": L.get('ARRIBA', "Arriba"),
+                    "7": L.get('ABAJO', "Abajo"),
+                    "3": L.get('IZQUIERDA', "Izquierda"),
+                    "5": L.get('DERECHA', "Derecha")
                 }
             };
 
@@ -596,7 +608,7 @@ async function createNewAnimatorController() {
 
             } catch (error) {
                 console.error("Error al crear el controlador de animación:", error);
-                window.Dialogs.showNotification('Error', 'No se pudo crear el archivo del controlador.');
+                window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_ARCHIVO_CTRL', 'No se pudo crear el archivo del controlador.'));
             }
         },
         'NewAnimator'
@@ -833,7 +845,8 @@ function setupEventListeners() {
 
 function addNewStatePrompt(x, y) {
     if (!currentControllerData) return;
-    window.Dialogs.showPrompt('Nuevo Estado', 'Nombre del estado:', (name) => {
+    const L = window.Localization;
+    window.Dialogs.showPrompt(L.get('TITULO_NUEVO_ESTADO', 'Nuevo Estado'), L.get('PROMPT_NOMBRE_ESTADO', 'Nombre del estado:'), (name) => {
         if (name) {
             currentControllerData.states.push({
                 name: name,
@@ -858,9 +871,10 @@ function showGraphContextMenu(e) {
     menu.style.top = `${e.clientY}px`;
     menu.style.zIndex = '3000';
 
+    const L = window.Localization;
     const ul = document.createElement('ul');
     const li = document.createElement('li');
-    li.textContent = 'Crear Estado';
+    li.textContent = L.get('CONTEXT_CREAR_ESTADO', 'Crear Estado');
     li.onclick = (event) => {
         event.stopPropagation();
         const rect = graphView.getBoundingClientRect();

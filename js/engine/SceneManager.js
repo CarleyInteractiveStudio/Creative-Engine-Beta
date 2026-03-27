@@ -226,6 +226,7 @@ export function serializeMateria(materia, recursive = false) {
         id: materia.id,
         name: materia.name,
         tag: materia.tag,
+        prefabPath: materia.prefabPath || null,
         parentId: materia.parent ? (typeof materia.parent === 'number' ? materia.parent : materia.parent.id) : null,
         leyes: []
     };
@@ -317,6 +318,7 @@ async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, mate
     // unless we are loading a full scene.
 
     newMateria.tag = materiaData.tag || 'Untagged';
+    newMateria.prefabPath = materiaData.prefabPath || null;
     newMateria.leyes = [];
 
     for (const leyData of materiaData.leyes) {
@@ -494,7 +496,11 @@ export async function instanciarPrefabDesdeRuta(path, x, y) {
         const content = await file.text();
         const prefabData = JSON.parse(content);
 
-        return await instanciarPrefab(prefabData, x, y);
+        const newMateria = await instanciarPrefab(prefabData, x, y);
+        if (newMateria) {
+            newMateria.prefabPath = path;
+        }
+        return newMateria;
     } catch (error) {
         console.error(`Error al instanciar prefab desde ruta '${path}':`, error);
         return null;

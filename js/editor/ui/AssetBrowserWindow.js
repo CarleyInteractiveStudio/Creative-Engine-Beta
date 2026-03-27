@@ -68,6 +68,7 @@ function handleExternalFileDragEnter(e) {
 
 export async function handleContextMenuAction(action) {
     // This function is now called from editor.js
+    const L = window.Localization;
     const selectedAsset = contextAsset;
 
     // Determine the target directory for "create" actions
@@ -93,8 +94,8 @@ export async function handleContextMenuAction(action) {
     switch(action) {
         case 'create-folder': {
             showPrompt(
-                'Crear Carpeta',
-                'Introduce el nombre de la nueva carpeta:',
+                L.get('CREAR_CARPETA', 'Crear Carpeta'),
+                L.get('NOMBRE_CARPETA_PROMPT', 'Introduce el nombre de la nueva carpeta:'),
                 async (folderName) => {
                     if (folderName) {
                         try {
@@ -102,7 +103,7 @@ export async function handleContextMenuAction(action) {
                             await updateAssetBrowserCallback();
                         } catch (err) {
                             console.error("Error al crear la carpeta:", err);
-                            showNotification('Error', 'No se pudo crear la carpeta.');
+                            showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_CARPETA', 'No se pudo crear la carpeta.'));
                         }
                     }
                 }
@@ -111,21 +112,21 @@ export async function handleContextMenuAction(action) {
         }
         case 'create-animator-controller': {
             showPrompt(
-                'Crear Controlador de Animación',
-                'Introduce el nombre del nuevo controlador (.ceanim):',
+                L.get('CREAR_CONTROLADOR_ANIMACION', 'Crear Controlador de Animación'),
+                L.get('NOMBRE_CONTROLADOR_PROMPT', 'Introduce el nombre del nuevo controlador (.ceanim):'),
                 async (ctrlName) => {
                     if (ctrlName) {
                         const fileName = ctrlName.endsWith('.ceanim') ? ctrlName : `${ctrlName}.ceanim`;
                         const defaultContent = JSON.stringify({
                             name: ctrlName,
-                            entryState: "Parado",
+                            entryState: L.get('PARADO', "Parado"),
                             smartMode: true,
                             states: [
-                                { name: "Parado", animationClip: "", speed: 10.0, position: { x: 300, y: 200 } },
-                                { name: "Arriba", animationClip: "", speed: 10.0, position: { x: 300, y: 50 } },
-                                { name: "Abajo", animationClip: "", speed: 10.0, position: { x: 300, y: 350 } },
-                                { name: "Izquierda", animationClip: "", speed: 10.0, position: { x: 100, y: 200 } },
-                                { name: "Derecha", animationClip: "", speed: 10.0, position: { x: 500, y: 200 } }
+                                { name: L.get('PARADO', "Parado"), animationClip: "", speed: 10.0, position: { x: 300, y: 200 } },
+                                { name: L.get('ARRIBA', "Arriba"), animationClip: "", speed: 10.0, position: { x: 300, y: 50 } },
+                                { name: L.get('ABAJO', "Abajo"), animationClip: "", speed: 10.0, position: { x: 300, y: 350 } },
+                                { name: L.get('IZQUIERDA', "Izquierda"), animationClip: "", speed: 10.0, position: { x: 100, y: 200 } },
+                                { name: L.get('DERECHA', "Derecha"), animationClip: "", speed: 10.0, position: { x: 500, y: 200 } }
                             ],
                             transitions: []
                         }, null, 2);
@@ -137,7 +138,7 @@ export async function handleContextMenuAction(action) {
                             await updateAssetBrowserCallback();
                         } catch (err) {
                             console.error("Error al crear el controlador de animación:", err);
-                            showNotification('Error', 'No se pudo crear el controlador.');
+                            showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_CONTROLADOR', 'No se pudo crear el controlador.'));
                         }
                     }
                 }
@@ -146,8 +147,8 @@ export async function handleContextMenuAction(action) {
         }
         case 'create-prefab': {
             showPrompt(
-                'Crear Prefab',
-                'Introduce el nombre del nuevo prefab (.ceprefab):',
+                L.get('CREAR_PREFAB', 'Crear Prefab'),
+                L.get('NOMBRE_PREFAB_PROMPT', 'Introduce el nombre del nuevo prefab (.ceprefab):'),
                 async (prefabName) => {
                     if (prefabName) {
                         const fileName = prefabName.endsWith('.ceprefab') ? prefabName : `${prefabName}.ceprefab`;
@@ -175,7 +176,7 @@ export async function handleContextMenuAction(action) {
                             await updateAssetBrowserCallback();
                         } catch (err) {
                             console.error("Error al crear el prefab:", err);
-                            showNotification('Error', 'No se pudo crear el prefab.');
+                            showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_PREFAB', 'No se pudo crear el prefab.'));
                         }
                     }
                 }
@@ -184,8 +185,8 @@ export async function handleContextMenuAction(action) {
         }
         case 'create-chc-script': {
             showPrompt(
-                'Crear Script H-Code',
-                'Introduce el nombre del nuevo script (.chc):',
+                L.get('CREAR_SCRIPT_CHC', 'Crear Script H-Code'),
+                L.get('NOMBRE_SCRIPT_PROMPT', 'Introduce el nombre del nuevo script:'),
                 async (scriptName) => {
                     if (scriptName) {
                         const fileName = scriptName.endsWith('.chc') ? scriptName : `${scriptName}.chc`;
@@ -198,7 +199,7 @@ export async function handleContextMenuAction(action) {
                             await updateAssetBrowserCallback();
                         } catch (err) {
                             console.error("Error al crear el script CHC:", err);
-                            showNotification('Error', 'No se pudo crear el script.');
+                            showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_SCRIPT', 'No se pudo crear el script.'));
                         }
                     }
                 }
@@ -207,8 +208,8 @@ export async function handleContextMenuAction(action) {
         }
         case 'create-script': {
             showPrompt(
-                'Crear Script',
-                'Introduce el nombre del nuevo script (.ces):',
+                L.get('CREAR_SCRIPT', 'Crear Script'),
+                L.get('NOMBRE_SCRIPT_PROMPT', 'Introduce el nombre del nuevo script:'),
                 async (scriptName) => {
                     if (scriptName) {
                         const fileName = scriptName.endsWith('.ces') ? scriptName : `${scriptName}.ces`;
@@ -221,7 +222,7 @@ export async function handleContextMenuAction(action) {
                             await updateAssetBrowserCallback();
                         } catch (err) {
                             console.error("Error al crear el script:", err);
-                            showNotification('Error', 'No se pudo crear el script.');
+                            showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_SCRIPT', 'No se pudo crear el script.'));
                         }
                     }
                 }
@@ -230,15 +231,24 @@ export async function handleContextMenuAction(action) {
         }
         case 'create-scene': {
             showPrompt(
-                'Crear Escena',
-                'Introduce el nombre de la nueva escena (.ceScene):',
+                L.get('CREAR_ESCENA', 'Crear Escena'),
+                L.get('NOMBRE_ESCENA_PROMPT', 'Introduce el nombre de la nueva escena (.ceScene):'),
                 async (sceneName) => {
                     console.log(`[AssetBrowser] Callback de showPrompt para 'create-scene' ejecutado. Nombre recibido: '${sceneName}'`);
                     if (sceneName) {
                         const fileName = sceneName.endsWith('.ceScene') ? sceneName : `${sceneName}.ceScene`;
                         console.log(`[AssetBrowser] Creando archivo de escena con nombre: '${fileName}'`);
                         // Default empty scene content
-                        const defaultContent = '{"materias": [], "ambiente": {"luzAmbiental":"#1a1a2a","hora":6,"cicloAutomatico":false,"duracionDia":60,"mascaraTipo":"ninguna"}}';
+                        const defaultContent = JSON.stringify({
+                            materias: [],
+                            ambiente: {
+                                nocheDiaColor: "#1a1a2a",
+                                hora: 6,
+                                cicloAutomatico: false,
+                                duracionDia: 60,
+                                mascaraTipo: "none"
+                            }
+                        }, null, 2);
                         try {
                             const fileHandle = await targetHandle.getFileHandle(fileName, { create: true });
                             const writable = await fileHandle.createWritable();
@@ -248,7 +258,7 @@ export async function handleContextMenuAction(action) {
                             await updateAssetBrowserCallback();
                         } catch (err) {
                             console.error("Error al crear la escena:", err);
-                            showNotification('Error', 'No se pudo crear la escena.');
+                            showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_ESCENA', 'No se pudo crear la escena.'));
                         }
                     } else {
                         console.log("[AssetBrowser] La creación de la escena fue cancelada o el nombre estaba vacío.");
@@ -259,8 +269,8 @@ export async function handleContextMenuAction(action) {
         }
         case 'create-animation': {
             showPrompt(
-                'Crear Asset de Animación',
-                'Introduce el nombre del nuevo asset (.cea):',
+                L.get('CREAR_ANIMACION', 'Crear Asset de Animación'),
+                L.get('NOMBRE_ANIMACION_PROMPT', 'Introduce el nombre del nuevo asset (.cea):'),
                 async (animName) => {
                     if (animName) {
                         const fileName = animName.endsWith('.cea') ? animName : `${animName}.cea`;
@@ -282,7 +292,7 @@ export async function handleContextMenuAction(action) {
                             await updateAssetBrowserCallback();
                         } catch (err) {
                             console.error("Error al crear el asset de animación:", err);
-                            showNotification('Error', 'No se pudo crear el asset de animación.');
+                            showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_ANIMACION', 'No se pudo crear el asset de animación.'));
                         }
                     }
                 }
@@ -291,8 +301,8 @@ export async function handleContextMenuAction(action) {
         }
         case 'create-readme': {
             showPrompt(
-                'Crear Archivo Léame',
-                'Introduce el nombre del archivo (.md):',
+                L.get('CREAR_README', 'Crear Archivo Léame'),
+                L.get('NOMBRE_ARCHIVO_PROMPT', 'Introduce el nombre del archivo:'),
                 async (readmeName) => {
                     if (readmeName) {
                         const fileName = readmeName.endsWith('.md') ? readmeName : `${readmeName}.md`;
@@ -305,7 +315,7 @@ export async function handleContextMenuAction(action) {
                             await updateAssetBrowserCallback();
                         } catch (err) {
                             console.error("Error al crear el archivo Léame:", err);
-                            showNotification('Error', 'No se pudo crear el archivo.');
+                            showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_ARCHIVO', 'No se pudo crear el archivo.'));
                         }
                     }
                 },
@@ -315,13 +325,18 @@ export async function handleContextMenuAction(action) {
         }
         case 'create-tile-palette': {
             showPrompt(
-                'Crear Paleta de Tiles',
-                'Introduce el nombre de la nueva paleta (.cepalette):',
+                L.get('CREAR_PALETA_TILES', 'Crear Paleta de Tiles'),
+                L.get('NOMBRE_PALETA_PROMPT', 'Introduce el nombre de la nueva paleta (.cepalette):'),
                 async (paletteName) => {
                     if (paletteName) {
                         const fileName = paletteName.endsWith('.cepalette') ? paletteName : `${paletteName}.cepalette`;
-                        await createNewPalette(fileName, targetHandle);
-                        await updateAssetBrowserCallback();
+                        try {
+                            await createNewPalette(fileName, targetHandle);
+                            await updateAssetBrowserCallback();
+                        } catch (err) {
+                            console.error("Error al crear la paleta:", err);
+                            showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_PALETA', 'No se pudo crear la paleta.'));
+                        }
                     }
                 }
             );
@@ -331,8 +346,8 @@ export async function handleContextMenuAction(action) {
         case 'delete': {
             if (selectedAsset) {
                 showConfirmation(
-                    'Confirmar Borrado',
-                    `¿Estás seguro de que quieres borrar '${selectedAsset.name}'? Esta acción no se puede deshacer.`,
+                    L.get('CONFIRMAR_BORRADO', 'Confirmar Borrado'),
+                    `${L.get('BORRAR_ASSET_CONFIRM', '¿Estás seguro de que quieres borrar')} '${selectedAsset.name}'? ${L.get('ACCION_IRREVERSIBLE', 'Esta acción no se puede deshacer.')}`,
                     async () => {
                         try {
                             // Delete the main asset
@@ -351,12 +366,12 @@ export async function handleContextMenuAction(action) {
                             await updateAssetBrowserCallback();
                         } catch (err) {
                             console.error(`Error al borrar '${selectedAsset.name}':`, err);
-                            showNotification('Error', 'No se pudo borrar el asset.');
+                            showNotification(L.get('ERROR', 'Error'), L.get('ERROR_BORRAR_ASSET', 'No se pudo borrar el asset.'));
                         }
                     }
                 );
             } else {
-                showNotification('Error', 'Por favor, selecciona un archivo o carpeta para borrar.');
+                showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SELECCION_BORRAR', 'Por favor, selecciona un archivo o carpeta para borrar.'));
             }
             break;
         }
@@ -364,13 +379,13 @@ export async function handleContextMenuAction(action) {
             if (selectedAsset) {
                 const oldName = selectedAsset.name;
                 showPrompt(
-                    'Renombrar Asset',
-                    `Introduce el nuevo nombre para '${oldName}':`,
+                    L.get('RENOMBRAR_ASSET', 'Renombrar Asset'),
+                    `${L.get('INTRODUCE_NUEVO_NOMBRE', 'Introduce el nuevo nombre para')} '${oldName}':`,
                     async (newName) => {
                         if (newName && newName !== oldName) {
                             try {
                                 if (selectedAsset.kind === 'directory') {
-                                    showNotification('No Implementado', 'El renombrado de carpetas aún no está implementado.');
+                                    showNotification(L.get('NO_IMPLEMENTADO', 'No Implementado'), L.get('ERROR_RENOMBRAR_CARPETA', 'El renombrado de carpetas aún no está implementado.'));
                                     return;
                                 }
                                 const oldFileHandle = await currentDirectoryHandle.handle.getFileHandle(oldName);
@@ -387,14 +402,14 @@ export async function handleContextMenuAction(action) {
                                 await updateAssetBrowserCallback();
                             } catch (err) {
                                 console.error(`Error al renombrar '${oldName}':`, err);
-                                showNotification('Error', 'No se pudo renombrar el asset.');
+                                showNotification(L.get('ERROR', 'Error'), L.get('ERROR_RENOMBRAR_ASSET', 'No se pudo renombrar el asset.'));
                             }
                         }
                     },
                     oldName
                 );
             } else {
-                showNotification('Error', 'Por favor, selecciona un archivo para renombrar.');
+                showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SELECCION_RENOMBRAR', 'Por favor, selecciona un archivo para renombrar.'));
             }
             break;
         }
@@ -402,7 +417,7 @@ export async function handleContextMenuAction(action) {
              if (selectedAsset && selectedAsset.kind === 'directory') {
                 onExportPackage(selectedAsset.name);
              } else {
-                showNotification('Error', 'Por favor, selecciona una carpeta para exportar.');
+                showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SELECCION_EXPORTAR', 'Por favor, selecciona una carpeta para exportar.'));
              }
             break;
         }
@@ -411,6 +426,7 @@ export async function handleContextMenuAction(action) {
 
 // --- Core Functions ---
 export async function updateAssetBrowser() {
+    const L = window.Localization;
     const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
     if (!currentDirHandle || !dom.assetFolderTree || !dom.assetGridView) return;
 
@@ -452,10 +468,10 @@ export async function updateAssetBrowser() {
                     if (updateAssetBrowserCallback) {
                         await updateAssetBrowserCallback();
                     }
-                    showNotification('Éxito', `Prefab '${materia.name}' creado correctamente.`);
+                    showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_CREAR_PREFAB', "Prefab creado correctamente")}: ${materia.name}`);
                 } catch (err) {
                     console.error("[AssetBrowser] Error crítico al crear el prefab:", err);
-                    showNotification('Error', `No se pudo crear el prefab: ${err.message}`);
+                    showNotification(L.get('ERROR', 'Error'), `${L.get('ERROR_CREAR_PREFAB', "No se pudo crear el prefab")}: ${err.message}`);
                 }
             } else {
                 console.warn(`[AssetBrowser] No se encontró la materia con ID ${materiaId} en la escena.`);
@@ -501,7 +517,7 @@ export async function updateAssetBrowser() {
 
             } catch (error) {
                 console.error("[AssetBrowser] Error al mover el archivo:", error);
-                showNotification('Error', 'No se pudo mover el archivo.');
+                showNotification(L.get('ERROR', 'Error'), L.get('ERROR_MOVER_ARCHIVO', 'No se pudo mover el archivo.'));
             }
         }
     }
@@ -542,7 +558,7 @@ export async function updateAssetBrowser() {
         }
 
         if (entries.length === 0) {
-            gridViewContainer.innerHTML = '<p class="empty-folder-message">La carpeta está vacía</p>';
+            gridViewContainer.innerHTML = `<p class="empty-folder-message" data-i18n="CARPETA_VACIA">${L.get('CARPETA_VACIA', 'La carpeta está vacía')}</p>`;
             return;
         }
 
@@ -567,7 +583,7 @@ export async function updateAssetBrowser() {
             imgIcon.className = 'icon-preview';
 
             if (entry.kind === 'directory') {
-                iconContainer.textContent = '📁';
+                iconContainer.innerHTML = `<img src="icons/folder.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                 item.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; item.classList.add('drag-over'); });
                 item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
                 item.addEventListener('drop', async (e) => {
@@ -595,23 +611,21 @@ export async function updateAssetBrowser() {
                         imgIcon.src = url;
                         iconContainer.appendChild(imgIcon);
                     } else {
-                        iconContainer.textContent = '🖼️';
+                        iconContainer.innerHTML = `<img src="icons/image.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                     }
                 });
-            } else if (entry.name.endsWith('.mp3')) {
-                iconContainer.textContent = '🎵';
+            } else if (entry.name.endsWith('.mp3') || entry.name.endsWith('.wav')) {
+                iconContainer.innerHTML = `<img src="icons/music.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.ttf') || entry.name.endsWith('.otf') || entry.name.endsWith('.woff') || entry.name.endsWith('.woff2')) {
-                iconContainer.textContent = '🔠';
+                iconContainer.innerHTML = `<img src="icons/type.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.ces')) {
-                imgIcon.src = 'image/Script.png';
-                iconContainer.appendChild(imgIcon);
+                iconContainer.innerHTML = `<img src="icons/scroll.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.chc')) {
-                iconContainer.textContent = '🧠';
+                iconContainer.innerHTML = `<img src="icons/bot.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.cea')) {
-                iconContainer.textContent = '🎞️';
+                iconContainer.innerHTML = `<img src="icons/clapperboard.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.ceanim')) {
-                imgIcon.src = 'image/animacion_controler.svg';
-                iconContainer.appendChild(imgIcon);
+                iconContainer.innerHTML = `<img src="icons/gamepad.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.ceSprite')) {
                 const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
                 getURLForAssetPath(fullPath, currentDirHandle).then(url => {
@@ -619,18 +633,17 @@ export async function updateAssetBrowser() {
                         imgIcon.src = url;
                         iconContainer.appendChild(imgIcon);
                     } else {
-                        iconContainer.textContent = '🖼️'; // Fallback icon
+                        iconContainer.innerHTML = `<img src="icons/image.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                     }
                 });
             } else if (entry.name.endsWith('.cep')) {
-                imgIcon.src = 'image/Paquete.png';
-                iconContainer.appendChild(imgIcon);
+                iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.cmel')) {
-                iconContainer.textContent = '🎨';
+                iconContainer.innerHTML = `<img src="icons/image.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.ceScene')) {
-                iconContainer.textContent = '🎬';
+                iconContainer.innerHTML = `<img src="icons/clapperboard.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.ceprefab')) {
-                iconContainer.textContent = '🧊';
+                iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.celib')) {
                 // Asynchronously read the library file to get the custom icon
                 (async () => {
@@ -654,7 +667,7 @@ export async function updateAssetBrowser() {
                     }
                 })();
             } else {
-                iconContainer.textContent = '📄';
+                iconContainer.innerHTML = `<img src="icons/file.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             }
 
             const name = document.createElement('div');
@@ -843,6 +856,7 @@ function handleExternalFileDragLeave(e) {
 }
 
 async function handleExternalFileDrop(e) {
+    const L = window.Localization;
     dragCounter = 0;
     dom.assetsContent.classList.remove('drag-over-fs');
 
@@ -870,7 +884,7 @@ async function handleExternalFileDrop(e) {
                     librariesImported++;
                 } catch (err) {
                     console.error(`Error al importar la librería '${file.name}':`, err);
-                    showNotification('Error de Importación', `No se pudo importar la librería '${file.name}'.`);
+                    showNotification(L.get('ERROR_IMPORTACION', 'Error de Importación'), `${L.get('ERROR_IMPORTAR_LIB', "No se pudo importar la librería")}: '${file.name}'.`);
                 }
             } else {
                 // Normal file handling
@@ -882,7 +896,7 @@ async function handleExternalFileDrop(e) {
                     filesImported++;
                 } catch (err) {
                     console.error(`Error al importar el archivo '${file.name}':`, err);
-                    showNotification('Error de Importación', `No se pudo importar el archivo '${file.name}'.`);
+                    showNotification(L.get('ERROR_IMPORTACION', 'Error de Importación'), `${L.get('ERROR_IMPORTAR_ARCHIVO', "No se pudo importar el archivo")}: '${file.name}'.`);
                 }
             }
         }

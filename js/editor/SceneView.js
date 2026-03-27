@@ -1592,7 +1592,55 @@ export function drawOverlay() {
     drawCanvasGizmos();
     drawUIGizmos(renderer, getSelectedMateria());
 
+    drawRaycastGizmos();
+
     drawTerrainBrushGizmo();
+}
+
+function drawRaycastGizmos() {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+
+    const raycastSource = selectedMateria.getComponent(Components.RaycastSource);
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!raycastSource || !transform || !raycastSource.showGizmo) return;
+
+    const { ctx, camera } = renderer;
+    const zoom = camera.effectiveZoom;
+
+    ctx.save();
+    ctx.translate(transform.x, transform.y);
+    ctx.rotate(transform.rotation * Math.PI / 180);
+
+    ctx.lineWidth = 1.5 / zoom;
+
+    raycastSource.rays.forEach(ray => {
+        const startX = ray.offset?.x || 0;
+        const startY = ray.offset?.y || 0;
+        const rad = (ray.angle || 0) * Math.PI / 180;
+        const dirX = Math.cos(rad);
+        const dirY = Math.sin(rad);
+        const length = ray.length ?? 0;
+
+        const endX = startX + dirX * length;
+        const endY = startY + dirY * length;
+
+        // Draw ray line
+        ctx.strokeStyle = 'rgba(0, 255, 255, 0.6)'; // Cyan
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+
+        // Draw ray head (small dot at the end)
+        ctx.fillStyle = 'rgba(0, 255, 255, 0.9)';
+        const dotSize = 4 / zoom;
+        ctx.beginPath();
+        ctx.arc(endX, endY, dotSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    ctx.restore();
 }
 
 function drawTerrainBrushGizmo() {
@@ -2015,8 +2063,9 @@ function isSameTile(tileA, tileB) {
 
 function paintTile(event) {
     const selectedMateria = getSelectedMateria();
+    const L = window.Localization;
     if (!selectedMateria) {
-        VerificationSystem.updateStatus(null, false, "Error: No hay ningún objeto seleccionado.");
+        VerificationSystem.updateStatus(null, false, L.get('ERROR_NO_OBJETO_SELECT', "Error: No hay ningún objeto seleccionado."));
         return;
     }
 
@@ -2035,13 +2084,13 @@ function paintTile(event) {
     const tilemapRenderer = tilemapMateria.getComponent(Components.TilemapRenderer);
 
     if (!tilemap || !transform || !tilemapRenderer) {
-        VerificationSystem.updateStatus(null, false, "Error: El objeto seleccionado o sus hijos no contienen un Tilemap válido.");
+        VerificationSystem.updateStatus(null, false, L.get('ERROR_TILEMAP_INVALIDO', "Error: El objeto seleccionado o sus hijos no contienen un Tilemap válido."));
         return;
     }
 
     const grid = selectedMateria.parent?.getComponent(Components.Grid);
     if (!grid) {
-        VerificationSystem.updateStatus(null, false, "Error: El objeto padre del Tilemap no tiene un componente Grid.");
+        VerificationSystem.updateStatus(null, false, L.get('ERROR_GRID_FALTANTE', "Error: El objeto padre del Tilemap no tiene un componente Grid."));
         return;
     }
 
@@ -2089,9 +2138,9 @@ function paintTile(event) {
                         updateInspector();
                     }
 
-                    VerificationSystem.updateStatus(tilesToPaint[0], true, "¡Tile Pintado!", `Coordenadas: [${col}, ${row}]`);
+                    VerificationSystem.updateStatus(tilesToPaint[0], true, L.get('STATUS_TILE_PINTADO', "¡Tile Pintado!"), `${L.get('DETALLE_COORDENADAS', 'Coordenadas')}: [${col}, ${row}]`);
                 } else {
-                    VerificationSystem.updateStatus(null, false, "Error: No hay ningún tile seleccionado en la paleta.");
+                    VerificationSystem.updateStatus(null, false, L.get('ERROR_SIN_TILE_PALETA', "Error: No hay ningún tile seleccionado en la paleta."));
                     return;
                 }
             } else if (activeTool === 'tile-bucket') {
@@ -2105,11 +2154,11 @@ function paintTile(event) {
                         updateInspector();
                     }
 
-                    VerificationSystem.updateStatus(tileToPaint, true, "¡Área Rellenada!", `Coordenadas: [${col}, ${row}]`);
+                    VerificationSystem.updateStatus(tileToPaint, true, L.get('STATUS_AREA_RELLENADA', "¡Área Rellenada!"), `${L.get('DETALLE_COORDENADAS', 'Coordenadas')}: [${col}, ${row}]`);
                 }
             } else if (activeTool === 'tile-eraser') {
                 layer.tileData.delete(key);
-                VerificationSystem.updateStatus(null, true, "Tile Borrado", `Coordenadas: [${col}, ${row}]`);
+                VerificationSystem.updateStatus(null, true, L.get('STATUS_TILE_BORRADO', "Tile Borrado"), `${L.get('DETALLE_COORDENADAS', 'Coordenadas')}: [${col}, ${row}]`);
             }
 
             lastPaintedCoords = { col, row };
@@ -2124,7 +2173,7 @@ function paintTile(event) {
             return;
         }
     }
-    VerificationSystem.updateStatus(null, false, "Info: El clic no cayó dentro de los límites de ninguna capa del tilemap.");
+    VerificationSystem.updateStatus(null, false, L.get('INFO_CLICK_FUERA_TILEMAP', "Info: El clic no cayó dentro de los límites de ninguna capa del tilemap."));
 }
 
 function drawCanvasGizmos() {

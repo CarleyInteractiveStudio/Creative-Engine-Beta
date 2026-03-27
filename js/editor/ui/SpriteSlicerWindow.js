@@ -113,8 +113,9 @@ async function loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCb) 
 
     try {
         const file = await fileHandle.getFile();
+        const L = window.Localization;
         if (!file.type.startsWith('image/')) {
-            window.Dialogs.showNotification("Error", "El archivo seleccionado no es una imagen válida.");
+            window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_IMAGEN_INVALIDA', "El archivo seleccionado no es una imagen válida."));
             return;
         }
 
@@ -136,13 +137,15 @@ async function loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCb) 
         reader.readAsDataURL(file);
     } catch (error) {
         console.error("Error al cargar la imagen:", error);
-        window.Dialogs.showNotification("Error", "No se pudo cargar la imagen.");
+        const L = window.Localization;
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CARGAR_IMAGEN', "No se pudo cargar la imagen."));
         resetToDefaultState();
     }
 }
 
 // --- Internal Logic ---
 function resetToDefaultState() {
+    const L = window.Localization;
     sourceImage = null;
     currentFileHandle = null;
     editingCeSpriteFileHandle = null;
@@ -153,7 +156,7 @@ function resetToDefaultState() {
     if(localDom.ctx) localDom.ctx.clearRect(0, 0, localDom.canvas.width, localDom.canvas.height);
     localDom.overlay.classList.remove('hidden');
     localDom.mainContent.classList.add('hidden');
-    localDom.applyBtn.textContent = 'Crear Asset de Sprite';
+    localDom.applyBtn.textContent = L.get('CREAR_ASSET_SPRITE', 'Crear Asset de Sprite');
     localDom.deleteBtn.disabled = true;
 }
 
@@ -266,12 +269,13 @@ function executeSlice() {
 }
 
 async function createSpriteAsset() {
+    const L = window.Localization;
     if (generatedSlices.length === 0) {
-        window.Dialogs.showNotification("Aviso", "No hay slices para aplicar. Usa el botón 'Slice' primero.");
+        window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('AVISO_SIN_SLICES', "No hay slices para aplicar. Usa el botón 'Slice' primero."));
         return;
     }
     if (!createAssetCallback || !getAssetsDirectoryHandle || !updateAssetBrowserCallback || !currentFileHandle) {
-        window.Dialogs.showNotification("Error", "Faltan funciones esenciales del editor para crear el asset.");
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_DEPS_ASSET', "Faltan funciones esenciales del editor para crear el asset."));
         console.error("Error al crear/guardar asset: Faltan dependencias.");
         return;
     }
@@ -319,9 +323,9 @@ async function createSpriteAsset() {
 
         if (fileHandle) {
             const message = isEditing
-                ? `Asset '${assetName}' guardado con ${generatedSlices.length} sprites.`
-                : `Asset '${assetName}' creado con ${generatedSlices.length} sprites.`;
-            window.Dialogs.showNotification("Éxito", message);
+                ? L.get('EXITO_ASSET_GUARDADO_CON', "Asset '{name}' guardado con {count} sprites.").replace('{name}', assetName).replace('{count}', generatedSlices.length)
+                : L.get('EXITO_ASSET_CREADO_CON', "Asset '{name}' creado con {count} sprites.").replace('{name}', assetName).replace('{count}', generatedSlices.length);
+            window.Dialogs.showNotification(L.get('EXITO', "Éxito"), message);
 
             await updateAssetBrowserCallback(); // Refresh to show new/updated file
             localDom.panel.classList.add('hidden');
@@ -330,7 +334,8 @@ async function createSpriteAsset() {
 
     } catch (error) {
         console.error(`Error al ${isEditing ? 'guardar' : 'crear'} el asset de sprite:`, error);
-        window.Dialogs.showNotification("Error", `No se pudo ${isEditing ? 'guardar' : 'crear'} el archivo .ceSprite: ${error.message}`);
+        const errorMsg = isEditing ? L.get('ERROR_GUARDAR_CE_SPRITE', 'No se pudo guardar el archivo .ceSprite') : L.get('ERROR_CREAR_CE_SPRITE', 'No se pudo crear el archivo .ceSprite');
+        window.Dialogs.showNotification(L.get('ERROR', "Error"), `${errorMsg}: ${error.message}`);
     }
 }
 
@@ -449,12 +454,14 @@ async function loadCeSpriteForEditing(ceSpriteFileHandle, directoryHandle) {
         generatedSlices = Object.values(spriteAssetData.sprites).map(s => s.rect);
 
         // Update UI for editing mode
-        localDom.applyBtn.textContent = 'Guardar Cambios';
+        const L = window.Localization;
+        localDom.applyBtn.textContent = L.get('GUARDAR_CAMBIOS_SPRITE', 'Guardar Cambios');
         draw(); // Redraw with the loaded slices
 
     } catch (error) {
         console.error("Error loading .ceSprite for editing:", error);
-        window.Dialogs.showNotification("Error", `Could not load ${ceSpriteFileHandle.name} for editing.`);
+        const L = window.Localization;
+        window.Dialogs.showNotification(L.get('ERROR', "Error"), `${L.get('ERROR_CARGAR_CE_SPRITE', 'No se pudo cargar el archivo .ceSprite para editar')}: ${ceSpriteFileHandle.name}`);
         resetToDefaultState();
     }
 }

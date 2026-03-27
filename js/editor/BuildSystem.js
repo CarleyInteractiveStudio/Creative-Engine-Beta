@@ -7,12 +7,18 @@ import * as CES_Transpiler from './CES_Transpiler.js';
  */
 export async function buildProject(projectsDirHandle, currentProjectConfig) {
     if (!projectsDirHandle) {
-        showNotification('Error de Build', 'No se puede realizar un build sin un proyecto cargado.');
+        showNotification(
+            window.Localization?.get('ERROR_DE_BUILD') || 'Error de Build',
+            window.Localization?.get('ERROR_BUILD_SIN_PROYECTO') || 'No se puede realizar un build sin un proyecto cargado.'
+        );
         return;
     }
 
     if (typeof JSZip === 'undefined') {
-        showNotification('Error de Build', 'La librería JSZip no está cargada.');
+        showNotification(
+            window.Localization?.get('ERROR_DE_BUILD') || 'Error de Build',
+            window.Localization?.get('ERROR_JSZIP_FALTANTE') || 'La librería JSZip no está cargada.'
+        );
         return;
     }
 
@@ -21,7 +27,10 @@ export async function buildProject(projectsDirHandle, currentProjectConfig) {
         const projectName = new URLSearchParams(window.location.search).get('project');
         const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
 
-        showNotification('Build en Progreso', 'Generando paquete de juego independiente...');
+        showNotification(
+            window.Localization?.get('BUILD_EN_PROGRESO') || 'Build en Progreso',
+            window.Localization?.get('BUILD_GENERANDO_独立') || 'Generando paquete de juego independiente...'
+        );
 
         // 1. Export index.html
         zip.file('index.html', generateIndexHtml(currentProjectConfig));
@@ -94,11 +103,17 @@ export async function buildProject(projectsDirHandle, currentProjectConfig) {
         const blob = await zip.generateAsync({ type: 'blob' });
         downloadBlob(blob, `${projectName}_Build.zip`);
 
-        showNotification('Build Completado', '¡Tu juego está listo! El archivo ZIP se ha generado.');
+        showNotification(
+            window.Localization?.get('BUILD_COMPLETADO') || 'Build Completado',
+            window.Localization?.get('BUILD_EXITO_ZIP') || '¡Tu juego está listo! El archivo ZIP se ha generado.'
+        );
 
     } catch (error) {
         console.error('Build Error:', error);
-        showNotification('Error de Build', `Ocurrió un error: ${error.message}`);
+        showNotification(
+            window.Localization?.get('ERROR_DE_BUILD') || 'Error de Build',
+            `Ocurrió un error: ${error.message}`
+        );
     }
 }
 

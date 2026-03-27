@@ -26,8 +26,8 @@ function playTrack(index) {
         // Stop playback if playlist ends
         audioElement.pause();
         currentTrackIndex = -1;
-        dom.nowPlayingTitle.textContent = "Nada en reproducción";
-        dom.musicPlayPauseBtn.textContent = "▶️";
+        dom.nowPlayingTitle.textContent = window.Localization?.get('NO_REPRODUCIENDO') || "Nada en reproducción";
+        if (dom.musicPlayPauseBtn) dom.musicPlayPauseBtn.innerHTML = '<img src="icons/play.svg" class="ce-icon">';
         updatePlaylistUI();
         return;
     }
@@ -39,7 +39,7 @@ function playTrack(index) {
         const url = URL.createObjectURL(file);
         audioElement.src = url;
         audioElement.play();
-        dom.musicPlayPauseBtn.textContent = "⏸️";
+        if (dom.musicPlayPauseBtn) dom.musicPlayPauseBtn.innerHTML = '<img src="icons/pause.svg" class="ce-icon">';
     });
 
     updatePlaylistUI();
@@ -76,10 +76,10 @@ function setupEventListeners() {
         dom.musicPlayPauseBtn.addEventListener('click', () => {
             if (audioElement.paused && currentTrackIndex !== -1) {
                 audioElement.play();
-                dom.musicPlayPauseBtn.textContent = "⏸️";
+                dom.musicPlayPauseBtn.innerHTML = '<img src="icons/pause.svg" class="ce-icon">';
             } else {
                 audioElement.pause();
-                dom.musicPlayPauseBtn.textContent = "▶️";
+                dom.musicPlayPauseBtn.innerHTML = '<img src="icons/play.svg" class="ce-icon">';
             }
         });
     }
