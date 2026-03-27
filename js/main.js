@@ -333,6 +333,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const projectNameInput = document.getElementById('project-name');
         const projectName = projectNameInput.value.trim().replace(/[^a-zA-Z0-9-]/g, '-');
         const projectType = createProjectForm.querySelector('input[name="projectType"]:checked').value;
+        const isNewUser = document.getElementById('is-new-user').checked;
 
         if (!projectName) {
             window.Dialogs.showNotification('Entrada Inválida', 'Por favor, introduce un nombre de proyecto válido.');
@@ -367,6 +368,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 appName: projectName,
                 appVersion: '1.0.0',
                 projectType: projectType,
+                isNewUser: isNewUser,
                 engineVersion: '0.1.0-beta'
             };
             const configFileHandle = await projectDirHandle.getFileHandle('project.ceconfig', { create: true });

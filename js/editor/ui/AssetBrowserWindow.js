@@ -762,7 +762,12 @@ export async function updateAssetBrowser() {
 
             const name = document.createElement('div');
             name.className = 'name';
-            name.textContent = entry.name;
+            if (entry.kind === 'file') {
+                const lastDotIndex = entry.name.lastIndexOf('.');
+                name.textContent = lastDotIndex !== -1 ? entry.name.substring(0, lastDotIndex) : entry.name;
+            } else {
+                name.textContent = entry.name;
+            }
 
             item.appendChild(iconContainer);
             item.appendChild(name);

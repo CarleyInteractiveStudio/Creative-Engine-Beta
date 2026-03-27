@@ -47,6 +47,17 @@ Creative Engine es un motor de videojuegos 2D profesional y ligero, diseñado pa
   - **Audio Espacial:** Atenuación de volumen basada en la distancia a la cámara.
   - **Recorte de Rango:** Define exactamente qué parte del archivo de audio reproducir.
 
+## 📚 Documentación
+
+- **[Guía de Componentes (Leyes)](README_COMPONENTES.md):** Aprende sobre todos los componentes disponibles, sus propiedades y cómo usarlos en scripts.
+- **[Guía Maestra de Scripting (CES)](README_SCRIPTING.md):** Todo lo que necesitas saber para programar tus juegos: sintaxis, eventos, input y ejemplos completos.
+- **[Guía de Librerías y Extensibilidad](README_LIBRERIAS.md):** Aprende a crear tus propias herramientas para el editor y ampliar las funciones de scripting.
+- **[Guía de la Terminal](README_TERMINAL.md):** Domina el uso de comandos para gestionar archivos y objetos de forma experta.
+- **[Gestión Avanzada (Proyectos, Escenas, Build)](README_AVANZADO.md):** Aprende a publicar tu juego, crear prefabs, gestionar escenas y optimizar tus assets.
+- **[Manual de Carl IA](README_CARL_IA.md):** Aprende a usar a tu asistente autónomo para construir juegos con lenguaje natural.
+- **[Guía de Editores Visuales](README_EDITORES_VISUALES.md):** Domina el Editor de Animaciones, Sprites, AnimatorController y Tilemaps.
+- **[Configuración y Preferencias](README_CONFIGURACION.md):** Personaliza el editor, gestiona capas, tags y el sistema de iluminación ambiental.
+
 ## 🚀 Cómo Empezar
 
 1. **Lanzar el Editor:** Abre `index.html` en un servidor web local (ej: `python -m http.server`).

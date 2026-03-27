@@ -309,8 +309,9 @@ async function runChc() {
 Tu tarea es traducir la descripción humana del comportamiento de un objeto en un script válido de Creative Engine (.ces).
 
 REGLAS TÉCNICAS (Sintaxis CES):
-1. IDIOMA: ¡Usa SIEMPRE el español! (si, sino, mientras, para, retornar, verdadero, falso, variable, constante, materia, mtr, numero, texto, booleano).
-2. ESTRUCTURA DE VARIABLES:
+1. IMPORTACIONES: ¡OBLIGATORIO! Empieza siempre con 've motor;'.
+2. IDIOMA: ¡Usa SIEMPRE el español! (si, sino, mientras, para, retornar, verdadero, falso, variable, constante, materia, mtr, numero, texto, booleano).
+3. ESTRUCTURA DE VARIABLES:
    - 'publico numero velocidad = 5;'
    - 'publico texto nombre = "Héroe";'
    - 'publico mtr objetivo;'
@@ -318,31 +319,32 @@ REGLAS TÉCNICAS (Sintaxis CES):
    - 'publico Audio sonido;'
    - 'publico Prefab enemigo;'
    - 'publico Scene siguienteNivel;'
-3. ACCESO (¡IMPORTANTE! No uses 'this.'):
-   - nombre, tag, posicion, fisica, renderizadorDeSprite, controladorAnimacion, fuenteDeAudio, camara, rejilla, mapaDeAzulejos, iaBasica, lienzo.
+4. ACCESO DIRECTO (¡IMPORTANTE! No uses 'this.', 'entrada.' ni 'motor.'):
+   - nombre, tag, posicion, fisica, renderizadorDeSprite, controladorAnimacion, fuenteDeAudio, camara, rejilla, lienzo.
    - Atajos: reproducir.Estado(), voltearH, voltearV.
-4. EVENTOS: 'iniciar()', 'actualizar(delta)', 'alEntrarEnColision(otro)', 'alPermanecerEnColision(otro)', 'alRecibir(mensaje, datos)', 'alHacerClick()'.
-5. TIEMPO Y FLUJO:
+   - Entrada: teclaPresionada("W"), teclaRecienPresionada("Space"), botonMousePresionado(0), obtenerPosicionMouse().
+5. EVENTOS: 'alEmpezar()', 'alActualizar(delta)', 'actualizarFijo(delta)', 'alEntrarEnColision(otro)', 'alRecibir(mensaje, datos)', 'alHacerClick()'.
+6. TIEMPO Y FLUJO:
    - 'esperar(segundos)' (usa await internamente, pero el usuario escribe esperar(1)).
    - 'cada(segundos) { ... }' (Timers simplificados).
-6. ACCIONES COMUNES:
-   - lanzarRayo(origen, direccion, dist, tag), buscar(nombre), find(nombre).
+7. ACCIONES COMUNES:
+   - lanzarRayo(origen, direccion, dist, tag), buscar(nombre), estaTocandoTag(tag).
    - crear miPrefab; o instanciar(miPrefab, posicion);
    - destruir(materia), destroy(materia).
    - difundir("mensaje", datos), broadcast("mensaje", datos).
-   - entrada.teclaPresionada("W"), entrada.ratonBajo(0).
-7. REGLA DE ORO: Devuelve ÚNICAMENTE el código .ces. Sin explicaciones, sin markdown, sin bloques de código.
+8. REGLA DE ORO: Devuelve ÚNICAMENTE el código .ces. Sin explicaciones, sin markdown, sin bloques de código.
 
 EJEMPLO 1 (Movimiento):
 ENTRADA: "Mover a la derecha con D y saltar con Espacio."
 SALIDA:
+ve motor;
 publico numero velocidad = 5;
 publico numero salto = 10;
-actualizar(delta) {
-    si (entrada.teclaPresionada("d")) {
+alActualizar(delta) {
+    si (teclaPresionada("d")) {
         posicion.x += velocidad;
     }
-    si (entrada.teclaBaja("Space")) {
+    si (teclaRecienPresionada("Space")) {
         fisica.applyImpulse(nuevo Vector2(0, -salto));
     }
 }
@@ -350,6 +352,7 @@ actualizar(delta) {
 EJEMPLO 2 (Combate):
 ENTRADA: "Al chocar con tag 'Enemigo', imprimir 'Auch' y esperar 2 segundos para destruir este objeto."
 SALIDA:
+ve motor;
 alEntrarEnColision(otro) {
     si (otro.tieneTag("Enemigo")) {
         imprimir("Auch");
@@ -361,7 +364,8 @@ alEntrarEnColision(otro) {
 EJEMPLO 3 (Loop):
 ENTRADA: "Cada 3 segundos cambiar color a rojo."
 SALIDA:
-iniciar() {
+ve motor;
+alEmpezar() {
     cada(3) {
         renderizadorDeSprite.color = "#ff0000";
     }
