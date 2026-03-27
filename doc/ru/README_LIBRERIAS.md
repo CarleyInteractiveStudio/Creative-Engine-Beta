@@ -1,56 +1,145 @@
-# 📚 Library Extension Guide (.celib) - Creative Engine
+# 📚 Книга по расширяемости: Библиотеки и инструменты (.celib) — Creative Engine
 
-Libraries allow you to extend the engine with your own panels, components, and runtime functions.
+Добро пожаловать в святилище разработчиков инструментов. Если ты дошел до этого места, значит, ты хочешь не просто использовать движок, ты хочешь **стать его частью**. В Creative Engine расширяемость — это не второстепенная мысль, это ключевая особенность.
 
----
-
-## 📂 1. Directory Structure
-
-All libraries must be placed in the `/lib` folder of your project:
-- `/lib/MyLib.celib`: The library package itself.
-- `/lib/MyLib.celib.meta`: Current status and user-granted permissions.
+Эта книга подробно описывает, как ты можешь внедрять собственный код JavaScript (ES6) для создания пользовательских интерфейсов или глобальных API, которые расширят возможности всей твоей команды.
 
 ---
 
-## 🛠️ 2. Creating a Library
+## 📖 Оглавление
 
-A library is a JSON package containing a JavaScript script.
-1. Use **Library Window > Create**.
-2. Write your script inside an IIFE (Immediately Invoked Function Expression).
+1. [Глава 1: Экосистема расширений](#глава-1-экосистема-расширений)
+2. [Глава 2: Глобальный реестр API](#глава-2-глобальный-реестр-api)
+3. [Глава 3: Построение пользовательского интерфейса (UI)](#глава-3-построение-ui)
+4. [Глава 4: Справочник виджетов панели](#глава-4-справочник-виджетов)
+5. [Глава 5: Хуки и события движка](#глава-5-хуки-и-события)
+6. [Глава 6: Практический пример: Процедурный генератор уровней](#глава-6-практический-пример)
+7. [Глава 7: Отладка библиотек](#глава-7-отладка)
+8. [Глава 8: Публикация и лучшие практики](#глава-8-публикация)
 
-### Example: Custom Panel
+---
+
+## 🏛️ Глава 1: Экосистема расширений
+
+Библиотеки в Creative Engine делятся на две основные категории:
+1. **Библиотеки редактора:** Добавляют кнопки, окна и утилиты, которые существуют только во время проектирования игры.
+2. **Библиотеки Runtime:** Внедряют функции, которые скрипты `.ces` могут использовать во время выполнения игры (например, система облачных сохранений).
+
+Любой файл `.js` или `.celib`, помещенный в папку `/lib`, автоматически загружается при запуске редактора.
+
+---
+
+## 🧪 Глава 2: Глобальный реестр
+
+Входными воротами ко всему является объект `CreativeEngine.API`. Этот объект позволяет безопасно взаимодействовать с внутренностями движка.
+
+### Регистрация Runtime API
+Если ты хочешь, чтобы функция была доступна для всех скриптов CES:
+
 ```javascript
 (function() {
-    CreativeEngine.API.registrarVentana({
-        nombre: "My Tool",
-        alAbrir: function(panel) {
-            panel.texto("Custom Content");
-            panel.boton("Action", () => console.log("Done!"));
-        }
-    });
+    const MySystem = {
+        calculateDistance: (a, b) => Math.hypot(a.x - b.x, a.y - b.y),
+        config: { version: "1.0" }
+    };
+    CreativeEngine.API.registrarRuntimeAPI("Geometry", MySystem);
 })();
 ```
 
----
-
-## 🔒 3. Permissions
-
-For security, the engine requires you to grant permissions explicitly in the **Library Details** view:
-- **Create Windows:** Allows the library to add entries to the Window menu.
-- **Runtime Access:** Allows `.ces` scripts to call the library's internal functions.
-- **Custom Components:** Allows the library to register new logic for Materias.
+**Эффект:** В любом скрипте CES теперь можно использовать `go "Geometry";` и вызывать `calculateDistance()`.
 
 ---
 
-## 🧪 4. Using in Scripts (.ces)
+## 🎨 Глава 3: Построение интерфейса (UI)
 
-Import the library using the `go` command:
-```ces
-go "MyLib"
+Creative Engine использует декларативный API для создания инструментов. Тебе не нужно знать HTML или CSS; движок сам позаботится о том, чтобы макет соответствовал эстетике редактора.
 
-start() {
-    variable result = myCustomFunction(10);
-    log(result);
-}
+```javascript
+CreativeEngine.API.registrarVentana({
+    nombre: "Проводник данных",
+    ancho: 400,
+    alto: 300,
+    alAbrir: function(panel) {
+        panel.columna((col) => {
+            col.texto("Статус системы", { negrita: true });
+            col.separador();
+            col.boton("Обновить", () => MyLogic.update());
+        });
+    }
+});
 ```
-*(Note: `myCustomFunction` must be exported by the library script)*
+
+---
+
+## 🍱 Глава 4: Справочник виджетов
+
+### Элементы ввода
+- **`input(label, callback)`**: Принимает строку.
+- **`numero(label, callback)`**: Автоматически фильтрует, разрешая только числа.
+- **`checkbox(label, initial, callback)`**: Возвращает булево значение.
+- **`slider(label, options, callback)`**: Опции: `{ min, max, paso }`.
+
+### Визуальные элементы
+- **`texto(value, style)`**: Поддерживает `color`, `fontSize`, `bold`.
+- **`imagen(url)`**: Полезно для предпросмотра спрайтов или текстур.
+
+---
+
+## 🪝 Глава 5: Хуки и события
+
+Твоя библиотека может реагировать на то, что происходит в движке.
+
+### События выбора
+```javascript
+window.addEventListener('mtrSelected', (e) => {
+    const materia = e.detail; // Текущий выбранный объект
+    console.log("Выбрано: " + materia.name);
+});
+```
+
+### События сцены
+- `sceneLoaded`: Когда уровень закончил загрузку.
+- `gameStarted` / `gameStopped`: Полезно для инициализации локальных баз данных только во время игры.
+
+---
+
+## 🚀 Глава 6: Практический пример — Процедурный генератор
+
+Представь инструмент, который автоматически создает сетку врагов:
+
+```javascript
+CreativeEngine.API.registrarVentana({
+    nombre: "Spawn Master",
+    alAbrir: (ui) => {
+        let quantity = 10;
+        ui.numero("Количество", (v) => quantity = v);
+        ui.boton("Генерировать!", async () => {
+            for(let i=0; i<quantity; i++) {
+                const x = Math.random() * 800;
+                const y = Math.random() * 600;
+                await window.SceneManager.instantiatePrefabFromPath("Assets/Enemy.ceprefab", x, y);
+            }
+        });
+    }
+});
+```
+
+---
+
+## 🐛 Глава 7: Отладка библиотек
+
+Поскольку библиотеки — это чистый JavaScript, ты можешь использовать инструменты разработчика браузера (F12):
+1. Открой вкладку **Sources**.
+2. Найди свой файл в папке `lib/`.
+3. Установи точки остановки (breakpoints).
+4. Используй `console.dir(window.CreativeEngine)` для проверки доступного API.
+
+---
+
+## 📦 Глава 8: Публикация и лучшие практики
+
+- **Инкапсуляция:** Всегда используй паттерн `(function() { ... })();`, чтобы не загрязнять глобальное пространство.
+- **Производительность:** Не выполняй тяжелые вычисления в основном потоке редактора; используй `setTimeout` или `Worker`, если необходимо.
+
+---
+*Этот документ является живым руководством. Если ты создашь полезную библиотеку, поделись ею с сообществом!*
