@@ -1318,12 +1318,14 @@ document.addEventListener('DOMContentLoaded', () => {
             for (const materia of SceneManager.currentScene.getAllMaterias()) {
                 if (!materia.isActive) continue;
 
-                const scripts = materia.getComponents(Components.CreativeScript);
-                for (const script of scripts) {
-                    try {
-                        script.fixedUpdate(FIXED_DELTA);
-                    } catch (e) {
-                        console.error(`Error en fixedUpdate() del script '${script.scriptName}' en el objeto '${materia.name}':`, e);
+                // Call fixedUpdate on ALL components that have it
+                for (const ley of materia.leyes) {
+                    if (ley.isActive && typeof ley.fixedUpdate === 'function') {
+                        try {
+                            ley.fixedUpdate(FIXED_DELTA);
+                        } catch (e) {
+                            console.error(`Error en fixedUpdate() del componente ${ley.constructor.name} en el objeto '${materia.name}':`, e);
+                        }
                     }
                 }
             }
@@ -1427,10 +1429,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 let worldPosition = transform.position;
 
                 // Get camera position for parallax (either from camera materia or editor camera)
-                const camX = camTransform ? camTransform.x : (rendererInstance.isEditor ? rendererInstance.camera.x : 0);
-                const camY = camTransform ? camTransform.y : (rendererInstance.isEditor ? rendererInstance.camera.y : 0);
+                const isGame = (typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts));
 
-                if (parallax) {
+                // FIXED: Parallax should only react to Game Camera, not Editor Camera.
+                // In Scene View, we treat camera as (0,0) to show object at its world base position.
+                const camX = isGameView ? (camTransform ? camTransform.x : 0) : 0;
+                const camY = isGameView ? (camTransform ? camTransform.y : 0) : 0;
+
+                if (parallax && (isGame || isGameView)) {
                      worldPosition = {
                          x: worldPosition.x + (camX * (1 - parallax.scrollFactor.x)) + parallax.offset.x + (parallax._autoOffset ? parallax._autoOffset.x : 0),
                          y: worldPosition.y + (camY * (1 - parallax.scrollFactor.y)) + parallax.offset.y + (parallax._autoOffset ? parallax._autoOffset.y : 0)

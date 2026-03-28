@@ -63,6 +63,8 @@ const componentAliases = {
     'VerticalLayoutGroup': 'autoDisposicionVertical',
     'HorizontalLayoutGroup': 'autoDisposicionHorizontal',
     'GridLayoutGroup': 'autoDisposicionRejilla',
+    'VehicleController': 'controladorDeVehiculo',
+    'WheelSuspension': 'suspensionDeRueda',
 };
 
 
@@ -1047,7 +1049,9 @@ export class Rigidbody2D extends Leyes {
         }
     }
 
-    // --- Spanish Aliases ---
+    // --- Aliases ---
+    applyForce(x, y) { this.addForce(x, y); }
+    applyImpulse(x, y) { this.addImpulse(x, y); }
     aplicarFuerza(x, y) { this.addForce(x, y); }
     aplicarImpulso(x, y) { this.addImpulse(x, y); }
     establecerVelocidad(x, y) { this.setVelocity(x, y); }
@@ -4932,24 +4936,370 @@ export class LineCollider2D extends Leyes {
     }
 }
 
+/**
+ * Componente VehicleController (Controlador de Vehículo): Manejo de Autos, Aviones y Helicópteros con física realista.
+ */
+export class VehicleController extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.vehicleType = 'Car'; // 'Car', 'Plane', 'Helicopter'
+        this.viewMode = 'Side-View'; // 'Top-Down', 'Side-View'
+        this.power = 2000;
+        this.maxSpeed = 1000;
+        this.brakingForce = 1500;
+        this.steeringRange = 30;
+        this.turnSpeed = 100;
+        this.mass = 1200;
+
+        // Controles configurables
+        this.accelerateKey = 'd'; // A la derecha en Side-View
+        this.brakeKey = 'a';      // A la izquierda en Side-View
+        this.pitchUpKey = 'w';
+        this.pitchDownKey = 's';
+        this.upKey = 'space';
+        this.downKey = 'shift';
+
+        // Ajustes realistas
+        this.pitchStrength = 5.0;
+        this.takeoffSpeed = 300;
+        this.heightControlMode = 'Potency';
+
+        // Estado interno
+        this.currentPotency = 0;
+        this.currentSteer = 0;
+    }
+
+    fixedUpdate(deltaTime) {
+        if (typeof window !== 'undefined' && !window.isGameRunning && !window.CE_Standalone_Scripts) return;
+
+        const input = RuntimeAPIManager.getAPI('input');
+        const rb = this.materia.getComponent(Rigidbody2D);
+        const transform = this.materia.getComponent(Transform);
+        if (!input || !rb || !transform) return;
+
+        if (rb.mass !== this.mass) rb.mass = this.mass;
+
+        // --- Lectura de Input según Modo ---
+        let moveInput = 0;
+        let steerInput = 0;
+        let pitchInput = 0;
+
+        if (this.viewMode === 'Side-View') {
+            // Derecha acelera, Izquierda frena/retrocede
+            if (input.isKeyPressed(this.accelerateKey)) moveInput += 1;
+            if (input.isKeyPressed(this.brakeKey)) moveInput -= 1;
+
+            // W/S inclinan el auto (Pitch)
+            if (input.isKeyPressed(this.pitchUpKey)) pitchInput -= 1;
+            if (input.isKeyPressed(this.pitchDownKey)) pitchInput += 1;
+        } else {
+            // Top-Down tradicional
+            if (input.isKeyPressed('w')) moveInput += 1;
+            if (input.isKeyPressed('s')) moveInput -= 1;
+            if (input.isKeyPressed('d')) steerInput += 1;
+            if (input.isKeyPressed('a')) steerInput -= 1;
+        }
+
+        // Buscar amortiguadores en el mismo objeto o hijos
+        const suspensions = this.materia.leyes.filter(l => l instanceof WheelSuspension)
+            .concat(this.materia.children.map(child => child.getComponent(WheelSuspension)).filter(s => s !== null));
+
+        // --- Lógica según tipo ---
+        if (this.vehicleType === 'Car') {
+            this._handleCarPhysics(rb, transform, moveInput, steerInput, pitchInput, suspensions, deltaTime);
+        } else if (this.vehicleType === 'Plane') {
+            this._handlePlanePhysics(rb, transform, moveInput, steerInput, pitchInput, deltaTime);
+        } else if (this.vehicleType === 'Helicopter') {
+            const upInput = input.isKeyPressed(this.upKey) ? 1 : (input.isKeyPressed(this.downKey) ? -1 : 0);
+            this._handleHelicopterPhysics(rb, transform, moveInput, steerInput, upInput, deltaTime);
+        }
+    }
+
+    _handleCarPhysics(rb, transform, moveInput, steerInput, pitchInput, suspensions, deltaTime) {
+        const rad = transform.rotation * Math.PI / 180;
+        const forward = { x: Math.cos(rad), y: Math.sin(rad) };
+        const speed = Math.hypot(rb.velocity.x, rb.velocity.y);
+
+        // Contar cuántas ruedas están tocando suelo
+        let groundedCount = 0;
+        if (suspensions.length > 0) {
+            groundedCount = suspensions.reduce((acc, s) => acc + (s.wheels ? s.wheels.filter(w => w.isGrounded).length : (s.isGrounded ? 1 : 0)), 0);
+        }
+
+        const traction = groundedCount > 0 ? 1.0 : 0; // Tracción simplificada para 2D
+
+        // Aceleración / Freno
+        if (moveInput !== 0 && speed < this.maxSpeed / 50) {
+            // Torque aumentado para trepar colinas (Hill Climb style)
+            const forceMag = this.power * 25000 * moveInput * traction;
+            rb.addForce({ x: forward.x * forceMag * deltaTime, y: forward.y * forceMag * deltaTime });
+        }
+
+        // Giro o Pitch
+        if (this.viewMode === 'Side-View') {
+            // En el aire o suelo, el Pitch rota el auto
+            if (pitchInput !== 0) {
+                rb.angularVelocity += pitchInput * this.pitchStrength * 0.1 * deltaTime;
+            }
+            // Pitch automático al acelerar (Efecto inercia)
+            if (moveInput !== 0 && groundedCount > 0) {
+                rb.angularVelocity += moveInput * this.pitchStrength * 0.05 * deltaTime;
+            }
+        } else {
+            // Top-Down: Steer rota el auto
+            if (speed > 0.5 && groundedCount > 0) {
+                const turnDir = steerInput * this.turnSpeed * deltaTime * (rb.velocity.x * forward.x + rb.velocity.y * forward.y > 0 ? 1 : -1);
+                transform.rotation += turnDir;
+            }
+        }
+    }
+
+    _handlePlanePhysics(rb, transform, moveInput, steerInput, pitchInput, deltaTime) {
+        const rad = transform.rotation * Math.PI / 180;
+        const forward = { x: Math.cos(rad), y: Math.sin(rad) };
+        const speed = Math.hypot(rb.velocity.x, rb.velocity.y) * 50;
+
+        // Empuje motor (Acelerar/Frenar)
+        if (moveInput > 0) {
+            rb.addForce({ x: forward.x * this.power * 100 * deltaTime, y: forward.y * this.power * 100 * deltaTime });
+        }
+
+        // Sustentación (Lift) - Solo si hay velocidad hacia adelante
+        const forwardSpeed = (rb.velocity.x * forward.x + rb.velocity.y * forward.y) * 50;
+        if (forwardSpeed > this.takeoffSpeed) {
+            const liftFactor = Math.min(1.2, (forwardSpeed - this.takeoffSpeed) / 500);
+            // La sustentación empuja "hacia arriba" relativo a la inclinación del ala (pitch)
+            // En coordenadas Y-Down, el vector "arriba" relativo al frente {x, y} es {y, -x}
+            const up = { x: forward.y, y: -forward.x };
+            // Aumentamos la fuerza de sustentación para que realmente pueda volar
+            rb.addForce({ x: up.x * 9.8 * rb.mass * 150 * liftFactor * deltaTime, y: up.y * 9.8 * rb.mass * 150 * liftFactor * deltaTime });
+        }
+
+        // Pitch (Inclinar para subir/bajar)
+        let actualPitch = pitchInput;
+        if (this.viewMode === 'Top-Down') actualPitch = steerInput; // Alias para top-down
+        transform.rotation += actualPitch * this.turnSpeed * deltaTime;
+    }
+
+    _handleHelicopterPhysics(rb, transform, moveInput, steerInput, upInput, deltaTime) {
+        const rad = transform.rotation * Math.PI / 180;
+        const up = { x: Math.sin(rad), y: -Math.cos(rad) };
+        const forward = { x: Math.cos(rad), y: Math.sin(rad) };
+
+        // Rotor Principal (Altura)
+        let liftForce = 9.8 * rb.mass * 50; // Fuerza para flotar
+        if (this.heightControlMode === 'Manual') {
+            liftForce += upInput * this.power * 10;
+        } else {
+            // Basado en potencia (moveInput para inclinar y ganar velocidad, upInput para altura bruta)
+            liftForce += upInput * this.power * 10;
+        }
+        rb.applyForce({ x: up.x * liftForce, y: up.y * liftForce });
+
+        // Giro y Movimiento lateral por inclinación
+        transform.rotation += steerInput * this.turnSpeed * deltaTime;
+
+        // Empuje motor (Pequeño empuje en dirección forward si hay moveInput)
+        if (moveInput !== 0) {
+            rb.applyForce({ x: forward.x * moveInput * this.power * 5, y: forward.y * moveInput * this.power * 5 });
+        }
+    }
+
+    clone() {
+        const copy = new VehicleController(null);
+        Object.assign(copy, this);
+        return copy;
+    }
+}
+
+/**
+ * Componente WheelSuspension (Suspensión de Rueda): Amortiguación y Grip realista.
+ */
+export class WheelSuspension extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.wheels = [
+            {
+                materiaId: null,
+                offset: { x: -30, y: 30 },
+                restLength: 40,
+                wheelRadius: 15,
+                stiffness: 1000,
+                damping: 100,
+                isGrounded: false,
+                currentCompression: 0,
+                _lastCompression: 0
+            },
+            {
+                materiaId: null,
+                offset: { x: 30, y: 30 },
+                restLength: 40,
+                wheelRadius: 15,
+                stiffness: 1000,
+                damping: 100,
+                isGrounded: false,
+                currentCompression: 0,
+                _lastCompression: 0
+            }
+        ];
+        this.gripTags = ['Ground', 'Road'];
+        this.grip = 1.0;
+        this.showGizmo = true;
+        this.constraintAxis = { x: 0, y: 1 };
+        this.selectedIndex = 0; // Para el editor
+    }
+
+    fixedUpdate(deltaTime) {
+        if (typeof window !== 'undefined' && !window.isGameRunning && !window.CE_Standalone_Scripts) return;
+
+        const rb = this.materia.getComponent(Rigidbody2D);
+        const transform = this.materia.getComponent(Transform);
+        const engine = RuntimeAPIManager.getAPI('engine');
+        if (!rb || !transform || !engine) return;
+
+        const chassisRad = transform.rotation * Math.PI / 180;
+        const cos = Math.cos(chassisRad), sin = Math.sin(chassisRad);
+
+        // Dirección del resorte en el mundo (NORMALIZADA)
+        let springDir = {
+            x: this.constraintAxis.x * cos - this.constraintAxis.y * sin,
+            y: this.constraintAxis.x * sin + this.constraintAxis.y * cos
+        };
+        const mag = Math.hypot(springDir.x, springDir.y);
+        if (mag > 0) { springDir.x /= mag; springDir.y /= mag; }
+
+        for (const wheel of this.wheels) {
+            // 1. Punto de anclaje
+            const anchorWorldX = transform.x + (wheel.offset.x * cos - wheel.offset.y * sin);
+            const anchorWorldY = transform.y + (wheel.offset.x * sin + wheel.offset.y * cos);
+
+            // Empezar el rayo un poco "atrás" para no quedar atrapado dentro del suelo si la suspensión está al tope
+            const rayStartX = anchorWorldX - springDir.x * wheel.wheelRadius;
+            const rayStartY = anchorWorldY - springDir.y * wheel.wheelRadius;
+
+            // 2. Detección (ajustamos el largo por el inicio desplazado)
+            const hit = engine.raycast({ x: rayStartX, y: rayStartY }, springDir, wheel.restLength + wheel.wheelRadius * 2, this.gripTags);
+
+            let wheelMateria = null;
+            if (wheel.materiaId) {
+                wheelMateria = this.materia.scene.findMateriaById(wheel.materiaId);
+                if (wheelMateria) {
+                    const wheelRb = wheelMateria.getComponent(Rigidbody2D);
+                    // Forzar a Kinematic para que no caiga por gravedad y siga la suspensión
+                    if (wheelRb && wheelRb.bodyType === 'Dynamic') {
+                        wheelRb.bodyType = 'Kinematic';
+                        wheelRb.velocity = { x: 0, y: 0 };
+                    }
+                }
+            }
+
+            if (hit) {
+                wheel.isGrounded = true;
+                // La distancia real desde el anclaje al suelo (restando el desplazamiento inicial del rayo)
+                const distFromAnchorToFloor = hit.distance - wheel.wheelRadius;
+                const distToWheelCenter = distFromAnchorToFloor - wheel.wheelRadius;
+
+                const compressionAmount = Math.max(0, wheel.restLength - distToWheelCenter);
+                wheel.currentCompression = compressionAmount / wheel.restLength;
+
+                // 3. Física (Multiplicadores aumentados para evitar que el chasis toque el suelo)
+                const springForce = (compressionAmount * wheel.stiffness) * 8000;
+                const compressionVelocity = (wheel.currentCompression - wheel._lastCompression) / deltaTime;
+                const dampingForce = (compressionVelocity * wheel.damping) * 1500;
+                const totalForce = Math.max(0, springForce + dampingForce);
+
+                rb.addForce({ x: -springDir.x * totalForce * deltaTime, y: -springDir.y * totalForce * deltaTime });
+
+                // 4. Posicionamiento visual de la materia asignada
+                if (wheelMateria) {
+                    const wheelTransform = wheelMateria.getComponent(Transform);
+                    if (wheelTransform) {
+                        // Limitar la extensión para que no se vea que la rueda "vuela" debajo del suelo
+                        const extension = Math.min(wheel.restLength, distToWheelCenter);
+                        wheelTransform.x = anchorWorldX + springDir.x * extension;
+                        wheelTransform.y = anchorWorldY + springDir.y * extension;
+
+                        // Rotación visual basada en movimiento relativo al chasis
+                        const moveDir = rb.velocity.x * Math.cos(chassisRad) + rb.velocity.y * Math.sin(chassisRad);
+                        const rotSpeed = Math.hypot(rb.velocity.x, rb.velocity.y) * 20;
+                        wheelTransform.rotation += rotSpeed * (moveDir >= 0 ? 1 : -1);
+                    }
+                }
+
+                // 5. Grip (Aumentado para Hill Climb)
+                const rightDir = { x: -springDir.y, y: springDir.x };
+                const lateralVel = rb.velocity.x * rightDir.x + rb.velocity.y * rightDir.y;
+                const gripForce = -lateralVel * this.grip * rb.mass * 1500;
+                rb.addForce({ x: rightDir.x * gripForce * deltaTime, y: rightDir.y * gripForce * deltaTime });
+
+                wheel._lastCompression = wheel.currentCompression;
+            } else {
+                wheel.isGrounded = false;
+                wheel.currentCompression = 0;
+                wheel._lastCompression = 0;
+
+                if (wheelMateria) {
+                    const wheelTransform = wheelMateria.getComponent(Transform);
+                    if (wheelTransform) {
+                        wheelTransform.x = anchorWorldX + springDir.x * wheel.restLength;
+                        wheelTransform.y = anchorWorldY + springDir.y * wheel.restLength;
+                    }
+                }
+            }
+        }
+    }
+
+    estaTocandoSuelo() {
+        return this.wheels.some(w => w.isGrounded);
+    }
+
+    clone() {
+        const copy = new WheelSuspension(null);
+        copy.wheels = this.wheels.map(w => ({ ...w, offset: { ...w.offset } }));
+        copy.gripTags = [...this.gripTags];
+        copy.grip = this.grip;
+        copy.showGizmo = this.showGizmo;
+        copy.constraintAxis = { ...this.constraintAxis };
+        return copy;
+    }
+}
+
 export class BasicAI extends Leyes {
     constructor(materia) {
         super(materia);
         this.target = null; // ID de la materia objetivo
         this.behavior = 'Follow'; // 'Follow', 'Escape', 'Wander'
-        this.movementType = 'Top-Down'; // 'Top-Down' or 'Platformer'
+        this.movementType = 'Top-Down'; // 'Top-Down', 'Platformer', 'Fighter'
         this.speed = 100;
+        this.stopDistance = 50;
+        this.attackDistance = 30;
+        this.jumpForce = 400;
         this.autoRotate = true;
         this.rotationSpeed = 0.1;
         this.obstacleAvoidance = true;
         this.detectionTags = ['Player'];
         this.detectionDistance = 400;
-        this.scriptTarget = null; // Materia con el script a ejecutar
-        this.functionName = ''; // Nombre de la función
+
+        // Raycast Steering
+        this.rayCount = 5;
+        this.raySpread = 90;
+        this.rayLength = 100;
+
+        // Script Execution
+        this.scriptTarget = null;
+        this.functionName = ''; // Legacy
+        this.onTargetSeen = '';
+        this.onTargetLost = '';
+        this.onTargetNear = '';
+        this.onAttackRange = '';
 
         this._wanderAngle = Math.random() * 360;
         this._wanderTimer = 0;
         this._velocity = { x: 0, y: 0 };
+        this._isTargetInView = false;
+        this._isTargetNear = false;
+        this._isAttackRange = false;
+        this._jumpCooldown = 0;
     }
 
     update(deltaTime) {
@@ -4969,23 +5319,31 @@ export class BasicAI extends Leyes {
         }
 
         // --- 1. Detección y ejecución de funciones ---
-        this._handleDetection(scene, transform);
+        const bestTarget = this._handleAdvancedDetection(scene, transform, targetObj);
 
-        // --- 2. Lógica de movimiento ---
+        // --- 2. Lógica de movimiento y Steering ---
         let desiredVelocity = { x: 0, y: 0 };
+        let currentTargetPos = null;
 
-        if (this.behavior === 'Follow' && targetObj) {
-            const dx = targetObj.getComponent(Transform).x - transform.x;
-            const dy = (this.movementType === 'Platformer') ? 0 : (targetObj.getComponent(Transform).y - transform.y);
+        if (bestTarget) {
+            const targetTransform = bestTarget.getComponent(Transform);
+            if (targetTransform) currentTargetPos = { x: targetTransform.x, y: targetTransform.y };
+        }
+
+        if (this.behavior === 'Follow' && currentTargetPos) {
+            const dx = currentTargetPos.x - transform.x;
+            const dy = (this.movementType === 'Platformer' || this.movementType === 'Fighter') ? 0 : (currentTargetPos.y - transform.y);
             const dist = Math.hypot(dx, dy);
-            if (dist > 10) {
+
+            if (dist > this.stopDistance) {
                 desiredVelocity = { x: (dx / dist) * this.speed, y: (dy / dist) * this.speed };
             }
-        } else if (this.behavior === 'Escape' && targetObj) {
-            const dx = transform.x - targetObj.getComponent(Transform).x;
-            const dy = (this.movementType === 'Platformer') ? 0 : (transform.y - targetObj.getComponent(Transform).y);
+        } else if (this.behavior === 'Escape' && currentTargetPos) {
+            const dx = transform.x - currentTargetPos.x;
+            const dy = (this.movementType === 'Platformer' || this.movementType === 'Fighter') ? 0 : (transform.y - currentTargetPos.y);
             const dist = Math.hypot(dx, dy);
-            if (dist < 500) {
+
+            if (dist < this.detectionDistance) {
                 desiredVelocity = { x: (dx / dist) * this.speed, y: (dy / dist) * this.speed };
             }
         } else if (this.behavior === 'Wander') {
@@ -4998,96 +5356,197 @@ export class BasicAI extends Leyes {
             desiredVelocity = { x: Math.cos(rad) * this.speed, y: Math.sin(rad) * this.speed };
         }
 
-        // --- 3. Esquivar obstáculos y decisiones por Raycast ---
-        const raySource = this.materia.getComponent(RaycastSource);
-        if (raySource && raySource.lastHits) {
-            raySource.lastHits.forEach((hit, idx) => {
-                if (hit) {
-                    // Evitación de obstáculos
-                    if (this.obstacleAvoidance && hit.distance < 100) {
-                        desiredVelocity.x += hit.normal.x * this.speed * 2;
-                        desiredVelocity.y += hit.normal.y * this.speed * 2;
-                    }
-
-                    // Cambio de comportamiento dinámico según tags detectados por rayos
-                    if (this.detectionTags.includes(hit.materia.tag)) {
-                        if (hit.distance < 150) {
-                            // Si está muy cerca de algo que detecta, prioriza escapar o atacar
-                            if (this.behavior === 'Wander') this.behavior = 'Escape';
-                        }
-                    }
-                }
-            });
+        // --- 3. Obstacle Avoidance & Steering ---
+        if (this.obstacleAvoidance) {
+            desiredVelocity = this._applySteering(desiredVelocity, transform);
         }
 
-        // --- 4. Aplicar movimiento ---
-        const rb = this.materia.getComponent(Rigidbody2D);
-        if (rb && rb.bodyType === 'Dynamic') {
-            rb.velocity.x = desiredVelocity.x / 100;
-            // En modo Plataformas, no sobreescribimos la velocidad Y para dejar que la gravedad actúe
-            if (this.movementType !== 'Platformer') {
-                rb.velocity.y = desiredVelocity.y / 100;
-            }
-        } else {
-            transform.x += desiredVelocity.x * deltaTime;
-            if (this.movementType !== 'Platformer') {
-                transform.y += desiredVelocity.y * deltaTime;
+        // --- 4. Jumping Logic (Platformer/Fighter) ---
+        if ((this.movementType === 'Platformer' || this.movementType === 'Fighter') && this._jumpCooldown <= 0) {
+            if (this._checkShouldJump(transform)) {
+                this._jump();
+                this._jumpCooldown = 1.0;
             }
         }
+        if (this._jumpCooldown > 0) this._jumpCooldown -= deltaTime;
 
-        // --- 5. Rotación automática ---
+        // --- 5. Aplicar movimiento ---
+        this._applyMovement(desiredVelocity, deltaTime, transform);
+
+        // --- 6. Rotación automática ---
         if (this.autoRotate) {
             if (Math.hypot(desiredVelocity.x, desiredVelocity.y) > 1) {
                 const targetRot = Math.atan2(desiredVelocity.y, desiredVelocity.x) * 180 / Math.PI;
-                transform.rotation += (targetRot - transform.rotation) * this.rotationSpeed;
+                let diff = targetRot - transform.rotation;
+                while (diff > 180) diff -= 360;
+                while (diff < -180) diff += 360;
+                transform.rotation += diff * this.rotationSpeed;
             }
         }
     }
 
-    _handleDetection(scene, transform) {
-        if (!this.functionName) return;
+    _applySteering(velocity, transform) {
+        const engine = RuntimeAPIManager.getAPI('engine');
+        if (!engine) return velocity;
 
-        let scriptTargetObj = null;
-        if (typeof this.scriptTarget === 'number') {
-            scriptTargetObj = scene.findMateriaById(this.scriptTarget);
-        } else if (this.scriptTarget instanceof Materia) {
-            scriptTargetObj = this.scriptTarget;
-        }
-        if (!scriptTargetObj) return;
+        let avoidanceForce = { x: 0, y: 0 };
+        const startAngle = -this.raySpread / 2;
+        const step = this.rayCount > 1 ? this.raySpread / (this.rayCount - 1) : 0;
 
-        // Comprobar si algún objeto con los tags de detección está cerca
-        const raySource = this.materia.getComponent(RaycastSource);
-        let detected = false;
-
-        if (raySource && raySource.lastHits) {
-            detected = raySource.lastHits.some(hit => hit && this.detectionTags.includes(hit.materia.tag));
+        // Base direction for rays: prefer velocity direction, fallback to rotation
+        let baseAngle = transform.rotation;
+        if (Math.hypot(velocity.x, velocity.y) > 0.1) {
+            baseAngle = Math.atan2(velocity.y, velocity.x) * 180 / Math.PI;
         }
 
-        if (!detected) {
-            // Detección por proximidad simple como fallback o complemento
+        let obstacleDetected = false;
+
+        for (let i = 0; i < this.rayCount; i++) {
+            const angle = (baseAngle + startAngle + step * i) * Math.PI / 180;
+            const dir = { x: Math.cos(angle), y: Math.sin(angle) };
+
+            // Usamos un raycast manual si no hay RaycastSource configurado
+            const hit = engine.raycast(transform.position, dir, this.rayLength, [this.materia.id]);
+
+            if (hit && hit.materia) {
+                // Si es algo que no está en detectionTags, es un obstáculo
+                if (!this.detectionTags.includes(hit.materia.tag)) {
+                    const weight = (1.0 - hit.distance / this.rayLength);
+                    avoidanceForce.x += hit.normal.x * weight * this.speed * 2;
+                    avoidanceForce.y += hit.normal.y * weight * this.speed * 2;
+                    obstacleDetected = true;
+                }
+            }
+        }
+
+        if (obstacleDetected) {
+            velocity.x += avoidanceForce.x;
+            velocity.y += avoidanceForce.y;
+
+            // Normalizar de nuevo a la velocidad máxima
+            const mag = Math.hypot(velocity.x, velocity.y);
+            if (mag > 0) {
+                velocity.x = (velocity.x / mag) * this.speed;
+                velocity.y = (velocity.y / mag) * this.speed;
+            }
+        }
+
+        return velocity;
+    }
+
+    _checkShouldJump(transform) {
+        const engine = RuntimeAPIManager.getAPI('engine');
+        if (!engine) return false;
+
+        // Rayo hacia adelante a la altura de los "pies"
+        const rad = transform.rotation * Math.PI / 180;
+        const forward = { x: Math.cos(rad), y: Math.sin(rad) };
+        const hit = engine.raycast(transform.position, forward, 40, [this.materia.id]);
+
+        if (hit && hit.materia && !this.detectionTags.includes(hit.materia.tag)) {
+            // Hay algo al frente, comprobar si hay espacio arriba para saltar
+            const up = { x: 0, y: -1 };
+            const upClear = !engine.raycast(transform.position, up, 60, [this.materia.id]);
+            return upClear;
+        }
+        return false;
+    }
+
+    _jump() {
+        const rb = this.materia.getComponent(Rigidbody2D);
+        if (rb) {
+            if (rb.bodyType === 'Dynamic') {
+                rb.applyForce({ x: 0, y: -this.jumpForce * 50 });
+            }
+        }
+    }
+
+    _applyMovement(desiredVelocity, deltaTime, transform) {
+        const rb = this.materia.getComponent(Rigidbody2D);
+        if (rb && rb.bodyType === 'Dynamic') {
+            // Fighter y Platformer solo mueven X directamente o con fuerzas
+            if (this.movementType === 'Platformer' || this.movementType === 'Fighter') {
+                rb.velocity.x = desiredVelocity.x / 50;
+                // Y se deja a la gravedad/salto
+            } else {
+                // Top-Down
+                rb.velocity.x = desiredVelocity.x / 50;
+                rb.velocity.y = desiredVelocity.y / 50;
+            }
+        } else {
+            transform.x += desiredVelocity.x * deltaTime;
+            transform.y += desiredVelocity.y * deltaTime;
+        }
+    }
+
+    _handleAdvancedDetection(scene, transform, targetObj) {
+        let bestTarget = targetObj;
+        let minDist = targetObj ? Math.hypot(targetObj.getComponent(Transform).x - transform.x, targetObj.getComponent(Transform).y - transform.y) : Infinity;
+
+        // Si no hay target fijo, o si queremos buscar otros objetivos por Tag
+        if (this.detectionTags && this.detectionTags.length > 0) {
             const materias = scene.getAllMaterias();
             for (const m of materias) {
+                if (m.id === this.materia.id) continue;
                 if (this.detectionTags.includes(m.tag)) {
                     const mTrans = m.getComponent(Transform);
                     if (mTrans) {
-                        const dist = Math.hypot(mTrans.x - transform.x, mTrans.y - transform.y);
-                        if (dist < this.detectionDistance) {
-                            detected = true;
-                            break;
+                        const d = Math.hypot(mTrans.x - transform.x, mTrans.y - transform.y);
+                        if (d < this.detectionDistance && d < minDist) {
+                            minDist = d;
+                            bestTarget = m;
                         }
                     }
                 }
             }
         }
 
-        if (detected) {
-            // Ejecutar función en los scripts del objetivo
-            scriptTargetObj.getComponents(CreativeScript).forEach(script => {
-                if (script.instance && typeof script.instance[this.functionName] === 'function') {
-                    script._safeInvoke(this.functionName, this.materia);
-                }
-            });
+        const dist = minDist;
+        const previouslyInView = this._isTargetInView;
+        const previouslyNear = this._isTargetNear;
+        const previouslyAttack = this._isAttackRange;
+
+        this._isTargetInView = dist < this.detectionDistance;
+        this._isTargetNear = dist < this.stopDistance * 1.5;
+        this._isAttackRange = dist < this.attackDistance;
+
+        // Si estamos en modo Follow y no tenemos un target fijo, seguir al detectado
+        if (this.behavior === 'Follow' && !this.target && bestTarget) {
+            // No asignamos this.target permanentemente para permitir cambiar de objetivo dinámicamente
+            // Pero usamos bestTarget para las notificaciones y el movimiento de este frame
         }
+
+        // Events
+        if (this._isTargetInView && !previouslyInView) this._invokeAIEvent(this.onTargetSeen, bestTarget);
+        if (!this._isTargetInView && previouslyInView) this._invokeAIEvent(this.onTargetLost, bestTarget);
+        if (this._isTargetNear && !previouslyNear) this._invokeAIEvent(this.onTargetNear, bestTarget);
+        if (this._isAttackRange && !previouslyAttack) this._invokeAIEvent(this.onAttackRange, bestTarget);
+
+        // Legacy
+        if (this._isTargetInView && this.functionName) this._invokeAIEvent(this.functionName, bestTarget);
+
+        return bestTarget;
+    }
+
+    _invokeAIEvent(funcName, target) {
+        if (!funcName) return;
+
+        let scriptTargetObj = null;
+        if (typeof this.scriptTarget === 'number') {
+            scriptTargetObj = this.materia.scene.findMateriaById(this.scriptTarget);
+        } else if (this.scriptTarget instanceof Materia) {
+            scriptTargetObj = this.scriptTarget;
+        } else {
+            scriptTargetObj = this.materia; // Default to self
+        }
+
+        if (!scriptTargetObj) return;
+
+        scriptTargetObj.getComponents(CreativeScript).forEach(script => {
+            if (script.instance && typeof script.instance[funcName] === 'function') {
+                script._safeInvoke(funcName, target, this.materia);
+            }
+        });
     }
 
     clone() {
@@ -5096,13 +5555,23 @@ export class BasicAI extends Leyes {
         copy.behavior = this.behavior;
         copy.movementType = this.movementType;
         copy.speed = this.speed;
+        copy.stopDistance = this.stopDistance;
+        copy.attackDistance = this.attackDistance;
+        copy.jumpForce = this.jumpForce;
         copy.autoRotate = this.autoRotate;
         copy.rotationSpeed = this.rotationSpeed;
         copy.obstacleAvoidance = this.obstacleAvoidance;
         copy.detectionTags = [...this.detectionTags];
         copy.detectionDistance = this.detectionDistance;
+        copy.rayCount = this.rayCount;
+        copy.raySpread = this.raySpread;
+        copy.rayLength = this.rayLength;
         copy.scriptTarget = this.scriptTarget;
         copy.functionName = this.functionName;
+        copy.onTargetSeen = this.onTargetSeen;
+        copy.onTargetLost = this.onTargetLost;
+        copy.onTargetNear = this.onTargetNear;
+        copy.onAttackRange = this.onAttackRange;
         return copy;
     }
 }
@@ -5391,6 +5860,8 @@ registerComponent('Health', Health);
 registerComponent('Patrol', Patrol);
 registerComponent('ParticleSystem', ParticleSystem);
 registerComponent('RaycastSource', RaycastSource);
+registerComponent('VehicleController', VehicleController);
+registerComponent('WheelSuspension', WheelSuspension);
 registerComponent('BasicAI', BasicAI);
 registerComponent('Water', Water);
 registerComponent('LineCollider2D', LineCollider2D);

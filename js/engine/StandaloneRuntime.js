@@ -138,14 +138,34 @@ export class StandaloneRuntime {
 
         // 5. Start Loop
         this.lastTime = performance.now();
+        this.fixedAccumulator = 0;
+        this.FIXED_DELTA = 1 / 50;
         requestAnimationFrame(this.loop.bind(this));
     }
 
     loop(timestamp) {
-        this.deltaTime = (timestamp - this.lastTime) / 1000;
+        this.deltaTime = Math.min((timestamp - this.lastTime) / 1000, 0.1);
         this.lastTime = timestamp;
 
-        if (this.physicsSystem) this.physicsSystem.update(this.deltaTime);
+        // --- Fixed Update Loop ---
+        this.fixedAccumulator += this.deltaTime;
+        while (this.fixedAccumulator >= this.FIXED_DELTA) {
+            if (this.physicsSystem) this.physicsSystem.update(this.FIXED_DELTA);
+
+            if (SceneManager.currentScene) {
+                SceneManager.currentScene.getAllMaterias().forEach(m => {
+                    if (m.isActive) {
+                        for (const ley of m.leyes) {
+                            if (ley.isActive && typeof ley.fixedUpdate === 'function') {
+                                try { ley.fixedUpdate(this.FIXED_DELTA); } catch(e) {}
+                            }
+                        }
+                    }
+                });
+            }
+            this.fixedAccumulator -= this.FIXED_DELTA;
+        }
+
         UISystem.update(this.deltaTime);
         EngineAPI.CEEngine.update(this.deltaTime);
 
