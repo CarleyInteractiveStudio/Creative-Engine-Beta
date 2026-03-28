@@ -280,7 +280,7 @@ export class PhysicsSystem {
             return m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CapsuleCollider2D) ||
                    m.getComponent(Components.CircleCollider2D) || m.getComponent(Components.PolygonCollider2D) ||
                    m.getComponent(Components.TilemapCollider2D) || m.getComponent(Components.TerrenoCollider2D) ||
-                   m.getComponent(Components.LineCollider2D) || m.getComponent(Components.AmortiguadorCollider);
+                   m.getComponent(Components.LineCollider2D);
         });
 
         for (let i = 0; i < collidables.length; i++) {
@@ -313,8 +313,7 @@ export class PhysicsSystem {
                 // (Removed the restriction to ONLY terrain to allow collision with BoxCollider grounds)
 
                 if (materiaA.isAncestorOf(materiaB) || materiaB.isAncestorOf(materiaA)) {
-                    const hasAmort = materiaA.getComponent(Components.AmortiguadorCollider) || materiaB.getComponent(Components.AmortiguadorCollider);
-                    if (!hasAmort) continue;
+                    continue;
                 }
 
                 // Basic check: two static bodies can't collide if neither is a trigger
@@ -539,15 +538,6 @@ export class PhysicsSystem {
                  info.x = -info.x; info.y = -info.y;
                  collisionInfo = info;
              }
-        } else if (colliderA instanceof Components.AmortiguadorCollider) {
-            collisionInfo = this.isColliderVsAmortiguador(materiaB, materiaA);
-            if (collisionInfo) {
-                collisionInfo.x = -collisionInfo.x; collisionInfo.y = -collisionInfo.y;
-            }
-        }
-
-        if (colliderB instanceof Components.AmortiguadorCollider && !collisionInfo) {
-            collisionInfo = this.isColliderVsAmortiguador(materiaA, materiaB);
         }
 
         if (collisionInfo && !colliderA.isTrigger && !colliderB.isTrigger) {
@@ -680,8 +670,7 @@ export class PhysicsSystem {
                materia.getComponent(Components.PolygonCollider2D) ||
                materia.getComponent(Components.TilemapCollider2D) ||
                materia.getComponent(Components.TerrenoCollider2D) ||
-               materia.getComponent(Components.LineCollider2D) ||
-               materia.getComponent(Components.AmortiguadorCollider);
+               materia.getComponent(Components.LineCollider2D);
     }
 
     _getLineVertices(transform, collider) {
@@ -701,123 +690,6 @@ export class PhysicsSystem {
         }));
     }
 
-    isColliderVsAmortiguador(colliderMateria, amortMateria) {
-        const otherCollider = this.getCollider(colliderMateria);
-        const amort = amortMateria.getComponent(Components.AmortiguadorCollider);
-        const transformA = amortMateria.getComponent(Components.Transform);
-
-        if (!otherCollider || !amort || !transformA) return null;
-
-        // Reutilizar lógica de Box vs Box/Circle para detección inicial
-        if (!this._tempAmortMateria) {
-            this._tempAmortMateria = new Materia('_physics_amort_temp');
-            this._tempAmortTransform = new Components.Transform(this._tempAmortMateria);
-            this._tempAmortBox = new Components.BoxCollider2D(this._tempAmortMateria);
-            this._tempAmortMateria.getComponent = (t) => {
-                if (t === Components.Transform) return this._tempAmortTransform;
-                if (t === Components.BoxCollider2D) return this._tempAmortBox;
-                return null;
-            };
-        }
-
-        this._tempAmortTransform.position = transformA.position;
-        this._tempAmortTransform.rotation = transformA.rotation;
-        this._tempAmortTransform.scale = transformA.scale;
-        this._tempAmortBox.size = amort.size;
-        this._tempAmortBox.offset = amort.offset;
-
-        let info = null;
-        // Llamamos a las funciones de colisión pasando el Amortiguador como 'A' y el otro como 'B'
-        // para que el normal resultante apunte del Amortiguador al Objeto (Hacia afuera del viento).
-        if (otherCollider instanceof Components.BoxCollider2D) {
-            info = this.isBoxVsBox(this._tempAmortMateria, colliderMateria);
-        } else if (otherCollider instanceof Components.CircleCollider2D) {
-            info = this.isCircleVsBox(colliderMateria, this._tempAmortMateria);
-            if (info) { info.x = -info.x; info.y = -info.y; } // Invertir para que sea Amort -> Circle
-        } else if (otherCollider instanceof Components.CapsuleCollider2D) {
-            info = this.isBoxVsCapsule(this._tempAmortMateria, colliderMateria);
-        } else if (otherCollider instanceof Components.PolygonCollider2D) {
-            info = this.isPolygonVsPolygon(this._tempAmortMateria, colliderMateria);
-        } else if (otherCollider instanceof Components.TilemapCollider2D || otherCollider instanceof Components.TerrenoCollider2D) {
-            info = this.isColliderVsTilemap(colliderMateria, this._tempAmortMateria);
-            if (info) { info.x = -info.x; info.y = -info.y; } // Invertir para que sea Amort -> Tilemap
-        }
-
-        if (info) {
-            // Aplicar lógica de amortiguación a ambos cuerpos (Acción y Reacción)
-            const rbA = colliderMateria.getComponent(Components.Rigidbody2D);
-            const rbB = amortMateria.getComponent(Components.Rigidbody2D) || amortMateria.findAncestorWithComponent(Components.Rigidbody2D);
-
-            const isADynamic = rbA && rbA.bodyType.toLowerCase() === 'dynamic';
-            const isBDynamic = rbB && rbB.bodyType.toLowerCase() === 'dynamic';
-
-            if (isADynamic || isBDynamic) {
-                const normal = this._normalize({ x: info.x, y: info.y }); // Apunta de Amort (B) a Objeto (A)
-
-                const velA = isADynamic ? rbA.velocity : { x: 0, y: 0 };
-                const velB = isBDynamic ? rbB.velocity : { x: 0, y: 0 };
-
-                // Si ambos objetos comparten el mismo Rigidbody (ej: partes de un vehículo sin articulaciones),
-                // las fuerzas se cancelarían. Para permitir suspensión interna, aplicamos fuerzas relativas.
-                const relVelVec = { x: velA.x - velB.x, y: velA.y - velB.y };
-                const relativeVel = relVelVec.x * normal.x + relVelVec.y * normal.y;
-
-                // 1. Drenar velocidad (Amortiguación)
-                // relativeVel < 0 significa que se están acercando
-                if (relativeVel < 0) {
-                    // Drenaje de velocidad: Aplicamos una fuerza contraria al movimiento relativo
-                    const dampingForceMag = -relativeVel * amort.amortiguacion * 15000;
-
-                    if (isADynamic) {
-                        rbA.addForce(normal.x * dampingForceMag, normal.y * dampingForceMag);
-                    }
-                    if (isBDynamic) {
-                        rbB.addForce(-normal.x * dampingForceMag, -normal.y * dampingForceMag);
-                    }
-                }
-
-                // 2. Fuerza de recuperación (Expulsión inteligente)
-                const penetration = info.magnitude;
-                // Calculamos el normal local para saber qué dimensión del amortiguador es relevante (Ancho o Alto)
-                const rad = -transformA.rotation * Math.PI / 180;
-                const cos = Math.cos(rad), sin = Math.sin(rad);
-                const localNormalX = normal.x * cos - normal.y * sin;
-                const localNormalY = normal.x * sin + normal.y * cos;
-                const relevantDim = Math.abs(localNormalX) * amort.size.x * Math.abs(transformA.scale.x) +
-                                   Math.abs(localNormalY) * amort.size.y * Math.abs(transformA.scale.y);
-
-                // Expulsión inteligente: Queremos que el objeto se mantenga al nivel deseado.
-                // Si distanciaDeseada es 1.0, lo queremos fuera. Si es 0.0, lo aceptamos dentro.
-                const targetPenetration = relevantDim * (1.0 - amort.distanciaDeseada);
-
-                if (penetration > targetPenetration) {
-                    const extraPenetration = penetration - targetPenetration;
-                    const targetMass = isADynamic ? rbA.mass : (isBDynamic ? rbB.mass : 1);
-
-                    // Soporte realista: si el peso es excesivo, la fuerza se debilita.
-                    const weightFactor = Math.min(3.0, amort.soporteMaximo / (targetMass * 10 || 1));
-
-                    const dt = this.lastDeltaTime || 0.016;
-                    // Multiplicador robusto para mover coches pesados
-                    const pushForce = extraPenetration * amort.fuerzaRecuperacion * weightFactor * 250000 * dt;
-
-                    if (isADynamic) {
-                        rbA.addForce(normal.x * pushForce, normal.y * pushForce);
-                    }
-                    if (isBDynamic) {
-                        rbB.addForce(-normal.x * pushForce, -normal.y * pushForce);
-                    }
-                }
-            }
-
-            // Importante: No permitimos que Physics.js resuelva esta colisión de forma estándar
-            // devolvemos null después de aplicar nuestras fuerzas manuales si no queremos rebote brusco.
-            // O devolvemos el info si queremos que el sistema sepa que hay contacto para eventos.
-            return info;
-        }
-
-        return null;
-    }
 
     isColliderVsLine(colliderMateria, lineMateria) {
         const collider = this.getCollider(colliderMateria);

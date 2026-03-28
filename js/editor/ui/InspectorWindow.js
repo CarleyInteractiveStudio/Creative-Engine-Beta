@@ -33,10 +33,10 @@ const availableComponents = {
     'CAT_UTILIDADES': [Components.Gyzmo],
     'CAT_ANIMACION': [Components.Animator, Components.AnimatorController],
     'CAT_AUDIO': [Components.AudioSource],
-    'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D, Components.AmortiguadorCollider, Components.SuspensionHC, Components.VehicleTopDown, Components.PlaneController],
+    'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
     'CAT_CAMARA': [Components.Camera],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
-    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI],
+    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.SuspensionHC, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController],
     'CAT_SCRIPTING': [Components.CreativeScript]
 };
 
@@ -54,10 +54,10 @@ const componentIcons = {
     'Gyzmo': 'target',
     'RaycastSource': 'route',
     'BasicAI': 'bot',
-    'AmortiguadorCollider': 'target',
     'SuspensionHC': 'truck',
     'VehicleTopDown': 'rocket',
-    'PlaneController': 'rocket'
+    'PlaneController': 'rocket',
+    'HelicopterController': 'rocket'
 };
 
 const fileIcons = {
@@ -589,6 +589,35 @@ function handleInspectorClick(e) {
         const propName = dropper.dataset.prop;
         const scriptName = dropper.dataset.scriptName;
         const componentId = dropper.dataset.componentId;
+
+        // --- Handle Clear Button ---
+        if (e.target.closest('.dropper-clear-btn')) {
+            e.stopPropagation();
+            let targetComponent;
+            if (componentName === 'CreativeScript') {
+                 targetComponent = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === scriptName);
+            } else if (componentName === 'CustomComponent') {
+                 targetComponent = selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == componentId);
+            } else if (componentName) {
+                 targetComponent = selectedMateria.getComponent(Components[componentName]);
+            }
+
+            if (targetComponent) {
+                if (targetComponent instanceof Components.CreativeScript || targetComponent instanceof Components.CustomComponent) {
+                    targetComponent.publicVars[propName] = null;
+                } else {
+                    const props = propName.split('.');
+                    let current = targetComponent;
+                    for (let i = 0; i < props.length - 1; i++) {
+                        current = current[props[i]];
+                    }
+                    current[props[props.length - 1]] = null;
+                }
+                updateInspector();
+                if (updateSceneCallback) updateSceneCallback();
+            }
+            return;
+        }
 
         if (typeExtensionMap[expectedType] || expectedType === 'Materia' || expectedType === 'any' || componentIcons[expectedType]) {
             if (openAssetSelectorCallback) {
@@ -1204,6 +1233,7 @@ function renderLightColorPresets(componentName) {
 }
 
 function renderPropertyDropper(type, currentValue, commonAttrs) {
+    const L = window.Localization;
     let displayName = 'None';
     let icon = 'help-circle';
 
@@ -1244,7 +1274,6 @@ function renderPropertyDropper(type, currentValue, commonAttrs) {
             }
         }
     } else {
-        const L = window.Localization;
         const lowerType = type.toLowerCase();
         displayName = `${L.get('NINGUNO', 'Ninguno')} (${type})`;
 
@@ -1274,6 +1303,7 @@ function renderPropertyDropper(type, currentValue, commonAttrs) {
                 <span class="dropper-icon">${iconHTML}</span>
                 <span class="dropper-name" title="${currentValue || ''}">${displayName}</span>
             </div>
+            ${!isEmpty ? `<button class="dropper-clear-btn" title="${L.get('LIMPIAR', 'Limpiar')}">&times;</button>` : ''}
         </div>
     `;
 }
@@ -1473,10 +1503,9 @@ async function updateInspectorForMateria(selectedMateria) {
 
     const componentsWrapper = document.createElement('div');
     componentsWrapper.className = 'inspector-components-wrapper';
-    console.log('2. Created componentsWrapper. Looping through components...');
 
     selectedMateria.leyes.forEach((ley, index) => {
-        console.log(`[DEBUG] Inspector: Intentando renderizar componente #${index}: ${ley.constructor.name}`);
+        try {
         let componentHTML = '';
         const componentName = ley.constructor.name;
         const icon = componentIcons[componentName] || 'settings';
@@ -1695,9 +1724,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.Transform) {
-            console.log('  - Is Transform component.');
             if (selectedMateria.getComponent(Components.UITransform)) {
-                console.log('  - UITransform also exists, skipping render of Transform.');
                 return;
             }
             componentHTML = `
@@ -2225,7 +2252,6 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.PointLight2D) {
-            console.log('  - Is PointLight2D component.');
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader(L.get('POINT_LIGHT_2D', "Point Light 2D"), icon, index)}
@@ -2261,7 +2287,6 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             </div>`;
         } else if (ley instanceof Components.SpotLight2D) {
-            console.log('  - Is SpotLight2D component.');
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader(L.get('SPOT_LIGHT_2D', "Spot Light 2D"), icon, index)}
@@ -2303,7 +2328,6 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             </div>`;
         } else if (ley instanceof Components.FreeformLight2D) {
-            console.log('  - Is FreeformLight2D component.');
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader(L.get('FREEFORM_LIGHT_2D', "Freeform Light 2D"), icon, index)}
@@ -3143,35 +3167,6 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.AmortiguadorCollider) {
-            componentHTML = `
-                ${renderComponentHeader(L.get('AMORTIGUADOR_COLLIDER', "Amortiguador Collider"), icon, index)}
-                <div class="component-content">
-                    <div class="prop-row-multi">
-                        <label>${L.get('SIZE', 'Tamaño')}</label>
-                        <div class="prop-inputs">
-                            <input type="number" class="prop-input" data-component="AmortiguadorCollider" data-prop="size.x" value="${ley.size.x}" title="W">
-                            <input type="number" class="prop-input" data-component="AmortiguadorCollider" data-prop="size.y" value="${ley.size.y}" title="H">
-                        </div>
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>${L.get('SOPORTE_MAXIMO', 'Soporte Máximo')}</label>
-                        <input type="number" class="prop-input" data-component="AmortiguadorCollider" data-prop="soporteMaximo" value="${ley.soporteMaximo}">
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>${L.get('AMORTIGUACION', 'Amortiguación')}</label>
-                        <input type="number" class="prop-input" step="0.1" data-component="AmortiguadorCollider" data-prop="amortiguacion" value="${ley.amortiguacion}">
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>${L.get('FUERZA_RECUPERACION', 'Fuerza Empuje')}</label>
-                        <input type="number" class="prop-input" step="0.1" data-component="AmortiguadorCollider" data-prop="fuerzaRecuperacion" value="${ley.fuerzaRecuperacion}">
-                    </div>
-                     <div class="prop-row-multi">
-                        <label>${L.get('DISTANCIA_DESEADA', 'Nivel Expulsión')}</label>
-                        <input type="range" class="prop-input" min="0" max="1" step="0.01" data-component="AmortiguadorCollider" data-prop="distanciaDeseada" value="${ley.distanciaDeseada}">
-                    </div>
-                </div>
-            `;
         } else if (ley instanceof Components.SuspensionHC) {
             componentHTML = `
                 ${renderComponentHeader("Suspension HC", icon, index)}
@@ -3338,6 +3333,57 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
+        } else if (ley instanceof Components.HelicopterController) {
+            componentHTML = `
+                ${renderComponentHeader("Helicopter Controller", icon, index)}
+                <div class="component-content">
+                    <div class="inspector-section-header"><span>${L.get('HELICOPTER_SETTINGS', 'Configuración de Helicóptero')}</span></div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('MOTOR_POWER', 'Potencia Motor')}</label>
+                        <input type="number" class="prop-input" data-component="HelicopterController" data-prop="potenciaMotor" value="${ley.potenciaMotor}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label title="Fuerza base de sustentación">${L.get('TAKEOFF_POWER', 'Potencia Despegue')}</label>
+                        <input type="number" class="prop-input" data-component="HelicopterController" data-prop="potenciaDespegue" value="${ley.potenciaDespegue}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('MAX_SPEED', 'Velocidad Máx')}</label>
+                        <input type="number" class="prop-input" data-component="HelicopterController" data-prop="velocidadMaxima" value="${ley.velocidadMaxima}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('TURN_AGILITY', 'Agilidad Giro')}</label>
+                        <input type="number" class="prop-input" data-component="HelicopterController" data-prop="agilidadGiro" value="${ley.agilidadGiro}">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input inspector-re-render" data-component="HelicopterController" data-prop="autoEstabilizar" ${ley.autoEstabilizar ? 'checked' : ''}>
+                        <label>${L.get('AUTO_STABILIZE', 'Auto-Estabilizar')}</label>
+                    </div>
+                    <div class="prop-row-multi" style="display: ${ley.autoEstabilizar ? 'flex' : 'none'};">
+                        <label title="Fuerza de auto-nivelación">${L.get('STABILITY', 'Estabilidad')}</label>
+                        <input type="number" step="0.1" class="prop-input" data-component="HelicopterController" data-prop="estabilidad" value="${ley.estabilidad}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label title="Resistencia al aire (0-1)">${L.get('AIR_DRAG', 'Arrastre Aire')}</label>
+                        <input type="number" step="0.01" min="0" max="1" class="prop-input" data-component="HelicopterController" data-prop="arrastreAire" value="${ley.arrastreAire}">
+                    </div>
+
+                    <div class="inspector-section-header"><span>${L.get('CONTROLS', 'Controles')}</span></div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('KEYS_THRUST_DESCEND', 'Subir/Bajar')}</label>
+                        <div class="prop-inputs">
+                            <input type="text" class="prop-input" data-component="HelicopterController" data-prop="teclaPotencia" value="${ley.teclaPotencia}" title="Subir">
+                            <input type="text" class="prop-input" data-component="HelicopterController" data-prop="teclaDescenso" value="${ley.teclaDescenso}" title="Bajar">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('KEYS_TURN', 'Girar (A/D)')}</label>
+                        <div class="prop-inputs">
+                            <input type="text" class="prop-input" data-component="HelicopterController" data-prop="teclaGiroIzquierda" value="${ley.teclaGiroIzquierda}" title="Izquierda">
+                            <input type="text" class="prop-input" data-component="HelicopterController" data-prop="teclaGiroDerecha" value="${ley.teclaGiroDerecha}" title="Derecha">
+                        </div>
+                    </div>
+                </div>
+            `;
         } else if (ley instanceof Components.BasicAI) {
             const renderAIFuncInput = (propName, label) => {
                 let inputHTML = `<input type="text" class="prop-input" data-component="BasicAI" data-prop="${propName}" value="${ley[propName] || ''}" placeholder="${L.get('EXAMPLE_AI_FUNC', 'ej: alDetectarEnemigo')}">`;
@@ -3462,9 +3508,15 @@ async function updateInspectorForMateria(selectedMateria) {
                 componentsWrapper.appendChild(componentWrapper.firstChild);
             }
         }
+        } catch (e) {
+            console.error(`Error rendering component ${index}:`, e);
+            const errorWrapper = document.createElement('div');
+            errorWrapper.className = 'component-inspector error';
+            errorWrapper.innerHTML = `<div class="component-header"><h4>Error: ${ley.constructor.name}</h4></div><div class="component-content"><p>Error rendering this component. Check console for details.</p></div>`;
+            componentsWrapper.appendChild(errorWrapper);
+        }
     });
 
-    console.log('6. Finished component loop. Appending main wrapper to DOM.');
     dom.inspectorContent.appendChild(componentsWrapper);
 
     const addComponentBtn = document.createElement('button');
@@ -3473,7 +3525,6 @@ async function updateInspectorForMateria(selectedMateria) {
     addComponentBtn.dataset.i18n = 'ADD_LEY';
     addComponentBtn.textContent = L.get('ADD_LEY', 'Añadir Ley');
     dom.inspectorContent.appendChild(addComponentBtn);
-    console.log('7. Inspector update complete.');
 }
 
 

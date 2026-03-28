@@ -186,42 +186,57 @@ export class Materia {
         return false;
     }
 
-    addChild(child) {
-        if (child.parent) {
-            // If parent is an ID (number) due to cloning, resolve it to an object
-            let oldParent = child.parent;
+    setParent(newParent, keepWorldTransform = true) {
+        if (this.parent === newParent) return;
+
+        let worldPos, worldRot, worldScale;
+        const transform = this.getComponent(Transform);
+
+        if (keepWorldTransform && transform) {
+            worldPos = transform.position;
+            worldRot = transform.rotation;
+            worldScale = transform.scale;
+        }
+
+        // Remove from old parent if exists
+        if (this.parent) {
+            let oldParent = this.parent;
             if (typeof oldParent === 'number') {
-                try {
-                    oldParent = currentScene.findMateriaById(oldParent);
-                } catch (e) {
-                    oldParent = null;
+                try { oldParent = (this.scene || currentScene).findMateriaById(oldParent); } catch (e) { oldParent = null; }
+            }
+            if (oldParent && typeof oldParent.removeChild === 'function') {
+                oldParent.removeChild(this);
+            }
+        } else {
+            // Remove from root if it was at root
+            const scene = this.scene || currentScene;
+            if (scene && scene.materias) {
+                const index = scene.materias.indexOf(this);
+                if (index > -1) {
+                    scene.materias.splice(index, 1);
                 }
             }
-
-            if (oldParent && typeof oldParent.removeChild === 'function') {
-                oldParent.removeChild(child);
-            } else {
-                // If the previous parent is invalid (e.g., numeric placeholder), clear it
-                child.parent = null;
-            }
         }
 
-        child.parent = this;
-        this.children.push(child);
-
-        // Inherit scene from parent
-        if (this.scene) {
-            child.scene = this.scene;
+        if (newParent) {
+            newParent.children.push(this);
+            this.parent = newParent;
+            if (newParent.scene) this.scene = newParent.scene;
+        } else {
+            this.parent = null;
+            const scene = this.scene || currentScene;
+            if (scene) scene.addMateria(this);
         }
 
-        // A child should not be in the root list. Remove it.
-        const scene = this.scene || currentScene;
-        if (scene && scene.materias) {
-            const index = scene.materias.indexOf(child);
-            if (index > -1) {
-                scene.materias.splice(index, 1);
-            }
+        if (keepWorldTransform && transform) {
+            transform.position = worldPos;
+            transform.rotation = worldRot;
+            transform.scale = worldScale;
         }
+    }
+
+    addChild(child) {
+        child.setParent(this, false); // Legacy addChild doesn't preserve world transform by default
     }
 
     removeChild(child) {

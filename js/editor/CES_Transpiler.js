@@ -87,8 +87,6 @@ const typeMap = {
     'autoDisposicionHorizontal': 'HorizontalLayoutGroup',
     'autoDisposicionRejilla': 'GridLayoutGroup',
     'ajustadorDeTamanoDeContenido': 'ContentSizeFitter',
-    'AmortiguadorCollider': 'AmortiguadorCollider',
-    'colisionadorAmortiguador': 'AmortiguadorCollider',
     'SuspensionHC': 'SuspensionHC',
     'suspensionHC': 'SuspensionHC',
     'VehicleTopDown': 'VehicleTopDown',
@@ -97,6 +95,9 @@ const typeMap = {
     'PlaneController': 'PlaneController',
     'planeController': 'PlaneController',
     'controladorDeAvion': 'PlaneController',
+    'HelicopterController': 'HelicopterController',
+    'helicopterController': 'HelicopterController',
+    'controladorDeHelicoptero': 'HelicopterController',
     'variable': 'any',
     'any': 'any'
 };
@@ -124,9 +125,9 @@ const componentShortcuts = [
     'raycastSource', 'rallo',
     'basicAI', 'iaBasica',
     'suspensionHC',
-    'amortiguadorCollider', 'colisionadorAmortiguador',
     'vehicleTopDown', 'controladorVehiculoTopDown',
     'planeController', 'controladorDeAvion',
+    'helicopterController', 'controladorDeHelicoptero',
     'textureRender', 'renderizadorDeTextura',
     'canvas', 'lienzo',
     'uiImage', 'imagenUI',
@@ -150,6 +151,7 @@ const componentShortcuts = [
     'contentSizeFitter', 'ajustadorDeTamanoDeContenido',
     'videoPlayer', 'reproductorDeVideo', 'video', 'pelicula',
     'materia', 'mtr', 'nombre', 'tag', 'scene', 'escena', 'input', 'entrada', 'motor', 'engine',
+    'potenciaActual', 'giroActual', 'establecerPotencia', 'establecerGiro',
     'ui', 'texto', 'boton', 'imagen', 'lienzo',
     'obtenerScript', 'getScript', 'destruir', 'destroy', 'instanciar', 'instantiate',
     'crear', 'create', 'estaActivado', 'activo',
@@ -175,7 +177,7 @@ const componentShortcuts = [
     'autoAcelerar', 'potencia', 'potenciaMotor', 'velocidadMaxima', 'velocidadLimite', 'velocidadGiro', 'giro', 'intensidadDerrape', 'derrape',
     'teclaIzquierda', 'teclaDerecha', 'frenadoMotor', 'frenado', 'vDespegue', 'sustentacion', 'arrastre', 'teclaPotencia', 'teclaFreno',
     'teclaNarizArriba', 'teclaNarizAbajo', 'usarTodasLasCapas', 'useAllLayers', 'sourceLayerIndex', 'velocidadDespegue', 'fuerzaSustentacion',
-    'agilidadGiro', 'arrastreAire'
+    'agilidadGiro', 'arrastreAire', 'potenciaDespegue', 'autoEstabilizar', 'estabilidad', 'teclaDescenso', 'teclaGiroIzquierda', 'teclaGiroDerecha'
 ];
 
 function getDefaultValueForType(canonicalType) {

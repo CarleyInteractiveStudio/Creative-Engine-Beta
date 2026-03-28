@@ -64,10 +64,10 @@ const componentAliases = {
     'VerticalLayoutGroup': 'autoDisposicionVertical',
     'HorizontalLayoutGroup': 'autoDisposicionHorizontal',
     'GridLayoutGroup': 'autoDisposicionRejilla',
-    'AmortiguadorCollider': 'colisionadorAmortiguador',
     'SuspensionHC': 'suspensionHC',
     'VehicleTopDown': 'controladorVehiculoTopDown',
     'PlaneController': 'controladorDeAvion',
+    'HelicopterController': 'controladorDeHelicoptero',
 };
 
 
@@ -1094,40 +1094,6 @@ export class Rigidbody2D extends Leyes {
     }
 }
 
-export class AmortiguadorCollider extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.isTrigger = true;
-        this.offset = { x: 0, y: 0 };
-        this.size = { x: 50.0, y: 50.0 };
-        this.soporteMaximo = 2000;
-        this.amortiguacion = 0.8; // Drenaje de velocidad
-        this.fuerzaRecuperacion = 1.0; // Multiplicador de empuje
-        this.distanciaDeseada = 0.8; // 80-90% como dijo el usuario
-    }
-
-    // --- Spanish Aliases ---
-    get nivelExpulsion() { return this.distanciaDeseada; }
-    set nivelExpulsion(v) { this.distanciaDeseada = v; }
-    get soporte() { return this.soporteMaximo; }
-    set soporte(v) { this.soporteMaximo = v; }
-    get fuerza() { return this.fuerzaRecuperacion; }
-    set fuerza(v) { this.fuerzaRecuperacion = v; }
-
-    get colisionadorAmortiguador() { return this; }
-
-    clone() {
-        const copy = new AmortiguadorCollider(null);
-        copy.isTrigger = this.isTrigger;
-        copy.offset = { ...this.offset };
-        copy.size = { ...this.size };
-        copy.soporteMaximo = this.soporteMaximo;
-        copy.amortiguacion = this.amortiguacion;
-        copy.fuerzaRecuperacion = this.fuerzaRecuperacion;
-        copy.distanciaDeseada = this.distanciaDeseada;
-        return copy;
-    }
-}
 
 export class BoxCollider2D extends Leyes {
     constructor(materia) {
@@ -2309,22 +2275,49 @@ export class TextureRender extends Leyes {
         this.texturePath = '';
         this.orderInLayer = 0;
         this.texture = null; // Will hold the Image object
+        this._lastLoadedPath = '';
+        this.isLoading = false;
+        this.isError = false;
+    }
+
+    update(deltaTime) {
+        // Auto-load if path is set but not yet loaded
+        if (this.texturePath && this.texturePath !== this._lastLoadedPath && !this.isLoading && !this.isError) {
+            this.loadTexture(window.projectsDirHandle);
+        }
     }
 
     async loadTexture(projectsDirHandle) {
-        if (this.texturePath) {
-            const url = await getURLForAssetPath(this.texturePath, projectsDirHandle);
+        if (!this.texturePath) {
+            this.texture = null;
+            this._lastLoadedPath = '';
+            this.isError = false;
+            this.isLoading = false;
+            return;
+        }
+
+        const currentDirHandle = projectsDirHandle || window.projectsDirHandle;
+        this.isLoading = true;
+        this.isError = false;
+
+        try {
+            const url = await getURLForAssetPath(this.texturePath, currentDirHandle);
             if (url) {
                 this.texture = new Image();
-                this.texture.src = url;
-                // We might need to await loading if drawing happens immediately
                 await new Promise((resolve, reject) => {
                     this.texture.onload = resolve;
                     this.texture.onerror = reject;
-                }).catch(e => console.error(`Failed to load texture: ${this.texturePath}`, e));
+                    this.texture.src = url;
+                });
+                this._lastLoadedPath = this.texturePath;
+            } else {
+                this.isError = true;
             }
-        } else {
-            this.texture = null;
+        } catch (e) {
+            console.error(`Failed to load texture: ${this.texturePath}`, e);
+            this.isError = true;
+        } finally {
+            this.isLoading = false;
         }
     }
 
@@ -2349,7 +2342,6 @@ registerComponent('BoxCollider2D', BoxCollider2D);
 registerComponent('CapsuleCollider2D', CapsuleCollider2D);
 registerComponent('CircleCollider2D', CircleCollider2D);
 registerComponent('PolygonCollider2D', PolygonCollider2D);
-registerComponent('AmortiguadorCollider', AmortiguadorCollider);
 registerComponent('Transform', Transform);
 registerComponent('Camera', Camera);
 registerComponent('SpriteRenderer', SpriteRenderer);
@@ -5041,6 +5033,134 @@ export class Water extends Leyes {
 }
 
 /**
+ * Componente HelicopterController: Controlador de helicóptero en vista lateral.
+ * Maneja potencia vertical, potencia de despegue y giro (inclinación).
+ */
+export class HelicopterController extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.potenciaMotor = 2000;
+        this.potenciaDespegue = 1000; // Fuerza base de sustentación
+        this.velocidadMaxima = 1000;
+        this.agilidadGiro = 150;
+        this.autoEstabilizar = true;
+        this.estabilidad = 0.5; // Fuerza de auto-nivelación
+        this.arrastreAire = 0.1;
+
+        // Controles
+        this.teclaPotencia = 'w';
+        this.teclaDescenso = 's';
+        this.teclaGiroIzquierda = 'a';
+        this.teclaGiroDerecha = 'd';
+
+        // Scripting API
+        this.potenciaActual = 0;
+        this.giroActual = 0;
+    }
+
+    // --- Spanish Aliases ---
+    get potencia() { return this.potenciaMotor; }
+    set potencia(v) { this.potenciaMotor = v; }
+    get vDespegue() { return this.potenciaDespegue; }
+    set vDespegue(v) { this.potenciaDespegue = v; }
+    get giro() { return this.agilidadGiro; }
+    set giro(v) { this.agilidadGiro = v; }
+    get autoEstabilidad() { return this.autoEstabilizar; }
+    set autoEstabilidad(v) { this.autoEstabilizar = v; }
+    get arrastre() { return this.arrastreAire; }
+    set arrastre(v) { this.arrastreAire = v; }
+
+    get controladorDeHelicoptero() { return this; }
+
+    fixedUpdate(deltaTime) {
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (!isGame) return;
+
+        const rb = this.materia.getComponent(Rigidbody2D);
+        const transform = this.materia.getComponent(Transform);
+        if (!rb || !transform) return;
+
+        const input = RuntimeAPIManager.getAPI('input');
+        if (!input) return;
+
+        // 1. Manejar Potencia (Empuje Vertical)
+        let thrustInput = 0;
+        if (input.isKeyPressed(this.teclaPotencia)) thrustInput = 1;
+        if (input.isKeyPressed(this.teclaDescenso)) thrustInput = -1;
+
+        this.potenciaActual = thrustInput;
+
+        const rad = transform.rotation * Math.PI / 180;
+        const up = { x: Math.sin(rad), y: -Math.cos(rad) }; // Dirección "arriba" relativa al helicóptero
+
+        // Fuerza de sustentación (Lift)
+        // Combinamos la potencia de despegue (base) con el input del motor
+        let liftForceMagnitude = this.potenciaDespegue;
+        if (thrustInput > 0) {
+            liftForceMagnitude += thrustInput * this.potenciaMotor;
+        } else if (thrustInput < 0) {
+            liftForceMagnitude += thrustInput * (this.potenciaDespegue * 0.8); // Descenso controlado
+        }
+
+        // Aplicar fuerza en el eje local UP del helicóptero
+        const finalForce = {
+            x: up.x * liftForceMagnitude * deltaTime * 10,
+            y: up.y * liftForceMagnitude * deltaTime * 10
+        };
+        rb.addForce(finalForce.x, finalForce.y);
+
+        // 2. Manejar Giro (Inclinación / Pitch)
+        let steerInput = 0;
+        if (input.isKeyPressed(this.teclaGiroIzquierda)) steerInput = -1;
+        if (input.isKeyPressed(this.teclaGiroDerecha)) steerInput = 1;
+
+        this.giroActual = steerInput;
+
+        if (steerInput !== 0) {
+            const torque = steerInput * this.agilidadGiro * 5000 * deltaTime;
+            rb.addTorque(torque);
+        } else if (this.autoEstabilizar) {
+            // Auto-nivelación: intentar mantener la rotación en 0
+            let currentRot = transform.rotation % 360;
+            if (currentRot > 180) currentRot -= 360;
+            if (currentRot < -180) currentRot += 360;
+
+            const stabilityTorque = -currentRot * this.estabilidad * 2000 * deltaTime;
+            rb.addTorque(stabilityTorque);
+
+            // Amortiguar rotación para evitar balanceo infinito
+            rb.angularVelocity *= Math.pow(0.9, deltaTime * 60);
+        }
+
+        // 3. Arrastre de Aire (Resistencia)
+        if (this.arrastreAire > 0) {
+            const drag = Math.pow(1.0 - this.arrastreAire, deltaTime);
+            rb.velocity.x *= drag;
+            rb.velocity.y *= drag;
+            rb.angularVelocity *= drag;
+        }
+
+        // 4. Limitar Velocidad Máxima
+        const speed = Math.sqrt(rb.velocity.x**2 + rb.velocity.y**2);
+        if (speed > (this.velocidadMaxima / 50)) {
+            const ratio = (this.velocidadMaxima / 50) / speed;
+            rb.velocity.x *= ratio;
+            rb.velocity.y *= ratio;
+        }
+    }
+
+    // Scripting methods
+    establecerPotencia(n) { this.potenciaMotor = n; }
+    establecerGiro(n) { this.agilidadGiro = n; }
+
+    clone() {
+        const copy = new HelicopterController(null);
+        Object.assign(copy, this);
+        return copy;
+    }
+}
+
+/**
  * LineCollider2D: Colisionador compuesto por múltiples líneas (cadenas).
  */
 export class LineCollider2D extends Leyes {
@@ -6151,6 +6271,7 @@ registerComponent('Water', Water);
 registerComponent('SuspensionHC', SuspensionHC);
 registerComponent('VehicleTopDown', VehicleTopDown);
 registerComponent('PlaneController', PlaneController);
+registerComponent('HelicopterController', HelicopterController);
 registerComponent('LineCollider2D', LineCollider2D);
 registerComponent('VerticalLayoutGroup', VerticalLayoutGroup);
 registerComponent('HorizontalLayoutGroup', HorizontalLayoutGroup);

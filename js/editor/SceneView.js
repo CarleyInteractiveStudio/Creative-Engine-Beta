@@ -866,39 +866,6 @@ export function initialize(dependencies) {
                 transform.rotation = Math.atan2(worldMouse.y - transform.y, worldMouse.x - transform.x) * 180 / Math.PI;
                 break;
             }
-            // --- Amortiguador Collider Gizmo Logic ---
-            case 'amort-top': {
-                const amort = dragState.materia.getComponent(Components.AmortiguadorCollider);
-                const rad = -transform.rotation * Math.PI / 180;
-                const localDy = -dx * Math.sin(rad) + dy * Math.cos(rad);
-                amort.size.y -= localDy;
-                amort.offset.y += localDy / 2;
-                break;
-            }
-            case 'amort-bottom': {
-                const amort = dragState.materia.getComponent(Components.AmortiguadorCollider);
-                const rad = -transform.rotation * Math.PI / 180;
-                const localDy = -dx * Math.sin(rad) + dy * Math.cos(rad);
-                amort.size.y += localDy;
-                amort.offset.y += localDy / 2;
-                break;
-            }
-            case 'amort-right': {
-                const amort = dragState.materia.getComponent(Components.AmortiguadorCollider);
-                const rad = -transform.rotation * Math.PI / 180;
-                const localDx = dx * Math.cos(rad) + dy * Math.sin(rad);
-                amort.size.x += localDx;
-                amort.offset.x += localDx / 2;
-                break;
-            }
-            case 'amort-left': {
-                const amort = dragState.materia.getComponent(Components.AmortiguadorCollider);
-                const rad = -transform.rotation * Math.PI / 180;
-                const localDx = dx * Math.cos(rad) + dy * Math.sin(rad);
-                amort.size.x -= localDx;
-                amort.offset.x += localDx / 2;
-                break;
-            }
         }
 
         // --- Collider Gizmo Logic ---
@@ -1387,7 +1354,7 @@ export function initialize(dependencies) {
             if (!selectedMateria || activeTool === 'pan') return;
 
             const canvasPos = InputManager.getMousePositionInCanvas();
-            const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCircleColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos) || checkAmortiguadorColliderGizmoHit(canvasPos) || checkUIGizmoHit(canvasPos);
+            const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCircleColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos) || checkUIGizmoHit(canvasPos);
 
             if (hitHandle) {
                 e.stopPropagation();
@@ -2054,46 +2021,6 @@ function checkBoxColliderGizmoHit(canvasPos) {
     return null;
 }
 
-function checkAmortiguadorColliderGizmoHit(canvasPos) {
-    const selectedMateria = getSelectedMateria();
-    if (!selectedMateria || !renderer) return null;
-
-    const amort = selectedMateria.getComponent(Components.AmortiguadorCollider);
-    const transform = selectedMateria.getComponent(Components.Transform);
-    if (!amort || !transform) return null;
-
-    const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
-
-    const rad = -transform.rotation * Math.PI / 180;
-    const cos = Math.cos(rad);
-    const sin = Math.sin(rad);
-    const localMouseX = (worldMouse.x - (transform.x + amort.offset.x)) * cos - (worldMouse.y - (transform.y + amort.offset.y)) * sin;
-    const localMouseY = (worldMouse.x - (transform.x + amort.offset.x)) * sin + (worldMouse.y - (transform.y + amort.offset.y)) * cos;
-
-    const width = amort.size.x * transform.scale.x;
-    const height = amort.size.y * transform.scale.y;
-    const halfWidth = width / 2;
-    const halfHeight = height / 2;
-
-    const handleHitboxSize = 10 / renderer.camera.effectiveZoom;
-    const halfHitbox = handleHitboxSize / 2;
-
-    const handles = [
-        { x: 0, y: -halfHeight, name: 'amort-top' },
-        { x: 0, y: halfHeight, name: 'amort-bottom' },
-        { x: halfWidth, y: 0, name: 'amort-right' },
-        { x: -halfWidth, y: 0, name: 'amort-left' }
-    ];
-
-    for (const handle of handles) {
-        if ( localMouseX >= handle.x - halfHitbox && localMouseX <= handle.x + halfHitbox &&
-             localMouseY >= handle.y - halfHitbox && localMouseY <= handle.y + halfHitbox ) {
-            return handle.name;
-        }
-    }
-
-    return null;
-}
 
 function checkCapsuleColliderGizmoHit(canvasPos) {
     const selectedMateria = getSelectedMateria();
@@ -2240,44 +2167,6 @@ function drawPhysicsGizmos() {
         ctx.restore();
     }
 
-    // Draw AmortiguadorCollider
-    const amortCollider = selectedMateria.getComponent(Components.AmortiguadorCollider);
-    if (amortCollider) {
-        const width = amortCollider.size.x * transform.scale.x;
-        const height = amortCollider.size.y * transform.scale.y;
-        const centerX = transform.x + amortCollider.offset.x;
-        const centerY = transform.y + amortCollider.offset.y;
-
-        ctx.save();
-        ctx.translate(centerX, centerY);
-        ctx.rotate(transform.rotation * Math.PI / 180);
-
-        ctx.strokeStyle = 'rgba(255, 100, 0, 0.8)'; // Naranja para diferenciarlo
-        ctx.lineWidth = 2 / camera.effectiveZoom;
-        ctx.setLineDash([5 / camera.effectiveZoom, 5 / camera.effectiveZoom]);
-        ctx.strokeRect(-width / 2, -height / 2, width, height);
-
-        // Dibujar linea de "Nivel de Expulsión" (Nivel de aire/viento)
-        const expulsionY = (height / 2) - (height * amortCollider.distanciaDeseada);
-        ctx.beginPath();
-        ctx.moveTo(-width / 2, expulsionY);
-        ctx.lineTo(width / 2, expulsionY);
-        ctx.strokeStyle = 'rgba(0, 200, 255, 0.5)';
-        ctx.setLineDash([]);
-        ctx.stroke();
-
-        const handleSize = 8 / camera.effectiveZoom;
-        const halfHandle = handleSize / 2;
-        ctx.fillStyle = 'rgba(255, 100, 0, 0.9)';
-
-        const handles = [
-            { x: 0, y: -height / 2, name: 'amort-top' }, { x: 0, y: height / 2, name: 'amort-bottom' },
-            { x: width / 2, y: 0, name: 'amort-right' }, { x: -width / 2, y: 0, name: 'amort-left' }
-        ];
-        handles.forEach(handle => ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize));
-
-        ctx.restore();
-    }
 
     // Draw CircleCollider2D
     const circleCollider = selectedMateria.getComponent(Components.CircleCollider2D);
