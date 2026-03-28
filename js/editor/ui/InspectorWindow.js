@@ -33,7 +33,7 @@ const availableComponents = {
     'CAT_UTILIDADES': [Components.Gyzmo],
     'CAT_ANIMACION': [Components.Animator, Components.AnimatorController],
     'CAT_AUDIO': [Components.AudioSource, Components.VideoPlayer],
-    'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
+    'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D, Components.Water],
     'CAT_CAMARA': [Components.Camera],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button],
     'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI],
@@ -48,7 +48,7 @@ const componentIcons = {
     Terreno2D: 'mountain', TerrenoCollider2D: 'mountain',
     Button: 'mouse-pointer', UIText: 'type', Canvas: 'image',
     Movement: 'run', CameraFollow: 'video', Parallax: 'mountain-snow', DrawingOrder: 'layers', ProjectileLauncher: 'rocket', AutoDestroy: 'timer', Health: 'heart', Patrol: 'route',
-    Water: 'droplet', LineCollider2D: 'route',
+    Water: 'bucket', LineCollider2D: 'route',
     'ParticleSystem': 'sparkles',
     'Gyzmo': 'target',
     'RaycastSource': 'route',
@@ -417,6 +417,11 @@ function handleInspectorInput(e) {
     // After updating the property, trigger a scene update to reflect changes visually.
     if (updateSceneCallback) {
         updateSceneCallback();
+    }
+
+    // Special handling for Water component: regenerate particles when size changes
+    if (componentName === 'Water' && (propPath === 'width' || propPath === 'height')) {
+        component.generateParticles();
     }
 
     // Synchronize color inputs if one was changed
@@ -1015,13 +1020,13 @@ function showCullingMaskDropdown(camera, button) {
     const everythingItem = document.createElement('div');
     everythingItem.className = 'culling-mask-item separator';
     everythingItem.textContent = 'Everything';
-    everythingItem.onclick = () => { camera.cullingMask = -1; updateInspector(); };
+    everythingItem.onclick = (e) => { e.stopPropagation(); camera.cullingMask = -1; updateInspector(); };
     dropdown.appendChild(everythingItem);
 
     const nothingItem = document.createElement('div');
     nothingItem.className = 'culling-mask-item';
     nothingItem.textContent = 'Nothing';
-    nothingItem.onclick = () => { camera.cullingMask = 0; updateInspector(); };
+    nothingItem.onclick = (e) => { e.stopPropagation(); camera.cullingMask = 0; updateInspector(); };
     dropdown.appendChild(nothingItem);
 
 
@@ -1033,8 +1038,28 @@ function showCullingMaskDropdown(camera, button) {
 
     const rect = button.getBoundingClientRect();
     dropdown.style.display = 'block';
-    dropdown.style.left = `${rect.left}px`;
-    dropdown.style.top = `${rect.bottom}px`;
+    dropdown.style.position = 'fixed';
+    dropdown.style.zIndex = '3000';
+    dropdown.style.maxHeight = ''; // Reset for measurement
+    dropdown.style.overflowY = '';
+
+    const menuHeight = dropdown.offsetHeight;
+    const windowHeight = window.innerHeight;
+    let left = rect.left;
+    let top = rect.bottom;
+
+    if (top + menuHeight > windowHeight - 10) {
+        top = rect.top - menuHeight;
+    }
+
+    if (top < 5 || menuHeight > windowHeight - 20) {
+        top = 5;
+        dropdown.style.maxHeight = `${windowHeight - 20}px`;
+        dropdown.style.overflowY = 'auto';
+    }
+
+    dropdown.style.left = `${left}px`;
+    dropdown.style.top = `${top}px`;
 }
 
 

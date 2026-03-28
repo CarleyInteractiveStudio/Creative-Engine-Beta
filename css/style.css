@@ -242,6 +242,8 @@ footer {
     background: #161b22;
     padding: 30px; border: 1px solid var(--border-color);
     width: 90%; max-width: 500px; /* Slightly smaller for alerts */
+    max-height: 90vh;
+    overflow-y: auto;
     border-radius: 10px;
     box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5); animation: slideIn 0.4s ease;
     position: relative;
@@ -509,6 +511,9 @@ footer {
     box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     padding: 5px 0;
     min-width: 150px;
+    max-height: 80vh;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .context-menu.visible {

@@ -102,49 +102,101 @@ export class PhysicsSystem {
     }
 
     _step(deltaTime) {
+        const allMaterias = this.scene.getAllMaterias();
+
+        // Cache water components once per step
+        const waterComponents = [];
+        for (let i = 0; i < allMaterias.length; i++) {
+            const w = allMaterias[i].getComponent(Components.Water);
+            if (w && w.particles && w.particles.length > 0) waterComponents.push(w);
+        }
+
         // 1. Apply physics forces (gravity, velocity)
-        for (const materia of this.scene.getAllMaterias()) {
+        for (let i = 0; i < allMaterias.length; i++) {
+            const materia = allMaterias[i];
             const rigidbody = materia.getComponent(Components.Rigidbody2D);
             const transform = materia.getComponent(Components.Transform);
 
             if (rigidbody && transform && rigidbody.bodyType.toLowerCase() === 'dynamic' && rigidbody.simulated) {
-                const PHYSICS_SCALE = 100; // Factor de escala para que las unidades sean más manejables
+                const PHYSICS_SCALE = 100;
 
-                // Clamping velocity to prevent physics breaking with large forces
                 rigidbody.velocity.x = this._clamp(rigidbody.velocity.x, -this.MAX_VELOCITY, this.MAX_VELOCITY);
                 rigidbody.velocity.y = this._clamp(rigidbody.velocity.y, -this.MAX_VELOCITY, this.MAX_VELOCITY);
 
-                // Apply gravity
                 rigidbody.velocity.y += this.gravity.y * rigidbody.gravityScale * deltaTime;
 
-                // --- Apply buoyancy if in water ---
-                const waterMaterias = this.scene.findAllMateriasWithComponent(Components.Water);
-                for (const wm of waterMaterias) {
-                    const water = wm.getComponent(Components.Water);
-                    const waterTransform = wm.getComponent(Components.Transform);
+                // --- Apply buoyancy if in water (PARTICLE-BASED) ---
+                for (let wIdx = 0; wIdx < waterComponents.length; wIdx++) {
+                    const water = waterComponents[wIdx];
+                    const collider = this.getCollider(materia);
+                    const objRadius = (collider && collider.size) ? (Math.max(collider.size.x * transform.scale.x, collider.size.y * transform.scale.y) / 2) : 25;
+                    const influenceRadius = objRadius + 40;
+                    const influenceRadiusSq = influenceRadius * influenceRadius;
 
-                    const dx = transform.x - waterTransform.x;
-                    const dy = transform.y - waterTransform.y;
+                    let nearbyParticles = 0;
+                    let avgY = 0;
 
-                    if (Math.abs(dx) < water.width / 2 && Math.abs(dy) < water.height / 2) {
-                        const depth = (waterTransform.y + water.height / 2) - transform.y;
-                        const immersion = Math.max(0, Math.min(1.0, depth / 50)); // immersion factor
+                    // Optimized: Use spatial grid from the Water component
+                    if (water._spatialGrid && water.bounds) {
+                        const spacing = water._spacing || 18;
+                        const h = spacing * 1.5;
+                        const invH = 1 / h;
+                        const gx = Math.floor((transform.x - water.bounds.minX) * invH);
+                        const gy = Math.floor((transform.y - water.bounds.minY) * invH);
+                        const range = Math.ceil(influenceRadius * invH);
 
-                        if (immersion > 0) {
-                            const buoyancyForce = immersion * water.density * 15.0 * rigidbody.buoyancyWeight;
-
-                            if (rigidbody.buoyancyWeight > rigidbody.sinkThreshold) {
-                                // Se hunde
-                                rigidbody.velocity.y -= buoyancyForce * 0.3 * deltaTime;
-                            } else {
-                                // Flota
-                                rigidbody.velocity.y -= buoyancyForce * deltaTime;
+                        for (let ox = -range; ox <= range; ox++) {
+                            for (let oy = -range; oy <= range; oy++) {
+                                const key = ((gx + ox) & 0xFFFF) | (((gy + oy) & 0xFFFF) << 16);
+                                const cell = water._spatialGrid.get(key);
+                                if (!cell) continue;
+                                for (let cIdx = 0; cIdx < cell.length; cIdx++) {
+                                    const p = water.particles[cell[cIdx]];
+                                    const dx = p.x - transform.x;
+                                    const dy = p.y - transform.y;
+                                    const dSq = dx * dx + dy * dy;
+                                    if (dSq < influenceRadiusSq) {
+                                        nearbyParticles++;
+                                        avgY += p.y;
+                                    }
+                                }
                             }
+                        }
+                    }
 
-                            // Water drag
-                            const dragFactor = Math.pow(0.6, deltaTime * immersion * 10);
-                            rigidbody.velocity.x *= dragFactor;
-                            rigidbody.velocity.y *= dragFactor;
+                    if (nearbyParticles > 3) {
+                        avgY /= nearbyParticles;
+                        // immersion basado en densidad local y profundidad
+                        const depth = Math.max(0, avgY - transform.y);
+                        const immersion = Math.min(1.2, (nearbyParticles / 12) + (depth / 50));
+
+                        // Fuerza de flotación suavizada
+                        const buoyancyForce = immersion * water.density * 45.0;
+
+                        if (rigidbody.buoyancyWeight > rigidbody.sinkThreshold) {
+                            // Se hunde, pero con resistencia
+                            rigidbody.velocity.y -= buoyancyForce * 0.2 * deltaTime;
+                        } else {
+                            // Flota: lift depende de cuánto esté sumergido
+                            const lift = buoyancyForce * Math.max(0.5, (2.0 - rigidbody.buoyancyWeight));
+                            rigidbody.velocity.y -= lift * deltaTime;
+
+                            // Estabilización en superficie: si está muy arriba, lo atrae un poco hacia abajo
+                            if (transform.y < avgY - 20) {
+                                rigidbody.velocity.y += 10.0 * deltaTime;
+                            }
+                        }
+
+                        // Resistencia del fluido (Drag) - MUCHO más fuerte para evitar "vuelos"
+                        // Aplicamos un amortiguamiento lineal y cuadrático aproximado
+                        const dragFactor = 1.0 - (0.4 * water.viscosity * immersion);
+                        const finalDrag = Math.pow(Math.max(0.1, dragFactor), deltaTime * 60);
+                        rigidbody.velocity.x *= finalDrag;
+                        rigidbody.velocity.y *= finalDrag;
+
+                        // Amortiguación de impacto (Splash damping)
+                        if (rigidbody.velocity.y > 5) {
+                             rigidbody.velocity.y *= Math.pow(0.8, deltaTime * 60);
                         }
                     }
                 }

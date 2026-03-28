@@ -79,7 +79,9 @@ export function createWaterObject(parent = null) {
     const newMateria = createBaseMateria(name, parent);
     newMateria.tag = 'Agua';
     newMateria.layer = 4; // Capa Agua (según config por defecto)
-    newMateria.addComponent(new Components.Water(newMateria));
+    const water = new Components.Water(newMateria);
+    water.orderInLayer = 10;
+    newMateria.addComponent(water);
     return newMateria;
 }
 

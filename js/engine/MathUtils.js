@@ -3,7 +3,7 @@
  * Includes vector operations, matrix transformations, and collision detection algorithms.
  */
 
-import { Transform, SpriteRenderer, Camera } from './Components.js';
+import { Transform, SpriteRenderer, Camera, Water, LineCollider2D, Gyzmo } from './Components.js';
 
 // Vector operations can be added here if needed.
 
@@ -15,28 +15,72 @@ import { Transform, SpriteRenderer, Camera } from './Components.js';
  */
 export function getOOB(materia, explicitPosition = null) {
     const transform = materia.getComponent(Transform);
-    const spriteRenderer = materia.getComponent(SpriteRenderer);
+    if (!transform) return null;
 
-    if (!transform || !spriteRenderer || !spriteRenderer.sprite || (!spriteRenderer.sprite.naturalWidth && !spriteRenderer.sprite.width)) {
+    const spriteRenderer = materia.getComponent(SpriteRenderer);
+    const water = materia.getComponent(Water);
+    const lineCollider = materia.getComponent(LineCollider2D);
+    const gyzmo = materia.getComponent(Gyzmo);
+
+    // Special case for World-Space Water
+    if (water && water._initializedWorldSpace) {
+        const b = water.bounds;
+        return [
+            { x: b.minX, y: b.minY },
+            { x: b.maxX, y: b.minY },
+            { x: b.maxX, y: b.maxY },
+            { x: b.minX, y: b.maxY }
+        ];
+    }
+
+    let w, h, pivotX = 0.5, pivotY = 0.5;
+
+    if (spriteRenderer && spriteRenderer.sprite && (spriteRenderer.sprite.naturalWidth || spriteRenderer.sprite.width)) {
+        w = spriteRenderer.sprite.naturalWidth || spriteRenderer.sprite.width;
+        h = spriteRenderer.sprite.naturalHeight || spriteRenderer.sprite.height;
+        pivotX = spriteRenderer.pivot ? spriteRenderer.pivot.x : 0.5;
+        pivotY = spriteRenderer.pivot ? spriteRenderer.pivot.y : 0.5;
+
+        // If using a sprite sheet, use the sprite's rect dimensions and pivot
+        if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
+            const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
+            if (spriteData.rect) {
+                w = spriteData.rect.width;
+                h = spriteData.rect.height;
+                pivotX = spriteData.pivot.x;
+                pivotY = spriteData.pivot.y;
+            }
+        }
+    } else if (water) {
+        w = water.width;
+        h = water.height;
+        pivotX = 0.5;
+        pivotY = 0.5;
+    } else if (lineCollider && lineCollider.points && lineCollider.points.length > 0) {
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (const p of lineCollider.points) {
+            minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
+            maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
+        }
+        w = maxX - minX;
+        h = maxY - minY;
+        // Adjust pivot to match the bounds center
+        pivotX = -minX / (w || 1);
+        pivotY = -minY / (h || 1);
+    } else if (gyzmo && gyzmo.layers && gyzmo.layers.length > 0) {
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (const l of gyzmo.layers) {
+            minX = Math.min(minX, l.x - l.width / 2); minY = Math.min(minY, l.y - l.height / 2);
+            maxX = Math.max(maxX, l.x + l.width / 2); maxY = Math.max(maxY, l.y + l.height / 2);
+        }
+        w = maxX - minX;
+        h = maxY - minY;
+        pivotX = -minX / (w || 1);
+        pivotY = -minY / (h || 1);
+    } else {
+        // For other objects (like empty transforms), don't cull
         return null;
     }
-
-    let w = spriteRenderer.sprite.naturalWidth || spriteRenderer.sprite.width;
-    let h = spriteRenderer.sprite.naturalHeight || spriteRenderer.sprite.height;
-    let pivotX = spriteRenderer.pivot ? spriteRenderer.pivot.x : 0.5;
-    let pivotY = spriteRenderer.pivot ? spriteRenderer.pivot.y : 0.5;
-
-    // If using a sprite sheet, use the sprite's rect dimensions and pivot
-    if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
-        const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
-        if (spriteData.rect) {
-            w = spriteData.rect.width;
-            h = spriteData.rect.height;
-            pivotX = spriteData.pivot.x;
-            pivotY = spriteData.pivot.y;
-        }
-    }
-
     const sx = transform.scale.x;
     const sy = transform.scale.y;
 

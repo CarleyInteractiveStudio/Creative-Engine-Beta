@@ -1339,7 +1339,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Pass 1: Draw Scene Geometry ---
         const materiasToRender = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && (m.getComponent(Components.SpriteRenderer) || m.getComponent(Components.TextureRender) || m.getComponent(Components.Terreno2D)));
+            .filter(m => m.getComponent(Components.Transform));
             // Sorting is now centralized in drawObjects' allInLayer sort
 
         const tilemapsToRender = SceneManager.currentScene.getAllMaterias()
@@ -1381,8 +1381,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (b.isAncestorOf(a)) return 1;  // b is parent, draw first (behind)
 
                 // 3. Renderer orderInLayer
-                const rendererA = a.getComponent(Components.SpriteRenderer) || a.getComponent(Components.TextureRender) || a.getComponent(Components.TilemapRenderer) || a.getComponent(Components.Terreno2D) || a.getComponent(Components.Gyzmo);
-                const rendererB = b.getComponent(Components.SpriteRenderer) || b.getComponent(Components.TextureRender) || b.getComponent(Components.TilemapRenderer) || b.getComponent(Components.Terreno2D) || b.getComponent(Components.Gyzmo);
+                const rendererA = a.getComponent(Components.SpriteRenderer) || a.getComponent(Components.TextureRender) || a.getComponent(Components.TilemapRenderer) || a.getComponent(Components.Terreno2D) || a.getComponent(Components.Gyzmo) || a.getComponent(Components.Water) || a.getComponent(Components.LineCollider2D);
+                const rendererB = b.getComponent(Components.SpriteRenderer) || b.getComponent(Components.TextureRender) || b.getComponent(Components.TilemapRenderer) || b.getComponent(Components.Terreno2D) || b.getComponent(Components.Gyzmo) || b.getComponent(Components.Water) || b.getComponent(Components.LineCollider2D);
                 const orderA = rendererA ? (rendererA.orderInLayer || 0) : 0;
                 const orderB = rendererB ? (rendererB.orderInLayer || 0) : 0;
                 if (orderA !== orderB) return orderA - orderB;
@@ -1790,6 +1790,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const ui = materia.getComponent(Components.UIImage);
                 if (ui) ui.update(deltaTime);
 
+                const water = materia.getComponent(Components.Water);
+                if (water) water.update(deltaTime);
+
                 // ONLY update Animator and Controller for selected object to avoid performance issues
                 // but allow the user to see the character animate when selected.
                 if (materia === selectedMateria) {
@@ -2064,12 +2067,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Adjust horizontal position
         if (left + menuWidth > windowWidth) {
-            left = windowWidth - menuWidth - 5; // Subtract 5 for some padding
+            left = windowWidth - menuWidth - 5;
         }
 
         // Adjust vertical position
         if (top + menuHeight > windowHeight) {
-            top = windowHeight - menuHeight - 5; // Subtract 5 for some padding
+            top = windowHeight - menuHeight - 5;
+        }
+
+        // Final safety check: ensure top is not negative (menu taller than window)
+        if (top < 5 || menuHeight > windowHeight - 10) {
+            if (top < 5) top = 5;
+            menu.style.maxHeight = `${windowHeight - (top + 10)}px`;
+            menu.style.overflowY = 'auto';
+        } else {
+            menu.style.maxHeight = ''; // Reset if it fits
+            menu.style.overflowY = '';
         }
 
         menu.style.left = `${left}px`;
@@ -2079,6 +2092,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function hideContextMenus() {
         document.querySelectorAll('.context-menu').forEach(menu => {
             menu.style.display = 'none';
+            menu.style.maxHeight = '';
+            menu.style.overflowY = '';
         });
     }
 
@@ -2305,21 +2320,50 @@ document.addEventListener('DOMContentLoaded', () => {
             allMenuContents.forEach(mc => mc.classList.remove('visible'));
         });
 
-        // --- Submenu dynamic positioning ---
+        // --- Submenu dynamic positioning (using fixed to prevent clipping) ---
         document.querySelectorAll('.context-menu .has-submenu').forEach(item => {
             item.addEventListener('mouseenter', e => {
                 const submenu = e.currentTarget.querySelector('.submenu');
                 if (!submenu) return;
 
-                const parentRect = e.currentTarget.getBoundingClientRect();
-                const submenuHeight = submenu.scrollHeight; // Get height even if hidden
+                // Set initial fixed style
+                submenu.style.position = 'fixed';
+                submenu.style.maxHeight = ''; // Reset to calculate scrollHeight
+                submenu.style.overflowY = '';
 
-                // Check if it would go off-screen
-                if (parentRect.bottom + submenuHeight > window.innerHeight) {
-                    submenu.classList.add('submenu-up');
-                } else {
-                    submenu.classList.remove('submenu-up');
+                const parentRect = e.currentTarget.getBoundingClientRect();
+                const submenuHeight = submenu.scrollHeight;
+                const submenuWidth = submenu.offsetWidth || 180;
+                const windowWidth = window.innerWidth;
+                const windowHeight = window.innerHeight;
+
+                let left = parentRect.right;
+                let top = parentRect.top;
+
+                // 1. Horizontal Positioning (Flip left if no space on right)
+                if (left + submenuWidth > windowWidth) {
+                    left = parentRect.left - submenuWidth;
+                    // Ensure it doesn't go off-screen to the left
+                    if (left < 5) left = 5;
                 }
+
+                // 2. Vertical Positioning (Adjust if it exceeds bottom)
+                if (top + submenuHeight > windowHeight - 10) {
+                    top = windowHeight - submenuHeight - 10;
+
+                    // If still too tall, use scrolling
+                    if (top < 5) {
+                        top = 5;
+                        submenu.style.maxHeight = `${windowHeight - 20}px`;
+                        submenu.style.overflowY = 'auto';
+                        submenu.style.overflowX = 'hidden';
+                    }
+                } else if (top < 5) {
+                    top = 5;
+                }
+
+                submenu.style.left = `${left}px`;
+                submenu.style.top = `${top}px`;
             });
         });
 

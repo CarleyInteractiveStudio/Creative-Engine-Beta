@@ -247,63 +247,154 @@ export class Renderer {
         const transform = water.materia.getComponent(Transform);
         if (!transform) return;
 
-        const drawX = x !== null ? x : transform.x;
-        const drawY = y !== null ? y : transform.y;
+        // Culling: Si el agua está fuera de la cámara, no procesar renderizado
+        if (this.camera && water.bounds) {
+            const b = water.bounds;
+            const cam = this.camera;
+            const aspect = this.canvas.width / (this.canvas.height || 1);
+            const ez = cam.effectiveZoom || 1.0;
+            const viewH = (this.canvas.height / ez);
+            const viewW = viewH * aspect;
+
+            // Check if bounds overlap with camera viewport
+            if (b.maxX < cam.x - viewW/2 || b.minX > cam.x + viewW/2 ||
+                b.maxY < cam.y - viewH/2 || b.minY > cam.y + viewH/2) {
+                return;
+            }
+        }
 
         const { ctx } = this;
         ctx.save();
-        ctx.translate(drawX, drawY);
-        ctx.rotate(transform.rotation * Math.PI / 180);
-        ctx.scale(transform.scale.x, transform.scale.y);
+
+        const isWorld = water._initializedWorldSpace;
+        if (!isWorld) {
+            const drawX = x !== null ? x : transform.x;
+            const drawY = y !== null ? y : transform.y;
+            ctx.translate(drawX, drawY);
+            ctx.rotate(transform.rotation * Math.PI / 180);
+            ctx.scale(transform.scale.x, transform.scale.y);
+        }
+
+        const bounds = water.bounds;
+        const w = Math.ceil(bounds.maxX - bounds.minX);
+        const h = Math.ceil(bounds.maxY - bounds.minY);
+
+        if (w <= 0 || h <= 0) { ctx.restore(); return; }
+
+        // 1. Inicializar buffers lazily (Aumentado para acomodar mareas y evitar re-escalado)
+        const margin = 60;
+        const bufferW = Math.ceil(w + margin);
+        const bufferH = Math.ceil(h + margin);
 
         if (!this._waterBuffer) {
             this._waterBuffer = document.createElement('canvas');
-            this._waterBufferCtx = this._waterBuffer.getContext('2d');
+            this._particleBuffer = document.createElement('canvas');
         }
 
-        const pad = 40;
-        const w = water.width + pad * 2;
-        const h = water.height + pad * 2;
+        // Solo re-escalar si es significativamente diferente para ahorrar performance
+        if (!this._waterBufferCtx || Math.abs(this._waterBuffer.width - bufferW) > 100 || Math.abs(this._waterBuffer.height - bufferH) > 100 || this._waterBuffer.width < bufferW || this._waterBuffer.height < bufferH) {
+            this._waterBuffer.width = this._particleBuffer.width = Math.min(2048, bufferW);
+            this._waterBuffer.height = this._particleBuffer.height = Math.min(2048, bufferH);
+            this._waterBufferCtx = this._waterBuffer.getContext('2d');
+            this._particleBufferCtx = this._particleBuffer.getContext('2d');
+        }
 
-        if (this._waterBuffer.width !== w || this._waterBuffer.height !== h) {
-            this._waterBuffer.width = w;
-            this._waterBuffer.height = h;
+        if (!this._waterParticleSprite) {
+            this._waterParticleSprite = document.createElement('canvas');
+            this._waterParticleSprite.width = 64;
+            this._waterParticleSprite.height = 64;
+            const pCtx = this._waterParticleSprite.getContext('2d');
+            const grad = pCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
+            grad.addColorStop(0, 'white');
+            grad.addColorStop(1, 'rgba(255,255,255,0)');
+            pCtx.fillStyle = grad;
+            pCtx.fillRect(0, 0, 64, 64);
         }
 
         const bCtx = this._waterBufferCtx;
-        bCtx.clearRect(0, 0, w, h);
+        const pCtx = this._particleBufferCtx;
 
-        if (water.particles.length === 0) {
-            water.generateParticles();
+        pCtx.clearRect(0, 0, bufferW, bufferH);
+        bCtx.clearRect(0, 0, bufferW, bufferH);
+
+        // 2. Dibujar partículas RÁPIDO
+        const pr = water._particleRadius || 14;
+        const pSize = pr * 3.5; // Dibujar un poco más grande para mejor solapamiento
+        const pOffset = pSize / 2;
+
+        pCtx.fillStyle = 'white';
+        for (let i = 0; i < water.particles.length; i++) {
+            const p = water.particles[i];
+            // Solo dibujar si está dentro de los límites del buffer actual (en caso de recorte)
+            const dx = p.x - bounds.minX;
+            const dy = p.y - bounds.minY;
+            if (dx >= 0 && dx <= bufferW && dy >= 0 && dy <= bufferH) {
+                pCtx.drawImage(this._waterParticleSprite, dx - pOffset, dy - pOffset, pSize, pSize);
+            }
         }
 
+        // 3. Aplicar Blur (Metaball pre-pass)
+        const canUseFilter = typeof bCtx.filter === 'string';
         bCtx.save();
-        bCtx.fillStyle = water.color;
-        // The blur is essential for the metaball effect
-        bCtx.filter = 'blur(6px)';
-
-        for (const p of water.particles) {
-            bCtx.beginPath();
-            bCtx.arc(p.x + w / 2, p.y + h / 2, water._particleRadius || 8, 0, Math.PI * 2);
-            bCtx.fill();
-        }
+        // Blur moderado combinado con el degradado radial de la partícula
+        if (canUseFilter) bCtx.filter = 'blur(6px)';
+        bCtx.drawImage(this._particleBuffer, 0, 0);
         bCtx.restore();
 
-        // Draw the buffer with high contrast to create the liquid effect (metaballs)
+        // 4. Colorear
+        bCtx.save();
+        bCtx.globalCompositeOperation = 'source-in';
+        bCtx.fillStyle = water.color || 'rgba(52, 152, 219, 0.8)';
+        bCtx.fillRect(0, 0, this._waterBuffer.width, this._waterBuffer.height);
+        bCtx.restore();
+
+        // 5. Dibujar buffer final con Contraste (Metaball effect)
         ctx.save();
-        // Contrast of 15-20 creates sharp edges on blurred shapes
-        ctx.filter = 'contrast(15) brightness(1.0)';
-        ctx.drawImage(this._waterBuffer, -w / 2, -h / 2, w, h);
+        // Contraste alto para crear bordes sólidos y fusionar partículas
+        // Ajustado para que el agua se vea más "gruesa" y no se encoja tanto
+        const contrastVal = this.isEditor ? 25 : 35;
+        if (canUseFilter) ctx.filter = `contrast(${contrastVal}) brightness(1.1) saturate(1.2)`;
+        else ctx.globalAlpha = 0.8;
+
+        if (isWorld) {
+            ctx.drawImage(this._waterBuffer, bounds.minX, bounds.minY, bufferW, bufferH);
+        } else {
+            // Local space draw
+            ctx.drawImage(this._waterBuffer, bounds.minX, bounds.minY, bufferW, bufferH);
+        }
         ctx.restore();
 
         if (this.isEditor) {
-            // Semi-transparent background to ensure visibility
-            ctx.fillStyle = 'rgba(52, 152, 219, 0.2)';
-            ctx.fillRect(-water.width / 2, -water.height / 2, water.width, water.height);
+            const zoom = this.camera?.effectiveZoom || 1;
 
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-            ctx.setLineDash([5, 5]);
-            ctx.strokeRect(-water.width / 2, -water.height / 2, water.width, water.height);
+            // Feedback visual del área (siempre visible en el editor)
+            ctx.save();
+            if (isWorld) {
+                ctx.fillStyle = 'rgba(52, 152, 219, 0.1)';
+                ctx.fillRect(bounds.minX, bounds.minY, bufferW, bufferH);
+                ctx.strokeStyle = 'rgba(52, 152, 219, 0.8)'; // Increased visibility
+                ctx.lineWidth = 1 / zoom;
+                ctx.strokeRect(bounds.minX, bounds.minY, bufferW, bufferH);
+            } else {
+                ctx.fillStyle = 'rgba(52, 152, 219, 0.3)'; // Increased visibility
+                ctx.fillRect(-water.width / 2, -water.height / 2, water.width, water.height);
+                ctx.strokeStyle = '#3498db'; // Solid blue border
+                ctx.lineWidth = 2 / zoom;
+                ctx.strokeRect(-water.width / 2, -water.height / 2, water.width, water.height);
+            }
+            ctx.restore();
+
+            // Dibujar el punto de origen de la materia de agua
+            ctx.fillStyle = '#3498db';
+            ctx.beginPath();
+            const dotX = isWorld ? transform.x : 0;
+            const dotY = isWorld ? transform.y : 0;
+            ctx.arc(dotX, dotY, 5 / zoom, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.font = `${10 / zoom}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.fillText("Water Source", dotX, dotY - 10 / zoom);
         }
 
         ctx.restore();
