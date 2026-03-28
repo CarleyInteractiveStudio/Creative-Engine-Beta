@@ -234,16 +234,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- View Switching Logic ---
   const showView = (viewToShow) => {
     if (loginView) loginView.style.display = 'none';
-    if (signupView) signupView.style.display = 'none';
-    if (resetPasswordView) resetPasswordView.style.display = 'none';
     if (loggedInView) loggedInView.style.display = 'none';
     if (viewToShow) viewToShow.style.display = 'block';
   };
-
-  // Note: gotoSignup and gotoReset now point to external URLs in index.html,
-  // so we don't preventDefault() or show internal views for them anymore.
-  if (gotoLogin) gotoLogin.addEventListener('click',  e => { e.preventDefault(); showView(loginView); });
-  if (backToLogin) backToLogin.addEventListener('click', e => { e.preventDefault(); showView(loginView); });
 
   // --- Modal Closing Logic ---
   const closeAccountModal = () => { if (accountModal) accountModal.classList.remove('is-open'); };
