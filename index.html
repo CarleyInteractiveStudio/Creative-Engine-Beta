@@ -43,10 +43,12 @@
     </style>
 </head>
 <body>
-  <div id="verifying-overlay" style="display: none;">
+  <div id="verifying-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; justify-content: center; align-items: center; flex-direction: column; color: white;">
     <div class="spinner"></div>
-    <p>Verificando...</p>
+    <p id="verifying-text" style="margin-top: 20px; font-family: sans-serif;">Verificando...</p>
   </div>
+
+  <iframe id="sso-bridge" src="https://carleystudio.com/bridge.html" style="display:none;"></iframe>
 
     <div class="container">
         <header>
@@ -218,50 +220,20 @@
                     <div id="account-section" class="section-view active">
                         <div id="auth-logged-out" class="auth-view">
                             <h2 data-i18n="AUTH_LOGIN">Iniciar Sesión</h2>
-                            <form id="login-form">
-                                <label for="login-email" data-i18n="AUTH_EMAIL">Correo Electrónico:</label>
-                                <input id="login-email" type="email" name="email" required autocomplete="email">
-                                <label for="login-password" data-i18n="AUTH_PASSWORD">Contraseña:</label>
-                                <input id="login-password" type="password" name="password" required autocomplete="current-password">
-                                <button type="submit" class="modal-btn" data-i18n="AUTH_LOGIN">Iniciar Sesión</button>
-                                <p class="auth-switch">
-                                    <span data-i18n="AUTH_NO_ACCOUNT">¿No tienes una cuenta?</span>
-                                    <a href="https://carleystudio.com/cuenta.html" id="goto-signup" target="_blank" data-i18n="REGISTRARSE">Regístrate</a>
-                                </p>
-                                <p class="auth-switch"><a href="https://carleystudio.com/cuenta.html" id="goto-reset" data-i18n="AUTH_FORGOT_PASS" target="_blank">¿Olvidaste tu contraseña?</a></p>
-                            </form>
+                            <p style="margin-bottom: 20px; opacity: 0.8;" data-i18n="SSO_HINT">Usa tu cuenta global de Carley Studio para acceder a todos nuestros servicios.</p>
+                            <button id="btn-sso-login" class="modal-btn" style="background: linear-gradient(135deg, #0e639c, #007acc); display: flex; align-items: center; justify-content: center; gap: 10px;">
+                                <img src="icons/user.svg" class="ce-icon" style="filter: brightness(0) invert(1);">
+                                <span data-i18n="AUTH_LOGIN_SSO">Entrar con Carley Studio</span>
+                            </button>
+                            <p class="auth-switch" style="margin-top: 20px;">
+                                <span data-i18n="AUTH_NO_ACCOUNT">¿No tienes una cuenta?</span>
+                                <a href="https://carleystudio.com/cuenta.html" id="goto-signup" target="_blank" data-i18n="REGISTRARSE">Regístrate</a>
+                            </p>
                         </div>
                         <div id="auth-logged-in" class="auth-view" style="display: none;">
                             <h2 data-i18n="MI_CUENTA">Mi Cuenta</h2>
                             <p id="user-info-text"></p>
                             <button id="btn-logout" class="modal-btn secondary" data-i18n="CERRAR_SESION">Cerrar Sesión</button>
-                        </div>
-                        <div id="signup-view" class="auth-view" style="display: none;">
-                            <h2 data-i18n="AUTH_SIGNUP">Crear una Cuenta</h2>
-                            <form id="signup-form">
-                                <label for="signup-name" data-i18n="AUTH_USERNAME">Nombre de Usuario:</label>
-                                <input id="signup-name" type="text" name="name" required autocomplete="username">
-                                <label for="signup-email" data-i18n="AUTH_EMAIL">Correo Electrónico:</label>
-                                <input id="signup-email" type="email" name="email" required autocomplete="email">
-                                <label for="signup-password" data-i18n="AUTH_PASSWORD">Contraseña:</label>
-                                <input id="signup-password" type="password" name="password" required autocomplete="new-password" minlength="6">
-                                <p class="password-hint" data-i18n="AUTH_PASS_HINT">La contraseña debe tener al menos 6 caracteres.</p>
-                                <button type="submit" class="modal-btn" data-i18n="AUTH_SIGNUP">Registrarse</button>
-                                <p class="auth-switch">
-                                    <span data-i18n="AUTH_ALREADY_ACCOUNT">¿Ya tienes una cuenta?</span>
-                                    <a href="#" id="goto-login" data-i18n="AUTH_LOGIN">Inicia Sesión</a>
-                                </p>
-                            </form>
-                        </div>
-                        <div id="reset-password-view" class="auth-view" style="display: none;">
-                            <h2 data-i18n="AUTH_RESET_PASS">Recuperar Contraseña</h2>
-                            <form id="reset-password-form">
-                                <p data-i18n="AUTH_RESET_HINT">Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.</p>
-                                <label for="reset-email" data-i18n="AUTH_EMAIL">Correo Electrónico:</label>
-                                <input id="reset-email" type="email" name="email" required autocomplete="email">
-                                <button type="submit" class="modal-btn" data-i18n="AUTH_SEND_RESET">Enviar Enlace de Recuperación</button>
-                                <p class="auth-switch"><a href="#" id="back-to-login" data-i18n="AUTH_BACK_TO_LOGIN">Volver a Iniciar Sesión</a></p>
-                            </form>
                         </div>
                     </div>
 

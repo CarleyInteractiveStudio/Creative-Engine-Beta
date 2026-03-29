@@ -25,6 +25,58 @@ document.addEventListener('DOMContentLoaded', () => {
   const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   console.log('Supabase client initialized successfully.');
 
+  // --- SSO Logic ---
+  const processSSOToken = async () => {
+    const hash = window.location.hash.substring(1);
+    if (!hash) return;
+
+    const params = new URLSearchParams(hash);
+    const token = params.get('sso_token');
+    // const userId = params.get('user_id'); // Optional, Supabase handles it via token
+
+    if (token) {
+        console.log("¡Sesión SSO recibida!");
+        const verifyingOverlay = document.getElementById('verifying-overlay');
+        const verifyingText = document.getElementById('verifying-text');
+
+        if (verifyingOverlay) {
+            verifyingOverlay.style.display = 'flex';
+            if (verifyingText) verifyingText.textContent = "Sincronizando sesión...";
+        }
+
+        try {
+            console.log("Procesando token SSO...");
+
+            // Try to sync session. In Supabase v2, setSession with empty refresh often works for JWTs.
+            const { data, error } = await _supabase.auth.setSession({
+                access_token: token,
+                refresh_token: token // Using token as both for maximum compatibility with bridge-issued JWTs
+            });
+
+            if (error) {
+                console.warn("setSession fallido con refresh=token, reintentando con refresh vacío...");
+                const { error: error2 } = await _supabase.auth.setSession({
+                    access_token: token,
+                    refresh_token: ""
+                });
+                if (error2) throw error2;
+            }
+
+            console.log("Sesión de Supabase establecida correctamente vía SSO.");
+
+            // Clean URL hash without reloading
+            history.replaceState(null, null, window.location.pathname + window.location.search);
+        } catch (err) {
+            console.error("Error al procesar token SSO:", err);
+            if (window.Dialogs) {
+                window.Dialogs.showNotification("Error de SSO", "No se pudo sincronizar la sesión. Por favor, intenta iniciar sesión de nuevo.");
+            }
+        } finally {
+            if (verifyingOverlay) verifyingOverlay.style.display = 'none';
+        }
+    }
+  };
+
   // --- Create Global Auth Object ---
   // This is now safely created after _supabase is guaranteed to be initialized.
   let _getUserPromise = null;
@@ -49,6 +101,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
       return _getUserPromise;
     },
+    loginSSO: function() {
+        const domain = "carleyengine.com";
+        const redirectTo = window.location.href;
+        window.location.href = `https://carleystudio.com/sso.html?domain=${domain}&redirect_to=${encodeURIComponent(redirectTo)}`;
+    },
+    callBridge: function(payload, requestId = 'engine-req-' + Date.now()) {
+        const bridgeIframe = document.getElementById('sso-bridge');
+        if (!bridgeIframe || !bridgeIframe.contentWindow) {
+            console.error("SSO Bridge no disponible.");
+            return;
+        }
+
+        bridgeIframe.contentWindow.postMessage({
+            type: 'SUPABASE_CALL',
+            payload: payload,
+            requestId: requestId
+        }, 'https://carleystudio.com');
+    },
     openAuthModal: function() {
       const accountModal = document.getElementById('account-modal');
       if (accountModal) {
@@ -65,8 +135,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (accountSection) accountSection.classList.add('active');
 
         const loggedOutView = document.getElementById('auth-logged-out');
-        const signupView = document.getElementById('signup-view');
-        const resetView = document.getElementById('reset-password-view');
         const loggedInView = document.getElementById('auth-logged-in');
 
         // Check if logged in
@@ -78,8 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (loggedInView) loggedInView.style.display = 'none';
             if (loggedOutView) loggedOutView.style.display = 'block';
           }
-          if (signupView) signupView.style.display = 'none';
-          if (resetView) resetView.style.display = 'none';
         });
 
         accountModal.classList.add('is-open');
@@ -87,27 +153,80 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  // --- Bridge Request Helper ---
+  const requestSessionFromBridge = () => {
+    const bridgeIframe = document.getElementById('sso-bridge');
+    if (!bridgeIframe || !bridgeIframe.contentWindow) return;
+
+    console.log("Solicitando sesión al Puente SSO (CHECK_SESSION)...");
+    bridgeIframe.contentWindow.postMessage({
+        type: 'CHECK_SESSION',
+        requestId: 'init-session-check'
+    }, 'https://carleystudio.com');
+  };
+
+  // --- Process Token on Load ---
+  processSSOToken().then(() => {
+    // If no session after hash processing, try the bridge
+    _supabase.auth.getSession().then(({data: {session}}) => {
+        if (!session) {
+            const bridgeIframe = document.getElementById('sso-bridge');
+            if (bridgeIframe) {
+                // Wait for the iframe to load
+                const tryBridge = () => {
+                   requestSessionFromBridge();
+                };
+
+                if (bridgeIframe.contentWindow && bridgeIframe.contentWindow.length > 0) {
+                    tryBridge();
+                } else {
+                    bridgeIframe.addEventListener('load', tryBridge);
+                    // Fallback in case load already fired or is restricted
+                    setTimeout(tryBridge, 2000);
+                }
+            }
+        }
+    });
+  });
+
+  // --- Bridge Listener ---
+  window.addEventListener('message', async (event) => {
+    if (event.origin !== 'https://carleystudio.com') return;
+
+    // Generic Supabase responses (e.g., from callBridge)
+    if (event.data.type === 'SUPABASE_RESPONSE') {
+        console.log("Respuesta del Puente SSO recibida:", event.data.payload);
+        window.dispatchEvent(new CustomEvent('CE_SSO_BRIDGE_RESPONSE', { detail: event.data }));
+    }
+
+    // Direct session response from CHECK_SESSION
+    if (event.data.type === 'SESSION_RESPONSE') {
+        const sessionData = event.data.payload;
+        if (sessionData && sessionData.access_token) {
+            console.log("Sesión recuperada automáticamente vía Puente SSO.");
+            const { error } = await _supabase.auth.setSession({
+                access_token: sessionData.access_token,
+                refresh_token: sessionData.refresh_token || ""
+            });
+            if (error) console.warn("Error al sincronizar sesión del bridge:", error.message);
+        } else {
+            console.log("El puente indica que no hay sesión activa.");
+        }
+    }
+  });
+
   // --- DOM Elements ---
   const verifyingOverlay = document.getElementById('verifying-overlay');
-  if (window.location.hash.includes('access_token')) {
-    verifyingOverlay.style.display = 'flex';
-  }
+  // Hash check moved to processSSOToken
 
   const accountModal        = document.getElementById('account-modal');
   const closeAccountBtn     = document.getElementById('close-account');
   const loginView           = document.getElementById('auth-logged-out');
-  const signupView          = document.getElementById('signup-view');
-  const resetPasswordView   = document.getElementById('reset-password-view');
   const loggedInView        = document.getElementById('auth-logged-in');
-  const loginForm           = document.getElementById('login-form');
-  const signupForm          = document.getElementById('signup-form');
-  const resetPasswordForm   = document.getElementById('reset-password-form');
-  const gotoSignup          = document.getElementById('goto-signup');
-  const gotoLogin           = document.getElementById('goto-login');
-  const gotoReset           = document.getElementById('goto-reset');
-  const backToLogin         = document.getElementById('back-to-login');
+
   const btnLogout           = document.getElementById('btn-logout');
   const btnAccountModal     = document.getElementById('btn-account-modal');
+  const btnSsoLogin         = document.getElementById('btn-sso-login');
 
   // --- Sidebar Logic ---
   if (accountModal) {
@@ -130,16 +249,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- View Switching Logic ---
   const showView = (viewToShow) => {
     if (loginView) loginView.style.display = 'none';
-    if (signupView) signupView.style.display = 'none';
-    if (resetPasswordView) resetPasswordView.style.display = 'none';
     if (loggedInView) loggedInView.style.display = 'none';
     if (viewToShow) viewToShow.style.display = 'block';
   };
-
-  // Note: gotoSignup and gotoReset now point to external URLs in index.html,
-  // so we don't preventDefault() or show internal views for them anymore.
-  if (gotoLogin) gotoLogin.addEventListener('click',  e => { e.preventDefault(); showView(loginView); });
-  if (backToLogin) backToLogin.addEventListener('click', e => { e.preventDefault(); showView(loginView); });
 
   // --- Modal Closing Logic ---
   const closeAccountModal = () => { if (accountModal) accountModal.classList.remove('is-open'); };
@@ -155,96 +267,19 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- Authentication Logic ---
-  if (signupForm) signupForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const name     = signupForm['signup-name'].value;
-    const email    = signupForm['signup-email'].value;
-    const password = signupForm['signup-password'].value;
-    const button   = signupForm.querySelector('button');
-
-    const originalText = button.textContent;
-    button.disabled   = true;
-    button.textContent = window.Localization ? window.Localization.get('REGISTRANDO', 'Registrando...') : 'Registrando...';
-
-    const { data, error } = await _supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: 'https://carleyinteractivestudio.github.io/Creative-Engine-Beta/#',
-        data: { full_name: name }
-      }
-    });
-
-    if (error) {
-      window.Dialogs.showNotification(
-        window.Localization ? window.Localization.get('ERROR_REGISTRO', 'Error de Registro') : 'Error de Registro',
-        error.message
-      );
-    } else {
-      window.Dialogs.showNotification(
-        window.Localization ? window.Localization.get('REGISTRO_EXITOSO', 'Registro Exitoso!') : 'Registro Exitoso!',
-        window.Localization ? window.Localization.get('REGISTRO_MSG', 'Revisa tu correo para verificar tu cuenta.') : 'Revisa tu correo para verificar tu cuenta.'
-      );
-      showView(loginView);
-    }
-
-    button.disabled   = false;
-    button.textContent = originalText;
-  });
-
-  if (loginForm) loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email    = loginForm['login-email'].value;
-    const password = loginForm['login-password'].value;
-    const button   = loginForm.querySelector('button');
-
-    const originalText = button.textContent;
-    button.disabled   = true;
-    button.textContent = window.Localization ? window.Localization.get('INICIANDO_SESION_PROGRESO', 'Iniciando Sesion...') : 'Iniciando Sesion...';
-
-    const { error } = await _supabase.auth.signInWithPassword({ email, password });
-
-    if (error) {
-      window.Dialogs.showNotification(
-        window.Localization ? window.Localization.get('ERROR_LOGIN', 'Error de Inicio de Sesion') : 'Error de Inicio de Sesion',
-        error.message
-      );
-    } else {
-      closeAccountModal(); // onAuthStateChange handles the rest
-    }
-
-    button.disabled   = false;
-    button.textContent = originalText;
-  });
+  if (btnSsoLogin) {
+      btnSsoLogin.addEventListener('click', () => {
+          window.auth.loginSSO();
+      });
+  }
 
   if (btnLogout) {
       btnLogout.addEventListener('click', async () => {
           await _supabase.auth.signOut();
+          // Optionally notify the bridge to sign out globally?
+          // For now, local sign out is enough as per current doc.
       });
   }
-
-  if (resetPasswordForm) resetPasswordForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email  = resetPasswordForm['reset-email'].value;
-    const button = resetPasswordForm.querySelector('button');
-
-    const originalText = button.textContent;
-    button.disabled   = true;
-    button.textContent = window.Localization ? window.Localization.get('ENVIANDO', 'Enviando...') : 'Enviando...';
-
-    await _supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'https://carleyinteractivestudio.github.io/Creative-Engine-Beta/#'
-    });
-
-    window.Dialogs.showNotification(
-        window.Localization ? window.Localization.get('AUTH_RESET_PASS', 'Recuperar Contrasena') : 'Recuperacion de Contrasena',
-        window.Localization ? window.Localization.get('AUTH_RESET_SENT', 'Si existe una cuenta con este correo, se ha enviado un enlace de recuperacion.') : 'Si existe una cuenta con este correo, se ha enviado un enlace de recuperacion.'
-    );
-    showView(loginView);
-
-    button.disabled   = false;
-    button.textContent = originalText;
-  });
 
   // --- Session Management & UI Updates ---
   const updateUiForSession = (session) => {
@@ -318,20 +353,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     gamesListContainer.innerHTML = '<p>Cargando tus juegos...</p>';
 
-    try {
-        // Placeholder for future database query
-        // const { data, error } = await _supabase.from('games').select('*').eq('user_id', session.user.id);
+    // Request user games through the SSO Bridge
+    const requestId = 'load-games-' + Date.now();
 
-        // For now, let's simulate some data
-        const mockGames = []; // Start with empty to show "no games" state
+    const handleGamesResponse = (event) => {
+        if (event.detail.requestId !== requestId) return;
+        window.removeEventListener('CE_SSO_BRIDGE_RESPONSE', handleGamesResponse);
 
-        if (mockGames.length === 0) {
-            gamesListContainer.innerHTML = '<p class="no-projects-message">No has publicado ningun juego todavia.</p>';
-            return;
-        }
+        const games = event.detail.payload || [];
+        renderGames(games);
+    };
 
-        gamesListContainer.innerHTML = '';
-        mockGames.forEach(game => {
+    window.addEventListener('CE_SSO_BRIDGE_RESPONSE', handleGamesResponse);
+
+    window.auth.callBridge({
+        table: 'user_games',
+        method: 'select',
+        query: '*',
+        filter: { user_id: session.user.id }
+    }, requestId);
+  }
+
+  function renderGames(games) {
+    const gamesListContainer = document.getElementById('user-games-list');
+    if (!gamesListContainer) return;
+
+    if (games.length === 0) {
+        gamesListContainer.innerHTML = '<p class="no-projects-message">No has publicado ningún juego todavía.</p>';
+        return;
+    }
+
+    gamesListContainer.innerHTML = '';
+        games.forEach(game => {
             const gameItem = document.createElement('div');
             gameItem.className = 'project-item'; // Reuse project-item styling
             gameItem.style.marginBottom = '10px';
@@ -360,17 +413,19 @@ document.addEventListener('DOMContentLoaded', () => {
             deleteBtn.onclick = () => {
                 window.Dialogs.showConfirmation('Borrar Juego', `Estas seguro de que quieres borrar "${game.name}"?`, async () => {
                     console.log("Deleting game:", game.id);
-                    window.Dialogs.showNotification('Exito', 'Juego borrado.');
-                    loadUserGames();
+                    // Use bridge to delete
+                    window.auth.callBridge({
+                        table: 'user_games',
+                        method: 'delete',
+                        filter: { id: game.id }
+                    });
+                    window.Dialogs.showNotification('Exito', 'Petición de borrado enviada.');
+                    setTimeout(loadUserGames, 1500);
                 });
             };
 
             gamesListContainer.appendChild(gameItem);
         });
-    } catch (e) {
-        console.error(e);
-        gamesListContainer.innerHTML = '<p>Error al cargar los juegos.</p>';
-    }
   }
 
   // --- API Key Loading ---
