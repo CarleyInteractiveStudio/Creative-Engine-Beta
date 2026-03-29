@@ -44,18 +44,20 @@ export async function getURLForAssetPath(path, projectsDirHandle) {
         return assetPromiseCache.get(path);
     }
 
-    if (isStandalone) {
-        // In standalone mode, we assume assets are served relative to the root
+    const effectiveHandle = projectsDirHandle || window.projectsDirHandle;
+
+    if (isStandalone && !effectiveHandle) {
+        // In real standalone mode (not preview), we assume assets are served relative to the root
         return path;
     }
 
-    if (!projectsDirHandle) return null;
+    if (!effectiveHandle) return null;
 
     // Create a new promise for this path
     const loadPromise = (async () => {
         try {
             const projectName = new URLSearchParams(window.location.search).get('project');
-            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            const projectHandle = await effectiveHandle.getDirectoryHandle(projectName);
 
             let currentHandle = projectHandle;
             const parts = path.split('/').filter(p => p);

@@ -93,7 +93,7 @@ export class PhysicsSystem {
         this.currentFrame++;
 
         // Sub-stepping to prevent tunneling and improve stability
-        const SUB_STEPS = 2;
+        const SUB_STEPS = 4;
         const subDeltaTime = deltaTime / SUB_STEPS;
 
         for (let s = 0; s < SUB_STEPS; s++) {

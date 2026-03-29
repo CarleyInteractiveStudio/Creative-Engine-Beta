@@ -282,6 +282,13 @@ VIDEO_PLAYER: Video Player
 VIDEO_SOURCE: Video Source
 PLAYBACK_RATE: Velocidad Reproducción
 SCALING_MODE: Modo de Escalado
+VERTICAL_LAYOUT_GROUP: Grupo de Disposición Vertical
+HORIZONTAL_LAYOUT_GROUP: Grupo de Disposición Horizontal
+GRID_LAYOUT_GROUP: Grupo de Disposición en Rejilla
+CONTENT_SIZE_FITTER: Ajustador de Tamaño de Contenido
+PADDING: Padding
+SPACING: Espaciado
+CELL_SIZE: Tamaño de Celda
 
 # Water Component
 PROP_WATER_DENSITY: Densidad del Agua
@@ -827,6 +834,12 @@ BUILD_EN_PROGRESO: Build en Progreso
 BUILD_GENERANDO_独立: Generando paquete de juego independiente...
 BUILD_COMPLETADO: Build Completado
 BUILD_EXITO_ZIP: ¡Tu juego está listo! El archivo ZIP se ha generado.
+BUILD_CONFIG: Configuración de Build
+NECESSARY_FILES: Solo archivos necesarios
+ALL_FILES: Todos los archivos del proyecto
+RUN_AFTER_BUILD: Ejecutar tras construir
+BUILD_AND_RUN: Construir y Ejecutar
+BUILD_ONLY: Solo Construir
 TERMINAL_VERSION: Creative Engine Terminal [Versión 0.1.0]
 TERMINAL_COPYRIGHT: (c) Carley Interactive Studio. Todos los derechos reservados.
 COMANDO_NO_DISPONIBLE: Comando {cmd} no disponible.
@@ -1152,6 +1165,13 @@ VIDEO_PLAYER: Video Player
 VIDEO_SOURCE: Video Source
 PLAYBACK_RATE: Playback Rate
 SCALING_MODE: Scaling Mode
+VERTICAL_LAYOUT_GROUP: Vertical Layout Group
+HORIZONTAL_LAYOUT_GROUP: Horizontal Layout Group
+GRID_LAYOUT_GROUP: Grid Layout Group
+CONTENT_SIZE_FITTER: Content Size Fitter
+PADDING: Padding
+SPACING: Spacing
+CELL_SIZE: Cell Size
 
 # Water Component
 PROP_WATER_DENSITY: Water Density
@@ -1697,6 +1717,12 @@ BUILD_EN_PROGRESO: Build in Progress
 BUILD_GENERANDO_独立: Generating standalone game package...
 BUILD_COMPLETADO: Build Completed
 BUILD_EXITO_ZIP: Your game is ready! The ZIP file has been generated.
+BUILD_CONFIG: Build Configuration
+NECESSARY_FILES: Necessary files only
+ALL_FILES: All project files
+RUN_AFTER_BUILD: Run after build
+BUILD_AND_RUN: Build & Run
+BUILD_ONLY: Build Only
 TERMINAL_VERSION: Creative Engine Terminal [Version 0.1.0]
 TERMINAL_COPYRIGHT: (c) Carley Interactive Studio. All rights reserved.
 COMANDO_NO_DISPONIBLE: Command {cmd} not available.

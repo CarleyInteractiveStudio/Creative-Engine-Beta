@@ -23,4 +23,8 @@ export function getAllInternalApis() {
     };
 }
 
+export function getEngineAPI() {
+    return CEEngine.getAPIs();
+}
+
 export { CEEngine };

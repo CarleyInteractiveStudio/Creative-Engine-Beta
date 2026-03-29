@@ -32,7 +32,6 @@ import { API as LibraryAPI } from './editor/LibraryAPI.js';
 import * as RuntimeAPIManager from './engine/RuntimeAPIManager.js';
 import * as CES_Transpiler from './editor/CES_Transpiler.js';
 import { initialize as initializeLibraryWindow } from './editor/ui/LibraryWindow.js';
-import { showNotification as showNotificationDialog, showConfirmation as showConfirmationDialog } from './editor/ui/DialogWindow.js';
 import * as VerificationSystem from './editor/ui/VerificationSystem.js';
 import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
 import { TerrenoEditorWindow } from './editor/ui/TerrenoEditorWindow.js';
@@ -40,7 +39,8 @@ import * as EngineAPI from './engine/EngineAPI.js';
 import { getCustomComponentDefinitions } from './editor/EngineAPIExtension.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
-import { buildProject } from './editor/BuildSystem.js';
+import { buildProject, runStandalonePreview } from './editor/BuildSystem.js';
+import { showNotification as showNotificationDialog, showConfirmation as showConfirmationDialog, showBuildDialog } from './editor/ui/DialogWindow.js';
 import { Localization } from './engine/Localization.js';
 
 // Debug configuration
@@ -819,6 +819,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'g':
                     setActiveTool('tile-bucket');
                     break;
+                case 'n':
+                    setActiveTool('tile-eraser');
+                    break;
                 case 'delete':
                 case 'backspace':
                     if (selectedMateria) {
@@ -1274,30 +1277,23 @@ document.addEventListener('DOMContentLoaded', () => {
     runLayoutUpdate = function() {
         if (!SceneManager.currentScene) return;
 
-        // const layoutGroups = [];
-        // // First, find all layout groups
-        // for (const materia of SceneManager.currentScene.materias) {
-        //     const hg = materia.getComponent(HorizontalLayoutGroup);
-        //     if (hg) layoutGroups.push(hg);
+        // Find and update all layout-related components in the entire scene
+        for (const materia of SceneManager.currentScene.getAllMaterias()) {
+            if (!materia.isActive) continue;
 
-        //     const vg = materia.getComponent(VerticalLayoutGroup);
-        //     if (vg) layoutGroups.push(vg);
+            const vg = materia.getComponent(Components.VerticalLayoutGroup);
+            if (vg) vg.update();
 
-        //     const gg = materia.getComponent(GridLayoutGroup);
-        //     if (gg) layoutGroups.push(gg);
+            const hg = materia.getComponent(Components.HorizontalLayoutGroup);
+            if (hg) hg.update();
 
-        //     const csf = materia.getComponent(ContentSizeFitter);
-        //     if (csf) layoutGroups.push(csf);
+            const gg = materia.getComponent(Components.GridLayoutGroup);
+            if (gg) gg.update();
 
-        //     const arf = materia.getComponent(AspectRatioFitter);
-        //     if (arf) layoutGroups.push(arf);
-        // }
-
-        // // Now, update them. A single pass is sufficient for now.
-        // // A more robust system might need multiple passes or a top-down/bottom-up approach.
-        // for (const layout of layoutGroups) {
-        //     layout.update();
-        // }
+            // Note: ContentSizeFitter should probably be updated after children are arranged
+            const csf = materia.getComponent(Components.ContentSizeFitter);
+            if (csf) csf.update();
+        }
     };
 
     runGameLoop = function() {
@@ -2552,7 +2548,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         dom.menuBuild.addEventListener('click', (e) => {
             e.preventDefault();
-            buildProject(projectsDirHandle, currentProjectConfig);
+            showBuildDialog(currentProjectConfig, (options) => {
+                buildProject(projectsDirHandle, currentProjectConfig, options);
+            });
         });
 
         dom.menuOpenScene.addEventListener('click', (e) => {

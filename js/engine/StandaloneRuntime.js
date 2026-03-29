@@ -8,7 +8,7 @@ import * as EngineAPI from './EngineAPI.js';
 import * as MathUtils from './MathUtils.js';
 import * as RuntimeAPIManager from './RuntimeAPIManager.js';
 import * as Components from './Components.js';
-import { setStandaloneMode } from './AssetUtils.js';
+import { setStandaloneMode, getURLForAssetPath } from './AssetUtils.js';
 
 export class StandaloneRuntime {
     constructor(canvasId) {
@@ -28,25 +28,66 @@ export class StandaloneRuntime {
         console.log("Standalone Runtime Starting...");
         setStandaloneMode(true);
 
-        // 1. Load config
-        try {
-            const configResp = await fetch('project.ceconfig');
-            this.config = await configResp.json();
-        } catch (e) {
-            console.error("Failed to load project.ceconfig", e);
-            this.config = {};
+        // 1. Load config (if not already provided by preview)
+        if (!this.config) {
+            try {
+                const configResp = await fetch('project.json');
+                this.config = await configResp.json();
+            } catch (e) {
+                console.error("Failed to load project.json", e);
+                this.config = {};
+            }
+        }
+
+        // Apply App Name and Icon to document
+        if (this.config.appName) document.title = this.config.appName;
+        if (this.config.appIcon) {
+            let favicon = document.querySelector('link[rel="icon"]');
+            if (!favicon) {
+                favicon = document.createElement('link');
+                favicon.rel = 'icon';
+                document.head.appendChild(favicon);
+            }
+            favicon.href = await getURLForAssetPath(this.config.appIcon);
         }
 
         // 2. Initialize subsystems
         this.renderer = new Renderer(this.canvas, false, true);
         InputManager.initialize(this.canvas, this.canvas);
 
+        // --- Splash Screen Phase ---
+        if (this.config.splashScreens && this.config.splashScreens.show) {
+            await this.playSplashScreens();
+        }
+
         // 3. Load Main Scene
         try {
-            // Determine which scene to load (default to first one if not specified)
-            const sceneToLoad = this.config.startScene || 'default.ceScene';
-            const sceneResp = await fetch(`Assets/${sceneToLoad}`);
-            if (!sceneResp.ok) throw new Error(`Could not find start scene: ${sceneToLoad}`);
+            // Determine which scene to load
+            let sceneToLoad = this.config.startScene || 'default.ceScene';
+
+            // Resolve scene URL using AssetUtils to support handles in preview mode
+            let scenePath = sceneToLoad.startsWith('Assets/') ? sceneToLoad : `Assets/${sceneToLoad}`;
+            let sceneUrl = await getURLForAssetPath(scenePath);
+            let sceneResp = await fetch(sceneUrl);
+
+            if (!sceneResp.ok) {
+                console.warn(`Could not find configured start scene: ${sceneToLoad}. Trying fallbacks...`);
+                // Try from the allScenes list if available
+                if (this.config.allScenes && this.config.allScenes.length > 0) {
+                    for (const fallback of this.config.allScenes) {
+                        if (fallback === sceneToLoad) continue;
+                        scenePath = fallback.startsWith('Assets/') ? fallback : `Assets/${fallback}`;
+                        sceneUrl = await getURLForAssetPath(scenePath);
+                        sceneResp = await fetch(sceneUrl);
+                        if (sceneResp.ok) {
+                            sceneToLoad = fallback;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!sceneResp.ok) throw new Error(`Could not find any playable scene. (Configured: ${sceneToLoad})`);
 
             const sceneData = await sceneResp.json();
             const scene = await SceneManager.deserializeScene(sceneData, null);
@@ -92,7 +133,10 @@ export class StandaloneRuntime {
             console.error("Failed to load scene", e);
         }
 
-        // 4. Start Loop
+        // 4. Initial Resize
+        if (this.renderer) this.renderer.resize();
+
+        // 5. Start Loop
         this.lastTime = performance.now();
         requestAnimationFrame(this.loop.bind(this));
     }
@@ -139,7 +183,9 @@ export class StandaloneRuntime {
             if (this.config.libraries && Array.isArray(this.config.libraries)) {
                 for (const libName of this.config.libraries) {
                     try {
-                        const response = await fetch(`lib/${libName}.celib`);
+                        const libPath = `lib/${libName}.celib`;
+                        const libUrl = await getURLForAssetPath(libPath);
+                        const response = await fetch(libUrl);
                         if (response.ok) {
                             const libData = await response.json();
                             if (libData.api_access && libData.api_access.runtime_accessible) {
@@ -160,6 +206,68 @@ export class StandaloneRuntime {
         } catch (e) {
             console.error("Error loading standalone libraries:", e);
         }
+    }
+
+    async playSplashScreens() {
+        return new Promise(async (resolve) => {
+            const container = document.createElement('div');
+            container.id = 'splash-container';
+            container.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:black; display:flex; align-items:center; justify-content:center; z-index:10000; transition: opacity 0.5s;';
+            document.body.appendChild(container);
+
+            const img = document.createElement('img');
+            img.style.cssText = 'max-width:80%; max-height:80%; opacity:0; transition: opacity 0.8s; object-fit: contain;';
+            container.appendChild(img);
+
+            const splashes = this.config.splashScreens.list || [];
+
+            // Default Engine Splash if requested
+            if (this.config.splashScreens.showEngineLogo) {
+                splashes.unshift({
+                    path: 'engine/Logo_C.png',
+                    duration: 3,
+                    sound: 'engine/splash.mp3'
+                });
+            }
+
+            for (const splash of splashes) {
+                // Determine URL
+                let url;
+                if (splash.path === 'engine/Logo_C.png') {
+                    url = 'image/Logo_C.png'; // In standalone build we should ensure this exists
+                } else {
+                    url = await getURLForAssetPath(splash.path);
+                }
+
+                img.src = url;
+
+                // Sound
+                if (splash.sound) {
+                    try {
+                        let soundUrl = splash.sound === 'engine/splash.mp3' ? 'musica/splash.mp3' : await getURLForAssetPath(splash.sound);
+                        const audio = new Audio(soundUrl);
+                        audio.play().catch(e => console.warn("Splash sound failed to play", e));
+                    } catch(e) {}
+                }
+
+                // Fade In
+                await new Promise(r => setTimeout(r, 100));
+                img.style.opacity = '1';
+
+                // Wait duration
+                await new Promise(r => setTimeout(r, (splash.duration || 3) * 1000));
+
+                // Fade Out
+                img.style.opacity = '0';
+                await new Promise(r => setTimeout(r, 800));
+            }
+
+            container.style.opacity = '0';
+            setTimeout(() => {
+                container.remove();
+                resolve();
+            }, 500);
+        });
     }
 
     drawScene(cameraMateria) {

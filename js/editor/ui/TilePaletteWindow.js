@@ -326,6 +326,11 @@ function setupEventListeners() {
             toolBubble.querySelectorAll('.tool-btn:not([data-tool="organize"])').forEach(btn => btn.classList.remove('active'));
             toolBtn.classList.add('active');
 
+            // Notify external modules (like SceneView) about the tool change
+            if (setActiveToolCallback) {
+                setActiveToolCallback(newTool);
+            }
+
             // Redraw to clear visual selection artifacts
             drawTiles();
         });

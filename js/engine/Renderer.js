@@ -586,6 +586,10 @@ export class Renderer {
 
                 if (image && image.complete && image.naturalWidth > 0) {
                     const [x, y] = coord.split(',').map(Number);
+
+                    // Comprobar límites: los azulejos fuera del ancho/alto del Tilemap no se dibujan
+                    if (x < 0 || x >= tilemap.width || y < 0 || y >= tilemap.height) continue;
+
                     const dx = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2);
                     const dy = layerOffsetY + (y * grid.cellSize.y) - (mapTotalHeight / 2);
                     // Add 0.5px to width and height to prevent gaps between tiles
@@ -902,21 +906,6 @@ export class Renderer {
                 this._drawUIText(uiText, x, y, width, height);
             }
 
-            // Draw gizmo (visible outline) in game view to show UI boundaries
-            if (!this.isEditor) {
-                this.ctx.save();
-                this.ctx.strokeStyle = '#00FF00';
-                this.ctx.lineWidth = 2;
-                this.ctx.strokeRect(x, y, width, height);
-                // Draw corner markers
-                this.ctx.fillStyle = '#FF0000';
-                this.ctx.fillRect(x - 4, y - 4, 8, 8); // Top-left
-                this.ctx.fillStyle = '#00FF00';
-                this.ctx.fillRect(x + width - 4, y - 4, 8, 8); // Top-right
-                this.ctx.fillStyle = '#0000FF';
-                this.ctx.fillRect(x - 4, y + height - 4, 8, 8); // Bottom-left
-                this.ctx.restore();
-            }
 
             // Restore context if we applied inverse scale
             if (!scaleChildren && (scaleX !== 1 || scaleY !== 1)) {
@@ -961,17 +950,6 @@ export class Renderer {
         this.ctx.rect(virtualCanvasRect.x, virtualCanvasRect.y, virtualCanvasRect.width, virtualCanvasRect.height);
         this.ctx.clip();
 
-        // Draw canvas outline in game view
-        if (!this.isEditor) {
-            this.ctx.save();
-            this.ctx.strokeStyle = '#FFFF00';
-            const lineWidth = 3 / scaleX;
-            this.ctx.lineWidth = lineWidth;
-            this.ctx.strokeRect(0, 0, refRes.width, refRes.height);
-            this.ctx.fillStyle = 'rgba(255, 255, 0, 0.1)';
-            this.ctx.fillRect(0, 0, refRes.width, refRes.height);
-            this.ctx.restore();
-        }
 
         // Seed the cache with the virtual canvas rectangle at (0, 0)
         const rectCache = new Map();

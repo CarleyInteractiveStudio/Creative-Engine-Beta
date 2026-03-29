@@ -32,10 +32,10 @@ const availableComponents = {
     'CAT_ILUMINACION': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
     'CAT_UTILIDADES': [Components.Gyzmo],
     'CAT_ANIMACION': [Components.Animator, Components.AnimatorController],
-    'CAT_AUDIO': [Components.AudioSource, Components.VideoPlayer],
-    'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D, Components.Water],
+    'CAT_AUDIO': [Components.AudioSource],
+    'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
     'CAT_CAMARA': [Components.Camera],
-    'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button],
+    'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
     'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI],
     'CAT_SCRIPTING': [Components.CreativeScript]
 };
@@ -47,6 +47,7 @@ const componentIcons = {
     Grid: 'grid', Tilemap: 'map', TilemapRenderer: 'brush', TilemapCollider2D: 'grid',
     Terreno2D: 'mountain', TerrenoCollider2D: 'mountain',
     Button: 'mouse-pointer', UIText: 'type', Canvas: 'image',
+    VerticalLayoutGroup: 'layers', HorizontalLayoutGroup: 'layers', GridLayoutGroup: 'grid', ContentSizeFitter: 'maximize',
     Movement: 'run', CameraFollow: 'video', Parallax: 'mountain-snow', DrawingOrder: 'layers', ProjectileLauncher: 'rocket', AutoDestroy: 'timer', Health: 'heart', Patrol: 'route',
     Water: 'bucket', LineCollider2D: 'route',
     'ParticleSystem': 'sparkles',
@@ -1544,6 +1545,73 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_ORDER_IN_LAYER">${L.get('PROP_ORDER_IN_LAYER', 'Order in Layer')}</label>
                         <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.VerticalLayoutGroup || ley instanceof Components.HorizontalLayoutGroup) {
+            const isVertical = ley instanceof Components.VerticalLayoutGroup;
+            const compName = isVertical ? 'VerticalLayoutGroup' : 'HorizontalLayoutGroup';
+            const title = isVertical ? L.get('VERTICAL_LAYOUT_GROUP', "Vertical Layout Group") : L.get('HORIZONTAL_LAYOUT_GROUP', "Horizontal Layout Group");
+            componentHTML = `
+                ${renderComponentHeader(title, icon, index)}
+                <div class="component-content">
+                    <div class="inspector-section-header"><span>${L.get('PADDING', 'Padding')}</span></div>
+                    <div class="prop-row-multi">
+                        <span>L</span><input type="number" class="prop-input" data-component="${compName}" data-prop="padding.left" value="${ley.padding.left}">
+                        <span>R</span><input type="number" class="prop-input" data-component="${compName}" data-prop="padding.right" value="${ley.padding.right}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <span>T</span><input type="number" class="prop-input" data-component="${compName}" data-prop="padding.top" value="${ley.padding.top}">
+                        <span>B</span><input type="number" class="prop-input" data-component="${compName}" data-prop="padding.bottom" value="${ley.padding.bottom}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('SPACING', 'Espaciado')}</label>
+                        <input type="number" class="prop-input" data-component="${compName}" data-prop="spacing" value="${ley.spacing}">
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.GridLayoutGroup) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('GRID_LAYOUT_GROUP', "Grid Layout Group"), icon, index)}
+                <div class="component-content">
+                    <div class="inspector-section-header"><span>${L.get('PADDING', 'Padding')}</span></div>
+                    <div class="prop-row-multi">
+                        <span>L</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="padding.left" value="${ley.padding.left}">
+                        <span>R</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="padding.right" value="${ley.padding.right}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <span>T</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="padding.top" value="${ley.padding.top}">
+                        <span>B</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="padding.bottom" value="${ley.padding.bottom}">
+                    </div>
+                    <div class="inspector-section-header"><span>${L.get('CELL_SIZE', 'Tamaño Celda')}</span></div>
+                    <div class="prop-row-multi">
+                        <span>W</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="cellSize.width" value="${ley.cellSize.width}">
+                        <span>H</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="cellSize.height" value="${ley.cellSize.height}">
+                    </div>
+                    <div class="inspector-section-header"><span>${L.get('SPACING', 'Espaciado')}</span></div>
+                    <div class="prop-row-multi">
+                        <span>X</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="spacing.x" value="${ley.spacing.x}">
+                        <span>Y</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="spacing.y" value="${ley.spacing.y}">
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.ContentSizeFitter) {
+             componentHTML = `
+                ${renderComponentHeader(L.get('CONTENT_SIZE_FITTER', "Content Size Fitter"), icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Horizontal Fit</label>
+                        <select class="prop-input" data-component="ContentSizeFitter" data-prop="horizontalFit">
+                            <option value="Unconstrained" ${ley.horizontalFit === 'Unconstrained' ? 'selected' : ''}>Unconstrained</option>
+                            <option value="Preferred Size" ${ley.horizontalFit === 'Preferred Size' ? 'selected' : ''}>Preferred Size</option>
+                        </select>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Vertical Fit</label>
+                        <select class="prop-input" data-component="ContentSizeFitter" data-prop="verticalFit">
+                            <option value="Unconstrained" ${ley.verticalFit === 'Unconstrained' ? 'selected' : ''}>Unconstrained</option>
+                            <option value="Preferred Size" ${ley.verticalFit === 'Preferred Size' ? 'selected' : ''}>Preferred Size</option>
+                        </select>
                     </div>
                 </div>
             `;

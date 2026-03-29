@@ -1376,9 +1376,12 @@ function drawTileCursor() {
     const mousePos = InputManager.getMousePositionInCanvas();
     const worldMouse = screenToWorld(mousePos.x, mousePos.y);
 
-    // World position of the tilemap's center
-    const tilemapCenterX = transform.x;
-    const tilemapCenterY = transform.y;
+    // Transform world mouse to tilemap local space (accounting for rotation)
+    const relX = worldMouse.x - transform.x;
+    const relY = worldMouse.y - transform.y;
+    const rad = -transform.rotation * Math.PI / 180;
+    const localMouseX = relX * Math.cos(rad) - relY * Math.sin(rad);
+    const localMouseY = relX * Math.sin(rad) + relY * Math.cos(rad);
 
     const layerWidth = width * cellSize.x;
     const layerHeight = height * cellSize.y;
@@ -1387,17 +1390,19 @@ function drawTileCursor() {
         const layerOffsetX = layer.position.x * layerWidth;
         const layerOffsetY = layer.position.y * layerHeight;
 
-        const layerTopLeftX = tilemapCenterX + layerOffsetX - layerWidth / 2;
-        const layerTopLeftY = tilemapCenterY + layerOffsetY - layerHeight / 2;
+        const layerTopLeftX = layerOffsetX - layerWidth / 2;
+        const layerTopLeftY = layerOffsetY - layerHeight / 2;
 
-        const mouseInLayerX = worldMouse.x - layerTopLeftX;
-        const mouseInLayerY = worldMouse.y - layerTopLeftY;
+        const mouseInLayerX = localMouseX - layerTopLeftX;
+        const mouseInLayerY = localMouseY - layerTopLeftY;
 
         const col = Math.floor(mouseInLayerX / cellSize.x);
         const row = Math.floor(mouseInLayerY / cellSize.y);
 
         if (col >= 0 && col < width && row >= 0 && row < height) {
             ctx.save();
+            ctx.translate(transform.x, transform.y);
+            ctx.rotate(transform.rotation * Math.PI / 180);
             ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
 
             if (activeTool === 'tile-brush' || activeTool === 'tile-rectangle-fill') {
@@ -2148,9 +2153,15 @@ function paintTile(event) {
         return;
     }
 
-    const grid = selectedMateria.parent?.getComponent(Components.Grid);
+    let grid = tilemapMateria.getComponent(Components.Grid);
+    if (!grid && tilemapMateria.parent) {
+        grid = (typeof tilemapMateria.parent.getComponent === 'function')
+            ? tilemapMateria.parent.getComponent(Components.Grid)
+            : SceneManager.currentScene.findMateriaById(tilemapMateria.parent)?.getComponent(Components.Grid);
+    }
+
     if (!grid) {
-        VerificationSystem.updateStatus(null, false, L.get('ERROR_GRID_FALTANTE', "Error: El objeto padre del Tilemap no tiene un componente Grid."));
+        VerificationSystem.updateStatus(null, false, L.get('ERROR_GRID_FALTANTE', "Error: El objeto seleccionado o su padre no tienen un componente Grid."));
         return;
     }
 
@@ -2159,18 +2170,65 @@ function paintTile(event) {
     const rect = dom.sceneCanvas.getBoundingClientRect();
     const canvasPos = { x: event.clientX - rect.left, y: event.clientY - rect.top };
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
-    const tilemapCenterX = transform.x;
-    const tilemapCenterY = transform.y;
+
+    // Transform world mouse to tilemap local space (accounting for rotation)
+    const relX = worldMouse.x - transform.x;
+    const relY = worldMouse.y - transform.y;
+    const rad = -transform.rotation * Math.PI / 180;
+    const localMouseX = relX * Math.cos(rad) - relY * Math.sin(rad);
+    const localMouseY = relX * Math.sin(rad) + relY * Math.cos(rad);
+
     const layerWidth = width * cellSize.x;
     const layerHeight = height * cellSize.y;
 
-    for (const layer of tilemap.layers) {
+    // --- Logic for Eraser ---
+    if (activeTool === 'tile-eraser') {
+        let erasedSomething = false;
+        let lastCoord = null;
+
+        tilemap.layers.forEach(l => {
+            const lOffsetX = l.position.x * layerWidth;
+            const lOffsetY = l.position.y * layerHeight;
+            const lTopLeftX = lOffsetX - layerWidth / 2;
+            const lTopLeftY = lOffsetY - layerHeight / 2;
+            const mInLX = localMouseX - lTopLeftX;
+            const mInLY = localMouseY - lTopLeftY;
+            const c = Math.floor(mInLX / cellSize.x);
+            const r = Math.floor(mInLY / cellSize.y);
+
+            if (c >= 0 && c < width && r >= 0 && r < height) {
+                const key = `${c},${r}`;
+                if (l.tileData.has(key)) {
+                    l.tileData.delete(key);
+                    erasedSomething = true;
+                }
+                lastCoord = { col: c, row: r };
+            }
+        });
+
+        if (lastCoord) {
+            if (lastCoord.col === lastPaintedCoords.col && lastCoord.row === lastPaintedCoords.row && !erasedSomething) return;
+            lastPaintedCoords = lastCoord;
+        }
+
+        if (erasedSomething) {
+            tilemapRenderer.setDirty();
+            const collider = tilemapMateria.getComponent(Components.TilemapCollider2D);
+            if (collider) collider.generateMesh();
+            VerificationSystem.updateStatus(null, true, L.get('STATUS_TILE_BORRADO', "Tile Borrado"));
+        }
+        return;
+    }
+
+    // --- Logic for Painting (Brush/Bucket) ---
+    const layer = tilemap.layers[tilemap.activeLayerIndex];
+    if (layer) {
         const layerOffsetX = layer.position.x * layerWidth;
         const layerOffsetY = layer.position.y * layerHeight;
-        const layerTopLeftX = tilemapCenterX + layerOffsetX - layerWidth / 2;
-        const layerTopLeftY = tilemapCenterY + layerOffsetY - layerHeight / 2;
-        const mouseInLayerX = worldMouse.x - layerTopLeftX;
-        const mouseInLayerY = worldMouse.y - layerTopLeftY;
+        const layerTopLeftX = layerOffsetX - layerWidth / 2;
+        const layerTopLeftY = layerOffsetY - layerHeight / 2;
+        const mouseInLayerX = localMouseX - layerTopLeftX;
+        const mouseInLayerY = localMouseY - layerTopLeftY;
         const col = Math.floor(mouseInLayerX / cellSize.x);
         const row = Math.floor(mouseInLayerY / cellSize.y);
 
@@ -2216,9 +2274,6 @@ function paintTile(event) {
 
                     VerificationSystem.updateStatus(tileToPaint, true, L.get('STATUS_AREA_RELLENADA', "¡Área Rellenada!"), `${L.get('DETALLE_COORDENADAS', 'Coordenadas')}: [${col}, ${row}]`);
                 }
-            } else if (activeTool === 'tile-eraser') {
-                layer.tileData.delete(key);
-                VerificationSystem.updateStatus(null, true, L.get('STATUS_TILE_BORRADO', "Tile Borrado"), `${L.get('DETALLE_COORDENADAS', 'Coordenadas')}: [${col}, ${row}]`);
             }
 
             lastPaintedCoords = { col, row };

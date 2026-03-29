@@ -59,7 +59,10 @@ const componentAliases = {
     'BasicAI': 'iaBasica',
     'VideoPlayer': 'reproductorDeVideo',
     'Water': 'agua',
-    'LineCollider2D': 'colisionadorDeLineas2D'
+    'LineCollider2D': 'colisionadorDeLineas2D',
+    'VerticalLayoutGroup': 'autoDisposicionVertical',
+    'HorizontalLayoutGroup': 'autoDisposicionHorizontal',
+    'GridLayoutGroup': 'autoDisposicionRejilla',
 };
 
 
@@ -4278,10 +4281,6 @@ export class Patrol extends Leyes {
     set tiempoPausa(v) { this.pauseTime = v; }
 }
 
-registerComponent('ProjectileLauncher', ProjectileLauncher);
-registerComponent('AutoDestroy', AutoDestroy);
-registerComponent('Health', Health);
-registerComponent('Patrol', Patrol);
 
 /**
  * Componente que emite prefabs como partículas con optimización de pooling.
@@ -4431,7 +4430,6 @@ export class ParticleSystem extends Leyes {
         return newPs;
     }
 }
-registerComponent('ParticleSystem', ParticleSystem);
 
 /**
  * Componente RaycastSource (Rallo): Lanza múltiples rayos para detección.
@@ -4487,7 +4485,6 @@ export class RaycastSource extends Leyes {
     get rallo() { return this; }
     get rayos() { return this.rays; }
 }
-registerComponent('RaycastSource', RaycastSource);
 
 /**
  * Componente BasicAI (IA Básica): Comportamientos simples de seguimiento y evasión.
@@ -5050,9 +5047,6 @@ export class BasicAI extends Leyes {
         return copy;
     }
 }
-registerComponent('BasicAI', BasicAI);
-registerComponent('Water', Water);
-registerComponent('LineCollider2D', LineCollider2D);
 
 export class CustomComponent extends Leyes {
     constructor(materia, definitionOrName) {
@@ -5172,3 +5166,176 @@ export class CustomComponent extends Leyes {
         return newCustom;
     }
 }
+
+export class VerticalLayoutGroup extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.padding = { left: 0, right: 0, top: 0, bottom: 0 };
+        this.spacing = 5;
+    }
+
+    update() {
+        if (!this.isActive) return;
+        const uiTransform = this.materia.getComponent(UITransform);
+        const canvas = this.materia.getComponent(Canvas);
+        if (!uiTransform && !canvas) return;
+
+        let nextY = this.padding.top;
+        for (const child of this.materia.children) {
+            if (!child.isActive) continue;
+            const childUI = child.getComponent(UITransform);
+            if (childUI) {
+                childUI.anchorPoint = 1; // Top Center
+                childUI.position.x = 0;
+                childUI.position.y = nextY + (childUI.size.height / 2);
+                nextY += childUI.size.height + this.spacing;
+            }
+        }
+    }
+
+    clone() {
+        const c = new VerticalLayoutGroup(null);
+        c.padding = { ...this.padding };
+        c.spacing = this.spacing;
+        return c;
+    }
+}
+
+export class HorizontalLayoutGroup extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.padding = { left: 0, right: 0, top: 0, bottom: 0 };
+        this.spacing = 5;
+    }
+
+    update() {
+        if (!this.isActive) return;
+        const uiTransform = this.materia.getComponent(UITransform);
+        const canvas = this.materia.getComponent(Canvas);
+        if (!uiTransform && !canvas) return;
+
+        let nextX = this.padding.left;
+        for (const child of this.materia.children) {
+            if (!child.isActive) continue;
+            const childUI = child.getComponent(UITransform);
+            if (childUI) {
+                childUI.anchorPoint = 3; // Middle Left
+                childUI.position.x = nextX + (childUI.size.width / 2);
+                childUI.position.y = 0;
+                nextX += childUI.size.width + this.spacing;
+            }
+        }
+    }
+
+    clone() {
+        const c = new HorizontalLayoutGroup(null);
+        c.padding = { ...this.padding };
+        c.spacing = this.spacing;
+        return c;
+    }
+}
+
+export class GridLayoutGroup extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.padding = { left: 0, right: 0, top: 0, bottom: 0 };
+        this.spacing = { x: 5, y: 5 };
+        this.cellSize = { width: 50, height: 50 };
+    }
+
+    update() {
+        if (!this.isActive) return;
+        const uiTransform = this.materia.getComponent(UITransform);
+        const canvas = this.materia.getComponent(Canvas);
+        if (!uiTransform && !canvas) return;
+
+        const parentWidth = uiTransform ? uiTransform.size.width : (canvas.referenceResolution?.width || 800);
+
+        let nextX = this.padding.left;
+        let nextY = this.padding.top;
+        for (const child of this.materia.children) {
+            if (!child.isActive) continue;
+            const childUI = child.getComponent(UITransform);
+            if (childUI) {
+                childUI.anchorPoint = 0; // Top Left
+                childUI.size = { ...this.cellSize };
+                childUI.position.x = nextX + (childUI.size.width / 2);
+                childUI.position.y = nextY + (childUI.size.height / 2);
+
+                nextX += this.cellSize.width + this.spacing.x;
+                if (nextX + this.cellSize.width > parentWidth - this.padding.right) {
+                    nextX = this.padding.left;
+                    nextY += this.cellSize.height + this.spacing.y;
+                }
+            }
+        }
+    }
+
+    clone() {
+        const c = new GridLayoutGroup(null);
+        c.padding = { ...this.padding };
+        c.spacing = { ...this.spacing };
+        c.cellSize = { ...this.cellSize };
+        return c;
+    }
+}
+
+export class ContentSizeFitter extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.horizontalFit = 'Unconstrained'; // 'Unconstrained', 'Preferred Size'
+        this.verticalFit = 'Unconstrained';
+    }
+
+    update() {
+        if (!this.isActive) return;
+        const uiTransform = this.materia.getComponent(UITransform);
+        if (!uiTransform) return;
+
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        let hasChildren = false;
+
+        for (const child of this.materia.children) {
+            if (!child.isActive) continue;
+            const childUI = child.getComponent(UITransform);
+            if (childUI) {
+                const halfW = childUI.size.width / 2;
+                const halfH = childUI.size.height / 2;
+                minX = Math.min(minX, childUI.position.x - halfW);
+                maxX = Math.max(maxX, childUI.position.x + halfW);
+                minY = Math.min(minY, childUI.position.y - halfH);
+                maxY = Math.max(maxY, childUI.position.y + halfH);
+                hasChildren = true;
+            }
+        }
+
+        if (hasChildren) {
+            if (this.horizontalFit === 'Preferred Size') {
+                uiTransform.size.width = maxX - minX;
+            }
+            if (this.verticalFit === 'Preferred Size') {
+                uiTransform.size.height = maxY - minY;
+            }
+        }
+    }
+
+    clone() {
+        const c = new ContentSizeFitter(null);
+        c.horizontalFit = this.horizontalFit;
+        c.verticalFit = this.verticalFit;
+        return c;
+    }
+}
+registerComponent('ProjectileLauncher', ProjectileLauncher);
+registerComponent('AutoDestroy', AutoDestroy);
+registerComponent('Health', Health);
+registerComponent('Patrol', Patrol);
+registerComponent('ParticleSystem', ParticleSystem);
+registerComponent('RaycastSource', RaycastSource);
+registerComponent('BasicAI', BasicAI);
+registerComponent('Water', Water);
+registerComponent('LineCollider2D', LineCollider2D);
+registerComponent('VerticalLayoutGroup', VerticalLayoutGroup);
+registerComponent('HorizontalLayoutGroup', HorizontalLayoutGroup);
+registerComponent('GridLayoutGroup', GridLayoutGroup);
+registerComponent('ContentSizeFitter', ContentSizeFitter);
