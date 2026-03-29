@@ -387,6 +387,7 @@ COLLIDER_MATERIA: Materia Colisionador
 DAMAGE: Daño
 PUSH_FORCE: Fuerza de Empuje
 PROGRESS_BAR: Barra de Progreso
+SCROLL_VIEW: Vista de Desplazamiento
 TARGET_MATERIA: Materia Objetivo
 FILL_MATERIA: Materia Relleno
 ORIENTATION: Orientación
@@ -854,6 +855,7 @@ COLLIDER_MATERIA: Collider Matter
 DAMAGE: Damage
 PUSH_FORCE: Push Force
 PROGRESS_BAR: Progress Bar
+SCROLL_VIEW: Scroll View
 TARGET_MATERIA: Target Matter
 FILL_MATERIA: Fill Matter
 ORIENTATION: Orientation
@@ -1253,6 +1255,7 @@ COLLIDER_MATERIA: Matéria do Colisor
 DAMAGE: Dano
 PUSH_FORCE: Força de Empuxo
 PROGRESS_BAR: Barra de Progresso
+SCROLL_VIEW: Vista de Rolagem
 TARGET_MATERIA: Matéria Alvo
 FILL_MATERIA: Matéria de Preenchimento
 ORIENTATION: Orientação
@@ -1636,6 +1639,7 @@ COLLIDER_MATERIA: Объект коллайдера
 DAMAGE: Урон
 PUSH_FORCE: Сила отталкивания
 PROGRESS_BAR: Шкала прогресса
+SCROLL_VIEW: Прокрутка
 TARGET_MATERIA: Целевой объект
 FILL_MATERIA: Объект заполнения
 ORIENTATION: Ориентация
@@ -2019,6 +2023,7 @@ COLLIDER_MATERIA: 碰撞体对象
 DAMAGE: 伤害
 PUSH_FORCE: 推力
 PROGRESS_BAR: 进度条
+SCROLL_VIEW: 滚动视图
 TARGET_MATERIA: 目标对象
 FILL_MATERIA: 填充对象
 ORIENTATION: 方向

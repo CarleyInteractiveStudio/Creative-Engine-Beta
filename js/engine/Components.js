@@ -1005,7 +1005,12 @@ export class CreativeScript extends Leyes {
     }
 
     clone() {
-        return new CreativeScript(null, this.scriptName);
+        const newScript = new CreativeScript(null, this.scriptName);
+        // Deep copy of public variables to preserve Inspector values
+        if (this.publicVars) {
+            newScript.publicVars = JSON.parse(JSON.stringify(this.publicVars));
+        }
+        return newScript;
     }
 }
 
@@ -1562,6 +1567,15 @@ export class Animator extends Leyes {
      * @param {number} duration - Duración del crossfade en segundos.
      * @param {object} options - Opciones adicionales.
      */
+    clone() {
+        const newAnimator = new Animator(null);
+        newAnimator.animationClipPath = this.animationClipPath;
+        newAnimator.speed = this.speed;
+        newAnimator.loop = this.loop;
+        newAnimator.playOnAwake = this.playOnAwake;
+        return newAnimator;
+    }
+
     crossfade(path, duration = 0.3, options = {}) {
         if (this.animationClipPath === path && this.isPlaying) return;
 
@@ -1914,6 +1928,7 @@ export class UITransform extends Leyes {
         super(materia);
         this.position = { x: 0, y: 0 }; // Position relative to the anchor point
         this.size = { width: 100, height: 100 };
+        this.pivot = { x: 0.5, y: 0.5 };
         this.anchorPoint = 4; // 0-8, representing the 3x3 grid. 4 is center.
     }
 
@@ -1921,6 +1936,7 @@ export class UITransform extends Leyes {
         const newUITransform = new UITransform(null);
         newUITransform.position = { ...this.position };
         newUITransform.size = { ...this.size };
+        newUITransform.pivot = { ...this.pivot };
         newUITransform.anchorPoint = this.anchorPoint;
         return newUITransform;
     }
@@ -1932,6 +1948,7 @@ export class UIImage extends Leyes {
         this.sprite = new Image();
         this.source = '';
         this.color = '#FFFFFF'; // Ensure it's a solid, valid color by default
+        this.opacity = 1.0;
         this.isError = false;
         this.isLoading = false;
         this._lastLoadedSource = '';
@@ -2017,6 +2034,7 @@ export class UIImage extends Leyes {
         const newImage = new UIImage(null);
         newImage.source = this.source;
         newImage.color = this.color;
+        newImage.opacity = this.opacity;
         return newImage;
     }
 }
@@ -2258,6 +2276,20 @@ export class AudioSource extends Leyes {
     set inicioReproduccion(v) { this.playbackStart = v; }
     get finReproduccion() { return this.playbackEnd; }
     set finReproduccion(v) { this.playbackEnd = v; }
+
+    clone() {
+        const newAudio = new AudioSource(null);
+        newAudio.source = this.source;
+        newAudio.volume = this.volume;
+        newAudio.loop = this.loop;
+        newAudio.playOnAwake = this.playOnAwake;
+        newAudio.spatial = this.spatial;
+        newAudio.minDistance = this.minDistance;
+        newAudio.maxDistance = this.maxDistance;
+        newAudio.playbackStart = this.playbackStart;
+        newAudio.playbackEnd = this.playbackEnd;
+        return newAudio;
+    }
 
     onDestroy() {
         this.stop();
@@ -3313,6 +3345,121 @@ export class UIEventTrigger extends Leyes {
     }
 }
 registerComponent('UIEventTrigger', UIEventTrigger);
+
+/**
+ * Componente UIMask: Recorta los hijos de este objeto para que solo sean visibles dentro de su área.
+ */
+export class UIMask extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.showGizmo = false;
+    }
+    clone() {
+        const copy = new UIMask(null);
+        copy.showGizmo = this.showGizmo;
+        return copy;
+    }
+}
+registerComponent('UIMask', UIMask);
+
+/**
+ * Componente UIScrollRect: Permite el desplazamiento de contenido UI.
+ */
+export class UIScrollRect extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.contentMateria = null; // Objeto que contiene los elementos a desplazar
+        this.horizontal = false;
+        this.vertical = true;
+        this.scrollPosition = { x: 0, y: 0 };
+        this.scrollSensitivity = 1.0;
+        this.inertia = 0.9;
+
+        this.horizontalScrollbar = null; // Referencia a un ProgressBar
+        this.verticalScrollbar = null;
+
+        this._velocity = { x: 0, y: 0 };
+    }
+
+    update(deltaTime) {
+        if (this.inertia > 0 && (Math.abs(this._velocity.x) > 0.01 || Math.abs(this._velocity.y) > 0.01)) {
+            this.scrollPosition.x += this._velocity.x * deltaTime;
+            this.scrollPosition.y += this._velocity.y * deltaTime;
+            this._velocity.x *= this.inertia;
+            this._velocity.y *= this.inertia;
+        }
+
+        // Aplicar posición al contenido
+        let content = this.contentMateria;
+        if (typeof content === 'number') content = this.materia.scene.findMateriaById(content);
+        else if (typeof content === 'string') content = this.materia.findChildByName(content, true);
+
+        if (content) {
+            const ui = content.getComponent(UITransform);
+            const myUI = this.materia.getComponent(UITransform);
+            if (ui && myUI) {
+                // Limitar scroll según el tamaño del contenido
+                const maxScrollX = Math.max(0, ui.size.width - myUI.size.width);
+                const maxScrollY = Math.max(0, ui.size.height - myUI.size.height);
+
+                this.scrollPosition.x = Math.max(0, Math.min(maxScrollX, this.scrollPosition.x));
+                this.scrollPosition.y = Math.max(0, Math.min(maxScrollY, this.scrollPosition.y));
+
+                if (this.horizontal) ui.position.x = -this.scrollPosition.x + (ui.size.width - myUI.size.width) / 2;
+                if (this.vertical) ui.position.y = -this.scrollPosition.y + (ui.size.height - myUI.size.height) / 2;
+
+                // Sincronizar barras
+                this._syncScrollbar(this.verticalScrollbar, this.scrollPosition.y, maxScrollY);
+                this._syncScrollbar(this.horizontalScrollbar, this.scrollPosition.x, maxScrollX);
+            }
+        }
+    }
+
+    _syncScrollbar(sbRef, pos, max) {
+        if (!sbRef) return;
+        let sb = sbRef;
+        if (typeof sb === 'number') sb = this.materia.scene.findMateriaById(sb);
+        else if (typeof sb === 'string') sb = this.materia.findChildByName(sb, true);
+
+        if (sb) {
+            const pb = sb.getComponent(ProgressBar);
+            if (pb) {
+                pb.maxValue = max || 1;
+                pb.value = pos;
+            }
+        }
+    }
+
+    clone() {
+        const copy = new UIScrollRect(null);
+        copy.contentMateria = this.contentMateria;
+        copy.horizontal = this.horizontal;
+        copy.vertical = this.vertical;
+        copy.scrollPosition = { ...this.scrollPosition };
+        copy.scrollSensitivity = this.scrollSensitivity;
+        copy.inertia = this.inertia;
+        copy.horizontalScrollbar = this.horizontalScrollbar;
+        copy.verticalScrollbar = this.verticalScrollbar;
+        return copy;
+    }
+}
+registerComponent('UIScrollRect', UIScrollRect);
+
+/**
+ * Componente UICollider: Define un área de colisión específica para elementos UI.
+ */
+export class UICollider extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.isTrigger = true;
+    }
+    clone() {
+        const copy = new UICollider(null);
+        copy.isTrigger = this.isTrigger;
+        return copy;
+    }
+}
+registerComponent('UICollider', UICollider);
 
 registerComponent('PointLight2D', PointLight2D);
 registerComponent('SpotLight2D', SpotLight2D);
@@ -4575,6 +4722,17 @@ export class ProjectileLauncher extends Leyes {
     set cadencia(v) { this.fireRate = v; }
     get velocidadProyectil() { return this.projectileSpeed; }
     set velocidadProyectil(v) { this.projectileSpeed = v; }
+
+    clone() {
+        const newPl = new ProjectileLauncher(null);
+        newPl.projectilePrefab = this.projectilePrefab;
+        newPl.fireKey = this.fireKey;
+        newPl.fireRate = this.fireRate;
+        newPl.projectileSpeed = this.projectileSpeed;
+        newPl.direction = { ...this.direction };
+        newPl.offset = { ...this.offset };
+        return newPl;
+    }
 }
 
 /**
@@ -4598,6 +4756,12 @@ export class AutoDestroy extends Leyes {
 
     get retraso() { return this.delay; }
     set retraso(v) { this.delay = v; }
+
+    clone() {
+        const newAd = new AutoDestroy(null);
+        newAd.delay = this.delay;
+        return newAd;
+    }
 }
 
 /**
@@ -4697,6 +4861,19 @@ export class Health extends Leyes {
     set fotogramaCongelado(v) { this.freezeFrame = v; }
     get tiempoDesaparicion() { return this.destructionDelay; }
     set tiempoDesaparicion(v) { this.destructionDelay = v; }
+
+    clone() {
+        const newHealth = new Health(null);
+        newHealth.maxHealth = this.maxHealth;
+        newHealth.currentHealth = this.currentHealth;
+        newHealth.destroyOnDeath = this.destroyOnDeath;
+        newHealth.deathAnimation = this.deathAnimation;
+        newHealth.freezeFrame = this.freezeFrame;
+        newHealth.destructionDelay = this.destructionDelay;
+        newHealth.disableMovementOnDeath = this.disableMovementOnDeath;
+        newHealth.isDead = this.isDead;
+        return newHealth;
+    }
 }
 
 /**
@@ -4808,6 +4985,15 @@ export class Attack extends Leyes {
     set tiempoEspera(v) { this.cooldown = v; }
     get teclaCiclo() { return this.cycleKey; }
     set teclaCiclo(v) { this.cycleKey = v; }
+
+    clone() {
+        const newAtk = new Attack(null);
+        newAtk.attacks = JSON.parse(JSON.stringify(this.attacks));
+        newAtk.colliderMateria = this.colliderMateria;
+        newAtk.cooldown = this.cooldown;
+        newAtk.cycleKey = this.cycleKey;
+        return newAtk;
+    }
 }
 
 /**
@@ -4823,6 +5009,7 @@ export class ProgressBar extends Leyes {
         this.fullSize = 100;
         this.orientation = 'Horizontal'; // 'Horizontal' or 'Vertical'
         this.isSceneLoading = false;
+        this.interactable = false; // Slider mode
     }
 
     update() {
@@ -4874,6 +5061,19 @@ export class ProgressBar extends Leyes {
     set materiaRelleno(v) { this.fillMateria = v; }
     get tamanoTotal() { return this.fullSize; }
     set tamanoTotal(v) { this.fullSize = v; }
+
+    clone() {
+        const newPb = new ProgressBar(null);
+        newPb.value = this.value;
+        newPb.maxValue = this.maxValue;
+        newPb.targetMateria = this.targetMateria;
+        newPb.fillMateria = this.fillMateria;
+        newPb.fullSize = this.fullSize;
+        newPb.orientation = this.orientation;
+        newPb.isSceneLoading = this.isSceneLoading;
+        newPb.interactable = this.interactable;
+        return newPb;
+    }
 }
 
 /**
@@ -4933,6 +5133,15 @@ export class Patrol extends Leyes {
     set distancia(v) { this.distance = v; }
     get tiempoPausa() { return this.pauseTime; }
     set tiempoPausa(v) { this.pauseTime = v; }
+
+    clone() {
+        const newPatrol = new Patrol(null);
+        newPatrol.speed = this.speed;
+        newPatrol.distance = this.distance;
+        newPatrol.horizontal = this.horizontal;
+        newPatrol.pauseTime = this.pauseTime;
+        return newPatrol;
+    }
 }
 
 

@@ -117,6 +117,14 @@ function circleCast(origin, direction, radius, maxDistance = Infinity, tag = nul
     return physicsSystem.circleCast(origin, direction, radius, maxDistance, tag);
 }
 
+function checkUIOverlap(mtrA, mtrB) {
+    const ui = RuntimeAPIManager.getUISystem();
+    if (ui && typeof ui.checkUIOverlap === 'function') {
+        return ui.checkUIOverlap(mtrA, mtrB);
+    }
+    return false;
+}
+
 // --- The Public API Object ---
 // This object will be exposed to the user scripts.
 // We can add more global functions here in the future.
@@ -137,6 +145,8 @@ const engineAPIs = {
     estaTocandoTag: isTouchingTag,
     lanzarRayo: raycast,
     lanzarCirculo: circleCast,
+    checkUIOverlap: checkUIOverlap,
+    solapamientoUI: checkUIOverlap,
     getDeltaTime: getDeltaTime,
     obtenerDeltaTime: getDeltaTime,
 };

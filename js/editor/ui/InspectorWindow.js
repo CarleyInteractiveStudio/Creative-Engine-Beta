@@ -1144,7 +1144,10 @@ export function refreshInspectorValues() {
                 if (input.type === 'checkbox') {
                     if (input.checked !== !!value) input.checked = !!value;
                 } else if (input.type === 'color') {
-                    if (input.value !== value) input.value = value;
+                    // Solo asignar si es un formato hexadecimal válido para evitar errores de consola
+                    if (typeof value === 'string' && /^#[0-9A-F]{6}$/i.test(value)) {
+                        if (input.value !== value) input.value = value;
+                    }
                 } else if (input.type === 'number' || input.type === 'range') {
                     const numValue = parseFloat(value);
                     if (!isNaN(numValue)) {
@@ -1801,6 +1804,10 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="checkbox" class="prop-input" data-component="ProgressBar" data-prop="isSceneLoading" ${ley.isSceneLoading ? 'checked' : ''}>
                         <label data-i18n="USE_AS_LOADING_BAR">${L.get('USE_AS_LOADING_BAR', 'Usar como Barra de Carga')}</label>
                     </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="ProgressBar" data-prop="interactable" ${ley.interactable ? 'checked' : ''}>
+                        <label data-i18n="INTERACTABLE">${L.get('INTERACTABLE', 'Interactuable (Slider)')}</label>
+                    </div>
                     <hr>
                     <div class="prop-row-multi">
                         <label data-i18n="VALUE">${L.get('VALUE', 'Valor')}</label>
@@ -1809,6 +1816,61 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="MAX_VALUE">${L.get('MAX_VALUE', 'Valor Máximo')}</label>
                         <input type="number" class="prop-input" data-component="ProgressBar" data-prop="maxValue" value="${ley.maxValue}">
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.UIScrollRect) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('SCROLL_RECT', "Rect de Desplazamiento"), icon, index)}
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label data-i18n="CONTENT_MATERIA">${L.get('CONTENT_MATERIA', 'Materia de Contenido')}</label>
+                        ${renderPropertyDropper('Materia', ley.contentMateria, 'data-component="UIScrollRect" data-prop="contentMateria"')}
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="UIScrollRect" data-prop="horizontal" ${ley.horizontal ? 'checked' : ''}>
+                        <label data-i18n="HORIZONTAL">${L.get('HORIZONTAL', 'Horizontal')}</label>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="UIScrollRect" data-prop="vertical" ${ley.vertical ? 'checked' : ''}>
+                        <label data-i18n="VERTICAL">${L.get('VERTICAL', 'Vertical')}</label>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="SCROLL_SENSITIVITY">${L.get('SCROLL_SENSITIVITY', 'Sensibilidad')}</label>
+                        <input type="number" class="prop-input" step="0.1" data-component="UIScrollRect" data-prop="scrollSensitivity" value="${ley.scrollSensitivity}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="INERTIA">${L.get('INERTIA', 'Inercia')}</label>
+                        <input type="number" class="prop-input" step="0.01" min="0" max="1" data-component="UIScrollRect" data-prop="inertia" value="${ley.inertia}">
+                    </div>
+                    <div class="inspector-row">
+                        <label data-i18n="V_SCROLLBAR">${L.get('V_SCROLLBAR', 'Barra Vertical')}</label>
+                        ${renderPropertyDropper('Materia', ley.verticalScrollbar, 'data-component="UIScrollRect" data-prop="verticalScrollbar"')}
+                    </div>
+                    <div class="inspector-row">
+                        <label data-i18n="H_SCROLLBAR">${L.get('H_SCROLLBAR', 'Barra Horizontal')}</label>
+                        ${renderPropertyDropper('Materia', ley.horizontalScrollbar, 'data-component="UIScrollRect" data-prop="horizontalScrollbar"')}
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.UIMask) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('UI_MASK', "Máscara UI"), icon, index)}
+                <div class="component-content">
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="UIMask" data-prop="showGizmo" ${ley.showGizmo ? 'checked' : ''}>
+                        <label data-i18n="SHOW_GIZMO">${L.get('SHOW_GIZMO', 'Mostrar Gizmo')}</label>
+                    </div>
+                    <p class="info-text">${L.get('MASK_INFO', 'Recorta los elementos hijos dentro del área de este objeto.')}</p>
+                </div>
+            `;
+        } else if (ley instanceof Components.UICollider) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('UI_COLLIDER', "Colisionador UI"), icon, index)}
+                <div class="component-content">
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="UICollider" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
+                        <label data-i18n="IS_TRIGGER">${L.get('IS_TRIGGER', 'Es Gatillo (Trigger)')}</label>
                     </div>
                 </div>
             `;
@@ -1955,10 +2017,14 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="prop-row-multi">
                     <label data-i18n="COLOR">${L.get('COLOR', 'Color')}</label>
                     <div class="prop-inputs">
-                        <input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color || '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
+                            <input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color && ley.color.startsWith('#') ? ley.color : '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
                         <input type="text" class="prop-input hex-input" data-component="UIImage" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
                     </div>
                 </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="OPACITY">${L.get('OPACITY', 'Opacidad')}</label>
+                        <input type="range" class="prop-input" min="0" max="1" step="0.01" data-component="UIImage" data-prop="opacity" value="${ley.opacity !== undefined ? ley.opacity : 1.0}">
+                    </div>
             </div>`;
         } else if (ley instanceof Components.UIText) {
             const fontName = ley.fontAssetPath ? ley.fontAssetPath.split('/').pop() : L.get('DEFAULT', 'Default');
