@@ -284,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'anim-sprite-clear-btn', 'anim-sprite-create-btn',
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
-            'btn-retry-loading', 'btn-back-to-launcher',
+            'btn-retry-loading', 'btn-back-to-launcher', 'btn-grant-permissions',
             'btn-play', 'btn-pause', 'btn-stop', 'btn-exit-prefab', 'btn-save-prefab',
             'tool-tile-brush', 'tool-tile-bucket', 'tool-tile-rectangle-fill', 'tool-tile-eraser',
             // Menubar scene options
@@ -886,6 +886,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateWindowMenuUI() {
         const menuItems = {
+            'console': 'menu-window-console',
             'hierarchy-panel': 'menu-window-hierarchy',
             'inspector-panel': 'menu-window-inspector',
             'assets-panel': 'menu-window-assets',
@@ -894,13 +895,27 @@ document.addEventListener('DOMContentLoaded', () => {
             'tile-palette-panel': 'menu-window-tile-palette',
             'sprite-slicer-panel': 'menu-window-sprite-editor',
             'vid-spri-panel': 'menu-window-vid-spri',
-            'ambiente-control-panel': 'menu-window-ambiente-control'
+            'ambiente-control-panel': 'menu-window-ambiente-control',
+            'scene-panel': 'menu-window-scene'
         };
         const checkmark = '✓ ';
 
         for (const [panelId, menuId] of Object.entries(menuItems)) {
             const panel = document.getElementById(panelId);
             const menuItem = document.getElementById(menuId);
+
+            // Special case for console
+            if (menuId === 'menu-window-console') {
+                 const consoleMenuItem = document.getElementById('menu-window-console');
+                 if (consoleMenuItem) {
+                     consoleMenuItem.textContent = consoleMenuItem.textContent.replace(checkmark, '');
+                     const assetsPanel = dom.assetsPanel;
+                     const consoleTab = document.getElementById('console-content');
+                     if (assetsPanel && !assetsPanel.classList.contains('hidden') && consoleTab && consoleTab.classList.contains('active')) {
+                         consoleMenuItem.textContent = checkmark + consoleMenuItem.textContent;
+                     }
+                 }
+            }
 
             if (panel && menuItem) {
                 // Always clean the text first to avoid multiple checkmarks
@@ -2478,6 +2493,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (activeContent) {
                         activeContent.classList.add('active');
                     }
+
+                    updateWindowMenuUI();
                 }
             });
         }
@@ -2794,6 +2811,23 @@ document.addEventListener('DOMContentLoaded', () => {
             // Unified panel toggle logic
             let panelId = `${panelName}-panel`;
 
+            // Special case for Console (it's a tab, not a panel)
+            if (panelName === 'console') {
+                const assetsPanel = dom.assetsPanel;
+                if (assetsPanel) {
+                    assetsPanel.classList.remove('hidden');
+                    panelVisibility['assets'] = true;
+                    updateEditorLayout();
+
+                    // Switch to console tab
+                    const consoleTabBtn = assetsPanel.querySelector('[data-tab="console-content"]');
+                    if (consoleTabBtn) consoleTabBtn.click();
+
+                    updateWindowMenuUI();
+                }
+                return;
+            }
+
             // Handle exceptions where panel ID doesn't match menu ID perfectly
             if (panelName === 'sprite-editor') panelId = 'sprite-slicer-panel';
             else if (panelName === 'tile-palette') panelId = 'tile-palette-panel';
@@ -3035,8 +3069,10 @@ Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicán
                 const prefs = getPreferences();
                 brainSelectorMenu.querySelectorAll('[data-external]').forEach(el => el.remove());
 
-                if (prefs.ai && prefs.ai.provider !== 'none') {
-                    const provider = prefs.ai.provider;
+                const providers = ['gemini', 'openai', 'anthropic'];
+                let foundConfiguredProvider = null;
+
+                providers.forEach(provider => {
                     const apiKey = localStorage.getItem(`creativeEngine_${provider}_apiKey`);
                     if (apiKey) {
                         const newOption = document.createElement('a');
@@ -3047,12 +3083,16 @@ Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicán
                         newOption.textContent = `${displayName} (Preferencias)`;
                         brainSelectorMenu.appendChild(newOption);
 
-                        // Auto-select if nothing selected
-                        if (!selectedProvider) {
-                             selectedProvider = { type: provider, name: `${displayName} (Preferencias)` };
-                             brainButton.textContent = `Cerebro: ${selectedProvider.name}`;
+                        if (!foundConfiguredProvider || (prefs.ai && prefs.ai.provider === provider)) {
+                            foundConfiguredProvider = { type: provider, name: newOption.textContent };
                         }
                     }
+                });
+
+                // Auto-select if nothing selected
+                if (!selectedProvider && foundConfiguredProvider) {
+                    selectedProvider = foundConfiguredProvider;
+                    brainButton.textContent = `Cerebro: ${selectedProvider.name}`;
                 }
             };
 
@@ -3064,10 +3104,14 @@ Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicán
                 if (!dom.carlIaPanel.classList.contains('hidden') && messagesDiv.children.length <= 1) {
                     const hasWelcome = Array.from(messagesDiv.querySelectorAll('div')).some(d => d.textContent.includes("Soy Carl"));
                     if (!hasWelcome && selectedProvider) {
-                         addMessage("¡Hola! Soy Carl, tu asistente de Creative Engine. ¿En qué puedo ayudarte a construir hoy?", 'ia');
+                         const welcomeMsg = window.Localization?.get('CARL_WELCOME_MSG') || "¡Hola! Soy Carl, tu asistente de Creative Engine. ¿En qué puedo ayudarte a construir hoy?";
+                         addMessage(welcomeMsg, 'ia');
                     }
                 }
             });
+
+            // Initial auto-detection of brain keys
+            updateCarlIaBrainMenu();
 
             const viewSelectorMenu = dom.carlIaPanel.querySelector('#carl-ia-view-selector-btn + .menu-content');
             const viewButton = dom.carlIaViewSelectorBtn;
@@ -3194,7 +3238,8 @@ Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicán
                 input.focus();
 
                 if (selectedProvider.type === 'carl-v1') {
-                     addMessage("Carl V1 está actualmente en mantenimiento cerebral. Por favor, usa un modelo externo (Gemini/OpenAI/Claude) configurándolo en Preferencias.", 'ia', true);
+                     const maintMsg = window.Localization?.get('CARL_V1_MANTENIMIENTO') || "Carl V1 está actualmente en mantenimiento cerebral. Por favor, usa un modelo externo (Gemini/OpenAI/Claude) configurándolo en Preferencias.";
+                     addMessage(maintMsg, 'ia', true);
                      return;
                 }
 
@@ -3202,7 +3247,9 @@ Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicán
                 const apiKey = localStorage.getItem(`creativeEngine_${provider}_apiKey`);
 
                 if (!apiKey) {
-                    addMessage(`No puedo conectar con ${selectedProvider.name}. Por favor, asegúrate de haber configurado tu API Key correctamente en el panel de Preferencias.`, 'ia', true);
+                    const connError = (window.Localization?.get('CARL_ERROR_CONEXION') || "No puedo conectar con {provider}. Por favor, asegúrate de haber configurado tu API Key correctamente en el panel de Preferencias.")
+                        .replace('{provider}', selectedProvider.name);
+                    addMessage(connError, 'ia', true);
                     return;
                 }
 
@@ -3246,7 +3293,8 @@ Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicán
                 const isAccessError = (result.code === 404 || result.code === 400 || (result.error && (result.error.includes("Quota") || result.error.includes("not found"))));
                 if (result.status === 'failed' && isAccessError) {
                     console.warn(`El modelo por defecto '${modelToUse}' falló. Buscando un modelo compatible...`);
-                    addMessage(`El modelo por defecto no funcionó. Buscando uno compatible para ti...`, 'ia', true);
+                    const searchingMsg = window.Localization?.get('CARL_BUSCANDO_MODELO') || "El modelo por defecto no funcionó. Buscando uno compatible para ti...";
+                    addMessage(searchingMsg, 'ia', true);
 
                     const modelsResult = await AIHandler.listModels(provider, apiKey);
                     if (modelsResult.success && modelsResult.models.length > 0) {
@@ -3265,13 +3313,17 @@ Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicán
                             const displayName = modelId.includes('/') ? modelId.split('/')[1] : modelId;
 
                             console.log(`Modelo compatible encontrado: ${modelId}. Reintentando...`);
-                            addMessage(`¡Encontré un modelo compatible! Usando '${displayName}'. Reintentando...`, 'ia', false);
+                            const foundMsg = (window.Localization?.get('CARL_MODELO_ENCONTRADO') || "¡Encontré un modelo compatible! Usando '{model}'. Reintentando...")
+                                .replace('{model}', displayName);
+                            addMessage(foundMsg, 'ia', false);
                             await executeApiCall(modelId, userPrompt);
                         } else {
-                            addMessage("No pude encontrar un modelo de chat compatible en la lista de tu API key.", 'ia', true);
+                            const noModelMsg = window.Localization?.get('CARL_ERROR_SIN_MODELO') || "No pude encontrar un modelo de chat compatible en la lista de tu API key.";
+                            addMessage(noModelMsg, 'ia', true);
                         }
                     } else {
-                        addMessage("No pude listar los modelos disponibles para tu API key. Revisa la consola.", 'ia', true);
+                        const listErrorMsg = window.Localization?.get('CARL_ERROR_LISTAR_MODELOS') || "No pude listar los modelos disponibles para tu API key. Revisa la consola.";
+                        addMessage(listErrorMsg, 'ia', true);
                         console.error("Error al listar modelos:", modelsResult.error);
                     }
                 }
@@ -3428,10 +3480,34 @@ Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicán
 
             // Handle permissions for picked directory handles (OPFS doesn't need this)
             if (projectsDirHandle && projectsDirHandle.queryPermission) {
-                if (await projectsDirHandle.queryPermission({ mode: 'readwrite' }) !== 'granted') {
-                    if (await projectsDirHandle.requestPermission({ mode: 'readwrite' }) !== 'granted') {
-                         console.error("Permission not granted for projects directory.");
-                         // We don't block here because AssetUtils might handle it or it might be in limited mode
+                const permissionStatus = await projectsDirHandle.queryPermission({ mode: 'readwrite' });
+                if (permissionStatus !== 'granted') {
+                    // Stop automatic loading and wait for user activation
+                    console.log("[Editor] Permissions required. Waiting for user activation...");
+
+                    const grantBtn = document.getElementById('btn-grant-permissions');
+                    if (grantBtn) {
+                        grantBtn.style.display = 'inline-block';
+                        grantBtn.onclick = async () => {
+                            try {
+                                if (await projectsDirHandle.requestPermission({ mode: 'readwrite' }) === 'granted') {
+                                    window.location.reload(); // Reload once granted to proceed with full flow
+                                }
+                            } catch (e) {
+                                console.error("Permission request failed:", e);
+                                displayCriticalError(e, "No se pudo obtener permiso para acceder a los archivos.");
+                            }
+                        };
+
+                        const permissionErrorTitle = window.Localization?.get('PERMISOS_REQUERIDOS') || "Se requiere permiso";
+                        const permissionErrorMsg = window.Localization?.get('ERROR_PERMISOS_DETALLES') || "Creative Engine necesita tu permiso para leer y escribir en la carpeta de tus proyectos.";
+                        displayCriticalError({ message: permissionErrorTitle }, permissionErrorMsg);
+                        return; // Exit main flow, user must click button
+                    } else {
+                        // Fallback if button not found (shouldn't happen with new HTML)
+                        if (await projectsDirHandle.requestPermission({ mode: 'readwrite' }) !== 'granted') {
+                            console.error("Permission not granted for projects directory.");
+                        }
                     }
                 }
             }

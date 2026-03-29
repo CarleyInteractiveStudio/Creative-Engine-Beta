@@ -4,6 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Creative Engine</title>
+    <!-- SEO & Social Sharing -->
+    <meta name="description" content="Crea tus propios videojuegos 2D directamente en el navegador con Creative Engine.">
+    <meta property="og:title" content="Creative Engine">
+    <meta property="og:description" content="Tu juego empieza aquí. Lo que imagines, lo construyes.">
+    <meta property="og:image" content="https://carleyengine.com/image/Logo_C.png">
+    <meta property="og:url" content="https://carleyengine.com">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Creative Engine">
+    <meta name="twitter:description" content="Tu juego empieza aquí. Lo que imagines, lo construyes.">
+    <meta name="twitter:image" content="https://carleyengine.com/image/Logo_C.png">
+
     <link rel="stylesheet" href="css/style.css">
     <link rel="icon" href="image/Logo_C.png" type="image/png">
     <style>
@@ -114,6 +126,7 @@
             </div>
             <div class="footer-column">
                 <h4 data-i18n="FOROS">Foros</h4>
+                <a href="https://carleystudio.com/creative-engine.html#tutorials" target="_blank" class="footer-link" data-i18n="TUTORIALES">Tutoriales</a>
                 <a href="https://discord.gg/fBa9ZSAwk6" target="_blank" class="footer-link">Discord</a>
                 <a href="https://www.facebook.com/groups/1264745161495908" target="_blank" class="footer-link">Grupo de Facebook</a>
             </div>
@@ -169,6 +182,7 @@
                 <div class="split-sidebar">
                     <ul>
                         <li class="active" data-section="account-section"><img src="icons/user.svg" class="ce-icon"> <span data-i18n="CUENTA">Cuenta</span></li>
+                        <li data-section="games-section" class="auth-only"><img src="icons/gamepad.svg" class="ce-icon"> <span data-i18n="MIS_JUEGOS">Mis Juegos</span></li>
                         <li data-section="prefs-section"><img src="icons/settings.svg" class="ce-icon"> <span data-i18n="PREFERENCIAS">Preferencias</span></li>
                     </ul>
                 </div>
@@ -182,8 +196,11 @@
                                 <label for="login-password" data-i18n="AUTH_PASSWORD">Contraseña:</label>
                                 <input id="login-password" type="password" name="password" required autocomplete="current-password">
                                 <button type="submit" class="modal-btn" data-i18n="AUTH_LOGIN">Iniciar Sesión</button>
-                                <p class="auth-switch" data-i18n="AUTH_NO_ACCOUNT">¿No tienes una cuenta? <a href="#" id="goto-signup">Regístrate</a></p>
-                                <p class="auth-switch"><a href="#" id="goto-reset" data-i18n="AUTH_FORGOT_PASS">¿Olvidaste tu contraseña?</a></p>
+                                <p class="auth-switch">
+                                    <span data-i18n="AUTH_NO_ACCOUNT">¿No tienes una cuenta?</span>
+                                    <a href="https://carleystudio.com/cuenta.html" id="goto-signup" target="_blank" data-i18n="REGISTRARSE">Regístrate</a>
+                                </p>
+                                <p class="auth-switch"><a href="https://carleystudio.com/cuenta.html" id="goto-reset" data-i18n="AUTH_FORGOT_PASS" target="_blank">¿Olvidaste tu contraseña?</a></p>
                             </form>
                         </div>
                         <div id="auth-logged-in" class="auth-view" style="display: none;">
@@ -202,7 +219,10 @@
                                 <input id="signup-password" type="password" name="password" required autocomplete="new-password" minlength="6">
                                 <p class="password-hint" data-i18n="AUTH_PASS_HINT">La contraseña debe tener al menos 6 caracteres.</p>
                                 <button type="submit" class="modal-btn" data-i18n="AUTH_SIGNUP">Registrarse</button>
-                                <p class="auth-switch" data-i18n="AUTH_ALREADY_ACCOUNT">¿Ya tienes una cuenta? <a href="#" id="goto-login">Inicia Sesión</a></p>
+                                <p class="auth-switch">
+                                    <span data-i18n="AUTH_ALREADY_ACCOUNT">¿Ya tienes una cuenta?</span>
+                                    <a href="#" id="goto-login" data-i18n="AUTH_LOGIN">Inicia Sesión</a>
+                                </p>
                             </form>
                         </div>
                         <div id="reset-password-view" class="auth-view" style="display: none;">
@@ -214,6 +234,44 @@
                                 <button type="submit" class="modal-btn" data-i18n="AUTH_SEND_RESET">Enviar Enlace de Recuperación</button>
                                 <p class="auth-switch"><a href="#" id="back-to-login" data-i18n="AUTH_BACK_TO_LOGIN">Volver a Iniciar Sesión</a></p>
                             </form>
+                        </div>
+                    </div>
+
+                    <div id="games-section" class="section-view auth-only">
+                        <h2 data-i18n="MIS_JUEGOS">Mis Juegos</h2>
+                        <div class="publish-game-container">
+                            <button id="btn-show-publish-form" class="modal-btn green small" data-i18n="PUBLICAR_JUEGO">Publicar Juego</button>
+
+                            <div id="publish-game-form-container" style="display: none; margin-top: 20px; border: 1px solid #444; padding: 15px; border-radius: 8px; background: rgba(0,0,0,0.2);">
+                                <h3 data-i18n="PUBLICAR_JUEGO">Publicar Juego</h3>
+                                <form id="publish-game-form">
+                                    <label for="publish-github" data-i18n="ENLACE_GITHUB">Enlace de GitHub:</label>
+                                    <input type="url" id="publish-github" placeholder="https://github.com/usuario/mi-juego" required>
+
+                                    <button type="button" id="btn-verify-project" class="modal-btn secondary small" style="margin-top: 10px;" data-i18n="VERIFICAR_PROYECTO">Verificar Proyecto</button>
+
+                                    <div id="project-verified-details" style="display: none; margin-top: 15px;">
+                                        <p><strong>Juego:</strong> <span id="verified-game-name"></span></p>
+                                        <p><strong>Versión:</strong> <span id="verified-game-version"></span></p>
+
+                                        <label data-i18n="SUBIR_FOTO_JUEGO">Subir foto para Creative Games:</label>
+                                        <div class="image-picker">
+                                            <img id="publish-photo-preview" src="image/Paquete.png" alt="Vista previa" style="max-width: 100px; display: block; margin-bottom: 10px;">
+                                            <button type="button" id="btn-publish-photo-picker" class="modal-btn small">Seleccionar Foto...</button>
+                                            <input type="file" id="publish-photo-input" style="display: none;" accept="image/png, image/jpeg">
+                                        </div>
+
+                                        <label for="publish-description" data-i18n="DESCRIPCION_JUEGO">Descripción del Juego:</label>
+                                        <textarea id="publish-description" rows="3" required></textarea>
+
+                                        <button type="submit" class="modal-btn" style="margin-top: 15px;" data-i18n="SUBIR">Subir</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div id="user-games-list" style="margin-top: 20px;">
+                            <!-- List of published games will go here -->
                         </div>
                     </div>
                     <div id="prefs-section" class="section-view">
