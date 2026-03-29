@@ -45,15 +45,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // Initialize local session with SSO token
+            console.log("Procesando token SSO...");
+
+            // Try to sync session. In Supabase v2, setSession with empty refresh often works for JWTs.
             const { data, error } = await _supabase.auth.setSession({
                 access_token: token,
-                refresh_token: '' // SSO token is used as access token
+                refresh_token: token // Using token as both for maximum compatibility with bridge-issued JWTs
             });
 
-            if (error) throw error;
+            if (error) {
+                console.warn("setSession fallido con refresh=token, reintentando con refresh vacío...");
+                const { error: error2 } = await _supabase.auth.setSession({
+                    access_token: token,
+                    refresh_token: ""
+                });
+                if (error2) throw error2;
+            }
 
-            console.log("Sesión establecida correctamente vía SSO.");
+            console.log("Sesión de Supabase establecida correctamente vía SSO.");
 
             // Clean URL hash without reloading
             history.replaceState(null, null, window.location.pathname + window.location.search);
@@ -149,9 +158,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const bridgeIframe = document.getElementById('sso-bridge');
     if (!bridgeIframe || !bridgeIframe.contentWindow) return;
 
-    console.log("Solicitando sesión al Puente SSO...");
+    console.log("Solicitando sesión al Puente SSO (CHECK_SESSION)...");
     bridgeIframe.contentWindow.postMessage({
-        type: 'GET_SSO_SESSION', // Standard intent for SSO bridges
+        type: 'CHECK_SESSION',
         requestId: 'init-session-check'
     }, 'https://carleystudio.com');
   };
@@ -163,16 +172,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!session) {
             const bridgeIframe = document.getElementById('sso-bridge');
             if (bridgeIframe) {
-                // If the iframe is already loaded, request immediately, otherwise wait for load event
-                const isLoaded = () => {
-                    try { return bridgeIframe.contentWindow.location.href !== 'about:blank'; }
-                    catch(e) { return true; } // If cross-origin prevents access, it's likely loading/loaded
+                // Wait for the iframe to load
+                const tryBridge = () => {
+                   requestSessionFromBridge();
                 };
 
-                if (isLoaded()) {
-                    requestSessionFromBridge();
+                if (bridgeIframe.contentWindow && bridgeIframe.contentWindow.length > 0) {
+                    tryBridge();
                 } else {
-                    bridgeIframe.addEventListener('load', requestSessionFromBridge);
+                    bridgeIframe.addEventListener('load', tryBridge);
+                    // Fallback in case load already fired or is restricted
+                    setTimeout(tryBridge, 2000);
                 }
             }
         }
@@ -183,19 +193,24 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('message', async (event) => {
     if (event.origin !== 'https://carleystudio.com') return;
 
+    // Generic Supabase responses (e.g., from callBridge)
     if (event.data.type === 'SUPABASE_RESPONSE') {
         console.log("Respuesta del Puente SSO recibida:", event.data.payload);
         window.dispatchEvent(new CustomEvent('CE_SSO_BRIDGE_RESPONSE', { detail: event.data }));
     }
 
-    if (event.data.type === 'SSO_SESSION_DATA') {
-        const token = event.data.payload?.access_token;
-        if (token) {
-            console.log("Sesión recuperada automáticamente via Puente SSO.");
-            await _supabase.auth.setSession({
-                access_token: token,
-                refresh_token: event.data.payload?.refresh_token || ''
+    // Direct session response from CHECK_SESSION
+    if (event.data.type === 'SESSION_RESPONSE') {
+        const sessionData = event.data.payload;
+        if (sessionData && sessionData.access_token) {
+            console.log("Sesión recuperada automáticamente vía Puente SSO.");
+            const { error } = await _supabase.auth.setSession({
+                access_token: sessionData.access_token,
+                refresh_token: sessionData.refresh_token || ""
             });
+            if (error) console.warn("Error al sincronizar sesión del bridge:", error.message);
+        } else {
+            console.log("El puente indica que no hay sesión activa.");
         }
     }
   });
@@ -338,20 +353,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     gamesListContainer.innerHTML = '<p>Cargando tus juegos...</p>';
 
-    try {
-        // Placeholder for future database query
-        // const { data, error } = await _supabase.from('games').select('*').eq('user_id', session.user.id);
+    // Request user games through the SSO Bridge
+    const requestId = 'load-games-' + Date.now();
 
-        // For now, let's simulate some data
-        const mockGames = []; // Start with empty to show "no games" state
+    const handleGamesResponse = (event) => {
+        if (event.detail.requestId !== requestId) return;
+        window.removeEventListener('CE_SSO_BRIDGE_RESPONSE', handleGamesResponse);
 
-        if (mockGames.length === 0) {
-            gamesListContainer.innerHTML = '<p class="no-projects-message">No has publicado ningun juego todavia.</p>';
-            return;
-        }
+        const games = event.detail.payload || [];
+        renderGames(games);
+    };
 
-        gamesListContainer.innerHTML = '';
-        mockGames.forEach(game => {
+    window.addEventListener('CE_SSO_BRIDGE_RESPONSE', handleGamesResponse);
+
+    window.auth.callBridge({
+        table: 'user_games',
+        method: 'select',
+        query: '*',
+        filter: { user_id: session.user.id }
+    }, requestId);
+  }
+
+  function renderGames(games) {
+    const gamesListContainer = document.getElementById('user-games-list');
+    if (!gamesListContainer) return;
+
+    if (games.length === 0) {
+        gamesListContainer.innerHTML = '<p class="no-projects-message">No has publicado ningún juego todavía.</p>';
+        return;
+    }
+
+    gamesListContainer.innerHTML = '';
+        games.forEach(game => {
             const gameItem = document.createElement('div');
             gameItem.className = 'project-item'; // Reuse project-item styling
             gameItem.style.marginBottom = '10px';
@@ -380,17 +413,19 @@ document.addEventListener('DOMContentLoaded', () => {
             deleteBtn.onclick = () => {
                 window.Dialogs.showConfirmation('Borrar Juego', `Estas seguro de que quieres borrar "${game.name}"?`, async () => {
                     console.log("Deleting game:", game.id);
-                    window.Dialogs.showNotification('Exito', 'Juego borrado.');
-                    loadUserGames();
+                    // Use bridge to delete
+                    window.auth.callBridge({
+                        table: 'user_games',
+                        method: 'delete',
+                        filter: { id: game.id }
+                    });
+                    window.Dialogs.showNotification('Exito', 'Petición de borrado enviada.');
+                    setTimeout(loadUserGames, 1500);
                 });
             };
 
             gamesListContainer.appendChild(gameItem);
         });
-    } catch (e) {
-        console.error(e);
-        gamesListContainer.innerHTML = '<p>Error al cargar los juegos.</p>';
-    }
   }
 
   // --- API Key Loading ---
