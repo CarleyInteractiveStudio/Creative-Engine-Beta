@@ -39,7 +39,7 @@ import { getCustomComponentDefinitions } from './editor/EngineAPIExtension.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
 import * as SkeletonImporter from './editor/SkeletonImporter.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
-import * as CarlAgent from './editor/CarlAgent.js';
+import { AgentAPI as CarlAgent } from './editor/CarlAgent.js';
 import { buildProject, runStandalonePreview } from './editor/BuildSystem.js';
 import * as Dialogs from './editor/ui/DialogWindow.js';
 const { showNotification: showNotificationDialog, showConfirmation: showConfirmationDialog, showBuildDialog } = Dialogs;
@@ -3136,93 +3136,36 @@ document.addEventListener('DOMContentLoaded', () => {
             let knownWorkingModel = {}; // Cache for working models, e.g., { gemini: 'models/gemini-1.5-flash' }
             let carlChatHistory = []; // Memory for the session
 
-            const CARL_SYSTEM_PROMPT_TEMPLATE = `Eres Carl, el asistente inteligente de Creative Engine. Tu personalidad es alegre, servicial y apasionada por ayudar en la creación de videojuegos. Siempre te presentas como Carl. Tu misión es asistir al usuario en sus tareas, proponiendo soluciones y explicando paso a paso cómo lograr sus visiones en el motor.
+            const CARL_SYSTEM_PROMPT_TEMPLATE = `Eres Carl, un agente autónomo de Creative Engine. No solo explicas, ¡EJECUTAS!
 
-IMPORTANTE: El idioma actual de la interfaz del motor es {idioma}. Debes responder preferiblemente en este idioma, a menos que el usuario te hable en otro.
+SINTAXIS CES (REGLA DE ORO):
+- ACCESO DIRECTO SIEMPRE. No uses 'mtr.', 'this.', 'entrada.' o 'motor.'.
+- CORRECTO: 'posicion.x = 10;', 'teclaPresionada("W")', 'imprimir("Log")'.
+- INCORRECTO: 'consola.log()', 'console.log()'. USA SIEMPRE 'imprimir()'.
+- DECLARACIÓN: 'publico [tipo] [nombre] = [valor];'.
+- EVENTOS: alEmpezar(), alActualizar(delta).
 
-CONOCIMIENTO DE LA INTERFAZ (UI):
-- Menú Superior: Archivo (Nueva escena, Abrir, Guardar, Importar/Exportar), Editar (Configuración del Proyecto, Preferencias), Ventana (Jerarquía, Inspector, Navegador, Consola, Editor de Animación, Paleta de Tiles, Editor de Sprites, Control de Ambiente, Vid Spri), Librerías, Carl IA, Donar.
-- Paneles Principales:
-  - Jerarquía: Gestiona los objetos (Materias) en la escena actual. Permite crear cámaras, sprites, luces, UI, etc.
-  - Inspector: Edita propiedades del objeto seleccionado y permite añadir componentes (Leyes).
-  - Navegador (Assets): Gestiona los archivos del proyecto (imágenes, sonidos, scripts, escenas, prefabs).
-  - Consola: Muestra logs del sistema y de los scripts (usando imprimir o consola.imprimir).
-  - Escena: El área central donde se posicionan los objetos visualmente.
-- Herramientas de Edición: Mover (Q), Panear (W), Escalar (E), Rotar (R), Herramienta Universal (T), Terreno (B), Pincel de Tiles.
-- Vistas de Panel Central: Escena, Juego (para probar el juego), Código (editor integrado para .ces y .chc), Terminal.
+COMPORTAMIENTO COMO AGENTE (OBLIGATORIO):
+Si el usuario pide crear, añadir o modificar algo, DEBES generar un bloque [PLAN] JSON al final.
+- IMPORTANTE: No envuelvas el bloque [PLAN] en bloques de código (\` \` \`). Escríbelo como texto plano.
 
-CONOCIMIENTO DE COMPONENTES (LEYES):
-- Básicos: Transform (posicion), Cámara (camara), AudioSource (fuenteDeAudio), VideoPlayer, CreativeScript.
-- Renderizado: SpriteRenderer (renderizadorDeSprite), TextureRender, ParticleSystem, Water (agua).
-- Físicas 2D: Rigidbody2D (fisica), BoxCollider2D, CapsuleCollider2D, CircleCollider2D, TilemapCollider2D, LineCollider2D.
-- Vehículos y Controladores: SuspensionHC, VehicleTopDown, PlaneController, HelicopterController.
-- Mapas: Tilemap (rejilla), Terreno2D.
-- Iluminación: PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D.
-- Interfaz (UI): Canvas (lienzo), UIImage (imagen), UIText (texto), Button (boton), UIEventTrigger.
-- Animación: Animator (animador), AnimatorController (controlador).
-- Utilidades: CameraFollow, Parallax, DrawingOrder, Layout Groups.
-
-SINTAXIS DE SCRIPTING (CES/CHC) - ¡ACTUALIZADO!:
-0. IMPORTACIONES: 've motor;' (OBLIGATORIO).
-1. PALABRAS CLAVE: si, sino, mientras, para, retornar, funcion, variable, constante, verdadero, falso, nuevo.
-2. DECLARACIÓN: 'publico [tipo] [nombre] = [valor];' (¡OBLIGATORIO para el Inspector!). Tipos: numero, texto, booleano, Materia, Sprite, sonido.
-3. ACCESO DIRECTO: nombre, tag, posicion, fisica, animador, renderizadorDeSprite, fuenteDeAudio, camara, rejilla, lienzo.
-4. INPUT API (Sin prefijos): teclaPresionada("espacio"), teclaRecienPresionada("W"), botonMousePresionado(0), obtenerPosicionMouse(). NO USES 'entrada.' NI 'motor.'.
-5. EVENTOS: alEmpezar(), alActualizar(delta), actualizarFijo(delta), alEntrarEnColision(otro), alHacerClick().
-6. CONTROL DE TIEMPO: 'cada(segundos) { ... }', 'esperar(segundos);'.
-7. FUNCIONES MOTOR: buscar(nombre), destruir(mtr), crear miPrefab, lanzarRayo(origen, dir, dist, tag), estaTocandoTag(tag).
-8. SISTEMA PROXY (Potente): Llama a animaciones o sonidos por su nombre directamente: 'reproducir.Correr();' o 'play.Explosion();'.
-
-REGLA DE ORO: Devuelve siempre código .ces limpio. Sé motivador y recuerda que eres un agente activo, NO solo un chat. Si el usuario te pide crear algo, ¡hazlo directamente mediante un plan! No solo le des el código.
-
-HABILIDADES AUTÓNOMAS (¡NUEVO!):
-Ahora tienes la capacidad de ejecutar acciones reales en el editor. Cuando el usuario te pida construir, crear, modificar o descargar algo, DEBES:
-1. Crear un PLAN de pasos detallados con comandos ejecutables.
-2. Cada paso puede contener uno o más comandos ejecutables.
-
-Para enviar comandos, inclúyelos al final de tu respuesta en un bloque de código JSON marcado con la etiqueta [PLAN]. Siempre menciona al usuario que debe ir a la pestaña "Actividad" para ejecutar las acciones (o ver el progreso).
-
-Formato del bloque [PLAN]:
+[PLAN] Formato:
 {
   "plan": [
     {
-      "title": "Título del paso",
-      "description": "Descripción de lo que harás",
+      "title": "Nombre", "description": "...",
       "commands": [
-        { "action": "create_materia", "params": { "name": "Cubo", "type": "Sprite" } },
-        { "action": "add_component", "params": { "materiaId": "@last", "type": "Rigidbody2D" } },
-        { "action": "set_property", "params": { "materiaId": "@last", "componentType": "Transform", "propPath": "position.x", "value": 100 } }
+        { "action": "create_materia", "params": { "name": "N", "type": "Sprite" } },
+        { "action": "create_file", "params": { "path": "Assets/s.ces", "content": "..." } },
+        { "action": "add_component", "params": { "materiaId": "@last", "type": "CreativeScript", "properties": { "scriptName": "s.ces" } } }
       ]
     }
   ]
 }
 
-Comandos Disponibles:
-- create_materia { name, parentId, type: 'Sprite'|'Camera'|'Canvas'|'Audio'|'Empty' }
-- delete_materia { id } // id puede ser el ID numérico o el nombre exacto
-- add_component { materiaId, type, properties: {} } // type puede ser el nombre en inglés o español
-- set_property { materiaId, componentType, propPath, value } // propPath puede ser anidado, ej: 'position.x' o 'color'
-- create_file { path: 'Assets/nombre.ces', content: '...' }
-- download_file { url, path: 'Assets/nombre.png' }
-
-REGLAS DE PROPIEDADES COMUNES:
-- Transform: 'position.x', 'position.y', 'rotation', 'scale.x', 'scale.y'
-- Rigidbody2D: 'gravityScale', 'mass', 'fixedRotation' (booleano)
-- SpriteRenderer: 'color' (hex), 'opacity' (0-1)
-- CameraFollow: 'target' (nombre o id), 'smoothSpeed', 'offset.x', 'offset.y'
-
-NOTIFICACIÓN AL USUARIO:
-Cuando crees un plan, informa al usuario que debe ir a la pestaña "Actividad" dentro de tu panel para revisarlo y ejecutarlo. Especialmente si estás en modo 'Con Permiso'.
-
-MODOS DE EJECUCIÓN (Para tu información):
-1. Con Permiso: El usuario aprueba cada paso manualmente.
-2. Visual: Ejecutas paso a paso con una pequeña pausa para que el usuario vea el progreso.
-3. Automático: Ejecutas todo el plan de corrido.
-
-EFICIENCIA Y OPTIMIZACIÓN:
-Intenta agrupar comandos en el menor número de pasos posible para ahorrar tiempo y recursos. Solo usa la IA para decidir la lógica; la ejecución pesada la hace el motor.
-
-NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto creado en el mismo plan.`;
+Comandos: create_materia, delete_materia, add_component, set_property, create_file, download_file.
+Usa "@last" para referirte al ID del objeto creado en el mismo plan.
+Regla: El JSON del [PLAN] debe ir siempre al final de tu respuesta.`;
 
             const updateCarlIaBrainMenu = () => {
                 const prefs = getPreferences();
@@ -3268,7 +3211,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                 });
             }
 
-            const addMessage = (text, sender, isError = false) => {
+            const addMessage = (text, sender, isError = false, planToSet = null) => {
                 const messageWrapper = document.createElement('div');
                 messageWrapper.className = `carl-message-wrapper ${sender}`;
                 messageWrapper.style.display = 'flex';
@@ -3290,6 +3233,29 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                         tasklists: true
                     });
                     msgDiv.innerHTML = converter.makeHtml(text);
+
+                    // Si hay un plan, añadir el botón de acción DEPUÉS del renderizado
+                    if (planToSet) {
+                        CarlAgent.setPlan(planToSet);
+                        const btnContainer = document.createElement('div');
+                        btnContainer.className = 'carl-action-container';
+                        btnContainer.style.marginTop = '10px';
+
+                        const btn = document.createElement('button');
+                        btn.className = 'approve-btn';
+                        btn.style.width = 'auto';
+                        btn.style.padding = '6px 15px';
+                        btn.style.cursor = 'pointer';
+                        btn.innerHTML = '🚀 Ver Plan de Acción';
+                        btn.onclick = (e) => {
+                            e.preventDefault();
+                            CarlAgent.switchView('activity');
+                            return false;
+                        };
+
+                        btnContainer.appendChild(btn);
+                        msgDiv.appendChild(btnContainer);
+                    }
                 } else {
                     msgDiv.textContent = text;
                 }
@@ -3340,7 +3306,6 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                     const provider = prefs.ai.provider;
                     const displayName = provider.charAt(0).toUpperCase() + provider.slice(1);
                     selectedProvider = { type: provider, name: `${displayName} (Preferencias)` };
-                    brainButton.textContent = `Cerebro: ${selectedProvider.name}`;
                 }
 
                 if (!selectedProvider) {
@@ -3350,7 +3315,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
 
                 addMessage(userPrompt, 'user');
                 carlChatHistory.push({ role: 'user', content: userPrompt });
-                if (carlChatHistory.length > 12) carlChatHistory.shift(); // Keep last 6 rounds
+                if (carlChatHistory.length > 30) carlChatHistory.shift(); // Aumentada memoria de la IA
 
                 input.value = '';
                 input.focus();
@@ -3385,48 +3350,89 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
                     if (result.success) {
                         // Update history with raw response
                         carlChatHistory.push({ role: 'assistant', content: result.text });
-                        if (carlChatHistory.length > 12) carlChatHistory.shift();
+                        if (carlChatHistory.length > 30) carlChatHistory.shift();
 
                         // --- Parse Plan from Response ---
                         let cleanText = result.text;
-                        // Robust regex to handle potential markdown code blocks around JSON
-                        const planRegex = /\[PLAN\]\s*(?:```json)?\s*(\{[\s\S]*?\})\s*(?:```)?/i;
-                        const match = cleanText.match(planRegex);
+                        let extractedPlan = null;
 
-                        if (match) {
-                            try {
-                                const planData = JSON.parse(match[1].trim());
-                                if (planData.plan) {
-                                    CarlAgent.setPlan(planData.plan);
-                                    // Remove JSON from displayed text
-                                    cleanText = cleanText.replace(planRegex, '').trim();
+                        // Robust balanced JSON extractor for [PLAN] blocks
+                        // This handles both plain JSON and JSON inside Markdown blocks
+                        const planTagIndex = cleanText.toUpperCase().indexOf('[PLAN]');
+                        if (planTagIndex !== -1) {
+                            const remainingText = cleanText.substring(planTagIndex);
+                            const startBrace = remainingText.indexOf('{');
 
-                                    // Add Action Button to message
-                                    // Note: onclick still needs a global or accessible function
-                                    const actionButtonHtml = `<div style="margin-top: 10px;"><button onclick="window.CarlAgent.switchView('activity')" class="approve-btn" style="width: auto; padding: 6px 15px;">Ver Actividad</button></div>`;
-                                    cleanText += actionButtonHtml;
+                            if (startBrace !== -1) {
+                                let braceCount = 0;
+                                let endBrace = -1;
 
-                                    logToUIConsole("¡Carl ha propuesto un nuevo plan!", "log");
-
-                                    // Notify user via Activity tab highlight
-                                    const activityBtn = dom.carlIaPanel.querySelector('.carl-view-option[data-view="activity"]');
-                                    if (activityBtn) {
-                                        activityBtn.classList.add('has-notification');
-                                    }
-
-                                    // Auto-switch to activity tab if in visual or automatic mode
-                                    if (prefs.carlPermissions?.executionMode !== 'permission') {
-                                        setTimeout(() => {
-                                            if (CarlAgent.switchView) CarlAgent.switchView('activity');
-                                        }, 1000);
+                                for (let i = startBrace; i < remainingText.length; i++) {
+                                    if (remainingText[i] === '{') braceCount++;
+                                    else if (remainingText[i] === '}') {
+                                        braceCount--;
+                                        if (braceCount === 0) {
+                                            endBrace = i;
+                                            break;
+                                        }
                                     }
                                 }
-                            } catch (e) {
-                                console.error("Error al parsear el plan de Carl:", e);
+
+                                if (endBrace !== -1) {
+                                    const jsonString = remainingText.substring(startBrace, endBrace + 1);
+                                    try {
+                                        const planData = JSON.parse(jsonString);
+                                        if (planData.plan) {
+                                            extractedPlan = planData.plan;
+
+                                            // Determine how much to remove from the text
+                                            // If the plan is wrapped in a code block, find it
+                                            let removalEnd = planTagIndex + remainingText.indexOf('}', endBrace) + 1; // Basic
+
+                                            // Better: look for potential markdown closure after the JSON
+                                            const afterJson = remainingText.substring(endBrace + 1);
+                                            const codeBlockEnd = afterJson.indexOf('```');
+
+                                            let fullPlanSection;
+                                            if (codeBlockEnd !== -1 && codeBlockEnd < 10) { // If closure is close to JSON
+                                                fullPlanSection = remainingText.substring(0, endBrace + 1 + codeBlockEnd + 3);
+                                            } else {
+                                                fullPlanSection = remainingText.substring(0, endBrace + 1);
+                                            }
+
+                                            // Also look back for markdown start before [PLAN]
+                                            const beforeTag = cleanText.substring(0, planTagIndex);
+                                            const lastCodeStart = beforeTag.lastIndexOf('```');
+
+                                            if (lastCodeStart !== -1 && lastCodeStart > planTagIndex - 20) {
+                                                cleanText = (cleanText.substring(0, lastCodeStart) + cleanText.substring(planTagIndex + fullPlanSection.length)).trim();
+                                            } else {
+                                                cleanText = (cleanText.substring(0, planTagIndex) + cleanText.substring(planTagIndex + fullPlanSection.length)).trim();
+                                            }
+
+                                            logToUIConsole("¡Carl ha propuesto un nuevo plan!", "log");
+
+                                            // Notify user via Activity tab highlight
+                                            const activityBtn = dom.carlIaPanel.querySelector('.carl-view-option[data-view="activity"]');
+                                            if (activityBtn) {
+                                                activityBtn.classList.add('has-notification');
+                                            }
+
+                                            // Auto-switch to activity tab if in visual or automatic mode
+                                            if (prefs.carlPermissions?.executionMode !== 'permission') {
+                                                setTimeout(() => {
+                                                    if (CarlAgent.switchView) CarlAgent.switchView('activity');
+                                                }, 1000);
+                                            }
+                                        }
+                                    } catch (e) {
+                                        console.error("Error al parsear el plan de Carl:", e);
+                                    }
+                                }
                             }
                         }
 
-                        addMessage(cleanText || "He trazado un plan para ayudarte. Revísalo en la pestaña Actividad.", 'ia', false);
+                        addMessage(cleanText || "He trazado un plan para ayudarte. Revísalo en la pestaña Actividad.", 'ia', false, extractedPlan);
                         knownWorkingModel[provider] = model;
                         return { status: 'success', error: null, code: 200 };
                     }
@@ -3632,6 +3638,8 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
         window.AnimationEditorWindow = AnimationEditorWindow;
         window.TilePalette = TilePalette;
         window.SkeletonImporter = SkeletonImporter;
+
+        // Consolidar referencias de Carl IA
         window.CarlAgent = CarlAgent;
 
         // --- Carl Agent Integration ---

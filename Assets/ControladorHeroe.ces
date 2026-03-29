@@ -1,0 +1,166 @@
+// ControladorHeroe.ces
+// Un script de movimiento complejo para validar el diseño del sistema de scripting.
+
+// --- Propiedades Públicas (Visibles en el Inspector) ---
+publico numero velocidad = 12;
+publico numero fuerzaSalto = 16;
+publico numero energiaMaxima = 100;
+publico Prefab efectoSalto;
+publico Prefab efectoDash;
+
+// --- Estado Privado del Script ---
+privado numero energiaActual = 100;
+privado numero tiempoCoyote = 0;
+privado numero bufferSalto = 0;
+privado booleano estaCorriendo = falso;
+privado booleano estaEnDash = falso;
+privado numero ultimaDirX = 1;
+
+/**
+ * Función de inicialización (start)
+ */
+publico iniciar() {
+    imprimir(">>> Iniciando Controlador Heroe en: " + nombre);
+    energiaActual = energiaMaxima;
+
+    // Suscripción a eventos globales (Messaging Bus)
+    alRecibir("ReiniciarJugador", funcion(punto) {
+        // 'posicion' es un alias de 'transform'
+        si (punto) {
+            posicion.position = punto;
+        } sino {
+            posicion.position = nuevo Vector2(0, 0);
+        }
+        si (fisica) fisica.velocity = nuevo Vector2(0, 0);
+    });
+}
+
+/**
+ * Bucle principal de lógica (update)
+ */
+publico actualizar(delta) {
+    // Si estamos en dash, no procesamos movimiento normal
+    si (estaEnDash) retornar;
+
+    // 1. Entrada de Dirección
+    variable h = 0;
+    si (tecla("D")) h = 1;
+    sino si (tecla("A")) h = -1;
+
+    si (h != 0) {
+        ultimaDirX = h;
+        voltearH = (h == -1); // Alias de flipX en el motor
+        estaCorriendo = verdadero;
+    } sino {
+        estaCorriendo = falso;
+    }
+
+    // 2. Sensores (Detección de Suelo con Raycast)
+    // El motor inyecta 'lanzarRayo' y maneja la matemática de Vector2
+    variable sueloHit = lanzarRayo(posicion, nuevo Vector2(0, 1), 35, "Suelo");
+    variable tocandoSuelo = (sueloHit != null);
+
+    // 3. Coyote Time y Buffer de Salto (Mecánicas Pro)
+    si (tocandoSuelo) {
+        tiempoCoyote = 0.2;
+    } sino {
+        tiempoCoyote = tiempoCoyote - delta;
+    }
+
+    si (teclaRecienPresionada("Space")) {
+        bufferSalto = 0.15;
+    } sino {
+        bufferSalto = bufferSalto - delta;
+    }
+
+    // 4. Lógica de Salto
+    si (bufferSalto > 0 && tiempoCoyote > 0) {
+        ejecutarSalto();
+    }
+
+    // 5. Lógica de Dash (Consume Energía)
+    si (teclaRecienPresionada("Shift") && energiaActual >= 30) {
+        realizarDash();
+    }
+
+    // 6. Aplicar Movimiento Físico al Rigidbody2D
+    // 'fisica' es el alias para Rigidbody2D
+    si (fisica) {
+        fisica.velocity.x = h * velocidad;
+
+        // El proxy 'play' permite llamar estados del AnimatorController directamente
+        si (!tocandoSuelo) {
+            play.Aire();
+        } sino si (estaCorriendo) {
+            play.Correr();
+        } sino {
+            play.Idle();
+        }
+    }
+}
+
+/**
+ * Salto con efectos visuales y de sonido
+ */
+funcion ejecutarSalto() {
+    bufferSalto = 0;
+    tiempoCoyote = 0;
+
+    // applyImpulse usa el sistema de físicas 2D del motor
+    fisica.applyImpulse(nuevo Vector2(0, -fuerzaSalto));
+
+    // 'reproducir' es un proxy que busca en AudioSource y Animator
+    reproducir.Jump();
+
+    si (efectoSalto) {
+        instanciar(efectoSalto, posicion);
+    }
+}
+
+/**
+ * Dash asíncrono usando corrutinas ('esperar')
+ */
+async funcion realizarDash() {
+    estaEnDash = verdadero;
+    energiaActual = energiaActual - 30;
+
+    variable grav = fisica.gravityScale;
+    fisica.gravityScale = 0; // Desactivar gravedad temporalmente
+    fisica.velocity = nuevo Vector2(ultimaDirX * 40, 0);
+
+    reproducir.Dash();
+    si (efectoDash) instanciar(efectoDash, posicion);
+
+    // Pausa la ejecución sin bloquear el motor (Corrutina)
+    esperar(0.2);
+
+    fisica.gravityScale = grav;
+    estaEnDash = falso;
+}
+
+/**
+ * Regeneración de energía cada segundo (Timer simplificado)
+ */
+cada(1) {
+    si (!estaEnDash && energiaActual < energiaMaxima) {
+        energiaActual = limitar(energiaActual + 10, 0, energiaMaxima);
+    }
+}
+
+/**
+ * Interacción con el ratón
+ */
+publico alHacerClick() {
+    imprimir("Heroe clickeado. Energia: " + redondear(energiaActual));
+}
+
+/**
+ * Gestión de colisiones tipo Sensor (Trigger)
+ */
+publico alEntrarEnTrigger(otro) {
+    si (otro.tieneTag("PowerUp")) {
+        energiaActual = energiaMaxima;
+        imprimir("¡Energía al máximo!");
+        destruir(otro);
+    }
+}
