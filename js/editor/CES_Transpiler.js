@@ -10,27 +10,58 @@ const scriptMetadataMap = new Map(); // Nueva estructura para metadatos
 const typeMap = {
     'number': 'number',
     'numero': 'number',
+    'número': 'number',
     'dnumber': 'number',
     'dnumero': 'number',
+    'númeroPT': 'number',
+    'число': 'number',
+    '数字': 'number',
     'text': 'string',
     'texto': 'string',
+    'текст': 'string',
+    '文本': 'string',
     'boolean': 'boolean',
     'booleano': 'boolean',
+    'булево': 'boolean',
+    '布尔值': 'boolean',
     'Materia': 'Materia',
     'materia': 'Materia',
+    'matéria': 'Materia',
+    'материя': 'Materia',
+    '物质': 'Materia',
     'mtr': 'Materia',
     'Sprite': 'Sprite',
+    'спрайт': 'Sprite',
+    '精灵': 'Sprite',
     'Audio': 'Audio',
+    'áudio': 'Audio',
+    'аудио': 'Audio',
+    '音频': 'Audio',
     'Prefab': 'Prefab',
     'prefab': 'Prefab',
+    'префаб': 'Prefab',
+    '预制件': 'Prefab',
     'Scene': 'Scene',
     'escena': 'Scene',
+    'cena': 'Scene',
+    'сцена': 'Scene',
+    '场景': 'Scene',
     'scene': 'Scene',
     'Vector2': 'Vector2',
+    'вектор2': 'Vector2',
+    '向量2': 'Vector2',
     'Color': 'Color',
+    'cor': 'Color',
+    'цвет': 'Color',
+    '颜色': 'Color',
     'Tag': 'Tag',
+    'тег': 'Tag',
+    '标签': 'Tag',
     'tag': 'Tag',
     'Layer': 'Layer',
+    'camada': 'Layer',
+    'слой': 'Layer',
+    '图层': 'Layer',
     'layer': 'Layer',
     'audio': 'Audio',
     'sonido': 'Audio',
@@ -48,9 +79,16 @@ const typeMap = {
     'evento': 'Action',
     // Engine Components
     'Transform': 'Transform',
+    'posicion': 'Transform',
+    'posição': 'Transform',
+    'позиция': 'Transform',
+    '位置': 'Transform',
     'UITransform': 'UITransform',
     'SpriteRenderer': 'SpriteRenderer',
     'Rigidbody2D': 'Rigidbody2D',
+    'corpoRígido2D': 'Rigidbody2D',
+    'твердоеТело2D': 'Rigidbody2D',
+    '刚体2D': 'Rigidbody2D',
     'BoxCollider2D': 'BoxCollider2D',
     'CapsuleCollider2D': 'CapsuleCollider2D',
     'Animator': 'Animator',
@@ -99,20 +137,22 @@ const typeMap = {
     'helicopterController': 'HelicopterController',
     'controladorDeHelicoptero': 'HelicopterController',
     'variable': 'any',
-    'any': 'any'
+    'any': 'any',
+    'любой': 'any',
+    '任何': 'any'
 };
 
 const componentShortcuts = [
-    'transform', 'transformacion', 'posicion',
-    'rigidbody2D', 'fisica',
+    'transform', 'transformacion', 'posicion', 'posição', 'позиция', '位置',
+    'rigidbody2D', 'fisica', 'física', 'физика', '物理',
     'animatorController', 'controladorAnimacion',
-    'spriteRenderer', 'renderizadorDeSprite',
-    'audioSource', 'fuenteDeAudio',
+    'spriteRenderer', 'renderizadorDeSprite', 'renderizadorDeSpritePT', 'рендерСпрайта', '精灵渲染器',
+    'audioSource', 'fuenteDeAudio', 'fonteDeÁudio', 'источникЗвука', '音频源',
     'boxCollider2D', 'colisionadorCaja2D',
     'capsuleCollider2D', 'colisionadorCapsula2D',
     'colisionador2d',
-    'camera', 'camara',
-    'animator', 'animador',
+    'camera', 'camara', 'câmera', 'камера', '摄像机',
+    'animator', 'animador', 'аниматор', '动画器',
     'pointLight2D', 'luzPuntual2D',
     'spotLight2D', 'luzFocal2D',
     'freeformLight2D', 'luzFormaLibre2D',
@@ -150,12 +190,12 @@ const componentShortcuts = [
     'gridLayoutGroup', 'autoDisposicionRejilla',
     'contentSizeFitter', 'ajustadorDeTamanoDeContenido',
     'videoPlayer', 'reproductorDeVideo', 'video', 'pelicula',
-    'materia', 'mtr', 'nombre', 'tag', 'scene', 'escena', 'input', 'entrada', 'motor', 'engine',
+    'materia', 'mtr', 'matéria', 'материя', '物质', 'nombre', 'nome', 'имя', '名称', 'tag', 'тег', '标签', 'scene', 'escena', 'cena', 'сцена', '场景', 'input', 'entrada', 'ввод', '输入', 'motor', 'engine', 'двигатель', '引擎',
     'potenciaActual', 'giroActual', 'establecerPotencia', 'establecerGiro',
     'ui', 'texto', 'boton', 'imagen', 'lienzo',
     'obtenerScript', 'getScript', 'destruir', 'destroy', 'instanciar', 'instantiate',
     'crear', 'create', 'estaActivado', 'activo',
-    'reproducir', 'play', 'voltearH', 'voltearV', 'flipX', 'flipY',
+    'reproducir', 'play', 'reproduzir', 'воспроизвести', '播放', 'voltearH', 'voltearV', 'flipX', 'flipY', 'inverterH', 'inverterV', 'отразитьГ', 'отразитьВ', '水平翻转', '垂直翻转',
     'tieneTag', 'hasTag', 'lanzarRayo', 'raycast', 'danar', 'damage', 'curar', 'heal',
     'ejecutarAccion', 'executeAction',
     'alEntrarEnColision', 'getCollisionEnter', 'alPermanecerEnColision', 'getCollisionStay', 'alSalirDeColision', 'getCollisionExit',
@@ -304,31 +344,71 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
     // 2.a: Replace console shortcuts
     body = body.replace(/(?<![.\w])(imprimir|log)\s*\(/g, 'this._userLog(');
 
-    // 2.b: Replace Spanish keywords
-    body = body.replace(/(?<![.\w])si\s*\(/g, 'if (');
-    body = body.replace(/(?<![.\w])sino\b/g, 'else');
-    body = body.replace(/(?<![.\w])mientras\s*\(/g, 'while (');
-    body = body.replace(/(?<![.\w])para\s*\(/g, 'for (');
-    body = body.replace(/(?<![.\w])retornar\b/g, 'return');
-    body = body.replace(/(?<![.\w])nuevo\b/g, 'new');
-    body = body.replace(/(?<![.\w])funcion\b/g, 'function');
-    body = body.replace(/(?<![.\w])verdadero\b/g, 'true');
-    body = body.replace(/(?<![.\w])falso\b/g, 'false');
-    body = body.replace(/(?<![.\w])variable\b/g, 'let');
-    body = body.replace(/(?<![.\w])constante\b/g, 'const');
+    // 2.b: Replace multilingual keywords
+    // We use Unicode-aware word boundaries: (?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5]) and (?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])
+
+    // Spanish
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])si\s*\(/g, 'if (');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])sino(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'else');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])mientras\s*\(/g, 'while (');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])para(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])\s*\(/g, 'for (');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])retornar(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'return');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])nuevo(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'new');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])funcion(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'function');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])verdadero(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'true');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])falso(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'false');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])variable(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'let');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])constante(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'const');
+
+    // Portuguese
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])se\s*\(/g, 'if (');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])senão(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'else');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])enquanto\s*\(/g, 'while (');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])para(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])\s*\(/g, 'for (');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])função(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'function');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])verdadeiro(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'true');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])falso(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'false');
+
+    // Russian
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])если\s*\(/g, 'if (');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])иначе(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'else');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])пока\s*\(/g, 'while (');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])для(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])\s*\(/g, 'for (');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])вернуть(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'return');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])новый(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'new');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])функция(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'function');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])истина(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'true');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])ложь(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'false');
+
+    // Chinese
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])如果\s*\(/g, 'if (');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])否则(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'else');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])当\s*\(/g, 'while (');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])对于(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])\s*\(/g, 'for (');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])返回(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'return');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])新建(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'new');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])函数(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'function');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])真(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'true');
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])假(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])/g, 'false');
 
     // 2.c: Coroutines support
-    body = body.replace(/(?<![.\w])esperar\s*\(/g, 'await this.esperar(');
+    body = body.replace(/(?<![.\w])(esperar|aguardar|ждать|等待)\s*\(/g, 'await this.esperar(');
 
     // 2.d: Simplified Prefab Syntax (crear miprefab -> await this.crear(this.miprefab))
     // We handle this before auto-prefixing shortcuts to catch the name correctly
-    body = body.replace(/(?<!\w)(this\.)?(crear|create)\s+([a-zA-Z_]\w*)(?!\s*\()/g, (match, p1, p2, p3) => {
-        return `await this.${p2}(this.${p3})`;
+    body = body.replace(/(?<![\w\u00C0-\u017Fа-яА-Я一-龥])(this\.)?(crear|create|criar|создать|创建)\s+([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)(?!\s*\()/g, (match, p1, p2, p3) => {
+        // Map native command to canonical create/crear
+        let cmd = p2;
+        if (cmd === 'criar') cmd = 'crear';
+        if (cmd === 'создать') cmd = 'create';
+        if (cmd === '创建') cmd = 'create';
+        return `await this.${cmd}(this.${p3})`;
     });
 
     // 2.e: Auto-prefix component shortcuts
     componentShortcuts.forEach(shortcut => {
-        const regex = new RegExp(`(?<![.\\w])\\b${shortcut}\\b`, 'g');
+        // Updated regex to support Unicode word boundaries for PT, RU and ZH
+        const regex = new RegExp(`(?<![.\\w\\u00C0-\u017F\\u0400-\\u04FF\\u4E00-\\u9FA5])${shortcut}(?![\\w\\u00C0-\u017F\\u0400-\\u04FF\\u4E00-\\u9FA5])`, 'g');
         body = body.replace(regex, `this.${shortcut}`);
     });
 
@@ -456,9 +536,9 @@ export function transpile(code, scriptName) {
         }
     }
 
-    // 1.a: Parse and extract methods (bilingual)
+    // 1.a: Parse and extract methods (multilingual)
     // Scope (public/private) is now optional, defaults to public
-    const methodHeaderRegex = /^\s*(?:(public|publico)\s+)?(?:async\s+)?(?:(function|funcion)\s+)?(?!(?:si|sino|mientras|para|cada|go|ve)\b)(\w+)\s*\(([^)]*)\)\s*{/gm;
+    const methodHeaderRegex = /^\s*(?:(public|publico|público|открытый|公开)\s+)?(?:async\s+)?(?:(function|funcion|função|функция|函数)\s+)?(?!(?:si|sino|se|senão|mientras|enquanto|para|cada|go|ve|если|иначе|пока|для|如果|否则|当|对于)(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5]))([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)\s*\(([^)]*)\)\s*{/gm;
     const methodMatches = []; // Store matches to process later
     let tempCode = unprocessedCode;
     let methodMatch;
@@ -523,6 +603,7 @@ export function transpile(code, scriptName) {
         // In this engine, public methods don't necessarily need the 'funcion' keyword
         const internalMethods = [
             'start', 'update', 'iniciar', 'alEmpezar', 'actualizar', 'alActualizar',
+            'começar', 'atualizar', 'начать', 'обновить', '开始', '更新',
             'fixedUpdate', 'actualizarFijo', 'onEnable', 'onDisable', 'onDestroy',
             'alEntrarEnColision', 'OnCollisionEnter', 'alPermanecerEnColision', 'OnCollisionStay', 'alSalirDeColision', 'OnCollisionExit',
             'alEntrarEnTrigger', 'OnTriggerEnter', 'alPermanecerEnTrigger', 'OnTriggerStay', 'alSalirDeTrigger', 'OnTriggerExit',
@@ -555,9 +636,9 @@ export function transpile(code, scriptName) {
     unprocessedCode = unprocessedCode.replace(goRegex, '');
 
 
-    // 1.c: Parse and remove public and private variables (fully bilingual with new syntax)
+    // 1.c: Parse and remove public and private variables (multilingual with new syntax)
     // Scope is optional, defaults to public
-    const varRegex = /^\s*(?:(public|private|publico|privado)\s+)?([a-zA-Z_]\w*)\s+([a-zA-Z_]\w*)\s*(?:=\s*(.+))?;/gm;
+    const varRegex = /^\s*(?:(public|private|publico|privado|público|открытый|закрытый|公开|私有)\s+)?(?!(?:si|sino|se|senão|mientras|enquanto|para|cada|go|ve|если|иначе|пока|для|如果|否则|当|对于|crear|create|criar|создать|创建)(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5]))([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)\s+([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)\s*(?:=\s*(.+))?;/gm;
     let varMatch;
     while ((varMatch = varRegex.exec(unprocessedCode)) !== null) {
         const scopeMatch = varMatch[1] || 'public';
@@ -604,9 +685,9 @@ export function transpile(code, scriptName) {
 
         body = transpileBlock(body, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager, customFunctions);
 
-        // 2.g: Map Spanish lifecycle methods to their English counterparts
-        if (name === 'iniciar' || name === 'alEmpezar') name = 'start';
-        if (name === 'actualizar' || name === 'alActualizar') name = 'update';
+        // 2.g: Map multilingual lifecycle methods to their English counterparts
+        if (name === 'iniciar' || name === 'alEmpezar' || name === 'começar' || name === 'начать' || name === '开始') name = 'start';
+        if (name === 'actualizar' || name === 'alActualizar' || name === 'atualizar' || name === 'обновить' || name === '更新') name = 'update';
 
         if (name === 'start') {
             startMethod = body + '\n' + (rootCadaCode || '');
