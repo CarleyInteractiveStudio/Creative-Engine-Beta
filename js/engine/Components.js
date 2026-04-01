@@ -1693,6 +1693,11 @@ export class UIImage extends Leyes {
         this._lastLoadedSource = '';
     }
 
+    async setSourcePath(path, projectsDirHandle) {
+        this.source = path;
+        await this.loadSprite(projectsDirHandle);
+    }
+
     update(deltaTime) {
         // Auto-load if source is set but not yet loaded
         if (this.source && this.source !== this._lastLoadedSource && !this.isLoading && !this.isError) {
@@ -1844,8 +1849,9 @@ export class SpriteLight2D extends Leyes {
         this.filtroOpacidad = 1.0;
     }
 
-    setSourcePath(path) {
+    async setSourcePath(path, projectsDirHandle) {
         this.source = path;
+        await this.loadSprite(projectsDirHandle);
     }
 
     async loadSprite(projectsDirHandle) {
@@ -1894,6 +1900,11 @@ export class AudioSource extends Leyes {
         if (this.playOnAwake) {
             this.play();
         }
+    }
+
+    async setSourcePath(path) {
+        this.source = path;
+        await this.load();
     }
 
     update(deltaTime) {
@@ -2036,6 +2047,7 @@ export class VideoPlayer extends Leyes {
 
         this._video = null;
         this._isLoaded = false;
+        this.isLoading = false;
         this._lastLoadedSource = '';
     }
 
@@ -2045,9 +2057,14 @@ export class VideoPlayer extends Leyes {
         }
     }
 
+    async setSourcePath(path) {
+        this.source = path;
+        await this.load();
+    }
+
     update(deltaTime) {
         // Auto-load if source is set but not yet loaded
-        if (this.source && this.source !== this._lastLoadedSource && !this._video) {
+        if (this.source && this.source !== this._lastLoadedSource && !this._video && !this.isLoading) {
             this.load();
         }
 
@@ -2071,11 +2088,15 @@ export class VideoPlayer extends Leyes {
     }
 
     async load() {
-        if (!this.source) return;
+        if (!this.source || this.isLoading) return;
 
         try {
+            this.isLoading = true;
             const url = await getURLForAssetPath(this.source, window.projectsDirHandle);
-            if (!url) return;
+            if (!url) {
+                this.isLoading = false;
+                return;
+            }
 
             if (!this._video) {
                 this._video = document.createElement('video');
@@ -2088,14 +2109,33 @@ export class VideoPlayer extends Leyes {
                 this._video.src = url;
                 this._lastLoadedSource = this.source;
 
-                await new Promise((resolve) => {
-                    this._video.oncanplay = resolve;
+                await new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        this._video.oncanplay = null;
+                        this._video.onerror = null;
+                        reject(new Error("Timeout loading video"));
+                    }, 10000);
+
+                    this._video.oncanplay = () => {
+                        clearTimeout(timeout);
+                        this._video.oncanplay = null;
+                        this._video.onerror = null;
+                        resolve();
+                    };
+                    this._video.onerror = (e) => {
+                        clearTimeout(timeout);
+                        this._video.oncanplay = null;
+                        this._video.onerror = null;
+                        reject(e);
+                    };
                     this._video.load();
                 });
                 this._isLoaded = true;
             }
         } catch (e) {
             console.warn(`[VideoPlayer] Error al cargar video: ${this.source}.`, e);
+        } finally {
+            this.isLoading = false;
         }
     }
 
@@ -3156,7 +3196,7 @@ export class Tilemap extends Leyes {
         this.activeLayerIndex = 0;
     }
 
-    addLayer(x, y) {
+    addLayer(x = 0, y = 0) {
         this.layers.push({
             position: { x, y },
             tileData: new Map()

@@ -449,6 +449,7 @@ export async function updateAssetBrowser() {
     const projectHandle = await currentDirHandle.getDirectoryHandle(projectName);
     const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
 
+    // Default to 'Assets' root if no handle is set or if the current handle is no longer valid
     if (!currentDirectoryHandle.handle) {
          currentDirectoryHandle = { handle: assetsHandle, path: 'Assets' };
     }
@@ -593,6 +594,8 @@ export async function updateAssetBrowser() {
             const imgIcon = document.createElement('img');
             imgIcon.className = 'icon-preview';
 
+            const lowerName = entry.name.toLowerCase();
+
             if (entry.kind === 'directory') {
                 iconContainer.innerHTML = `<img src="icons/folder.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                 item.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; item.classList.add('drag-over'); });
@@ -615,7 +618,7 @@ export async function updateAssetBrowser() {
                         console.warn("[AssetBrowser] Error al soltar sobre carpeta:", err);
                     }
                 });
-            } else if (entry.name.endsWith('.png') || entry.name.endsWith('.jpg') || entry.name.endsWith('.jpeg')) {
+            } else if (lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
                 const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
                 getURLForAssetPath(fullPath, currentDirHandle).then(url => {
                     if (url) {
@@ -625,21 +628,23 @@ export async function updateAssetBrowser() {
                         iconContainer.innerHTML = `<img src="icons/image.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                     }
                 });
-            } else if (entry.name.endsWith('.mp3') || entry.name.endsWith('.wav')) {
+            } else if (lowerName.endsWith('.mp3') || lowerName.endsWith('.wav')) {
                 iconContainer.innerHTML = `<img src="icons/music.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
-            } else if (entry.name.endsWith('.ttf') || entry.name.endsWith('.otf') || entry.name.endsWith('.woff') || entry.name.endsWith('.woff2')) {
+            } else if (lowerName.endsWith('.mp4') || lowerName.endsWith('.webm') || lowerName.endsWith('.ogv')) {
+                iconContainer.innerHTML = `<img src="icons/video.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+            } else if (lowerName.endsWith('.ttf') || lowerName.endsWith('.otf') || lowerName.endsWith('.woff') || lowerName.endsWith('.woff2')) {
                 iconContainer.innerHTML = `<img src="icons/type.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
-            } else if (entry.name.endsWith('.ces')) {
+            } else if (lowerName.endsWith('.ces')) {
                 iconContainer.innerHTML = `<img src="image/Script.png" style="width: 32px; height: 32px; object-fit: contain;">`;
-            } else if (entry.name.endsWith('.chc')) {
+            } else if (lowerName.endsWith('.chc')) {
                 iconContainer.innerHTML = `<img src="icons/sparkles.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
-            } else if (entry.name.endsWith('.cea')) {
+            } else if (lowerName.endsWith('.cea')) {
                 iconContainer.innerHTML = `<img src="image/cea.png" style="width: 32px; height: 32px; object-fit: contain;">`;
-            } else if (entry.name.endsWith('.ceanim')) {
+            } else if (lowerName.endsWith('.ceanim')) {
                 iconContainer.innerHTML = `<img src="icons/route.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
-            } else if (entry.name.endsWith('.cepalette')) {
+            } else if (lowerName.endsWith('.cepalette')) {
                 iconContainer.innerHTML = `<img src="icons/grid.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
-            } else if (entry.name.endsWith('.ceSprite')) {
+            } else if (lowerName.endsWith('.cesprite')) {
                 const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
                 getURLForAssetPath(fullPath, currentDirHandle).then(url => {
                     if (url) {
@@ -649,15 +654,15 @@ export async function updateAssetBrowser() {
                         iconContainer.innerHTML = `<img src="icons/image.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                     }
                 });
-            } else if (entry.name.endsWith('.cep')) {
+            } else if (lowerName.endsWith('.cep')) {
                 iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
-            } else if (entry.name.endsWith('.cmel')) {
+            } else if (lowerName.endsWith('.cmel')) {
                 iconContainer.innerHTML = `<img src="icons/image.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
-            } else if (entry.name.endsWith('.ceScene')) {
+            } else if (lowerName.endsWith('.cescene')) {
                 iconContainer.innerHTML = `<img src="icons/map.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
-            } else if (entry.name.endsWith('.ceprefab')) {
+            } else if (lowerName.endsWith('.ceprefab')) {
                 iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
-            } else if (entry.name.endsWith('.celib')) {
+            } else if (lowerName.endsWith('.celib')) {
                 iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                 // Asynchronously read the library file to get the custom icon
                 (async () => {
@@ -935,7 +940,14 @@ async function handleExternalFileDrop(e) {
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         e.preventDefault();
         e.stopPropagation();
-        console.log(`Importando ${e.dataTransfer.files.length} archivo(s)...`);
+
+        if (!currentDirectoryHandle.handle) {
+            console.error("[AssetBrowser] No directory handle available for import.");
+            showNotification(L.get('ERROR'), L.get('SELECCIONAR_CARPETA_IMPORTAR', 'Selecciona una carpeta para importar.'));
+            return;
+        }
+
+        console.log(`Importando ${e.dataTransfer.files.length} archivo(s) a ${currentDirectoryHandle.path}...`);
         let filesImported = 0;
         let librariesImported = 0;
 

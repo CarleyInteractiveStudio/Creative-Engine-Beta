@@ -291,13 +291,13 @@ async function handleInspectorDrop(e) {
             const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
             if (targetComponent instanceof Components.CreativeScript || targetComponent instanceof Components.CustomComponent) {
                 targetComponent.publicVars[propName] = valueToAssign;
-            } else if (targetComponent instanceof Components.SpriteRenderer && propName === 'source') {
-                const hadSource = !!(targetComponent.source || targetComponent.spriteAssetPath);
+            } else if ((targetComponent instanceof Components.SpriteRenderer || targetComponent instanceof Components.UIImage || targetComponent instanceof Components.SpriteLight2D || targetComponent instanceof Components.AudioSource || targetComponent instanceof Components.VideoPlayer) && propName === 'source') {
+                const hadSource = !!(targetComponent.source || (targetComponent.spriteAssetPath && targetComponent.spriteAssetPath !== ''));
                 await targetComponent.setSourcePath(valueToAssign, currentDirHandle);
 
                 // If this is a new assignment or replacing a blank one, reset scale to 1:1
                 // to avoid confusion with the 50x50 placeholder size
-                if (!hadSource) {
+                if (!hadSource && targetComponent instanceof Components.SpriteRenderer) {
                     const transform = selectedMateria.getComponent(Components.Transform);
                     if (transform) {
                         transform.localScale = { x: 1, y: 1 };
@@ -725,13 +725,6 @@ function handleInspectorClick(e) {
     }
 
     // --- Tilemap Layer Management ---
-    if (e.target.matches('[data-action="add-layer"]')) {
-        const tilemap = selectedMateria.getComponent(Components.Tilemap);
-        if (tilemap) {
-            tilemap.addLayer();
-            updateInspector();
-        }
-    }
 
     // --- LineCollider2D Management ---
     if (e.target.matches('[data-action="line-add-point"]')) {
@@ -788,9 +781,10 @@ function handleInspectorClick(e) {
         }
     }
 
-    if (e.target.matches('[data-action="select-layer"]')) {
+    if (e.target.closest('[data-action="select-layer"]')) {
+        const item = e.target.closest('[data-action="select-layer"]');
         const tilemap = selectedMateria.getComponent(Components.Tilemap);
-        const index = parseInt(e.target.dataset.index, 10);
+        const index = parseInt(item.dataset.index, 10);
         if (tilemap && !isNaN(index)) {
             tilemap.activeLayerIndex = index;
             updateInspector();
@@ -858,9 +852,10 @@ function handleInspectorClick(e) {
         }
     }
 
-    if (e.target.matches('[data-action="select-layer"]')) {
+    if (e.target.closest('[data-action="select-layer"]')) {
+        const item = e.target.closest('[data-action="select-layer"]');
         const tilemap = selectedMateria.getComponent(Components.Tilemap);
-        const index = parseInt(e.target.dataset.index, 10);
+        const index = parseInt(item.dataset.index, 10);
         if (tilemap && !isNaN(index)) {
             tilemap.activeLayerIndex = index;
             updateInspector();
@@ -1794,10 +1789,12 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             </div>`;
         } else if (ley instanceof Components.UIImage) {
-            const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
             componentHTML = `${renderComponentHeader("UI Image", icon, index)}
             <div class="component-content">
-                <div class="prop-row-multi"><label>Source</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="UIImage">${getIconHTML('target')}</button></div></div>
+                <div class="inspector-row">
+                    <label>Source</label>
+                    ${renderPropertyDropper('Sprite', ley.source, 'data-component="UIImage" data-prop="source"')}
+                </div>
                 <div class="prop-row-multi">
                     <label>Color</label>
                     <div class="prop-inputs">
@@ -2357,7 +2354,17 @@ async function updateInspectorForMateria(selectedMateria) {
                             <div class="layer-list">
                                 ${ley.layers.map((layer, index) => `
                                     <div class="layer-item ${index === ley.activeLayerIndex ? 'active' : ''}" data-action="select-layer" data-index="${index}">
-                                        <span>Capa ${index} (X: ${layer.position ? layer.position.x : 'N/A'}, Y: ${layer.position ? layer.position.y : 'N/A'})</span>
+                                        <div class="layer-item-main">
+                                            <span>Capa ${index}</span>
+                                            ${index === ley.activeLayerIndex ? `
+                                                <div class="layer-pos-inputs">
+                                                    <input type="number" class="prop-input small" step="1" data-component="Tilemap" data-prop="layers.${index}.position.x" value="${layer.position.x}" title="Layer Offset X">
+                                                    <input type="number" class="prop-input small" step="1" data-component="Tilemap" data-prop="layers.${index}.position.y" value="${layer.position.y}" title="Layer Offset Y">
+                                                </div>
+                                            ` : `
+                                                <span class="layer-info">(X: ${layer.position.x}, Y: ${layer.position.y})</span>
+                                            `}
+                                        </div>
                                     </div>
                                 `).join('')}
                             </div>
@@ -2476,18 +2483,13 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             </div>`;
         } else if (ley instanceof Components.SpriteLight2D) {
-            console.log('  - Is SpriteLight2D component.');
-            const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader("Sprite Light 2D", icon, index)}
                 <div class="component-content">
-                     <div class="prop-row-multi">
+                    <div class="inspector-row">
                         <label>Sprite</label>
-                        <div class="sprite-dropper">
-                            <div class="sprite-preview">${previewImg}</div>
-                            <button class="sprite-select-btn" data-component="SpriteLight2D">${getIconHTML('target')}</button>
-                        </div>
+                        ${renderPropertyDropper('Sprite', ley.source, 'data-component="SpriteLight2D" data-prop="source"')}
                     </div>
                     <div class="prop-row-multi">
                         <label>Color</label>

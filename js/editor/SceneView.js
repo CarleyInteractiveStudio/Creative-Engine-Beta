@@ -171,6 +171,7 @@ let InputManager;
 let getSelectedMateria;
 let selectMateria;
 let updateInspector;
+let updateAssetBrowser;
 let Components;
 let updateScene;
 let getActiveView;
@@ -704,6 +705,7 @@ export function initialize(dependencies) {
     getSelectedMateria = dependencies.getSelectedMateria;
     selectMateria = dependencies.selectMateria;
     updateInspector = dependencies.updateInspectorCallback;
+    updateAssetBrowser = dependencies.updateAssetBrowserCallback;
     Components = dependencies.Components;
     updateScene = dependencies.updateScene;
     getActiveView = dependencies.getActiveView;
@@ -981,6 +983,26 @@ export function initialize(dependencies) {
         e.preventDefault();
         dom.sceneCanvas.classList.remove('drag-over-scene');
 
+        // Handle external files from OS
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const currentDirHandle = getCurrentDirectoryHandle();
+            if (currentDirHandle) {
+                for (const file of e.dataTransfer.files) {
+                    try {
+                        const targetFileHandle = await currentDirHandle.getFileHandle(file.name, { create: true });
+                        const writable = await targetFileHandle.createWritable();
+                        await writable.write(file);
+                        await writable.close();
+                    } catch (err) {
+                        console.error("Error al importar archivo desde OS:", err);
+                    }
+                }
+                if (updateAssetBrowser) await updateAssetBrowser();
+                console.log("Archivos importados con éxito.");
+            }
+            return;
+        }
+
         try {
             const data = JSON.parse(e.dataTransfer.getData('text/plain'));
 
@@ -988,9 +1010,11 @@ export function initialize(dependencies) {
             const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
             const worldPos = screenToWorld(canvasPos.x, canvasPos.y);
 
+            let newMateria = null;
+
             if (data.type === 'sprite') {
                 // Create a new Materia at the drop position
-                const newMateria = new Materia(data.spriteName);
+                newMateria = new Materia(data.spriteName);
                 newMateria.addComponent(new Components.Transform(newMateria));
                 const transform = newMateria.getComponent(Components.Transform);
                 transform.x = worldPos.x;
@@ -1003,16 +1027,59 @@ export function initialize(dependencies) {
                 newMateria.addComponent(spriteRenderer);
 
                 SceneManager.currentScene.addMateria(newMateria);
+            } else if (data.type === 'Asset' && data.name.endsWith('.ceprefab')) {
+                newMateria = await SceneManager.instantiatePrefabFromPath(data.path, worldPos.x, worldPos.y);
+            } else if (data.type === 'Asset' && (data.name.endsWith('.mp4') || data.name.endsWith('.webm') || data.name.endsWith('.ogv'))) {
+                newMateria = new Materia(data.name);
+                newMateria.addComponent(new Components.Transform(newMateria));
+                const transform = newMateria.getComponent(Components.Transform);
+                transform.x = worldPos.x;
+                transform.y = worldPos.y;
+
+                const videoPlayer = new Components.VideoPlayer(newMateria);
+                await videoPlayer.setSourcePath(data.path);
+                newMateria.addComponent(videoPlayer);
+
+                SceneManager.currentScene.addMateria(newMateria);
+            }
+
+            if (newMateria) {
+                // Si el juego está en marcha, inicializar scripts inmediatamente
+                if (window.isGameRunning) {
+                    console.log(`[SceneView] Inicializando scripts para nuevo objeto '${newMateria.name}' en tiempo de ejecución.`);
+                    const initScriptsRecursive = async (mtr) => {
+                        for (const ley of mtr.leyes) {
+                            if (ley instanceof Components.CreativeScript) {
+                                await ley.initializeInstance();
+                                if (ley.isInitialized) {
+                                    try { ley.start(); } catch(e) {}
+                                    try { ley.onEnable(); } catch(e) {}
+                                }
+                            } else if (ley instanceof Components.AnimatorController) {
+                                await ley.initialize(window.projectsDirHandle);
+                            } else if (ley instanceof Components.Animator) {
+                                if (!mtr.getComponent(Components.AnimatorController)) {
+                                    await ley.loadAnimationClip(window.projectsDirHandle);
+                                    if (ley.playOnAwake) ley.play();
+                                }
+                            } else if (ley instanceof Components.Terreno2D) {
+                                await ley.loadTextures(window.projectsDirHandle);
+                            }
+
+                            if (!(ley instanceof Components.CreativeScript) && typeof ley.start === 'function') {
+                                try { await ley.start(); } catch(e) {}
+                            }
+                        }
+                        for (const child of mtr.children) {
+                            await initScriptsRecursive(child);
+                        }
+                    };
+                    await initScriptsRecursive(newMateria);
+                }
 
                 // Refresh UI
                 selectMateria(newMateria);
                 updateInspector();
-            } else if (data.type === 'Asset' && data.name.endsWith('.ceprefab')) {
-                const newMateria = await SceneManager.instantiatePrefabFromPath(data.path, worldPos.x, worldPos.y);
-                if (newMateria) {
-                    selectMateria(newMateria);
-                    updateInspector();
-                }
             }
         } catch (error) {
             console.error("Error al soltar el sprite:", error);
