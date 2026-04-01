@@ -112,7 +112,7 @@ export class PhysicsSystem {
      * @param {string|string[]|number[]|object} [filter] - Opcional, filtrar por tag o excluir IDs/Nodos.
      */
     circleCast(origin, direction, radius, maxDistance = Infinity, filter = null) {
-        if (!direction || (direction.x === 0 && direction.y === 0)) return null;
+        if (!origin || !direction || (direction.x === 0 && direction.y === 0)) return null;
 
         const perp = { x: -direction.y, y: direction.x };
         let closestHit = null;
@@ -1675,7 +1675,7 @@ export class PhysicsSystem {
      * @returns {object|null} Información del impacto o null.
      */
     raycast(origin, direction, maxDistance = Infinity, filter = null) {
-        if (!direction || (direction.x === 0 && direction.y === 0)) return null;
+        if (!origin || !direction || (direction.x === 0 && direction.y === 0)) return null;
         let closestHit = null;
         let minDistance = maxDistance;
 

@@ -602,6 +602,33 @@ function handleInspectorClick(e) {
                  targetComponent = selectedMateria.getComponent(Components[componentName]);
             }
 
+            // Handle special cases without explicit componentName in dropper
+            if (!targetComponent && propName) {
+                if (propName.startsWith('onClick')) {
+                    const button = selectedMateria.getComponent(Components.Button);
+                    if (button) {
+                        const parts = propName.split('.');
+                        const index = parseInt(parts[1], 10);
+                        if (!isNaN(index) && button.onClick[index]) {
+                            button.onClick[index].targetMateriaId = null;
+                            updateInspector();
+                            return;
+                        }
+                    }
+                }
+                // Check if it's a terrain layer
+                if (dropper.dataset.action === 'terrain-layer-texture') {
+                    const lIdx = parseInt(dropper.dataset.layerIndex, 10);
+                    const terreno = selectedMateria.getComponent(Components.Terreno2D);
+                    if (terreno && !isNaN(lIdx)) {
+                        terreno.layers[lIdx].texturePath = '';
+                        updateInspector();
+                        if (updateSceneCallback) updateSceneCallback();
+                        return;
+                    }
+                }
+            }
+
             if (targetComponent) {
                 if (targetComponent instanceof Components.CreativeScript || targetComponent instanceof Components.CustomComponent) {
                     targetComponent.publicVars[propName] = null;
@@ -1246,10 +1273,11 @@ function renderPropertyDropper(type, currentValue, commonAttrs) {
     const isEmpty = value === null || value === undefined || value === '';
 
     if (!isEmpty) {
-        if (typeof value === 'number') {
-            // Assume Scene Object ID
-            const materia = window.SceneManager.currentScene.findMateriaById(value);
-            displayName = materia ? materia.name : `Objeto #${value}`;
+        if (typeof value === 'number' || (typeof value === 'object' && value.id !== undefined)) {
+            // Assume Scene Object ID or Reference
+            const id = typeof value === 'number' ? value : value.id;
+            const materia = window.SceneManager.currentScene.findMateriaById(id);
+            displayName = materia ? materia.name : `Objeto #${id}`;
             // If type is a specific component, use its icon, otherwise use generic Materia icon
             icon = componentIcons[type] || componentIcons[type.charAt(0).toUpperCase() + type.slice(1)] || 'move';
 
@@ -1303,7 +1331,7 @@ function renderPropertyDropper(type, currentValue, commonAttrs) {
                 <span class="dropper-icon">${iconHTML}</span>
                 <span class="dropper-name" title="${currentValue || ''}">${displayName}</span>
             </div>
-            ${!isEmpty ? `<button class="dropper-clear-btn" title="${L.get('LIMPIAR', 'Limpiar')}">&times;</button>` : ''}
+            <button class="dropper-clear-btn" title="${L.get('LIMPIAR', 'Limpiar')}" style="${isEmpty ? 'display:none;' : ''}">&times;</button>
         </div>
     `;
 }
@@ -2722,10 +2750,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="component-content">
                     <div class="inspector-row">
                         <label>${L.get('PROJECTILE_PREFAB', 'Prefab Proyectil')}</label>
-                        <div class="file-picker">
-                            <input type="text" class="prop-input" data-component="ProjectileLauncher" data-prop="projectilePrefab" value="${ley.projectilePrefab}" placeholder="${L.get('HINT_ARRIASTRA_PREFAB', 'Arrastra un .ceprefab aquí')}">
-                            <button class="panel-tool-btn" onclick="window.openAssetSelector((h, p) => { const input = this.previousElementSibling; input.value = p; input.dispatchEvent(new Event('change', { bubbles: true })); }, '.ceprefab')">...</button>
-                        </div>
+                        ${renderPropertyDropper('Prefab', ley.projectilePrefab, 'data-component="ProjectileLauncher" data-prop="projectilePrefab"')}
                     </div>
                     <div class="prop-row-multi">
                         <label>${L.get('FIRE_KEY', 'Tecla Disparo')}</label>
@@ -2771,7 +2796,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="component-content">
                     <div class="inspector-row">
                         <label>${L.get('TARGET', 'Objetivo')}</label>
-                        ${renderPropertyDropper('Materia', ley.target ? ley.target.id : null, 'data-component="CameraFollow" data-prop="target"')}
+                        ${renderPropertyDropper('Materia', ley.target, 'data-component="CameraFollow" data-prop="target"')}
                     </div>
                     <div class="prop-row-multi">
                         <label>${L.get('SMOOTHNESS', 'Suavidad')}</label>

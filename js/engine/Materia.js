@@ -190,7 +190,7 @@ export class Materia {
         if (this.parent === newParent) return;
 
         let worldPos, worldRot, worldScale;
-        const transform = this.getComponent(Transform);
+        const transform = this.getComponentByName('Transform') || this.getComponentByName('UITransform');
 
         if (keepWorldTransform && transform) {
             worldPos = transform.position;
@@ -236,7 +236,7 @@ export class Materia {
     }
 
     addChild(child) {
-        child.setParent(this, false); // Legacy addChild doesn't preserve world transform by default
+        child.setParent(this, true); // Keep world transform by default when adding children
     }
 
     removeChild(child) {
@@ -305,8 +305,8 @@ export class Materia {
         newMateria.tag = this.tag;
         newMateria.flags = JSON.parse(JSON.stringify(this.flags)); // Deep copy
 
-        // The parent ID is copied directly. The scene clone method will resolve this to an object reference.
-        newMateria.parent = this.parent ? (typeof this.parent === 'number' ? this.parent : this.parent.id) : null;
+        // Initial parent is null. The hierarchical cloning below will set parents via addChild.
+        newMateria.parent = null;
 
         // Clone components
         for (const component of this.leyes) {
