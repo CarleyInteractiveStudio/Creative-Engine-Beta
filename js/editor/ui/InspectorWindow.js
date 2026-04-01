@@ -3866,9 +3866,9 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
         const fileHandle = await dirHandle.getFileHandle(assetName);
         const file = await fileHandle.getFile();
-        const content = await file.text();
 
         if (assetName.endsWith('.ceprefab')) {
+            const content = await file.text();
             const L = window.Localization;
             let prefabData;
             try {
@@ -3959,14 +3959,21 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
             dom.inspectorContent.appendChild(container);
 
-        } else if (assetName.endsWith('.ces')) {
+        } else if (assetName.endsWith('.ces') || assetName.endsWith('.txt')) {
+            const content = await file.text();
             const pre = document.createElement('pre');
+            pre.style.maxHeight = '400px';
+            pre.style.overflow = 'auto';
+            pre.style.background = '#1a1a1a';
+            pre.style.padding = '10px';
+            pre.style.borderRadius = '4px';
             const code = document.createElement('code');
-            code.className = 'language-javascript';
+            code.className = assetName.endsWith('.ces') ? 'language-javascript' : '';
             code.textContent = content;
             pre.appendChild(code);
             dom.inspectorContent.appendChild(pre);
         } else if (assetName.endsWith('.md')) {
+            const content = await file.text();
             const html = markdownConverter.makeHtml(content);
             const preview = document.createElement('div');
             preview.className = 'markdown-preview';
@@ -4458,6 +4465,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             `;
             dom.inspectorContent.appendChild(preview);
         } else if (assetName.endsWith('.cmel')) {
+            const content = await file.text();
             const materialData = JSON.parse(content);
             const settingsContainer = document.createElement('div');
             settingsContainer.className = 'asset-settings';
@@ -4468,6 +4476,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             settingsContainer.innerHTML = html;
             dom.inspectorContent.appendChild(settingsContainer);
         } else if (assetName.endsWith('.celib')) {
+            const content = await file.text();
             const libData = JSON.parse(content);
             const preview = document.createElement('div');
             preview.className = 'asset-preview'; // Reutilizamos el estilo
@@ -4484,6 +4493,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             `;
             dom.inspectorContent.appendChild(preview);
         } else if (assetName.endsWith('.sprt')) {
+            const content = await file.text();
             const spriteSheetData = JSON.parse(content);
             const texturePath = spriteSheetData.texturePath;
 
@@ -4528,6 +4538,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             previewContainer.appendChild(spriteGrid);
             dom.inspectorContent.appendChild(previewContainer);
         } else if (assetName.endsWith('.ceSprite')) {
+            const content = await file.text();
             await renderCeSpriteInspector(content, dirHandle, assetPath);
         } else if (assetName.endsWith('.mp3') || assetName.endsWith('.wav')) {
             await renderAudioInspector(assetName, assetPath);
