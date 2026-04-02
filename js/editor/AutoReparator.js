@@ -1,6 +1,10 @@
 import { examples, intentWeights, structuralRules, typeInference, logicPatterns, expensivePatterns } from './AutoReparatorData.js';
 import { transpile } from './CES_Transpiler.js';
-import { getPreferences } from './ui/PreferencesWindow.js';
+
+function getPreferences() {
+    if (typeof window !== 'undefined' && window.getPreferences) return window.getPreferences();
+    return { autoCorrectorInteligente: true };
+}
 
 /**
  * Auto Reparator Module v3 "Smart Brain"
@@ -116,7 +120,8 @@ export async function repair(code, fileName, runtimeError = null) {
             // Handle multi-line comment status
             if (trimmed.startsWith('/*')) inCommentBlock = true;
             if (inCommentBlock) {
-                if (trimmed.includes('*/')) inCommentBlock = false;
+                const endsThisLine = trimmed.includes('*/');
+                if (endsThisLine) inCommentBlock = false;
                 continue;
             }
             if (trimmed.startsWith('//')) continue;
@@ -135,7 +140,7 @@ export async function repair(code, fileName, runtimeError = null) {
     }
 
     // 2. Ensure mandatory header
-    if (!repairedCode.toLowerCase().includes(structuralRules.mandatoryHeader)) {
+    if (!stripCommentsAndStrings(repairedCode).toLowerCase().includes(structuralRules.mandatoryHeader)) {
         repairedCode = structuralRules.mandatoryHeader + '\n' + repairedCode;
     }
 
@@ -174,7 +179,17 @@ export async function repair(code, fileName, runtimeError = null) {
                 declarations += `publico ${type} ${v};\n`;
             });
             // Insert after header
-            repairedCode = repairedCode.replace(structuralRules.mandatoryHeader, structuralRules.mandatoryHeader + '\n' + declarations);
+            const cleanCode = stripCommentsAndStrings(repairedCode);
+            const headerMatch = cleanCode.toLowerCase().match(new RegExp(structuralRules.mandatoryHeader, 'i'));
+            if (headerMatch) {
+                const insertPos = headerMatch.index + headerMatch[0].length;
+                repairedCode = repairedCode.substring(0, insertPos) + '\n' + declarations + repairedCode.substring(insertPos);
+            } else {
+                repairedCode = structuralRules.mandatoryHeader + '\n' + declarations + repairedCode;
+            }
+
+            // Re-scan code words if declarations were added
+            codeWords.push(...declarations.toLowerCase().match(/\w+/g) || []);
         }
     }
 
@@ -201,11 +216,13 @@ export async function repair(code, fileName, runtimeError = null) {
     // Forced replacement if code is still extremely broken
     let forcedTemplate = false;
     const currentValidation = transpile(repairedCode, fileName);
-    if (currentValidation.errors && currentValidation.errors.length > 0 && bestExample && maxMatch > 0.3) {
-        console.log(`[AutoReparator] Código insalvable. Forzando plantilla: ${bestExample.title}`);
+
+    // REDUCED PROBABILITY OF FORCED REPLACEMENT: Only if extremely broken AND high match
+    if (currentValidation.errors && currentValidation.errors.length > 0 && bestExample && maxMatch > 0.7) {
+        console.log(`[AutoReparator] Código muy dañado. Intentando reconstrucción con plantilla: ${bestExample.title}`);
         repairedCode = bestExample.code;
         forcedTemplate = true;
-    } else if (bestExample && maxMatch > 0.7) {
+    } else if (bestExample && maxMatch > 0.8) {
         console.log(`[AutoReparator] Coincidencia encontrada con: ${bestExample.title} (Score: ${maxMatch.toFixed(2)})`);
         // If the code is very broken (transpilation fails), we try to merge the user variables with the example's structure
         const validation = transpile(repairedCode, fileName);
@@ -266,11 +283,47 @@ export async function repair(code, fileName, runtimeError = null) {
                     return !regex.test(repairedCode);
                 });
 
-                if (missingElements.length > 0 && missingElements.length <= 2) {
+                if (missingElements.length > 0 && missingElements.length <= 3) {
                     console.log(`[AutoReparator] Patrón detectado: ${pattern.name}. Sugiriendo completado...`);
                     // If it's a lifecycle trigger and the code is very short, add the completion
-                    if (repairedCode.length < 150) {
-                        repairedCode += `\n// Sugerencia de ${pattern.name}:\n${pattern.completion}`;
+                    if (repairedCode.length < 300) {
+                        const targetLifecycle = pattern.preferredLifecycle || 'alActualizar';
+                        const lines = repairedCode.split('\n');
+                        let lifecycleIndex = -1;
+                        for (let i = 0; i < lines.length; i++) {
+                            if (lines[i].includes(targetLifecycle)) {
+                                lifecycleIndex = i;
+                                break;
+                            }
+                        }
+
+                        if (lifecycleIndex !== -1) {
+                            // Find the closing brace of that lifecycle method
+                            let braceCount = 0;
+                            let foundStart = false;
+                            for (let j = lifecycleIndex; j < lines.length; j++) {
+                                if (lines[j].includes('{')) {
+                                    braceCount += (lines[j].split('{').length - 1);
+                                    foundStart = true;
+                                }
+                                if (lines[j].includes('}')) {
+                                    braceCount -= (lines[j].split('}').length - 1);
+                                }
+                                if (foundStart && braceCount === 0) {
+                                    // Insert before the closing brace
+                                    lines[j] = `    // Sugerencia de ${pattern.name}:\n    ${pattern.completion}\n${lines[j]}`;
+                                    break;
+                                }
+                            }
+                            repairedCode = lines.join('\n');
+                        } else {
+                            // If lifecycle doesn't exist, create it if it's alActualizar or alEmpezar
+                            if (targetLifecycle === 'alActualizar' || targetLifecycle === 'alEmpezar') {
+                                repairedCode += `\n\n${targetLifecycle}() {\n    // Sugerencia de ${pattern.name}:\n    ${pattern.completion}\n}`;
+                            } else {
+                                repairedCode += `\n// Sugerencia de ${pattern.name}:\n${pattern.completion}`;
+                            }
+                        }
                     }
                 }
             }
@@ -314,18 +367,26 @@ export async function repair(code, fileName, runtimeError = null) {
             }
         }
 
-        // Fix missing semicolons on declarations
-        repairedCode = repairedCode.replace(/^(publico|variable|constante)\s+[\w\u00C0-\u017F]+\s+[\w\u00C0-\u017F]+\s*=?[^;]*?([^\s;])$/gm, (match, p1, p2) => {
-            if (match.includes('{') || match.includes('}')) return match;
-            return match + ';';
-        });
+        // Fix missing semicolons on declarations (avoiding comments)
+        const lines = repairedCode.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const trimmed = line.trim();
+            if (trimmed.startsWith('//')) continue;
+
+            lines[i] = line.replace(/^(publico|variable|constante)\s+[\w\u00C0-\u017F]+\s+[\w\u00C0-\u017F]+\s*=?[^;]*?([^\s;])$/g, (match) => {
+                if (match.includes('{') || match.includes('}')) return match;
+                return match + ';';
+            });
+        }
+        repairedCode = lines.join('\n');
     }
 
     // 9. Validate with Transpiler and try to isolate bad lines
     let validation = transpile(repairedCode, fileName);
 
     if (validation.errors && validation.errors.length > 0) {
-        console.warn("[AutoReparator] Errores detectados tras primera pasada. Intentando cirugía...");
+        console.warn("[AutoReparator] Errores detectados tras primera pasada. Intentando cirugía avanzada...");
 
         const lines = repairedCode.split('\n');
         const fatalLines = new Set();
@@ -336,11 +397,50 @@ export async function repair(code, fileName, runtimeError = null) {
             }
         });
 
-        // Strategy: if a line is fatal and we can't fix it, comment it out instead of deleting
-        // to let the user see what happened.
+        // Strategy: Try to fix each fatal line by comparing with examples
         fatalLines.forEach(index => {
-            if (lines[index].trim()) {
-                lines[index] = `// [AutoReparator FIXED] ${lines[index]}`;
+            const badLine = lines[index].trim();
+            if (!badLine || badLine.startsWith('//')) return;
+
+            let bestFix = null;
+            let maxSimilarity = 0;
+
+            // Simple line-level similarity check against all examples
+            examples.forEach(ex => {
+                const exLines = ex.code.split('\n');
+                exLines.forEach(exLine => {
+                    const trimmedExLine = exLine.trim();
+                    if (trimmedExLine.length < 5) return;
+
+                    // Calculate similarity (Jaccard-like on words)
+                    const words1 = badLine.toLowerCase().match(/\w+/g) || [];
+                    const words2 = trimmedExLine.toLowerCase().match(/\w+/g) || [];
+                    const set1 = new Set(words1);
+                    const set2 = new Set(words2);
+                    const intersection = new Set([...set1].filter(x => set2.has(x)));
+
+                    // Boost similarity if they share uncommon engine words
+                    let boost = 0;
+                    const engineTerms = ['posicion', 'fisica', 'tecla', 'velocidad', 'materia', 'mtr', 'alActualizar', 'alEmpezar'];
+                    intersection.forEach(word => {
+                        if (engineTerms.includes(word)) boost += 0.1;
+                    });
+
+                    const similarity = (intersection.size / Math.max(set1.size, set2.size)) + boost;
+
+                    if (similarity > maxSimilarity) {
+                        maxSimilarity = similarity;
+                        bestFix = trimmedExLine;
+                    }
+                });
+            });
+
+            if (bestFix && maxSimilarity > 0.6) {
+                console.log(`[Creative Code] Corrigiendo línea ${index + 1} con ejemplo (Sim: ${maxSimilarity.toFixed(2)}): ${badLine} -> ${bestFix}`);
+                lines[index] = lines[index].replace(badLine, `// [Creative Code] Arreglado: ${bestFix}\n${lines[index].replace(badLine, bestFix)}`);
+            } else {
+                // If we can't find a good fix, comment it out
+                lines[index] = `// [Creative Code REMOVED] ${lines[index]}`;
             }
         });
 
@@ -408,18 +508,29 @@ export async function repair(code, fileName, runtimeError = null) {
 }
 
 /**
+ * Replaces comments and strings with whitespace to preserve indices and line numbers.
+ */
+function stripCommentsAndStrings(code) {
+    return code.replace(/(["'])(?:(?=(\\?))\2.)*?\1|\/\/.*|\/\*[\s\S]*?\*\//g, (match) => {
+        return " ".repeat(match.length);
+    });
+}
+
+/**
  * Detects variables that are used but not declared.
  */
 function detectUndeclaredVariables(code) {
+    const cleanCode = stripCommentsAndStrings(code);
+    const codeWordsInOriginal = new Set(code.toLowerCase().match(/\w+/g) || []);
     const declared = new Set();
     const declarationRegex = /\b(publico|privado|variable|constante)\s+[\w\u00C0-\u017F]+\s+([\w\u00C0-\u017F]+)/g;
     let match;
-    while ((match = declarationRegex.exec(code)) !== null) {
+    while ((match = declarationRegex.exec(cleanCode)) !== null) {
         declared.add(match[2]);
     }
 
     const functionRegex = /\b(funcion|alActualizar|alEmpezar|alEntrarEnColision|alHacerClick|alRecibir)\s*([\w\u00C0-\u017F]+)?\s*\(([^)]*)\)/g;
-    while ((match = functionRegex.exec(code)) !== null) {
+    while ((match = functionRegex.exec(cleanCode)) !== null) {
         if (match[2]) declared.add(match[2]);
         if (match[3]) {
             match[3].split(',').forEach(p => {
@@ -434,16 +545,21 @@ function detectUndeclaredVariables(code) {
         'posicion', 'fisica', 'materia', 'mtr', 'delta', 'otro', 'datos', 'reproducir', 'imprimir', 'esperar', 'cada',
         'nuevo', 'Vector2', 'azar', 'si', 'sino', 'retornar', 'verdadero', 'falso', 'rotacion', 'escala', 'renderizadorDeSprite',
         'fuenteDeAudio', 'animador', 'lienzo', 'uiBarra', 'tiempoDelta', 'absoluto', 'seno', 'coseno', 'distancia', 'instanciar',
-        'destruir', 'lanzarRayo', 'buscar', 'cargarEscena', 'difundir', 'teclaPresionada', 'teclaRecienPresionada', 'obtenerPosicionMouse'
+        'destruir', 'lanzarRayo', 'buscar', 'cargarEscena', 'difundir', 'teclaPresionada', 'teclaRecienPresionada', 'obtenerPosicionMouse',
+        'publico', 'privado', 'variable', 'constante', 've', 'motor', 'engine', 'go'
     ];
     engineKeywords.forEach(k => declared.add(k));
 
     const potentialVars = new Set();
     // Matches words that look like variables (not starting with . and not followed by ()
     const usageRegex = /(?<![.\w])\b([a-zA-Z_\u00C0-\u017F][\w\u00C0-\u017F]*)\b(?!\s*\()/g;
-    while ((match = usageRegex.exec(code)) !== null) {
+    while ((match = usageRegex.exec(cleanCode)) !== null) {
         const word = match[1];
         if (!declared.has(word) && isNaN(word) && word.length > 1) {
+            // Only declare if it's NOT in the original comments/strings
+            // This is a bit tricky, but since cleanCode has spaces instead of comments,
+            // we can check if the word at this position in the ORIGINAL code was part of a comment.
+            // Simplified: if it only exists in the original but NOT in cleanCode (other than this match), it was a comment.
             potentialVars.add(word);
         }
     }
@@ -454,13 +570,14 @@ function detectUndeclaredVariables(code) {
  * Infers type based on variable name and usage.
  */
 function inferVariableType(varName, code) {
+    const cleanCode = stripCommentsAndStrings(code);
     for (const rule of typeInference) {
         if (rule.regex.test(varName)) return rule.type;
     }
 
     // Check usage in code
     const assignmentRegex = new RegExp(`\\b${varName}\\b\\s*=\\s*([^;\\n]+)`, 'i');
-    const match = code.match(assignmentRegex);
+    const match = cleanCode.match(assignmentRegex);
     if (match) {
         const value = match[1].trim();
         if (value.startsWith('"') || value.startsWith("'")) return 'texto';
