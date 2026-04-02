@@ -105,11 +105,32 @@ export async function repair(code, fileName, runtimeError = null) {
     let bestExample = null;
     let maxMatch = 0;
 
+    // Map common user intents to keywords
+    const intentKeywords = {
+        'movimiento': ['mober', 'moverse', 'camina', 'correr', 'andando', 'tecla', 'w', 'a', 's', 'd', 'velocidad', 'vel'],
+        'ataque': ['pegar', 'golpe', 'daño', 'danar', 'espada', 'bala', 'proyectil', 'lanzar', 'fire', 'disparar'],
+        'salud': ['vida', 'curar', 'muerte', 'morir', 'health', 'daño'],
+        'seguimiento': ['seguir', 'objetivo', 'jugador', 'perseguir', 'distancia'],
+        'ui': ['botón', 'barra', 'texto', 'imagen', 'pantalla', 'progreso'],
+        'física': ['saltar', 'gravedad', 'choque', 'colision', 'rb', 'fisica', 'caer']
+    };
+
     examples.forEach(ex => {
         // Simple word-overlap score
         const exWords = ex.code.toLowerCase().match(/\w+/g) || [];
         const codeWords = repairedCode.toLowerCase().match(/\w+/g) || [];
-        const overlap = exWords.filter(w => codeWords.includes(w)).length;
+
+        let overlap = exWords.filter(w => codeWords.includes(w)).length;
+
+        // Boost score if user code contains intent keywords matching example title
+        for (const [intent, keywords] of Object.entries(intentKeywords)) {
+            if (ex.title.toLowerCase().includes(intent)) {
+                if (keywords.some(k => codeWords.includes(k))) {
+                    overlap += 5; // Intent boost
+                }
+            }
+        }
+
         const score = overlap / exWords.length;
         if (score > maxMatch) {
             maxMatch = score;
@@ -184,9 +205,16 @@ export async function repair(code, fileName, runtimeError = null) {
     validation = transpile(repairedCode, fileName);
     const success = !validation.errors || validation.errors.length === 0;
 
+    let finalMessage = success ? L.get('REPARACION_EXITOSA', 'Código reparado con éxito.') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero aún quedan errores complejos.');
+
+    // Notify if we replaced the script with a pre-made template
+    if (bestExample && repairedCode.includes(bestExample.code.substring(0, 20))) {
+        finalMessage = `🤖 He detectado que intentabas crear un script de '${bestExample.title}'.\nHe reemplazado tu código por una versión pre-hecha y funcional para ayudarte. ¡Puedes editarla a tu gusto!`;
+    }
+
     return {
         success: success,
         code: repairedCode,
-        message: success ? L.get('REPARACION_EXITOSA', 'Código reparado con éxito.') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero aún quedan errores complejos.')
+        message: finalMessage
     };
 }
