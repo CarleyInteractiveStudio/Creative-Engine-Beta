@@ -1,5 +1,6 @@
 // CES_Transpiler.js
 import * as RuntimeAPIManager from '../engine/RuntimeAPIManager.js';
+import { componentShortcuts as dataShortcuts } from './AutoReparatorData.js';
 
 // --- State ---
 const transpiledCodeMap = new Map();
@@ -908,6 +909,33 @@ export function transpile(code, scriptName = 'unnamed.ces') {
             line: line,
             message: `Código inválido o no reconocido fuera de una declaración: "${text.substring(0, 20)}${text.length > 20 ? '...' : ''}"`,
             word: firstWord
+        });
+    }
+
+    // --- Phase 2.b: Garbage Identifier Detection (Expert Brain v4) ---
+    // Scan method bodies for solitary identifiers that aren't defined
+    for (const match of methodMatches) {
+        const bodyLines = match.body.split('\n');
+        bodyLines.forEach((line, idx) => {
+            const trimmed = line.trim();
+            // Match a single word that doesn't look like a valid statement
+            if (/^[a-z_][a-z0-9_]*;?$/i.test(trimmed)) {
+                const word = trimmed.replace(';', '');
+                const isDefined = publicVars.some(pv => pv.name === word) ||
+                                 privateVars.some(pv => pv.name === word) ||
+                                 publicFunctions.includes(word) ||
+                                 componentShortcuts.includes(word) ||
+                                 dataShortcuts.includes(word) ||
+                                 ['delta', 'deltaTime', 'mtr', 'materia', 'otro', 'datos', 'si', 'sino', 'retornar', 'esperar', 'detener', 'verdadero', 'falso'].includes(word);
+
+                if (!isDefined && isNaN(word) && word.length > 0) {
+                    errors.push({
+                        line: getLineNumber(code, match.index) + idx + 1,
+                        message: `Creative Code: Identificador ilegal o basura detectado: '${word}'.`,
+                        word: word
+                    });
+                }
+            }
         });
     }
 

@@ -108,13 +108,25 @@ export async function repair(code, fileName, runtimeError = null) {
         const dontTouch = [...structuralRules.allowedGlobalScope, ...structuralRules.lifecycleMethods,
                           'delta', 'deltaTime', 'mtr', 'materia', 'retornar', 'esperar', 'detener', 'verdadero', 'falso'];
 
+        let inCommentBlock = false;
+
         for (let i = 0; i < lines.length; i++) {
             const trimmed = lines[i].trim();
-            // Match single word (optional semicolon)
+
+            // Handle multi-line comment status
+            if (trimmed.startsWith('/*')) inCommentBlock = true;
+            if (inCommentBlock) {
+                if (trimmed.includes('*/')) inCommentBlock = false;
+                continue;
+            }
+            if (trimmed.startsWith('//')) continue;
+
+            // Match single word (optional semicolon), allowing indentation
             if (/^[a-z_][a-z0-9_]*;?$/i.test(trimmed)) {
                 const word = trimmed.replace(';', '');
-                if (!dontTouch.includes(word) && isNaN(word)) {
+                if (!dontTouch.includes(word) && isNaN(word) && word.length > 0) {
                     console.log(`[Creative Code] Limpiando identificador ilegal: ${word}`);
+                    // Use a targeted replacement that respects indentation
                     lines[i] = lines[i].replace(word, `// [Creative Code REMOVED] ${word}`);
                 }
             }
@@ -337,8 +349,8 @@ export async function repair(code, fileName, runtimeError = null) {
 
     // 10. Object Awareness (Brain v3.3)
     let missingComponentSuggestion = null;
-    if (isSmartEnabled && window.SceneManager && window.SceneManager.selectedMateria) {
-        const selected = window.SceneManager.selectedMateria;
+    const selected = (typeof window !== 'undefined' && window.getSelectedMateria) ? window.getSelectedMateria() : null;
+    if (isSmartEnabled && selected) {
         const required = [
             { key: 'fisica|velocity|applyImpulse', comp: 'Rigidbody2D' },
             { key: 'vida|danar|curar', comp: 'Health' },
@@ -364,6 +376,14 @@ export async function repair(code, fileName, runtimeError = null) {
     const success = !validation.errors || validation.errors.length === 0;
 
     let finalMessage = success ? L.get('REPARACION_EXITOSA', 'Código reparado con éxito.') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero aún quedan errores complejos.');
+
+    if (repairedCode.includes('[Creative Code REMOVED]')) {
+        finalMessage += `\n🧹 He limpiado identificadores inválidos o "basura" detectados.`;
+    }
+
+    if (repairedCode.includes('Syntax Healer')) {
+        finalMessage += `\n🩹 He reparado la estructura de llaves o paréntesis.`;
+    }
 
     if (bestIntent !== 'desconocido' && !success) {
         finalMessage += `\n🤖 Parece que intentas hacer algo de '${bestIntent}'. He intentado ajustar el código a esa lógica.`;
@@ -481,6 +501,7 @@ function healSyntaxStructure(code) {
 
     if (braceLevel > 0) {
         console.log(`[Syntax Healer] Cerrando ${braceLevel} llaves pendientes...`);
+        result += `\n// [Syntax Healer] Bloque cerrado automáticamente`;
         for (let j = 0; j < braceLevel; j++) {
             result += '\n}';
         }

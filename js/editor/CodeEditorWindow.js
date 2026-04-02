@@ -834,7 +834,11 @@ export function initialize(domCache, showConsole, hotReload) {
     window._CodeEditor = {
         openScriptAtLine,
         runAutoReparator,
-        setLastRuntimeError
+        setLastRuntimeError,
+        isSmartEnabled: () => {
+            const prefs = getPreferences();
+            return prefs.autoCorrectorInteligente !== false;
+        }
     };
 
     // Configura los event listeners para los botones de la barra de herramientas
@@ -847,9 +851,45 @@ export function initialize(domCache, showConsole, hotReload) {
         historyBtn.addEventListener('click', () => showScriptHistory());
     }
 
+    const creativeToggle = document.getElementById('code-creative-code-toggle');
+    if (creativeToggle) {
+        creativeToggle.addEventListener('click', () => {
+            const prefs = getPreferences();
+            const newValue = prefs.autoCorrectorInteligente === false;
+
+            // This is a bit of a hack since we can't easily import PreferencesWindow's save logic here
+            // but we can update the pref object and the UI.
+            prefs.autoCorrectorInteligente = newValue;
+            localStorage.setItem('creativeEnginePrefs', JSON.stringify(prefs));
+
+            const checkbox = document.getElementById('prefs-smart-reparator-toggle');
+            if (checkbox) checkbox.checked = newValue;
+
+            window.Dialogs.showNotification(
+                window.Localization.get('EXITO'),
+                `Creative Code ${newValue ? 'ACTIVADO' : 'DESACTIVADO'}`
+            );
+        });
+    }
+
     const repairBtn = document.getElementById('code-reparar-btn');
     if (repairBtn) {
         repairBtn.addEventListener('click', () => runAutoReparator());
+        // Periodic check to update button visual status (v4 Expert Brain)
+        setInterval(() => {
+            const isSmart = getPreferences().autoCorrectorInteligente !== false;
+            if (creativeToggle) creativeToggle.classList.toggle('active', isSmart);
+
+            if (isSmart) {
+                repairBtn.classList.add('creative-code-active');
+                const span = repairBtn.querySelector('span');
+                if (span) span.textContent = 'Creative Code';
+            } else {
+                repairBtn.classList.remove('creative-code-active');
+                const span = repairBtn.querySelector('span');
+                if (span && window.Localization) span.textContent = window.Localization.get('REPARAR', 'Reparar');
+            }
+        }, 1000);
     }
 
     // CHC specific

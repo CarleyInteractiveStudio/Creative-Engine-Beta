@@ -412,6 +412,7 @@ public star() {
                             <button id="code-undo-btn" title="Deshacer (Ctrl+Z)" data-i18n-title="DESHACER"><img src="icons/arrow-left.svg" class="ce-icon"></button>
                             <button id="code-redo-btn" title="Rehacer (Ctrl+Y)" data-i18n-title="REHACER"><img src="icons/arrow-right.svg" class="ce-icon"></button>
                             <div class="toolbar-separator"></div>
+                            <button id="code-creative-code-toggle" title="Activar/Desactivar Creative Code (Cerebro IA)" class="toolbar-btn"><img src="icons/rocket.svg" class="ce-icon"></button>
                             <button id="code-reparar-btn" title="Auto Reparator" class="special-btn"><img src="icons/wrench.svg" class="ce-icon"> <span data-i18n="REPARAR">Reparar</span></button>
                             <button id="code-history-btn" title="Ver Historial (Versiones)"><img src="icons/history.svg" class="ce-icon"></button>
                         </div>
@@ -1265,6 +1266,12 @@ public star() {
                 </fieldset>
                 <fieldset class="settings-section">
                     <legend data-i18n="INTEGRACIONES_IA">Integraciones de IA</legend>
+                    <div class="checkbox-field" style="background: rgba(14, 99, 156, 0.1); padding: 10px; border-radius: 8px; border: 1px solid var(--accent-color);">
+                        <input type="checkbox" id="prefs-smart-reparator-toggle" checked>
+                        <label for="prefs-smart-reparator-toggle" style="font-size: 1.1em;">🚀 <b>Creative Code</b> (Cerebro v4)</label>
+                    </div>
+                    <p class="field-description" style="margin-top: 5px; font-style: italic;">Aún no es un modelo inteligente, solo una simple herramienta en el motor, pero más adelante será un modelo de programación capaz de crear códigos desde lo más básico a lo más complejo. <br><b style="color: #f3ca58;">Nota: Consumo optimizado (&lt; 100MB).</b></p>
+                    <hr>
                     <label for="prefs-ai-provider" data-i18n="PROVEEDOR_IA_EXTERNO">Proveedor de IA Externo</label>
                     <select id="prefs-ai-provider">
                         <option value="none" data-i18n="NINGUNO">Ninguno</option>
@@ -1288,12 +1295,6 @@ public star() {
                         <div id="prefs-ai-error-display" class="hidden" style="color: #ff4444; margin-top: 10px; font-size: 0.9em; padding: 8px; background: rgba(255,0,0,0.1); border-radius: 4px;"></div>
                         <p class="field-description" data-i18n="HINT_AI_SECURITY">Tu clave de API se guarda de forma segura en el almacenamiento local de tu navegador y nunca se envía a nuestros servidores. Se utiliza únicamente para la comunicación directa entre tu navegador y el proveedor de IA que elijas.</p>
                     </div>
-                    <hr>
-                    <div class="checkbox-field">
-                        <input type="checkbox" id="prefs-smart-reparator-toggle" checked>
-                        <label for="prefs-smart-reparator-toggle"><b>Creative Code</b> (Auto-Corrector Inteligente)</label>
-                    </div>
-                    <p class="field-description">Aún no es un modelo inteligente, solo una simple herramienta en el motor, pero más adelante será un modelo de programación capaz de crear códigos desde lo más básico a lo más complejo. <br><b style="color: #f3ca58;">Nota: Consumo optimizado (&lt; 100MB).</b></p>
                 </fieldset>
                 <fieldset class="settings-section">
                     <legend data-i18n="PERMISOS_CARL_IA">Permisos de Carl IA</legend>
