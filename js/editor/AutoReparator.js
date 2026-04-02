@@ -26,7 +26,11 @@ export async function repair(code, fileName, runtimeError = null) {
             { key: 'play', comp: 'Animator', name: 'animador' },
             { key: 'stop', comp: 'Animator', name: 'animador' },
             { key: 'renderizadorDeSprite', comp: 'SpriteRenderer', name: 'renderizadorDeSprite' },
-            { key: 'color', comp: 'SpriteRenderer', name: 'renderizadorDeSprite' }
+            { key: 'color', comp: 'SpriteRenderer', name: 'renderizadorDeSprite' },
+            { key: 'AudioSource', comp: 'AudioSource', name: 'audio' },
+            { key: 'fuenteDeAudio', comp: 'AudioSource', name: 'audio' },
+            { key: 'reproducir', comp: 'AudioSource', name: 'audio' },
+            { key: 'sonido', comp: 'AudioSource', name: 'audio' }
         ];
 
         for (const check of missingComps) {
