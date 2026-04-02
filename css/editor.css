@@ -603,8 +603,7 @@ body.mobile-mode #editor-main-content.no-inspector {
     justify-content: space-between;
     align-items: center;
     flex-shrink: 0;
-    overflow-x: auto;
-    overflow-y: hidden;
+    /* overflow-x removed to allow tool dropdowns to be visible outside the header */
     scrollbar-width: none;
 }
 
@@ -1535,12 +1534,25 @@ body.mobile-mode #editor-main-content.no-inspector {
 .tool-dropdown-content {
     display: none;
     position: absolute;
+    top: 100%;
+    left: 0;
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: 4px;
-    min-width: 120px;
-    z-index: 3000;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    min-width: 160px;
+    max-height: 350px;
+    overflow-y: auto;
+    z-index: 5000;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+}
+
+.tool-dropdown-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.tool-dropdown-content::-webkit-scrollbar-thumb {
+    background: var(--bg-tertiary);
+    border-radius: 3px;
 }
 
 .tool-dropdown:hover .tool-dropdown-content {

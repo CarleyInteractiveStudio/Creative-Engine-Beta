@@ -4,10 +4,10 @@ import { EditorView, basicSetup } from "https://esm.sh/codemirror@6.0.1";
 import { javascript } from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
 import { oneDark } from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
 import { undo, redo, indentWithTab } from "https://esm.sh/@codemirror/commands@6.3.3";
-import { autocompletion, acceptCompletion } from "https://esm.sh/@codemirror/autocomplete@6.16.0";
+import { autocompletion, acceptCompletion, completionKeymap } from "https://esm.sh/@codemirror/autocomplete@6.16.0";
 import { linter } from "https://esm.sh/@codemirror/lint@6.4.2";
 import { keymap, Decoration } from "https://esm.sh/@codemirror/view@6.26.3";
-import { StateField, StateEffect } from "https://esm.sh/@codemirror/state@6.4.1";
+import { StateField, StateEffect, EditorState } from "https://esm.sh/@codemirror/state@6.4.1";
 import { transpile } from './CES_Transpiler.js';
 import * as AutoReparator from './AutoReparator.js';
 import { intentWeights, blockTemplates } from './AutoReparatorData.js';
@@ -224,6 +224,7 @@ function cesCompletions(context) {
     };
 }
 
+let lintTimeout = null;
 const cesLinter = linter(view => {
     const code = view.state.doc.toString();
     const fileName = currentlyOpenFileHandle ? currentlyOpenFileHandle.name : "temp.ces";
@@ -231,6 +232,7 @@ const cesLinter = linter(view => {
     // Solo linting para archivos .ces
     if (!fileName.endsWith('.ces')) return [];
 
+    // EXPERT BRAIN v4: Advanced Linting - Updates are debounced and grouped
     const result = transpile(code, fileName);
     let diagnostics = [];
 
@@ -259,7 +261,7 @@ const cesLinter = linter(view => {
     }
 
     return diagnostics;
-});
+}, { delay: 1000 });
 
 
 // --- Public API ---
@@ -284,27 +286,35 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
         dom.codeEditorToolbar.classList.remove('hidden');
         dom.codemirrorContainer.style.display = 'block';
 
+        const extensions = [
+            basicSetup,
+            javascript(),
+            oneDark,
+            errorHighlightField,
+            cesLinter,
+            autocompletion({ override: [cesCompletions] }),
+            keymap.of([
+                ...completionKeymap,
+                { key: "Tab", run: acceptCompletion },
+                indentWithTab
+            ]),
+            EditorView.lineWrapping
+        ];
+
         if (!codeEditor) {
             codeEditor = new EditorView({
-                doc: content,
-                extensions: [
-                    basicSetup,
-                    javascript(),
-                    oneDark,
-                    errorHighlightField,
-                    cesLinter,
-                    autocompletion({ override: [cesCompletions] }),
-                    keymap.of([
-                        { key: "Tab", run: acceptCompletion },
-                        indentWithTab
-                    ])
-                ],
+                state: EditorState.create({
+                    doc: content,
+                    extensions: extensions
+                }),
                 parent: dom.codemirrorContainer
             });
         } else {
-            codeEditor.dispatch({
-                changes: { from: 0, to: codeEditor.state.doc.length, insert: content }
-            });
+            // Reset state to clear history and apply new content
+            codeEditor.setState(EditorState.create({
+                doc: content,
+                extensions: extensions
+            }));
         }
 
         // Fix: Ensure the editor is visible and focused to avoid the typing bug
@@ -672,6 +682,7 @@ export async function runAutoReparator(targetFileName = null) {
                 codeEditor.dispatch({
                     changes: { from: 0, to: codeEditor.state.doc.length, insert: result.code }
                 });
+                setTimeout(() => codeEditor.focus(), 10);
             }
 
             if (result.addComponent && window.SceneManager) {
@@ -835,6 +846,15 @@ export function initialize(domCache, showConsole, hotReload) {
         openScriptAtLine,
         runAutoReparator,
         setLastRuntimeError,
+        focus: () => {
+            if (codeEditor) {
+                codeEditor.focus();
+                // If it's empty or newly opened, set cursor at start
+                if (codeEditor.state.doc.length === 0) {
+                    codeEditor.dispatch({ selection: { anchor: 0 } });
+                }
+            }
+        },
         isSmartEnabled: () => {
             const prefs = getPreferences();
             return prefs.autoCorrectorInteligente !== false;
