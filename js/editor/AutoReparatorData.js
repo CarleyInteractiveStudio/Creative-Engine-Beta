@@ -105,34 +105,46 @@ alActualizar(delta) {
 
 export const intentWeights = {
     movimiento: {
-        keywords: ['tecla', 'velocidad', 'vel', 'posicion', 'moverse', 'caminar', 'x', 'y', 'w', 'a', 's', 'd', 'arriba', 'abajo', 'izquierda', 'derecha', 'mover'],
+        keywords: ['tecla', 'velocidad', 'vel', 'posicion', 'moverse', 'caminar', 'x', 'y', 'w', 'a', 's', 'd', 'arriba', 'abajo', 'izquierda', 'derecha', 'mover', 'correr', 'dash', 'salto', 'voltear'],
         requiredComponents: ['Transform'],
         preferredLifecycle: 'alActualizar',
         scoreBoost: 10
     },
     fisica: {
-        keywords: ['fisica', 'gravedad', 'impulso', 'fuerza', 'velocity', 'salto', 'choque', 'colision', 'rb', 'masa', 'rebotar'],
+        keywords: ['fisica', 'gravedad', 'impulso', 'fuerza', 'velocity', 'salto', 'choque', 'colision', 'rb', 'masa', 'rebotar', 'friccion', 'torque', 'angular', 'empujar'],
         requiredComponents: ['Rigidbody2D'],
         preferredLifecycle: 'alActualizar',
         scoreBoost: 15
     },
     salud: {
-        keywords: ['vida', 'daño', 'curar', 'morir', 'muerte', 'salud', 'health', 'damage', 'heal', 'danar'],
+        keywords: ['vida', 'daño', 'curar', 'morir', 'muerte', 'salud', 'health', 'damage', 'heal', 'danar', 'reproducir', 'vidaMaxima', 'revivir'],
         requiredComponents: ['Health'],
         preferredLifecycle: 'alEntrarEnColision',
         scoreBoost: 12
     },
     ui: {
-        keywords: ['boton', 'click', 'barra', 'texto', 'imagen', 'ui', 'progreso', 'valor', 'pantalla', 'clicar', 'pulsar'],
+        keywords: ['boton', 'click', 'barra', 'texto', 'imagen', 'ui', 'progreso', 'valor', 'pantalla', 'clicar', 'pulsar', 'dialogo', 'menu', 'hover', 'canvas'],
         requiredComponents: ['UIImage', 'UIText', 'ProgressBar'],
         preferredLifecycle: 'alHacerClick',
         scoreBoost: 10
     },
     combate: {
-        keywords: ['atacar', 'bala', 'proyectil', 'disparar', 'fire', 'espada', 'golpe', 'enemigo', 'dañar'],
+        keywords: ['atacar', 'bala', 'proyectil', 'disparar', 'fire', 'espada', 'golpe', 'enemigo', 'dañar', 'dañar', 'vida', 'rango', 'distancia', 'objetivo'],
         requiredComponents: ['Attack'],
         preferredLifecycle: 'alActualizar',
         scoreBoost: 12
+    },
+    vfx: {
+        keywords: ['particula', 'sistemaDeParticulas', 'explosion', 'vfx', 'emision', 'play', 'stop', 'color', 'brillo', 'fuego', 'humo'],
+        requiredComponents: ['ParticleSystem'],
+        preferredLifecycle: 'alActualizar',
+        scoreBoost: 8
+    },
+    camara: {
+        keywords: ['camara', 'camera', 'follow', 'seguimiento', 'shake', 'zoom', 'vista', 'objetivo'],
+        requiredComponents: ['Camera', 'CameraFollow'],
+        preferredLifecycle: 'alActualizar',
+        scoreBoost: 9
     }
 };
 
@@ -146,13 +158,98 @@ export const structuralRules = {
 };
 
 export const typeInference = [
-    { regex: /velocidad|fuerza|salto|vida|danio|daño|distancia|masa|gravedad|valor|puntos|cantidad/i, type: 'numero' },
-    { regex: /nombre|tag|texto|mensaje|nivel|escena|id/i, type: 'texto' },
-    { regex: /activo|puede|esta|es|tocado|listo/i, type: 'booleano' },
-    { regex: /objetivo|meta|jugador|padre|hijo|materia|mtr/i, type: 'mtr' },
-    { regex: /prefab|bala|enemigo|item|recompensa/i, type: 'Prefab' },
-    { regex: /sonido|audio|musica|efecto/i, type: 'Audio' },
-    { regex: /icono|imagen|sprite|textura/i, type: 'Sprite' }
+    { regex: /velocidad|fuerza|salto|vida|danio|daño|distancia|masa|gravedad|valor|puntos|cantidad|rango|tiempo|duracion|alpha|opacidad|escala|rotacion/i, type: 'numero' },
+    { regex: /nombre|tag|texto|mensaje|nivel|escena|id|ruta|clase/i, type: 'texto' },
+    { regex: /activo|puede|esta|es|tocado|listo|abierta|bloqueado|pausado/i, type: 'booleano' },
+    { regex: /objetivo|meta|jugador|padre|hijo|materia|mtr|target/i, type: 'mtr' },
+    { regex: /prefab|bala|enemigo|item|recompensa|proyectil/i, type: 'Prefab' },
+    { regex: /sonido|audio|musica|efecto|clip/i, type: 'Audio' },
+    { regex: /icono|imagen|sprite|textura|fondo/i, type: 'Sprite' }
+];
+
+/**
+ * Logic Patterns (Step-by-step logic sequences)
+ * Defines what logically follows a certain action or event.
+ */
+export const logicPatterns = [
+    {
+        name: "Input to Movement",
+        trigger: /teclaPresionada|teclaRecienPresionada/i,
+        elements: ["posicion", "velocidad", "delta"],
+        completion: "posicion.x += velocidad * delta;"
+    },
+    {
+        name: "Collision to Health",
+        trigger: /alEntrarEnColision|alChocar/i,
+        elements: ["tieneTag", "vida", "danio|daño"],
+        completion: "si (otro.tieneTag('Enemigo')) { vida -= 10; }"
+    },
+    {
+        name: "Timer Loop",
+        trigger: /alEmpezar/i,
+        elements: ["cada", "esperar"],
+        completion: "cada(1) { /* logica aqui */ }"
+    },
+    {
+        name: "UI Button Click",
+        trigger: /alHacerClick|alClicar/i,
+        elements: ["imprimir", "cargarEscena", "destruir"],
+        completion: "imprimir('Botón pulsado');"
+    },
+    {
+        name: "Prefab Instantiation",
+        trigger: /teclaRecienPresionada|alActualizar/i,
+        elements: ["instanciar|crear", "Vector2", "posicion"],
+        completion: "instanciar(proyectil, posicion.x, posicion.y);"
+    },
+    {
+        name: "Health Decay and Death",
+        trigger: /vida\s*-=|dañar/i,
+        elements: ["si", "0", "destruir|muerte"],
+        completion: "si (vida <= 0) {\n    reproducir.Muerte();\n    destruir(materia);\n}"
+    },
+    {
+        name: "Advanced Movement",
+        trigger: /velocidad|moverse/i,
+        elements: ["rotacion", "coseno", "seno", "fisica"],
+        completion: "variable rad = rotacion * 3.14 / 180;\nfisica.velocity.x = coseno(rad) * velocidad;\nfisica.velocity.y = seno(rad) * velocidad;"
+    },
+    {
+        name: "Interaction System",
+        trigger: /lanzarRayo|raycast/i,
+        elements: ["mtr", "distancia", "tieneTag"],
+        completion: "variable hit = lanzarRayo(posicion, nuevo Vector2(1,0), 100);\nsi (hit && hit.tieneTag('Interactivo')) {\n    difundir('interactuar', hit);\n}"
+    },
+    {
+        name: "State Toggle",
+        trigger: /teclaRecienPresionada/i,
+        elements: ["booleano", "!", "activo"],
+        completion: "variable activa = !activa;\nrenderizadorDeSprite.isActive = activa;"
+    },
+    {
+        name: "Automatic Flip",
+        trigger: /velocidad|x\s*\+=|x\s*-=/i,
+        elements: ["voltearH", "horizontal"],
+        completion: "si (velocidadX > 0) voltearH = falso;\nsi (velocidadX < 0) voltearH = verdadero;"
+    },
+    {
+        name: "Audio Feedback",
+        trigger: /alHacerClick|alPresionar|teclaRecienPresionada/i,
+        elements: ["reproducir", "audio|sonido"],
+        completion: "reproducir.Accion();"
+    },
+    {
+        name: "UI sync",
+        trigger: /vida|puntos|progreso/i,
+        elements: ["valor", "uiBarra|uiTexto"],
+        completion: "uiBarra.valor = vidaActual;\nuiTexto.contenido = 'Vida: ' + vidaActual;"
+    },
+    {
+        name: "Particle burst",
+        trigger: /colision|destruir|golpe/i,
+        elements: ["particula", "play|stop"],
+        completion: "sistemaDeParticulas.play();\nesperar(0.5);\nsistemaDeParticulas.stop();"
+    }
 ];
 
 // High Quality Templates for mass generation
@@ -181,11 +278,26 @@ const templates = [
     { name: "Inventario: Añadir", code: "ve motor;\nalRecibir(\"item_suelo\", (data) => {\n    imprimir(\"Recogido: \" + data.nombre);\n    destruir(materia);\n});" },
     { name: "Efecto: Parpadeo", code: "ve motor;\ncada(0.5) {\n    renderizadorDeSprite.isActive = !renderizadorDeSprite.isActive;\n}" },
     { name: "Gravedad: Flotación", code: "ve motor;\nalActualizar(delta) {\n    fisica.addForce(0, -9.8 * 0.5);\n}" },
-    { name: "Control: Salto Doble", code: "ve motor;\nvariable saltos = 0;\nalActualizar(delta) {\n    si (estaTocandoTag(\"Suelo\")) saltos = 0;\n    si (teclaRecienPresionada(\"Space\") y saltos < 2) {\n        fisica.applyImpulse(0, -10);\n        saltos += 1;\n    }\n}" }
+    { name: "Control: Salto Doble", code: "ve motor;\nvariable saltos = 0;\nalActualizar(delta) {\n    si (estaTocandoTag(\"Suelo\")) saltos = 0;\n    si (teclaRecienPresionada(\"Space\") y saltos < 2) {\n        fisica.applyImpulse(0, -10);\n        saltos += 1;\n    }\n}" },
+    { name: "Cámara: Shake", code: "ve motor;\npublico numero fuerza = 5;\nalRecibir(\"shake\", () => {\n    cada(0.02) {\n        posicion.x += azar(-fuerza, fuerza);\n        posicion.y += azar(-fuerza, fuerza);\n    }\n    esperar(0.5);\n    detener();\n});" },
+    { name: "Vehículo: Top-Down", code: "ve motor;\npublico numero potencia = 10;\npublico numero giro = 5;\nalActualizar(delta) {\n    si (teclaPresionada(\"w\")) {\n        variable rad = rotacion * 3.14 / 180;\n        fisica.velocity.x += coseno(rad) * potencia;\n        fisica.velocity.y += seno(rad) * potencia;\n    }\n    si (teclaPresionada(\"a\")) rotacion -= giro;\n    si (teclaPresionada(\"d\")) rotacion += giro;\n}" },
+    { name: "IA: Huida", code: "ve motor;\npublico mtr amenaza;\nalActualizar(delta) {\n    si (amenaza y distancia(posicion, amenaza.posicion) < 200) {\n        variable dir = nuevo Vector2(x - amenaza.x, y - amenaza.y);\n        posicion.x += dir.x * delta * 5;\n        posicion.y += dir.y * delta * 5;\n    }\n}" },
+    { name: "Partículas: Explosión", code: "ve motor;\nalRecibir(\"explotar\", () => {\n    sistemaDeParticulas.play();\n    esperar(1);\n    sistemaDeParticulas.stop();\n});" },
+    { name: "Luz: Parpadeo", code: "ve motor;\nalActualizar(delta) {\n    luzPuntual2D.intensity = 1 + seno(tiempoDelta * 10) * 0.5;\n}" },
+    { name: "Inventario: Soltar", code: "ve motor;\npublico Prefab item;\nalActualizar(delta) {\n    si (teclaRecienPresionada(\"q\")) {\n        instanciar(item, x, y + 20);\n    }\n}" },
+    { name: "UI: Diálogo", code: "ve motor;\npublico texto mensaje = \"Hola viajero\";\nalHacerClick() {\n    uiTexto.contenido = mensaje;\n    esperar(3);\n    uiTexto.contenido = \"\";\n}" },
+    { name: "Física: Rebote", code: "ve motor;\nalEntrarEnColision(otro) {\n    fisica.applyImpulse(nuevo Vector2(0, -5));\n}" },
+    { name: "Escena: Reiniciar", code: "ve motor;\nalActualizar(delta) {\n    si (teclaRecienPresionada(\"r\")) cargarEscena(nombreEscenaActual);\n}" },
+    { name: "Animación: Velocidad", code: "ve motor;\nalActualizar(delta) {\n    animador.speed = absoluto(fisica.velocity.x) / 10;\n}" },
+    { name: "IA: Patrulla Waypoints", code: "ve motor;\npublico mtr puntoA;\npublico mtr puntoB;\nvariable haciaA = verdadero;\nalActualizar(delta) {\n    variable obj = haciaA ? puntoA : puntoB;\n    si (obj) {\n        moverHacia(obj.posicion, 100 * delta);\n        si (distancia(posicion, obj.posicion) < 5) haciaA = !haciaA;\n    }\n}" },
+    { name: "UI: Menú Pausa", code: "ve motor;\nvariable pausado = falso;\nalActualizar(delta) {\n    si (teclaRecienPresionada('Escape')) {\n        pausado = !pausado;\n        motor.timeScale = pausado ? 0 : 1;\n        uiPanelPausa.isActive = pausado;\n    }\n}" },
+    { name: "Física: Gravedad Zero", code: "ve motor;\nalEmpezar() {\n    fisica.gravityScale = 0;\n}\nalActualizar(delta) {\n    si (teclaPresionada('w')) fisica.addForce(0, -10);\n    si (teclaPresionada('s')) fisica.addForce(0, 10);\n}" },
+    { name: "VFX: Estela", code: "ve motor;\nalActualizar(delta) {\n    si (absoluto(fisica.velocity.x) > 1) {\n        sistemaDeParticulas.emitRate = 20;\n    } sino {\n        sistemaDeParticulas.emitRate = 0;\n    }\n}" },
+    { name: "Gameplay: Score", code: "ve motor;\nvariable puntos = 0;\nalRecibir('enemigo_muerto', () => {\n    puntos += 100;\n    uiTextoScore.contenido = 'Score: ' + puntos;\n});" }
 ];
 
-// Generate 500+ variations
-for(let i=0; i<500; i++) {
+// Generate 700+ variations
+for(let i=0; i<700; i++) {
     const t = templates[i % templates.length];
     examples.push({
         title: `${t.name} (Variación ${i + 1})`,

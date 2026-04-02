@@ -1,5 +1,5 @@
-import { examples, intentWeights, structuralRules, typeInference } from './AutoReparatorData.js';
-import { transpile, getScriptMetadata } from './CES_Transpiler.js';
+import { examples, intentWeights, structuralRules, typeInference, logicPatterns } from './AutoReparatorData.js';
+import { transpile } from './CES_Transpiler.js';
 import { getPreferences } from './ui/PreferencesWindow.js';
 
 /**
@@ -203,7 +203,29 @@ export async function repair(code, fileName, runtimeError = null) {
         }
     }
 
-    // 6. Structural Repair Logic
+    // 6. Logic Pattern Completion (New Brain v3.1)
+    if (isSmartEnabled) {
+        console.log("[AutoReparator] Buscando patrones lógicos incompletos...");
+        logicPatterns.forEach(pattern => {
+            if (pattern.trigger.test(repairedCode)) {
+                // Check if key elements of the pattern are missing
+                const missingElements = pattern.elements.filter(el => {
+                    const regex = new RegExp(el, 'i');
+                    return !regex.test(repairedCode);
+                });
+
+                if (missingElements.length > 0 && missingElements.length <= 2) {
+                    console.log(`[AutoReparator] Patrón detectado: ${pattern.name}. Sugiriendo completado...`);
+                    // If it's a lifecycle trigger and the code is very short, add the completion
+                    if (repairedCode.length < 150) {
+                        repairedCode += `\n// Sugerencia de ${pattern.name}:\n${pattern.completion}`;
+                    }
+                }
+            }
+        });
+    }
+
+    // 7. Structural Repair Logic
     if (isSmartEnabled) {
         // Fix input logic placement (should be in alActualizar)
         const hasInputLogic = /teclaPresionada|teclaRecienPresionada|botonMousePresionado|obtenerPosicionMouse/i.test(repairedCode);
@@ -242,7 +264,7 @@ export async function repair(code, fileName, runtimeError = null) {
         });
     }
 
-    // 7. Validate with Transpiler and try to isolate bad lines
+    // 8. Validate with Transpiler and try to isolate bad lines
     let validation = transpile(repairedCode, fileName);
 
     if (validation.errors && validation.errors.length > 0) {
@@ -268,7 +290,7 @@ export async function repair(code, fileName, runtimeError = null) {
         repairedCode = lines.join('\n');
     }
 
-    // 8. Final validation
+    // 9. Final validation
     validation = transpile(repairedCode, fileName);
     const success = !validation.errors || validation.errors.length === 0;
 
