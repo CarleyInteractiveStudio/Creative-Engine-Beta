@@ -101,6 +101,60 @@ alActualizar(delta) {
     }
 ];
 
+// --- SMART SEMANTIC RULES (Small Rule-Based Brain) ---
+
+export const intentWeights = {
+    movimiento: {
+        keywords: ['tecla', 'velocidad', 'vel', 'posicion', 'moverse', 'caminar', 'x', 'y', 'w', 'a', 's', 'd', 'arriba', 'abajo', 'izquierda', 'derecha', 'mover'],
+        requiredComponents: ['Transform'],
+        preferredLifecycle: 'alActualizar',
+        scoreBoost: 10
+    },
+    fisica: {
+        keywords: ['fisica', 'gravedad', 'impulso', 'fuerza', 'velocity', 'salto', 'choque', 'colision', 'rb', 'masa', 'rebotar'],
+        requiredComponents: ['Rigidbody2D'],
+        preferredLifecycle: 'alActualizar',
+        scoreBoost: 15
+    },
+    salud: {
+        keywords: ['vida', 'daño', 'curar', 'morir', 'muerte', 'salud', 'health', 'damage', 'heal', 'danar'],
+        requiredComponents: ['Health'],
+        preferredLifecycle: 'alEntrarEnColision',
+        scoreBoost: 12
+    },
+    ui: {
+        keywords: ['boton', 'click', 'barra', 'texto', 'imagen', 'ui', 'progreso', 'valor', 'pantalla', 'clicar', 'pulsar'],
+        requiredComponents: ['UIImage', 'UIText', 'ProgressBar'],
+        preferredLifecycle: 'alHacerClick',
+        scoreBoost: 10
+    },
+    combate: {
+        keywords: ['atacar', 'bala', 'proyectil', 'disparar', 'fire', 'espada', 'golpe', 'enemigo', 'dañar'],
+        requiredComponents: ['Attack'],
+        preferredLifecycle: 'alActualizar',
+        scoreBoost: 12
+    }
+};
+
+export const structuralRules = {
+    mandatoryHeader: "ve motor;",
+    allowedGlobalScope: ['publico', 'variable', 'constante', 've', 'go', 'engine', 'motor'],
+    lifecycleMethods: [
+        'alEmpezar', 'alActualizar', 'alEntrarEnColision', 'alHacerClick',
+        'alRecibir', 'alFinalizarAnimacion', 'alChocar', 'alClicar', 'alPulsar'
+    ]
+};
+
+export const typeInference = [
+    { regex: /velocidad|fuerza|salto|vida|danio|daño|distancia|masa|gravedad|valor|puntos|cantidad/i, type: 'numero' },
+    { regex: /nombre|tag|texto|mensaje|nivel|escena|id/i, type: 'texto' },
+    { regex: /activo|puede|esta|es|tocado|listo/i, type: 'booleano' },
+    { regex: /objetivo|meta|jugador|padre|hijo|materia|mtr/i, type: 'mtr' },
+    { regex: /prefab|bala|enemigo|item|recompensa/i, type: 'Prefab' },
+    { regex: /sonido|audio|musica|efecto/i, type: 'Audio' },
+    { regex: /icono|imagen|sprite|textura/i, type: 'Sprite' }
+];
+
 // High Quality Templates for mass generation
 const templates = [
     { name: "Salud y Daño", code: "ve motor;\npublico numero vida = 100;\nalEntrarEnColision(otro) {\n    si (otro.tieneTag(\"Enemigo\")) {\n        vida -= 10;\n        si (vida <= 0) destruir(materia);\n    }\n}" },

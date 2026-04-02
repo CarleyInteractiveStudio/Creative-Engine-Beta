@@ -1,17 +1,21 @@
-import { examples } from './AutoReparatorData.js';
-import { transpile } from './CES_Transpiler.js';
+import { examples, intentWeights, structuralRules, typeInference } from './AutoReparatorData.js';
+import { transpile, getScriptMetadata } from './CES_Transpiler.js';
+import { getPreferences } from './ui/PreferencesWindow.js';
 
 /**
- * Auto Reparator Module
- * Analyzes and fixes common syntax errors and misspellings in CES scripts.
+ * Auto Reparator Module v3 "Smart Brain"
+ * Analyzes and fixes common syntax errors and misspellings in CES scripts using semantic rules.
  */
 export async function repair(code, fileName, runtimeError = null) {
+    const prefs = getPreferences();
+    const isSmartEnabled = prefs.autoCorrectorInteligente !== false; // Default true
+
     let repairedCode = code;
     const L = window.Localization;
 
-    console.log(`[AutoReparator] Iniciando reparación de ${fileName}...`);
+    console.log(`[AutoReparator] Iniciando reparación de ${fileName} (Smart: ${isSmartEnabled})...`);
 
-    // 0. Runtime Error analysis (NEW)
+    // 0. Runtime Error analysis
     if (runtimeError && runtimeError.message) {
         console.log("[AutoReparator] Analizando error de ejecución:", runtimeError.message);
 
@@ -68,69 +72,91 @@ export async function repair(code, fileName, runtimeError = null) {
         }
     }
 
-    // 1. Common Keyword Misspellings (Fuzzy matching simplified)
+    // 1. Smart Keyword Substitutions
     const substitutions = {
-        'funcion': ['funsion', 'fucion', 'funcio', 'function'],
-        'publico': ['public', 'pubico', 'público'],
-        'variable': ['var', 'variabke', 'virable'],
-        'numero': ['num', 'nmero', 'número'],
-        'verdadero': ['true', 'verdedero'],
-        'falso': ['false', 'falsoo'],
-        'si': ['if'],
-        'sino': ['else'],
-        've motor;': ['ve motor', 'go motor', 'engine', 'import motor'],
-        'alActualizar': ['actualizar', 'alactualizar', 'onUpdate', 'update'],
-        'alEmpezar': ['alInicio', 'alempezar', 'onStart', 'start', 'iniciar'],
-        'materia': ['objeto', 'mtr', 'this'],
-        'posicion': ['position', 'pos'],
-        'fisica': ['physics', 'rigidbody', 'física'],
-        'imprimir': ['log', 'print', 'console.log']
+        'funcion': ['funsion', 'fucion', 'funcio', 'function', 'função', 'функция', '函数'],
+        'publico': ['public', 'pubico', 'público', 'открытый', '公开'],
+        'variable': ['var', 'variabke', 'virable', 'variável'],
+        'numero': ['num', 'nmero', 'número', 'число', '数字'],
+        'texto': ['string', 'text', 'текст', '文本'],
+        'booleano': ['bool', 'boolean', 'булево', '布尔值'],
+        'verdadero': ['true', 'verdedero', 'истина', '真'],
+        'falso': ['false', 'falsoo', 'ложь', '假'],
+        'si': ['if', 'se', 'если', '如果'],
+        'sino': ['else', 'senão', 'иначе', '否则'],
+        'retornar': ['return', 'vernut', '返回'],
+        've motor;': ['ve motor', 'go motor', 'engine', 'import motor', 'motor;', '引擎'],
+        'alActualizar': ['actualizar', 'alactualizar', 'onUpdate', 'update', 'atualizar', 'обновить', '更新'],
+        'alEmpezar': ['alInicio', 'alempezar', 'onStart', 'start', 'iniciar', 'começar', 'начать', '开始'],
+        'materia': ['objeto', 'mtr', 'this', 'matéria', 'материя', '物质'],
+        'posicion': ['position', 'pos', 'posição', 'позиция', '位置'],
+        'fisica': ['physics', 'rigidbody', 'física', 'физика', '物理'],
+        'imprimir': ['log', 'print', 'console.log', 'вывод', '打印']
     };
 
     for (const [correct, wrongList] of Object.entries(substitutions)) {
         for (const wrong of wrongList) {
-            // Regex to match whole words only, case insensitive
             const regex = new RegExp(`\\b${wrong}\\b`, 'gi');
+            // Force correct case for keywords to match transpiler expectations
             repairedCode = repairedCode.replace(regex, correct);
         }
     }
 
-    // 2. Ensure 've motor;' exists (avoid duplicates)
-    if (!repairedCode.toLowerCase().includes('ve motor;')) {
-        repairedCode = 've motor;\n' + repairedCode;
+    // 2. Ensure mandatory header
+    if (!repairedCode.toLowerCase().includes(structuralRules.mandatoryHeader)) {
+        repairedCode = structuralRules.mandatoryHeader + '\n' + repairedCode;
     }
 
-    // 2.b: Structural Analysis with Examples (Advanced Matcher)
-    console.log("[AutoReparator] Buscando coincidencias en la base de datos de ejemplos...");
+    // 3. Smart Intent Detection
+    console.log("[AutoReparator] Analizando intención semántica...");
+    let bestIntent = 'desconocido';
+    let maxIntentScore = 0;
+    const codeWords = repairedCode.toLowerCase().match(/\w+/g) || [];
+
+    for (const [intent, config] of Object.entries(intentWeights)) {
+        let score = 0;
+        config.keywords.forEach(k => {
+            if (codeWords.includes(k)) score += 2;
+        });
+
+        // Context boost: if the user is using specific engine functions
+        if (intent === 'fisica' && repairedCode.includes('applyImpulse')) score += 10;
+        if (intent === 'salud' && repairedCode.includes('danar')) score += 10;
+        if (intent === 'ui' && repairedCode.includes('uiBarra')) score += 10;
+
+        if (score > maxIntentScore) {
+            maxIntentScore = score;
+            bestIntent = intent;
+        }
+    }
+    console.log(`[AutoReparator] Intención detectada: ${bestIntent} (Score: ${maxIntentScore})`);
+
+    // 4. Smart Auto-Declaration (if enabled)
+    if (isSmartEnabled) {
+        const undeclared = detectUndeclaredVariables(repairedCode);
+        if (undeclared.length > 0) {
+            console.log("[AutoReparator] Detectadas variables no declaradas:", undeclared);
+            let declarations = "";
+            undeclared.forEach(v => {
+                const type = inferVariableType(v, repairedCode);
+                declarations += `publico ${type} ${v};\n`;
+            });
+            // Insert after header
+            repairedCode = repairedCode.replace(structuralRules.mandatoryHeader, structuralRules.mandatoryHeader + '\n' + declarations);
+        }
+    }
+
+    // 5. Advanced Example Matcher (Structural)
     let bestExample = null;
     let maxMatch = 0;
 
-    // Map common user intents to keywords
-    const intentKeywords = {
-        'movimiento': ['mober', 'moverse', 'camina', 'correr', 'andando', 'tecla', 'w', 'a', 's', 'd', 'velocidad', 'vel'],
-        'ataque': ['pegar', 'golpe', 'daño', 'danar', 'espada', 'bala', 'proyectil', 'lanzar', 'fire', 'disparar'],
-        'salud': ['vida', 'curar', 'muerte', 'morir', 'health', 'daño'],
-        'seguimiento': ['seguir', 'objetivo', 'jugador', 'perseguir', 'distancia'],
-        'ui': ['botón', 'barra', 'texto', 'imagen', 'pantalla', 'progreso'],
-        'física': ['saltar', 'gravedad', 'choque', 'colision', 'rb', 'fisica', 'caer'],
-        'jefe': ['vida', 'jefe', 'fase', 'proyectil', 'instanciar'],
-        'inventario': ['item', 'recogido', 'oro', 'nombre', 'destruir']
-    };
-
     examples.forEach(ex => {
-        // Simple word-overlap score
         const exWords = ex.code.toLowerCase().match(/\w+/g) || [];
-        const codeWords = repairedCode.toLowerCase().match(/\w+/g) || [];
-
         let overlap = exWords.filter(w => codeWords.includes(w)).length;
 
-        // Boost score if user code contains intent keywords matching example title
-        for (const [intent, keywords] of Object.entries(intentKeywords)) {
-            if (ex.title.toLowerCase().includes(intent)) {
-                if (keywords.some(k => codeWords.includes(k))) {
-                    overlap += 10; // Increased intent boost
-                }
-            }
+        // Intent boost
+        if (ex.title.toLowerCase().includes(bestIntent)) {
+            overlap += intentWeights[bestIntent]?.scoreBoost || 5;
         }
 
         const score = overlap / exWords.length;
@@ -177,14 +203,46 @@ export async function repair(code, fileName, runtimeError = null) {
         }
     }
 
-    // 3. Simple Brackets & Semicolons pattern fixing
-    // Fix missing semicolons on declarations
-    repairedCode = repairedCode.replace(/^(publico|variable|constante)\s+[\w\u00C0-\u017F]+\s+[\w\u00C0-\u017F]+\s*=?[^;]*?([^\s;])$/gm, (match, p1, p2) => {
-        if (match.includes('{') || match.includes('}')) return match;
-        return match + ';';
-    });
+    // 6. Structural Repair Logic
+    if (isSmartEnabled) {
+        // Fix input logic placement (should be in alActualizar)
+        const hasInputLogic = /teclaPresionada|teclaRecienPresionada|botonMousePresionado|obtenerPosicionMouse/i.test(repairedCode);
+        const hasUpdate = /alActualizar|actualizar|update/i.test(repairedCode);
 
-    // 4. Validate with Transpiler and try to isolate bad lines
+        if (hasInputLogic && !hasUpdate) {
+            console.log("[AutoReparator] Moviendo lógica de entrada a alActualizar...");
+            // Extract lines that look like they should be in update (not declarations, not imports)
+            const lines = repairedCode.split('\n');
+            const declarationKeywords = ['publico', 'privado', 'variable', 'constante', 've', 'go', 'engine', 'motor'];
+            let updateBody = "";
+            let remainingCode = "";
+
+            lines.forEach(line => {
+                const trimmed = line.trim();
+                if (!trimmed) return;
+                const isDeclaration = declarationKeywords.some(k => trimmed.startsWith(k));
+                const isFunction = /^(async\s+)?(funcion|alEmpezar|alEntrarEnColision|alRecibir|alHacerClick|alChocar|alClicar|alPulsar)/i.test(trimmed);
+
+                if (!isDeclaration && !isFunction && trimmed.includes('tecla')) {
+                    updateBody += `    ${trimmed}\n`;
+                } else {
+                    remainingCode += `${line}\n`;
+                }
+            });
+
+            if (updateBody) {
+                repairedCode = `${remainingCode.trim()}\n\nalActualizar(delta) {\n${updateBody}}`;
+            }
+        }
+
+        // Fix missing semicolons on declarations
+        repairedCode = repairedCode.replace(/^(publico|variable|constante)\s+[\w\u00C0-\u017F]+\s+[\w\u00C0-\u017F]+\s*=?[^;]*?([^\s;])$/gm, (match, p1, p2) => {
+            if (match.includes('{') || match.includes('}')) return match;
+            return match + ';';
+        });
+    }
+
+    // 7. Validate with Transpiler and try to isolate bad lines
     let validation = transpile(repairedCode, fileName);
 
     if (validation.errors && validation.errors.length > 0) {
@@ -210,11 +268,15 @@ export async function repair(code, fileName, runtimeError = null) {
         repairedCode = lines.join('\n');
     }
 
-    // 5. Final validation
+    // 8. Final validation
     validation = transpile(repairedCode, fileName);
     const success = !validation.errors || validation.errors.length === 0;
 
     let finalMessage = success ? L.get('REPARACION_EXITOSA', 'Código reparado con éxito.') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero aún quedan errores complejos.');
+
+    if (bestIntent !== 'desconocido' && !success) {
+        finalMessage += `\n🤖 Parece que intentas hacer algo de '${bestIntent}'. He intentado ajustar el código a esa lógica.`;
+    }
 
     // Notify if we replaced the script with a pre-made template
     if (bestExample && (repairedCode.includes(bestExample.code.substring(0, 20)) || forcedTemplate)) {
@@ -226,4 +288,68 @@ export async function repair(code, fileName, runtimeError = null) {
         code: repairedCode,
         message: finalMessage
     };
+}
+
+/**
+ * Detects variables that are used but not declared.
+ */
+function detectUndeclaredVariables(code) {
+    const declared = new Set();
+    const declarationRegex = /\b(publico|privado|variable|constante)\s+[\w\u00C0-\u017F]+\s+([\w\u00C0-\u017F]+)/g;
+    let match;
+    while ((match = declarationRegex.exec(code)) !== null) {
+        declared.add(match[2]);
+    }
+
+    const functionRegex = /\b(funcion|alActualizar|alEmpezar|alEntrarEnColision|alHacerClick|alRecibir)\s*([\w\u00C0-\u017F]+)?\s*\(([^)]*)\)/g;
+    while ((match = functionRegex.exec(code)) !== null) {
+        if (match[2]) declared.add(match[2]);
+        if (match[3]) {
+            match[3].split(',').forEach(p => {
+                const param = p.trim().split(/\s+/).pop();
+                if (param) declared.add(param);
+            });
+        }
+    }
+
+    // Common engine keywords and built-ins to ignore
+    const engineKeywords = [
+        'posicion', 'fisica', 'materia', 'mtr', 'delta', 'otro', 'datos', 'reproducir', 'imprimir', 'esperar', 'cada',
+        'nuevo', 'Vector2', 'azar', 'si', 'sino', 'retornar', 'verdadero', 'falso', 'rotacion', 'escala', 'renderizadorDeSprite',
+        'fuenteDeAudio', 'animador', 'lienzo', 'uiBarra', 'tiempoDelta', 'absoluto', 'seno', 'coseno', 'distancia', 'instanciar',
+        'destruir', 'lanzarRayo', 'buscar', 'cargarEscena', 'difundir', 'teclaPresionada', 'teclaRecienPresionada', 'obtenerPosicionMouse'
+    ];
+    engineKeywords.forEach(k => declared.add(k));
+
+    const potentialVars = new Set();
+    // Matches words that look like variables (not starting with . and not followed by ()
+    const usageRegex = /(?<![.\w])\b([a-zA-Z_\u00C0-\u017F][\w\u00C0-\u017F]*)\b(?!\s*\()/g;
+    while ((match = usageRegex.exec(code)) !== null) {
+        const word = match[1];
+        if (!declared.has(word) && isNaN(word) && word.length > 1) {
+            potentialVars.add(word);
+        }
+    }
+    return Array.from(potentialVars);
+}
+
+/**
+ * Infers type based on variable name and usage.
+ */
+function inferVariableType(varName, code) {
+    for (const rule of typeInference) {
+        if (rule.regex.test(varName)) return rule.type;
+    }
+
+    // Check usage in code
+    const assignmentRegex = new RegExp(`\\b${varName}\\b\\s*=\\s*([^;\\n]+)`, 'i');
+    const match = code.match(assignmentRegex);
+    if (match) {
+        const value = match[1].trim();
+        if (value.startsWith('"') || value.startsWith("'")) return 'texto';
+        if (value === 'verdadero' || value === 'falso' || value === 'true' || value === 'false') return 'booleano';
+        if (!isNaN(parseFloat(value))) return 'numero';
+    }
+
+    return 'numero'; // Default
 }

@@ -38,7 +38,8 @@ const defaultPrefs = {
     showTerminal: false,
     executionMode: 'integrated',
     autoCloseGameWindow: true,
-    shareWithCarley: false
+    shareWithCarley: false,
+    autoCorrectorInteligente: true
 };
 
 export function getPreferences() {
@@ -170,6 +171,7 @@ async function savePreferences() {
     currentPreferences.executionMode = _dom.prefsExecutionMode.value;
     currentPreferences.autoCloseGameWindow = _dom.prefsAutoCloseGameWindow.checked;
     currentPreferences.shareWithCarley = _dom.prefsShareWithCarley.checked;
+    currentPreferences.autoCorrectorInteligente = _dom.prefsSmartReparatorToggle.checked;
 
     // Save to LocalStorage for Editor-wide defaults
     localStorage.setItem('creativeEnginePrefs', JSON.stringify(currentPreferences));
@@ -240,6 +242,7 @@ function loadPreferences() {
     if (_dom.prefsExecutionMode) _dom.prefsExecutionMode.value = currentPreferences.executionMode || 'integrated';
     if (_dom.prefsAutoCloseGameWindow) _dom.prefsAutoCloseGameWindow.checked = currentPreferences.autoCloseGameWindow !== false;
     if (_dom.prefsShareWithCarley) _dom.prefsShareWithCarley.checked = !!currentPreferences.shareWithCarley;
+    if (_dom.prefsSmartReparatorToggle) _dom.prefsSmartReparatorToggle.checked = currentPreferences.autoCorrectorInteligente !== false;
 
 
     if (_dom.prefsTheme) {

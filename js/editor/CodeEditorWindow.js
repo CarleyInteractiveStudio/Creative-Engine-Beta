@@ -10,6 +10,7 @@ import { keymap, Decoration } from "https://esm.sh/@codemirror/view@6.26.3";
 import { StateField, StateEffect } from "https://esm.sh/@codemirror/state@6.4.1";
 import { transpile } from './CES_Transpiler.js';
 import * as AutoReparator from './AutoReparator.js';
+import { intentWeights } from './AutoReparatorData.js';
 import * as AIHandler from './AIHandler.js';
 import { getPreferences } from './ui/PreferencesWindow.js';
 
@@ -174,10 +175,37 @@ const cesKeywords = [
 
 function cesCompletions(context) {
     let word = context.matchBefore(/\w+/);
-    if (!word) return context.explicit ? { from: context.pos, options: cesKeywords } : null;
+    const code = context.state.doc.toString();
+    const prefs = getPreferences();
+
+    let options = [...cesKeywords];
+
+    // Smart context-aware suggestions
+    if (prefs.autoCorrectorInteligente !== false) {
+        const codeLower = code.toLowerCase();
+        for (const [intent, config] of Object.entries(intentWeights)) {
+            const hasKeyword = config.keywords.some(k => codeLower.includes(k));
+            if (hasKeyword) {
+                // Boost relevant keywords or add specific snippets
+                options = options.map(opt => {
+                    if (config.keywords.includes(opt.label)) {
+                        return { ...opt, boost: 10 };
+                    }
+                    return opt;
+                });
+            }
+        }
+
+        // Logic placement suggestions
+        if (codeLower.includes('alactualizar') && !codeLower.includes('teclapresionada')) {
+            options.push({ label: 'teclaPresionada("w")', type: 'function', info: 'Detecta si una tecla está siendo pulsada' });
+        }
+    }
+
+    if (!word) return context.explicit ? { from: context.pos, options: options } : null;
     return {
         from: word.from,
-        options: cesKeywords,
+        options: options,
         validFor: /^\w*$/
     };
 }

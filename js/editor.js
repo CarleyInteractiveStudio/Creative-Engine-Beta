@@ -420,6 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'md-preview-content', 'md-edit-content',
             // CHC Editor Elements
             'chc-integrated-editor', 'chc-human-text', 'chc-run-btn', 'chc-loading-overlay', 'chc-loading-text',
+            'prefs-smart-reparator-toggle',
             // Animation Skeletal Elements
             'animation-type-selector', 'animation-record-btn', 'skeletal-timeline', 'animation-time-slider', 'skeletal-tracks'
         ];
