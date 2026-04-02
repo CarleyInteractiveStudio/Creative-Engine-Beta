@@ -3922,6 +3922,9 @@ export class Movement extends Leyes {
         this.groundTag = 'Ground';
         this.isGrounded = false;
         this.lastMove = { x: 0, y: 0 };
+
+        this.moveSound = ""; // Ruta al sonido de movimiento
+        this.jumpSound = ""; // Ruta al sonido de salto
     }
     update(deltaTime) {
         const input = RuntimeAPIManager.getAPI('input');
@@ -3969,10 +3972,22 @@ export class Movement extends Leyes {
 
             if (this.isGrounded && input.isKeyJustPressed(this.jumpKey)) {
                  rb.addImpulse(0, -this.jumpForce / 10);
+                 if (this.jumpSound) {
+                    const audio = this.materia.getComponent(AudioSource);
+                    if (audio) audio.play(this.jumpSound);
+                 }
             }
         } else if (transform) {
             transform.x += moveX * this.speed * deltaTime;
             transform.y += moveY * this.speed * deltaTime;
+        }
+
+        // Sonido de movimiento
+        if ((moveX !== 0 || moveY !== 0) && this.moveSound) {
+            const audio = this.materia.getComponent(AudioSource);
+            if (audio && !audio.isPlaying) {
+                audio.play(this.moveSound);
+            }
         }
     }
     clone() {
@@ -3986,6 +4001,8 @@ export class Movement extends Leyes {
         newMovement.jumpForce = this.jumpForce;
         newMovement.useRigidbody = this.useRigidbody;
         newMovement.groundTag = this.groundTag;
+        newMovement.moveSound = this.moveSound;
+        newMovement.jumpSound = this.jumpSound;
         return newMovement;
     }
 }
@@ -5294,7 +5311,7 @@ export class Attack extends Leyes {
     constructor(materia) {
         super(materia);
         this.attacks = [
-            { key: 'j', animation: '', damage: 10, pushForce: 5, duration: 0.2 }
+            { key: 'j', animation: '', sound: '', damage: 10, pushForce: 5, duration: 0.2 }
         ];
         this.colliderMateria = null; // Materia ID that acts as the hit area
         this.cooldown = 0.3;
@@ -5349,6 +5366,11 @@ export class Attack extends Leyes {
         const animator = this.materia.getComponent(Animator) || this.materia.getComponent(AnimatorController);
         if (animator && atk.animation) {
             animator.play(atk.animation, { loop: false, force: true });
+        }
+
+        if (atk.sound) {
+            const audio = this.materia.getComponent(AudioSource);
+            if (audio) audio.play(atk.sound);
         }
     }
 
@@ -6345,6 +6367,9 @@ export class HelicopterController extends Leyes {
         this.teclaGiroIzquierda = 'a';
         this.teclaGiroDerecha = 'd';
 
+        // Sonidos
+        this.engineSound = "";
+
         // Scripting API
         this.potenciaActual = 0;
         this.giroActual = 0;
@@ -6434,6 +6459,11 @@ export class HelicopterController extends Leyes {
             y: up.y * liftForceMagnitude * deltaTime * 10
         };
         rb.addForce(finalForce.x, finalForce.y);
+
+        if (this.engineSound && Math.abs(thrustInput) > 0) {
+            const audio = this.materia.getComponent(AudioSource);
+            if (audio && !audio.isPlaying) audio.play(this.engineSound);
+        }
 
         // 2. Manejar Giro (Inclinación / Pitch)
         let steerInput = 0;
@@ -6530,6 +6560,10 @@ export class VehicleTopDown extends Leyes {
         this.teclaAcelerar = 'w';
         this.teclaFrenar = 's';
 
+        // Sonidos
+        this.engineSound = "";
+        this.brakeSound = "";
+
         // Estado interno
         this._isInitialized = false;
     }
@@ -6618,6 +6652,11 @@ export class VehicleTopDown extends Leyes {
             if (Math.abs(currentSpeed) < this.velocidadMaxima / 100) {
                 const force = accelInput * this.potencia * deltaTime * 10;
                 rb.addForce(forward.x * force, forward.y * force);
+
+                if (this.engineSound) {
+                    const audio = this.materia.getComponent(AudioSource);
+                    if (audio && !audio.isPlaying) audio.play(this.engineSound);
+                }
             }
         } else {
             // Freno motor suave
@@ -6676,6 +6715,10 @@ export class PlaneController extends Leyes {
         this.teclaBotonFreno = 'space'; // New dedicated brake key
         this.teclaNarizArriba = 'a';
         this.teclaNarizAbajo = 'd';
+
+        // Sonidos
+        this.engineSound = "";
+        this.takeoffSound = "";
 
         // Estado interno
         this.estaEnSuelo = false;
@@ -6793,6 +6836,11 @@ export class PlaneController extends Leyes {
                 const force = thrustInput * this.potenciaMotor * thrustMult * deltaTime * 10;
                 rb.addForce(forward.x * force, forward.y * force);
 
+                if (this.engineSound) {
+                    const audio = this.materia.getComponent(AudioSource);
+                    if (audio && !audio.isPlaying) audio.play(this.engineSound);
+                }
+
                 // Si estamos en el suelo, también damos potencia a las ruedas para taxear
                 if (this.estaEnSuelo) {
                     for (const susp of suspensiones) {
@@ -6861,6 +6909,12 @@ export class PlaneController extends Leyes {
             rb.velocity.y *= drag;
             rb.angularVelocity *= drag;
         }
+
+        // Engine sound fallback/loop
+        if (this.engineSound && Math.abs(rb.velocity.x) > 0.1) {
+            const audio = this.materia.getComponent(AudioSource);
+            if (audio && !audio.isPlaying) audio.play(this.engineSound);
+        }
     }
 
     clone() {
@@ -6891,6 +6945,9 @@ export class SuspensionHC extends Leyes {
         // Configuración de controles
         this.teclaAcelerar = 'd';
         this.teclaFrenar = 'a';
+
+        // Sonidos
+        this.suspensionSound = "";
 
         // Estado interno
         this._puntoAnclajeLocal = null;
@@ -7083,6 +7140,11 @@ export class SuspensionHC extends Leyes {
                     const torqueScale = 1500; // Multiplicador para sentir la fuerza
                     const torque = moveInput * this.potenciaMotor * torqueScale * deltaTime;
                     rbRueda.addTorque(torque);
+
+                    if (this.suspensionSound) {
+                        const audio = this.materia.getComponent(AudioSource);
+                        if (audio && !audio.isPlaying) audio.play(this.suspensionSound);
+                    }
 
                     // Efecto de inclinación mejorado con control de fuerza
                     const reactionTorque = -moveInput * this.potenciaMotor * (torqueScale * 1.5) * this.fuerzaInclinacion * deltaTime;

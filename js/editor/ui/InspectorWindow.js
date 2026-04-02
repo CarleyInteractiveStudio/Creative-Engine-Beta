@@ -1759,6 +1759,10 @@ async function updateInspectorForMateria(selectedMateria) {
                                     <label>Anim</label>
                                     ${renderPropertyDropper('Animation', atk.animation, `data-component="Attack" data-prop="attacks.${aIdx}.animation"`)}
                                 </div>
+                                <div class="inspector-row">
+                                    <label>Sound</label>
+                                    ${renderPropertyDropper('Audio', atk.sound, `data-component="Attack" data-prop="attacks.${aIdx}.sound"`)}
+                                </div>
                                 <div class="prop-row-multi">
                                     <label>${L.get('DAMAGE', 'Daño')}</label>
                                     <input type="number" class="prop-input" data-component="Attack" data-prop="attacks.${aIdx}.damage" value="${atk.damage}">
@@ -2895,6 +2899,14 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="JUMP_FORCE">${L.get('JUMP_FORCE', 'Fuerza Salto')}</label>
                         <input type="number" class="prop-input" data-component="Movement" data-prop="jumpForce" value="${ley.jumpForce}">
                     </div>
+                    <div class="inspector-row">
+                        <label>Sonido Mov</label>
+                        ${renderPropertyDropper('Audio', ley.moveSound, 'data-component="Movement" data-prop="moveSound"')}
+                    </div>
+                    <div class="inspector-row">
+                        <label>Sonido Salto</label>
+                        ${renderPropertyDropper('Audio', ley.jumpSound, 'data-component="Movement" data-prop="jumpSound"')}
+                    </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Movement" data-prop="useRigidbody" ${ley.useRigidbody ? 'checked' : ''}>
                         <label data-i18n="USE_RIGIDBODY">${L.get('USE_RIGIDBODY', 'Usar Rigidbody')}</label>
@@ -3384,6 +3396,10 @@ async function updateInspectorForMateria(selectedMateria) {
                             <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="eje.y" value="${ley.eje.y}" title="Y">
                         </div>
                     </div>
+                    <div class="inspector-row">
+                        <label>Sonido Susp</label>
+                        ${renderPropertyDropper('Audio', ley.suspensionSound, 'data-component="SuspensionHC" data-prop="suspensionSound"')}
+                    </div>
 
                     <div class="inspector-section-header"><span data-i18n="ENGINE_SETTINGS">${L.get('ENGINE_SETTINGS', 'Configuración de Motor')}</span></div>
                     <div class="prop-row-multi">
@@ -3457,6 +3473,14 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="MOTOR_BRAKE">${L.get('MOTOR_BRAKE', 'Freno Motor')}</label>
                         <input type="number" step="0.01" min="0" max="1" class="prop-input" data-component="VehicleTopDown" data-prop="frenadoMotor" value="${ley.frenadoMotor}">
                     </div>
+                    <div class="inspector-row">
+                        <label>Sonido Motor</label>
+                        ${renderPropertyDropper('Audio', ley.engineSound, 'data-component="VehicleTopDown" data-prop="engineSound"')}
+                    </div>
+                    <div class="inspector-row">
+                        <label>Sonido Freno</label>
+                        ${renderPropertyDropper('Audio', ley.brakeSound, 'data-component="VehicleTopDown" data-prop="brakeSound"')}
+                    </div>
 
                     <div class="inspector-section-header"><span data-i18n="CONTROLS">${L.get('CONTROLS', 'Controles')}</span></div>
                     <div class="prop-row-multi">
@@ -3503,6 +3527,14 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label title="Resistencia al aire (0-1)" data-i18n="AIR_DRAG">${L.get('AIR_DRAG', 'Arrastre Aire')}</label>
                         <input type="number" step="0.01" min="0" max="1" class="prop-input" data-component="PlaneController" data-prop="arrastreAire" value="${ley.arrastreAire}">
+                    </div>
+                    <div class="inspector-row">
+                        <label>Sonido Motor</label>
+                        ${renderPropertyDropper('Audio', ley.engineSound, 'data-component="PlaneController" data-prop="engineSound"')}
+                    </div>
+                    <div class="inspector-row">
+                        <label>Sonido Despegue</label>
+                        ${renderPropertyDropper('Audio', ley.takeoffSound, 'data-component="PlaneController" data-prop="takeoffSound"')}
                     </div>
 
                     <div class="inspector-section-header"><span data-i18n="CONTROLS">${L.get('CONTROLS', 'Controles')}</span></div>
@@ -3558,6 +3590,10 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label title="Resistencia al aire (0-1)" data-i18n="AIR_DRAG">${L.get('AIR_DRAG', 'Arrastre Aire')}</label>
                         <input type="number" step="0.01" min="0" max="1" class="prop-input" data-component="HelicopterController" data-prop="arrastreAire" value="${ley.arrastreAire}">
+                    </div>
+                    <div class="inspector-row">
+                        <label>Sonido Motor</label>
+                        ${renderPropertyDropper('Audio', ley.engineSound, 'data-component="HelicopterController" data-prop="engineSound"')}
                     </div>
 
                     <div class="inspector-section-header"><span data-i18n="CONTROLS">${L.get('CONTROLS', 'Controles')}</span></div>
