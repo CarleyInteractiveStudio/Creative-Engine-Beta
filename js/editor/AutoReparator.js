@@ -1,4 +1,4 @@
-import { examples, intentWeights, structuralRules, typeInference, logicPatterns } from './AutoReparatorData.js';
+import { examples, intentWeights, structuralRules, typeInference, logicPatterns, expensivePatterns } from './AutoReparatorData.js';
 import { transpile } from './CES_Transpiler.js';
 import { getPreferences } from './ui/PreferencesWindow.js';
 
@@ -223,7 +223,27 @@ export async function repair(code, fileName, runtimeError = null) {
         }
     }
 
-    // 6. Logic Pattern Completion (New Brain v3.1)
+    // 6. Performance Mentor (Brain v3.3)
+    if (isSmartEnabled) {
+        console.log("[AutoReparator] Ejecutando Performance Mentor...");
+        expensivePatterns.forEach(rule => {
+            if (rule.pattern.test(repairedCode)) {
+                // Determine if it's inside alActualizar
+                const lines = repairedCode.split('\n');
+                let inUpdate = false;
+                for (const line of lines) {
+                    if (/alActualizar/i.test(line)) inUpdate = true;
+                    if (inUpdate && rule.pattern.test(line)) {
+                        console.warn(`[Performance Mentor] ${rule.message}`);
+                        repairedCode = repairedCode.replace(line, `// ${rule.message}\n${line}`);
+                        break;
+                    }
+                }
+            }
+        });
+    }
+
+    // 6.b Logic Pattern Completion (New Brain v3.1)
     if (isSmartEnabled) {
         console.log("[AutoReparator] Buscando patrones lógicos incompletos...");
         logicPatterns.forEach(pattern => {
@@ -245,7 +265,12 @@ export async function repair(code, fileName, runtimeError = null) {
         });
     }
 
-    // 7. Structural Repair Logic
+    // 7. Syntax Healer (Braces and Parentheses balance)
+    if (isSmartEnabled) {
+        repairedCode = healSyntaxStructure(repairedCode);
+    }
+
+    // 8. Structural Repair Logic
     if (isSmartEnabled) {
         // Fix input logic placement (should be in alActualizar)
         const hasInputLogic = /teclaPresionada|teclaRecienPresionada|botonMousePresionado|obtenerPosicionMouse/i.test(repairedCode);
@@ -284,7 +309,7 @@ export async function repair(code, fileName, runtimeError = null) {
         });
     }
 
-    // 8. Validate with Transpiler and try to isolate bad lines
+    // 9. Validate with Transpiler and try to isolate bad lines
     let validation = transpile(repairedCode, fileName);
 
     if (validation.errors && validation.errors.length > 0) {
@@ -310,7 +335,31 @@ export async function repair(code, fileName, runtimeError = null) {
         repairedCode = lines.join('\n');
     }
 
-    // 9. Final validation
+    // 10. Object Awareness (Brain v3.3)
+    let missingComponentSuggestion = null;
+    if (isSmartEnabled && window.SceneManager && window.SceneManager.selectedMateria) {
+        const selected = window.SceneManager.selectedMateria;
+        const required = [
+            { key: 'fisica|velocity|applyImpulse', comp: 'Rigidbody2D' },
+            { key: 'vida|danar|curar', comp: 'Health' },
+            { key: 'reproducir|animador', comp: 'Animator' },
+            { key: 'renderizadorDeSprite', comp: 'SpriteRenderer' },
+            { key: 'uiBarra', comp: 'ProgressBar' }
+        ];
+
+        for (const req of required) {
+            const regex = new RegExp(req.key, 'i');
+            if (regex.test(repairedCode) && !selected.getComponent(window.Components[req.comp])) {
+                missingComponentSuggestion = {
+                    materiaId: selected.id,
+                    componentType: req.comp
+                };
+                break;
+            }
+        }
+    }
+
+    // 11. Final validation
     validation = transpile(repairedCode, fileName);
     const success = !validation.errors || validation.errors.length === 0;
 
@@ -318,6 +367,11 @@ export async function repair(code, fileName, runtimeError = null) {
 
     if (bestIntent !== 'desconocido' && !success) {
         finalMessage += `\n🤖 Parece que intentas hacer algo de '${bestIntent}'. He intentado ajustar el código a esa lógica.`;
+    }
+
+    // Add component suggestion to message if present
+    if (missingComponentSuggestion) {
+        finalMessage += `\n⚠️ He detectado que usas lógica de '${missingComponentSuggestion.componentType}', pero el objeto no tiene ese componente. ¿Deseas añadirlo?`;
     }
 
     // Notify if we replaced the script with a pre-made template
@@ -328,7 +382,8 @@ export async function repair(code, fileName, runtimeError = null) {
     return {
         success: success,
         code: repairedCode,
-        message: finalMessage
+        message: finalMessage,
+        addComponent: missingComponentSuggestion
     };
 }
 
@@ -394,4 +449,51 @@ function inferVariableType(varName, code) {
     }
 
     return 'numero'; // Default
+}
+
+/**
+ * Smart Healer for Braces and Parentheses.
+ * Tries to balance characters and close blocks logically.
+ */
+function healSyntaxStructure(code) {
+    let result = code;
+
+    // Helper to count occurrences
+    const count = (str, char) => (str.split(char).length - 1);
+
+    // 1. Balance Parentheses ()
+    const openParen = count(result, '(');
+    const closeParen = count(result, ')');
+    if (openParen > closeParen) {
+        // Find lines that end with a word and likely need a closing paren (e.g. function calls)
+        result = result.replace(/(\w+\s*\([^)\n]*)$/gm, '$1)');
+    }
+
+    // 2. Balance Braces {}
+    let lines = result.split('\n');
+    let braceLevel = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line.includes('{')) braceLevel += count(line, '{');
+        if (line.includes('}')) braceLevel -= count(line, '}');
+    }
+
+    if (braceLevel > 0) {
+        console.log(`[Syntax Healer] Cerrando ${braceLevel} llaves pendientes...`);
+        for (let j = 0; j < braceLevel; j++) {
+            result += '\n}';
+        }
+    } else if (braceLevel < 0) {
+        console.log(`[Syntax Healer] Detectadas llaves de cierre excesivas (${Math.abs(braceLevel)}). Intentando corrección...`);
+        // If we have more closures than openings, they are usually at the end.
+        for (let j = 0; j < Math.abs(braceLevel); j++) {
+            const lastBraceIdx = result.lastIndexOf('}');
+            if (lastBraceIdx !== -1) {
+                result = result.substring(0, lastBraceIdx) + result.substring(lastBraceIdx + 1);
+            }
+        }
+    }
+
+    return result;
 }

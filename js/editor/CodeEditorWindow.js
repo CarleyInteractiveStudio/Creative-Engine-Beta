@@ -10,7 +10,7 @@ import { keymap, Decoration } from "https://esm.sh/@codemirror/view@6.26.3";
 import { StateField, StateEffect } from "https://esm.sh/@codemirror/state@6.4.1";
 import { transpile } from './CES_Transpiler.js';
 import * as AutoReparator from './AutoReparator.js';
-import { intentWeights } from './AutoReparatorData.js';
+import { intentWeights, blockTemplates } from './AutoReparatorData.js';
 import * as AIHandler from './AIHandler.js';
 import { getPreferences } from './ui/PreferencesWindow.js';
 
@@ -200,6 +200,20 @@ function cesCompletions(context) {
         if (codeLower.includes('alactualizar') && !codeLower.includes('teclapresionada')) {
             options.push({ label: 'teclaPresionada("w")', type: 'function', info: 'Detecta si una tecla está siendo pulsada' });
         }
+
+        // --- Block Prediction (Brain v3.3) ---
+        blockTemplates.forEach(block => {
+            const match = block.keywords.some(k => codeLower.includes(k));
+            if (match) {
+                options.push({
+                    label: block.name,
+                    type: "snippet",
+                    apply: block.code,
+                    detail: "Insertar bloque lógico completo",
+                    boost: 20
+                });
+            }
+        });
     }
 
     if (!word) return context.explicit ? { from: context.pos, options: options } : null;

@@ -252,6 +252,58 @@ export const logicPatterns = [
     }
 ];
 
+/**
+ * Full Logic Blocks for prediction.
+ * Can be inserted as a whole functional unit.
+ */
+export const blockTemplates = [
+    {
+        name: "Mecánica: Salto Completo",
+        keywords: ["salto", "saltar", "suelo"],
+        code: `si (teclaRecienPresionada("Space") y estaTocandoTag("Suelo")) {
+    fisica.applyImpulse(nuevo Vector2(0, -10));
+    reproducir.Salto();
+}`
+    },
+    {
+        name: "Mecánica: Disparo Proyectil",
+        keywords: ["disparar", "fuego", "bala"],
+        code: `si (teclaRecienPresionada("f")) {
+    variable bala = instanciar(proyectil, posicion.x, posicion.y);
+    bala.fisica.velocity.x = voltearH ? -20 : 20;
+    reproducir.Disparo();
+}`
+    },
+    {
+        name: "Mecánica: Perseguir Jugador",
+        keywords: ["perseguir", "ia", "seguir"],
+        code: `si (jugador && distancia(posicion, jugador.posicion) < 400) {
+    variable dir = jugador.x > x ? 1 : -1;
+    posicion.x += dir * velocidad * delta;
+    voltearH = (dir < 0);
+}`
+    }
+];
+
+/**
+ * Performance Mentor rules.
+ * Identifies expensive calls and suggests optimizations.
+ */
+export const expensivePatterns = [
+    {
+        pattern: /buscar\s*\(/i,
+        location: "alActualizar",
+        message: "⚠️ Ineficiencia detectada: 'buscar()' en alActualizar. Es mejor buscarlo una vez en alEmpezar() y guardarlo en una variable.",
+        fix: "variable objRef;"
+    },
+    {
+        pattern: /instanciar\s*\(/i,
+        location: "alActualizar",
+        message: "⚠️ ¡Cuidado! Instanciar objetos cada frame puede causar lentitud. Asegúrate de que esté dentro de una condición 'si'.",
+        fix: null
+    }
+];
+
 // High Quality Templates for mass generation
 const templates = [
     { name: "Salud y Daño", code: "ve motor;\npublico numero vida = 100;\nalEntrarEnColision(otro) {\n    si (otro.tieneTag(\"Enemigo\")) {\n        vida -= 10;\n        si (vida <= 0) destruir(materia);\n    }\n}" },
@@ -296,8 +348,8 @@ const templates = [
     { name: "Gameplay: Score", code: "ve motor;\nvariable puntos = 0;\nalRecibir('enemigo_muerto', () => {\n    puntos += 100;\n    uiTextoScore.contenido = 'Score: ' + puntos;\n});" }
 ];
 
-// Generate 800+ variations (Expanded Library)
-for(let i=0; i<800; i++) {
+// Generate 1000+ variations (Massive Library v3.3)
+for(let i=0; i<1000; i++) {
     const t = templates[i % templates.length];
     examples.push({
         title: `${t.name} (Variación ${i + 1})`,
