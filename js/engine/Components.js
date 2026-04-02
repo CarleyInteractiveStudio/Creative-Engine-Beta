@@ -3922,6 +3922,11 @@ export class Movement extends Leyes {
         this.groundTag = 'Ground';
         this.isGrounded = false;
         this.lastMove = { x: 0, y: 0 };
+
+        this.moveSound = ""; // Ruta al sonido de movimiento
+        this.jumpSound = ""; // Ruta al sonido de salto
+
+        this._warnedMissing = new Set();
     }
     update(deltaTime) {
         const input = RuntimeAPIManager.getAPI('input');
@@ -3959,20 +3964,44 @@ export class Movement extends Leyes {
         const rb = this.materia.getComponent(Rigidbody2D);
         const transform = this.materia.getComponent(Transform);
 
-        if (this.useRigidbody && rb) {
-            rb.velocity.x = moveX * (this.speed / 10);
+        if (this.useRigidbody) {
+            if (rb) {
+                rb.velocity.x = moveX * (this.speed / 10);
 
-            // If gravity is disabled, allow vertical movement (Top-Down)
-            if (rb.gravityScale === 0) {
-                rb.velocity.y = moveY * (this.speed / 10);
-            }
+                // If gravity is disabled, allow vertical movement (Top-Down)
+                if (rb.gravityScale === 0) {
+                    rb.velocity.y = moveY * (this.speed / 10);
+                }
 
-            if (this.isGrounded && input.isKeyJustPressed(this.jumpKey)) {
-                 rb.addImpulse(0, -this.jumpForce / 10);
+                if (this.isGrounded && input.isKeyJustPressed(this.jumpKey)) {
+                    rb.addImpulse(0, -this.jumpForce / 10);
+                    if (this.jumpSound) {
+                        const audio = this.materia.getComponent(AudioSource);
+                        if (audio) audio.play(this.jumpSound);
+                        else if (!this._warnedMissing.has('AudioSource')) {
+                            this._warnedMissing.add('AudioSource');
+                            throw new Error(`El componente 'Movement' requiere un 'AudioSource' para reproducir el sonido de salto.`);
+                        }
+                    }
+                }
+            } else if (!this._warnedMissing.has('Rigidbody2D')) {
+                this._warnedMissing.add('Rigidbody2D');
+                throw new Error(`El componente 'Movement' tiene activado 'Usar Rigidbody' pero no hay un 'Rigidbody2D' en el objeto.`);
             }
         } else if (transform) {
             transform.x += moveX * this.speed * deltaTime;
             transform.y += moveY * this.speed * deltaTime;
+        }
+
+        // Sonido de movimiento
+        if ((moveX !== 0 || moveY !== 0) && this.moveSound) {
+            const audio = this.materia.getComponent(AudioSource);
+            if (audio) {
+                if (!audio.isPlaying) audio.play(this.moveSound);
+            } else if (!this._warnedMissing.has('AudioSource')) {
+                this._warnedMissing.add('AudioSource');
+                throw new Error(`El componente 'Movement' requiere un 'AudioSource' para reproducir el sonido de movimiento.`);
+            }
         }
     }
     clone() {
@@ -3986,6 +4015,8 @@ export class Movement extends Leyes {
         newMovement.jumpForce = this.jumpForce;
         newMovement.useRigidbody = this.useRigidbody;
         newMovement.groundTag = this.groundTag;
+        newMovement.moveSound = this.moveSound;
+        newMovement.jumpSound = this.jumpSound;
         return newMovement;
     }
 }
@@ -5294,7 +5325,7 @@ export class Attack extends Leyes {
     constructor(materia) {
         super(materia);
         this.attacks = [
-            { key: 'j', animation: '', damage: 10, pushForce: 5, duration: 0.2 }
+            { key: 'j', animation: '', sound: '', damage: 10, pushForce: 5, duration: 0.2 }
         ];
         this.colliderMateria = null; // Materia ID that acts as the hit area
         this.cooldown = 0.3;
@@ -5306,6 +5337,7 @@ export class Attack extends Leyes {
         this._attackWindow = 0;
         this._currentAttack = null;
         this._hitObjects = new Set();
+        this._warnedMissing = new Set();
     }
 
     update(deltaTime) {
@@ -5349,6 +5381,15 @@ export class Attack extends Leyes {
         const animator = this.materia.getComponent(Animator) || this.materia.getComponent(AnimatorController);
         if (animator && atk.animation) {
             animator.play(atk.animation, { loop: false, force: true });
+        }
+
+        if (atk.sound) {
+            const audio = this.materia.getComponent(AudioSource);
+            if (audio) audio.play(atk.sound);
+            else if (!this._warnedMissing.has('AudioSource')) {
+                this._warnedMissing.add('AudioSource');
+                throw new Error(`El componente 'Attack' requiere un 'AudioSource' para reproducir sonidos de ataque.`);
+            }
         }
     }
 
@@ -5435,6 +5476,7 @@ export class Attack extends Leyes {
         newAtk.colliderMateria = this.colliderMateria;
         newAtk.cooldown = this.cooldown;
         newAtk.cycleKey = this.cycleKey;
+        newAtk._warnedMissing = new Set();
         return newAtk;
     }
 }
@@ -6345,9 +6387,13 @@ export class HelicopterController extends Leyes {
         this.teclaGiroIzquierda = 'a';
         this.teclaGiroDerecha = 'd';
 
+        // Sonidos
+        this.engineSound = "";
+
         // Scripting API
         this.potenciaActual = 0;
         this.giroActual = 0;
+        this._warnedMissing = new Set();
     }
 
     // --- Multilingual Aliases ---
@@ -6435,6 +6481,16 @@ export class HelicopterController extends Leyes {
         };
         rb.addForce(finalForce.x, finalForce.y);
 
+        if (this.engineSound && Math.abs(thrustInput) > 0) {
+            const audio = this.materia.getComponent(AudioSource);
+            if (audio) {
+                if (!audio.isPlaying) audio.play(this.engineSound);
+            } else if (!this._warnedMissing.has('AudioSource')) {
+                this._warnedMissing.add('AudioSource');
+                throw new Error(`El componente 'HelicopterController' requiere un 'AudioSource' para reproducir el sonido de motor.`);
+            }
+        }
+
         // 2. Manejar Giro (Inclinación / Pitch)
         let steerInput = 0;
         if (input.isKeyPressed(this.teclaGiroIzquierda)) steerInput = -1;
@@ -6482,6 +6538,7 @@ export class HelicopterController extends Leyes {
     clone() {
         const copy = new HelicopterController(null);
         Object.assign(copy, this);
+        copy._warnedMissing = new Set();
         return copy;
     }
 }
@@ -6530,8 +6587,13 @@ export class VehicleTopDown extends Leyes {
         this.teclaAcelerar = 'w';
         this.teclaFrenar = 's';
 
+        // Sonidos
+        this.engineSound = "";
+        this.brakeSound = "";
+
         // Estado interno
         this._isInitialized = false;
+        this._warnedMissing = new Set();
     }
 
     // --- Multilingual Aliases ---
@@ -6618,6 +6680,16 @@ export class VehicleTopDown extends Leyes {
             if (Math.abs(currentSpeed) < this.velocidadMaxima / 100) {
                 const force = accelInput * this.potencia * deltaTime * 10;
                 rb.addForce(forward.x * force, forward.y * force);
+
+                if (this.engineSound) {
+                    const audio = this.materia.getComponent(AudioSource);
+                    if (audio) {
+                        if (!audio.isPlaying) audio.play(this.engineSound);
+                    } else if (!this._warnedMissing.has('AudioSource')) {
+                        this._warnedMissing.add('AudioSource');
+                        throw new Error(`El componente 'VehicleTopDown' requiere un 'AudioSource' para reproducir el sonido de motor.`);
+                    }
+                }
             }
         } else {
             // Freno motor suave
@@ -6652,6 +6724,7 @@ export class VehicleTopDown extends Leyes {
     clone() {
         const copy = new VehicleTopDown(null);
         Object.assign(copy, this);
+        copy._warnedMissing = new Set();
         return copy;
     }
 }
@@ -6677,9 +6750,14 @@ export class PlaneController extends Leyes {
         this.teclaNarizArriba = 'a';
         this.teclaNarizAbajo = 'd';
 
+        // Sonidos
+        this.engineSound = "";
+        this.takeoffSound = "";
+
         // Estado interno
         this.estaEnSuelo = false;
         this.velocidadAvance = 0;
+        this._warnedMissing = new Set();
     }
 
     // --- Multilingual Aliases ---
@@ -6793,6 +6871,16 @@ export class PlaneController extends Leyes {
                 const force = thrustInput * this.potenciaMotor * thrustMult * deltaTime * 10;
                 rb.addForce(forward.x * force, forward.y * force);
 
+                if (this.engineSound) {
+                    const audio = this.materia.getComponent(AudioSource);
+                    if (audio) {
+                        if (!audio.isPlaying) audio.play(this.engineSound);
+                    } else if (!this._warnedMissing.has('AudioSource')) {
+                        this._warnedMissing.add('AudioSource');
+                        throw new Error(`El componente 'PlaneController' requiere un 'AudioSource' para reproducir el sonido de motor.`);
+                    }
+                }
+
                 // Si estamos en el suelo, también damos potencia a las ruedas para taxear
                 if (this.estaEnSuelo) {
                     for (const susp of suspensiones) {
@@ -6861,6 +6949,12 @@ export class PlaneController extends Leyes {
             rb.velocity.y *= drag;
             rb.angularVelocity *= drag;
         }
+
+        // Engine sound fallback/loop
+        if (this.engineSound && Math.abs(rb.velocity.x) > 0.1) {
+            const audio = this.materia.getComponent(AudioSource);
+            if (audio && !audio.isPlaying) audio.play(this.engineSound);
+        }
     }
 
     clone() {
@@ -6892,9 +6986,13 @@ export class SuspensionHC extends Leyes {
         this.teclaAcelerar = 'd';
         this.teclaFrenar = 'a';
 
+        // Sonidos
+        this.suspensionSound = "";
+
         // Estado interno
         this._puntoAnclajeLocal = null;
         this._isInitialized = false;
+        this._warnedMissing = new Set();
     }
 
     // --- Multilingual Aliases ---
@@ -7084,6 +7182,16 @@ export class SuspensionHC extends Leyes {
                     const torque = moveInput * this.potenciaMotor * torqueScale * deltaTime;
                     rbRueda.addTorque(torque);
 
+                    if (this.suspensionSound) {
+                        const audio = this.materia.getComponent(AudioSource);
+                        if (audio) {
+                            if (!audio.isPlaying) audio.play(this.suspensionSound);
+                        } else if (!this._warnedMissing.has('AudioSource')) {
+                            this._warnedMissing.add('AudioSource');
+                            throw new Error(`El componente 'SuspensionHC' requiere un 'AudioSource' para reproducir el sonido de amortiguación.`);
+                        }
+                    }
+
                     // Efecto de inclinación mejorado con control de fuerza
                     const reactionTorque = -moveInput * this.potenciaMotor * (torqueScale * 1.5) * this.fuerzaInclinacion * deltaTime;
                     rbChasis.addTorque(reactionTorque);
@@ -7131,6 +7239,7 @@ export class SuspensionHC extends Leyes {
         const copy = new SuspensionHC(null);
         Object.assign(copy, this);
         copy._puntoAnclajeLocal = this._puntoAnclajeLocal ? { ...this._puntoAnclajeLocal } : null;
+        copy._warnedMissing = new Set();
         return copy;
     }
 }

@@ -26,7 +26,11 @@ export async function repair(code, fileName, runtimeError = null) {
             { key: 'play', comp: 'Animator', name: 'animador' },
             { key: 'stop', comp: 'Animator', name: 'animador' },
             { key: 'renderizadorDeSprite', comp: 'SpriteRenderer', name: 'renderizadorDeSprite' },
-            { key: 'color', comp: 'SpriteRenderer', name: 'renderizadorDeSprite' }
+            { key: 'color', comp: 'SpriteRenderer', name: 'renderizadorDeSprite' },
+            { key: 'AudioSource', comp: 'AudioSource', name: 'audio' },
+            { key: 'fuenteDeAudio', comp: 'AudioSource', name: 'audio' },
+            { key: 'reproducir', comp: 'AudioSource', name: 'audio' },
+            { key: 'sonido', comp: 'AudioSource', name: 'audio' }
         ];
 
         for (const check of missingComps) {
@@ -101,11 +105,34 @@ export async function repair(code, fileName, runtimeError = null) {
     let bestExample = null;
     let maxMatch = 0;
 
+    // Map common user intents to keywords
+    const intentKeywords = {
+        'movimiento': ['mober', 'moverse', 'camina', 'correr', 'andando', 'tecla', 'w', 'a', 's', 'd', 'velocidad', 'vel'],
+        'ataque': ['pegar', 'golpe', 'daño', 'danar', 'espada', 'bala', 'proyectil', 'lanzar', 'fire', 'disparar'],
+        'salud': ['vida', 'curar', 'muerte', 'morir', 'health', 'daño'],
+        'seguimiento': ['seguir', 'objetivo', 'jugador', 'perseguir', 'distancia'],
+        'ui': ['botón', 'barra', 'texto', 'imagen', 'pantalla', 'progreso'],
+        'física': ['saltar', 'gravedad', 'choque', 'colision', 'rb', 'fisica', 'caer'],
+        'jefe': ['vida', 'jefe', 'fase', 'proyectil', 'instanciar'],
+        'inventario': ['item', 'recogido', 'oro', 'nombre', 'destruir']
+    };
+
     examples.forEach(ex => {
         // Simple word-overlap score
         const exWords = ex.code.toLowerCase().match(/\w+/g) || [];
         const codeWords = repairedCode.toLowerCase().match(/\w+/g) || [];
-        const overlap = exWords.filter(w => codeWords.includes(w)).length;
+
+        let overlap = exWords.filter(w => codeWords.includes(w)).length;
+
+        // Boost score if user code contains intent keywords matching example title
+        for (const [intent, keywords] of Object.entries(intentKeywords)) {
+            if (ex.title.toLowerCase().includes(intent)) {
+                if (keywords.some(k => codeWords.includes(k))) {
+                    overlap += 10; // Increased intent boost
+                }
+            }
+        }
+
         const score = overlap / exWords.length;
         if (score > maxMatch) {
             maxMatch = score;
@@ -113,7 +140,14 @@ export async function repair(code, fileName, runtimeError = null) {
         }
     });
 
-    if (bestExample && maxMatch > 0.6) {
+    // Forced replacement if code is still extremely broken
+    let forcedTemplate = false;
+    const currentValidation = transpile(repairedCode, fileName);
+    if (currentValidation.errors && currentValidation.errors.length > 0 && bestExample && maxMatch > 0.3) {
+        console.log(`[AutoReparator] Código insalvable. Forzando plantilla: ${bestExample.title}`);
+        repairedCode = bestExample.code;
+        forcedTemplate = true;
+    } else if (bestExample && maxMatch > 0.7) {
         console.log(`[AutoReparator] Coincidencia encontrada con: ${bestExample.title} (Score: ${maxMatch.toFixed(2)})`);
         // If the code is very broken (transpilation fails), we try to merge the user variables with the example's structure
         const validation = transpile(repairedCode, fileName);
@@ -180,9 +214,16 @@ export async function repair(code, fileName, runtimeError = null) {
     validation = transpile(repairedCode, fileName);
     const success = !validation.errors || validation.errors.length === 0;
 
+    let finalMessage = success ? L.get('REPARACION_EXITOSA', 'Código reparado con éxito.') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero aún quedan errores complejos.');
+
+    // Notify if we replaced the script with a pre-made template
+    if (bestExample && (repairedCode.includes(bestExample.code.substring(0, 20)) || forcedTemplate)) {
+        finalMessage = `🤖 He detectado que intentabas crear un script de '${bestExample.title}'.\nHe reemplazado tu código por una versión pre-hecha y funcional para ayudarte. ¡Puedes editarla a tu gusto!`;
+    }
+
     return {
         success: success,
         code: repairedCode,
-        message: success ? L.get('REPARACION_EXITOSA', 'Código reparado con éxito.') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero aún quedan errores complejos.')
+        message: finalMessage
     };
 }

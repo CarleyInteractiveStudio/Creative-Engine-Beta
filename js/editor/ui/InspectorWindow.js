@@ -1759,6 +1759,10 @@ async function updateInspectorForMateria(selectedMateria) {
                                     <label>Anim</label>
                                     ${renderPropertyDropper('Animation', atk.animation, `data-component="Attack" data-prop="attacks.${aIdx}.animation"`)}
                                 </div>
+                                <div class="inspector-row">
+                                    <label>Sound</label>
+                                    ${renderPropertyDropper('Audio', atk.sound, `data-component="Attack" data-prop="attacks.${aIdx}.sound"`)}
+                                </div>
                                 <div class="prop-row-multi">
                                     <label>${L.get('DAMAGE', 'Daño')}</label>
                                     <input type="number" class="prop-input" data-component="Attack" data-prop="attacks.${aIdx}.damage" value="${atk.damage}">
@@ -2895,6 +2899,14 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="JUMP_FORCE">${L.get('JUMP_FORCE', 'Fuerza Salto')}</label>
                         <input type="number" class="prop-input" data-component="Movement" data-prop="jumpForce" value="${ley.jumpForce}">
                     </div>
+                    <div class="inspector-row">
+                        <label>Sonido Mov</label>
+                        ${renderPropertyDropper('Audio', ley.moveSound, 'data-component="Movement" data-prop="moveSound"')}
+                    </div>
+                    <div class="inspector-row">
+                        <label>Sonido Salto</label>
+                        ${renderPropertyDropper('Audio', ley.jumpSound, 'data-component="Movement" data-prop="jumpSound"')}
+                    </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Movement" data-prop="useRigidbody" ${ley.useRigidbody ? 'checked' : ''}>
                         <label data-i18n="USE_RIGIDBODY">${L.get('USE_RIGIDBODY', 'Usar Rigidbody')}</label>
@@ -3384,6 +3396,10 @@ async function updateInspectorForMateria(selectedMateria) {
                             <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="eje.y" value="${ley.eje.y}" title="Y">
                         </div>
                     </div>
+                    <div class="inspector-row">
+                        <label>Sonido Susp</label>
+                        ${renderPropertyDropper('Audio', ley.suspensionSound, 'data-component="SuspensionHC" data-prop="suspensionSound"')}
+                    </div>
 
                     <div class="inspector-section-header"><span data-i18n="ENGINE_SETTINGS">${L.get('ENGINE_SETTINGS', 'Configuración de Motor')}</span></div>
                     <div class="prop-row-multi">
@@ -3457,6 +3473,14 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="MOTOR_BRAKE">${L.get('MOTOR_BRAKE', 'Freno Motor')}</label>
                         <input type="number" step="0.01" min="0" max="1" class="prop-input" data-component="VehicleTopDown" data-prop="frenadoMotor" value="${ley.frenadoMotor}">
                     </div>
+                    <div class="inspector-row">
+                        <label>Sonido Motor</label>
+                        ${renderPropertyDropper('Audio', ley.engineSound, 'data-component="VehicleTopDown" data-prop="engineSound"')}
+                    </div>
+                    <div class="inspector-row">
+                        <label>Sonido Freno</label>
+                        ${renderPropertyDropper('Audio', ley.brakeSound, 'data-component="VehicleTopDown" data-prop="brakeSound"')}
+                    </div>
 
                     <div class="inspector-section-header"><span data-i18n="CONTROLS">${L.get('CONTROLS', 'Controles')}</span></div>
                     <div class="prop-row-multi">
@@ -3503,6 +3527,14 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label title="Resistencia al aire (0-1)" data-i18n="AIR_DRAG">${L.get('AIR_DRAG', 'Arrastre Aire')}</label>
                         <input type="number" step="0.01" min="0" max="1" class="prop-input" data-component="PlaneController" data-prop="arrastreAire" value="${ley.arrastreAire}">
+                    </div>
+                    <div class="inspector-row">
+                        <label>Sonido Motor</label>
+                        ${renderPropertyDropper('Audio', ley.engineSound, 'data-component="PlaneController" data-prop="engineSound"')}
+                    </div>
+                    <div class="inspector-row">
+                        <label>Sonido Despegue</label>
+                        ${renderPropertyDropper('Audio', ley.takeoffSound, 'data-component="PlaneController" data-prop="takeoffSound"')}
                     </div>
 
                     <div class="inspector-section-header"><span data-i18n="CONTROLS">${L.get('CONTROLS', 'Controles')}</span></div>
@@ -3558,6 +3590,10 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label title="Resistencia al aire (0-1)" data-i18n="AIR_DRAG">${L.get('AIR_DRAG', 'Arrastre Aire')}</label>
                         <input type="number" step="0.01" min="0" max="1" class="prop-input" data-component="HelicopterController" data-prop="arrastreAire" value="${ley.arrastreAire}">
+                    </div>
+                    <div class="inspector-row">
+                        <label>Sonido Motor</label>
+                        ${renderPropertyDropper('Audio', ley.engineSound, 'data-component="HelicopterController" data-prop="engineSound"')}
                     </div>
 
                     <div class="inspector-section-header"><span data-i18n="CONTROLS">${L.get('CONTROLS', 'Controles')}</span></div>
@@ -3858,6 +3894,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
     }
 
     try {
+        const L = window.Localization;
         const dirHandle = currentDirectoryHandle();
         if (!dirHandle) {
             dom.inspectorContent.innerHTML = `<p class="inspector-placeholder error-message">Directorio de assets no disponible</p>`;
@@ -3866,10 +3903,10 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
         const fileHandle = await dirHandle.getFileHandle(assetName);
         const file = await fileHandle.getFile();
-        const content = await file.text();
+        const lowerName = assetName.toLowerCase();
 
-        if (assetName.endsWith('.ceprefab')) {
-            const L = window.Localization;
+        if (lowerName.endsWith('.ceprefab')) {
+            const content = await file.text();
             let prefabData;
             try {
                 prefabData = JSON.parse(content);
@@ -3959,20 +3996,27 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
             dom.inspectorContent.appendChild(container);
 
-        } else if (assetName.endsWith('.ces')) {
+        } else if (lowerName.endsWith('.ces') || lowerName.endsWith('.txt')) {
+            const content = await file.text();
             const pre = document.createElement('pre');
+            pre.style.maxHeight = '400px';
+            pre.style.overflow = 'auto';
+            pre.style.background = '#1a1a1a';
+            pre.style.padding = '10px';
+            pre.style.borderRadius = '4px';
             const code = document.createElement('code');
-            code.className = 'language-javascript';
+            code.className = lowerName.endsWith('.ces') ? 'language-javascript' : '';
             code.textContent = content;
             pre.appendChild(code);
             dom.inspectorContent.appendChild(pre);
-        } else if (assetName.endsWith('.md')) {
+        } else if (lowerName.endsWith('.md')) {
+            const content = await file.text();
             const html = markdownConverter.makeHtml(content);
             const preview = document.createElement('div');
             preview.className = 'markdown-preview';
             preview.innerHTML = html;
             dom.inspectorContent.appendChild(preview);
-        } else if (assetName.endsWith('.png') || assetName.endsWith('.jpg') || assetName.endsWith('.jpeg')) {
+        } else if (lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
             let metaData = {};
             try {
                 const metaFileHandle = await dirHandle.getFileHandle(`${assetName}.meta`);
@@ -4336,9 +4380,10 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 const url = await getURLForAssetPath(assetPath, projectsDirHandle);
                 if (url) imgElement.src = url;
             }
-        } else if (assetName.endsWith('.cea')) {
+        } else if (lowerName.endsWith('.cea')) {
             let animData;
             try {
+                const content = await file.text();
                 animData = JSON.parse(content);
             } catch (e) {
                 dom.inspectorContent.innerHTML += `<p class="error-message">Error al parsear archivo de animación (.cea)</p>`;
@@ -4405,7 +4450,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             previewContainer.appendChild(controls);
             dom.inspectorContent.appendChild(previewContainer);
 
-        } else if (assetName.endsWith('.cep')) {
+        } else if (lowerName.endsWith('.cep')) {
             try {
                 const zip = await JSZip.loadAsync(file);
                 const manifestFile = zip.file('manifest.json');
@@ -4430,7 +4475,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 dom.inspectorContent.innerHTML += `<p class="error-message">No se pudo leer el archivo del paquete.</p>`;
             }
 
-        } else if (assetName.endsWith('.ceui')) {
+        } else if (lowerName.endsWith('.ceui')) {
             const preview = document.createElement('div');
             preview.className = 'asset-preview';
             preview.innerHTML = `
@@ -4439,7 +4484,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 <p data-i18n="OPEN_UI_EDITOR_HINT">${L.get('OPEN_UI_EDITOR_HINT', 'Doble-click en el Navegador para abrir en el Editor de UI.')}</p>
             `;
             dom.inspectorContent.appendChild(preview);
-        } else if (assetName.endsWith('.ceanim')) {
+        } else if (lowerName.endsWith('.ceanim')) {
             const preview = document.createElement('div');
             preview.className = 'asset-preview';
             preview.innerHTML = `
@@ -4448,7 +4493,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 <p data-i18n="OPEN_ANIM_EDITOR_HINT">${L.get('OPEN_ANIM_EDITOR_HINT', 'Doble-click en el Navegador para abrir en el Editor de Animación.')}</p>
             `;
             dom.inspectorContent.appendChild(preview);
-        } else if (assetName.endsWith('.ceScene')) {
+        } else if (lowerName.endsWith('.cescene')) {
             const preview = document.createElement('div');
             preview.className = 'asset-preview';
             preview.innerHTML = `
@@ -4457,7 +4502,8 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 <p data-i18n="OPEN_SCENE_HINT">${L.get('OPEN_SCENE_HINT', 'Doble-click en el Navegador para abrir la escena.')}</p>
             `;
             dom.inspectorContent.appendChild(preview);
-        } else if (assetName.endsWith('.cmel')) {
+        } else if (lowerName.endsWith('.cmel')) {
+            const content = await file.text();
             const materialData = JSON.parse(content);
             const settingsContainer = document.createElement('div');
             settingsContainer.className = 'asset-settings';
@@ -4467,7 +4513,8 @@ async function updateInspectorForAsset(assetName, assetPath) {
             }
             settingsContainer.innerHTML = html;
             dom.inspectorContent.appendChild(settingsContainer);
-        } else if (assetName.endsWith('.celib')) {
+        } else if (lowerName.endsWith('.celib')) {
+            const content = await file.text();
             const libData = JSON.parse(content);
             const preview = document.createElement('div');
             preview.className = 'asset-preview'; // Reutilizamos el estilo
@@ -4483,7 +4530,8 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 <p style="margin-top: 15px; font-style: italic; font-size: 0.8em;">Doble-click en el Navegador para abrir en el panel de Librerías.</p>
             `;
             dom.inspectorContent.appendChild(preview);
-        } else if (assetName.endsWith('.sprt')) {
+        } else if (lowerName.endsWith('.sprt')) {
+            const content = await file.text();
             const spriteSheetData = JSON.parse(content);
             const texturePath = spriteSheetData.texturePath;
 
@@ -4527,14 +4575,27 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
             previewContainer.appendChild(spriteGrid);
             dom.inspectorContent.appendChild(previewContainer);
-        } else if (assetName.endsWith('.ceSprite')) {
+        } else if (lowerName.endsWith('.cesprite')) {
+            const content = await file.text();
             await renderCeSpriteInspector(content, dirHandle, assetPath);
-        } else if (assetName.endsWith('.mp3') || assetName.endsWith('.wav')) {
+        } else if (lowerName.endsWith('.mp3') || lowerName.endsWith('.wav')) {
             await renderAudioInspector(assetName, assetPath);
-        } else if (assetName.endsWith('.mp4') || assetName.endsWith('.webm') || assetName.endsWith('.ogv')) {
+        } else if (lowerName.endsWith('.mp4') || lowerName.endsWith('.webm') || lowerName.endsWith('.ogv')) {
             await renderVideoInspector(assetName, assetPath);
         } else {
-             dom.inspectorContent.innerHTML += `<p>No hay vista previa disponible para este tipo de archivo.</p>`;
+             dom.inspectorContent.innerHTML += `
+                <div class="unknown-file-info" style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                    <p style="margin-bottom: 10px; opacity: 0.7;">No hay vista previa disponible para este tipo de archivo.</p>
+                    <div style="font-size: 0.9em; display: grid; grid-template-columns: auto 1fr; gap: 8px 15px;">
+                        <span style="opacity: 0.5;">Tamaño:</span>
+                        <span>${(file.size / 1024).toFixed(2)} KB</span>
+                        <span style="opacity: 0.5;">Modificado:</span>
+                        <span>${new Date(file.lastModified).toLocaleString()}</span>
+                        <span style="opacity: 0.5;">MIME:</span>
+                        <span>${file.type || 'unknown'}</span>
+                    </div>
+                </div>
+             `;
         }
 
     } catch (error) {
@@ -4807,6 +4868,7 @@ function extractFramesFromImage(imageUrl, cols, rows) {
 }
 
 async function renderCeSpriteInspector(content, dirHandle, assetPath) {
+    const L = window.Localization;
     try {
         const spriteAsset = JSON.parse(content);
         const sourceImageName = spriteAsset.sourceImage;

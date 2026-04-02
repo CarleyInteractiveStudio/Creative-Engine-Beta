@@ -1022,68 +1022,141 @@ function handleExternalFileDragLeave(e) {
     }
 }
 
+async function processEntry(entry, targetHandle, stats) {
+    const L = window.Localization;
+    if (entry.isFile) {
+        const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
+        const lowerName = file.name.toLowerCase();
+
+        if (lowerName.endsWith('.zip')) {
+            await importZipFile(file, targetHandle, stats);
+            return;
+        }
+
+        if (lowerName.endsWith('.celib')) {
+            try {
+                const projectName = new URLSearchParams(window.location.search).get('project');
+                const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
+                const projectHandle = await currentDirHandle.getDirectoryHandle(projectName);
+                const libDirHandle = await projectHandle.getDirectoryHandle('lib', { create: true });
+
+                const fileHandle = await libDirHandle.getFileHandle(file.name, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(file);
+                await writable.close();
+                stats.libs++;
+            } catch (err) {
+                console.error(`Error al importar la librería '${file.name}':`, err);
+                showNotification(L.get('ERROR_IMPORTACION', 'Error de Importación'), `${L.get('ERROR_IMPORTAR_LIB', "No se pudo importar la librería")}: '${file.name}'.`);
+            }
+        } else {
+            try {
+                const fileHandle = await targetHandle.getFileHandle(file.name, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(file);
+                await writable.close();
+                stats.files++;
+            } catch (err) {
+                console.error(`Error al importar el archivo '${file.name}':`, err);
+                showNotification(L.get('ERROR_IMPORTACION', 'Error de Importación'), `${L.get('ERROR_IMPORTAR_ARCHIVO', "No se pudo importar el archivo")}: '${file.name}'.`);
+            }
+        }
+    } else if (entry.isDirectory) {
+        try {
+            const newDirHandle = await targetHandle.getDirectoryHandle(entry.name, { create: true });
+            const reader = entry.createReader();
+
+            const readAllEntries = async (dirReader) => {
+                let allEntries = [];
+                let readBatch = async () => {
+                    let entries = await new Promise((resolve, reject) => dirReader.readEntries(resolve, reject));
+                    if (entries.length > 0) {
+                        allEntries = allEntries.concat(entries);
+                        await readBatch();
+                    }
+                };
+                await readBatch();
+                return allEntries;
+            };
+
+            const children = await readAllEntries(reader);
+            for (const child of children) {
+                await processEntry(child, newDirHandle, stats);
+            }
+        } catch (err) {
+            console.error(`Error al importar la carpeta '${entry.name}':`, err);
+        }
+    }
+}
+
+async function importZipFile(file, targetHandle, stats) {
+    const L = window.Localization;
+    if (typeof JSZip === 'undefined') {
+        showNotification(L.get('ERROR'), "JSZip no está cargado. No se pueden procesar archivos ZIP.");
+        return;
+    }
+    try {
+        const zip = await JSZip.loadAsync(file);
+        for (const [path, zipEntry] of Object.entries(zip.files)) {
+            if (zipEntry.dir) continue;
+
+            const parts = path.split('/').filter(p => p);
+            const fileName = parts.pop();
+            let current = targetHandle;
+
+            for (const part of parts) {
+                current = await current.getDirectoryHandle(part, { create: true });
+            }
+
+            const fileHandle = await current.getFileHandle(fileName, { create: true });
+            const blob = await zipEntry.async('blob');
+            const writable = await fileHandle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            stats.files++;
+        }
+        console.log(`ZIP '${file.name}' descomprimido con éxito.`);
+    } catch (err) {
+        console.error(`Error al descomprimir ZIP '${file.name}':`, err);
+        showNotification(L.get('ERROR', 'Error'), `No se pudo descomprimir el archivo ZIP: ${file.name}`);
+    }
+}
+
 async function handleExternalFileDrop(e) {
     const L = window.Localization;
     dragCounter = 0;
     dom.assetsContent.classList.remove('drag-over-fs');
 
-    // This handles files from the user's OS
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        e.preventDefault();
-        e.stopPropagation();
+    const items = e.dataTransfer.items;
+    if (!items || items.length === 0) return;
 
-        if (!currentDirectoryHandle.handle) {
-            console.error("[AssetBrowser] No directory handle available for import.");
-            showNotification(L.get('ERROR'), L.get('SELECCIONAR_CARPETA_IMPORTAR', 'Selecciona una carpeta para importar.'));
-            return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!currentDirectoryHandle.handle) {
+        console.error("[AssetBrowser] No directory handle available for import.");
+        showNotification(L.get('ERROR'), L.get('SELECCIONAR_CARPETA_IMPORTAR', 'Selecciona una carpeta para importar.'));
+        return;
+    }
+
+    console.log(`Iniciando importación recursiva a ${currentDirectoryHandle.path}...`);
+    let stats = { files: 0, libs: 0 };
+
+    for (const item of items) {
+        const entry = item.webkitGetAsEntry();
+        if (entry) {
+            await processEntry(entry, currentDirectoryHandle.handle, stats);
         }
+    }
 
-        console.log(`Importando ${e.dataTransfer.files.length} archivo(s) a ${currentDirectoryHandle.path}...`);
-        let filesImported = 0;
-        let librariesImported = 0;
-
-        for (const file of e.dataTransfer.files) {
-            if (file.name.toLowerCase().endsWith('.celib')) {
-                // Special handling for library files
-                try {
-                    const projectName = new URLSearchParams(window.location.search).get('project');
-                    const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
-                    const projectHandle = await currentDirHandle.getDirectoryHandle(projectName);
-                    const libDirHandle = await projectHandle.getDirectoryHandle('lib', { create: true });
-
-                    const fileHandle = await libDirHandle.getFileHandle(file.name, { create: true });
-                    const writable = await fileHandle.createWritable();
-                    await writable.write(file);
-                    await writable.close();
-                    librariesImported++;
-                } catch (err) {
-                    console.error(`Error al importar la librería '${file.name}':`, err);
-                    showNotification(L.get('ERROR_IMPORTACION', 'Error de Importación'), `${L.get('ERROR_IMPORTAR_LIB', "No se pudo importar la librería")}: '${file.name}'.`);
-                }
-            } else {
-                // Normal file handling
-                try {
-                    const fileHandle = await currentDirectoryHandle.handle.getFileHandle(file.name, { create: true });
-                    const writable = await fileHandle.createWritable();
-                    await writable.write(file);
-                    await writable.close();
-                    filesImported++;
-                } catch (err) {
-                    console.error(`Error al importar el archivo '${file.name}':`, err);
-                    showNotification(L.get('ERROR_IMPORTACION', 'Error de Importación'), `${L.get('ERROR_IMPORTAR_ARCHIVO', "No se pudo importar el archivo")}: '${file.name}'.`);
-                }
-            }
-        }
-
-        if (filesImported > 0) {
-            console.log(`${filesImported} archivo(s) importados con éxito a la carpeta de Assets.`);
-            await updateAssetBrowserCallback();
-        }
-        if (librariesImported > 0) {
-            console.log(`${librariesImported} librería(s) importada(s) con éxito a la carpeta /lib.`);
-            if (refreshLibraryListCallback) {
-                refreshLibraryListCallback();
-            }
+    if (stats.files > 0) {
+        console.log(`${stats.files} archivo(s) importados con éxito.`);
+        await updateAssetBrowserCallback();
+    }
+    if (stats.libs > 0) {
+        console.log(`${stats.libs} librería(s) importada(s) con éxito.`);
+        if (refreshLibraryListCallback) {
+            refreshLibraryListCallback();
         }
     }
 }
