@@ -4383,6 +4383,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
         } else if (lowerName.endsWith('.cea')) {
             let animData;
             try {
+                const content = await file.text();
                 animData = JSON.parse(content);
             } catch (e) {
                 dom.inspectorContent.innerHTML += `<p class="error-message">Error al parsear archivo de animación (.cea)</p>`;

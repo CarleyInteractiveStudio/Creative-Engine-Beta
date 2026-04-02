@@ -5476,6 +5476,7 @@ export class Attack extends Leyes {
         newAtk.colliderMateria = this.colliderMateria;
         newAtk.cooldown = this.cooldown;
         newAtk.cycleKey = this.cycleKey;
+        newAtk._warnedMissing = new Set();
         return newAtk;
     }
 }
@@ -6537,6 +6538,7 @@ export class HelicopterController extends Leyes {
     clone() {
         const copy = new HelicopterController(null);
         Object.assign(copy, this);
+        copy._warnedMissing = new Set();
         return copy;
     }
 }
@@ -6722,6 +6724,7 @@ export class VehicleTopDown extends Leyes {
     clone() {
         const copy = new VehicleTopDown(null);
         Object.assign(copy, this);
+        copy._warnedMissing = new Set();
         return copy;
     }
 }
@@ -7236,6 +7239,7 @@ export class SuspensionHC extends Leyes {
         const copy = new SuspensionHC(null);
         Object.assign(copy, this);
         copy._puntoAnclajeLocal = this._puntoAnclajeLocal ? { ...this._puntoAnclajeLocal } : null;
+        copy._warnedMissing = new Set();
         return copy;
     }
 }

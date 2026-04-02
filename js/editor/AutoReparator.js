@@ -112,7 +112,9 @@ export async function repair(code, fileName, runtimeError = null) {
         'salud': ['vida', 'curar', 'muerte', 'morir', 'health', 'daño'],
         'seguimiento': ['seguir', 'objetivo', 'jugador', 'perseguir', 'distancia'],
         'ui': ['botón', 'barra', 'texto', 'imagen', 'pantalla', 'progreso'],
-        'física': ['saltar', 'gravedad', 'choque', 'colision', 'rb', 'fisica', 'caer']
+        'física': ['saltar', 'gravedad', 'choque', 'colision', 'rb', 'fisica', 'caer'],
+        'jefe': ['vida', 'jefe', 'fase', 'proyectil', 'instanciar'],
+        'inventario': ['item', 'recogido', 'oro', 'nombre', 'destruir']
     };
 
     examples.forEach(ex => {
@@ -126,7 +128,7 @@ export async function repair(code, fileName, runtimeError = null) {
         for (const [intent, keywords] of Object.entries(intentKeywords)) {
             if (ex.title.toLowerCase().includes(intent)) {
                 if (keywords.some(k => codeWords.includes(k))) {
-                    overlap += 5; // Intent boost
+                    overlap += 10; // Increased intent boost
                 }
             }
         }
@@ -138,7 +140,14 @@ export async function repair(code, fileName, runtimeError = null) {
         }
     });
 
-    if (bestExample && maxMatch > 0.6) {
+    // Forced replacement if code is still extremely broken
+    let forcedTemplate = false;
+    const currentValidation = transpile(repairedCode, fileName);
+    if (currentValidation.errors && currentValidation.errors.length > 0 && bestExample && maxMatch > 0.3) {
+        console.log(`[AutoReparator] Código insalvable. Forzando plantilla: ${bestExample.title}`);
+        repairedCode = bestExample.code;
+        forcedTemplate = true;
+    } else if (bestExample && maxMatch > 0.7) {
         console.log(`[AutoReparator] Coincidencia encontrada con: ${bestExample.title} (Score: ${maxMatch.toFixed(2)})`);
         // If the code is very broken (transpilation fails), we try to merge the user variables with the example's structure
         const validation = transpile(repairedCode, fileName);
@@ -208,7 +217,7 @@ export async function repair(code, fileName, runtimeError = null) {
     let finalMessage = success ? L.get('REPARACION_EXITOSA', 'Código reparado con éxito.') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero aún quedan errores complejos.');
 
     // Notify if we replaced the script with a pre-made template
-    if (bestExample && repairedCode.includes(bestExample.code.substring(0, 20))) {
+    if (bestExample && (repairedCode.includes(bestExample.code.substring(0, 20)) || forcedTemplate)) {
         finalMessage = `🤖 He detectado que intentabas crear un script de '${bestExample.title}'.\nHe reemplazado tu código por una versión pre-hecha y funcional para ayudarte. ¡Puedes editarla a tu gusto!`;
     }
 

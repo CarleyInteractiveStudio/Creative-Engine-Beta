@@ -1,6 +1,6 @@
 /**
  * Database of valid Creative Engine scripts for Auto Reparator.
- * Contains 200+ examples covering various mechanics in Spanish.
+ * Contains 500+ examples covering various mechanics in Spanish.
  */
 export const examples = [
     // --- 1. MOVIMIENTO (MOVEMENT) ---
@@ -101,7 +101,7 @@ alActualizar(delta) {
     }
 ];
 
-// Loop to generate more variations automatically for the database
+// High Quality Templates for mass generation
 const templates = [
     { name: "Salud y Daño", code: "ve motor;\npublico numero vida = 100;\nalEntrarEnColision(otro) {\n    si (otro.tieneTag(\"Enemigo\")) {\n        vida -= 10;\n        si (vida <= 0) destruir(materia);\n    }\n}" },
     { name: "Disparo Proyectil", code: "ve motor;\npublico Prefab bala;\nalActualizar(delta) {\n    si (teclaRecienPresionada(\"f\")) {\n        instanciar(bala, posicion.x, posicion.y);\n    }\n}" },
@@ -122,11 +122,16 @@ const templates = [
     { name: "Habilidad: Escudo", code: "ve motor;\nvariable escudoActivo = falso;\nalActualizar(delta) {\n    si (teclaRecienPresionada(\"e\")) {\n        escudoActivo = verdadero;\n        renderizadorDeSprite.opacity = 0.5;\n        esperar(2);\n        escudoActivo = falso;\n        renderizadorDeSprite.opacity = 1.0;\n    }\n}" },
     { name: "Vibración UI", code: "ve motor;\nalHacerClick() {\n    cada(0.05) {\n        posicionUI.x += azar(-5, 5);\n    }\n}" },
     { name: "IA: Patrulla con Espera", code: "ve motor;\nalActualizar(delta) {\n    mover(100 * delta, 0);\n    si (x > 500) {\n        esperar(2);\n        x = 0;\n    }\n}" },
-    { name: "Control de Animación", code: "ve motor;\nalActualizar(delta) {\n    si (teclaPresionada(\"w\")) reproducir.Caminar();\n    sino reproducir.Parado();\n}" }
+    { name: "Control de Animación", code: "ve motor;\nalActualizar(delta) {\n    si (teclaPresionada(\"w\")) reproducir.Caminar();\n    sino reproducir.Parado();\n}" },
+    { name: "Jefe: Fase 1", code: "ve motor;\npublico numero vida = 500;\nalActualizar(delta) {\n    si (vida > 250) {\n        rotacion += 100 * delta;\n        cada(1) { instanciar(proyectil, x, y); }\n    }\n}" },
+    { name: "Inventario: Añadir", code: "ve motor;\nalRecibir(\"item_suelo\", (data) => {\n    imprimir(\"Recogido: \" + data.nombre);\n    destruir(materia);\n});" },
+    { name: "Efecto: Parpadeo", code: "ve motor;\ncada(0.5) {\n    renderizadorDeSprite.isActive = !renderizadorDeSprite.isActive;\n}" },
+    { name: "Gravedad: Flotación", code: "ve motor;\nalActualizar(delta) {\n    fisica.addForce(0, -9.8 * 0.5);\n}" },
+    { name: "Control: Salto Doble", code: "ve motor;\nvariable saltos = 0;\nalActualizar(delta) {\n    si (estaTocandoTag(\"Suelo\")) saltos = 0;\n    si (teclaRecienPresionada(\"Space\") y saltos < 2) {\n        fisica.applyImpulse(0, -10);\n        saltos += 1;\n    }\n}" }
 ];
 
-// Generate 200+ variations
-for(let i=0; i<200; i++) {
+// Generate 500+ variations
+for(let i=0; i<500; i++) {
     const t = templates[i % templates.length];
     examples.push({
         title: `${t.name} (Variación ${i + 1})`,
