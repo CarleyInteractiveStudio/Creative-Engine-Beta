@@ -296,8 +296,8 @@ const templates = [
     { name: "Gameplay: Score", code: "ve motor;\nvariable puntos = 0;\nalRecibir('enemigo_muerto', () => {\n    puntos += 100;\n    uiTextoScore.contenido = 'Score: ' + puntos;\n});" }
 ];
 
-// Generate 700+ variations
-for(let i=0; i<700; i++) {
+// Generate 800+ variations (Expanded Library)
+for(let i=0; i<800; i++) {
     const t = templates[i % templates.length];
     examples.push({
         title: `${t.name} (Variación ${i + 1})`,

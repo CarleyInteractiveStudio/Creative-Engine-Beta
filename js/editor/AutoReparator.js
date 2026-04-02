@@ -102,6 +102,26 @@ export async function repair(code, fileName, runtimeError = null) {
         }
     }
 
+    // 1.b Garbage Cleaner (Early Pass) - Remove/Comment illegal solitary identifiers
+    if (isSmartEnabled) {
+        const lines = repairedCode.split('\n');
+        const dontTouch = [...structuralRules.allowedGlobalScope, ...structuralRules.lifecycleMethods,
+                          'delta', 'deltaTime', 'mtr', 'materia', 'retornar', 'esperar', 'detener', 'verdadero', 'falso'];
+
+        for (let i = 0; i < lines.length; i++) {
+            const trimmed = lines[i].trim();
+            // Match single word (optional semicolon)
+            if (/^[a-z_][a-z0-9_]*;?$/i.test(trimmed)) {
+                const word = trimmed.replace(';', '');
+                if (!dontTouch.includes(word) && isNaN(word)) {
+                    console.log(`[Creative Code] Limpiando identificador ilegal: ${word}`);
+                    lines[i] = lines[i].replace(word, `// [Creative Code REMOVED] ${word}`);
+                }
+            }
+        }
+        repairedCode = lines.join('\n');
+    }
+
     // 2. Ensure mandatory header
     if (!repairedCode.toLowerCase().includes(structuralRules.mandatoryHeader)) {
         repairedCode = structuralRules.mandatoryHeader + '\n' + repairedCode;
