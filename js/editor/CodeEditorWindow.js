@@ -1,13 +1,13 @@
 // --- Module for the Code Editor Window (CodeMirror) ---
 
-import { EditorView, basicSetup, EditorState } from "https://esm.sh/codemirror@6.0.1";
+import { basicSetup } from "https://esm.sh/codemirror@6.6.2";
+import { EditorState, StateField, StateEffect } from "https://esm.sh/@codemirror/state@6.4.2";
+import { EditorView, keymap, Decoration } from "https://esm.sh/@codemirror/view@6.26.3";
 import { javascript } from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
 import { oneDark } from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
 import { undo, redo, indentWithTab } from "https://esm.sh/@codemirror/commands@6.3.3";
 import { autocompletion, acceptCompletion, completionKeymap } from "https://esm.sh/@codemirror/autocomplete@6.16.0";
 import { linter } from "https://esm.sh/@codemirror/lint@6.4.2";
-import { keymap, Decoration } from "https://esm.sh/@codemirror/view@6.26.3";
-import { StateField, StateEffect } from "https://esm.sh/@codemirror/state@6.4.1";
 import { transpile } from './CES_Transpiler.js';
 import * as AutoReparator from './AutoReparator.js';
 import { intentWeights, blockTemplates } from './AutoReparatorData.js';
