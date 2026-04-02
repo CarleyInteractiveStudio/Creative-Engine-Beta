@@ -464,6 +464,9 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
             const replacement = `this._runInterval(${interval}, async () => {${cadaBody}});`;
             body = body.substring(0, startIdx) + replacement + body.substring(endIdx + 1);
             cadaRegex.lastIndex = startIdx + replacement.length;
+        } else {
+            // No se encontró cierre, avanzar el regex para evitar bucle infinito
+            cadaRegex.lastIndex = contentStartIdx;
         }
     }
 
@@ -701,6 +704,9 @@ export function transpile(code, scriptName = 'unnamed.ces') {
             const fullMatch = unprocessedCode.substring(startIdx, endIdx + 1);
             unprocessedCode = unprocessedCode.replace(fullMatch, '');
             rootCadaRegex.lastIndex = 0; // Restart search
+        } else {
+             // No se encontró cierre, avanzar el regex para evitar bucle infinito
+            rootCadaRegex.lastIndex = contentStartIdx;
         }
     }
 

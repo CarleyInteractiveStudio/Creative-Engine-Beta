@@ -15,7 +15,7 @@ export async function repair(code, fileName, runtimeError = null) {
     const isSmartEnabled = prefs.autoCorrectorInteligente !== false; // Default true
 
     let repairedCode = code;
-    const L = window.Localization;
+    const L = window.Localization || { get: (k, d) => d };
 
     console.log(`[AutoReparator] Iniciando reparación de ${fileName} (Smart: ${isSmartEnabled})...`);
 
