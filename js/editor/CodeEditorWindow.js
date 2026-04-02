@@ -896,4 +896,16 @@ export function initialize(domCache, showConsole, hotReload) {
     if (dom.chcRunBtn) {
         dom.chcRunBtn.addEventListener('click', () => runChc());
     }
+
+    // Shortcut "F" to trigger Auto Reparator
+    window.addEventListener('keydown', (e) => {
+        // Only if the editor container is visible and we're not typing in an input
+        const isEditorVisible = dom.codeEditorContent.classList.contains('active');
+        const isTyping = ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) || document.activeElement.classList.contains('cm-content');
+
+        if (isEditorVisible && !isTyping && (e.key === 'f' || e.key === 'F')) {
+            console.log("[Shortcut] F pressed - Triggering Auto Reparator");
+            runAutoReparator();
+        }
+    });
 }

@@ -260,22 +260,6 @@ function loadPreferences() {
         }
     }
 
-    if (_dom.prefsSmartReparatorToggle) {
-        _dom.prefsSmartReparatorToggle.checked = currentPreferences.autoCorrectorInteligente !== false;
-    }
-
-    // Auto-sync from LocalStorage to keep toolbar toggle in sync
-    const savedPrefs = localStorage.getItem('creativeEnginePrefs');
-    if (savedPrefs) {
-        try {
-            const parsed = JSON.parse(savedPrefs);
-            if (parsed.autoCorrectorInteligente !== undefined && _dom.prefsSmartReparatorToggle) {
-                _dom.prefsSmartReparatorToggle.checked = parsed.autoCorrectorInteligente !== false;
-                currentPreferences.autoCorrectorInteligente = parsed.autoCorrectorInteligente;
-            }
-        } catch(e) {}
-    }
-
     updateAiProviderUi();
     applyPreferences();
 }

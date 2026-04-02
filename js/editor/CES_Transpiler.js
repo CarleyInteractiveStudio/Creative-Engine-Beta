@@ -924,7 +924,7 @@ export function transpile(code, scriptName = 'unnamed.ces') {
                 const isDefined = publicVars.some(pv => pv.name === word) ||
                                  privateVars.some(pv => pv.name === word) ||
                                  publicFunctions.includes(word) ||
-                                 componentShortcuts.includes(word) ||
+                                 dataShortcuts.includes(word) ||
                                  dataShortcuts.includes(word) ||
                                  ['delta', 'deltaTime', 'mtr', 'materia', 'otro', 'datos', 'si', 'sino', 'retornar', 'esperar', 'detener', 'verdadero', 'falso'].includes(word);
 
