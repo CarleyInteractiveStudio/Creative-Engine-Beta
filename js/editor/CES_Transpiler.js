@@ -697,10 +697,8 @@ export function transpile(code, scriptName = 'unnamed.ces') {
             const cadaBody = unprocessedCode.substring(contentStartIdx, endIdx);
             rootCadaCode += `cada(${interval}) {${cadaBody}}\n`;
 
-            // Remove the block from unprocessedCode
-            const fullMatch = unprocessedCode.substring(startIdx, endIdx + 1);
-            unprocessedCode = unprocessedCode.replace(fullMatch, '');
-            rootCadaRegex.lastIndex = 0; // Restart search
+            // Remove the block from unprocessedCode, preserving indices
+            unprocessedCode = blankOut(unprocessedCode, startIdx, endIdx + 1);
         }
     }
 
