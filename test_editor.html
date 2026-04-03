@@ -1,0 +1,93 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <script type="importmap">
+    {
+        "imports": {
+            "codemirror": "https://esm.sh/codemirror@6.0.1?deps=@codemirror/state@6.4.1",
+            "@codemirror/state": "https://esm.sh/@codemirror/state@6.4.1",
+            "@codemirror/view": "https://esm.sh/@codemirror/view@6.26.3?deps=@codemirror/state@6.4.1",
+            "@codemirror/language": "https://esm.sh/@codemirror/language@6.10.1?deps=@codemirror/state@6.4.1",
+            "@codemirror/commands": "https://esm.sh/@codemirror/commands@6.3.3?deps=@codemirror/state@6.4.1",
+            "@codemirror/autocomplete": "https://esm.sh/@codemirror/autocomplete@6.16.0?deps=@codemirror/state@6.4.1",
+            "@codemirror/lint": "https://esm.sh/@codemirror/lint@6.4.2?deps=@codemirror/state@6.4.1",
+            "@codemirror/theme-one-dark": "https://esm.sh/@codemirror/theme-one-dark@6.1.2?deps=@codemirror/state@6.4.1",
+            "@codemirror/lang-javascript": "https://esm.sh/@codemirror/lang-javascript@6.2.2?deps=@codemirror/state@6.4.1,@codemirror/view@6.26.3",
+            "@lezer/highlight": "https://esm.sh/@lezer/highlight@1.2.1"
+        }
+    }
+    </script>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #1e1e2e; color: white; font-family: sans-serif; }
+        #editor { height: 90vh; border: 1px solid #333; }
+        #status { padding: 10px; background: #333; }
+    </style>
+</head>
+<body>
+    <div id="status">Cargando Editor...</div>
+    <div id="editor"></div>
+    <script type="module">
+        import { EditorView, basicSetup } from "codemirror";
+        import { EditorState } from "@codemirror/state";
+        // Import directly from the local files to test them
+        import { cesLanguage } from "./js/editor/CES_Language.js";
+        import { cesTheme, cesHighlighting } from "./js/editor/CES_Theme.js";
+
+        console.log("Modules imported");
+        document.getElementById("status").textContent = "Módulos cargados, inicializando...";
+
+        try {
+            const ces_code = `ve motor;
+
+// Declaración de variables con tipos
+publico numero velocidad = 5;
+publico texto nombre = "Héroe";
+publico mtr objetivo;
+
+alEmpezar() {
+    imprimir("¡Hola Mundo Creativo!");
+
+    // Bloque de temporizador
+    cada(3) {
+        fisica.velocidadX = azar(-velocidad, velocidad);
+    }
+}
+
+alActualizar(delta) {
+    // Control de flujo en español
+    si (teclaPresionada("w")) {
+        posicion.y += velocidad * delta;
+        animador.play("caminar");
+    } sino {
+        imprimir("Esperando entrada...");
+        animador.stop();
+    }
+
+    // Uso de atajos de componentes
+    si (estaTocandoTag("Suelo")) {
+        fisica.masa = 1.0;
+    }
+}`;
+
+            const view = new EditorView({
+                state: EditorState.create({
+                    doc: ces_code,
+                    extensions: [
+                        basicSetup,
+                        cesLanguage,
+                        cesTheme,
+                        cesHighlighting
+                    ]
+                }),
+                parent: document.getElementById("editor")
+            });
+            document.getElementById("status").textContent = "Editor Inicializado Correctamente";
+            console.log("Editor created");
+        } catch (e) {
+            document.getElementById("status").textContent = "Error: " + e.message;
+            console.error("INITIALIZATION ERROR:", e);
+        }
+    </script>
+</body>
+</html>

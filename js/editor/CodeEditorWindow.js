@@ -8,9 +8,12 @@ import {
     oneDark,
     undo, redo, indentWithTab,
     autocompletion, acceptCompletion, completionKeymap,
-    linter
+    linter,
+    syntaxHighlighting
 } from './CodeMirrorBundle.js';
 import { transpile } from './CES_Transpiler.js';
+import { cesLanguage } from './CES_Language.js';
+import { cesTheme, cesHighlighting } from './CES_Theme.js';
 import * as AutoReparator from './AutoReparator.js';
 import { intentWeights, blockTemplates } from './AutoReparatorData.js';
 import * as AIHandler from './AIHandler.js';
@@ -286,10 +289,13 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
         dom.codeEditorToolbar.classList.remove('hidden');
         dom.codemirrorContainer.style.display = 'block';
 
+        const isCes = fileName.endsWith('.ces');
+
         const extensions = [
             basicSetup,
-            javascript(),
-            oneDark,
+            isCes ? cesLanguage : javascript(),
+            cesTheme,
+            cesHighlighting,
             errorHighlightField,
             cesLinter,
             autocompletion({ override: [cesCompletions] }),
