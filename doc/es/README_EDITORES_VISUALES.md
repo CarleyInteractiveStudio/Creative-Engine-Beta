@@ -56,5 +56,12 @@ Permite pintar formas orgánicas de suelo y paredes con texturas personalizadas.
 
 ---
 
-## 🎞️ 6. VidSpri: Conversor de Video a Sprite
+## 🍱 6. Editor de UI
+Crea menús y HUDs arrastrando elementos. Los componentes **Layout Group** ayudan a mantener todo organizado automáticamente.
+
+- **UITransform:** Reemplaza al Transform tradicional para elementos de interfaz, permitiendo usar anclajes (anchors) y pivotes para diseño responsivo.
+
+---
+
+## 🎞️ 7. VidSpri: Conversor de Video a Sprite
 Herramienta integrada para convertir archivos de video en hojas de sprites o secuencias de imágenes optimizadas para el motor. Accede desde **Ventana > Vid Spri**.

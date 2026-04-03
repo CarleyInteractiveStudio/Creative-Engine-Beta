@@ -1,23 +1,34 @@
-# 📟 终端命令 - Creative Engine
+# 📟 Comandos de Terminal - Creative Engine
 
-终端是用于调试和通过文本命令控制引擎的高级工具。通过 **窗口 > 终端** 访问。
-
----
-
-## 📂 文件管理
-- `ls [文件夹]`: 列出目录内容。
-- `cd [文件夹]`: 更改当前目录。
-- `mkdir [名称]`: 创建新文件夹。
+La terminal es una herramienta avanzada para depurar y controlar el motor mediante comandos de texto. Accede desde **Ventana > Terminal**.
 
 ---
 
-## 🔍 对象检查
-- `find [名称]`: 通过名称在场景中查找“物质”并返回其 ID。
-- `inspect [id]`: 以 JSON 格式显示对象的所有属性。
+## 📂 Gestión de Archivos
+- `ls [carpeta]`: Lista el contenido de un directorio.
+- `cd [carpeta]`: Cambia de directorio actual en la terminal.
+- `mkdir [nombre]`: Crea una nueva carpeta.
+- `cat [archivo]`: Muestra el contenido de un archivo de texto.
 
 ---
 
-## 🎮 游戏控制
-- `play`: 开始游戏。
-- `stop`: 停止游戏并恢复场景。
-- `scene [路径]`: 立即加载特定场景。
+## 🔍 Inspección de Objetos
+- `find [nombre]`: Busca una Materia en la escena por su nombre y devuelve su ID.
+- `inspect [id]`: Muestra todas las propiedades y componentes de un objeto en formato JSON.
+- `log [mensaje]`: Imprime un mensaje en la consola del editor.
+
+---
+
+## 🎮 Control de Juego
+- `play`: Inicia el juego.
+- `stop`: Detiene el juego y restaura la escena.
+- `pause`: Pausa o resume la ejecución.
+- `scene [ruta]`: Carga una escena específica inmediatamente.
+
+---
+
+## 🧪 Utilidades Avanzadas
+- `stats`: Muestra métricas de rendimiento (FPS, llamadas de dibujado, memoria).
+- `clear`: Limpia la pantalla de la terminal.
+- `whoami`: Muestra información del proyecto activo y versión del motor.
+- `help`: Lista todos los comandos disponibles.

@@ -4558,11 +4558,9 @@ export async function showAddComponentModal() {
             const isPresent = existingComponents.has(ComponentClass);
             const componentItem = document.createElement('div');
             componentItem.className = `component-item ${isPresent ? 'already-added' : ''}`;
-            let compTitle = ComponentClass.name;
-            if (compTitle === 'Transform') compTitle = L.get('TRANSFORM', 'Posición (Transform)');
-            else if (compTitle === 'UITransform') compTitle = L.get('UI_TRANSFORM', 'Transformación UI');
-            else if (L.get(compTitle.toUpperCase()) !== compTitle.toUpperCase()) compTitle = L.get(compTitle.toUpperCase());
-            else if (compTitle === 'Rigidbody2D') compTitle = L.get('RIGIDBODY_2D', 'Rigidbody 2D');
+
+            const compClassName = ComponentClass.name;
+            const compTitle = L.get(compClassName.toUpperCase(), compClassName);
 
             componentItem.innerHTML = `
                 <span>${compTitle}</span>

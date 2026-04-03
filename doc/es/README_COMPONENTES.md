@@ -8,7 +8,7 @@ Esta guía detalla el uso de los componentes tanto en el **Inspector** como en l
 
 ## 🏗️ 1. Componentes Base (Core)
 
-### 📍 Transform (Transformación)
+### 📍 Transform (Transformación) / UITransform
 Define la posición, rotación y escala de un objeto en el espacio 2D.
 - **Uso en Inspector:** Edita los valores X e Y para mover el objeto. Usa los botones de volteo (Flip) para invertir la imagen.
 - **Scripting:**
@@ -75,9 +75,14 @@ Permite que el objeto reaccione a la gravedad y colisiones.
   fisica.gravityScale = 0; // Desactiva gravedad
   ```
 
-### 📦 BoxCollider2D / CircleCollider2D (Colisionadores)
+### 📦 Colisionadores (Box, Circle, Capsule, Polygon, Line)
 Definen la forma física para los choques.
-- **Uso en Inspector:** Ajusta el tamaño o radio. Si marcas "Is Trigger", el objeto no chocará pero detectará cuando algo entre en su área.
+- **BoxCollider2D:** Forma rectangular.
+- **CircleCollider2D:** Forma circular (radio).
+- **CapsuleCollider2D:** Forma de cápsula (ideal para personajes).
+- **LineCollider2D:** Cadena de puntos para formas irregulares o bordes.
+- **PolygonCollider2D:** Polígono libre (usado automáticamente en terrenos).
+- **Uso en Inspector:** Ajusta el tamaño o radio. Si marcas "Is Trigger", el objeto no chocará físicamente pero detectará cuando algo entre en su área.
 - **Scripting:**
   ```ces
   si (estaTocandoTag("Suelo")) {
@@ -87,7 +92,22 @@ Definen la forma física para los choques.
 
 ---
 
-## 🚗 4. Vehículos y Controladores Avanzados
+## 🗺️ 4. Mapas y Entorno
+
+### 🗺️ Tilemap (Mapa de Tiles)
+Permite construir niveles usando rejillas de imágenes. Requiere un componente **Grid** en el padre.
+- **Uso en Inspector:** Se gestiona principalmente desde la ventana de **Paleta de Tiles**.
+
+### 🏔️ Parallax
+Crea efecto de profundidad moviendo capas a distintas velocidades respecto a la cámara.
+- **Scripting:**
+  ```ces
+  parallax.scrollFactor = nuevo Vector2(0.5, 0.5); // Se mueve a la mitad de velocidad
+  ```
+
+---
+
+## 🚗 5. Vehículos y Controladores Avanzados
 
 ### 🚁 HelicopterController (Controlador de Helicóptero)
 Simulación de vuelo lateral para helicópteros.
@@ -118,7 +138,7 @@ Control arcade para coches en vista desde arriba.
 
 ---
 
-## 🤖 5. Inteligencia y Movimiento
+## 🤖 6. Inteligencia y Movimiento
 
 ### 🧠 BasicAI (IA Básica)
 Comportamientos automáticos para NPCs y enemigos.
@@ -130,6 +150,10 @@ Comportamientos automáticos para NPCs y enemigos.
   iaBasica.target = buscar("Jugador");
   ```
 
+### 🏃 BasicMovement (Movimiento Básico)
+Añade controles simples de caminar y saltar sin necesidad de programar.
+- **Uso en Inspector:** Configura la velocidad y fuerza de salto.
+
 ### 👮 Patrol (Patrulla)
 Mueve el objeto entre dos puntos.
 - **Scripting:**
@@ -138,16 +162,23 @@ Mueve el objeto entre dos puntos.
   patrulla.velocidad = 100;
   ```
 
+### 🚀 ProjectileLauncher (Lanzador)
+Facilita el disparo de objetos (balas, flechas).
+- **Scripting:**
+  ```ces
+  lanzador.disparar(); // Crea una instancia del prefab configurado
+  ```
+
 ---
 
-## 📱 6. Interfaz de Usuario (UI)
+## 📱 7. Interfaz de Usuario (UI)
 
 ### 🖼️ Canvas (Lienzo)
 El contenedor principal para todos los elementos de interfaz. Soporta modo Pantalla o Espacio de Mundo.
 
 ### 🔘 Button (Botón)
 Detecta clics del usuario.
-- **Uso en Inspector:** Permite definir colores para los estados (Normal, Presionado, Desactivado).
+- **Uso en Inspector:** Permite definir colores para los estados. Puedes añadir eventos "On Click" que llamen a funciones de otros scripts sin programar.
 - **Scripting:**
   ```ces
   alHacerClick() {
@@ -155,12 +186,51 @@ Detecta clics del usuario.
   }
   ```
 
-### 📝 UIText (Texto UI)
-Muestra texto en pantalla con fuentes personalizadas (.ttf, .otf).
+### 📊 ProgressBar (Barra de Progreso)
+Ideal para barras de vida o carga.
+- **Uso en Inspector:** Asocia una imagen de "Fill" (Relleno) y ajusta el valor actual.
+
+### 🍱 Grupos de Layout (Vertical, Horizontal, Grid)
+Organizan automáticamente los elementos hijos en filas, columnas o rejillas.
 
 ---
 
-## 🎬 7. Animación, Esqueleto e Iluminación
+## ⚔️ 8. Combate y Mecánicas
+
+### ❤️ Health (Vida)
+Gestiona la salud del objeto y su destrucción o animación al morir.
+- **Scripting:**
+  ```ces
+  salud.currentHealth -= 10; // Recibir daño
+  ```
+
+### ⚔️ Attack (Ataque)
+Permite configurar múltiples ataques con diferentes teclas, animaciones y daño.
+- **Scripting:**
+  ```ces
+  ataque.atacar(0); // Ejecuta el primer ataque configurado
+  ```
+
+---
+
+## 🛠️ 9. Utilidades y Efectos
+
+### ✨ ParticleSystem (Partículas)
+Genera efectos visuales como fuego, humo o explosiones.
+- **Uso en Inspector:** Ajusta la cantidad, velocidad, vida y color de las partículas.
+
+### ⏲️ AutoDestroy (Auto-Destrucción)
+Elimina el objeto automáticamente después de un tiempo o al salir de pantalla.
+
+### 📡 RaycastSource (Origen de Rayo)
+Permite realizar detecciones de línea (raycasting) visualmente desde el editor.
+
+### 🎯 Gyzmo (Áreas)
+Dibuja rectángulos de colores en la escena para marcar zonas (triggers, límites) que pueden ser visibles o no en el juego.
+
+---
+
+## 🎬 10. Animación, Esqueleto e Iluminación
 
 ### 🎮 AnimatorController (Controlador)
 Gestiona estados de animación (Caminar, Saltar, Quieto).

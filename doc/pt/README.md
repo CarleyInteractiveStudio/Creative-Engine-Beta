@@ -1,35 +1,35 @@
 # Creative Engine 🎨🚀
 
-Creative Engine é um motor de jogos 2D profissional e leve, projetado para criadores que buscam uma experiência fluida e poderosa diretamente no navegador.
+Creative Engine is a professional, lightweight 2D game engine designed for creators looking for a fluid and powerful experience directly in the browser.
 
-## ✨ Destaques
+## ✨ Highlight Features
 
-### 🖥️ Editor de Classe Mundial
-- **Interface SVG:** Sem emojis, apenas ícones vetoriais profissionais.
-- **VidSpri:** Converta vídeos em sequências de sprites otimizadas.
-- **Multilingue:** Traduzido para Espanhol, Inglês, Português, Russo e Chinês.
+### 🖥️ World-Class Editor
+- **SVG Interface:** No emojis, only professional vector icons.
+- **VidSpri:** Convert videos into optimized sprite sequences.
+- **Multilingual:** Translated into Spanish, English, Portuguese, Russian, and Chinese.
 
-### 🚗 Veículos e Física Realista
-- **Simulação Avançada:** Controladores para Helicópteros, Aviões e Carros (Top-Down).
-- **Água (Water):** Fluidos baseados em partículas com flutuabilidade dinâmica.
-- **Suspensão HC:** Sistema de molas para veículos tipo Hill Climb.
+### 🚗 Vehicles and Realistic Physics
+- **Advanced Simulation:** Controllers for Helicopters, Planes, and Cars (Top-Down).
+- **Water:** Particle-based fluids with dynamic buoyancy.
+- **HC Suspension:** Spring system for Hill Climb-style vehicles.
 
-### 🦴 Animação e Skinning
-- **Esqueleto 2D:** Deforma imagens usando ossos e pesos.
-- **IK (Cinemática Inversa):** Move membros de forma realista.
-- **Smart Animator:** Troca automática de animações conforme o movimento.
+### 🦴 Animation and Skinning
+- **2D Skeleton:** Deform images using bones and weights.
+- **IK (Inverse Kinematics):** Move limbs realistically.
+- **Smart Animator:** Automatic animation switching based on movement.
 
-### 🤖 Inteligência Artificial com Carl IA
-- **Assistente Autónomo:** Carl pode criar cenas completas para você via planos de ação.
-- **CHC (Code Helper):** Traduz instantaneamente suas ideias em código .ces.
+### 🤖 Artificial Intelligence with Carl IA
+- **Autonomous Assistant:** Carl can create complete scenes for you via action plans.
+- **CHC (Code Helper):** Instantly translates your ideas into .ces code.
 
-## 📚 Documentação Técnica
+## 📚 Technical Documentation
 
-- **[Guia de Componentes (Leis)](README_COMPONENTES.md):** Dicionário de todos os componentes e veículos.
-- **[Guia de Scripting (CES)](README_SCRIPTING.md):** Manual da linguagem bilíngue do motor.
-- **[Guia de Editores Visuais](README_EDITORES_VISUALES.md):** Animação, Tiles, Terreno e VidSpri.
-- **[Manual do Carl IA](README_CARL_IA.md):** Como usar a IA para acelerar seu desenvolvimento.
-- **[Gestão Avançada](README_AVANZADO.md):** Prefabs, Cenas e Sistema de Build.
+- **[Component Guide (Laws)](README_COMPONENTES.md):** Dictionary of all components and vehicles.
+- **[Scripting Guide (CES)](README_SCRIPTING.md):** Manual for the engine's bilingual language.
+- **[Visual Editors Guide](README_EDITORES_VISUALES.md):** Animation, Tiles, Terrain, and VidSpri.
+- **[Carl IA Manual](README_CARL_IA.md):** How to use AI to accelerate your development.
+- **[Advanced Management](README_AVANZADO.md):** Prefabs, Scenes, and Build System.
 
 ---
-*Desenvolvido por Carley Interactive Studio.*
+*Developed by Carley Interactive Studio.*

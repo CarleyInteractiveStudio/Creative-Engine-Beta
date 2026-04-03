@@ -1,32 +1,35 @@
 # Creative Engine 🎨🚀
 
-Creative Engine — это профессиональный и легкий 2D-движок для создания игр прямо в браузере.
+Creative Engine is a professional, lightweight 2D game engine designed for creators looking for a fluid and powerful experience directly in the browser.
 
-## ✨ Ключевые особенности
+## ✨ Highlight Features
 
-### 🖥️ Редактор мирового уровня
-- **SVG-интерфейс:** Только профессиональные векторные иконки.
-- **VidSpri:** Конвертируйте видео в оптимизированные последовательности спрайтов.
-- **Мультиязычность:** Переведен на испанский, английский, португальский, русский и китайский.
+### 🖥️ World-Class Editor
+- **SVG Interface:** No emojis, only professional vector icons.
+- **VidSpri:** Convert videos into optimized sprite sequences.
+- **Multilingual:** Translated into Spanish, English, Portuguese, Russian, and Chinese.
 
-### 🚗 Транспорт и реалистичная физика
-- **Продвинутая симуляция:** Контроллеры для вертолетов, самолетов и машин (Top-Down).
-- **Вода:** Симуляция жидкостей с динамической плавучестью.
+### 🚗 Vehicles and Realistic Physics
+- **Advanced Simulation:** Controllers for Helicopters, Planes, and Cars (Top-Down).
+- **Water:** Particle-based fluids with dynamic buoyancy.
+- **HC Suspension:** Spring system for Hill Climb-style vehicles.
 
-### 🦴 Анимация и Скиннинг
-- **2D Скелет:** Деформация изображений с помощью костей и весов.
-- **IK (Инверсная кинематика):** Реалистичное движение конечностей.
-- **Smart Animator:** Автоматическая смена анимаций в зависимости от движения.
+### 🦴 Animation and Skinning
+- **2D Skeleton:** Deform images using bones and weights.
+- **IK (Inverse Kinematics):** Move limbs realistically.
+- **Smart Animator:** Automatic animation switching based on movement.
 
-### 🤖 Искусственный интеллект Carl IA
-- **Автономный помощник:** Карл может создавать целые сцены по вашим планам действий.
-- **CHC (Code Helper):** Мгновенно переводит ваши идеи в код .ces.
+### 🤖 Artificial Intelligence with Carl IA
+- **Autonomous Assistant:** Carl can create complete scenes for you via action plans.
+- **CHC (Code Helper):** Instantly translates your ideas into .ces code.
 
-## 📚 Техническая документация
+## 📚 Technical Documentation
 
-- **[Руководство по компонентам](README_COMPONENTES.md):** Словарь всех компонентов и транспорта.
-- **[Руководство по скриптингу](README_SCRIPTING.md):** Руководство по языку движка.
-- **[Визуальные редакторы](README_EDITORES_VISUALES.md):** Анимация, тайлы, террейн и VidSpri.
+- **[Component Guide (Laws)](README_COMPONENTES.md):** Dictionary of all components and vehicles.
+- **[Scripting Guide (CES)](README_SCRIPTING.md):** Manual for the engine's bilingual language.
+- **[Visual Editors Guide](README_EDITORES_VISUALES.md):** Animation, Tiles, Terrain, and VidSpri.
+- **[Carl IA Manual](README_CARL_IA.md):** How to use AI to accelerate your development.
+- **[Advanced Management](README_AVANZADO.md):** Prefabs, Scenes, and Build System.
 
 ---
-*Разработано Carley Interactive Studio.*
+*Developed by Carley Interactive Studio.*

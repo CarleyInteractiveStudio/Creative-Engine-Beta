@@ -353,6 +353,62 @@ BUSCANDO_SCRIPTS: Buscando scripts...
 SIN_SCRIPTS_HINT: No se encontraron scripts (.ces) en la carpeta Assets.
 ERROR_BUSCAR_SCRIPTS: Error al buscar scripts.
 
+# Component Names
+SPRITERENDERER: Renderizador de Sprite
+TEXTURERENDER: Renderizador de Textura
+DRAWINGORDER: Orden de Dibujo
+GRID: Rejilla (Grid)
+TILEMAP: Mapa de Tiles
+TILEMAPRENDERER: Render de Tiles
+PARALLAX: Parallax
+TERRENO2D: Terreno 2D
+POINTLIGHT2D: Luz de Punto 2D
+SPOTLIGHT2D: Luz Focal 2D
+FREEFORMLIGHT2D: Luz Forma Libre 2D
+SPRITELIGHT2D: Luz de Sprite 2D
+GYZMO: Gizmo de Área
+ANIMATOR: Animador
+ANIMATORCONTROLLER: Controlador de Animación
+BONE: Hueso (Bone)
+SKELETONRENDERER: Render de Esqueleto
+IKMANAGER2D: Gestor IK 2D
+AUDIOSOURCE: Fuente de Audio
+RIGIDBODY2D: Cuerpo Físico (Rigidbody 2D)
+BOXCOLLIDER2D: Colisionador de Caja 2D
+CAPSULECOLLIDER2D: Colisionador de Cápsula 2D
+CIRCLECOLLIDER2D: Colisionador de Círculo 2D
+POLYGONCOLLIDER2D: Colisionador de Polígono 2D
+TILEMAPCOLLIDER2D: Colisionador de Tiles 2D
+TERRENOCOLLIDER2D: Colisionador de Terreno 2D
+LINECOLLIDER2D: Colisionador de Línea 2D
+CAMERA: Cámara
+UITRANSFORM: Transformación UI
+UIIMAGE: Imagen UI
+UITEXT: Texto UI
+CANVAS: Lienzo (Canvas)
+BUTTON: Botón UI
+VIDEOPLAYER: Reproductor de Video
+PROGRESSBAR: Barra de Progreso
+VERTICALLAYOUTGROUP: Grupo Layout Vertical
+HORIZONTALLAYOUTGROUP: Grupo Layout Horizontal
+GRIDLAYOUTGROUP: Grupo Layout Rejilla
+CONTENTSIZEFITTER: Ajustador de Tamaño
+MOVEMENT: Movimiento Básico
+CAMERAFOLLOW: Seguimiento de Cámara
+PROJECTILELAUNCHER: Lanzador de Proyectiles
+AUTODESTROY: Auto-Destrucción
+HEALTH: Vida (Health)
+ATTACK: Ataque (Attack)
+PATROL: Patrulla
+PARTICLESYSTEM: Sistema de Partículas
+RAYCASTSOURCE: Origen de Rayo
+BASICAI: IA Básica
+SUSPENSIONHC: Suspensión de Vehículo
+VEHICLETOPDOWN: Vehículo Top-Down
+PLANECONTROLLER: Controlador de Avión
+HELICOPTERCONTROLLER: Controlador de Helicóptero
+CREATIVESCRIPT: Script Creativo (CES)
+
 # Engine Terms
 POSICION: Posición
 ROTACION: Rotación
@@ -821,6 +877,62 @@ BUSCANDO_SCRIPTS: Finding scripts...
 SIN_SCRIPTS_HINT: No scripts (.ces) found in the Assets folder.
 ERROR_BUSCAR_SCRIPTS: Error finding scripts.
 
+# Component Names
+SPRITERENDERER: Sprite Renderer
+TEXTURERENDER: Texture Render
+DRAWINGORDER: Drawing Order
+GRID: Grid
+TILEMAP: Tilemap
+TILEMAPRENDERER: Tilemap Renderer
+PARALLAX: Parallax
+TERRENO2D: 2D Terrain
+POINTLIGHT2D: 2D Point Light
+SPOTLIGHT2D: 2D Spot Light
+FREEFORMLIGHT2D: 2D Freeform Light
+SPRITELIGHT2D: 2D Sprite Light
+GYZMO: Area Gizmo
+ANIMATOR: Animator
+ANIMATORCONTROLLER: Animation Controller
+BONE: Bone
+SKELETONRENDERER: Skeleton Renderer
+IKMANAGER2D: 2D IK Manager
+AUDIOSOURCE: Audio Source
+RIGIDBODY2D: Rigidbody 2D
+BOXCOLLIDER2D: 2D Box Collider
+CAPSULECOLLIDER2D: 2D Capsule Collider
+CIRCLECOLLIDER2D: 2D Circle Collider
+POLYGONCOLLIDER2D: 2D Polygon Collider
+TILEMAPCOLLIDER2D: 2D Tilemap Collider
+TERRENOCOLLIDER2D: 2D Terrain Collider
+LINECOLLIDER2D: 2D Line Collider
+CAMERA: Camera
+UITRANSFORM: UI Transform
+UIIMAGE: UI Image
+UITEXT: UI Text
+CANVAS: Canvas
+BUTTON: UI Button
+VIDEOPLAYER: Video Player
+PROGRESSBAR: Progress Bar
+VERTICALLAYOUTGROUP: Vertical Layout Group
+HORIZONTALLAYOUTGROUP: Horizontal Layout Group
+GRIDLAYOUTGROUP: Grid Layout Group
+CONTENTSIZEFITTER: Content Size Fitter
+MOVEMENT: Basic Movement
+CAMERAFOLLOW: Camera Follow
+PROJECTILELAUNCHER: Projectile Launcher
+AUTODESTROY: Auto Destroy
+HEALTH: Health
+ATTACK: Attack
+PATROL: Patrol
+PARTICLESYSTEM: Particle System
+RAYCASTSOURCE: Raycast Source
+BASICAI: Basic AI
+SUSPENSIONHC: Vehicle Suspension
+VEHICLETOPDOWN: Top-Down Vehicle
+PLANECONTROLLER: Plane Controller
+HELICOPTERCONTROLLER: Helicopter Controller
+CREATIVESCRIPT: Creative Script (CES)
+
 # Engine Terms
 POSICION: Position
 ROTACION: Rotation
@@ -1221,6 +1333,62 @@ BUSCANDO_SCRIPTS: Buscando scripts...
 SIN_SCRIPTS_HINT: Nenhum script (.ces) encontrado na pasta Assets.
 ERROR_BUSCAR_SCRIPTS: Erro ao buscar scripts.
 
+# Component Names
+SPRITERENDERER: Renderizador de Sprite
+TEXTURERENDER: Renderizador de Textura
+DRAWINGORDER: Ordem de Desenho
+GRID: Grade (Grid)
+TILEMAP: Mapa de Tiles
+TILEMAPRENDERER: Renderizador de Tiles
+PARALLAX: Parallax
+TERRENO2D: Terreno 2D
+POINTLIGHT2D: Luz de Ponto 2D
+SPOTLIGHT2D: Luz Focal 2D
+FREEFORMLIGHT2D: Luz de Forma Livre 2D
+SPRITELIGHT2D: Luz de Sprite 2D
+GYZMO: Gizmo de Área
+ANIMATOR: Animador
+ANIMATORCONTROLLER: Controlador de Animação
+BONE: Osso (Bone)
+SKELETONRENDERER: Renderizador de Esqueleto
+IKMANAGER2D: Gestor IK 2D
+AUDIOSOURCE: Fonte de Áudio
+RIGIDBODY2D: Corpo Rígido (Rigidbody 2D)
+BOXCOLLIDER2D: Colisor de Caixa 2D
+CAPSULECOLLIDER2D: Colisor de Cápsula 2D
+CIRCLECOLLIDER2D: Colisor de Círculo 2D
+POLYGONCOLLIDER2D: Colisor de Polígono 2D
+TILEMAPCOLLIDER2D: Colisor de Tiles 2D
+TERRENOCOLLIDER2D: Colisor de Terreno 2D
+LINECOLLIDER2D: Colisor de Linha 2D
+CAMERA: Câmera
+UITRANSFORM: Transformação UI
+UIIMAGE: Imagem UI
+UITEXT: Texto UI
+CANVAS: Tela (Canvas)
+BUTTON: Botão UI
+VIDEOPLAYER: Reprodutor de Vídeo
+PROGRESSBAR: Barra de Progreso
+VERTICALLAYOUTGROUP: Grupo de Layout Vertical
+HORIZONTALLAYOUTGROUP: Grupo de Layout Horizontal
+GRIDLAYOUTGROUP: Grupo de Layout de Grade
+CONTENTSIZEFITTER: Ajustador de Tamanho de Conteúdo
+MOVEMENT: Movimento Básico
+CAMERAFOLLOW: Seguir Câmera
+PROJECTILELAUNCHER: Lançador de Projéteis
+AUTODESTROY: Auto-Destruição
+HEALTH: Saúde (Health)
+ATTACK: Ataque (Attack)
+PATROL: Patrulha
+PARTICLESYSTEM: Sistema de Partículas
+RAYCASTSOURCE: Origem de Raycast
+BASICAI: IA Básica
+SUSPENSIONHC: Suspensão de Veículo
+VEHICLETOPDOWN: Veículo Top-Down
+PLANECONTROLLER: Controlador de Avião
+HELICOPTERCONTROLLER: Controlador de Helicóptero
+CREATIVESCRIPT: Script Criativo (CES)
+
 # Engine Terms
 POSICION: Posição
 ROTACION: Rotação
@@ -1605,6 +1773,62 @@ BUSCANDO_SCRIPTS: Поиск скриптов...
 SIN_SCRIPTS_HINT: Скрипты (.ces) в папке Assets не найдены.
 ERROR_BUSCAR_SCRIPTS: Ошибка поиска скриптов.
 
+# Component Names
+SPRITERENDERER: Рендерер спрайтов
+TEXTURERENDER: Рендерер текстур
+DRAWINGORDER: Порядок отрисовки
+GRID: Сетка (Grid)
+TILEMAP: Карта тайлов
+TILEMAPRENDERER: Рендерер тайлов
+PARALLAX: Параллакс
+TERRENO2D: 2D Террейн
+POINTLIGHT2D: 2D Точечный свет
+SPOTLIGHT2D: 2D Прожектор
+FREEFORMLIGHT2D: 2D Произвольный свет
+SPRITELIGHT2D: 2D Спрайтовый свет
+GYZMO: Гизмо области
+ANIMATOR: Аниматор
+ANIMATORCONTROLLER: Контроллер анимации
+BONE: Кость (Bone)
+SKELETONRENDERER: Рендерер скелета
+IKMANAGER2D: 2D Менеджер ИК
+AUDIOSOURCE: Источник аудио
+RIGIDBODY2D: Физическое тело (Rigidbody 2D)
+BOXCOLLIDER2D: 2D Коробочный коллайдер
+CAPSULECOLLIDER2D: 2D Капсульный коллайдер
+CIRCLECOLLIDER2D: 2D Круговой коллайдер
+POLYGONCOLLIDER2D: 2D Полигональный коллайдер
+TILEMAPCOLLIDER2D: 2D Коллайдер тайлов
+TERRENOCOLLIDER2D: 2D Коллайдер террейна
+LINECOLLIDER2D: 2D Линейный коллайдер
+CAMERA: Камера
+UITRANSFORM: UI Трансформ
+UIIMAGE: UI Изображение
+UITEXT: UI Текст
+CANVAS: Холст (Canvas)
+BUTTON: UI Кнопка
+VIDEOPLAYER: Видеопроигрыватель
+PROGRESSBAR: Шкала прогресса
+VERTICALLAYOUTGROUP: Вертикальная компоновка
+HORIZONTALLAYOUTGROUP: Горизонтальная компоновка
+GRIDLAYOUTGROUP: Сеточная компоновка
+CONTENTSIZEFITTER: Подгонщик размера
+MOVEMENT: Базовое движение
+CAMERAFOLLOW: Слежение камеры
+PROJECTILELAUNCHER: Пусковая установка
+AUTODESTROY: Автоуничтожение
+HEALTH: Здоровье (Health)
+ATTACK: Атака (Attack)
+PATROL: Патруль
+PARTICLESYSTEM: Система частиц
+RAYCASTSOURCE: Источник луча
+BASICAI: Базовый ИИ
+SUSPENSIONHC: Подвеска автомобиля
+VEHICLETOPDOWN: Вид сверху (Авто)
+PLANECONTROLLER: Контроллер самолета
+HELICOPTERCONTROLLER: Контроллер вертолета
+CREATIVESCRIPT: Креативный скрипт (CES)
+
 # Engine Terms
 POSICION: Позиция
 ROTACION: Вращение
@@ -1988,6 +2212,62 @@ ESCANEO_PROGRESO: 脚本扫描已在进行中...
 BUSCANDO_SCRIPTS: 正在查找脚本...
 SIN_SCRIPTS_HINT: 在 Assets 文件夹中未找到任何脚本 (.ces)。
 ERROR_BUSCAR_SCRIPTS: 查找脚本时出错。
+
+# Component Names
+SPRITERENDERER: 精灵渲染器
+TEXTURERENDER: 纹理渲染器
+DRAWINGORDER: 渲染顺序
+GRID: 网格 (Grid)
+TILEMAP: 瓦片地图
+TILEMAPRENDERER: 瓦片渲染器
+PARALLAX: 视差
+TERRENO2D: 2D 地形
+POINTLIGHT2D: 2D 点光源
+SPOTLIGHT2D: 2D 聚光灯
+FREEFORMLIGHT2D: 2D 自由形状光源
+SPRITELIGHT2D: 2D 精灵光源
+GYZMO: 区域辅助线
+ANIMATOR: 动画器
+ANIMATORCONTROLLER: 动画控制器
+BONE: 骨骼
+SKELETONRENDERER: 骨骼渲染器
+IKMANAGER2D: 2D IK 管理器
+AUDIOSOURCE: 音源
+RIGIDBODY2D: 刚体 2D
+BOXCOLLIDER2D: 2D 盒碰撞体
+CAPSULECOLLIDER2D: 2D 胶囊碰撞体
+CIRCLECOLLIDER2D: 2D 圆碰撞体
+POLYGONCOLLIDER2D: 2D 多边形碰撞体
+TILEMAPCOLLIDER2D: 2D 瓦片碰撞体
+TERRENOCOLLIDER2D: 2D 地形碰撞体
+LINECOLLIDER2D: 2D 线碰撞体
+CAMERA: 摄像机
+UITRANSFORM: UI 变换
+UIIMAGE: UI 图像
+UITEXT: UI 文本
+CANVAS: 画布 (Canvas)
+BUTTON: UI 按钮
+VIDEOPLAYER: 视频播放器
+PROGRESSBAR: 进度条
+VERTICALLAYOUTGROUP: 垂直布局组
+HORIZONTALLAYOUTGROUP: 水平布局组
+GRIDLAYOUTGROUP: 网格布局组
+CONTENTSIZEFITTER: 内容尺寸适配器
+MOVEMENT: 基础移动
+CAMERAFOLLOW: 摄像机跟随
+PROJECTILELAUNCHER: 投射物发射器
+AUTODESTROY: 自动销毁
+HEALTH: 生命值 (Health)
+ATTACK: 攻击 (Attack)
+PATROL: 巡逻
+PARTICLESYSTEM: 粒子系统
+RAYCASTSOURCE: 射线源
+BASICAI: 基础人工智能
+SUSPENSIONHC: 车辆悬挂
+VEHICLETOPDOWN: 俯视车辆
+PLANECONTROLLER: 飞机控制器
+HELICOPTERCONTROLLER: 直升机控制器
+CREATIVESCRIPT: 创意脚本 (CES)
 
 # Engine Terms
 POSICION: 位置
