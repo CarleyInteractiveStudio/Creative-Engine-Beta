@@ -1,6 +1,6 @@
 // --- Module for the Code Editor Window (CodeMirror) ---
 
-import { basicSetup } from "https://esm.sh/codemirror@6.6.2";
+import { basicSetup } from "https://esm.sh/codemirror@6.0.1";
 import { EditorState, StateField, StateEffect } from "https://esm.sh/@codemirror/state@6.4.1";
 import { EditorView, keymap, Decoration } from "https://esm.sh/@codemirror/view@6.26.3";
 import { javascript } from "https://esm.sh/@codemirror/lang-javascript@6.2.2";

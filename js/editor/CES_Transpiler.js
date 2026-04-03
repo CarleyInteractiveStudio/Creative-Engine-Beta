@@ -702,9 +702,10 @@ export function transpile(code, scriptName = 'unnamed.ces') {
 
             // Blank out the block to preserve line numbers and prevent re-match
             unprocessedCode = blankOut(unprocessedCode, startIdx, endIdx + 1);
-            rootCadaRegex.lastIndex = 0; // Reiniciar búsqueda sobre el código modificado
+            // IMPORTANT: Move lastIndex forward to skip the blanked area
+            rootCadaRegex.lastIndex = endIdx + 1;
         } else {
-             // No se encontró cierre, avanzar el regex para evitar bucle infinito
+             // No se encontró cierre, avanzar el regex forward to avoid infinite loop
             rootCadaRegex.lastIndex = contentStartIdx;
         }
     }
@@ -770,6 +771,7 @@ export function transpile(code, scriptName = 'unnamed.ces') {
                 message: `Método '${name}' no tiene una llave de cierre correspondiente.`,
                 word: name
             });
+            methodHeaderRegex.lastIndex = bodyStartIndex;
             continue;
         }
 
