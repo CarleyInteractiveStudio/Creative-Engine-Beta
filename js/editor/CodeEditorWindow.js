@@ -883,6 +883,25 @@ export function initialize(domCache, showConsole, hotReload) {
         });
     }
 
+    // Prevent focus theft by stopping click propagation inside the editor
+    const stopProp = (e) => {
+        e.stopPropagation();
+    };
+
+    // We use capture: true to ensure we catch these before other global listeners
+    dom.codemirrorContainer.addEventListener('mousedown', stopProp, { capture: true });
+    dom.codemirrorContainer.addEventListener('mouseup', stopProp, { capture: true });
+    dom.codemirrorContainer.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (codeEditor && !codeEditor.hasFocus) {
+            codeEditor.focus();
+        }
+    }, { capture: true });
+
+    dom.codemirrorContainer.addEventListener('contextmenu', stopProp, { capture: true });
+    dom.codemirrorContainer.addEventListener('keydown', stopProp, { capture: true });
+    dom.codemirrorContainer.addEventListener('keyup', stopProp, { capture: true });
+
     const repairBtn = document.getElementById('code-reparar-btn');
     if (repairBtn) {
         repairBtn.addEventListener('click', () => runAutoReparator());
