@@ -1,13 +1,13 @@
 // --- Module for the Code Editor Window (CodeMirror) ---
 
-import { EditorView, basicSetup } from "https://esm.sh/codemirror@6.0.1";
+import { basicSetup } from "https://esm.sh/codemirror@6.0.1";
+import { EditorState, StateField, StateEffect } from "https://esm.sh/@codemirror/state@6.4.1";
+import { EditorView, keymap, Decoration } from "https://esm.sh/@codemirror/view@6.26.3";
 import { javascript } from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
 import { oneDark } from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
 import { undo, redo, indentWithTab } from "https://esm.sh/@codemirror/commands@6.3.3";
-import { autocompletion, acceptCompletion } from "https://esm.sh/@codemirror/autocomplete@6.16.0";
+import { autocompletion, acceptCompletion, completionKeymap } from "https://esm.sh/@codemirror/autocomplete@6.16.0";
 import { linter } from "https://esm.sh/@codemirror/lint@6.4.2";
-import { keymap, Decoration } from "https://esm.sh/@codemirror/view@6.26.3";
-import { StateField, StateEffect } from "https://esm.sh/@codemirror/state@6.4.1";
 import { transpile } from './CES_Transpiler.js';
 import * as AutoReparator from './AutoReparator.js';
 import { intentWeights, blockTemplates } from './AutoReparatorData.js';
@@ -284,27 +284,36 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
         dom.codeEditorToolbar.classList.remove('hidden');
         dom.codemirrorContainer.style.display = 'block';
 
+        const extensions = [
+            basicSetup,
+            javascript(),
+            oneDark,
+            errorHighlightField,
+            cesLinter,
+            autocompletion({ override: [cesCompletions] }),
+            keymap.of([
+                ...completionKeymap,
+                { key: "Tab", run: acceptCompletion },
+                indentWithTab
+            ]),
+            EditorView.lineWrapping
+        ];
+
         if (!codeEditor) {
             codeEditor = new EditorView({
-                doc: content,
-                extensions: [
-                    basicSetup,
-                    javascript(),
-                    oneDark,
-                    errorHighlightField,
-                    cesLinter,
-                    autocompletion({ override: [cesCompletions] }),
-                    keymap.of([
-                        { key: "Tab", run: acceptCompletion },
-                        indentWithTab
-                    ])
-                ],
+                state: EditorState.create({
+                    doc: content,
+                    extensions: extensions
+                }),
                 parent: dom.codemirrorContainer
             });
         } else {
-            codeEditor.dispatch({
-                changes: { from: 0, to: codeEditor.state.doc.length, insert: content }
+            // Properly update state and focus
+            const newState = EditorState.create({
+                doc: content,
+                extensions: extensions
             });
+            codeEditor.setState(newState);
         }
 
         // Fix: Ensure the editor is visible and focused to avoid the typing bug

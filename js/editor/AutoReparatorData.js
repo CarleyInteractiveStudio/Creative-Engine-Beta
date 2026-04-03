@@ -316,13 +316,13 @@ export const structuralRules = {
 };
 
 export const typeInference = [
-    { regex: /velocidad|fuerza|salto|vida|danio|daño|distancia|masa|gravedad|valor|puntos|cantidad|rango|tiempo|duracion|alpha|opacidad|escala|rotacion/i, type: 'numero' },
+    { regex: /velocidad|veloidad|fuerza|salto|vida|danio|daño|distancia|masa|gravedad|valor|puntos|cantidad|rango|tiempo|duracion|alpha|opacidad|escala|rotacion/i, type: 'numero' },
     { regex: /nombre|tag|texto|mensaje|nivel|escena|id|ruta|clase/i, type: 'texto' },
     { regex: /activo|puede|esta|es|tocado|listo|abierta|bloqueado|pausado/i, type: 'booleano' },
     { regex: /objetivo|meta|jugador|padre|hijo|materia|mtr|target/i, type: 'mtr' },
     { regex: /prefab|bala|enemigo|item|recompensa|proyectil/i, type: 'Prefab' },
-    { regex: /sonido|audio|musica|efecto|clip/i, type: 'Audio' },
-    { regex: /icono|imagen|sprite|textura|fondo/i, type: 'Sprite' }
+    { regex: /sonido|audio|musica|efecto|clip|pasos/i, type: 'Audio' },
+    { regex: /icono|imagen|sprite|spritet|textura|fondo/i, type: 'Sprite' }
 ];
 
 /**
@@ -334,79 +334,92 @@ export const logicPatterns = [
         name: "Input to Movement",
         trigger: /teclaPresionada|teclaRecienPresionada/i,
         elements: ["posicion", "velocidad", "delta"],
-        completion: "posicion.x += velocidad * delta;"
+        completion: "posicion.x += velocidad * delta;",
+        preferredLifecycle: "alActualizar"
     },
     {
         name: "Collision to Health",
         trigger: /alEntrarEnColision|alChocar/i,
         elements: ["tieneTag", "vida", "danio|daño"],
-        completion: "si (otro.tieneTag('Enemigo')) { vida -= 10; }"
+        completion: "si (otro.tieneTag('Enemigo')) { vida -= 10; }",
+        preferredLifecycle: "alEntrarEnColision"
     },
     {
         name: "Timer Loop",
         trigger: /alEmpezar/i,
         elements: ["cada", "esperar"],
-        completion: "cada(1) { /* logica aqui */ }"
+        completion: "cada(1) { /* logica aqui */ }",
+        preferredLifecycle: "alEmpezar"
     },
     {
         name: "UI Button Click",
         trigger: /alHacerClick|alClicar/i,
         elements: ["imprimir", "cargarEscena", "destruir"],
-        completion: "imprimir('Botón pulsado');"
+        completion: "imprimir('Botón pulsado');",
+        preferredLifecycle: "alHacerClick"
     },
     {
         name: "Prefab Instantiation",
         trigger: /teclaRecienPresionada|alActualizar/i,
         elements: ["instanciar|crear", "Vector2", "posicion"],
-        completion: "instanciar(proyectil, posicion.x, posicion.y);"
+        completion: "instanciar(proyectil, posicion.x, posicion.y);",
+        preferredLifecycle: "alActualizar"
     },
     {
         name: "Health Decay and Death",
         trigger: /vida\s*-=|dañar/i,
         elements: ["si", "0", "destruir|muerte"],
-        completion: "si (vida <= 0) {\n    reproducir.Muerte();\n    destruir(materia);\n}"
+        completion: "si (vida <= 0) {\n    reproducir.Muerte();\n    destruir(materia);\n}",
+        preferredLifecycle: "alActualizar"
     },
     {
         name: "Advanced Movement",
         trigger: /velocidad|moverse/i,
         elements: ["rotacion", "coseno", "seno", "fisica"],
-        completion: "variable rad = rotacion * 3.14 / 180;\nfisica.velocity.x = coseno(rad) * velocidad;\nfisica.velocity.y = seno(rad) * velocidad;"
+        completion: "variable rad = rotacion * 3.14 / 180;\nfisica.velocity.x = coseno(rad) * velocidad;\nfisica.velocity.y = seno(rad) * velocidad;",
+        preferredLifecycle: "alActualizar"
     },
     {
         name: "Interaction System",
         trigger: /lanzarRayo|raycast/i,
         elements: ["mtr", "distancia", "tieneTag"],
-        completion: "variable hit = lanzarRayo(posicion, nuevo Vector2(1,0), 100);\nsi (hit && hit.tieneTag('Interactivo')) {\n    difundir('interactuar', hit);\n}"
+        completion: "variable hit = lanzarRayo(posicion, nuevo Vector2(1,0), 100);\nsi (hit && hit.tieneTag('Interactivo')) {\n    difundir('interactuar', hit);\n}",
+        preferredLifecycle: "alActualizar"
     },
     {
         name: "State Toggle",
         trigger: /teclaRecienPresionada/i,
         elements: ["booleano", "!", "activo"],
-        completion: "variable activa = !activa;\nrenderizadorDeSprite.isActive = activa;"
+        completion: "variable activa = !activa;\nrenderizadorDeSprite.isActive = activa;",
+        preferredLifecycle: "alActualizar"
     },
     {
         name: "Automatic Flip",
-        trigger: /velocidad|x\s*\+=|x\s*-=/i,
-        elements: ["voltearH", "horizontal"],
-        completion: "si (velocidadX > 0) voltearH = falso;\nsi (velocidadX < 0) voltearH = verdadero;"
+        trigger: /velocidad|velX|velY|x\s*\+=|x\s*-=/i,
+        elements: ["voltearH", "voltear", "flip"],
+        completion: "si (velocidadX > 0) voltearH = falso;\nsi (velocidadX < 0) voltearH = verdadero;",
+        preferredLifecycle: "alActualizar"
     },
     {
         name: "Audio Feedback",
         trigger: /alHacerClick|alPresionar|teclaRecienPresionada/i,
         elements: ["reproducir", "audio|sonido"],
-        completion: "reproducir.Accion();"
+        completion: "reproducir.Accion();",
+        preferredLifecycle: "alActualizar"
     },
     {
         name: "UI sync",
         trigger: /vida|puntos|progreso/i,
         elements: ["valor", "uiBarra|uiTexto"],
-        completion: "uiBarra.valor = vidaActual;\nuiTexto.contenido = 'Vida: ' + vidaActual;"
+        completion: "uiBarra.valor = vidaActual;\nuiTexto.contenido = 'Vida: ' + vidaActual;",
+        preferredLifecycle: "alActualizar"
     },
     {
         name: "Particle burst",
         trigger: /colision|destruir|golpe/i,
         elements: ["particula", "play|stop"],
-        completion: "sistemaDeParticulas.play();\nesperar(0.5);\nsistemaDeParticulas.stop();"
+        completion: "sistemaDeParticulas.play();\nesperar(0.5);\nsistemaDeParticulas.stop();",
+        preferredLifecycle: "alActualizar"
     }
 ];
 

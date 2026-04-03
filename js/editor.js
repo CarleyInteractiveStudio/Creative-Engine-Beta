@@ -378,7 +378,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'ui-editor-canvas-container', 'ui-editor-canvas', 'ui-editor-inspector', 'ui-resizer-left', 'ui-resizer-right',
             'vid-spri-panel', 'btn-open-vid-spri-ext',
             // Carl IA Panel Elements
-            'carl-ia-panel', 'carl-ia-view-selector-btn', 'carl-ia-brain-selector-btn', 'carl-ia-messages', 'carl-ia-input', 'carl-ia-send-btn', 'menubar-carl-ia-btn',
+            'carl-ia-panel', 'carl-ia-view-selector-btn', 'carl-ia-messages', 'carl-ia-input', 'carl-ia-send-btn', 'menubar-carl-ia-btn',
             // Terminal Elements
             'view-toggle-terminal', 'terminal-content', 'terminal-output', 'terminal-input',
             // Tile Palette Elements
@@ -3483,7 +3483,6 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado
                     const provider = prefs.ai.provider;
                     const displayName = provider.charAt(0).toUpperCase() + provider.slice(1);
                     selectedProvider = { type: provider, name: `${displayName} (Preferencias)` };
-                    brainButton.textContent = `Cerebro: ${selectedProvider.name}`;
                 }
 
                 if (!selectedProvider) {

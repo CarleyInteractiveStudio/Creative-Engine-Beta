@@ -1,0 +1,33 @@
+import time
+from playwright.sync_api import sync_playwright
+
+def run():
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
+        page.on("console", lambda msg: print(f"CONSOLE [{msg.type}]: {msg.text}"))
+        page.on("pageerror", lambda err: print(f"PAGE ERROR: {err}"))
+        page.on("requestfailed", lambda req: print(f"REQUEST FAILED: {req.url}"))
+        try:
+            page.goto("http://localhost:8000/editor.html?project=TestProject")
+            # In my previous implementation, updateLoadingProgress(100, "Listo!") hides the overlay.
+            # If it's still visible after 30s, we definitely have a hang.
+            time.sleep(30)
+            page.screenshot(path="debug_boot_v2.png")
+
+            # Check for specific elements that indicate initialization stage
+            status = page.evaluate("document.getElementById('loading-status-message').textContent")
+            progress = page.evaluate("document.getElementById('progress-bar').style.width")
+            print(f"Status at timeout: {status}")
+            print(f"Progress at timeout: {progress}")
+
+            # Check for common module failure indicators
+            errors = page.evaluate("window.bootErrors || 'No errors logged in window'")
+            print(f"Window boot errors: {errors}")
+
+        except Exception as e:
+            print(f"FAILED: {e}")
+        browser.close()
+
+if __name__ == "__main__":
+    run()

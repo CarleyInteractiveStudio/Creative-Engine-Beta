@@ -3,19 +3,24 @@ import { transpile } from './CES_Transpiler.js';
 import { getPreferences } from './ui/PreferencesWindow.js';
 
 /**
- * Auto Reparator Module v3 "Smart Brain"
- * Analyzes and fixes common syntax errors and misspellings in CES scripts using semantic rules.
+ * Auto Reparator Module v4 "Expert Brain"
+ * Analyzes and fixes common syntax errors and misspellings in CES scripts using advanced surgery.
  */
 export async function repair(code, fileName, runtimeError = null) {
     const prefs = getPreferences();
     const isSmartEnabled = prefs.autoCorrectorInteligente !== false; // Default true
 
     let repairedCode = code;
-    const L = window.Localization;
+    // Safety check for Localization during early boot sequence
+    const L = window.Localization || { get: (k, d) => d };
 
-    console.log(`[AutoReparator] Iniciando reparación de ${fileName} (Smart: ${isSmartEnabled})...`);
+    console.log(`[AutoReparator v4] Iniciando reparación de ${fileName} (Smart: ${isSmartEnabled})...`);
 
-    // 0. Runtime Error analysis
+    // --- 1. Top-to-Bottom Analysis: scan declarations first ---
+    const cleanCodeForDeclarations = stripCommentsAndStrings(repairedCode);
+    const declaredVariables = detectUndeclaredVariables(repairedCode);
+
+    // --- 2. Runtime Error analysis ---
     if (runtimeError && runtimeError.message) {
         console.log("[AutoReparator] Analizando error de ejecución:", runtimeError.message);
 
@@ -40,7 +45,7 @@ export async function repair(code, fileName, runtimeError = null) {
         for (const check of missingComps) {
             if (runtimeError.message.includes(check.key) || runtimeError.message.includes(`'${check.name}'`)) {
                 return {
-                    success: true, // Success because we identified the problem
+                    success: true,
                     code: code,
                     message: `⚠️ Falta el componente '${check.comp}' en '${runtimeError.materiaName}'. ¿Quieres que lo añada por ti?`,
                     addComponent: {
@@ -51,13 +56,11 @@ export async function repair(code, fileName, runtimeError = null) {
             }
         }
 
-        // Suggest fix for "is not defined" (likely a typo in a variable name)
+        // Suggest fix for "is not defined"
         if (runtimeError.message.includes('is not defined')) {
             const undefinedVar = runtimeError.message.split(' ')[0];
-            // Try to find a close match in the code
             const allWords = Array.from(new Set(repairedCode.match(/[a-zA-Z_\u00C0-\u017F][\w\u00C0-\u017F]*/g)));
             const bestMatch = allWords.find(w => {
-                // Very simple fuzzy: one char difference
                 if (Math.abs(w.length - undefinedVar.length) > 1) return false;
                 let diffs = 0;
                 const minLen = Math.min(w.length, undefinedVar.length);
@@ -72,7 +75,7 @@ export async function repair(code, fileName, runtimeError = null) {
         }
     }
 
-    // 1. Smart Keyword Substitutions
+    // --- 3. Smart Keyword Substitutions ---
     const substitutions = {
         'funcion': ['funsion', 'fucion', 'funcio', 'function', 'função', 'функция', '函数'],
         'publico': ['public', 'pubico', 'público', 'открытый', '公开'],
@@ -97,36 +100,23 @@ export async function repair(code, fileName, runtimeError = null) {
     for (const [correct, wrongList] of Object.entries(substitutions)) {
         for (const wrong of wrongList) {
             const regex = new RegExp(`\\b${wrong}\\b`, 'gi');
-            // Force correct case for keywords to match transpiler expectations
             repairedCode = repairedCode.replace(regex, correct);
         }
     }
 
-    // 1.b Garbage Cleaner (Early Pass) - Remove/Comment illegal solitary identifiers
+    // --- 4. Garbage Cleaner (Advanced) ---
     if (isSmartEnabled) {
         const lines = repairedCode.split('\n');
         const dontTouch = [...structuralRules.allowedGlobalScope, ...structuralRules.lifecycleMethods,
                           'delta', 'deltaTime', 'mtr', 'materia', 'retornar', 'esperar', 'detener', 'verdadero', 'falso'];
 
-        let inCommentBlock = false;
-
         for (let i = 0; i < lines.length; i++) {
             const trimmed = lines[i].trim();
-
-            // Handle multi-line comment status
-            if (trimmed.startsWith('/*')) inCommentBlock = true;
-            if (inCommentBlock) {
-                if (trimmed.includes('*/')) inCommentBlock = false;
-                continue;
-            }
-            if (trimmed.startsWith('//')) continue;
-
-            // Match single word (optional semicolon), allowing indentation
+            // Match single word (optional semicolon) on its own line, ignoring comments and declarations
             if (/^[a-z_][a-z0-9_]*;?$/i.test(trimmed)) {
                 const word = trimmed.replace(';', '');
                 if (!dontTouch.includes(word) && isNaN(word) && word.length > 0) {
-                    console.log(`[Creative Code] Limpiando identificador ilegal: ${word}`);
-                    // Use a targeted replacement that respects indentation
+                    console.log(`[Creative Code v4] Limpiando identificador basura: ${word}`);
                     lines[i] = lines[i].replace(word, `// [Creative Code REMOVED] ${word}`);
                 }
             }
@@ -134,12 +124,12 @@ export async function repair(code, fileName, runtimeError = null) {
         repairedCode = lines.join('\n');
     }
 
-    // 2. Ensure mandatory header
-    if (!repairedCode.toLowerCase().includes(structuralRules.mandatoryHeader)) {
+    // --- 5. Mandatory Header ---
+    if (!stripCommentsAndStrings(repairedCode).toLowerCase().includes(structuralRules.mandatoryHeader)) {
         repairedCode = structuralRules.mandatoryHeader + '\n' + repairedCode;
     }
 
-    // 3. Smart Intent Detection
+    // --- 6. Smart Intent Detection ---
     console.log("[AutoReparator] Analizando intención semántica...");
     let bestIntent = 'desconocido';
     let maxIntentScore = 0;
@@ -151,7 +141,6 @@ export async function repair(code, fileName, runtimeError = null) {
             if (codeWords.includes(k)) score += 2;
         });
 
-        // Context boost: if the user is using specific engine functions
         if (intent === 'fisica' && repairedCode.includes('applyImpulse')) score += 10;
         if (intent === 'salud' && repairedCode.includes('danar')) score += 10;
         if (intent === 'ui' && repairedCode.includes('uiBarra')) score += 10;
@@ -161,9 +150,8 @@ export async function repair(code, fileName, runtimeError = null) {
             bestIntent = intent;
         }
     }
-    console.log(`[AutoReparator] Intención detectada: ${bestIntent} (Score: ${maxIntentScore})`);
 
-    // 4. Smart Auto-Declaration (if enabled)
+    // --- 7. Smart Auto-Declaration (Top-to-Bottom aware) ---
     if (isSmartEnabled) {
         const undeclared = detectUndeclaredVariables(repairedCode);
         if (undeclared.length > 0) {
@@ -173,253 +161,156 @@ export async function repair(code, fileName, runtimeError = null) {
                 const type = inferVariableType(v, repairedCode);
                 declarations += `publico ${type} ${v};\n`;
             });
-            // Insert after header
-            repairedCode = repairedCode.replace(structuralRules.mandatoryHeader, structuralRules.mandatoryHeader + '\n' + declarations);
+            const cleanCode = stripCommentsAndStrings(repairedCode);
+            const headerMatch = cleanCode.toLowerCase().match(new RegExp(structuralRules.mandatoryHeader, 'i'));
+            if (headerMatch) {
+                const insertPos = headerMatch.index + headerMatch[0].length;
+                repairedCode = repairedCode.substring(0, insertPos) + '\n' + declarations + repairedCode.substring(insertPos);
+            } else {
+                repairedCode = structuralRules.mandatoryHeader + '\n' + declarations + repairedCode;
+            }
         }
     }
 
-    // 5. Advanced Example Matcher (Structural)
-    let bestExample = null;
-    let maxMatch = 0;
+    // --- 8. Advanced Surgery Pass (Similarity Matcher) ---
+    const lines = repairedCode.split('\n');
+    let surgeryApplied = false;
+    for (let i = 0; i < lines.length; i++) {
+        const badLine = lines[i].trim();
+        if (!badLine || badLine.startsWith('//') || badLine.includes('{') || badLine.includes('}')) continue;
 
-    examples.forEach(ex => {
-        const exWords = ex.code.toLowerCase().match(/\w+/g) || [];
-        let overlap = exWords.filter(w => codeWords.includes(w)).length;
+        // Skip declarations and known keywords
+        if (/^(publico|variable|constante|ve|go|alEmpezar|alActualizar|si|sino|retornar)/i.test(badLine)) continue;
 
-        // Intent boost
-        if (ex.title.toLowerCase().includes(bestIntent)) {
-            overlap += intentWeights[bestIntent]?.scoreBoost || 5;
-        }
+        // Check if the line has syntax errors via mini-transpilation
+        const miniResult = transpile(`ve motor;\nalActualizar(delta) { ${badLine} }`, 'test.ces');
+        if (miniResult.errors && miniResult.errors.length > 0) {
+            let bestFix = null;
+            let maxSimilarity = 0;
 
-        const score = overlap / exWords.length;
-        if (score > maxMatch) {
-            maxMatch = score;
-            bestExample = ex;
-        }
-    });
+            // Similarity check against all examples' lines
+            examples.forEach(ex => {
+                const exLines = ex.code.split('\n');
+                exLines.forEach(exLine => {
+                    const trimmedExLine = exLine.trim();
+                    if (trimmedExLine.length < 5 || trimmedExLine.includes('{') || trimmedExLine.startsWith('ve ')) return;
 
-    // Forced replacement if code is still extremely broken
-    let forcedTemplate = false;
-    const currentValidation = transpile(repairedCode, fileName);
-    if (currentValidation.errors && currentValidation.errors.length > 0 && bestExample && maxMatch > 0.3) {
-        console.log(`[AutoReparator] Código insalvable. Forzando plantilla: ${bestExample.title}`);
-        repairedCode = bestExample.code;
-        forcedTemplate = true;
-    } else if (bestExample && maxMatch > 0.7) {
-        console.log(`[AutoReparator] Coincidencia encontrada con: ${bestExample.title} (Score: ${maxMatch.toFixed(2)})`);
-        // If the code is very broken (transpilation fails), we try to merge the user variables with the example's structure
-        const validation = transpile(repairedCode, fileName);
-        if (validation.errors && validation.errors.length > 0) {
-            console.log("[AutoReparator] El código está muy dañado. Intentando reconstrucción estructural...");
+                    const words1 = badLine.toLowerCase().match(/\w+/g) || [];
+                    const words2 = trimmedExLine.toLowerCase().match(/\w+/g) || [];
+                    const set1 = new Set(words1);
+                    const set2 = new Set(words2);
+                    const intersection = new Set([...set1].filter(x => set2.has(x)));
 
-            // Extract user variables
-            const userVars = repairedCode.match(/publico\s+\w+\s+\w+\s*=\s*[^;]+;/g) || [];
-            let structuralBase = bestExample.code;
-
-            // If the example already has the same variable names, we keep user values
-            userVars.forEach(v => {
-                const nameMatch = v.match(/publico\s+\w+\s+(\w+)\s*=/);
-                if (nameMatch) {
-                    const varName = nameMatch[1];
-                    const regex = new RegExp(`publico\\s+\\w+\\s+${varName}\\s*=\\s*[^;]+;`, 'g');
-                    if (structuralBase.match(regex)) {
-                        structuralBase = structuralBase.replace(regex, v);
-                    } else {
-                        // Insert after imports if it's a new variable
-                        structuralBase = structuralBase.replace('ve motor;', `ve motor;\n${v}`);
+                    const similarity = intersection.size / Math.max(set1.size, set2.size);
+                    if (similarity > maxSimilarity) {
+                        maxSimilarity = similarity;
+                        bestFix = trimmedExLine;
                     }
-                }
+                });
             });
 
-            repairedCode = structuralBase;
+            if (bestFix && maxSimilarity > 0.6) {
+                console.log(`[Surgery v4] Corrigiendo línea ${i + 1}: ${badLine} -> ${bestFix}`);
+                lines[i] = lines[i].replace(badLine, bestFix);
+                surgeryApplied = true;
+            }
         }
     }
+    if (surgeryApplied) repairedCode = lines.join('\n');
 
-    // 6. Performance Mentor (Brain v3.3)
+    // --- 9. Logic Pattern Completion & Lifecycle Aware Insertion ---
     if (isSmartEnabled) {
-        console.log("[AutoReparator] Ejecutando Performance Mentor...");
+        logicPatterns.forEach(pattern => {
+            if (pattern.trigger.test(repairedCode)) {
+                const missingElements = pattern.elements.filter(el => !(new RegExp(el, 'i').test(repairedCode)));
+                if (missingElements.length > 0 && missingElements.length <= 3) {
+                    const targetLifecycle = pattern.preferredLifecycle || 'alActualizar';
+
+                    // Lifecycle aware insertion: find the method body
+                    const methodRegex = new RegExp(`${targetLifecycle}\\s*\\([^)]*\\)\\s*{`, 'i');
+                    const match = repairedCode.match(methodRegex);
+
+                    if (match) {
+                        const startIdx = match.index + match[0].length;
+                        // Simple brace counting to find the end of the method
+                        let braceCount = 1;
+                        let endIdx = -1;
+                        for (let j = startIdx; j < repairedCode.length; j++) {
+                            if (repairedCode[j] === '{') braceCount++;
+                            else if (repairedCode[j] === '}') {
+                                braceCount--;
+                                if (braceCount === 0) {
+                                    endIdx = j;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (endIdx !== -1) {
+                            const snippet = `\n    // [Creative Code] Sugerencia: ${pattern.name}\n    ${pattern.completion}\n`;
+                            repairedCode = repairedCode.substring(0, endIdx) + snippet + repairedCode.substring(endIdx);
+                        }
+                    } else if (repairedCode.length < 500) {
+                        // Create method if it doesn't exist and script is small
+                        repairedCode += `\n\n${targetLifecycle}(delta) {\n    // [Creative Code] Sugerencia: ${pattern.name}\n    ${pattern.completion}\n}`;
+                    }
+                }
+            }
+        });
+    }
+
+    // --- 10. Performance Mentor ---
+    if (isSmartEnabled) {
         expensivePatterns.forEach(rule => {
             if (rule.pattern.test(repairedCode)) {
-                // Determine if it's inside alActualizar
                 const lines = repairedCode.split('\n');
                 let inUpdate = false;
-                for (const line of lines) {
-                    if (/alActualizar/i.test(line)) inUpdate = true;
-                    if (inUpdate && rule.pattern.test(line)) {
-                        console.warn(`[Performance Mentor] ${rule.message}`);
-                        repairedCode = repairedCode.replace(line, `// ${rule.message}\n${line}`);
+                for (let i=0; i<lines.length; i++) {
+                    if (/alActualizar/i.test(lines[i])) inUpdate = true;
+                    if (inUpdate && rule.pattern.test(lines[i])) {
+                        lines[i] = `// ${rule.message}\n${lines[i]}`;
                         break;
                     }
                 }
+                repairedCode = lines.join('\n');
             }
         });
     }
 
-    // 6.b Logic Pattern Completion (New Brain v3.1)
-    if (isSmartEnabled) {
-        console.log("[AutoReparator] Buscando patrones lógicos incompletos...");
-        logicPatterns.forEach(pattern => {
-            if (pattern.trigger.test(repairedCode)) {
-                // Check if key elements of the pattern are missing
-                const missingElements = pattern.elements.filter(el => {
-                    const regex = new RegExp(el, 'i');
-                    return !regex.test(repairedCode);
-                });
-
-                if (missingElements.length > 0 && missingElements.length <= 2) {
-                    console.log(`[AutoReparator] Patrón detectado: ${pattern.name}. Sugiriendo completado...`);
-                    // If it's a lifecycle trigger and the code is very short, add the completion
-                    if (repairedCode.length < 150) {
-                        repairedCode += `\n// Sugerencia de ${pattern.name}:\n${pattern.completion}`;
-                    }
-                }
-            }
-        });
-    }
-
-    // 7. Syntax Healer (Braces and Parentheses balance)
+    // --- 11. Syntax Healer ---
     if (isSmartEnabled) {
         repairedCode = healSyntaxStructure(repairedCode);
     }
 
-    // 8. Structural Repair Logic
-    if (isSmartEnabled) {
-        // Fix input logic placement (should be in alActualizar)
-        const hasInputLogic = /teclaPresionada|teclaRecienPresionada|botonMousePresionado|obtenerPosicionMouse/i.test(repairedCode);
-        const hasUpdate = /alActualizar|actualizar|update/i.test(repairedCode);
+    // --- 12. Final Validation ---
+    const finalValidation = transpile(repairedCode, fileName);
+    const success = !finalValidation.errors || finalValidation.errors.length === 0;
 
-        if (hasInputLogic && !hasUpdate) {
-            console.log("[AutoReparator] Moviendo lógica de entrada a alActualizar...");
-            // Extract lines that look like they should be in update (not declarations, not imports)
-            const lines = repairedCode.split('\n');
-            const declarationKeywords = ['publico', 'privado', 'variable', 'constante', 've', 'go', 'engine', 'motor'];
-            let updateBody = "";
-            let remainingCode = "";
-
-            lines.forEach(line => {
-                const trimmed = line.trim();
-                if (!trimmed) return;
-                const isDeclaration = declarationKeywords.some(k => trimmed.startsWith(k));
-                const isFunction = /^(async\s+)?(funcion|alEmpezar|alEntrarEnColision|alRecibir|alHacerClick|alChocar|alClicar|alPulsar)/i.test(trimmed);
-
-                if (!isDeclaration && !isFunction && trimmed.includes('tecla')) {
-                    updateBody += `    ${trimmed}\n`;
-                } else {
-                    remainingCode += `${line}\n`;
-                }
-            });
-
-            if (updateBody) {
-                repairedCode = `${remainingCode.trim()}\n\nalActualizar(delta) {\n${updateBody}}`;
-            }
-        }
-
-        // Fix missing semicolons on declarations
-        repairedCode = repairedCode.replace(/^(publico|variable|constante)\s+[\w\u00C0-\u017F]+\s+[\w\u00C0-\u017F]+\s*=?[^;]*?([^\s;])$/gm, (match, p1, p2) => {
-            if (match.includes('{') || match.includes('}')) return match;
-            return match + ';';
-        });
-    }
-
-    // 9. Validate with Transpiler and try to isolate bad lines
-    let validation = transpile(repairedCode, fileName);
-
-    if (validation.errors && validation.errors.length > 0) {
-        console.warn("[AutoReparator] Errores detectados tras primera pasada. Intentando cirugía...");
-
-        const lines = repairedCode.split('\n');
-        const fatalLines = new Set();
-
-        validation.errors.forEach(err => {
-            if (err.line && err.line <= lines.length) {
-                fatalLines.add(err.line - 1);
-            }
-        });
-
-        // Strategy: if a line is fatal and we can't fix it, comment it out instead of deleting
-        // to let the user see what happened.
-        fatalLines.forEach(index => {
-            if (lines[index].trim()) {
-                lines[index] = `// [AutoReparator FIXED] ${lines[index]}`;
-            }
-        });
-
-        repairedCode = lines.join('\n');
-    }
-
-    // 10. Object Awareness (Brain v3.3)
-    let missingComponentSuggestion = null;
-    const selected = (typeof window !== 'undefined' && window.getSelectedMateria) ? window.getSelectedMateria() : null;
-    if (isSmartEnabled && selected) {
-        const required = [
-            { key: 'fisica|velocity|applyImpulse', comp: 'Rigidbody2D' },
-            { key: 'vida|danar|curar', comp: 'Health' },
-            { key: 'reproducir|animador', comp: 'Animator' },
-            { key: 'renderizadorDeSprite', comp: 'SpriteRenderer' },
-            { key: 'uiBarra', comp: 'ProgressBar' }
-        ];
-
-        for (const req of required) {
-            const regex = new RegExp(req.key, 'i');
-            if (regex.test(repairedCode) && !selected.getComponent(window.Components[req.comp])) {
-                missingComponentSuggestion = {
-                    materiaId: selected.id,
-                    componentType: req.comp
-                };
-                break;
-            }
-        }
-    }
-
-    // 11. Final validation
-    validation = transpile(repairedCode, fileName);
-    const success = !validation.errors || validation.errors.length === 0;
-
-    let finalMessage = success ? L.get('REPARACION_EXITOSA', 'Código reparado con éxito.') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero aún quedan errores complejos.');
-
-    if (repairedCode.includes('[Creative Code REMOVED]')) {
-        finalMessage += `\n🧹 He limpiado identificadores inválidos o "basura" detectados.`;
-    }
-
-    if (repairedCode.includes('Syntax Healer')) {
-        finalMessage += `\n🩹 He reparado la estructura de llaves o paréntesis.`;
-    }
-
-    if (bestIntent !== 'desconocido' && !success) {
-        finalMessage += `\n🤖 Parece que intentas hacer algo de '${bestIntent}'. He intentado ajustar el código a esa lógica.`;
-    }
-
-    // Add component suggestion to message if present
-    if (missingComponentSuggestion) {
-        finalMessage += `\n⚠️ He detectado que usas lógica de '${missingComponentSuggestion.componentType}', pero el objeto no tiene ese componente. ¿Deseas añadirlo?`;
-    }
-
-    // Notify if we replaced the script with a pre-made template
-    if (bestExample && (repairedCode.includes(bestExample.code.substring(0, 20)) || forcedTemplate)) {
-        finalMessage = `🤖 He detectado que intentabas crear un script de '${bestExample.title}'.\nHe reemplazado tu código por una versión pre-hecha y funcional para ayudarte. ¡Puedes editarla a tu gusto!`;
-    }
+    let finalMessage = success ? L.get('REPARACION_EXITOSA', 'Código reparado con éxito por Expert Brain (v4).') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero el script requiere intervención manual.');
 
     return {
         success: success,
         code: repairedCode,
-        message: finalMessage,
-        addComponent: missingComponentSuggestion
+        message: finalMessage
     };
 }
 
-/**
- * Detects variables that are used but not declared.
- */
+function stripCommentsAndStrings(code) {
+    return code.replace(/(["'])(?:(?=(\\?))\2.)*?\1|\/\/.*|\/\*[\s\S]*?\*\//g, (match) => {
+        return " ".repeat(match.length);
+    });
+}
+
 function detectUndeclaredVariables(code) {
+    const cleanCode = stripCommentsAndStrings(code);
     const declared = new Set();
     const declarationRegex = /\b(publico|privado|variable|constante)\s+[\w\u00C0-\u017F]+\s+([\w\u00C0-\u017F]+)/g;
     let match;
-    while ((match = declarationRegex.exec(code)) !== null) {
+    while ((match = declarationRegex.exec(cleanCode)) !== null) {
         declared.add(match[2]);
     }
-
     const functionRegex = /\b(funcion|alActualizar|alEmpezar|alEntrarEnColision|alHacerClick|alRecibir)\s*([\w\u00C0-\u017F]+)?\s*\(([^)]*)\)/g;
-    while ((match = functionRegex.exec(code)) !== null) {
+    while ((match = functionRegex.exec(cleanCode)) !== null) {
         if (match[2]) declared.add(match[2]);
         if (match[3]) {
             match[3].split(',').forEach(p => {
@@ -428,20 +319,18 @@ function detectUndeclaredVariables(code) {
             });
         }
     }
-
-    // Common engine keywords and built-ins to ignore
     const engineKeywords = [
         'posicion', 'fisica', 'materia', 'mtr', 'delta', 'otro', 'datos', 'reproducir', 'imprimir', 'esperar', 'cada',
         'nuevo', 'Vector2', 'azar', 'si', 'sino', 'retornar', 'verdadero', 'falso', 'rotacion', 'escala', 'renderizadorDeSprite',
         'fuenteDeAudio', 'animador', 'lienzo', 'uiBarra', 'tiempoDelta', 'absoluto', 'seno', 'coseno', 'distancia', 'instanciar',
-        'destruir', 'lanzarRayo', 'buscar', 'cargarEscena', 'difundir', 'teclaPresionada', 'teclaRecienPresionada', 'obtenerPosicionMouse'
+        'destruir', 'lanzarRayo', 'buscar', 'cargarEscena', 'difundir', 'teclaPresionada', 'teclaRecienPresionada', 'obtenerPosicionMouse',
+        'publico', 'privado', 'variable', 'constante', 've', 'motor', 'engine', 'go'
     ];
     engineKeywords.forEach(k => declared.add(k));
 
     const potentialVars = new Set();
-    // Matches words that look like variables (not starting with . and not followed by ()
     const usageRegex = /(?<![.\w])\b([a-zA-Z_\u00C0-\u017F][\w\u00C0-\u017F]*)\b(?!\s*\()/g;
-    while ((match = usageRegex.exec(code)) !== null) {
+    while ((match = usageRegex.exec(cleanCode)) !== null) {
         const word = match[1];
         if (!declared.has(word) && isNaN(word) && word.length > 1) {
             potentialVars.add(word);
@@ -450,71 +339,45 @@ function detectUndeclaredVariables(code) {
     return Array.from(potentialVars);
 }
 
-/**
- * Infers type based on variable name and usage.
- */
 function inferVariableType(varName, code) {
+    const cleanCode = stripCommentsAndStrings(code);
     for (const rule of typeInference) {
         if (rule.regex.test(varName)) return rule.type;
     }
-
-    // Check usage in code
     const assignmentRegex = new RegExp(`\\b${varName}\\b\\s*=\\s*([^;\\n]+)`, 'i');
-    const match = code.match(assignmentRegex);
+    const match = cleanCode.match(assignmentRegex);
     if (match) {
         const value = match[1].trim();
         if (value.startsWith('"') || value.startsWith("'")) return 'texto';
         if (value === 'verdadero' || value === 'falso' || value === 'true' || value === 'false') return 'booleano';
         if (!isNaN(parseFloat(value))) return 'numero';
     }
-
-    return 'numero'; // Default
+    return 'numero';
 }
 
-/**
- * Smart Healer for Braces and Parentheses.
- * Tries to balance characters and close blocks logically.
- */
 function healSyntaxStructure(code) {
     let result = code;
-
-    // Helper to count occurrences
     const count = (str, char) => (str.split(char).length - 1);
-
-    // 1. Balance Parentheses ()
     const openParen = count(result, '(');
     const closeParen = count(result, ')');
     if (openParen > closeParen) {
-        // Find lines that end with a word and likely need a closing paren (e.g. function calls)
         result = result.replace(/(\w+\s*\([^)\n]*)$/gm, '$1)');
     }
-
-    // 2. Balance Braces {}
     let lines = result.split('\n');
     let braceLevel = 0;
-
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
         if (line.includes('{')) braceLevel += count(line, '{');
         if (line.includes('}')) braceLevel -= count(line, '}');
     }
-
     if (braceLevel > 0) {
-        console.log(`[Syntax Healer] Cerrando ${braceLevel} llaves pendientes...`);
         result += `\n// [Syntax Healer] Bloque cerrado automáticamente`;
-        for (let j = 0; j < braceLevel; j++) {
-            result += '\n}';
-        }
+        for (let j = 0; j < braceLevel; j++) result += '\n}';
     } else if (braceLevel < 0) {
-        console.log(`[Syntax Healer] Detectadas llaves de cierre excesivas (${Math.abs(braceLevel)}). Intentando corrección...`);
-        // If we have more closures than openings, they are usually at the end.
         for (let j = 0; j < Math.abs(braceLevel); j++) {
             const lastBraceIdx = result.lastIndexOf('}');
-            if (lastBraceIdx !== -1) {
-                result = result.substring(0, lastBraceIdx) + result.substring(lastBraceIdx + 1);
-            }
+            if (lastBraceIdx !== -1) result = result.substring(0, lastBraceIdx) + result.substring(lastBraceIdx + 1);
         }
     }
-
     return result;
 }
