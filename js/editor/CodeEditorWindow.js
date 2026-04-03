@@ -1,13 +1,13 @@
 // --- Module for the Code Editor Window (CodeMirror) ---
 
-import { EditorView, basicSetup } from "https://esm.sh/codemirror@6.6.2";
+import { basicSetup } from "https://esm.sh/codemirror@6.6.2";
 import { EditorState, StateField, StateEffect } from "https://esm.sh/@codemirror/state@6.4.1";
+import { EditorView, keymap, Decoration } from "https://esm.sh/@codemirror/view@6.26.3";
 import { javascript } from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
 import { oneDark } from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
 import { undo, redo, indentWithTab } from "https://esm.sh/@codemirror/commands@6.3.3";
 import { autocompletion, acceptCompletion, completionKeymap } from "https://esm.sh/@codemirror/autocomplete@6.16.0";
 import { linter } from "https://esm.sh/@codemirror/lint@6.4.2";
-import { keymap, Decoration } from "https://esm.sh/@codemirror/view@6.26.3";
 import { transpile } from './CES_Transpiler.js';
 import * as AutoReparator from './AutoReparator.js';
 import { intentWeights, blockTemplates } from './AutoReparatorData.js';
@@ -224,7 +224,6 @@ function cesCompletions(context) {
     };
 }
 
-let lintTimeout = null;
 const cesLinter = linter(view => {
     const code = view.state.doc.toString();
     const fileName = currentlyOpenFileHandle ? currentlyOpenFileHandle.name : "temp.ces";
@@ -232,7 +231,6 @@ const cesLinter = linter(view => {
     // Solo linting para archivos .ces
     if (!fileName.endsWith('.ces')) return [];
 
-    // EXPERT BRAIN v4: Advanced Linting - Updates are debounced and grouped
     const result = transpile(code, fileName);
     let diagnostics = [];
 
@@ -261,7 +259,7 @@ const cesLinter = linter(view => {
     }
 
     return diagnostics;
-}, { delay: 1000 });
+});
 
 
 // --- Public API ---
@@ -281,10 +279,7 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
             return;
         }
 
-        // Switch to Code Editor View (ensure container is visible for CM to measure)
-        const toggleBtn = scenePanel.querySelector('.view-toggle-btn[data-view="code-editor-content"]');
-        if (toggleBtn) toggleBtn.click();
-
+        // Switch to Code Editor View
         if (dom.chcIntegratedEditor) dom.chcIntegratedEditor.classList.add('hidden');
         dom.codeEditorToolbar.classList.remove('hidden');
         dom.codemirrorContainer.style.display = 'block';
@@ -321,16 +316,16 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
             codeEditor.setState(newState);
         }
 
+        // Fix: Ensure the editor is visible and focused to avoid the typing bug
+        scenePanel.querySelector('.view-toggle-btn[data-view="code-editor-content"]').click();
+
         setTimeout(() => {
             if (codeEditor) {
                 codeEditor.focus();
-                // Ensure cursor is at the start and visible
-                codeEditor.dispatch({
-                    selection: { anchor: 0, head: 0 },
-                    scrollIntoView: true
-                });
+                // Scroll to top
+                codeEditor.dispatch({ effects: EditorView.scrollIntoView(0) });
             }
-        }, 150);
+        }, 50);
 
         console.log(`Abierto ${fileName} en el editor.`);
     } catch (error) {
@@ -686,7 +681,6 @@ export async function runAutoReparator(targetFileName = null) {
                 codeEditor.dispatch({
                     changes: { from: 0, to: codeEditor.state.doc.length, insert: result.code }
                 });
-                setTimeout(() => codeEditor.focus(), 10);
             }
 
             if (result.addComponent && window.SceneManager) {
@@ -850,15 +844,6 @@ export function initialize(domCache, showConsole, hotReload) {
         openScriptAtLine,
         runAutoReparator,
         setLastRuntimeError,
-        focus: () => {
-            if (codeEditor) {
-                codeEditor.focus();
-                // If it's empty or newly opened, set cursor at start
-                if (codeEditor.state.doc.length === 0) {
-                    codeEditor.dispatch({ selection: { anchor: 0 } });
-                }
-            }
-        },
         isSmartEnabled: () => {
             const prefs = getPreferences();
             return prefs.autoCorrectorInteligente !== false;

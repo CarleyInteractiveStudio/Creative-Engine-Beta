@@ -1,10 +1,6 @@
 import { examples, intentWeights, structuralRules, typeInference, logicPatterns, expensivePatterns } from './AutoReparatorData.js';
 import { transpile } from './CES_Transpiler.js';
-
-function getPreferences() {
-    if (typeof window !== 'undefined' && window.getPreferences) return window.getPreferences();
-    return { autoCorrectorInteligente: true };
-}
+import { getPreferences } from './ui/PreferencesWindow.js';
 
 /**
  * Auto Reparator Module v3 "Smart Brain"

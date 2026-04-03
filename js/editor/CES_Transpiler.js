@@ -700,10 +700,9 @@ export function transpile(code, scriptName = 'unnamed.ces') {
             const cadaBody = unprocessedCode.substring(contentStartIdx, endIdx);
             rootCadaCode += `cada(${interval}) {${cadaBody}}\n`;
 
-            // Remove the block from unprocessedCode
-            const fullMatch = unprocessedCode.substring(startIdx, endIdx + 1);
-            unprocessedCode = unprocessedCode.replace(fullMatch, '');
-            rootCadaRegex.lastIndex = 0; // Restart search
+            // Blank out the block to preserve line numbers and prevent re-match
+            unprocessedCode = blankOut(unprocessedCode, startIdx, endIdx + 1);
+            rootCadaRegex.lastIndex = 0; // Reiniciar búsqueda sobre el código modificado
         } else {
              // No se encontró cierre, avanzar el regex para evitar bucle infinito
             rootCadaRegex.lastIndex = contentStartIdx;
