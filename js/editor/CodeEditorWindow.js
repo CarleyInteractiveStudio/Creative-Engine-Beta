@@ -1,8 +1,8 @@
 // --- Module for the Code Editor Window (CodeMirror) ---
 
-import { basicSetup } from "https://esm.sh/codemirror@6.6.2";
-import { EditorState, StateField, StateEffect } from "https://esm.sh/@codemirror/state@6.4.2";
-import { EditorView, keymap, Decoration } from "https://esm.sh/@codemirror/view@6.26.3";
+import { basicSetup, EditorView } from "https://esm.sh/codemirror@6.6.2";
+import { EditorState, StateField, StateEffect } from "https://esm.sh/@codemirror/state@6.4.x";
+import { keymap, Decoration } from "https://esm.sh/@codemirror/view@6.26.3";
 import { javascript } from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
 import { oneDark } from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
 import { undo, redo, indentWithTab } from "https://esm.sh/@codemirror/commands@6.3.3";
