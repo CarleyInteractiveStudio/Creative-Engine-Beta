@@ -37,11 +37,12 @@ const cesTheme = EditorView.theme({
     },
     ".cm-gutterElement": {
         color: "#ffffff !important", // Solid white line numbers
-        padding: "0 10px 0 10px",
+        padding: "0 15px 0 10px",
         display: "flex",
         alignItems: "center",
         justifyContent: "flex-end",
-        minWidth: "35px"
+        minWidth: "45px",
+        zIndex: "5"
     },
     ".cm-activeLineGutter": {
         backgroundColor: "transparent",

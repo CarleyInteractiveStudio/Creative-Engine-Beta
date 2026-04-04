@@ -433,11 +433,15 @@ export async function saveCurrentScript() {
 }
 
 export function undoLastChange() {
-    if (codeEditor) undo(codeEditor);
+    if (codeEditor) {
+        undo({ state: codeEditor.state, dispatch: codeEditor.dispatch });
+    }
 }
 
 export function redoLastChange() {
-    if (codeEditor) redo(codeEditor);
+    if (codeEditor) {
+        redo({ state: codeEditor.state, dispatch: codeEditor.dispatch });
+    }
 }
 
 export function openChcEditor(content) {

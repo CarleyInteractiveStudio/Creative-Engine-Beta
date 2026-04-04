@@ -1,12 +1,19 @@
 import { examples, intentWeights, structuralRules, typeInference, logicPatterns, expensivePatterns } from './AutoReparatorData.js';
+import { getAllVariations, syncIfEmpty } from './AutoReparatorStore.js';
 import { transpile } from './CES_Transpiler.js';
 import { getPreferences } from './ui/PreferencesWindow.js';
 
 /**
- * Auto Reparator Module v4 "Expert Brain"
+ * Auto Reparator Module v4.5 "Persistent Expert Brain"
  * Analyzes and fixes common syntax errors and misspellings in CES scripts using advanced surgery.
+ * Now scales to 1500+ logic variations using IndexedDB.
  */
 export async function repair(code, fileName, runtimeError = null) {
+    // Lazy sync/load from store
+    await syncIfEmpty(examples);
+    const persistentExamples = await getAllVariations();
+    const activeExamples = persistentExamples.length > 0 ? persistentExamples : examples;
+
     const prefs = getPreferences();
     const isSmartEnabled = prefs.autoCorrectorInteligente !== false; // Default true
 
@@ -189,7 +196,7 @@ export async function repair(code, fileName, runtimeError = null) {
             let maxSimilarity = 0;
 
             // Similarity check against all examples' lines
-            examples.forEach(ex => {
+            activeExamples.forEach(ex => {
                 const exLines = ex.code.split('\n');
                 exLines.forEach(exLine => {
                     const trimmedExLine = exLine.trim();
@@ -286,7 +293,7 @@ export async function repair(code, fileName, runtimeError = null) {
     const finalValidation = transpile(repairedCode, fileName);
     const success = !finalValidation.errors || finalValidation.errors.length === 0;
 
-    let finalMessage = success ? L.get('REPARACION_EXITOSA', 'Código reparado con éxito por Expert Brain (v4).') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero el script requiere intervención manual.');
+    let finalMessage = success ? L.get('REPARACION_EXITOSA', 'Código reparado con éxito por Expert Brain (v4.5).') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero el script requiere intervención manual.');
 
     return {
         success: success,

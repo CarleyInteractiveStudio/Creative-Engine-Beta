@@ -1,6 +1,6 @@
 /**
  * Database of valid Creative Engine scripts for Auto Reparator.
- * Contains 500+ examples covering various mechanics in Spanish.
+ * Contains 1500+ examples covering various mechanics in Spanish.
  */
 export const examples = [
     // --- 1. MOVIMIENTO (MOVEMENT) ---
@@ -243,7 +243,7 @@ export const componentShortcuts = [
     'altura', 'высота', '高度',
     'densidade', '密度',
     'viscosidade', 'вязкость', '粘度',
-    'mostrarMares', 'показыватьПриливы', '显示潮汐',
+    'mostrarMares', 'показыватьПрилиvs', '显示潮汐',
     'amplitudeMarea', 'амплитудаПрилива', '潮汐幅度',
     'velocidadeMarea', 'скоростьПрилива', '潮汐速度',
     'caminhoCena', 'путьКПроекту', '场景路径',
@@ -516,14 +516,33 @@ const templates = [
     { name: "UI: Menú Pausa", code: "ve motor;\nvariable pausado = falso;\nalActualizar(delta) {\n    si (teclaRecienPresionada('Escape')) {\n        pausado = !pausado;\n        motor.timeScale = pausado ? 0 : 1;\n        uiPanelPausa.isActive = pausado;\n    }\n}" },
     { name: "Física: Gravedad Zero", code: "ve motor;\nalEmpezar() {\n    fisica.gravityScale = 0;\n}\nalActualizar(delta) {\n    si (teclaPresionada('w')) fisica.addForce(0, -10);\n    si (teclaPresionada('s')) fisica.addForce(0, 10);\n}" },
     { name: "VFX: Estela", code: "ve motor;\nalActualizar(delta) {\n    si (absoluto(fisica.velocity.x) > 1) {\n        sistemaDeParticulas.emitRate = 20;\n    } sino {\n        sistemaDeParticulas.emitRate = 0;\n    }\n}" },
-    { name: "Gameplay: Score", code: "ve motor;\nvariable puntos = 0;\nalRecibir('enemigo_muerto', () => {\n    puntos += 100;\n    uiTextoScore.contenido = 'Score: ' + puntos;\n});" }
+    { name: "Gameplay: Score", code: "ve motor;\nvariable puntos = 0;\nalRecibir('enemigo_muerto', () => {\n    puntos += 100;\n    uiTextoScore.contenido = 'Score: ' + puntos;\n});" },
+    { name: "Puzzle: Botón Presión", code: "ve motor;\npublico mtr puerta;\nalEntrarEnColision(otro) {\n    si (otro.tieneTag('Player')) {\n        puerta.isActive = falso;\n        renderizadorDeSprite.color = '#00ff00';\n    }\n}" },
+    { name: "Puzzle: Recoger Llave", code: "ve motor;\nalEntrarEnColision(otro) {\n    si (otro.tieneTag('Player')) {\n        difundir('llave_obtenida');\n        destruir(materia);\n    }\n}" },
+    { name: "Tower Defense: Disparar a Rango", code: "ve motor;\npublico numero rango = 300;\npublico Prefab proyectil;\nvariable cooldown = 0;\nalActualizar(delta) {\n    cooldown -= delta;\n    variable enemigo = buscarCercano('Enemigo');\n    si (enemigo && distancia(posicion, enemigo.posicion) < rango && cooldown <= 0) {\n        instanciar(proyectil, x, y);\n        cooldown = 1.0;\n    }\n}" },
+    { name: "Clicker: Ganar Oro", code: "ve motor;\nvariable oro = 0;\nalHacerClick() {\n    oro += 1;\n    uiTextoOro.contenido = 'Oro: ' + oro;\n    reproducir.Moneda();\n}" },
+    { name: "RPG: Diálogo Proximidad", code: "ve motor;\npublico mtr jugador;\nalActualizar(delta) {\n    si (jugador && distancia(posicion, jugador.posicion) < 100) {\n        uiTextoDialogo.contenido = '¡Hola!';\n    } sino {\n        uiTextoDialogo.contenido = '';\n    }\n}" },
+    { name: "Shooter: Retroceso", code: "ve motor;\nalActualizar(delta) {\n    si (teclaRecienPresionada('f')) {\n        posicion.x -= voltearH ? -5 : 5;\n    }\n}" },
+    { name: "Habilidad: Invisibilidad", code: "ve motor;\nalActualizar(delta) {\n    si (teclaRecienPresionada('i')) {\n        renderizadorDeSprite.opacity = 0.2;\n        esperar(5);\n        renderizadorDeSprite.opacity = 1.0;\n    }\n}" },
+    { name: "Efecto: Cambio Escala al Saltar", code: "ve motor;\nalActualizar(delta) {\n    si (teclaRecienPresionada('Space')) {\n        escala.y = 1.5;\n        escala.x = 0.7;\n        esperar(0.2);\n        escala.y = 1.0;\n        escala.x = 1.0;\n    }\n}" },
+    { name: "UI: Vida Flotante", code: "ve motor;\npublico mtr objetivo;\nalActualizar(delta) {\n    si (objetivo) {\n        posicion.x = objetivo.posicion.x;\n        posicion.y = objetivo.posicion.y - 50;\n    }\n}" },
+    { name: "IA: Esquivar Proyectil", code: "ve motor;\nalActualizar(delta) {\n    variable bala = buscarCercano('Bala');\n    si (bala && distancia(posicion, bala.posicion) < 150) {\n        posicion.y += 200 * delta;\n    }\n}" }
 ];
 
-// Generate 1000+ variations (Massive Library v3.3)
-for(let i=0; i<1000; i++) {
+// Generate 1500+ variations (Massive Library v4.5)
+// covering Platformers, Top-down, RPG, Shooters, Puzzles, etc.
+for(let i=0; i<1500; i++) {
     const t = templates[i % templates.length];
+    const randColor = i % 4 == 0 ? "#00ff00" : (i % 4 == 1 ? "#0000ff" : (i % 4 == 2 ? "#ffff00" : "#ff00ff"));
+    const randVal = (i + 1) * 3;
+    const randKey = i % 2 == 0 ? "w" : "Space";
+
     examples.push({
         title: `${t.name} (Variación ${i + 1})`,
-        code: t.code.replace(/100/g, (i+1)*5).replace(/#ff0000/g, i % 3 == 0 ? "#00ff00" : (i % 3 == 1 ? "#0000ff" : "#ffff00"))
+        code: t.code
+            .replace(/100/g, randVal)
+            .replace(/#ff0000/g, randColor)
+            .replace(/"w"/g, `"${randKey}"`)
+            .replace(/10/g, (i % 10) + 1)
     });
 }
