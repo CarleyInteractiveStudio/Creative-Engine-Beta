@@ -1,11 +1,21 @@
 import { StreamLanguage, tags } from "./CodeMirrorBundle.js";
 
+// Utility to ensure we don't pass undefined tags
+const getTag = (name) => {
+    const tag = tags[name];
+    if (!tag) {
+        console.warn(`Tag "${name}" not found in CodeMirror tags, falling back to variableName`);
+        return tags.variableName;
+    }
+    return tag;
+};
+
 const cesKeywords = [
     "si", "sino", "mientras", "para", "cada", "esperar", "retornar", "nuevo",
     "funcion", "variable", "constante", "verdadero", "falso", "publico", "privado",
     "ve", "go", "public", "private", "async", "await",
     "se", "senão", "enquanto", "função", "если", "иначе", "пока", "для",
-    "вернуть", "новый", "функция", "истина", "ложь", "如果", "否则", "当",
+    "вернуть", "nuevo", "функция", "истина", "ложь", "如果", "否则", "当",
     "对于", "返回", "新建", "函数", "真", "假"
 ];
 
@@ -13,7 +23,7 @@ const cesTypes = [
     "number", "numero", "número", "text", "texto", "boolean", "booleano",
     "Vector2", "Color", "Materia", "mtr", "Prefab", "prefab", "Scene", "escena",
     "Audio", "audio", "Sprite", "sprite", "Tag", "Layer", "Video", "pelicula",
-    "Transform", "UITransform", "SpriteRenderer", "Rigidbody2D",
+    "Transform", "posicion", "UITransform", "SpriteRenderer", "Rigidbody2D",
     "BoxCollider2D", "CapsuleCollider2D", "Animator", "AnimatorController",
     "Camera", "CreativeScript", "PointLight2D", "SpotLight2D", "FreeformLight2D",
     "SpriteLight2D", "Tilemap", "TilemapRenderer", "TilemapCollider2D", "UIImage",
@@ -50,49 +60,61 @@ const cesLanguage = StreamLanguage.define({
         // Comments
         if (stream.match("//")) {
             stream.skipToEnd();
-            return tags.lineComment;
+            return "comment";
         }
         if (stream.match("/*")) {
             while (!stream.eof()) {
                 if (stream.match("*/")) break;
                 stream.next();
             }
-            return tags.blockComment;
+            return "comment";
         }
 
         // Strings
         if (stream.match(/"(?:[^\\]|\\.)*?"/) || stream.match(/'(?:[^\\]|\\.)*?'/)) {
-            return tags.string;
+            return "string";
         }
 
         // Numbers
         if (stream.match(/\d+(?:\.\d+)?/)) {
-            return tags.number;
+            return "number";
         }
 
         // Punctuation
         if (stream.match(/[(){}\[\];,.]/)) {
-            return tags.punctuation;
+            return "punctuation";
         }
 
         // Operators
         if (stream.match(/[+\-*/%=<>!&|^~]/)) {
-            return tags.operator;
+            return "operator";
         }
 
         // Keywords, Types, Builtins, Functions
         const wordMatch = stream.match(/[a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*/);
         if (wordMatch) {
             const word = wordMatch[0];
-            if (cesKeywords.includes(word)) return tags.keyword;
-            if (cesTypes.includes(word)) return tags.typeName;
-            if (cesBuiltins.includes(word)) return tags.builtin;
-            if (cesFunctions.includes(word)) return tags.function(tags.variableName);
-            return tags.variableName;
+            if (cesKeywords.includes(word)) return "keyword";
+            if (cesTypes.includes(word)) return "typeName";
+            if (cesBuiltins.includes(word)) return "propertyName";
+            if (cesFunctions.includes(word)) return "functionName";
+            return "variableName";
         }
 
         stream.next();
         return null;
+    },
+    tokenTable: {
+        comment: getTag("comment"),
+        string: getTag("string"),
+        number: getTag("number"),
+        punctuation: getTag("punctuation"),
+        operator: getTag("operator"),
+        keyword: getTag("keyword"),
+        typeName: getTag("typeName"),
+        propertyName: getTag("propertyName"),
+        functionName: tags.function ? tags.function(tags.variableName) : getTag("variableName"),
+        variableName: getTag("variableName")
     }
 });
 

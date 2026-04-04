@@ -6,7 +6,7 @@ import { oneDark } from "@codemirror/theme-one-dark";
 import { undo, redo, indentWithTab } from "@codemirror/commands";
 import { autocompletion, acceptCompletion, completionKeymap } from "@codemirror/autocomplete";
 import { linter } from "@codemirror/lint";
-import { StreamLanguage, syntaxHighlighting, HighlightStyle } from "@codemirror/language";
+import { StreamLanguage, syntaxHighlighting, HighlightStyle, defaultHighlightStyle } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 
 export {
@@ -21,5 +21,6 @@ export {
     StreamLanguage,
     syntaxHighlighting,
     HighlightStyle,
+    defaultHighlightStyle,
     tags
 };

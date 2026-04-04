@@ -1,8 +1,18 @@
 import { EditorView, HighlightStyle, syntaxHighlighting, tags } from "./CodeMirrorBundle.js";
 
+// Utility to safely define styles for potentially missing tags
+const safeTagStyle = (tagName, styles) => {
+    const tag = tags[tagName];
+    if (!tag) {
+        console.warn(`Tag "${tagName}" not found when defining HighlightStyle.`);
+        return [];
+    }
+    return [{ tag, ...styles }];
+};
+
 const cesTheme = EditorView.theme({
     "&": {
-        color: "#dcdcaa",
+        color: "#d4d4d4",
         backgroundColor: "#1e1e2e"
     },
     ".cm-content": {
@@ -30,18 +40,24 @@ const cesTheme = EditorView.theme({
     }
 }, { dark: true });
 
-const cesHighlightStyle = HighlightStyle.define([
-    { tag: tags.keyword, color: "#ff79c6", fontWeight: "bold" },
-    { tag: tags.typeName, color: "#8be9fd", fontStyle: "italic" },
-    { tag: tags.variableName, color: "#bd93f9" },
-    { tag: tags.function(tags.variableName), color: "#50fa7b" },
-    { tag: tags.string, color: "#f1fa8c" },
-    { tag: tags.number, color: "#bd93f9" },
-    { tag: tags.operator, color: "#ff79c6" },
-    { tag: tags.punctuation, color: "#f8f8f2" },
-    { tag: tags.comment, color: "#6272a4" },
-    { tag: tags.builtin, color: "#ffb86c" }
-]);
+const specs = [
+    ...safeTagStyle("keyword", { color: "#ff79c6", fontWeight: "bold" }),
+    ...safeTagStyle("typeName", { color: "#8be9fd", fontStyle: "italic" }),
+    ...safeTagStyle("variableName", { color: "#f8f8f2" }),
+    ...safeTagStyle("propertyName", { color: "#bd93f9" }),
+    ...safeTagStyle("string", { color: "#f1fa8c" }),
+    ...safeTagStyle("number", { color: "#bd93f9" }),
+    ...safeTagStyle("comment", { color: "#6272a4", fontStyle: "italic" }),
+    ...safeTagStyle("operatorKeyword", { color: "#ff79c6" }),
+    ...safeTagStyle("punctuation", { color: "#f8f8f2" })
+];
+
+// Special handling for function name if tags.function exists
+if (tags.function && tags.variableName) {
+    specs.push({ tag: tags.function(tags.variableName), color: "#50fa7b" });
+}
+
+const cesHighlightStyle = HighlightStyle.define(specs);
 
 const cesHighlighting = syntaxHighlighting(cesHighlightStyle);
 
