@@ -1,0 +1,46 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script type="importmap">
+    {
+        "imports": {
+            "codemirror": "https://esm.sh/codemirror@6.0.1",
+            "@codemirror/state": "https://esm.sh/@codemirror/state@6.4.1",
+            "@codemirror/view": "https://esm.sh/@codemirror/view@6.26.3",
+            "@codemirror/language": "https://esm.sh/@codemirror/language@6.10.1",
+            "@codemirror/commands": "https://esm.sh/@codemirror/commands@6.3.3",
+            "@codemirror/autocomplete": "https://esm.sh/@codemirror/autocomplete@6.16.0",
+            "@codemirror/lint": "https://esm.sh/@codemirror/lint@6.4.2",
+            "@codemirror/theme-one-dark": "https://esm.sh/@codemirror/theme-one-dark@6.1.2",
+            "@codemirror/lang-javascript": "https://esm.sh/@codemirror/lang-javascript@6.2.2",
+            "@lezer/highlight": "https://esm.sh/@lezer/highlight@1.2.1"
+        }
+    }
+    </script>
+</head>
+<body style="margin:0; background:#1e1e2e;">
+    <div id="editor"></div>
+    <script type="module">
+        import { EditorView, basicSetup } from "codemirror";
+        import { EditorState } from "@codemirror/state";
+
+        // Inline the theme and language for testing since local imports might be failing in the browser environment
+        const cesTheme = EditorView.theme({
+            "&": { color: "#dcdcaa", backgroundColor: "#1e1e2e" },
+            ".cm-gutters": { backgroundColor: "#1e1e2e", color: "#ffffff", border: "none" },
+            ".cm-gutterElement": { color: "#ffffff !important" },
+            ".cm-activeLineGutter": { backgroundColor: "rgba(255, 255, 255, 0.1)" }
+        }, { dark: true });
+
+        new EditorView({
+            state: EditorState.create({
+                doc: "ve motor;\n\npublico numero v = 5;\nalEmpezar() {\n    imprimir(\"Hola\");\n}",
+                extensions: [basicSetup, cesTheme]
+            }),
+            parent: document.getElementById("editor")
+        });
+    </script>
+</body>
+</html>
