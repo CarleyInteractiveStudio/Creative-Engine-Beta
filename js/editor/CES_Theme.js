@@ -16,7 +16,8 @@ const cesTheme = EditorView.theme({
         backgroundColor: "#1e1e2e"
     },
     ".cm-content": {
-        caretColor: "#ae81ff"
+        caretColor: "#ae81ff",
+        padding: "10px 0"
     },
     "&.cm-focused .cm-cursor": {
         borderLeftColor: "#ae81ff"
@@ -24,19 +25,34 @@ const cesTheme = EditorView.theme({
     "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": {
         backgroundColor: "#44475a"
     },
+    // Integrate line numbers seamlessly - "No bar, just numbers"
     ".cm-gutters": {
         backgroundColor: "#1e1e2e",
         color: "#ffffff",
-        border: "none"
+        border: "none",
+        borderRight: "none"
+    },
+    ".cm-gutter": {
+        backgroundColor: "#1e1e2e"
     },
     ".cm-gutterElement": {
-        color: "#ffffff !important"
+        color: "#ffffff !important", // Solid white line numbers
+        padding: "0 10px 0 10px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "flex-end",
+        minWidth: "35px"
     },
     ".cm-activeLineGutter": {
-        backgroundColor: "rgba(255, 255, 255, 0.1)"
+        backgroundColor: "transparent",
+        color: "#ffffff !important"
     },
-    ".cm-lineNumbers .cm-gutterElement": {
-        padding: "0 8px 0 12px"
+    // Remove any subtle lines that CodeMirror might add
+    ".cm-lineNumbers": {
+        border: "none"
+    },
+    ".cm-foldGutter": {
+        display: "none"
     }
 }, { dark: true });
 
