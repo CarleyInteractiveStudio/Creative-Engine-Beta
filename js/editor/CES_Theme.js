@@ -16,11 +16,14 @@ const cesTheme = EditorView.theme({
     },
     ".cm-gutters": {
         backgroundColor: "#1e1e2e",
-        color: "#6272a4",
+        color: "#ffffff",
         border: "none"
     },
+    ".cm-gutterElement": {
+        color: "#ffffff !important"
+    },
     ".cm-activeLineGutter": {
-        backgroundColor: "#282a36"
+        backgroundColor: "rgba(255, 255, 255, 0.1)"
     },
     ".cm-lineNumbers .cm-gutterElement": {
         padding: "0 8px 0 12px"
