@@ -3,7 +3,7 @@
 import {
     basicSetup,
     EditorState, StateField, StateEffect,
-    EditorView, keymap, Decoration,
+    EditorView, keymap, Decoration, lineNumbers,
     javascript,
     oneDark,
     undo, redo, indentWithTab,
@@ -293,6 +293,7 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
 
         const extensions = [
             basicSetup,
+            lineNumbers(),
             isCes ? cesLanguage : javascript(),
             cesTheme,
             cesHighlighting,
@@ -435,12 +436,14 @@ export async function saveCurrentScript() {
 export function undoLastChange() {
     if (codeEditor) {
         undo({ state: codeEditor.state, dispatch: codeEditor.dispatch });
+        codeEditor.focus();
     }
 }
 
 export function redoLastChange() {
     if (codeEditor) {
         redo({ state: codeEditor.state, dispatch: codeEditor.dispatch });
+        codeEditor.focus();
     }
 }
 
@@ -853,6 +856,7 @@ export function initialize(domCache, showConsole, hotReload) {
 
     // Register global access for Console actions
     window._CodeEditor = {
+        openScriptInEditor,
         openScriptAtLine,
         runAutoReparator,
         setLastRuntimeError,
@@ -864,8 +868,15 @@ export function initialize(domCache, showConsole, hotReload) {
 
     // Configura los event listeners para los botones de la barra de herramientas
     dom.codeSaveBtn.addEventListener('click', () => saveCurrentScript());
-    dom.codeUndoBtn.addEventListener('click', () => undoLastChange());
-    dom.codeRedoBtn.addEventListener('click', () => redoLastChange());
+
+    dom.codeUndoBtn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        undoLastChange();
+    });
+    dom.codeRedoBtn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        redoLastChange();
+    });
 
     const historyBtn = document.getElementById('code-history-btn');
     if (historyBtn) {

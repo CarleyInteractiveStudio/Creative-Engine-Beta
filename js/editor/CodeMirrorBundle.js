@@ -1,6 +1,6 @@
 import { basicSetup } from "codemirror";
 import { EditorState, StateField, StateEffect } from "@codemirror/state";
-import { EditorView, keymap, Decoration } from "@codemirror/view";
+import { EditorView, keymap, Decoration, lineNumbers } from "@codemirror/view";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { undo, redo, indentWithTab } from "@codemirror/commands";
@@ -12,7 +12,7 @@ import { tags } from "@lezer/highlight";
 export {
     basicSetup,
     EditorState, StateField, StateEffect,
-    EditorView, keymap, Decoration,
+    EditorView, keymap, Decoration, lineNumbers,
     javascript,
     oneDark,
     undo, redo, indentWithTab,

@@ -27,13 +27,14 @@ const cesTheme = EditorView.theme({
     },
     // Integrate line numbers seamlessly - "No bar, just numbers"
     ".cm-gutters": {
-        backgroundColor: "#1e1e2e",
-        color: "#ffffff",
-        border: "none",
-        borderRight: "none"
+        backgroundColor: "#1e1e2e !important",
+        color: "#ffffff !important",
+        border: "none !important",
+        borderRight: "none !important"
     },
     ".cm-gutter": {
-        backgroundColor: "#1e1e2e"
+        backgroundColor: "#1e1e2e !important",
+        border: "none !important"
     },
     ".cm-gutterElement": {
         color: "#ffffff !important", // Solid white line numbers
