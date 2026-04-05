@@ -529,9 +529,9 @@ const templates = [
     { name: "IA: Esquivar Proyectil", code: "ve motor;\nalActualizar(delta) {\n    variable bala = buscarCercano('Bala');\n    si (bala && distancia(posicion, bala.posicion) < 150) {\n        posicion.y += 200 * delta;\n    }\n}" }
 ];
 
-// Generate 1500+ variations (Massive Library v4.5)
+// Generate 2000 variations (Massive Library v4.6)
 // covering Platformers, Top-down, RPG, Shooters, Puzzles, etc.
-for(let i=0; i<1500; i++) {
+for(let i=0; i<1993; i++) {
     const t = templates[i % templates.length];
     const randColor = i % 4 == 0 ? "#00ff00" : (i % 4 == 1 ? "#0000ff" : (i % 4 == 2 ? "#ffff00" : "#ff00ff"));
     const randVal = (i + 1) * 3;
