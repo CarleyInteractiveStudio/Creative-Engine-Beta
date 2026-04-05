@@ -151,6 +151,10 @@ export async function handleContextMenuAction(action) {
                             await writable.write(defaultContent);
                             await writable.close();
                             await updateAssetBrowserCallback();
+
+                            // Auto-open
+                            const freshHandle = await targetHandle.getFileHandle(fileName);
+                            onAssetOpened(fileName, freshHandle, targetHandle, { path: `${targetPathDisplay}/${fileName}` });
                         } catch (err) {
                             console.error("Error al crear el controlador de animación:", err);
                             showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_CONTROLADOR', 'No se pudo crear el controlador.'));
@@ -189,6 +193,10 @@ export async function handleContextMenuAction(action) {
                             await writable.write(defaultContent);
                             await writable.close();
                             await updateAssetBrowserCallback();
+
+                            // Auto-open
+                            const freshHandle = await targetHandle.getFileHandle(fileName);
+                            onAssetOpened(fileName, freshHandle, targetHandle, { path: `${targetPathDisplay}/${fileName}` });
                         } catch (err) {
                             console.error("Error al crear el prefab:", err);
                             showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_PREFAB', 'No se pudo crear el prefab.'));
@@ -212,6 +220,10 @@ export async function handleContextMenuAction(action) {
                             await writable.write(defaultContent);
                             await writable.close();
                             await updateAssetBrowserCallback();
+
+                            // Auto-open
+                            const freshHandle = await targetHandle.getFileHandle(fileName);
+                            onAssetOpened(fileName, freshHandle, targetHandle, { path: `${targetPathDisplay}/${fileName}` });
                         } catch (err) {
                             console.error("Error al crear el script CHC:", err);
                             showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_SCRIPT', 'No se pudo crear el script.'));
@@ -235,6 +247,10 @@ export async function handleContextMenuAction(action) {
                             await writable.write(defaultContent);
                             await writable.close();
                             await updateAssetBrowserCallback();
+
+                            // Auto-open
+                            const freshHandle = await targetHandle.getFileHandle(fileName);
+                            onAssetOpened(fileName, freshHandle, targetHandle, { path: `${targetPathDisplay}/${fileName}` });
                         } catch (err) {
                             console.error("Error al crear el script:", err);
                             showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_SCRIPT', 'No se pudo crear el script.'));
@@ -271,6 +287,10 @@ export async function handleContextMenuAction(action) {
                             await writable.close();
                             console.log(`[AssetBrowser] Archivo de escena '${fileName}' creado con éxito.`);
                             await updateAssetBrowserCallback();
+
+                            // Auto-open
+                            const freshHandle = await targetHandle.getFileHandle(fileName);
+                            onAssetOpened(fileName, freshHandle, targetHandle, { path: `${targetPathDisplay}/${fileName}` });
                         } catch (err) {
                             console.error("Error al crear la escena:", err);
                             showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_ESCENA', 'No se pudo crear la escena.'));
@@ -305,6 +325,10 @@ export async function handleContextMenuAction(action) {
                             await writable.write(defaultContent);
                             await writable.close();
                             await updateAssetBrowserCallback();
+
+                            // Auto-open
+                            const freshHandle = await targetHandle.getFileHandle(fileName);
+                            onAssetOpened(fileName, freshHandle, targetHandle, { path: `${targetPathDisplay}/${fileName}` });
                         } catch (err) {
                             console.error("Error al crear el asset de animación:", err);
                             showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_ANIMACION', 'No se pudo crear el asset de animación.'));
@@ -328,6 +352,10 @@ export async function handleContextMenuAction(action) {
                             await writable.write(defaultContent);
                             await writable.close();
                             await updateAssetBrowserCallback();
+
+                            // Auto-open
+                            const freshHandle = await targetHandle.getFileHandle(fileName);
+                            onAssetOpened(fileName, freshHandle, targetHandle, { path: `${targetPathDisplay}/${fileName}` });
                         } catch (err) {
                             console.error("Error al crear el archivo Léame:", err);
                             showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_ARCHIVO', 'No se pudo crear el archivo.'));

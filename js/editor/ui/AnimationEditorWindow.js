@@ -731,8 +731,12 @@ export function initializeAnimationEditor(dependencies) {
                 const writable = await fileHandle.createWritable();
                 await writable.write(JSON.stringify({ name: name, animations: [{ name: "default", speed: 10, loop: true, frames: [] }] }, null, 2));
                 await writable.close();
+
                 if (window.updateAssetBrowser) window.updateAssetBrowser();
-                openAnimationAsset(fileHandle, dirHandle);
+
+                // Re-acquire fresh handle to avoid InvalidStateError
+                const freshHandle = await dirHandle.getFileHandle(fileName);
+                openAnimationAsset(freshHandle, dirHandle);
             });
         };
     }

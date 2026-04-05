@@ -43,8 +43,20 @@ export async function openAnimatorController(fileHandle) {
             updateWindowMenuUI();
         }
 
-        const file = await fileHandle.getFile();
-        const content = await file.text();
+        let file = await fileHandle.getFile();
+        let content = await file.text();
+
+        // Safety check for empty files (just created)
+        if (!content || content.trim() === "") {
+            console.warn(`[AnimatorController] Archivo vacío detectado para '${fileHandle.name}', esperando 100ms...`);
+            await new Promise(r => setTimeout(r, 100));
+            file = await fileHandle.getFile();
+            content = await file.text();
+            if (!content || content.trim() === "") {
+                throw new Error("El archivo está vacío.");
+            }
+        }
+
         currentControllerData = JSON.parse(content);
         currentControllerHandle = fileHandle;
 
@@ -698,8 +710,12 @@ async function createNewAnimatorController() {
                 await writable.close();
 
                 console.log(`Creado nuevo controlador: ${fileName}`);
+
+        // Re-acquire fresh handle to avoid InvalidStateError on some browsers
+        const freshHandle = await assetsHandle.getFileHandle(fileName);
+
                 // After creating, open it
-                await openAnimatorController(fileHandle);
+        await openAnimatorController(freshHandle);
 
             } catch (error) {
                 console.error("Error al crear el controlador de animación:", error);
