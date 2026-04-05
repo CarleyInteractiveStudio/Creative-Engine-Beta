@@ -801,7 +801,7 @@ export class PhysicsSystem {
         if (!otherCollider || !tilemapCollider || !tilemapTransform) return null;
 
         if (tilemapCollider.isDirty) {
-            tilemapCollider.generateMesh();
+            tilemapCollider.generate();
         }
 
         // Reutilizar objetos temporales para evitar Garbage Collection masivo

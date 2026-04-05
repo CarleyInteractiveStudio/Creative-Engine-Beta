@@ -871,7 +871,7 @@ function handleInspectorClick(e) {
             if (tilemap.layers.length > 1) {
                 tilemap.removeLayer(tilemap.activeLayerIndex);
                 const collider = selectedMateria.getComponent(Components.TilemapCollider2D);
-                if (collider) collider.generateMesh();
+                if (collider) collider.generate();
                 updateInspector();
             } else {
                 window.Dialogs.showNotification(L.get('ACCION_NO_PERMITIDA', 'Acción no permitida'), L.get('ERROR_BORRAR_ULTIMA_CAPA', 'No se puede eliminar la última capa.'));
