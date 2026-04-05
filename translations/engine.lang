@@ -498,6 +498,32 @@ TRIGGER_TAG: Tag Activador
 TRIGGER_KEY: Tecla Activadora
 BUTTON_MATERIA: Materia Botón
 SCENE_LOADER_DESC: Carga una escena cuando el jugador colisiona, se presiona una tecla o se clica en el botón asignado.
+PLATFORM_EFFECTOR: Efector de Plataforma 2D
+CLICK_EDGES: Clic en bordes para alternar
+USE_ONE_WAY: Usar Unidireccional
+SURFACE_ARC: Arco de Superficie
+COMPONENTE: Componente
+SIN_FUNCION: Sin Función
+EFECTO_PLATAFORMA: Efecto Plataforma
+CLICK_BORDES: Haz clic en los bordes para bloquear/desbloquear
+TIPO_MOVIMIENTO: Tipo Movimiento
+VAGAR: Vagar
+ESCAPAR: Escapar
+SEGUIR: Seguir
+RANGO_ATAQUE: Rango Ataque
+AL_PERDER_OBJETIVO: Al perder Objetivo
+AL_VER_OBJETIVO: Al ver Objetivo
+CONFIG_MOTOR: Ajustes del Motor
+FUERZA_INCLINACION: Inclinación
+CONTROL_AIRE: Giro Aire
+ESTABILIDAD_AIRE: Auto-Estabilizar
+CENTRADO_SUELO: Centrado Suelo
+AGILIDAD_GIRO: Agilidad Giro
+ARRASTRE_AIRE: Arrastre Aire
+SUSTENTACION: Sustentación
+VELOCIDAD_DESPEGUE: Vel. Despegue
+DERRAPE: Derrape
+FRENO_MOTOR: Freno Motor
 
 [EN]
 # Header
@@ -920,18 +946,6 @@ INSPECTOR_ESTADO: State Inspector
 BUSCAR_ANIMACIONES: Search animations...
 HINT_SELECCIONA_ELEMENTO: Select an element to view its properties.
 
-CARGA_ANIM_HINT: Selecione um recurso de animação (.cea) para começar.
-CREAR_ANIM_RAPIDA: Criar Nova Animação
-ABRIR_ANIM_RAPIDA: Abrir Existente
-CARGA_ANIM_CTRL_HINT: Carregue um recurso de controlador (.ceanim) para começar.
-CREAR_CTRL_RAPIDO: Criar Novo Controlador
-ABRIR_CTRL_RAPIDO: Abrir Existente
-ANIMACIONES: Animações
-ESTADOS: Estados
-INSPECTOR_ESTADO: Inspetor de Estado
-BUSCAR_ANIMACIONES: Buscar animações...
-HINT_SELECCIONA_ELEMENTO: Selecione um elemento para ver suas propriedades.
-
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
 CONFIRM_RESTABLECER: ¿Estás seguro de que quieres borrar todos los datos locales del motor? Esto te pedirá elegir la carpeta de proyectos de nuevo. Tus archivos en el disco NO se verán afectados.
@@ -1011,6 +1025,28 @@ TRIGGER_TAG: Trigger Tag
 TRIGGER_KEY: Trigger Key
 BUTTON_MATERIA: Button Matter
 SCENE_LOADER_DESC: Loads a scene when the player collides, a key is pressed, or the assigned button is clicked.
+COMPONENTE: Component
+SIN_FUNCION: No Function
+EFECTO_PLATAFORMA: Platform Effect
+CLICK_BORDES: Click edges to block/unblock
+TIPO_MOVIMIENTO: Movement Type
+VAGAR: Wander
+ESCAPAR: Escape
+SEGUIR: Follow
+RANGO_ATAQUE: Attack Range
+AL_PERDER_OBJETIVO: On Target Lost
+AL_VER_OBJETIVO: On Target Seen
+CONFIG_MOTOR: Engine Settings
+FUERZA_INCLINACION: Pitch Strength
+CONTROL_AIRE: Air Turn
+ESTABILIDAD_AIRE: Auto-Stabilize
+CENTRADO_SUELO: Ground Centering
+AGILIDAD_GIRO: Turn Agility
+ARRASTRE_AIRE: Air Drag
+SUSTENTACION: Lift Force
+VELOCIDAD_DESPEGUE: Takeoff Speed
+DERRAPE: Drift
+FRENO_MOTOR: Motor Brake
 
 [PT]
 # Header
@@ -1409,6 +1445,28 @@ CYAN: Ciano
 BLUE: Azul
 VIOLET: Violeta
 POSE_CAPTURADA: Pose base capturada.
+COMPONENTE: Componente
+SIN_FUNCION: Sem Função
+EFECTO_PLATAFORMA: Efeito de Plataforma
+CLICK_BORDES: Clique nas bordas para bloquear/desbloquear
+TIPO_MOVIMIENTO: Tipo de Movimento
+VAGAR: Vagar
+ESCAPAR: Escapar
+SEGUIR: Seguir
+RANGO_ATAQUE: Alcance de Ataque
+AL_PERDER_OBJETIVO: Ao perder Objetivo
+AL_VER_OBJETIVO: Ao ver Objetivo
+CONFIG_MOTOR: Configurações do Motor
+FUERZA_INCLINACION: Inclinação
+CONTROL_AIRE: Giro no Ar
+ESTABILIDAD_AIRE: Auto-Estabilizar
+CENTRADO_SUELO: Centrado no Solo
+AGILIDAD_GIRO: Agilidade de Giro
+ARRASTRE_AIRE: Arraste de Ar
+SUSTENTACION: Sustentação
+VELOCIDAD_DESPEGUE: Vel. de Decolagem
+DERRAPE: Derrapagem
+FRENO_MOTOR: Freio Motor
 
 [RU]
 # Header
@@ -1818,6 +1876,28 @@ CYAN: Циан
 BLUE: Синий
 VIOLET: Фиолетовый
 POSE_CAPTURADA: Базовая поза захвачена.
+COMPONENTE: Компонент
+SIN_FUNCION: Без функции
+EFECTO_PLATAFORMA: Эффект платформы
+CLICK_BORDES: Нажмите на края, чтобы заблокировать/разблокировать
+TIPO_MOVIMIENTO: Тип движения
+VAGAR: Блуждание
+ESCAPAR: Побег
+SEGUIR: Преследование
+RANGO_ATAQUE: Дальность атаки
+AL_PERDER_OBJETIVO: При потере цели
+AL_VER_OBJETIVO: При обнаружении цели
+CONFIG_MOTOR: Настройки двигателя
+FUERZA_INCLINACION: Наклон
+CONTROL_AIRE: Поворот в воздухе
+ESTABILIDAD_AIRE: Автостабилизация
+CENTRADO_SUELO: Центрирование на земле
+AGILIDAD_GIRO: Маневренность
+ARRASTRE_AIRE: Сопротивление воздуха
+SUSTENTACION: Подъемная сила
+VELOCIDAD_DESPEGUE: Скорость взлета
+DERRAPE: Дрифт
+FRENO_MOTOR: Торможение двигателем
 
 [ZH]
 # Header
@@ -2277,3 +2357,25 @@ CYAN: 青色
 BLUE: 蓝色
 VIOLET: 紫色
 POSE_CAPTURADA: 基础姿势已捕捉。
+COMPONENTE: 组件
+SIN_FUNCION: 无功能
+EFECTO_PLATAFORMA: 平台效果
+CLICK_BORDES: 点击边缘以锁定/解锁
+TIPO_MOVIMIENTO: 移动类型
+VAGAR: 游荡
+ESCAPAR: 逃跑
+SEGUIR: 跟随
+RANGO_ATAQUE: 攻击范围
+AL_PERDER_OBJETIVO: 丢失目标时
+AL_VER_OBJETIVO: 看到目标时
+CONFIG_MOTOR: 引擎设置
+FUERZA_INCLINACION: 倾斜强度
+CONTROL_AIRE: 空中转向
+ESTABILIDAD_AIRE: 自动稳定
+CENTRADO_SUELO: 地面居中
+AGILIDAD_GIRO: 转向灵敏度
+ARRASTRE_AIRE: 空气阻力
+SUSTENTACION: 升力
+VELOCIDAD_DESPEGUE: 起飞速度
+DERRAPE: 漂移
+FRENO_MOTOR: 引擎制动
