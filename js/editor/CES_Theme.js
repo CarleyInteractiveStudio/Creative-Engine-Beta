@@ -60,14 +60,19 @@ const cesTheme = EditorView.theme({
     },
     ".cm-foldGutter": {
         color: "#6272a4",
-        width: "15px"
+        width: "18px",
+        backgroundColor: "#1e1e2e !important"
     },
     ".cm-foldGutter .cm-gutterElement": {
         padding: "0 4px",
-        cursor: "pointer"
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
     },
     ".cm-lintGutter": {
-        width: "15px"
+        width: "18px",
+        backgroundColor: "#1e1e2e !important"
     }
 }, { dark: true });
 

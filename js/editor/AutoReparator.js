@@ -86,9 +86,9 @@ export async function repair(code, fileName, runtimeError = null) {
     // --- 3. Smart Keyword Substitutions ---
     const substitutions = {
         'funcion': ['funsion', 'fucion', 'funcio', 'function', 'função', 'функция', '函数'],
-        'publico': ['public', 'pubico', 'público', 'открытый', '公开'],
+        'publico': ['public', 'pubico', 'público', 'bublico', 'bublica', 'piblico', 'piblica', 'открытый', '公开'],
         'variable': ['var', 'variabke', 'virable', 'variável'],
-        'numero': ['num', 'nmero', 'número', 'число', '数字'],
+        'numero': ['num', 'nmero', 'número', 'numeto', 'число', '数字'],
         'texto': ['string', 'text', 'текст', '文本'],
         'booleano': ['bool', 'boolean', 'булево', '布尔值'],
         'verdadero': ['true', 'verdedero', 'истина', '真'],

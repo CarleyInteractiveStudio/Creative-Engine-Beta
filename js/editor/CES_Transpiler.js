@@ -23,6 +23,8 @@ const typeMap = {
     'number': 'number',
     'numero': 'number',
     'número': 'number',
+    'numeto': 'number',
+    'nmero': 'number',
     'dnumber': 'number',
     'dnumero': 'number',
     'númeroPT': 'number',
@@ -34,6 +36,7 @@ const typeMap = {
     '文本': 'string',
     'boolean': 'boolean',
     'booleano': 'boolean',
+    'boolen': 'boolean',
     'булево': 'boolean',
     '布尔值': 'boolean',
     'Materia': 'Materia',
@@ -823,11 +826,13 @@ export function transpile(code, scriptName = 'unnamed.ces') {
 
     // 1.c: Parse and remove public and private variables (multilingual with new syntax)
     // Scope is optional, defaults to public
-    const varRegex = /^\s*(?:(public|private|publico|privado|público|открытый|закрытый|公开|私有)\s+)?(?!(?:si|sino|se|senão|mientras|enquanto|para|cada|go|ve|engine|motor|двигатель|引擎|если|иначе|пока|для|如果|否则|当|对于|crear|create|criar|создать|创建|esperar|aguardar|ждать|等待)(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5]))([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)\s+([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)\s*(?:=\s*([^;\n\r]+))?;?/gm;
+    // Added support for common typos: bublico, bublica, piblico, piblica
+    const varRegex = /^\s*(?:(public|private|publico|público|bublico|bublica|piblico|piblica|privado|закрытый|закрытая|открытый|открытая|公开|私有)\s+)?(?!(?:si|sino|se|senão|mientras|enquanto|para|cada|go|ve|engine|motor|двигатель|引擎|если|иначе|пока|для|如果|否则|当|对于|crear|create|criar|создать|创建|esperar|aguardar|ждать|等待)(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5]))([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)\s+([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)\s*(?:=\s*([^;\n\r]+))?;?/gm;
     let varMatch;
     while ((varMatch = varRegex.exec(unprocessedCode)) !== null) {
-        const scopeMatch = varMatch[1] || 'public';
-        const scope = scopeMatch.replace(/publico|público|открытый|公开/, 'public').replace(/privado|закрытый|私有/, 'private');
+        const scopeMatch = (varMatch[1] || 'public').toLowerCase();
+        const scope = scopeMatch.replace(/publico|público|bublico|bublica|piblico|piblica|открытый|открытая|公开/, 'public')
+                                .replace(/privado|закрытый|закрытая|私有/, 'private');
         const typeInput = varMatch[2];
         const name = varMatch[3];
         const value = varMatch[4];
