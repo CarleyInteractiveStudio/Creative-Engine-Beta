@@ -13,6 +13,7 @@ const getTag = (name) => {
 const cesKeywords = [
     "si", "sino", "mientras", "para", "cada", "esperar", "retornar", "nuevo",
     "funcion", "variable", "constante", "verdadero", "falso", "publico", "privado",
+    "bublico", "bublica", "piblico", "piblica",
     "ve", "go", "public", "private", "async", "await",
     "se", "senão", "enquanto", "função", "если", "иначе", "пока", "для",
     "вернуть", "nuevo", "функция", "истина", "ложь", "如果", "否则", "当",

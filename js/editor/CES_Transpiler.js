@@ -827,7 +827,7 @@ export function transpile(code, scriptName = 'unnamed.ces') {
     // 1.c: Parse and remove public and private variables (multilingual with new syntax)
     // Scope is optional, defaults to public
     // Added support for common typos: bublico, bublica, piblico, piblica
-    const varRegex = /^\s*(?:(public|private|publico|público|bublico|bublica|piblico|piblica|privado|закрытый|закрытая|открытый|открытая|公开|私有)\s+)?(?!(?:si|sino|se|senão|mientras|enquanto|para|cada|go|ve|engine|motor|двигатель|引擎|если|иначе|пока|для|如果|否则|当|对于|crear|create|criar|создать|创建|esperar|aguardar|ждать|等待)(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5]))([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)\s+([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)\s*(?:=\s*([^;\n\r]+))?;?/gm;
+    const varRegex = /^\s*(?:(public|private|publico|público|bublico|bublica|piblico|piblica|privado|закрытый|закрытая|открытый|открытая|公开|私有)\s+)?(?!(?:si|sino|se|senão|mientras|enquanto|para|cada|go|ve|engine|motor|двигатель|引擎|если|иначе|пока|для|如果|否则|当|对于|crear|create|criar|создать|创建|esperar|aguardar|ждать|等待|alActualizar|alEmpezar|start|update|iniciar|actualizar|começar|atualizar|начать|обновить|开始|更新)(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5]))([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)\s+([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)\s*(?:=\s*([^;\n\r]+))?;?/gm;
     let varMatch;
     while ((varMatch = varRegex.exec(unprocessedCode)) !== null) {
         const scopeMatch = (varMatch[1] || 'public').toLowerCase();
@@ -924,26 +924,36 @@ export function transpile(code, scriptName = 'unnamed.ces') {
         });
     }
 
-    // --- Phase 2.b: Garbage Identifier Detection (Expert Brain v4) ---
-    // Scan method bodies for solitary identifiers that aren't defined
+    // --- Phase 2.b: Garbage Identifier Detection (Expert Brain v4.6) ---
+    // Scan method bodies for solitary identifiers that aren't defined.
+    // We only trigger this if the identifier is alone on a line and is NOT a known keyword.
     for (const match of methodMatches) {
         const bodyLines = match.body.split('\n');
         bodyLines.forEach((line, idx) => {
             const trimmed = line.trim();
-            // Match a single word that doesn't look like a valid statement
-            if (/^[a-z_][a-z0-9_]*;?$/i.test(trimmed)) {
+            // Match a single word that looks like an illegal identifier
+            if (/^[a-zA-Z_\u00C0-\u017F][\w\u00C0-\u017F]*;?$/i.test(trimmed)) {
                 const word = trimmed.replace(';', '');
+
+                // Extensive list of allowed standalone words
+                const allowedWords = [
+                    'delta', 'deltaTime', 'mtr', 'materia', 'otro', 'datos',
+                    'si', 'sino', 'retornar', 'esperar', 'detener', 'verdadero', 'falso',
+                    'true', 'false', 'return', 'wait', 'stop', 'this', 'super',
+                    'position', 'posicion', 'rotation', 'rotacion', 'scale', 'escala',
+                    'velocity', 'velocidad', 'gravity', 'gravedad'
+                ];
+
                 const isDefined = publicVars.some(pv => pv.name === word) ||
                                  privateVars.some(pv => pv.name === word) ||
                                  publicFunctions.includes(word) ||
                                  dataShortcuts.includes(word) ||
-                                 dataShortcuts.includes(word) ||
-                                 ['delta', 'deltaTime', 'mtr', 'materia', 'otro', 'datos', 'si', 'sino', 'retornar', 'esperar', 'detener', 'verdadero', 'falso'].includes(word);
+                                 allowedWords.includes(word.toLowerCase());
 
-                if (!isDefined && isNaN(word) && word.length > 0) {
+                if (!isDefined && isNaN(word) && word.length > 1) {
                     errors.push({
                         line: getLineNumber(code, match.index) + idx + 1,
-                        message: `Creative Code: Identificador ilegal o basura detectado: '${word}'.`,
+                        message: `[Creative Code] Identificador no reconocido: '${word}'. ¿Es una variable que olvidaste declarar o un error de escritura?`,
                         word: word
                     });
                 }

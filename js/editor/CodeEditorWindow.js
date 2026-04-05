@@ -3,7 +3,7 @@
 import {
     basicSetup,
     EditorState, StateField, StateEffect,
-    EditorView, keymap, Decoration, lineNumbers, drawSelection, dropCursor, rectSelect, highlightSpecialChars,
+    EditorView, keymap, Decoration, lineNumbers, drawSelection, dropCursor, highlightSpecialChars,
     javascript,
     oneDark,
     undo, redo, indentWithTab, foldGutter, foldKeymap,

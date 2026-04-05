@@ -1,8 +1,8 @@
 import { EditorState, StateField, StateEffect } from "@codemirror/state";
 import {
     EditorView, keymap, Decoration, lineNumbers,
-    drawSelection, dropCursor, rectSelect, highlightSpecialChars,
-    crosshairCursor, highlightActiveLine, highlightActiveLineGutter
+    drawSelection, dropCursor, highlightSpecialChars,
+    highlightActiveLine, highlightActiveLineGutter
 } from "@codemirror/view";
 import {
     indentWithTab, undo, redo,
@@ -44,8 +44,6 @@ const basicSetup = [
     bracketMatching(),
     closeBrackets(),
     autocompletion(),
-    rectSelect(),
-    crosshairCursor(),
     highlightActiveLine(),
     highlightSelectionMatches(),
     keymap.of([
@@ -62,7 +60,7 @@ const basicSetup = [
 export {
     basicSetup,
     EditorState, StateField, StateEffect,
-    EditorView, keymap, Decoration, lineNumbers, drawSelection, dropCursor, rectSelect, highlightSpecialChars,
+    EditorView, keymap, Decoration, lineNumbers, drawSelection, dropCursor, highlightSpecialChars,
     javascript,
     oneDark,
     undo, redo, indentWithTab, foldGutter, foldKeymap,
