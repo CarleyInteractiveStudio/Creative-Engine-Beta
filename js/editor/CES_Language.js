@@ -1,4 +1,4 @@
-import { StreamLanguage, tags } from "./CodeMirrorBundle.js";
+import { StreamLanguage, tags, foldNodeProp } from "./CodeMirrorBundle.js";
 
 // Utility to ensure we don't pass undefined tags
 const getTag = (name) => {
@@ -54,6 +54,10 @@ const cesFunctions = [
 ];
 
 const cesLanguage = StreamLanguage.define({
+    languageData: {
+        commentTokens: { line: "//", block: { open: "/*", close: "*/" } },
+        indentOnInput: /^\s*[}\]]$/
+    },
     token(stream) {
         if (stream.eatSpace()) return null;
 

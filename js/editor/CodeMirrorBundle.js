@@ -1,24 +1,24 @@
 import { basicSetup } from "codemirror";
 import { EditorState, StateField, StateEffect } from "@codemirror/state";
-import { EditorView, keymap, Decoration, lineNumbers } from "@codemirror/view";
+import { lineNumbers, drawSelection, dropCursor, rectSelect, highlightSpecialChars } from "@codemirror/view";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
-import { undo, redo, indentWithTab } from "@codemirror/commands";
+import { undo, redo, indentWithTab, foldGutter, foldKeymap } from "@codemirror/commands";
 import { autocompletion, acceptCompletion, completionKeymap } from "@codemirror/autocomplete";
-import { linter } from "@codemirror/lint";
-import { StreamLanguage, syntaxHighlighting, HighlightStyle, defaultHighlightStyle } from "@codemirror/language";
+import { linter, lintGutter } from "@codemirror/lint";
+import { StreamLanguage, syntaxHighlighting, HighlightStyle, defaultHighlightStyle, foldNodeProp, foldService } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 
 export {
     basicSetup,
     EditorState, StateField, StateEffect,
-    EditorView, keymap, Decoration, lineNumbers,
+    EditorView, keymap, Decoration, lineNumbers, drawSelection, dropCursor, rectSelect, highlightSpecialChars,
     javascript,
     oneDark,
-    undo, redo, indentWithTab,
+    undo, redo, indentWithTab, foldGutter, foldKeymap,
     autocompletion, acceptCompletion, completionKeymap,
-    linter,
-    StreamLanguage,
+    linter, lintGutter,
+    StreamLanguage, foldNodeProp, foldService,
     syntaxHighlighting,
     HighlightStyle,
     defaultHighlightStyle,

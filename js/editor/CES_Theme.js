@@ -59,7 +59,15 @@ const cesTheme = EditorView.theme({
         border: "none"
     },
     ".cm-foldGutter": {
-        display: "none"
+        color: "#6272a4",
+        width: "15px"
+    },
+    ".cm-foldGutter .cm-gutterElement": {
+        padding: "0 4px",
+        cursor: "pointer"
+    },
+    ".cm-lintGutter": {
+        width: "15px"
     }
 }, { dark: true });
 
