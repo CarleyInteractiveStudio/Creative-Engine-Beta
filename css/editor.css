@@ -1949,12 +1949,23 @@ body.mobile-mode #editor-main-content.no-inspector {
     display: flex;
     flex-direction: column;
     background-color: var(--bg-secondary);
+}
+
+#animator-left-sidebar {
     border-right: 1px solid var(--border-color);
 }
 
-#animator-states-list {
-    border-right: none;
+#animator-right-sidebar {
     border-left: 1px solid var(--border-color);
+}
+
+.scroll-no-bar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.scroll-no-bar::-webkit-scrollbar {
+    display: none;
 }
 
 .anim-sidebar .list-content {
@@ -5039,6 +5050,20 @@ body.game-mode #loading-overlay {
     flex-direction: column;
     flex: 1;
     overflow: hidden;
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    margin: 4px;
+}
+
+.anim-sidebar-section .list-header {
+    background-color: var(--bg-tertiary);
+    padding: 6px;
+    font-size: 0.85em;
+    font-weight: bold;
+    color: var(--accent-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border-color);
 }
 
 #animator-graph-view {
@@ -5140,6 +5165,7 @@ body.game-mode #loading-overlay {
     display: flex;
     height: calc(100% - 35px); /* Account for header */
     overflow: hidden;
+    position: relative;
 }
 
 .anim-sidebar, .anim-sidebar-section {

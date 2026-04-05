@@ -407,6 +407,13 @@ VERSION_RESTAURADA: Versión restaurada en el editor. Recuerda guardar para apli
 NADA_QUE_REPARAR: No se encontraron errores obvios que reparar.
 REPARACION_EXITOSA: Código reparado con éxito.
 REPARACION_PARCIAL: Se realizaron correcciones, pero aún quedan errores complejos.
+CARGA_ANIM_CTRL_HINT: Carga un asset de controlador (.ceanim) para empezar.
+CARGA_ANIM_CTRL_HINT_2: Puedes crear uno nuevo o abrir uno existente.
+ANIMACIONES: Animaciones
+ESTADOS: Estados
+INSPECTOR_ESTADO: Inspector de Estado
+BUSCAR_ANIMACIONES: Buscar animaciones...
+HINT_SELECCIONA_ELEMENTO: Selecciona un elemento para ver sus propiedades.
 
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
@@ -897,6 +904,21 @@ VERSION_RESTAURADA: Version restored in the editor. Remember to save to apply ch
 NADA_QUE_REPARAR: No obvious errors found to repair.
 REPARACION_EXITOSA: Code repaired successfully.
 REPARACION_PARCIAL: Corrections were made, but complex errors remain.
+CARGA_ANIM_CTRL_HINT: Load a controller asset (.ceanim) to start.
+CARGA_ANIM_CTRL_HINT_2: You can create a new one or open an existing one.
+ANIMACIONES: Animations
+ESTADOS: States
+INSPECTOR_ESTADO: State Inspector
+BUSCAR_ANIMACIONES: Search animations...
+HINT_SELECCIONA_ELEMENTO: Select an element to view its properties.
+
+CARGA_ANIM_CTRL_HINT: Carregue um recurso de controlador (.ceanim) para começar.
+CARGA_ANIM_CTRL_HINT_2: Você pode criar um novo ou abrir um existente.
+ANIMACIONES: Animações
+ESTADOS: Estados
+INSPECTOR_ESTADO: Inspetor de Estado
+BUSCAR_ANIMACIONES: Buscar animações...
+HINT_SELECCIONA_ELEMENTO: Selecione um elemento para ver suas propriedades.
 
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
@@ -1315,6 +1337,8 @@ TRIGGER_TAG: Tag Ativadora
 TRIGGER_KEY: Tecla Ativadora
 BUTTON_MATERIA: Matéria Botão
 SCENE_LOADER_DESC: Carrega uma cena quando o jogador colide, uma tecla é pressionada ou o botão atribuído é clicado.
+CARGA_ANIM_CTRL_HINT: Carregue um recurso de controlador (.ceanim) para começar.
+CARGA_ANIM_CTRL_HINT_2: Você pode criar um novo ou abrir um existente.
 
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
@@ -1666,6 +1690,8 @@ ESCANEO_PROGRESO: Сканирование скриптов уже идет...
 BUSCANDO_SCRIPTS: Поиск скриптов...
 SIN_SCRIPTS_HINT: Скрипты (.ces) в папке Assets не найдены.
 ERROR_BUSCAR_SCRIPTS: Ошибка поиска скриптов.
+CARGA_ANIM_CTRL_HINT: Загрузите ассет контроллера (.ceanim), чтобы начать.
+CARGA_ANIM_CTRL_HINT_2: Вы можете создать новый или открыть существующий.
 
 # Engine Terms
 POSICION: Позиция
@@ -1711,6 +1737,13 @@ TRIGGER_TAG: Тег-активатор
 TRIGGER_KEY: Клавиша-активатор
 BUTTON_MATERIA: Объект кнопки
 SCENE_LOADER_DESC: Загружает сцену при столкновении игрока, нажатии клавиши или клике на назначенную кнопку.
+CARGA_ANIM_CTRL_HINT: Загрузите ассет контроллера (.ceanim), чтобы начать.
+CARGA_ANIM_CTRL_HINT_2: Вы можете создать новый или открыть существующий.
+ANIMACIONES: Анимации
+ESTADOS: Состояния
+INSPECTOR_ESTADO: Инспектор состояния
+BUSCAR_ANIMACIONES: Поиск анимаций...
+HINT_SELECCIONA_ELEMENTO: Выберите элемент для просмотра свойств.
 
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
@@ -2062,6 +2095,8 @@ ESCANEO_PROGRESO: 脚本扫描已在进行中...
 BUSCANDO_SCRIPTS: 正在查找脚本...
 SIN_SCRIPTS_HINT: 在 Assets 文件夹中未找到任何脚本 (.ces)。
 ERROR_BUSCAR_SCRIPTS: 查找脚本时出错。
+CARGA_ANIM_CTRL_HINT: 加载控制器资源 (.ceanim) 以开始。
+CARGA_ANIM_CTRL_HINT_2: 您可以创建一个新控制器或打开一个现有控制器。
 
 # Engine Terms
 POSICION: 位置
@@ -2107,6 +2142,13 @@ TRIGGER_TAG: 触发标签
 TRIGGER_KEY: 触发按键
 BUTTON_MATERIA: 按钮对象
 SCENE_LOADER_DESC: 当玩家发生碰撞、按下按键或点击指定的按钮时加载场景。
+CARGA_ANIM_CTRL_HINT: 加载控制器资源 (.ceanim) 以开始。
+CARGA_ANIM_CTRL_HINT_2: 您可以创建一个新控制器或打开一个现有控制器。
+ANIMACIONES: 动画
+ESTADOS: 状态
+INSPECTOR_ESTADO: 状态检查器
+BUSCAR_ANIMACIONES: 搜索动画...
+HINT_SELECCIONA_ELEMENTO: 选择一个元素以查看其属性。
 
 # Novice Guide
 TITULO_NOVATO: ¡Bienvenido!

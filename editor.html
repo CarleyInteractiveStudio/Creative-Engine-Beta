@@ -603,10 +603,21 @@ public star() {
                         <p data-i18n="CARGA_ANIM_CTRL_HINT">Carga un asset de controlador (.ceanim) para empezar.</p>
                         <p data-i18n="CARGA_ANIM_CTRL_HINT_2">Puedes crear uno nuevo o abrir uno existente.</p>
                     </div>
-                    <div id="animator-assets-list" class="anim-sidebar">
-                        <div class="list-header">Animaciones (.cea)</div>
-                        <input type="search" id="anim-assets-search" placeholder="Buscar animaciones...">
-                        <div class="list-content"></div>
+                    <div id="animator-left-sidebar" class="anim-sidebar">
+                        <div id="animator-assets-list" class="anim-sidebar-section">
+                            <div class="list-header" data-i18n="ANIMACIONES">Animaciones (.cea)</div>
+                            <input type="search" id="anim-assets-search" placeholder="Buscar animaciones..." data-i18n-placeholder="BUSCAR_ANIMACIONES">
+                            <div class="list-content scroll-no-bar"></div>
+                        </div>
+                        <div id="anim-resizer-v-left" class="resizer-h-simple"></div>
+                        <div id="animator-states-list" class="anim-sidebar-section">
+                            <div class="list-header" data-i18n="ESTADOS">Estados</div>
+                            <div class="list-toolbar">
+                                <button id="anim-state-add-btn" title="Añadir Estado"><img src="icons/plus.svg" class="ce-icon"></button>
+                                <button id="anim-state-delete-btn" title="Eliminar Estado"><img src="icons/minus.svg" class="ce-icon"></button>
+                            </div>
+                            <div class="list-content scroll-no-bar"></div>
+                        </div>
                     </div>
                     <div id="anim-resizer-left" class="resizer-v-simple"></div>
                     <div id="animator-graph-view">
@@ -618,20 +629,11 @@ public star() {
                     </div>
                     <div id="anim-resizer-right" class="resizer-v-simple"></div>
                     <div id="animator-right-sidebar">
-                        <div id="animator-states-list" class="anim-sidebar-section">
-                            <div class="list-header">Estados</div>
-                            <div class="list-toolbar">
-                                <button id="anim-state-add-btn" title="Añadir Estado"><img src="icons/plus.svg" class="ce-icon"></button>
-                                <button id="anim-state-delete-btn" title="Eliminar Estado"><img src="icons/minus.svg" class="ce-icon"></button>
-                            </div>
-                            <div class="list-content"></div>
-                        </div>
-                        <div class="resizer-h-simple"></div>
                         <div id="animator-state-inspector" class="anim-sidebar-section">
-                            <div class="list-header">Inspector de Estado</div>
-                            <div class="list-content inspector-content">
+                            <div class="list-header" data-i18n="INSPECTOR_ESTADO">Inspector de Estado</div>
+                            <div class="list-content inspector-content scroll-no-bar">
                                 <div class="panel-overlay-message" style="position: static; padding: 20px;">
-                                    <p>Selecciona un estado para editar sus propiedades.</p>
+                                    <p data-i18n="HINT_SELECCIONA_ELEMENTO">Selecciona un estado para editar sus propiedades.</p>
                                 </div>
                             </div>
                         </div>
