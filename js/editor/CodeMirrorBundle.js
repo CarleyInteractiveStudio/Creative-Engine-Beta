@@ -6,10 +6,7 @@ import {
 } from "@codemirror/view";
 import {
     indentWithTab, undo, redo,
-    history, historyKeymap,
-    indentOnInput,
-    bracketMatching,
-    foldGutter, foldKeymap
+    history, historyKeymap
 } from "@codemirror/commands";
 import {
     autocompletion, acceptCompletion, completionKeymap,
@@ -21,7 +18,11 @@ import {
     foldNodeProp, foldService,
     indentUnit,
     LanguageDescription,
-    syntaxTree
+    syntaxTree,
+    bracketMatching,
+    foldGutter,
+    foldKeymap,
+    indentOnInput
 } from "@codemirror/language";
 import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { javascript } from "@codemirror/lang-javascript";
