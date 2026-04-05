@@ -407,8 +407,12 @@ VERSION_RESTAURADA: Versión restaurada en el editor. Recuerda guardar para apli
 NADA_QUE_REPARAR: No se encontraron errores obvios que reparar.
 REPARACION_EXITOSA: Código reparado con éxito.
 REPARACION_PARCIAL: Se realizaron correcciones, pero aún quedan errores complejos.
+CARGA_ANIM_HINT: Selecciona un asset de animación (.cea) para empezar.
+CREAR_ANIM_RAPIDA: Crear Nueva Animación
+ABRIR_ANIM_RAPIDA: Abrir Existente
 CARGA_ANIM_CTRL_HINT: Carga un asset de controlador (.ceanim) para empezar.
-CARGA_ANIM_CTRL_HINT_2: Puedes crear uno nuevo o abrir uno existente.
+CREAR_CTRL_RAPIDO: Crear Nuevo Controlador
+ABRIR_CTRL_RAPIDO: Abrir Existente
 ANIMACIONES: Animaciones
 ESTADOS: Estados
 INSPECTOR_ESTADO: Inspector de Estado
@@ -904,16 +908,24 @@ VERSION_RESTAURADA: Version restored in the editor. Remember to save to apply ch
 NADA_QUE_REPARAR: No obvious errors found to repair.
 REPARACION_EXITOSA: Code repaired successfully.
 REPARACION_PARCIAL: Corrections were made, but complex errors remain.
+CARGA_ANIM_HINT: Select an animation asset (.cea) to start.
+CREAR_ANIM_RAPIDA: Create New Animation
+ABRIR_ANIM_RAPIDA: Open Existing
 CARGA_ANIM_CTRL_HINT: Load a controller asset (.ceanim) to start.
-CARGA_ANIM_CTRL_HINT_2: You can create a new one or open an existing one.
+CREAR_CTRL_RAPIDO: Create New Controller
+ABRIR_CTRL_RAPIDO: Open Existing
 ANIMACIONES: Animations
 ESTADOS: States
 INSPECTOR_ESTADO: State Inspector
 BUSCAR_ANIMACIONES: Search animations...
 HINT_SELECCIONA_ELEMENTO: Select an element to view its properties.
 
+CARGA_ANIM_HINT: Selecione um recurso de animação (.cea) para começar.
+CREAR_ANIM_RAPIDA: Criar Nova Animação
+ABRIR_ANIM_RAPIDA: Abrir Existente
 CARGA_ANIM_CTRL_HINT: Carregue um recurso de controlador (.ceanim) para começar.
-CARGA_ANIM_CTRL_HINT_2: Você pode criar um novo ou abrir um existente.
+CREAR_CTRL_RAPIDO: Criar Novo Controlador
+ABRIR_CTRL_RAPIDO: Abrir Existente
 ANIMACIONES: Animações
 ESTADOS: Estados
 INSPECTOR_ESTADO: Inspetor de Estado
@@ -1690,8 +1702,12 @@ ESCANEO_PROGRESO: Сканирование скриптов уже идет...
 BUSCANDO_SCRIPTS: Поиск скриптов...
 SIN_SCRIPTS_HINT: Скрипты (.ces) в папке Assets не найдены.
 ERROR_BUSCAR_SCRIPTS: Ошибка поиска скриптов.
+CARGA_ANIM_HINT: Выберите ассет анимации (.cea), чтобы начать.
+CREAR_ANIM_RAPIDA: Создать новую анимацию
+ABRIR_ANIM_RAPIDA: Открыть существующий
 CARGA_ANIM_CTRL_HINT: Загрузите ассет контроллера (.ceanim), чтобы начать.
-CARGA_ANIM_CTRL_HINT_2: Вы можете создать новый или открыть существующий.
+CREAR_CTRL_RAPIDO: Создать новый контроллер
+ABRIR_CTRL_RAPIDO: Открыть существующий
 
 # Engine Terms
 POSICION: Позиция
@@ -2095,8 +2111,12 @@ ESCANEO_PROGRESO: 脚本扫描已在进行中...
 BUSCANDO_SCRIPTS: 正在查找脚本...
 SIN_SCRIPTS_HINT: 在 Assets 文件夹中未找到任何脚本 (.ces)。
 ERROR_BUSCAR_SCRIPTS: 查找脚本时出错。
+CARGA_ANIM_HINT: 选择动画资源 (.cea) 以开始。
+CREAR_ANIM_RAPIDA: 创建新动画
+ABRIR_ANIM_RAPIDA: 打开现有
 CARGA_ANIM_CTRL_HINT: 加载控制器资源 (.ceanim) 以开始。
-CARGA_ANIM_CTRL_HINT_2: 您可以创建一个新控制器或打开一个现有控制器。
+CREAR_CTRL_RAPIDO: 创建新控制器
+ABRIR_CTRL_RAPIDO: 打开现有
 
 # Engine Terms
 POSICION: 位置

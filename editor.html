@@ -575,7 +575,10 @@ public star() {
                     </div>
                     <div id="animation-panel-overlay">
                         <p data-i18n="CARGA_ANIM_HINT">Selecciona un asset de animación (.cea) para empezar.</p>
-                        <button id="btn-create-animation-quick" class="primary-btn" data-i18n="CREAR_ANIM_RAPIDA">Crear Nueva Animación</button>
+                        <div class="overlay-buttons">
+                            <button id="btn-create-animation-quick" class="primary-btn" data-i18n="CREAR_ANIM_RAPIDA">Crear Nueva Animación</button>
+                            <button id="btn-open-animation-quick" class="secondary-btn" data-i18n="ABRIR_ANIM_RAPIDA">Abrir Existente</button>
+                        </div>
                     </div>
                 <div class="resize-handle" data-direction="n"></div>
                 <div class="resize-handle" data-direction="ne"></div>
@@ -601,7 +604,10 @@ public star() {
                 <div class="panel-content no-padding animator-controller-layout">
                     <div id="animator-controller-overlay">
                         <p data-i18n="CARGA_ANIM_CTRL_HINT">Carga un asset de controlador (.ceanim) para empezar.</p>
-                        <p data-i18n="CARGA_ANIM_CTRL_HINT_2">Puedes crear uno nuevo o abrir uno existente.</p>
+                        <div class="overlay-buttons">
+                            <button id="btn-create-anim-ctrl-quick" class="primary-btn" data-i18n="CREAR_CTRL_RAPIDO">Crear Nuevo Controlador</button>
+                            <button id="btn-open-anim-ctrl-quick" class="secondary-btn" data-i18n="ABRIR_CTRL_RAPIDO">Abrir Existente</button>
+                        </div>
                     </div>
                     <div id="animator-left-sidebar" class="anim-sidebar">
                         <div id="animator-assets-list" class="anim-sidebar-section">

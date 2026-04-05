@@ -152,9 +152,15 @@ export async function handleContextMenuAction(action) {
                             await writable.close();
                             await updateAssetBrowserCallback();
 
-                            // Auto-open
-                            const freshHandle = await targetHandle.getFileHandle(fileName);
-                            onAssetOpened(fileName, freshHandle, targetHandle, { path: `${targetPathDisplay}/${fileName}` });
+                            // Auto-open with safety timeout
+                            setTimeout(async () => {
+                                try {
+                                    const freshHandle = await targetHandle.getFileHandle(fileName);
+                                    onAssetOpened(fileName, freshHandle, targetHandle, { path: `${targetPathDisplay}/${fileName}` });
+                                } catch (e) {
+                                    console.error("Error auto-opening created controller:", e);
+                                }
+                            }, 100);
                         } catch (err) {
                             console.error("Error al crear el controlador de animación:", err);
                             showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_CONTROLADOR', 'No se pudo crear el controlador.'));
@@ -194,9 +200,15 @@ export async function handleContextMenuAction(action) {
                             await writable.close();
                             await updateAssetBrowserCallback();
 
-                            // Auto-open
-                            const freshHandle = await targetHandle.getFileHandle(fileName);
-                            onAssetOpened(fileName, freshHandle, targetHandle, { path: `${targetPathDisplay}/${fileName}` });
+                            // Auto-open with safety timeout
+                            setTimeout(async () => {
+                                try {
+                                    const freshHandle = await targetHandle.getFileHandle(fileName);
+                                    onAssetOpened(fileName, freshHandle, targetHandle, { path: `${targetPathDisplay}/${fileName}` });
+                                } catch (e) {
+                                    console.error("Error auto-opening created prefab:", e);
+                                }
+                            }, 100);
                         } catch (err) {
                             console.error("Error al crear el prefab:", err);
                             showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_PREFAB', 'No se pudo crear el prefab.'));
@@ -221,9 +233,15 @@ export async function handleContextMenuAction(action) {
                             await writable.close();
                             await updateAssetBrowserCallback();
 
-                            // Auto-open
-                            const freshHandle = await targetHandle.getFileHandle(fileName);
-                            onAssetOpened(fileName, freshHandle, targetHandle, { path: `${targetPathDisplay}/${fileName}` });
+                            // Auto-open with safety timeout
+                            setTimeout(async () => {
+                                try {
+                                    const freshHandle = await targetHandle.getFileHandle(fileName);
+                                    onAssetOpened(fileName, freshHandle, targetHandle, { path: `${targetPathDisplay}/${fileName}` });
+                                } catch (e) {
+                                    console.error("Error auto-opening created script:", e);
+                                }
+                            }, 100);
                         } catch (err) {
                             console.error("Error al crear el script CHC:", err);
                             showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_SCRIPT', 'No se pudo crear el script.'));
@@ -248,9 +266,15 @@ export async function handleContextMenuAction(action) {
                             await writable.close();
                             await updateAssetBrowserCallback();
 
-                            // Auto-open
-                            const freshHandle = await targetHandle.getFileHandle(fileName);
-                            onAssetOpened(fileName, freshHandle, targetHandle, { path: `${targetPathDisplay}/${fileName}` });
+                            // Auto-open with safety timeout
+                            setTimeout(async () => {
+                                try {
+                                    const freshHandle = await targetHandle.getFileHandle(fileName);
+                                    onAssetOpened(fileName, freshHandle, targetHandle, { path: `${targetPathDisplay}/${fileName}` });
+                                } catch (e) {
+                                    console.error("Error auto-opening created script:", e);
+                                }
+                            }, 100);
                         } catch (err) {
                             console.error("Error al crear el script:", err);
                             showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_SCRIPT', 'No se pudo crear el script.'));
@@ -288,9 +312,15 @@ export async function handleContextMenuAction(action) {
                             console.log(`[AssetBrowser] Archivo de escena '${fileName}' creado con éxito.`);
                             await updateAssetBrowserCallback();
 
-                            // Auto-open
-                            const freshHandle = await targetHandle.getFileHandle(fileName);
-                            onAssetOpened(fileName, freshHandle, targetHandle, { path: `${targetPathDisplay}/${fileName}` });
+                            // Auto-open with safety timeout
+                            setTimeout(async () => {
+                                try {
+                                    const freshHandle = await targetHandle.getFileHandle(fileName);
+                                    onAssetOpened(fileName, freshHandle, targetHandle, { path: `${targetPathDisplay}/${fileName}` });
+                                } catch (e) {
+                                    console.error("Error auto-opening created scene:", e);
+                                }
+                            }, 100);
                         } catch (err) {
                             console.error("Error al crear la escena:", err);
                             showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_ESCENA', 'No se pudo crear la escena.'));
@@ -326,9 +356,15 @@ export async function handleContextMenuAction(action) {
                             await writable.close();
                             await updateAssetBrowserCallback();
 
-                            // Auto-open
-                            const freshHandle = await targetHandle.getFileHandle(fileName);
-                            onAssetOpened(fileName, freshHandle, targetHandle, { path: `${targetPathDisplay}/${fileName}` });
+                            // Auto-open with safety timeout
+                            setTimeout(async () => {
+                                try {
+                                    const freshHandle = await targetHandle.getFileHandle(fileName);
+                                    onAssetOpened(fileName, freshHandle, targetHandle, { path: `${targetPathDisplay}/${fileName}` });
+                                } catch (e) {
+                                    console.error("Error auto-opening created animation:", e);
+                                }
+                            }, 100);
                         } catch (err) {
                             console.error("Error al crear el asset de animación:", err);
                             showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_ANIMACION', 'No se pudo crear el asset de animación.'));
@@ -353,9 +389,15 @@ export async function handleContextMenuAction(action) {
                             await writable.close();
                             await updateAssetBrowserCallback();
 
-                            // Auto-open
-                            const freshHandle = await targetHandle.getFileHandle(fileName);
-                            onAssetOpened(fileName, freshHandle, targetHandle, { path: `${targetPathDisplay}/${fileName}` });
+                            // Auto-open with safety timeout
+                            setTimeout(async () => {
+                                try {
+                                    const freshHandle = await targetHandle.getFileHandle(fileName);
+                                    onAssetOpened(fileName, freshHandle, targetHandle, { path: `${targetPathDisplay}/${fileName}` });
+                                } catch (e) {
+                                    console.error("Error auto-opening created readme:", e);
+                                }
+                            }, 100);
                         } catch (err) {
                             console.error("Error al crear el archivo Léame:", err);
                             showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_ARCHIVO', 'No se pudo crear el archivo.'));
@@ -376,6 +418,16 @@ export async function handleContextMenuAction(action) {
                         try {
                             await createNewPalette(fileName, targetHandle);
                             await updateAssetBrowserCallback();
+
+                            // Auto-open with safety timeout
+                            setTimeout(async () => {
+                                try {
+                                    const freshHandle = await targetHandle.getFileHandle(fileName);
+                                    onAssetOpened(fileName, freshHandle, targetHandle, { path: `${targetPathDisplay}/${fileName}` });
+                                } catch (e) {
+                                    console.error("Error auto-opening created palette:", e);
+                                }
+                            }, 100);
                         } catch (err) {
                             console.error("Error al crear la paleta:", err);
                             showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_PALETA', 'No se pudo crear la paleta.'));

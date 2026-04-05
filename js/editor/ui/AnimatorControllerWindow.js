@@ -837,8 +837,23 @@ function setupEventListeners() {
 
     // Toolbar button listeners
     const newBtn = document.getElementById('anim-ctrl-new-btn');
+    const quickCreateBtn = document.getElementById('btn-create-anim-ctrl-quick');
+    const quickOpenBtn = document.getElementById('btn-open-anim-ctrl-quick');
+
     if (newBtn) {
         newBtn.addEventListener('click', createNewAnimatorController);
+    }
+
+    if (quickCreateBtn) {
+        quickCreateBtn.addEventListener('click', createNewAnimatorController);
+    }
+
+    if (quickOpenBtn) {
+        quickOpenBtn.addEventListener('click', () => {
+            window.openAssetSelector((handle) => {
+                if (handle) openAnimatorController(handle);
+            }, { filter: ['.ceanim'] });
+        });
     }
 
     const saveBtn = document.getElementById('anim-ctrl-save-btn');

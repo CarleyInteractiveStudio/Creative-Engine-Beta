@@ -719,25 +719,50 @@ export function initializeAnimationEditor(dependencies) {
     if (dom.animationImportBtn) dom.animationImportBtn.addEventListener('click', importAssets);
 
     const quickCreateBtn = document.getElementById('btn-create-animation-quick');
+    const quickOpenBtn = document.getElementById('btn-open-animation-quick');
     const L = window.Localization;
+
     if (quickCreateBtn) {
         quickCreateBtn.onclick = async () => {
+            const dirHandle = dependencies.currentDirectoryHandle ? dependencies.currentDirectoryHandle() : null;
+            if (!dirHandle) {
+                window.Dialogs.showNotification(L.get('AVISO'), L.get('SELECCIONAR_CARPETA_IMPORTAR', "Selecciona primero una carpeta en el navegador de assets."));
+                return;
+            }
+
             window.Dialogs.showPrompt(L.get('TITULO_NUEVA_ANIMACION', "Nueva Animación"), L.get('PROMPT_NOMBRE_CEA', "Introduce el nombre del asset (.cea):"), async (name) => {
                 if (!name) return;
                 const fileName = name.endsWith('.cea') ? name : `${name}.cea`;
-                const dirHandle = dependencies.currentDirectoryHandle ? dependencies.currentDirectoryHandle() : null;
-                if (!dirHandle) return;
-                const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
-                const writable = await fileHandle.createWritable();
-                await writable.write(JSON.stringify({ name: name, animations: [{ name: "default", speed: 10, loop: true, frames: [] }] }, null, 2));
-                await writable.close();
+                try {
+                    const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(JSON.stringify({ name: name, animations: [{ name: "default", speed: 10, loop: true, frames: [] }] }, null, 2));
+                    await writable.close();
 
-                if (window.updateAssetBrowser) window.updateAssetBrowser();
+                    if (window.updateAssetBrowser) await window.updateAssetBrowser();
 
-                // Re-acquire fresh handle to avoid InvalidStateError
-                const freshHandle = await dirHandle.getFileHandle(fileName);
-                openAnimationAsset(freshHandle, dirHandle);
+                    // Re-acquire fresh handle and wait a bit for OS to finish writing
+                    setTimeout(async () => {
+                        try {
+                            const freshHandle = await dirHandle.getFileHandle(fileName);
+                            await openAnimationAsset(freshHandle, dirHandle);
+                        } catch (e) {
+                            console.error("Error opening newly created animation:", e);
+                        }
+                    }, 100);
+                } catch (err) {
+                    console.error("Error creating animation:", err);
+                    window.Dialogs.showNotification(L.get('ERROR'), L.get('ERROR_CREAR_ANIMACION', "No se pudo crear el asset de animación."));
+                }
             });
+        };
+    }
+
+    if (quickOpenBtn) {
+        quickOpenBtn.onclick = () => {
+            window.openAssetSelector((handle, path, dir) => {
+                if (handle) openAnimationAsset(handle, dir);
+            }, { filter: ['.cea'], title: L.get('ABRIR_ANIM_RAPIDA', 'Abrir Animación') });
         };
     }
 
