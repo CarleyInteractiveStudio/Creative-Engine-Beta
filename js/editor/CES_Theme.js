@@ -13,7 +13,12 @@ const safeTagStyle = (tagName, styles) => {
 const cesTheme = EditorView.theme({
     "&": {
         color: "#d4d4d4",
-        backgroundColor: "#1e1e2e"
+        backgroundColor: "#1e1e2e",
+        height: "100%"
+    },
+    ".cm-scroller": {
+        backgroundColor: "#1e1e2e",
+        outline: "none"
     },
     ".cm-content": {
         caretColor: "#ae81ff",
