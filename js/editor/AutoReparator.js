@@ -16,6 +16,7 @@ export async function repair(code, fileName, runtimeError = null) {
 
     const prefs = getPreferences();
     const isSmartEnabled = prefs.autoCorrectorInteligente !== false; // Default true
+    const userLang = (prefs.language || 'es').toLowerCase();
 
     let repairedCode = code;
     // Safety check for Localization during early boot sequence
@@ -85,9 +86,9 @@ export async function repair(code, fileName, runtimeError = null) {
     // --- 3. Smart Keyword Substitutions ---
     const substitutions = {
         'funcion': ['funsion', 'fucion', 'funcio', 'function', 'função', 'функция', '函数'],
-        'publico': ['public', 'pubico', 'público', 'открытый', '公开'],
+        'publico': ['public', 'pubico', 'público', 'bublico', 'bublica', 'piblico', 'piblica', 'открытый', '公开'],
         'variable': ['var', 'variabke', 'virable', 'variável'],
-        'numero': ['num', 'nmero', 'número', 'число', '数字'],
+        'numero': ['num', 'nmero', 'número', 'numeto', 'число', '数字'],
         'texto': ['string', 'text', 'текст', '文本'],
         'booleano': ['bool', 'boolean', 'булево', '布尔值'],
         'verdadero': ['true', 'verdedero', 'истина', '真'],
@@ -197,6 +198,9 @@ export async function repair(code, fileName, runtimeError = null) {
 
             // Similarity check against all examples' lines
             activeExamples.forEach(ex => {
+                // Filter by language to ensure we suggest code in the user's preferred language
+                if (ex.lang && ex.lang !== userLang) return;
+
                 const exLines = ex.code.split('\n');
                 exLines.forEach(exLine => {
                     const trimmedExLine = exLine.trim();
@@ -275,7 +279,8 @@ export async function repair(code, fileName, runtimeError = null) {
                 for (let i=0; i<lines.length; i++) {
                     if (/alActualizar/i.test(lines[i])) inUpdate = true;
                     if (inUpdate && rule.pattern.test(lines[i])) {
-                        lines[i] = `// ${rule.message}\n${lines[i]}`;
+                        const msg = typeof rule.message === 'object' ? (rule.message[userLang] || rule.message['es']) : rule.message;
+                        lines[i] = `// ${msg}\n${lines[i]}`;
                         break;
                     }
                 }
@@ -331,7 +336,11 @@ function detectUndeclaredVariables(code) {
         'nuevo', 'Vector2', 'azar', 'si', 'sino', 'retornar', 'verdadero', 'falso', 'rotacion', 'escala', 'renderizadorDeSprite',
         'fuenteDeAudio', 'animador', 'lienzo', 'uiBarra', 'tiempoDelta', 'absoluto', 'seno', 'coseno', 'distancia', 'instanciar',
         'destruir', 'lanzarRayo', 'buscar', 'cargarEscena', 'difundir', 'teclaPresionada', 'teclaRecienPresionada', 'obtenerPosicionMouse',
-        'publico', 'privado', 'variable', 'constante', 've', 'motor', 'engine', 'go'
+        'publico', 'privado', 'variable', 'constante', 've', 'motor', 'engine', 'go',
+        'position', 'physics', 'other', 'data', 'play', 'log', 'wait', 'every',
+        'new', 'random', 'if', 'else', 'return', 'true', 'false', 'rotation', 'scale', 'spriteRenderer',
+        'audioSource', 'animator', 'canvas', 'uiBar', 'deltaTime', 'abs', 'sin', 'cos', 'distance', 'instantiate',
+        'destroy', 'raycast', 'find', 'loadScene', 'broadcast', 'isKeyPressed', 'isKeyJustPressed', 'getMousePosition'
     ];
     engineKeywords.forEach(k => declared.add(k));
 

@@ -2019,6 +2019,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const tr = materia.getComponent(Components.TextureRender);
                 if (tr) tr.update(deltaTime);
 
+                const terreno = materia.getComponent(Components.Terreno2D);
+                if (terreno) {
+                    if (terreno.layers.some(l => l.texturePath && !terreno.imageCache.has(l.texturePath))) {
+                        terreno.loadTextures(projectsDirHandle);
+                    }
+                }
+
                 const skeleton = materia.getComponent(Components.SkeletonRenderer);
                 if (skeleton) {
                     if (skeleton.source && skeleton.source !== skeleton._lastLoadedSource) {

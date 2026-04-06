@@ -583,11 +583,91 @@ export class PhysicsSystem {
              }
         }
 
+        // --- Platform Effector 2D Filter ---
+        if (collisionInfo) {
+            if (!this._applyEffectorFilter(materiaA, materiaB, collisionInfo)) {
+                collisionInfo = null;
+            }
+        }
+
         if (collisionInfo && !colliderA.isTrigger && !colliderB.isTrigger) {
             this.resolveCollision(materiaA, materiaB, collisionInfo);
         }
 
         return collisionInfo;
+    }
+
+    /**
+     * Filters collision based on PlatformEffector2D settings.
+     * @private
+     */
+    _applyEffectorFilter(materiaA, materiaB, collisionInfo) {
+        const effectorA = materiaA.getComponent(Components.PlatformEffector2D);
+        const effectorB = materiaB.getComponent(Components.PlatformEffector2D);
+
+        if (effectorA && effectorA.isActive) {
+            if (!this._shouldCollideWithEffector(materiaB, materiaA, effectorA, collisionInfo)) return false;
+        }
+        if (effectorB && effectorB.isActive) {
+            // Invert collisionInfo because it points B -> A, we need A -> B for the check
+            const invertedInfo = { x: -collisionInfo.x, y: -collisionInfo.y };
+            if (!this._shouldCollideWithEffector(materiaA, materiaB, effectorB, invertedInfo)) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Determines if a collision should occur with an effector.
+     * @private
+     * @param {Materia} other The materia colliding with the effector.
+     * @param {Materia} effectorMtr The effector materia.
+     * @param {Components.PlatformEffector2D} effector The effector component.
+     * @param {object} mtv The Minimum Translation Vector (Other -> Effector).
+     */
+    _shouldCollideWithEffector(other, effectorMtr, effector, mtv) {
+        if (!effector.useOneWay) return true;
+
+        // mtv points Other -> Effector.
+        // normal should point Effector -> Other (the direction we want to push "other" away).
+        const normal = this._normalize({ x: -mtv.x, y: -mtv.y });
+
+        // 1. Relative Velocity Check
+        const rbOther = other.getComponent(Components.Rigidbody2D);
+        const rbEffector = effectorMtr.getComponent(Components.Rigidbody2D);
+        const velOther = rbOther ? rbOther.velocity : { x: 0, y: 0 };
+        const velEffector = rbEffector ? rbEffector.velocity : { x: 0, y: 0 };
+
+        const relVel = { x: velOther.x - velEffector.x, y: velOther.y - velEffector.y };
+        const velAlongNormal = this._dot(relVel, normal);
+
+        // If moving away from the effector (positive velocity along normal), ignore.
+        // We use a small threshold to allow for resting on platforms.
+        if (velAlongNormal > 0.05) return false;
+
+        // 2. Side Filtering
+        const effectorTrans = effectorMtr.getComponent(Components.Transform);
+        const effRotRad = (effectorTrans ? effectorTrans.rotation : 0) * Math.PI / 180;
+        const worldUp = { x: Math.sin(effRotRad), y: -Math.cos(effRotRad) };
+        const worldRight = { x: Math.cos(effRotRad), y: Math.sin(effRotRad) };
+
+        const dotUp = this._dot(normal, worldUp);
+        const dotDown = this._dot(normal, { x: -worldUp.x, y: -worldUp.y });
+        const dotRight = this._dot(normal, worldRight);
+        const dotLeft = this._dot(normal, { x: -worldRight.x, y: -worldRight.y });
+
+        // Use arc for Up direction if blockUp is enabled
+        if (effector.blockUp) {
+            const halfArcRad = (effector.surfaceArc / 2) * Math.PI / 180;
+            const arcThreshold = Math.cos(halfArcRad);
+            if (dotUp >= arcThreshold - 0.01) return true;
+        }
+
+        const sideThreshold = 0.707; // 45 degrees
+        if (effector.blockDown && dotDown > sideThreshold) return true;
+        if (effector.blockRight && dotRight > sideThreshold) return true;
+        if (effector.blockLeft && dotLeft > sideThreshold) return true;
+
+        return false;
     }
 
     _cross(v1, v2) {
@@ -785,6 +865,17 @@ export class PhysicsSystem {
                 info = this.isPolygonVsPolygon(colliderMateria, this._tempLineMateria);
             }
 
+            if (info) {
+                const effector = lineMateria.getComponent(Components.PlatformEffector2D);
+                if (effector && effector.isActive) {
+                    // SAT info points Effector -> Other, we need Other -> Effector
+                    const correctedInfo = { x: -info.x, y: -info.y };
+                    if (!this._shouldCollideWithEffector(colliderMateria, lineMateria, effector, correctedInfo)) {
+                        info = null;
+                    }
+                }
+            }
+
             if (info && info.magnitude > maxOverlap) {
                 maxOverlap = info.magnitude;
                 bestCollision = info;
@@ -801,7 +892,7 @@ export class PhysicsSystem {
         if (!otherCollider || !tilemapCollider || !tilemapTransform) return null;
 
         if (tilemapCollider.isDirty) {
-            tilemapCollider.generateMesh();
+            tilemapCollider.generate();
         }
 
         // Reutilizar objetos temporales para evitar Garbage Collection masivo
@@ -831,6 +922,8 @@ export class PhysicsSystem {
         const partBox = this._tempPartBox;
         partBox.isTrigger = tilemapCollider.isTrigger;
 
+        const effector = tilemapMateria.getComponent(Components.PlatformEffector2D);
+
         for (const rect of tilemapCollider.generatedColliders) {
             partBox.offset = { x: rect.x, y: rect.y };
             partBox.size = { x: rect.width, y: rect.height };
@@ -850,6 +943,17 @@ export class PhysicsSystem {
                 }
             } else if (otherCollider instanceof Components.PolygonCollider2D) {
                 collisionInfo = this.isPolygonVsPolygon(colliderMateria, this._tempPartMateria);
+            }
+
+            if (collisionInfo) {
+                // If it's a tilemap with an effector, filter each rect collision
+                if (effector && effector.isActive) {
+                    // SAT collisionInfo points Effector -> Other, we need Other -> Effector
+                    const correctedInfo = { x: -collisionInfo.x, y: -collisionInfo.y };
+                    if (!this._shouldCollideWithEffector(colliderMateria, tilemapMateria, effector, correctedInfo)) {
+                        collisionInfo = null;
+                    }
+                }
             }
 
             if (collisionInfo && collisionInfo.magnitude > maxOverlap) {
@@ -881,6 +985,16 @@ export class PhysicsSystem {
                     }
                 } else if (otherCollider instanceof Components.PolygonCollider2D) {
                     collisionInfo = this.isPolygonVsPolygon(colliderMateria, this._tempPartMateria);
+                }
+
+                if (collisionInfo) {
+                    if (effector && effector.isActive) {
+                        // SAT collisionInfo points Effector -> Other, we need Other -> Effector
+                        const correctedInfo = { x: -collisionInfo.x, y: -collisionInfo.y };
+                        if (!this._shouldCollideWithEffector(colliderMateria, tilemapMateria, effector, correctedInfo)) {
+                            collisionInfo = null;
+                        }
+                    }
                 }
 
                 if (collisionInfo && collisionInfo.magnitude > maxOverlap) {

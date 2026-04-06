@@ -43,8 +43,20 @@ export async function openAnimatorController(fileHandle) {
             updateWindowMenuUI();
         }
 
-        const file = await fileHandle.getFile();
-        const content = await file.text();
+        let file = await fileHandle.getFile();
+        let content = await file.text();
+
+        // Safety check for empty files (just created)
+        if (!content || content.trim() === "") {
+            console.warn(`[AnimatorController] Archivo vacío detectado para '${fileHandle.name}', esperando 100ms...`);
+            await new Promise(r => setTimeout(r, 100));
+            file = await fileHandle.getFile();
+            content = await file.text();
+            if (!content || content.trim() === "") {
+                throw new Error("El archivo está vacío.");
+            }
+        }
+
         currentControllerData = JSON.parse(content);
         currentControllerHandle = fileHandle;
 
@@ -698,8 +710,12 @@ async function createNewAnimatorController() {
                 await writable.close();
 
                 console.log(`Creado nuevo controlador: ${fileName}`);
+
+        // Re-acquire fresh handle to avoid InvalidStateError on some browsers
+        const freshHandle = await assetsHandle.getFileHandle(fileName);
+
                 // After creating, open it
-                await openAnimatorController(fileHandle);
+        await openAnimatorController(freshHandle);
 
             } catch (error) {
                 console.error("Error al crear el controlador de animación:", error);
@@ -772,7 +788,7 @@ function setupEventListeners() {
     // --- Layout Resizers ---
     initAnimResizer(document.getElementById('anim-resizer-left'), 'left');
     initAnimResizer(document.getElementById('anim-resizer-right'), 'right');
-    initAnimResizer(dom.animatorControllerPanel.querySelector('.resizer-h-simple'), 'bottom');
+    initAnimResizer(document.getElementById('anim-resizer-v-left'), 'v-left');
 
     function initAnimResizer(resizer, type) {
         if (!resizer) return;
@@ -782,25 +798,27 @@ function setupEventListeners() {
             resizer.setPointerCapture(e.pointerId);
             const startX = e.clientX;
             const startY = e.clientY;
-            const assetsPanel = dom.animatorControllerPanel.querySelector('#animator-assets-list');
+            const leftSidebar = dom.animatorControllerPanel.querySelector('#animator-left-sidebar');
             const rightSidebar = dom.animatorControllerPanel.querySelector('#animator-right-sidebar');
-            const statesList = dom.animatorControllerPanel.querySelector('#animator-states-list');
+            const assetsList = dom.animatorControllerPanel.querySelector('#animator-assets-list');
 
-            const startWidthLeft = assetsPanel.offsetWidth;
-            const startWidthRight = rightSidebar.offsetWidth;
-            const startHeightTop = statesList.offsetHeight;
+            const startWidthLeft = leftSidebar ? leftSidebar.offsetWidth : 250;
+            const startWidthRight = rightSidebar ? rightSidebar.offsetWidth : 250;
+            const startHeightTop = assetsList ? assetsList.offsetHeight : 150;
 
             const onPointerMove = (moveEvent) => {
                 if (type === 'left') {
                     const newWidth = startWidthLeft + (moveEvent.clientX - startX);
-                    assetsPanel.style.width = `${Math.max(100, newWidth)}px`;
+                    if (leftSidebar) leftSidebar.style.width = `${Math.max(100, newWidth)}px`;
                 } else if (type === 'right') {
                     const newWidth = startWidthRight - (moveEvent.clientX - startX);
-                    rightSidebar.style.width = `${Math.max(150, newWidth)}px`;
-                } else if (type === 'bottom') {
+                    if (rightSidebar) rightSidebar.style.width = `${Math.max(150, newWidth)}px`;
+                } else if (type === 'v-left') {
                     const newHeight = startHeightTop + (moveEvent.clientY - startY);
-                    statesList.style.flex = 'none';
-                    statesList.style.height = `${Math.max(100, newHeight)}px`;
+                    if (assetsList) {
+                        assetsList.style.flex = 'none';
+                        assetsList.style.height = `${Math.max(50, newHeight)}px`;
+                    }
                 }
             };
 
@@ -819,8 +837,23 @@ function setupEventListeners() {
 
     // Toolbar button listeners
     const newBtn = document.getElementById('anim-ctrl-new-btn');
+    const quickCreateBtn = document.getElementById('btn-create-anim-ctrl-quick');
+    const quickOpenBtn = document.getElementById('btn-open-anim-ctrl-quick');
+
     if (newBtn) {
         newBtn.addEventListener('click', createNewAnimatorController);
+    }
+
+    if (quickCreateBtn) {
+        quickCreateBtn.addEventListener('click', createNewAnimatorController);
+    }
+
+    if (quickOpenBtn) {
+        quickOpenBtn.addEventListener('click', () => {
+            window.openAssetSelector((handle) => {
+                if (handle) openAnimatorController(handle);
+            }, { filter: ['.ceanim'] });
+        });
     }
 
     const saveBtn = document.getElementById('anim-ctrl-save-btn');
@@ -840,7 +873,10 @@ function setupEventListeners() {
     // Graph interactions
     graphView.style.touchAction = 'none';
     graphView.addEventListener('pointerdown', (e) => {
-        if (((e.button === 1 || e.pointerType === 'touch') || (e.button === 0 && e.altKey)) && !isConnecting) {
+        // Allow left-click panning (button 0) as well for better accessibility, but ensure we aren't clicking a node
+        const isOnBackground = e.target === graphView || e.target === connectionsLayer || e.target === nodesContainer || e.target === graphContent;
+
+        if (((e.button === 1 || (e.button === 0 && (e.altKey || isOnBackground))) || e.pointerType === 'touch') && !isConnecting) {
             isPanning = true;
             graphView.setPointerCapture(e.pointerId);
             lastPanPos = { x: e.clientX, y: e.clientY };

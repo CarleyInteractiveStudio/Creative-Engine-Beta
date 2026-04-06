@@ -1,16 +1,16 @@
 // --- Module for the Code Editor Window (CodeMirror) ---
 
-import {
+import * as CM from './CodeMirrorBundle.js';
+const {
     basicSetup,
     EditorState, StateField, StateEffect,
-    EditorView, keymap, Decoration,
+    EditorView, keymap, Decoration, lineWrapping,
     javascript,
-    oneDark,
     undo, redo, indentWithTab,
-    autocompletion, acceptCompletion, completionKeymap,
-    linter,
-    syntaxHighlighting
-} from './CodeMirrorBundle.js';
+    autocompletion, completionKeymap, acceptCompletion,
+    linter, lintGutter,
+    foldKeymap
+} = CM;
 import { transpile } from './CES_Transpiler.js';
 import { cesLanguage } from './CES_Language.js';
 import { cesTheme, cesHighlighting } from './CES_Theme.js';
@@ -179,9 +179,10 @@ const cesKeywords = [
 ];
 
 function cesCompletions(context) {
-    let word = context.matchBefore(/\w+/);
+    let word = context.matchBefore(/[\w\u00C0-\u017Fа-яА-Я一-龥]+/);
     const code = context.state.doc.toString();
     const prefs = getPreferences();
+    const userLang = (prefs.language || 'es').toLowerCase();
 
     let options = [...cesKeywords];
 
@@ -191,7 +192,7 @@ function cesCompletions(context) {
         for (const [intent, config] of Object.entries(intentWeights)) {
             const hasKeyword = config.keywords.some(k => codeLower.includes(k));
             if (hasKeyword) {
-                // Boost relevant keywords or add specific snippets
+                // Boost relevant keywords
                 options = options.map(opt => {
                     if (config.keywords.includes(opt.label)) {
                         return { ...opt, boost: 10 };
@@ -203,17 +204,23 @@ function cesCompletions(context) {
 
         // Logic placement suggestions
         if (codeLower.includes('alactualizar') && !codeLower.includes('teclapresionada')) {
-            options.push({ label: 'teclaPresionada("w")', type: 'function', info: 'Detecta si una tecla está siendo pulsada' });
+            options.push({
+                label: userLang === 'es' ? 'teclaPresionada("w")' : 'isKeyPressed("w")',
+                type: 'function',
+                info: 'Detecta si una tecla está siendo pulsada'
+            });
         }
 
-        // --- Block Prediction (Brain v3.3) ---
+        // --- Block Prediction (Expert Brain v4.6) ---
         blockTemplates.forEach(block => {
             const match = block.keywords.some(k => codeLower.includes(k));
             if (match) {
+                const name = typeof block.name === 'object' ? (block.name[userLang] || block.name['es']) : block.name;
+                const snippet = typeof block.code === 'object' ? (block.code[userLang] || block.code['es']) : block.code;
                 options.push({
-                    label: block.name,
+                    label: name,
                     type: "snippet",
-                    apply: block.code,
+                    apply: snippet,
                     detail: "Insertar bloque lógico completo",
                     boost: 20
                 });
@@ -221,11 +228,17 @@ function cesCompletions(context) {
         });
     }
 
+    // Filter by word prefix if exists
+    if (word) {
+        const prefix = word.text.toLowerCase();
+        options = options.filter(opt => opt.label.toLowerCase().includes(prefix));
+    }
+
     if (!word) return context.explicit ? { from: context.pos, options: options } : null;
     return {
         from: word.from,
         options: options,
-        validFor: /^\w*$/
+        validFor: /^[\w\u00C0-\u017Fа-яА-Я一-龥]*$/
     };
 }
 
@@ -298,13 +311,15 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
             cesHighlighting,
             errorHighlightField,
             cesLinter,
+            lintGutter(),
             autocompletion({ override: [cesCompletions] }),
             keymap.of([
                 ...completionKeymap,
                 { key: "Tab", run: acceptCompletion },
+                ...foldKeymap,
                 indentWithTab
             ]),
-            EditorView.lineWrapping
+            lineWrapping
         ];
 
         if (!codeEditor) {
@@ -435,12 +450,14 @@ export async function saveCurrentScript() {
 export function undoLastChange() {
     if (codeEditor) {
         undo({ state: codeEditor.state, dispatch: codeEditor.dispatch });
+        codeEditor.focus();
     }
 }
 
 export function redoLastChange() {
     if (codeEditor) {
         redo({ state: codeEditor.state, dispatch: codeEditor.dispatch });
+        codeEditor.focus();
     }
 }
 
@@ -853,6 +870,7 @@ export function initialize(domCache, showConsole, hotReload) {
 
     // Register global access for Console actions
     window._CodeEditor = {
+        openScriptInEditor,
         openScriptAtLine,
         runAutoReparator,
         setLastRuntimeError,
@@ -864,8 +882,15 @@ export function initialize(domCache, showConsole, hotReload) {
 
     // Configura los event listeners para los botones de la barra de herramientas
     dom.codeSaveBtn.addEventListener('click', () => saveCurrentScript());
-    dom.codeUndoBtn.addEventListener('click', () => undoLastChange());
-    dom.codeRedoBtn.addEventListener('click', () => redoLastChange());
+
+    dom.codeUndoBtn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        undoLastChange();
+    });
+    dom.codeRedoBtn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        redoLastChange();
+    });
 
     const historyBtn = document.getElementById('code-history-btn');
     if (historyBtn) {

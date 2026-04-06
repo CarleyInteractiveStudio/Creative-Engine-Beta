@@ -2,7 +2,7 @@
 
 import { InputManager } from './Input.js';
 import * as SceneManager from './SceneManager.js';
-import { UITransform, Button } from './Components.js';
+import * as Components from './Components.js';
 import * as UITransformUtils from './UITransformUtils.js';
 
 class UIEventSystem {
@@ -66,8 +66,11 @@ class UIEventSystem {
     getInteractableElements() {
         // This is a simplified version. A real implementation would be more optimized.
         const interactables = [];
-        SceneManager.currentScene.materias.forEach(materia => {
-            if (materia.isActive && materia.getComponent(Button)) {
+        const scene = SceneManager.currentScene;
+        if (!scene) return interactables;
+
+        scene.getAllMaterias().forEach(materia => {
+            if (materia.isActive && materia.getComponent(Components.Button)) {
                 interactables.push(materia);
             }
         });
@@ -78,7 +81,7 @@ class UIEventSystem {
     }
 
     isPointerOver(materia, mousePos) {
-        const uiTransform = materia.getComponent(UITransform);
+        const uiTransform = materia.getComponent(Components.UITransform);
         if (!uiTransform) return false;
 
         const screenRect = UITransformUtils.getAbsoluteRect(materia, new Map());
@@ -87,7 +90,7 @@ class UIEventSystem {
     }
 
     dispatch(materia, eventType) {
-        const button = materia.getComponent(Button);
+        const button = materia.getComponent(Components.Button);
         if (!button) return;
 
         switch (eventType) {
@@ -104,9 +107,52 @@ class UIEventSystem {
                 button.currentState = this.hoveredElement === materia ? 'hover' : 'normal';
                 break;
             case 'click':
-                button.onClick.forEach(callback => callback());
+                this._handleOnClick(materia, button);
                 break;
         }
+    }
+
+    _handleOnClick(materia, button) {
+        if (!button.onClick) return;
+
+        button.onClick.forEach(event => {
+            // Handle legacy function callbacks
+            if (typeof event === 'function') {
+                event();
+                return;
+            }
+
+            // Handle new Universal Action system
+            if (event.targetMateriaId && event.functionName) {
+                const scene = SceneManager.currentScene;
+                if (!scene) return;
+
+                const target = scene.findMateriaById(event.targetMateriaId);
+                if (!target) return;
+
+                // Case A: Built-in component action (Format: ComponentName.MethodName)
+                if (event.functionName.includes('.')) {
+                    const [compName, methodName] = event.functionName.split('.');
+                    const component = target.getComponentByName(compName);
+                    if (component && typeof component[methodName] === 'function') {
+                        try {
+                            component[methodName]();
+                        } catch (e) {
+                            console.error(`[UI] Error executing action ${event.functionName}:`, e);
+                        }
+                        return;
+                    }
+                }
+
+                // Case B: Custom Script function
+                const scripts = target.getComponents(Components.CreativeScript);
+                scripts.forEach(script => {
+                    if (script.instance && typeof script.instance[event.functionName] === 'function') {
+                        script._safeInvoke(event.functionName, materia);
+                    }
+                });
+            }
+        });
     }
 }
 

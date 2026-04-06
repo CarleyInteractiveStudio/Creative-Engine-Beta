@@ -12,14 +12,14 @@
     <script type="importmap">
     {
         "imports": {
-            "codemirror": "https://esm.sh/codemirror@6.0.1?deps=@codemirror/state@6.4.1",
             "@codemirror/state": "https://esm.sh/@codemirror/state@6.4.1",
             "@codemirror/view": "https://esm.sh/@codemirror/view@6.26.3?deps=@codemirror/state@6.4.1",
             "@codemirror/commands": "https://esm.sh/@codemirror/commands@6.3.3?deps=@codemirror/state@6.4.1",
-            "@codemirror/autocomplete": "https://esm.sh/@codemirror/autocomplete@6.16.0?deps=@codemirror/state@6.4.1",
-            "@codemirror/lint": "https://esm.sh/@codemirror/lint@6.4.2?deps=@codemirror/state@6.4.1",
-            "@codemirror/theme-one-dark": "https://esm.sh/@codemirror/theme-one-dark@6.1.2?deps=@codemirror/state@6.4.1",
-            "@codemirror/lang-javascript": "https://esm.sh/@codemirror/lang-javascript@6.2.2?deps=@codemirror/state@6.4.1,@codemirror/view@6.26.3",
+            "@codemirror/autocomplete": "https://esm.sh/@codemirror/autocomplete@6.16.0?deps=@codemirror/state@6.4.1,@codemirror/view@6.26.3",
+            "@codemirror/lint": "https://esm.sh/@codemirror/lint@6.4.2?deps=@codemirror/state@6.4.1,@codemirror/view@6.26.3",
+            "@codemirror/search": "https://esm.sh/@codemirror/search@6.5.6?deps=@codemirror/state@6.4.1,@codemirror/view@6.26.3",
+            "@codemirror/theme-one-dark": "https://esm.sh/@codemirror/theme-one-dark@6.1.2?deps=@codemirror/state@6.4.1,@codemirror/view@6.26.3",
+            "@codemirror/lang-javascript": "https://esm.sh/@codemirror/lang-javascript@6.2.2?deps=@codemirror/state@6.4.1,@codemirror/language@6.10.1",
             "@codemirror/language": "https://esm.sh/@codemirror/language@6.10.1?deps=@codemirror/state@6.4.1,@codemirror/view@6.26.3",
             "@lezer/highlight": "https://esm.sh/@lezer/highlight@1.2.1"
         }
@@ -575,7 +575,10 @@ public star() {
                     </div>
                     <div id="animation-panel-overlay">
                         <p data-i18n="CARGA_ANIM_HINT">Selecciona un asset de animación (.cea) para empezar.</p>
-                        <button id="btn-create-animation-quick" class="primary-btn" data-i18n="CREAR_ANIM_RAPIDA">Crear Nueva Animación</button>
+                        <div class="overlay-buttons">
+                            <button id="btn-create-animation-quick" class="primary-btn" data-i18n="CREAR_ANIM_RAPIDA">Crear Nueva Animación</button>
+                            <button id="btn-open-animation-quick" class="secondary-btn" data-i18n="ABRIR_ANIM_RAPIDA">Abrir Existente</button>
+                        </div>
                     </div>
                 <div class="resize-handle" data-direction="n"></div>
                 <div class="resize-handle" data-direction="ne"></div>
@@ -599,14 +602,28 @@ public star() {
                     <button class="close-panel-btn" data-panel="animator-controller-panel">&times;</button>
                 </div>
                 <div class="panel-content no-padding animator-controller-layout">
-                    <div id="animator-controller-overlay" class="panel-overlay-message">
+                    <div id="animator-controller-overlay">
                         <p data-i18n="CARGA_ANIM_CTRL_HINT">Carga un asset de controlador (.ceanim) para empezar.</p>
-                        <p data-i18n="CARGA_ANIM_CTRL_HINT_2">Puedes crear uno nuevo o abrir uno existente.</p>
+                        <div class="overlay-buttons">
+                            <button id="btn-create-anim-ctrl-quick" class="primary-btn" data-i18n="CREAR_CTRL_RAPIDO">Crear Nuevo Controlador</button>
+                            <button id="btn-open-anim-ctrl-quick" class="secondary-btn" data-i18n="ABRIR_CTRL_RAPIDO">Abrir Existente</button>
+                        </div>
                     </div>
-                    <div id="animator-assets-list" class="anim-sidebar">
-                        <div class="list-header">Animaciones (.cea)</div>
-                        <input type="search" id="anim-assets-search" placeholder="Buscar animaciones...">
-                        <div class="list-content"></div>
+                    <div id="animator-left-sidebar" class="anim-sidebar">
+                        <div id="animator-assets-list" class="anim-sidebar-section">
+                            <div class="list-header" data-i18n="ANIMACIONES">Animaciones (.cea)</div>
+                            <input type="search" id="anim-assets-search" placeholder="Buscar animaciones..." data-i18n-placeholder="BUSCAR_ANIMACIONES">
+                            <div class="list-content scroll-no-bar"></div>
+                        </div>
+                        <div id="anim-resizer-v-left" class="resizer-h-simple"></div>
+                        <div id="animator-states-list" class="anim-sidebar-section">
+                            <div class="list-header" data-i18n="ESTADOS">Estados</div>
+                            <div class="list-toolbar">
+                                <button id="anim-state-add-btn" title="Añadir Estado"><img src="icons/plus.svg" class="ce-icon"></button>
+                                <button id="anim-state-delete-btn" title="Eliminar Estado"><img src="icons/minus.svg" class="ce-icon"></button>
+                            </div>
+                            <div class="list-content scroll-no-bar"></div>
+                        </div>
                     </div>
                     <div id="anim-resizer-left" class="resizer-v-simple"></div>
                     <div id="animator-graph-view">
@@ -618,20 +635,11 @@ public star() {
                     </div>
                     <div id="anim-resizer-right" class="resizer-v-simple"></div>
                     <div id="animator-right-sidebar">
-                        <div id="animator-states-list" class="anim-sidebar-section">
-                            <div class="list-header">Estados</div>
-                            <div class="list-toolbar">
-                                <button id="anim-state-add-btn" title="Añadir Estado"><img src="icons/plus.svg" class="ce-icon"></button>
-                                <button id="anim-state-delete-btn" title="Eliminar Estado"><img src="icons/minus.svg" class="ce-icon"></button>
-                            </div>
-                            <div class="list-content"></div>
-                        </div>
-                        <div class="resizer-h-simple"></div>
                         <div id="animator-state-inspector" class="anim-sidebar-section">
-                            <div class="list-header">Inspector de Estado</div>
-                            <div class="list-content inspector-content">
+                            <div class="list-header" data-i18n="INSPECTOR_ESTADO">Inspector de Estado</div>
+                            <div class="list-content inspector-content scroll-no-bar">
                                 <div class="panel-overlay-message" style="position: static; padding: 20px;">
-                                    <p>Selecciona un estado para editar sus propiedades.</p>
+                                    <p data-i18n="HINT_SELECCIONA_ELEMENTO">Selecciona un estado para editar sus propiedades.</p>
                                 </div>
                             </div>
                         </div>

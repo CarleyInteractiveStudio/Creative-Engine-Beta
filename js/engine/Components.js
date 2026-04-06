@@ -75,6 +75,7 @@ const componentAliases = {
     'Attack': 'ataque',
     'ProgressBar': 'barraDeProgreso',
     'SceneLoader': 'cargarEscena',
+    'PlatformEffector2D': 'efectorPlataforma2D',
 };
 
 
@@ -1300,6 +1301,12 @@ export class CreativeScript extends Leyes {
 }
 
 export class Rigidbody2D extends Leyes {
+    static actionableMethods = {
+        'addForce': ['aplicarFuerza', 'приложитьСилу', '施加力'],
+        'addTorque': ['aplicarTorque', 'приложитьКрутящийМомент', '施加扭矩'],
+        'stop': ['detener', 'остановить', '停止']
+    };
+
     constructor(materia) {
         super(materia);
         this.bodyType = 'Dynamic'; // 'Dynamic', 'Kinematic', 'Static'
@@ -1517,6 +1524,28 @@ export class BoxCollider2D extends Leyes {
         newCollider.size = { ...this.size };
         newCollider.edgeRadius = this.edgeRadius;
         return newCollider;
+    }
+}
+
+export class PlatformEffector2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.blockUp = true;
+        this.blockDown = false;
+        this.blockLeft = false;
+        this.blockRight = false;
+        this.surfaceArc = 180; // For future one-way rotation support
+        this.useOneWay = true;
+    }
+    clone() {
+        const newEffector = new PlatformEffector2D(null);
+        newEffector.blockUp = this.blockUp;
+        newEffector.blockDown = this.blockDown;
+        newEffector.blockLeft = this.blockLeft;
+        newEffector.blockRight = this.blockRight;
+        newEffector.surfaceArc = this.surfaceArc;
+        newEffector.useOneWay = this.useOneWay;
+        return newEffector;
     }
 }
 
@@ -1769,6 +1798,13 @@ export class Animation {
 }
 
 export class Animator extends Leyes {
+    static actionableMethods = {
+        'play': ['reproducir', 'воспроизвести', '播放'],
+        'stop': ['detener', 'остановить', '停止'],
+        'pause': ['pausar', 'приостановить', '暂停'],
+        'resume': ['continuar', 'продолжить', '恢复']
+    };
+
     constructor(materia) {
         super(materia);
         this.animationClipPath = ''; // Path to the .ceanimclip or .cea asset
@@ -2503,6 +2539,12 @@ export class SpriteLight2D extends Leyes {
 }
 
 export class AudioSource extends Leyes {
+    static actionableMethods = {
+        'play': ['reproducir', 'воспроизвести', '播放'],
+        'stop': ['detener', 'остановить', '停止'],
+        'pause': ['pausar', 'приостановить', '暂停']
+    };
+
     constructor(materia) {
         super(materia);
         this.source = ''; // Path to the audio file
@@ -2689,6 +2731,14 @@ export class AudioSource extends Leyes {
 }
 
 export class VideoPlayer extends Leyes {
+    static actionableMethods = {
+        'play': ['reproducir', 'воспроизвести', '播放'],
+        'stop': ['detener', 'остановить', '停止'],
+        'pause': ['pausar', 'приостановить', '暂停'],
+        'mute': ['silenciar', 'выключитьЗвук', '静音'],
+        'unmute': ['activarSonido', 'включитьЗвук', '取消静音']
+    };
+
     constructor(materia) {
         super(materia);
         this.source = '';
@@ -2970,6 +3020,7 @@ registerComponent('TextureRender', TextureRender);
 registerComponent('CreativeScript', CreativeScript);
 registerComponent('Rigidbody2D', Rigidbody2D);
 registerComponent('BoxCollider2D', BoxCollider2D);
+registerComponent('PlatformEffector2D', PlatformEffector2D);
 registerComponent('CapsuleCollider2D', CapsuleCollider2D);
 registerComponent('CircleCollider2D', CircleCollider2D);
 registerComponent('PolygonCollider2D', PolygonCollider2D);
@@ -2979,6 +3030,12 @@ registerComponent('SpriteRenderer', SpriteRenderer);
 registerComponent('Animator', Animator);
 
 export class AnimatorController extends Leyes {
+    static actionableMethods = {
+        'play': ['reproducir', 'воспроизвести', '播放'],
+        'setParameter': ['establecerParametro', 'установитьПараметр', '设置参数'],
+        'trigger': ['disparar', 'триггер', '触发']
+    };
+
     constructor(materia) {
         super(materia);
         this.controllerPath = ''; // Path to the .ceanim asset
@@ -3909,6 +3966,11 @@ export class Parallax extends Leyes {
 registerComponent('Parallax', Parallax);
 
 export class Movement extends Leyes {
+    static actionableMethods = {
+        'jump': ['saltar', 'прыгать', '跳跃'],
+        'stop': ['detener', 'остановить', '停止']
+    };
+
     constructor(materia) {
         super(materia);
         this.upKey = 'w';
@@ -3925,6 +3987,12 @@ export class Movement extends Leyes {
 
         this.moveSound = ""; // Ruta al sonido de movimiento
         this.jumpSound = ""; // Ruta al sonido de salto
+
+        // Animations
+        this.idleAnim = "idle";
+        this.runAnim = "run";
+        this.jumpAnim = "jump";
+        this.fallAnim = "fall";
 
         this._warnedMissing = new Set();
     }
@@ -3975,6 +4043,11 @@ export class Movement extends Leyes {
 
                 if (this.isGrounded && input.isKeyJustPressed(this.jumpKey)) {
                     rb.addImpulse(0, -this.jumpForce / 10);
+
+                    // Stop running sound when jumping
+                    const audio = this.materia.getComponent(AudioSource);
+                    if (audio && this.moveSound && audio.isPlaying) audio.stop();
+
                     if (this.jumpSound) {
                         const audio = this.materia.getComponent(AudioSource);
                         if (audio) audio.play(this.jumpSound);
@@ -3994,13 +4067,51 @@ export class Movement extends Leyes {
         }
 
         // Sonido de movimiento
-        if ((moveX !== 0 || moveY !== 0) && this.moveSound) {
+        if (this.isGrounded && (moveX !== 0 || moveY !== 0) && this.moveSound) {
             const audio = this.materia.getComponent(AudioSource);
             if (audio) {
                 if (!audio.isPlaying) audio.play(this.moveSound);
             } else if (!this._warnedMissing.has('AudioSource')) {
                 this._warnedMissing.add('AudioSource');
                 throw new Error(`El componente 'Movement' requiere un 'AudioSource' para reproducir el sonido de movimiento.`);
+            }
+        } else if ((moveX === 0 && moveY === 0) || !this.isGrounded) {
+            const audio = this.materia.getComponent(AudioSource);
+            if (audio && audio.isPlaying && this.moveSound) {
+                // Check if current sound is indeed the moveSound before stopping
+                if (audio.source === this.moveSound) audio.stop();
+            }
+        }
+
+        // --- Animation Integration ---
+        this._updateAnimations(moveX, moveY, rb);
+    }
+
+    _updateAnimations(moveX, moveY, rb) {
+        const controller = this.materia.getComponent(AnimatorController);
+        const animator = this.materia.getComponent(Animator);
+        if (!controller && !animator) return;
+
+        const play = (name) => {
+            if (!name) return;
+            if (controller) controller.play(name);
+            else animator.play(name);
+        };
+
+        const transform = this.materia.getComponent(Transform);
+
+        if (!this.isGrounded && rb) {
+            if (rb.velocity.y < -0.1) play(this.jumpAnim);
+            else if (rb.velocity.y > 0.1) play(this.fallAnim);
+        } else {
+            if (Math.abs(moveX) > 0.01 || Math.abs(moveY) > 0.01) {
+                play(this.runAnim);
+                // Auto-flip based on direction
+                if (transform && moveX !== 0) {
+                    transform.flipX = moveX < 0;
+                }
+            } else {
+                play(this.idleAnim);
             }
         }
     }
@@ -4310,6 +4421,7 @@ export class TilemapCollider2D extends Leyes {
         }
 
         this.generatedColliders = [];
+        this.generatedPolygons = []; // For slopes
         const { cellSize } = grid;
         const layerWidth = tilemap.width * cellSize.x;
         const layerHeight = tilemap.height * cellSize.y;
@@ -4317,8 +4429,17 @@ export class TilemapCollider2D extends Leyes {
         for (let i = 0; i < tilemap.layers.length; i++) {
             const layer = tilemap.layers[i];
             const tiles = new Set();
+            const slopeTiles = new Map(); // key -> type
+
             for (const [key, value] of layer.tileData.entries()) {
-                if (value) tiles.add(key);
+                if (value) {
+                    const slopeType = this._detectSlopeType(value);
+                    if (slopeType !== 'none') {
+                        slopeTiles.set(key, slopeType);
+                    } else {
+                        tiles.add(key);
+                    }
+                }
             }
 
             if (tiles.size === 0) {
@@ -4362,6 +4483,42 @@ export class TilemapCollider2D extends Leyes {
             }
             this._cachedMesh.set(i, rects);
 
+            // Generate Slopes (Polygons)
+            if (this.useAllLayers || i == this.sourceLayerIndex) {
+                const layerOffsetX = layer.position.x * layerWidth;
+                const layerOffsetY = layer.position.y * layerHeight;
+
+                for (const [key, type] of slopeTiles.entries()) {
+                    const [c, r] = key.split(',').map(Number);
+                    const rectWidth_pixels = cellSize.x;
+                    const rectHeight_pixels = cellSize.y;
+                    const rectTopLeftX = (c * cellSize.x) - (layerWidth / 2) + layerOffsetX;
+                    const rectTopLeftY = (r * cellSize.y) - (layerHeight / 2) + layerOffsetY;
+
+                    const centerX = rectTopLeftX + rectWidth_pixels / 2;
+                    const centerY = rectTopLeftY + rectHeight_pixels / 2;
+                    const hw = rectWidth_pixels / 2;
+                    const hh = rectHeight_pixels / 2;
+
+                    let vertices = [];
+                    // TL: top-left, TR: top-right, BL: bottom-left, BR: bottom-right
+                    // slope_up (BL to TR): missing TL
+                    if (type === 'slope_up') vertices = [{x: -hw, y: hh}, {x: hw, y: -hh}, {x: hw, y: hh}];
+                    // slope_down (TL to BR): missing TR
+                    else if (type === 'slope_down') vertices = [{x: -hw, y: -hh}, {x: hw, y: hh}, {x: -hw, y: hh}];
+                    // slope_up_inv (BR to TL): missing BL (Ceiling slope up)
+                    else if (type === 'slope_up_inv') vertices = [{x: -hw, y: -hh}, {x: hw, y: -hh}, {x: hw, y: hh}];
+                    // slope_down_inv (TR to BL): missing BR (Ceiling slope down)
+                    else if (type === 'slope_down_inv') vertices = [{x: -hw, y: -hh}, {x: hw, y: -hh}, {x: -hw, y: hh}];
+
+                    if (vertices.length > 0) {
+                        this.generatedPolygons.push({
+                            vertices: vertices.map(v => ({ x: v.x + centerX, y: v.y + centerY }))
+                        });
+                    }
+                }
+            }
+
             // Now, convert these rects to world-space colliders for the physics engine
             // This is only done for the layer specified in the component's properties
             // We use loose comparison just in case types are mixed
@@ -4387,6 +4544,21 @@ export class TilemapCollider2D extends Leyes {
             }
         }
         this.isDirty = false;
+    }
+
+    _detectSlopeType(tile) {
+        // We use the tile's metadata if present, or analyze name
+        const name = (tile.name || "").toLowerCase();
+        if (name.includes("slope")) {
+            if (name.includes("up") && name.includes("inv")) return "slope_up_inv";
+            if (name.includes("down") && name.includes("inv")) return "slope_down_inv";
+            if (name.includes("up")) return "slope_up";
+            if (name.includes("down")) return "slope_down";
+        }
+
+        if (tile.isSlope) return tile.slopeType || 'slope_up';
+
+        return "none";
     }
 
     generate() {
@@ -5088,6 +5260,11 @@ registerComponent('Gyzmo', Gyzmo);
  * Componente que lanza proyectiles (prefabs) al presionar una tecla o llamar a fire().
  */
 export class ProjectileLauncher extends Leyes {
+    static actionableMethods = {
+        'launch': ['lanzar', 'запустить', '发射'],
+        'fire': ['disparar', 'огонь', '开火']
+    };
+
     constructor(materia) {
         super(materia);
         this.projectilePrefab = ""; // Ruta al .ceprefab
@@ -5191,6 +5368,12 @@ export class AutoDestroy extends Leyes {
  * Componente que gestiona la vida de un objeto.
  */
 export class Health extends Leyes {
+    static actionableMethods = {
+        'damage': ['danar', 'causarDano', 'нанестиУрон', '造成伤害'],
+        'heal': ['curar', 'curarPT', 'лечить', '治疗'],
+        'onDeath': ['alMorir', 'умереть', '死亡']
+    };
+
     constructor(materia) {
         super(materia);
         this.maxHealth = 100;
@@ -5599,6 +5782,11 @@ export class ProgressBar extends Leyes {
  * Componente que hace que el objeto patrulle entre dos puntos o direcciones.
  */
 export class Patrol extends Leyes {
+    static actionableMethods = {
+        'start': ['iniciar', 'начать', '开始'],
+        'stop': ['detener', 'остановить', '停止']
+    };
+
     constructor(materia) {
         super(materia);
         this.speed = 200;
@@ -5611,6 +5799,10 @@ export class Patrol extends Leyes {
         this._timer = 0;
         this._isPaused = false;
         this._movedDistance = 0;
+
+        // Animations
+        this.idleAnim = "idle";
+        this.moveAnim = "move";
     }
 
     update(deltaTime) {
@@ -5628,6 +5820,7 @@ export class Patrol extends Leyes {
                 this._timer = 0;
                 this._direction *= -1;
             }
+            this._updateAnimations(false, transform);
             return;
         }
 
@@ -5643,6 +5836,29 @@ export class Patrol extends Leyes {
         if (this._movedDistance >= this.distance) {
             this._movedDistance = 0;
             this._isPaused = true;
+        }
+
+        this._updateAnimations(true, transform);
+    }
+
+    _updateAnimations(isMoving, transform) {
+        const controller = this.materia.getComponent(AnimatorController);
+        const animator = this.materia.getComponent(Animator);
+        if (!controller && !animator) return;
+
+        const play = (name) => {
+            if (!name) return;
+            if (controller) controller.play(name);
+            else animator.play(name);
+        };
+
+        if (isMoving) {
+            play(this.moveAnim);
+            if (this.horizontal && transform) {
+                transform.flipX = this._direction < 0;
+            }
+        } else {
+            play(this.idleAnim);
         }
     }
 
@@ -5688,6 +5904,12 @@ export class Patrol extends Leyes {
  * Componente que emite prefabs como partículas con optimización de pooling.
  */
 export class ParticleSystem extends Leyes {
+    static actionableMethods = {
+        'play': ['reproducir', 'воспроизвести', '播放'],
+        'stop': ['detener', 'остановить', '停止'],
+        'emit': ['emitir', 'излучать', '发射']
+    };
+
     constructor(materia) {
         super(materia);
         this.prefabPath = "";
@@ -5958,6 +6180,13 @@ export class RaycastSource extends Leyes {
  * Componente Water (Agua): Simulación de fluidos basada en partículas.
  */
 export class Water extends Leyes {
+    static actionableMethods = {
+        'play': ['reproducir', 'воспроизвести', '播放'],
+        'stop': ['detener', 'остановить', '停止'],
+        'pause': ['pausar', 'приостановить', '暂停'],
+        'resume': ['continuar', 'продолжить', '恢复']
+    };
+
     constructor(materia) {
         super(materia);
         this.width = 400;
@@ -6371,6 +6600,11 @@ export class Water extends Leyes {
  * Maneja potencia vertical, potencia de despegue y giro (inclinación).
  */
 export class HelicopterController extends Leyes {
+    static actionableMethods = {
+        'takeOff': ['despegar', 'взлететь', '起飞'],
+        'land': ['aterrizar', 'приземлиться', '着陆']
+    };
+
     constructor(materia) {
         super(materia);
         this.potenciaMotor = 2000;
@@ -6389,6 +6623,10 @@ export class HelicopterController extends Leyes {
 
         // Sonidos
         this.engineSound = "";
+
+        // Animations
+        this.idleAnim = "idle";
+        this.flyAnim = "fly";
 
         // Scripting API
         this.potenciaActual = 0;
@@ -6489,6 +6727,11 @@ export class HelicopterController extends Leyes {
                 this._warnedMissing.add('AudioSource');
                 throw new Error(`El componente 'HelicopterController' requiere un 'AudioSource' para reproducir el sonido de motor.`);
             }
+        } else {
+            const audio = this.materia.getComponent(AudioSource);
+            if (audio && audio.isPlaying && this.engineSound && audio.source === this.engineSound) {
+                audio.stop();
+            }
         }
 
         // 2. Manejar Giro (Inclinación / Pitch)
@@ -6528,6 +6771,27 @@ export class HelicopterController extends Leyes {
             const ratio = (this.velocidadMaxima / 50) / speed;
             rb.velocity.x *= ratio;
             rb.velocity.y *= ratio;
+        }
+
+        // --- Animation Integration ---
+        this._updateAnimations(thrustInput, rb);
+    }
+
+    _updateAnimations(thrustInput, rb) {
+        const controller = this.materia.getComponent(AnimatorController);
+        const animator = this.materia.getComponent(Animator);
+        if (!controller && !animator) return;
+
+        const play = (name) => {
+            if (!name) return;
+            if (controller) controller.play(name);
+            else animator.play(name);
+        };
+
+        if (Math.abs(thrustInput) > 0.01 || Math.abs(rb.velocity.x) > 0.05 || Math.abs(rb.velocity.y) > 0.05) {
+            play(this.flyAnim);
+        } else {
+            play(this.idleAnim);
         }
     }
 
@@ -6572,6 +6836,11 @@ export class LineCollider2D extends Leyes {
  * Inspirado en Reckless Getaway 2.
  */
 export class VehicleTopDown extends Leyes {
+    static actionableMethods = {
+        'accelerate': ['acelerar', 'ускориться', '加速'],
+        'brake': ['frenar', 'тормозить', '制动']
+    };
+
     constructor(materia) {
         super(materia);
         this.autoAcelerar = true;
@@ -6590,6 +6859,11 @@ export class VehicleTopDown extends Leyes {
         // Sonidos
         this.engineSound = "";
         this.brakeSound = "";
+
+        // Animations
+        this.idleAnim = "idle";
+        this.driveAnim = "drive";
+        this.reverseAnim = "reverse";
 
         // Estado interno
         this._isInitialized = false;
@@ -6692,6 +6966,10 @@ export class VehicleTopDown extends Leyes {
                 }
             }
         } else {
+            const audio = this.materia.getComponent(AudioSource);
+            if (audio && audio.isPlaying && this.engineSound && audio.source === this.engineSound) {
+                audio.stop();
+            }
             // Freno motor suave
             if (this.frenadoMotor > 0) {
                 rb.velocity.x *= Math.exp(-this.frenadoMotor * deltaTime * 5);
@@ -6719,6 +6997,31 @@ export class VehicleTopDown extends Leyes {
             rb.velocity.x *= ratio;
             rb.velocity.y *= ratio;
         }
+
+        // --- Animation Integration ---
+        this._updateAnimations(accelInput, rb, forward);
+    }
+
+    _updateAnimations(accelInput, rb, forward) {
+        const controller = this.materia.getComponent(AnimatorController);
+        const animator = this.materia.getComponent(Animator);
+        if (!controller && !animator) return;
+
+        const play = (name) => {
+            if (!name) return;
+            if (controller) controller.play(name);
+            else animator.play(name);
+        };
+
+        const currentForwardVel = rb.velocity.x * forward.x + rb.velocity.y * forward.y;
+
+        if (Math.abs(currentForwardVel) < 0.05) {
+            play(this.idleAnim);
+        } else if (currentForwardVel > 0) {
+            play(this.driveAnim);
+        } else {
+            play(this.reverseAnim);
+        }
     }
 
     clone() {
@@ -6734,6 +7037,11 @@ export class VehicleTopDown extends Leyes {
  * Maneja potencia, sustentación, giro y coordina con la suspensión de las ruedas.
  */
 export class PlaneController extends Leyes {
+    static actionableMethods = {
+        'accelerate': ['acelerar', 'ускориться', '加速'],
+        'brake': ['frenar', 'тормозить', '制动']
+    };
+
     constructor(materia) {
         super(materia);
         this.potenciaMotor = 1500;
@@ -6753,6 +7061,11 @@ export class PlaneController extends Leyes {
         // Sonidos
         this.engineSound = "";
         this.takeoffSound = "";
+
+        // Animations
+        this.idleAnim = "idle";
+        this.flyAnim = "fly";
+        this.groundAnim = "ground";
 
         // Estado interno
         this.estaEnSuelo = false;
@@ -6954,6 +7267,33 @@ export class PlaneController extends Leyes {
         if (this.engineSound && Math.abs(rb.velocity.x) > 0.1) {
             const audio = this.materia.getComponent(AudioSource);
             if (audio && !audio.isPlaying) audio.play(this.engineSound);
+        } else {
+            const audio = this.materia.getComponent(AudioSource);
+            if (audio && audio.isPlaying && this.engineSound && audio.source === this.engineSound) {
+                audio.stop();
+            }
+        }
+
+        // --- Animation Integration ---
+        this._updateAnimations(thrustInput, rb);
+    }
+
+    _updateAnimations(thrustInput, rb) {
+        const controller = this.materia.getComponent(AnimatorController);
+        const animator = this.materia.getComponent(Animator);
+        if (!controller && !animator) return;
+
+        const play = (name) => {
+            if (!name) return;
+            if (controller) controller.play(name);
+            else animator.play(name);
+        };
+
+        if (this.estaEnSuelo) {
+            if (Math.abs(rb.velocity.x) > 0.1) play(this.groundAnim);
+            else play(this.idleAnim);
+        } else {
+            play(this.flyAnim);
         }
     }
 
@@ -6965,6 +7305,11 @@ export class PlaneController extends Leyes {
 }
 
 export class SuspensionHC extends Leyes {
+    static actionableMethods = {
+        'accelerate': ['acelerar', 'ускориться', '加速'],
+        'brake': ['frenar', 'тормозить', '制动']
+    };
+
     constructor(materia) {
         super(materia);
         this.chasis = null; // ID de la materia o referencia al objeto

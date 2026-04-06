@@ -13,7 +13,12 @@ const safeTagStyle = (tagName, styles) => {
 const cesTheme = EditorView.theme({
     "&": {
         color: "#d4d4d4",
-        backgroundColor: "#1e1e2e"
+        backgroundColor: "#1e1e2e",
+        height: "100%"
+    },
+    ".cm-scroller": {
+        backgroundColor: "#1e1e2e",
+        outline: "none"
     },
     ".cm-content": {
         caretColor: "#ae81ff",
@@ -27,13 +32,14 @@ const cesTheme = EditorView.theme({
     },
     // Integrate line numbers seamlessly - "No bar, just numbers"
     ".cm-gutters": {
-        backgroundColor: "#1e1e2e",
-        color: "#ffffff",
-        border: "none",
-        borderRight: "none"
+        backgroundColor: "#1e1e2e !important",
+        color: "#ffffff !important",
+        border: "none !important",
+        borderRight: "none !important"
     },
     ".cm-gutter": {
-        backgroundColor: "#1e1e2e"
+        backgroundColor: "#1e1e2e !important",
+        border: "none !important"
     },
     ".cm-gutterElement": {
         color: "#ffffff !important", // Solid white line numbers
@@ -53,7 +59,20 @@ const cesTheme = EditorView.theme({
         border: "none"
     },
     ".cm-foldGutter": {
-        display: "none"
+        color: "#6272a4",
+        width: "18px",
+        backgroundColor: "#1e1e2e !important"
+    },
+    ".cm-foldGutter .cm-gutterElement": {
+        padding: "0 4px",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
+    },
+    ".cm-lintGutter": {
+        width: "18px",
+        backgroundColor: "#1e1e2e !important"
     }
 }, { dark: true });
 

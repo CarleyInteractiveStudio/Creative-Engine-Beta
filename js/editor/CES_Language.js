@@ -1,4 +1,4 @@
-import { StreamLanguage, tags } from "./CodeMirrorBundle.js";
+import { StreamLanguage, tags, foldNodeProp } from "./CodeMirrorBundle.js";
 
 // Utility to ensure we don't pass undefined tags
 const getTag = (name) => {
@@ -13,6 +13,7 @@ const getTag = (name) => {
 const cesKeywords = [
     "si", "sino", "mientras", "para", "cada", "esperar", "retornar", "nuevo",
     "funcion", "variable", "constante", "verdadero", "falso", "publico", "privado",
+    "bublico", "bublica", "piblico", "piblica",
     "ve", "go", "public", "private", "async", "await",
     "se", "senão", "enquanto", "função", "если", "иначе", "пока", "для",
     "вернуть", "nuevo", "функция", "истина", "ложь", "如果", "否则", "当",
@@ -54,6 +55,10 @@ const cesFunctions = [
 ];
 
 const cesLanguage = StreamLanguage.define({
+    languageData: {
+        commentTokens: { line: "//", block: { open: "/*", close: "*/" } },
+        indentOnInput: /^\s*[}\]]$/
+    },
     token(stream) {
         if (stream.eatSpace()) return null;
 

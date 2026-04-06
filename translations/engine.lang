@@ -407,6 +407,17 @@ VERSION_RESTAURADA: Versión restaurada en el editor. Recuerda guardar para apli
 NADA_QUE_REPARAR: No se encontraron errores obvios que reparar.
 REPARACION_EXITOSA: Código reparado con éxito.
 REPARACION_PARCIAL: Se realizaron correcciones, pero aún quedan errores complejos.
+CARGA_ANIM_HINT: Selecciona un asset de animación (.cea) para empezar.
+CREAR_ANIM_RAPIDA: Crear Nueva Animación
+ABRIR_ANIM_RAPIDA: Abrir Existente
+CARGA_ANIM_CTRL_HINT: Carga un asset de controlador (.ceanim) para empezar.
+CREAR_CTRL_RAPIDO: Crear Nuevo Controlador
+ABRIR_CTRL_RAPIDO: Abrir Existente
+ANIMACIONES: Animaciones
+ESTADOS: Estados
+INSPECTOR_ESTADO: Inspector de Estado
+BUSCAR_ANIMACIONES: Buscar animaciones...
+HINT_SELECCIONA_ELEMENTO: Selecciona un elemento para ver sus propiedades.
 
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
@@ -487,6 +498,32 @@ TRIGGER_TAG: Tag Activador
 TRIGGER_KEY: Tecla Activadora
 BUTTON_MATERIA: Materia Botón
 SCENE_LOADER_DESC: Carga una escena cuando el jugador colisiona, se presiona una tecla o se clica en el botón asignado.
+PLATFORM_EFFECTOR: Efector de Plataforma 2D
+CLICK_EDGES: Clic en bordes para alternar
+USE_ONE_WAY: Usar Unidireccional
+SURFACE_ARC: Arco de Superficie
+COMPONENTE: Componente
+SIN_FUNCION: Sin Función
+EFECTO_PLATAFORMA: Efecto Plataforma
+CLICK_BORDES: Haz clic en los bordes para bloquear/desbloquear
+TIPO_MOVIMIENTO: Tipo Movimiento
+VAGAR: Vagar
+ESCAPAR: Escapar
+SEGUIR: Seguir
+RANGO_ATAQUE: Rango Ataque
+AL_PERDER_OBJETIVO: Al perder Objetivo
+AL_VER_OBJETIVO: Al ver Objetivo
+CONFIG_MOTOR: Ajustes del Motor
+FUERZA_INCLINACION: Inclinación
+CONTROL_AIRE: Giro Aire
+ESTABILIDAD_AIRE: Auto-Estabilizar
+CENTRADO_SUELO: Centrado Suelo
+AGILIDAD_GIRO: Agilidad Giro
+ARRASTRE_AIRE: Arrastre Aire
+SUSTENTACION: Sustentación
+VELOCIDAD_DESPEGUE: Vel. Despegue
+DERRAPE: Derrape
+FRENO_MOTOR: Freno Motor
 
 [EN]
 # Header
@@ -897,6 +934,17 @@ VERSION_RESTAURADA: Version restored in the editor. Remember to save to apply ch
 NADA_QUE_REPARAR: No obvious errors found to repair.
 REPARACION_EXITOSA: Code repaired successfully.
 REPARACION_PARCIAL: Corrections were made, but complex errors remain.
+CARGA_ANIM_HINT: Select an animation asset (.cea) to start.
+CREAR_ANIM_RAPIDA: Create New Animation
+ABRIR_ANIM_RAPIDA: Open Existing
+CARGA_ANIM_CTRL_HINT: Load a controller asset (.ceanim) to start.
+CREAR_CTRL_RAPIDO: Create New Controller
+ABRIR_CTRL_RAPIDO: Open Existing
+ANIMACIONES: Animations
+ESTADOS: States
+INSPECTOR_ESTADO: State Inspector
+BUSCAR_ANIMACIONES: Search animations...
+HINT_SELECCIONA_ELEMENTO: Select an element to view its properties.
 
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
@@ -977,6 +1025,28 @@ TRIGGER_TAG: Trigger Tag
 TRIGGER_KEY: Trigger Key
 BUTTON_MATERIA: Button Matter
 SCENE_LOADER_DESC: Loads a scene when the player collides, a key is pressed, or the assigned button is clicked.
+COMPONENTE: Component
+SIN_FUNCION: No Function
+EFECTO_PLATAFORMA: Platform Effect
+CLICK_BORDES: Click edges to block/unblock
+TIPO_MOVIMIENTO: Movement Type
+VAGAR: Wander
+ESCAPAR: Escape
+SEGUIR: Follow
+RANGO_ATAQUE: Attack Range
+AL_PERDER_OBJETIVO: On Target Lost
+AL_VER_OBJETIVO: On Target Seen
+CONFIG_MOTOR: Engine Settings
+FUERZA_INCLINACION: Pitch Strength
+CONTROL_AIRE: Air Turn
+ESTABILIDAD_AIRE: Auto-Stabilize
+CENTRADO_SUELO: Ground Centering
+AGILIDAD_GIRO: Turn Agility
+ARRASTRE_AIRE: Air Drag
+SUSTENTACION: Lift Force
+VELOCIDAD_DESPEGUE: Takeoff Speed
+DERRAPE: Drift
+FRENO_MOTOR: Motor Brake
 
 [PT]
 # Header
@@ -1315,6 +1385,8 @@ TRIGGER_TAG: Tag Ativadora
 TRIGGER_KEY: Tecla Ativadora
 BUTTON_MATERIA: Matéria Botão
 SCENE_LOADER_DESC: Carrega uma cena quando o jogador colide, uma tecla é pressionada ou o botão atribuído é clicado.
+CARGA_ANIM_CTRL_HINT: Carregue um recurso de controlador (.ceanim) para começar.
+CARGA_ANIM_CTRL_HINT_2: Você pode criar um novo ou abrir um existente.
 
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
@@ -1373,6 +1445,28 @@ CYAN: Ciano
 BLUE: Azul
 VIOLET: Violeta
 POSE_CAPTURADA: Pose base capturada.
+COMPONENTE: Componente
+SIN_FUNCION: Sem Função
+EFECTO_PLATAFORMA: Efeito de Plataforma
+CLICK_BORDES: Clique nas bordas para bloquear/desbloquear
+TIPO_MOVIMIENTO: Tipo de Movimento
+VAGAR: Vagar
+ESCAPAR: Escapar
+SEGUIR: Seguir
+RANGO_ATAQUE: Alcance de Ataque
+AL_PERDER_OBJETIVO: Ao perder Objetivo
+AL_VER_OBJETIVO: Ao ver Objetivo
+CONFIG_MOTOR: Configurações do Motor
+FUERZA_INCLINACION: Inclinação
+CONTROL_AIRE: Giro no Ar
+ESTABILIDAD_AIRE: Auto-Estabilizar
+CENTRADO_SUELO: Centrado no Solo
+AGILIDAD_GIRO: Agilidade de Giro
+ARRASTRE_AIRE: Arraste de Ar
+SUSTENTACION: Sustentação
+VELOCIDAD_DESPEGUE: Vel. de Decolagem
+DERRAPE: Derrapagem
+FRENO_MOTOR: Freio Motor
 
 [RU]
 # Header
@@ -1666,6 +1760,12 @@ ESCANEO_PROGRESO: Сканирование скриптов уже идет...
 BUSCANDO_SCRIPTS: Поиск скриптов...
 SIN_SCRIPTS_HINT: Скрипты (.ces) в папке Assets не найдены.
 ERROR_BUSCAR_SCRIPTS: Ошибка поиска скриптов.
+CARGA_ANIM_HINT: Выберите ассет анимации (.cea), чтобы начать.
+CREAR_ANIM_RAPIDA: Создать новую анимацию
+ABRIR_ANIM_RAPIDA: Открыть существующий
+CARGA_ANIM_CTRL_HINT: Загрузите ассет контроллера (.ceanim), чтобы начать.
+CREAR_CTRL_RAPIDO: Создать новый контроллер
+ABRIR_CTRL_RAPIDO: Открыть существующий
 
 # Engine Terms
 POSICION: Позиция
@@ -1711,6 +1811,13 @@ TRIGGER_TAG: Тег-активатор
 TRIGGER_KEY: Клавиша-активатор
 BUTTON_MATERIA: Объект кнопки
 SCENE_LOADER_DESC: Загружает сцену при столкновении игрока, нажатии клавиши или клике на назначенную кнопку.
+CARGA_ANIM_CTRL_HINT: Загрузите ассет контроллера (.ceanim), чтобы начать.
+CARGA_ANIM_CTRL_HINT_2: Вы можете создать новый или открыть существующий.
+ANIMACIONES: Анимации
+ESTADOS: Состояния
+INSPECTOR_ESTADO: Инспектор состояния
+BUSCAR_ANIMACIONES: Поиск анимаций...
+HINT_SELECCIONA_ELEMENTO: Выберите элемент для просмотра свойств.
 
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
@@ -1769,6 +1876,28 @@ CYAN: Циан
 BLUE: Синий
 VIOLET: Фиолетовый
 POSE_CAPTURADA: Базовая поза захвачена.
+COMPONENTE: Компонент
+SIN_FUNCION: Без функции
+EFECTO_PLATAFORMA: Эффект платформы
+CLICK_BORDES: Нажмите на края, чтобы заблокировать/разблокировать
+TIPO_MOVIMIENTO: Тип движения
+VAGAR: Блуждание
+ESCAPAR: Побег
+SEGUIR: Преследование
+RANGO_ATAQUE: Дальность атаки
+AL_PERDER_OBJETIVO: При потере цели
+AL_VER_OBJETIVO: При обнаружении цели
+CONFIG_MOTOR: Настройки двигателя
+FUERZA_INCLINACION: Наклон
+CONTROL_AIRE: Поворот в воздухе
+ESTABILIDAD_AIRE: Автостабилизация
+CENTRADO_SUELO: Центрирование на земле
+AGILIDAD_GIRO: Маневренность
+ARRASTRE_AIRE: Сопротивление воздуха
+SUSTENTACION: Подъемная сила
+VELOCIDAD_DESPEGUE: Скорость взлета
+DERRAPE: Дрифт
+FRENO_MOTOR: Торможение двигателем
 
 [ZH]
 # Header
@@ -2062,6 +2191,12 @@ ESCANEO_PROGRESO: 脚本扫描已在进行中...
 BUSCANDO_SCRIPTS: 正在查找脚本...
 SIN_SCRIPTS_HINT: 在 Assets 文件夹中未找到任何脚本 (.ces)。
 ERROR_BUSCAR_SCRIPTS: 查找脚本时出错。
+CARGA_ANIM_HINT: 选择动画资源 (.cea) 以开始。
+CREAR_ANIM_RAPIDA: 创建新动画
+ABRIR_ANIM_RAPIDA: 打开现有
+CARGA_ANIM_CTRL_HINT: 加载控制器资源 (.ceanim) 以开始。
+CREAR_CTRL_RAPIDO: 创建新控制器
+ABRIR_CTRL_RAPIDO: 打开现有
 
 # Engine Terms
 POSICION: 位置
@@ -2107,6 +2242,13 @@ TRIGGER_TAG: 触发标签
 TRIGGER_KEY: 触发按键
 BUTTON_MATERIA: 按钮对象
 SCENE_LOADER_DESC: 当玩家发生碰撞、按下按键或点击指定的按钮时加载场景。
+CARGA_ANIM_CTRL_HINT: 加载控制器资源 (.ceanim) 以开始。
+CARGA_ANIM_CTRL_HINT_2: 您可以创建一个新控制器或打开一个现有控制器。
+ANIMACIONES: 动画
+ESTADOS: 状态
+INSPECTOR_ESTADO: 状态检查器
+BUSCAR_ANIMACIONES: 搜索动画...
+HINT_SELECCIONA_ELEMENTO: 选择一个元素以查看其属性。
 
 # Novice Guide
 TITULO_NOVATO: ¡Bienvenido!
@@ -2215,3 +2357,25 @@ CYAN: 青色
 BLUE: 蓝色
 VIOLET: 紫色
 POSE_CAPTURADA: 基础姿势已捕捉。
+COMPONENTE: 组件
+SIN_FUNCION: 无功能
+EFECTO_PLATAFORMA: 平台效果
+CLICK_BORDES: 点击边缘以锁定/解锁
+TIPO_MOVIMIENTO: 移动类型
+VAGAR: 游荡
+ESCAPAR: 逃跑
+SEGUIR: 跟随
+RANGO_ATAQUE: 攻击范围
+AL_PERDER_OBJETIVO: 丢失目标时
+AL_VER_OBJETIVO: 看到目标时
+CONFIG_MOTOR: 引擎设置
+FUERZA_INCLINACION: 倾斜强度
+CONTROL_AIRE: 空中转向
+ESTABILIDAD_AIRE: 自动稳定
+CENTRADO_SUELO: 地面居中
+AGILIDAD_GIRO: 转向灵敏度
+ARRASTRE_AIRE: 空气阻力
+SUSTENTACION: 升力
+VELOCIDAD_DESPEGUE: 起飞速度
+DERRAPE: 漂移
+FRENO_MOTOR: 引擎制动
