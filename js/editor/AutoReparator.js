@@ -4,7 +4,7 @@ import { transpile } from './CES_Transpiler.js';
 import { getPreferences } from './ui/PreferencesWindow.js';
 
 /**
- * Auto Reparator Module v4.6 "Truly Intelligent Expert Brain"
+ * Auto Reparator Module v4.7 "Truly Intelligent Expert Brain"
  * Analyzes and fixes common syntax errors and misspellings in CES scripts using advanced surgery.
  * Now scales to 2000+ logic variations using IndexedDB.
  */
@@ -22,7 +22,7 @@ export async function repair(code, fileName, runtimeError = null) {
     const L = window.Localization || { get: (k, d) => d };
     let addComponent = null;
 
-    console.log("[AutoReparator v4.6] Iniciando reparación de " + fileName + "...");
+    console.log("[AutoReparator v4.7] Iniciando reparación de " + fileName + "...");
 
     // --- 0. Runtime Error Analysis (Missing Components) ---
     if (isSmartEnabled && runtimeError) {
@@ -348,7 +348,7 @@ export async function repair(code, fileName, runtimeError = null) {
     const finalValidation = transpile(repairedCode, fileName);
     const success = !finalValidation.errors || finalValidation.errors.length === 0;
 
-    let finalMessage = success ? L.get('REPARACION_EXITOSA', 'Código reparado con éxito por Expert Brain (v4.6).') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero el script requiere intervención manual.');
+    let finalMessage = success ? L.get('REPARACION_EXITOSA', 'Código reparado con éxito por Expert Brain (v4.7).') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero el script requiere intervención manual.');
 
     if (addComponent) {
         finalMessage += " " + (L.get('SUGERENCIA_COMPONENTE', 'Además, parece que te falta el componente {comp}. ¿Quieres añadirlo?').replace('{comp}', addComponent.componentType));

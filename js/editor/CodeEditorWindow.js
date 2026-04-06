@@ -4,6 +4,7 @@ import * as CM from './CodeMirrorBundle.js';
 const {
     basicSetup,
     EditorState, StateField, StateEffect, Prec,
+    Annotation, Transaction,
     EditorView, keymap, Decoration, lineWrapping,
     javascript,
     undo, redo, indentWithTab,
