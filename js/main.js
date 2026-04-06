@@ -26,8 +26,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const createProjectBtn = document.getElementById('btn-add-project-top');
     const selectFolderBtn = document.getElementById('btn-select-folder');
     const joinCollabBtn = document.getElementById('btn-join-collab');
-    const collabJoinContainer = document.getElementById('collab-join-container');
-    const cancelJoinBtn = document.getElementById('btn-cancel-join');
     const confirmJoinBtn = document.getElementById('btn-confirm-join');
     const collabCodeInput = document.getElementById('collab-code-input');
 
@@ -35,6 +33,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const createProjectModal = document.getElementById('create-project-modal');
     const closeCreateProject = document.getElementById('close-create-project');
     const createProjectForm = document.getElementById('create-project-form');
+
+    const collabModal = document.getElementById('collab-modal');
+    const closeCollab = document.getElementById('close-collab');
 
     // Dynamic Content
     const motivationalQuoteEl = document.getElementById('motivational-quote');
@@ -249,6 +250,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const openModal = (modal) => { if (modal) modal.classList.add('is-open'); };
     const closeModal = () => {
         if (createProjectModal) createProjectModal.classList.remove('is-open');
+        if (collabModal) collabModal.classList.remove('is-open');
     };
 
     if(createProjectBtn) createProjectBtn.addEventListener('click', () => openModal(createProjectModal));
@@ -264,19 +266,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (joinCollabBtn) {
         joinCollabBtn.addEventListener('click', () => {
-            collabJoinContainer.classList.toggle('hidden');
-            if (!collabJoinContainer.classList.contains('hidden')) {
-                collabCodeInput.focus();
-            }
+            openModal(collabModal);
+            if (collabCodeInput) collabCodeInput.focus();
         });
     }
 
-    if (cancelJoinBtn) {
-        cancelJoinBtn.addEventListener('click', () => {
-            collabJoinContainer.classList.add('hidden');
-            collabCodeInput.value = '';
-        });
-    }
+    if (closeCollab) closeCollab.addEventListener('click', closeModal);
 
     if (confirmJoinBtn) {
         confirmJoinBtn.addEventListener('click', () => {
@@ -294,6 +289,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (e.key === 'Enter') confirmJoinBtn.click();
         });
     }
+
+    // Collab Type Selector Visual Logic
+    const collabTypeCards = document.querySelectorAll('.collab-type-selector .type-card');
+    collabTypeCards.forEach(card => {
+        card.addEventListener('click', () => {
+            if (card.classList.contains('disabled')) return;
+
+            collabTypeCards.forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+            const radio = card.querySelector('input[type="radio"]');
+            if (radio) radio.checked = true;
+        });
+    });
 
     const handleShare = async (e) => {
         if (e) e.preventDefault();
@@ -338,7 +346,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     window.addEventListener('click', (event) => {
-        if (event.target == createProjectModal) {
+        if (event.target == createProjectModal || event.target == collabModal) {
             closeModal();
         }
     });

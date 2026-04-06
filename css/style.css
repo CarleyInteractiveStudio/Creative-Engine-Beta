@@ -458,6 +458,12 @@ main { padding: 20px 0; }
     background: #1c2128;
 }
 
+.collab-type-selector {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
 .soon-badge {
     background: var(--accent-color);
     color: white;
@@ -491,6 +497,17 @@ main { padding: 20px 0; }
 }
 .modal-btn.danger:hover {
     background-color: #b62324;
+}
+
+.modal-btn.blue {
+    background-color: #0e639c;
+    box-shadow: 0 4px 12px rgba(14, 99, 156, 0.3);
+}
+
+.modal-btn.blue:hover {
+    background-color: #1177bb;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(14, 99, 156, 0.4);
 }
 
 /* --- Launcher View Styles --- */
@@ -534,6 +551,20 @@ main { padding: 20px 0; }
     color: white;
 }
 .launcher-btn.green:hover { background-color: var(--button-hover-bg-color); }
+
+.launcher-btn.blue {
+    background-color: #0e639c;
+    border-color: #0e639c;
+    color: white;
+    box-shadow: 0 4px 12px rgba(14, 99, 156, 0.2);
+}
+
+.launcher-btn.blue:hover {
+    background-color: #1177bb;
+    border-color: #1177bb;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(14, 99, 156, 0.4);
+}
 
 .launcher-btn.secondary {
     background-color: #21262d;

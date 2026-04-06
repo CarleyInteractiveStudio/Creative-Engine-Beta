@@ -152,6 +152,13 @@ SIN_PROYECTOS: Aún no tienes proyectos. ¡Crea uno para empezar!
 VER_UBICACION: Ver ubicación
 UBICACION_DEL_PROYECTO: Ubicación del Proyecto
 HINT_RUTA_PROYECTO: El proyecto se encuentra en la carpeta de proyectos configurada, dentro de la subcarpeta:
+TIPO_COLAB: Tipo de Colaboración:
+COLAB_LOCAL: Local
+COLAB_ONLINE: Online
+HINT_COLAB_LOCAL: Conéctate a un compañero en tu misma red wifi.
+HINT_COLAB_ONLINE: Conéctate a través de los servidores de Carley.
+INGRESAR_CODIGO: Ingresar Código
+NO_DISPONIBLE: No disponible
 
 # Libraries
 LIBRERIAS: Librerías
@@ -690,6 +697,13 @@ SIN_PROYECTOS: You don't have any projects yet. Create one to start!
 VER_UBICACION: View location
 UBICACION_DEL_PROYECTO: Project Location
 HINT_RUTA_PROYECTO: The project is located in the configured projects folder, inside the subfolder:
+TIPO_COLAB: Collaboration Type:
+COLAB_LOCAL: Local
+COLAB_ONLINE: Online
+HINT_COLAB_LOCAL: Connect to a partner on your same wifi network.
+HINT_COLAB_ONLINE: Connect through Carley's servers.
+INGRESAR_CODIGO: Enter Code
+NO_DISPONIBLE: Not available
 
 # Libraries
 LIBRERIAS: Libraries
@@ -1188,6 +1202,13 @@ SOY_NUEVO: Sou novo
 HINT_SOY_NUEVO: Ative isso para receber um guia básico ao abrir o projeto.
 CREAR: Criar
 SIN_PROYECTOS: Você ainda não tem projetos. Crie um para começar!
+TIPO_COLAB: Tipo de Colaboração:
+COLAB_LOCAL: Local
+COLAB_ONLINE: Online
+HINT_COLAB_LOCAL: Conecte-se a um parceiro na sua mesma rede wifi.
+HINT_COLAB_ONLINE: Conecte-se através dos servidores da Carley.
+INGRESAR_CODIGO: Inserir Código
+NO_DISPONIBLE: Não disponível
 
 # Libraries
 LIBRERIAS: Bibliotecas
@@ -1632,6 +1653,13 @@ SOY_NUEVO: Я новичок
 HINT_SOY_NUEVO: Включите это, чтобы получить базовое руководство при открытии проекта.
 CREAR: Создать
 SIN_PROYECTOS: У вас пока нет проектов. Создайте один, чтобы начать!
+TIPO_COLAB: Тип совместной работы:
+COLAB_LOCAL: Локальная
+COLAB_ONLINE: Онлайн
+HINT_COLAB_LOCAL: Подключитесь к партнеру в той же сети Wi-Fi.
+HINT_COLAB_ONLINE: Подключайтесь через серверы Carley.
+INGRESAR_CODIGO: Введите код
+NO_DISPONIBLE: Недоступно
 
 # Libraries
 LIBRERIAS: Библиотеки
@@ -2071,6 +2099,13 @@ SOY_NUEVO: 我是新手
 HINT_SOY_NUEVO: 启用此选项可在打开项目时获得基础指南。
 CREAR: 创建
 SIN_PROYECTOS: 您还没有任何项目。创建一个开始吧！
+TIPO_COLAB: 协作类型:
+COLAB_LOCAL: 本地
+COLAB_ONLINE: 在线
+HINT_COLAB_LOCAL: 连接到同一 wifi 网络中的伙伴。
+HINT_COLAB_ONLINE: 通过 Carley 服务器连接。
+INGRESAR_CODIGO: 输入代码
+NO_DISPONIBLE: 不可用
 
 # Libraries
 LIBRERIAS: 库
