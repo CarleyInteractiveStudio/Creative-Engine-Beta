@@ -6,6 +6,7 @@ import { getCustomComponentDefinitions } from '../EngineAPIExtension.js';
 import * as CES_Transpiler from '../../editor/CES_Transpiler.js';
 import { showPrompt, showNotification } from './DialogWindow.js';
 import { TerrenoEditorWindow } from './TerrenoEditorWindow.js';
+import { broadcastUpdate } from '../CollaborationSystem.js';
 
 // --- Module State ---
 let dom;
@@ -426,6 +427,15 @@ function handleInspectorInput(e) {
     if (updateSceneCallback) {
         updateSceneCallback();
     }
+
+    // Broadcast property update
+    broadcastUpdate({
+        op: 'UPDATE_PROP',
+        id: selectedMateria.id,
+        compType: componentName,
+        prop: propPath,
+        value: value
+    });
 
     // Special handling for Water component: regenerate particles when size changes
     if (componentName === 'Water' && (propPath === 'width' || propPath === 'height')) {

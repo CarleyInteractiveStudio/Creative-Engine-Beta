@@ -1,6 +1,7 @@
 import { getURLForAssetPath } from '../../engine/AssetUtils.js';
 import { createNewPalette } from './TilePaletteWindow.js';
 import { showNotification, showConfirmation, showPrompt } from './DialogWindow.js';
+import { broadcastUpdate } from '../CollaborationSystem.js';
 import * as SceneManager from '../../engine/SceneManager.js';
 import * as SkeletonImporter from '../SkeletonImporter.js';
 
@@ -660,6 +661,17 @@ export async function updateAssetBrowser() {
                 const writable = await newFileHandle.createWritable();
                 await writable.write(file);
                 await writable.close();
+
+                    // Broadcast asset creation
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        broadcastUpdate({
+                            op: 'ASSET_CREATE',
+                            path: currentPath + '/' + file.name,
+                            content: reader.result // Base64
+                        });
+                    };
+                    reader.readAsDataURL(file);
 
                 // IMPORTANT: Delete original ONLY if it was successfully copied to a DIFFERENT location
                 await sourceDirHandle.removeEntry(sourceFileName);

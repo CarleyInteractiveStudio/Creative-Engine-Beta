@@ -25,6 +25,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const shareButtonMain = document.getElementById('btn-share-main');
     const createProjectBtn = document.getElementById('btn-add-project-top');
     const selectFolderBtn = document.getElementById('btn-select-folder');
+    const joinCollabBtn = document.getElementById('btn-join-collab');
+    const collabJoinContainer = document.getElementById('collab-join-container');
+    const cancelJoinBtn = document.getElementById('btn-cancel-join');
+    const confirmJoinBtn = document.getElementById('btn-confirm-join');
+    const collabCodeInput = document.getElementById('collab-code-input');
 
     // Modals & Forms
     const createProjectModal = document.getElementById('create-project-modal');
@@ -256,6 +261,39 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (e.name !== 'AbortError') console.error(e);
         }
     });
+
+    if (joinCollabBtn) {
+        joinCollabBtn.addEventListener('click', () => {
+            collabJoinContainer.classList.toggle('hidden');
+            if (!collabJoinContainer.classList.contains('hidden')) {
+                collabCodeInput.focus();
+            }
+        });
+    }
+
+    if (cancelJoinBtn) {
+        cancelJoinBtn.addEventListener('click', () => {
+            collabJoinContainer.classList.add('hidden');
+            collabCodeInput.value = '';
+        });
+    }
+
+    if (confirmJoinBtn) {
+        confirmJoinBtn.addEventListener('click', () => {
+            const code = collabCodeInput.value.trim().toUpperCase();
+            if (code.length < 4) {
+                Dialogs.showNotification(Localization.get('AVISO'), 'Por favor, introduce un código de colaboración válido.');
+                return;
+            }
+
+            // Redirect to editor in collaboration mode
+            window.location.href = `editor.html?collab=${encodeURIComponent(code)}`;
+        });
+
+        collabCodeInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') confirmJoinBtn.click();
+        });
+    }
 
     const handleShare = async (e) => {
         if (e) e.preventDefault();

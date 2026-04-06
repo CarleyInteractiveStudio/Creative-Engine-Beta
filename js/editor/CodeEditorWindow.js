@@ -18,6 +18,7 @@ import * as AutoReparator from './AutoReparator.js';
 import { intentWeights, blockTemplates } from './AutoReparatorData.js';
 import * as AIHandler from './AIHandler.js';
 import { getPreferences } from './ui/PreferencesWindow.js';
+import { broadcastUpdate } from './CollaborationSystem.js';
 
 // --- Module State ---
 let dom;
@@ -326,7 +327,19 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
             codeEditor = new EditorView({
                 state: EditorState.create({
                     doc: content,
-                    extensions: extensions
+                    extensions: [
+                        ...extensions,
+                        EditorView.updateListener.of((update) => {
+                            if (update.docChanged && !update.transactions.some(tr => tr.annotation(StateField.define()))) {
+                                // Broadcast changes to peers
+                                broadcastUpdate({
+                                    op: 'SCRIPT_EDIT',
+                                    file: fileName,
+                                    changes: update.changes.toJSON()
+                                });
+                            }
+                        })
+                    ]
                 }),
                 parent: dom.codemirrorContainer
             });
@@ -874,6 +887,8 @@ export function initialize(domCache, showConsole, hotReload) {
         openScriptAtLine,
         runAutoReparator,
         setLastRuntimeError,
+        getEditorView: () => codeEditor,
+        getCurrentlyOpenFile: () => currentlyOpenFileHandle ? currentlyOpenFileHandle.name : null,
         isSmartEnabled: () => {
             const prefs = getPreferences();
             return prefs.autoCorrectorInteligente !== false;

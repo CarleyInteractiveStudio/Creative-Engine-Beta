@@ -40,6 +40,7 @@ import * as MateriaFactory from './editor/MateriaFactory.js';
 import * as SkeletonImporter from './editor/SkeletonImporter.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
 import * as CarlAgent from './editor/CarlAgent.js';
+import * as CollaborationSystem from './editor/CollaborationSystem.js';
 import * as NoviceGuide from './editor/ui/NoviceGuideWindow.js';
 import { buildProject, runStandalonePreview } from './editor/BuildSystem.js';
 import * as Dialogs from './editor/ui/DialogWindow.js';
@@ -3788,6 +3789,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado
 
         // --- Carl Agent Integration ---
         CarlAgent.initialize(dom);
+        CollaborationSystem.initialize(dom);
         window.ceHotReload = hotReloadScript;
         window.ceCreateAsset = async (name, content) => {
             const projectName = new URLSearchParams(window.location.search).get('project');
