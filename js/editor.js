@@ -4300,6 +4300,7 @@ public start() {
                 onAssetSelected,
                 onAssetOpened,
                 onShowContextMenu: showContextMenu,
+                getSelectedMateria: () => selectedMateria,
                 onExportPackage,
                 createUiSystemFile,
                 updateAssetBrowser,
