@@ -15,6 +15,13 @@ let connections = [];
 let isHosting = false;
 let collabId = null;
 
+// Administration state
+const permissions = {
+    allowSceneEdits: true,
+    allowScriptEdits: true,
+    allowAssetCreation: true
+};
+
 const COLLAB_VERSION = "1.0";
 
 export function initialize(dom) {
@@ -116,13 +123,17 @@ export function initialize(dom) {
                 // Security check: Ask host to accept collaborator
                 showConfirmation(
                     'Nueva Conexión',
-                    `Un usuario intenta unirse a tu proyecto. ¿Deseas permitirle el acceso?`,
+                    `Un usuario "${conn.peer.replace('CE-', '')}" intenta unirse a tu proyecto. ¿Deseas permitirle el acceso?`,
                     () => {
+                        conn.metadata = { name: conn.peer.replace('CE-', ''), joinedAt: Date.now() };
                         connections.push(conn);
                         // Send initial scene state to the new collaborator
                         const sceneData = SceneManager.serializeScene(SceneManager.currentScene);
                         conn.send({ type: 'INITIAL_STATE', data: sceneData });
                         showNotification('Colaborador Unido', 'Se ha establecido la conexión.');
+                        if (CollabActivityWindow && CollabActivityWindow.refreshManageTab) {
+                            CollabActivityWindow.refreshManageTab();
+                        }
                     },
                     () => {
                         conn.close();
@@ -148,6 +159,9 @@ export function initialize(dom) {
                 statusText.textContent = 'Desconectado';
                 statusText.style.color = '#ff4444';
             }
+        if (isHosting && CollabActivityWindow && CollabActivityWindow.refreshManageTab) {
+            CollabActivityWindow.refreshManageTab();
+            }
         });
     }
 
@@ -170,6 +184,13 @@ export function initialize(dom) {
     }
 
     function handleReceivedData(payload, conn) {
+        // If we are host, check permissions before applying (in case of hacked client)
+        if (isHosting) {
+            if (payload.type === 'SCENE_UPDATE' && !permissions.allowSceneEdits) return;
+            if (payload.type === 'SCRIPT_EDIT' && !permissions.allowScriptEdits) return;
+            if (payload.type === 'ASSET_CREATE' && !permissions.allowAssetCreation) return;
+        }
+
         switch (payload.type) {
             case 'INITIAL_STATE':
                 console.log("[Collab] Received initial scene state");
@@ -178,13 +199,21 @@ export function initialize(dom) {
                 if (window.updateInspector) window.updateInspector();
                 break;
             case 'SCENE_UPDATE':
-                applyRemoteSceneUpdate(payload.data);
+                applyRemoteSceneUpdate(payload.data, conn);
                 break;
             case 'SCRIPT_EDIT':
-                applyRemoteScriptEdit(payload.data);
+                applyRemoteScriptEdit(payload.data, conn);
                 break;
             case 'ASSET_CREATE':
-                applyRemoteAssetCreate(payload.data);
+                applyRemoteAssetCreate(payload.data, conn);
+                break;
+            case 'KICK':
+                showNotification('Desconectado', 'Has sido expulsado de la sesión por el anfitrión.', 'error');
+                stopCollaboration();
+                break;
+            case 'PERMISSIONS_UPDATE':
+                Object.assign(permissions, payload.data);
+                showNotification('Permisos Actualizados', 'El anfitrión ha modificado los permisos de colaboración.');
                 break;
             case 'CHAT':
                 showNotification('Mensaje Colaborativo', payload.text);
@@ -265,6 +294,37 @@ export function initialize(dom) {
         activeOptions.classList.add('hidden');
         codeDisplay.textContent = '-----';
     }
+}
+
+// --- Administration API ---
+
+export function getConnectedUsers() {
+    return connections.map(c => ({
+        id: c.peer,
+        name: c.metadata?.name || c.peer.replace('CE-', ''),
+        joinedAt: c.metadata?.joinedAt || Date.now()
+    }));
+}
+
+export function kickUser(peerId) {
+    const conn = connections.find(c => c.peer === peerId);
+    if (conn) {
+        conn.send({ type: 'KICK' });
+        setTimeout(() => conn.close(), 500);
+        showNotification('Usuario Expulsado', `Has expulsado a ${conn.metadata?.name || peerId}`);
+    }
+}
+
+export function getGlobalPermissions() {
+    return { ...permissions };
+}
+
+export function updateGlobalPermissions(newPermissions) {
+    Object.assign(permissions, newPermissions);
+    // Notify all collaborators
+    connections.forEach(conn => {
+        if (conn.open) conn.send({ type: 'PERMISSIONS_UPDATE', data: permissions });
+    });
 }
 
 /**

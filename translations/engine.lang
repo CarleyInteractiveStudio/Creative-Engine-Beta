@@ -188,6 +188,8 @@ ESTADO: Estado
 ACTIVO: Activo
 INACTIVO: Inactivo
 ACTIVAR: Activar
+GESTIONAR: Gestionar
+ACTIVIDAD: Actividad
 DESACTIVAR: Desactivar
 ACTIVADA: activada
 DESACTIVADA: desactivada
@@ -724,6 +726,8 @@ ESTADO: Status
 ACTIVO: Active
 INACTIVO: Inactive
 ACTIVAR: Activate
+GESTIONAR: Manage
+ACTIVIDAD: Activity
 DESACTIVAR: Deactivate
 ACTIVADA: activated
 DESACTIVADA: deactivated
@@ -1220,6 +1224,8 @@ ESTADO: Estado
 ACTIVO: Ativo
 INACTIVO: Inativo
 ACTIVAR: Ativar
+GESTIONAR: Gerenciar
+ACTIVIDAD: Atividade
 DESACTIVAR: Desativar
 ACTIVADA: activada
 DESACTIVADA: desactivada
@@ -1662,6 +1668,8 @@ ESTADO: Статус
 ACTIVO: Активен
 INACTIVO: Неактивен
 ACTIVAR: Активировать
+GESTIONAR: Управление
+ACTIVIDAD: Активность
 DESACTIVAR: Деактивировать
 ACTIVADA: активирована
 DESACTIVADA: деактивирована
@@ -2099,6 +2107,8 @@ ESTADO: 状态
 ACTIVO: 已激活
 INACTIVO: 未激活
 ACTIVAR: 激活
+GESTIONAR: 管理
+ACTIVIDAD: 活动
 DESACTIVAR: 停用
 ACTIVADA: 已激活
 DESACTIVADA: 已停用
