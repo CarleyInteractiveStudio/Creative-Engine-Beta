@@ -4,7 +4,7 @@ import { transpile } from './CES_Transpiler.js';
 import { getPreferences } from './ui/PreferencesWindow.js';
 
 /**
- * Auto Reparator Module v4.7 "Truly Intelligent Expert Brain"
+ * Auto Reparator Module v4.8 "Truly Intelligent Expert Brain"
  * Analyzes and fixes common syntax errors and misspellings in CES scripts using advanced surgery.
  * Now scales to 2000+ logic variations using IndexedDB.
  */
@@ -22,7 +22,7 @@ export async function repair(code, fileName, runtimeError = null) {
     const L = window.Localization || { get: (k, d) => d };
     let addComponent = null;
 
-    console.log("[AutoReparator v4.7] Iniciando reparación de " + fileName + "...");
+    console.log("[AutoReparator v4.8] Iniciando reparación de " + fileName + "...");
 
     // --- 0. Runtime Error Analysis (Missing Components) ---
     if (isSmartEnabled && runtimeError) {
@@ -171,43 +171,42 @@ export async function repair(code, fileName, runtimeError = null) {
         for(let i=0; i<lines.length; i++) {
             let line = lines[i];
 
-            // 6a. Fix missing parentheses in structural keywords (e.g. si teclaPresionada("W") -> si (teclaPresionada("W")))
+            // 6a. Structural Keyword Healer (v4.8) - si, mientras, para
             structuralKeywords.forEach(kw => {
-                const regex = new RegExp("^(\\s*)" + kw + "\\s+([^({][^{]+)(\\s*{)?$", 'i');
+                // Improved regex: Start of line, optional spaces, keyword, then anything but an open paren (or keyword immediately followed by spaces)
+                const regex = new RegExp("^(\\s*)" + kw + "(?!\\s*\\()\\s+(.+)$", 'i');
                 const match = line.match(regex);
                 if (match) {
                     const indent = match[1];
-                    const condition = match[2].trim();
-                    const tail = match[3] || "";
-                    // Only wrap if it doesn't start with (
-                    if (!condition.startsWith('(')) {
-                        line = indent + kw + " (" + condition + ")" + tail;
-                    }
+                    let content = match[2].trim();
+                    let suffix = "";
+                    if (content.endsWith('{')) { suffix = " {"; content = content.slice(0, -1).trim(); }
+                    else if (content.endsWith(';')) { suffix = ";"; content = content.slice(0, -1).trim(); }
+
+                    // Only wrap if it's not already wrapped or looks broken
+                    line = indent + kw + " (" + content + ")" + suffix;
                 }
             });
 
-            // 6b. Fix missing parentheses in functions (e.g. coseno rad -> coseno(rad))
+            // 6b. Math & Engine Function Healer (v4.8) - coseno rad -> coseno(rad)
             [...mathFunctions, ...engineFunctions].forEach(fn => {
-                const regex = new RegExp("\\b" + fn + "\\s+(['\"`\\w\\u00C0-\\u017F]+)", 'g');
-                if (regex.test(line)) {
-                    if (!line.includes(fn + "(")) {
-                         line = line.replace(regex, fn + "($1)");
-                    }
+                // Ensure we don't match function definitions or already correct calls.
+                // We look for the function name followed by a space and then a word/number.
+                const regex = new RegExp("\\b" + fn + "\\s+([\\w\\u00C0-\\u017F\\d.]+)", 'g');
+                if (!line.includes(fn + "(") && !line.includes("funcion " + fn) && !line.includes("function " + fn)) {
+                    line = line.replace(regex, fn + "($1)");
                 }
             });
 
-            // 6c. Ensure balanced parentheses on the same line if it looks like a call
-            [...mathFunctions, ...engineFunctions].forEach(fn => {
-                if (line.includes(fn + "(")) {
-                    const lineOpen = (line.match(/\(/g) || []).length;
-                    const lineClose = (line.match(/\)/g) || []).length;
-                    if (lineOpen > lineClose) {
-                        if (line.includes('{')) line = line.replace(/\s*{/, ")".repeat(lineOpen - lineClose) + " {");
-                        else if (line.includes(';')) line = line.replace(/;/, ")".repeat(lineOpen - lineClose) + ";");
-                        else line = line.trimEnd() + ")".repeat(lineOpen - lineClose);
-                    }
-                }
-            });
+            // 6c. Balanced Parentheses (Per-Line Healer)
+            const openCount = (line.match(/\(/g) || []).length;
+            const closeCount = (line.match(/\)/g) || []).length;
+            if (openCount > closeCount) {
+                const diff = openCount - closeCount;
+                if (line.includes('{')) line = line.replace(/(\s*{)/, ")".repeat(diff) + "$1");
+                else if (line.includes(';')) line = line.replace(/(;)/, ")".repeat(diff) + "$1");
+                else line = line.trimEnd() + ")".repeat(diff);
+            }
 
             lines[i] = line;
         }
@@ -348,7 +347,7 @@ export async function repair(code, fileName, runtimeError = null) {
     const finalValidation = transpile(repairedCode, fileName);
     const success = !finalValidation.errors || finalValidation.errors.length === 0;
 
-    let finalMessage = success ? L.get('REPARACION_EXITOSA', 'Código reparado con éxito por Expert Brain (v4.7).') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero el script requiere intervención manual.');
+    let finalMessage = success ? L.get('REPARACION_EXITOSA', 'Código reparado con éxito por Expert Brain (v4.8).') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero el script requiere intervención manual.');
 
     if (addComponent) {
         finalMessage += " " + (L.get('SUGERENCIA_COMPONENTE', 'Además, parece que te falta el componente {comp}. ¿Quieres añadirlo?').replace('{comp}', addComponent.componentType));

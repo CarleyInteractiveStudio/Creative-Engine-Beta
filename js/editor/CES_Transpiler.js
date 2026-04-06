@@ -488,10 +488,10 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
     // We use Unicode-aware word boundaries: (?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5]) and (?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])
 
     // Spanish
-    body = body.replace(new RegExp(`${PUB}si\\s*\\(`, 'g'), 'if (');
+    body = body.replace(new RegExp(`${PUB}si\\s*\\(?`, 'g'), 'if (');
     body = body.replace(new RegExp(`${PUB}sino${UB}`, 'g'), 'else');
-    body = body.replace(new RegExp(`${PUB}mientras\\s*\\(`, 'g'), 'while (');
-    body = body.replace(new RegExp(`${PUB}para${UB}\\s*\\(`, 'g'), 'for (');
+    body = body.replace(new RegExp(`${PUB}mientras\\s*\\(?`, 'g'), 'while (');
+    body = body.replace(new RegExp(`${PUB}para${UB}\\s*\\(?`, 'g'), 'for (');
     body = body.replace(new RegExp(`${PUB}retornar${UB}`, 'g'), 'return');
     body = body.replace(new RegExp(`${PUB}nuevo${UB}`, 'g'), 'new');
     body = body.replace(new RegExp(`${PUB}funcion${UB}`, 'g'), 'function');
@@ -501,19 +501,19 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
     body = body.replace(new RegExp(`${PUB}constante${UB}`, 'g'), 'const');
 
     // Portuguese
-    body = body.replace(new RegExp(`${PUB}se\\s*\\(`, 'g'), 'if (');
+    body = body.replace(new RegExp(`${PUB}se\\s*\\(?`, 'g'), 'if (');
     body = body.replace(new RegExp(`${PUB}senão${UB}`, 'g'), 'else');
-    body = body.replace(new RegExp(`${PUB}enquanto\\s*\\(`, 'g'), 'while (');
-    body = body.replace(new RegExp(`${PUB}para${UB}\\s*\\(`, 'g'), 'for (');
+    body = body.replace(new RegExp(`${PUB}enquanto\\s*\\(?`, 'g'), 'while (');
+    body = body.replace(new RegExp(`${PUB}para${UB}\\s*\\(?`, 'g'), 'for (');
     body = body.replace(new RegExp(`${PUB}função${UB}`, 'g'), 'function');
     body = body.replace(new RegExp(`${PUB}verdadeiro${UB}`, 'g'), 'true');
     body = body.replace(new RegExp(`${PUB}falso${UB}`, 'g'), 'false');
 
     // Russian
-    body = body.replace(new RegExp(`${PUB}если\\s*\\(`, 'g'), 'if (');
+    body = body.replace(new RegExp(`${PUB}если\\s*\\(?`, 'g'), 'if (');
     body = body.replace(new RegExp(`${PUB}иначе${UB}`, 'g'), 'else');
-    body = body.replace(new RegExp(`${PUB}пока\\s*\\(`, 'g'), 'while (');
-    body = body.replace(new RegExp(`${PUB}для${UB}\\s*\\(`, 'g'), 'for (');
+    body = body.replace(new RegExp(`${PUB}пока\\s*\\(?`, 'g'), 'while (');
+    body = body.replace(new RegExp(`${PUB}для${UB}\\s*\\(?`, 'g'), 'for (');
     body = body.replace(new RegExp(`${PUB}вернуть${UB}`, 'g'), 'return');
     body = body.replace(new RegExp(`${PUB}новый${UB}`, 'g'), 'new');
     body = body.replace(new RegExp(`${PUB}функция${UB}`, 'g'), 'function');
@@ -521,10 +521,10 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
     body = body.replace(new RegExp(`${PUB}ложь${UB}`, 'g'), 'false');
 
     // Chinese
-    body = body.replace(new RegExp(`${PUB}如果\\s*\\(`, 'g'), 'if (');
+    body = body.replace(new RegExp(`${PUB}如果\\s*\\(?`, 'g'), 'if (');
     body = body.replace(new RegExp(`${PUB}否则${UB}`, 'g'), 'else');
-    body = body.replace(new RegExp(`${PUB}当\\s*\\(`, 'g'), 'while (');
-    body = body.replace(new RegExp(`${PUB}对于${UB}\\s*\\(`, 'g'), 'for (');
+    body = body.replace(new RegExp(`${PUB}当\\s*\\(?`, 'g'), 'while (');
+    body = body.replace(new RegExp(`${PUB}对于${UB}\\s*\\(?`, 'g'), 'for (');
     body = body.replace(new RegExp(`${PUB}返回${UB}`, 'g'), 'return');
     body = body.replace(new RegExp(`${PUB}新建${UB}`, 'g'), 'new');
     body = body.replace(new RegExp(`${PUB}函数${UB}`, 'g'), 'function');
