@@ -106,15 +106,18 @@ export async function repair(code, fileName, runtimeError = null) {
         if (score > maxIntentScore) { maxIntentScore = score; bestIntent = intent; }
     }
 
-    // --- 5. Physics Converter ---
+    // --- 5. Physics Converter (v4.6 Enhanced) ---
     if (isSmartEnabled && (bestIntent === 'movimiento' || bestIntent === 'fisica')) {
         const lines = repairedCode.split('\n');
         for (let i = 0; i < lines.length; i++) {
-            if (!/^(publico|variable|constante|ve)/i.test(lines[i].trim())) {
-                lines[i] = lines[i].replace(/\bfisicaX\b/g, 'fisica.velocidad.x');
-                lines[i] = lines[i].replace(/\bfisicaY\b/g, 'fisica.velocidad.y');
-            } else if (/\bfisica(X|Y)\b/i.test(lines[i])) {
-                lines[i] = "// [Creative Code] Redundante: " + lines[i].trim();
+            const trimmed = lines[i].trim();
+            if (!/^(publico|variable|constante|ve)/i.test(trimmed)) {
+                lines[i] = lines[i].replace(/\b(fisicaX|velocidadX|velocityX)\b/g, 'fisica.velocidad.x');
+                lines[i] = lines[i].replace(/\b(fisicaY|velocidadY|velocityY)\b/g, 'fisica.velocidad.y');
+                lines[i] = lines[i].replace(/\b(voltearH|flipX)\b/g, 'voltearH');
+                lines[i] = lines[i].replace(/\b(voltearV|flipY)\b/g, 'voltearV');
+            } else if (/\b(fisicaX|fisicaY|velocidadX|velocidadY|velocityX|velocityY|voltearH|voltearV|flipX|flipY)\b/i.test(trimmed)) {
+                lines[i] = "// [Creative Code] Redundante: " + trimmed;
             }
         }
         repairedCode = lines.join('\n');
@@ -142,14 +145,21 @@ export async function repair(code, fileName, runtimeError = null) {
         repairedCode = lines.join('\n');
     }
 
-    // --- 7. Smart Auto-Declaration ---
+    // --- 7. Smart Auto-Declaration (Truly Intelligent v4.6 Enhanced) ---
     if (isSmartEnabled) {
         const undeclared = detectUndeclaredVariables(repairedCode);
         if (undeclared.length > 0) {
             let declarations = "";
             undeclared.forEach(v => {
                 const type = inferVariableType(v, repairedCode);
-                const blacklist = ['alActualizar', 'alEmpezar', 'teclaPresionada', 'teclaRecienPresionada', 'fisica', 'posicion', 'rotacion', 'escala', 'delta', 'velocidad', 'velocity', 'speed', 'proyectil', 'projectile'];
+                const blacklist = [
+                    'alActualizar', 'alEmpezar', 'teclaPresionada', 'teclaRecienPresionada',
+                    'fisica', 'posicion', 'rotacion', 'escala', 'delta', 'velocidad', 'velocity', 'speed',
+                    'proyectil', 'projectile', 'voltearH', 'voltearV', 'renderizadorDeSprite', 'fuenteDeAudio',
+                    'animador', 'lienzo', 'uiBarra', 'tiempoDelta', 'azar', 'instanciar', 'destruir', 'lanzarRayo',
+                    'buscar', 'cargarEscena', 'difundir', 'obtenerPosicionMouse', 'verdadero', 'falso', 'nulo',
+                    'fisicaX', 'fisicaY', 'velocidadX', 'velocidadY', 'velocityX', 'velocityY', 'flipX', 'flipY'
+                ];
                 if (!blacklist.includes(v)) declarations += "publico " + type + " " + v + ";\n";
             });
             const headerMatch = repairedCode.match(/^(ve|go|engine|motor)\s+motor;?/mi);
@@ -162,13 +172,16 @@ export async function repair(code, fileName, runtimeError = null) {
         }
     }
 
-    // --- 8. Logic Pattern Completion ---
+    // --- 8. Logic Pattern Completion (v4.6 Bilingual) ---
     if (isSmartEnabled) {
         logicPatterns.forEach(pattern => {
             if (pattern.trigger.test(repairedCode)) {
                 const missingElements = pattern.elements.filter(el => !(new RegExp(el, 'i').test(repairedCode)));
                 if (missingElements.length > 0 && missingElements.length <= 3) {
-                    const targetLifecycle = pattern.preferredLifecycle || 'alActualizar';
+                    const targetLifecycle = (pattern.preferredLifecycle === 'alActualizar' && !repairedCode.includes('alActualizar') && repairedCode.includes('update')) ? 'update' :
+                                           (pattern.preferredLifecycle === 'alEmpezar' && !repairedCode.includes('alEmpezar') && repairedCode.includes('start')) ? 'start' :
+                                           (pattern.preferredLifecycle || 'alActualizar');
+
                     const methodRegex = new RegExp(targetLifecycle + "\\s*\\([^)]*\\)\\s*{", 'i');
                     const match = repairedCode.match(methodRegex);
                     if (match) {
@@ -187,9 +200,20 @@ export async function repair(code, fileName, runtimeError = null) {
                 }
             }
         });
+
+        // 8b. Performance Mentoring
+        expensivePatterns.forEach(rule => {
+            if (rule.pattern.test(repairedCode)) {
+                const msg = typeof rule.message === 'object' ? (rule.message[userLang] || rule.message['es']) : rule.message;
+                if (!repairedCode.includes(msg.substring(0, 20))) {
+                    const insertIdx = repairedCode.indexOf('alActualizar') !== -1 ? repairedCode.indexOf('alActualizar') : (repairedCode.indexOf('update') !== -1 ? repairedCode.indexOf('update') : 0);
+                    repairedCode = repairedCode.substring(0, insertIdx) + "// " + msg + "\n" + repairedCode.substring(insertIdx);
+                }
+            }
+        });
     }
 
-    // --- 9. Final Substitutions Pass (to catch suggestions or surgery leftovers) ---
+    // --- 9. Post-processing Substitutions ---
     repairedCode = runSubstitutions(repairedCode);
 
     // --- 10. Garbage Cleaner ---
@@ -221,6 +245,29 @@ export async function repair(code, fileName, runtimeError = null) {
 
     // --- 12. Syntax Healer ---
     if (isSmartEnabled) repairedCode = healSyntaxStructure(repairedCode);
+
+    // --- 13. Safety Eraser (Bulletproof v4.6 Enhanced) ---
+    if (isSmartEnabled) {
+        let attempts = 0;
+        let finalSuccess = false;
+        while (attempts < 3 && !finalSuccess) {
+            const validation = transpile(repairedCode, fileName);
+            if (validation.errors && validation.errors.length > 0) {
+                const lines = repairedCode.split('\n');
+                validation.errors.forEach(err => {
+                    const idx = err.line - 1;
+                    if (lines[idx] && !lines[idx].trim().startsWith("//") && !lines[idx].includes("{") && !lines[idx].includes("}")) {
+                        console.log("[Safety Eraser] Comentando línea errónea persistente: " + lines[idx]);
+                        lines[idx] = "// [Creative Code REMOVED due to Error] " + lines[idx].trim();
+                    }
+                });
+                repairedCode = lines.join('\n');
+                attempts++;
+            } else {
+                finalSuccess = true;
+            }
+        }
+    }
 
     const finalValidation = transpile(repairedCode, fileName);
     const success = !finalValidation.errors || finalValidation.errors.length === 0;
