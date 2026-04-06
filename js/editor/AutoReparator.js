@@ -4,7 +4,7 @@ import { transpile } from './CES_Transpiler.js';
 import { getPreferences } from './ui/PreferencesWindow.js';
 
 /**
- * Auto Reparator Module v4.8 "Truly Intelligent Expert Brain"
+ * Auto Reparator Module v5.0 "Truly Intelligent Expert Brain - Creative Surgeon"
  * Analyzes and fixes common syntax errors and misspellings in CES scripts using advanced surgery.
  * Now scales to 2000+ logic variations using IndexedDB.
  */
@@ -22,7 +22,7 @@ export async function repair(code, fileName, runtimeError = null) {
     const L = window.Localization || { get: (k, d) => d };
     let addComponent = null;
 
-    console.log("[AutoReparator v4.8] Iniciando reparación de " + fileName + "...");
+    console.log("[AutoReparator v5.0] Iniciando reparación de " + fileName + "...");
 
     // --- 0. Runtime Error Analysis (Missing Components) ---
     if (isSmartEnabled && runtimeError) {
@@ -48,15 +48,18 @@ export async function repair(code, fileName, runtimeError = null) {
         }
     }
 
-    // --- 1. Variable Declaration Healer ---
+    // --- 1. Variable Declaration Healer (v5.0) ---
     if (isSmartEnabled) {
         const lines = repairedCode.split('\n');
         for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-            const decRegex = /^(publico|variable|constante)\s+(\w+)\s+(\w+)\s+([^=;{}()]+);?$/i;
-            const match = line.match(decRegex);
+            const trimmed = lines[i].trim();
+
+            // 1a. Fix declarations missing '=' (e.g. publico numero x 5;)
+            const decRegex = /^(publico|variable|constante)\s+([\w\u00C0-\u017F]+)\s+([\w\u00C0-\u017F]+)\s+([^=;{}()]+);?$/i;
+            const match = trimmed.match(decRegex);
             if (match) {
-                lines[i] = match[1] + " " + match[2] + " " + match[3] + " = " + match[4].trim() + ";";
+                const indent = lines[i].match(/^\s*/)[0];
+                lines[i] = indent + match[1] + " " + match[2] + " " + match[3] + " = " + match[4].trim() + ";";
             }
         }
         repairedCode = lines.join('\n');
@@ -171,20 +174,20 @@ export async function repair(code, fileName, runtimeError = null) {
         for(let i=0; i<lines.length; i++) {
             let line = lines[i];
 
-            // 6a. Structural Keyword Healer (v4.8) - si, mientras, para
+            // 6a. Structural Keyword Healer (v5.0) - si, mientras, para
             structuralKeywords.forEach(kw => {
-                // Improved regex: Start of line, optional spaces, keyword, then anything but an open paren (or keyword immediately followed by spaces)
-                const regex = new RegExp("^(\\s*)" + kw + "(?!\\s*\\()\\s+(.+)$", 'i');
+                // Improved regex to catch si(cond) and si (cond) without wrapping if already correct
+                const regex = new RegExp("^(\\s*)" + kw + "\\b\\s*(?!\\()([^;{]+)(.*)$", 'i');
                 const match = line.match(regex);
                 if (match) {
                     const indent = match[1];
-                    let content = match[2].trim();
-                    let suffix = "";
-                    if (content.endsWith('{')) { suffix = " {"; content = content.slice(0, -1).trim(); }
-                    else if (content.endsWith(';')) { suffix = ";"; content = content.slice(0, -1).trim(); }
+                    let condition = match[2].trim();
+                    let tail = match[3] || "";
 
-                    // Only wrap if it's not already wrapped or looks broken
-                    line = indent + kw + " (" + content + ")" + suffix;
+                    // If it doesn't already have parens around the whole thing
+                    if (!condition.startsWith('(')) {
+                        line = indent + kw + " (" + condition + ")" + tail;
+                    }
                 }
             });
 
@@ -291,6 +294,22 @@ export async function repair(code, fileName, runtimeError = null) {
     // --- 9. Post-processing Substitutions ---
     repairedCode = runSubstitutions(repairedCode);
 
+    // --- 9b. Shadowing Protection (v5.0) ---
+    if (isSmartEnabled) {
+        const engineConflictWords = ['teclaPresionada', 'teclaRecienPresionada', 'imprimir', 'esperar', 'cada', 'instanciar', 'destruir', 'buscar', 'difundir', 'isKeyPressed', 'isKeyJustPressed', 'log', 'wait', 'every', 'instantiate', 'destroy', 'find', 'broadcast'];
+        const lines = repairedCode.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+            const trimmed = lines[i].trim();
+            engineConflictWords.forEach(word => {
+                const shadowRegex = new RegExp("^(publico|variable|constante)\\s+([\\w\\u00C0-\\u017F]+)\\s+" + word + "\\b", 'i');
+                if (shadowRegex.test(trimmed)) {
+                    lines[i] = "// [Creative Code REMOVED] Declaración en conflicto con función del sistema: " + lines[i];
+                }
+            });
+        }
+        repairedCode = lines.join('\n');
+    }
+
     // --- 10. Garbage Cleaner ---
     if (isSmartEnabled) {
         const lines = repairedCode.split('\n');
@@ -347,7 +366,7 @@ export async function repair(code, fileName, runtimeError = null) {
     const finalValidation = transpile(repairedCode, fileName);
     const success = !finalValidation.errors || finalValidation.errors.length === 0;
 
-    let finalMessage = success ? L.get('REPARACION_EXITOSA', 'Código reparado con éxito por Expert Brain (v4.8).') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero el script requiere intervención manual.');
+    let finalMessage = success ? L.get('REPARACION_EXITOSA', 'Código reparado con éxito por Expert Brain (v5.0).') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero el script requiere intervención manual.');
 
     if (addComponent) {
         finalMessage += " " + (L.get('SUGERENCIA_COMPONENTE', 'Además, parece que te falta el componente {comp}. ¿Quieres añadirlo?').replace('{comp}', addComponent.componentType));

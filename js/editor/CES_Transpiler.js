@@ -488,10 +488,13 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
     // We use Unicode-aware word boundaries: (?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5]) and (?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])
 
     // Spanish
-    body = body.replace(new RegExp(`${PUB}si\\s*\\(?`, 'g'), 'if (');
+    body = body.replace(new RegExp(`${PUB}si\\s*\\(`, 'g'), 'if (');
+    body = body.replace(new RegExp(`${PUB}si\\s+`, 'g'), 'if (');
     body = body.replace(new RegExp(`${PUB}sino${UB}`, 'g'), 'else');
-    body = body.replace(new RegExp(`${PUB}mientras\\s*\\(?`, 'g'), 'while (');
-    body = body.replace(new RegExp(`${PUB}para${UB}\\s*\\(?`, 'g'), 'for (');
+    body = body.replace(new RegExp(`${PUB}mientras\\s*\\(`, 'g'), 'while (');
+    body = body.replace(new RegExp(`${PUB}mientras\\s+`, 'g'), 'while (');
+    body = body.replace(new RegExp(`${PUB}para${UB}\\s*\\(`, 'g'), 'for (');
+    body = body.replace(new RegExp(`${PUB}para${UB}\\s+`, 'g'), 'for (');
     body = body.replace(new RegExp(`${PUB}retornar${UB}`, 'g'), 'return');
     body = body.replace(new RegExp(`${PUB}nuevo${UB}`, 'g'), 'new');
     body = body.replace(new RegExp(`${PUB}funcion${UB}`, 'g'), 'function');
@@ -501,19 +504,25 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
     body = body.replace(new RegExp(`${PUB}constante${UB}`, 'g'), 'const');
 
     // Portuguese
-    body = body.replace(new RegExp(`${PUB}se\\s*\\(?`, 'g'), 'if (');
+    body = body.replace(new RegExp(`${PUB}se\\s*\\(`, 'g'), 'if (');
+    body = body.replace(new RegExp(`${PUB}se\\s+`, 'g'), 'if (');
     body = body.replace(new RegExp(`${PUB}senão${UB}`, 'g'), 'else');
-    body = body.replace(new RegExp(`${PUB}enquanto\\s*\\(?`, 'g'), 'while (');
-    body = body.replace(new RegExp(`${PUB}para${UB}\\s*\\(?`, 'g'), 'for (');
+    body = body.replace(new RegExp(`${PUB}enquanto\\s*\\(`, 'g'), 'while (');
+    body = body.replace(new RegExp(`${PUB}enquanto\\s+`, 'g'), 'while (');
+    body = body.replace(new RegExp(`${PUB}para${UB}\\s*\\(`, 'g'), 'for (');
+    body = body.replace(new RegExp(`${PUB}para${UB}\\s+`, 'g'), 'for (');
     body = body.replace(new RegExp(`${PUB}função${UB}`, 'g'), 'function');
     body = body.replace(new RegExp(`${PUB}verdadeiro${UB}`, 'g'), 'true');
     body = body.replace(new RegExp(`${PUB}falso${UB}`, 'g'), 'false');
 
     // Russian
-    body = body.replace(new RegExp(`${PUB}если\\s*\\(?`, 'g'), 'if (');
+    body = body.replace(new RegExp(`${PUB}если\\s*\\(`, 'g'), 'if (');
+    body = body.replace(new RegExp(`${PUB}если\\s+`, 'g'), 'if (');
     body = body.replace(new RegExp(`${PUB}иначе${UB}`, 'g'), 'else');
-    body = body.replace(new RegExp(`${PUB}пока\\s*\\(?`, 'g'), 'while (');
-    body = body.replace(new RegExp(`${PUB}для${UB}\\s*\\(?`, 'g'), 'for (');
+    body = body.replace(new RegExp(`${PUB}пока\\s*\\(`, 'g'), 'while (');
+    body = body.replace(new RegExp(`${PUB}пока\\s+`, 'g'), 'while (');
+    body = body.replace(new RegExp(`${PUB}для${UB}\\s*\\(`, 'g'), 'for (');
+    body = body.replace(new RegExp(`${PUB}для${UB}\\s+`, 'g'), 'for (');
     body = body.replace(new RegExp(`${PUB}вернуть${UB}`, 'g'), 'return');
     body = body.replace(new RegExp(`${PUB}новый${UB}`, 'g'), 'new');
     body = body.replace(new RegExp(`${PUB}функция${UB}`, 'g'), 'function');
@@ -521,10 +530,13 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
     body = body.replace(new RegExp(`${PUB}ложь${UB}`, 'g'), 'false');
 
     // Chinese
-    body = body.replace(new RegExp(`${PUB}如果\\s*\\(?`, 'g'), 'if (');
+    body = body.replace(new RegExp(`${PUB}如果\\s*\\(`, 'g'), 'if (');
+    body = body.replace(new RegExp(`${PUB}如果\\s+`, 'g'), 'if (');
     body = body.replace(new RegExp(`${PUB}否则${UB}`, 'g'), 'else');
-    body = body.replace(new RegExp(`${PUB}当\\s*\\(?`, 'g'), 'while (');
-    body = body.replace(new RegExp(`${PUB}对于${UB}\\s*\\(?`, 'g'), 'for (');
+    body = body.replace(new RegExp(`${PUB}当\\s*\\(`, 'g'), 'while (');
+    body = body.replace(new RegExp(`${PUB}当\\s+`, 'g'), 'while (');
+    body = body.replace(new RegExp(`${PUB}对于${UB}\\s*\\(`, 'g'), 'for (');
+    body = body.replace(new RegExp(`${PUB}对于${UB}\\s+`, 'g'), 'for (');
     body = body.replace(new RegExp(`${PUB}返回${UB}`, 'g'), 'return');
     body = body.replace(new RegExp(`${PUB}新建${UB}`, 'g'), 'new');
     body = body.replace(new RegExp(`${PUB}函数${UB}`, 'g'), 'function');
@@ -568,6 +580,11 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
     // Use (?<![.\w]) to ensure we don't match properties of other objects (like col.materia.nombre)
     body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])(mtr|materia|matéria|материя|物质)\.([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)/g, (match, p1, p2) => {
         if (componentShortcuts.includes(p2)) {
+            return `this.${p2}`;
+        }
+        // Special case for engine methods that shouldn't have mtr. prefix in JS
+        const engineMethods = ['teclaPresionada', 'teclaRecienPresionada', 'botonMousePresionado', 'imprimir', 'log', 'esperar', 'wait', 'cada', 'every'];
+        if (engineMethods.includes(p2)) {
             return `this.${p2}`;
         }
         return match;
@@ -715,7 +732,7 @@ export function transpile(code, scriptName = 'unnamed.ces') {
 
     // 1.a: Parse and extract methods (multilingual)
     // Scope (public/private) is now optional, defaults to public
-    const methodHeaderRegex = /^\s*(?:(public|publico|público|открытый|公开)\s+)?(?:async\s+)?(?:(function|funcion|função|функция|函数)\s+)?(?!(?:si|sino|se|senão|mientras|enquanto|para|cada|go|ve|если|иначе|пока|для|如果|否则|当|对于)(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5]))([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)\s*\(([^)]*)\)\s*{/gm;
+    const methodHeaderRegex = /^\s*(?:(public|publico|público|открытый|公开)\s+)?(?:async\s+)?(?:(function|funcion|função|функция|函数)\s+)?(?!(?:si|sino|se|senão|mientras|enquanto|para|cada|go|ve|если|иначе|пока|для|如果|否则|当|对于)(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5]))([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)\s*\(([^)]*)\)\s*[\r\n]*\s*{/gm;
     const methodMatches = []; // Store matches to process later
     let tempCode = unprocessedCode;
     let methodMatch;
@@ -828,7 +845,7 @@ export function transpile(code, scriptName = 'unnamed.ces') {
     // 1.c: Parse and remove public and private variables (multilingual with new syntax)
     // Scope is optional, defaults to public
     // Added support for common typos: bublico, bublica, piblico, piblica
-    const varRegex = /^\s*(?:(public|private|publico|público|bublico|bublica|piblico|piblica|privado|закрытый|закрытая|открытый|открытая|公开|私有)\s+)?(?!(?:si|sino|se|senão|mientras|enquanto|para|cada|go|ve|engine|motor|двигатель|引擎|если|иначе|пока|для|如果|否则|当|对于|crear|create|criar|создать|创建|esperar|aguardar|ждать|等待|alActualizar|alEmpezar|start|update|iniciar|actualizar|começar|atualizar|начать|обновить|开始|更新)(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5]))([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)\s+([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)\s*(?:=\s*([^;\n\r]+))?;?/gm;
+    const varRegex = /^\s*(?:(public|private|publico|público|bublico|bublica|piblico|piblica|privado|закрытый|закрытая|открытый|открытая|公开|私有)\s+)?(?!(?:si|sino|se|senão|mientras|enquanto|para|cada|go|ve|engine|motor|двигатель|引擎|если|иначе|пока|для|如果|否则|当|对于|crear|create|criar|создать|创建|esperar|aguardar|ждать|等待|alActualizar|alEmpezar|start|update|iniciar|actualizar|começar|atualizar|начать|обновить|开始|更新)(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5]))([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)\s+([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)\s*(?:=\s*([^;{}\n\r]+))?;?/gm;
     let varMatch;
     while ((varMatch = varRegex.exec(unprocessedCode)) !== null) {
         const scopeMatch = (varMatch[1] || 'public').toLowerCase();
