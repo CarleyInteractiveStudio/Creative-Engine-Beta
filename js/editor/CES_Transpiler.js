@@ -790,7 +790,8 @@ export function transpile(code, scriptName = 'unnamed.ces') {
             'alEntrarEnTrigger', 'OnTriggerEnter', 'alPermanecerEnTrigger', 'OnTriggerStay', 'alSalirDeTrigger', 'OnTriggerExit',
             'alFinalizarAnimacion', 'OnAnimationEnd', 'onPointerDown', 'alPresionar', 'onPointerUp', 'alSoltar',
             'onPointerEnter', 'alEntrar', 'onPointerExit', 'alSalir', 'onPointerClick', 'alHacerClick',
-            'onPointerDrag', 'alDeslizar', 'onPointerHold', 'alMantener', 'alHabilitar', 'activar', 'alDeshabilitar', 'desactivar', 'alDestruir'
+            'onPointerDrag', 'alDeslizar', 'onPointerHold', 'alMantener', 'alHabilitar', 'activar', 'alDeshabilitar', 'desactivar', 'alDestruir',
+            'alRecibir', 'onReceive'
         ];
         if (!internalMethods.includes(name)) {
             publicFunctions.push(name);
