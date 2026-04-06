@@ -26,7 +26,7 @@ function registrarVentana(options) {
  * Crea y devuelve un nuevo panel flotante.
  */
 function crearPanel(options) {
-    const panelId = `library-panel-${Math.random().toString(36).substr(2, 9)}`;
+    const panelId = options.id || `library-panel-${Math.random().toString(36).substr(2, 9)}`;
 
     // Style handling
     let className = '';

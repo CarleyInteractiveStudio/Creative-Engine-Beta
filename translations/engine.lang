@@ -285,6 +285,8 @@ PALETA_TILES: Tiles
 EDITOR_SPRITES: Sprites
 CONTROL_AMBIENTE: Ambiente
 SISTEMA_VERIFICACION: Verificación
+ACTUALIZACIONES: Actualizaciones
+ACTIVIDAD_COLABORATIVA: Actividad Colaborativa
 TIENDA_ASSETS: Tienda
 VID_SPRI: Vid Spri
 VISTA_ESCENA: Escena
@@ -819,6 +821,8 @@ PALETA_TILES: Tiles
 EDITOR_SPRITES: Sprites
 CONTROL_AMBIENTE: Environment
 SISTEMA_VERIFICACION: Verification
+ACTUALIZACIONES: Updates
+ACTIVIDAD_COLABORATIVA: Collaborative Activity
 TIENDA_ASSETS: Store
 VID_SPRI: Vid Spri
 VISTA_ESCENA: Scene
@@ -1301,6 +1305,8 @@ PALETA_TILES: Editor de Paleta de Tiles
 EDITOR_SPRITES: Editor de Sprites
 CONTROL_AMBIENTE: Control de Ambiente
 SISTEMA_VERIFICACION: Sistema de Verificação
+ACTUALIZACIONES: Atualizações
+ACTIVIDAD_COLABORATIVA: Atividade Colaborativa
 TIENDA_ASSETS: Loja de Assets
 VID_SPRI: Vid Spri
 VISTA_ESCENA: Cena
@@ -1725,6 +1731,8 @@ PALETA_TILES: Редактор палитры тайлов
 EDITOR_SPRITES: Редактор спрайтов
 CONTROL_AMBIENTE: Управление окружением
 SISTEMA_VERIFICACION: Система проверки
+ACTUALIZACIONES: Обновления
+ACTIVIDAD_COLABORATIVA: Совместная активность
 TIENDA_ASSETS: Магазин ассетов
 VID_SPRI: Vid Spri
 VISTA_ESCENA: Сцена
@@ -2160,6 +2168,8 @@ PALETA_TILES: 瓦片调色板编辑器
 EDITOR_SPRITES: 精灵编辑器
 CONTROL_AMBIENTE: 环境控制
 SISTEMA_VERIFICACION: 验证系统
+ACTUALIZACIONES: 更新
+ACTIVIDAD_COLABORATIVA: 协作活动
 TIENDA_ASSETS: 资源商店
 VID_SPRI: Vid Spri
 VISTA_ESCENA: 场景

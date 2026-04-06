@@ -41,6 +41,8 @@ import * as SkeletonImporter from './editor/SkeletonImporter.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
 import * as CarlAgent from './editor/CarlAgent.js';
 import * as CollaborationSystem from './editor/CollaborationSystem.js';
+import * as UpdatesWindow from './editor/ui/UpdatesWindow.js';
+import * as CollabActivityWindow from './editor/ui/CollabActivityWindow.js';
 import * as NoviceGuide from './editor/ui/NoviceGuideWindow.js';
 import { buildProject, runStandalonePreview } from './editor/BuildSystem.js';
 import * as Dialogs from './editor/ui/DialogWindow.js';
@@ -1065,7 +1067,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'sprite-slicer-panel': 'menu-window-sprite-editor',
             'vid-spri-panel': 'menu-window-vid-spri',
             'ambiente-control-panel': 'menu-window-ambiente-control',
-            'scene-panel': 'menu-window-scene'
+            'scene-panel': 'menu-window-scene',
+            'updates-panel': 'menu-window-updates'
         };
         const checkmark = '✓ ';
 
@@ -3086,6 +3089,14 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (panelName === 'vid-spri') panelId = 'vid-spri-panel';
             else if (panelName === 'ambiente-control') panelId = 'ambiente-control-panel';
             else if (panelName === 'animator') panelId = 'animator-controller-panel';
+            else if (panelName === 'updates') {
+                UpdatesWindow.show();
+                return;
+            }
+            else if (panelName === 'collab-activity') {
+                CollabActivityWindow.show();
+                return;
+            }
 
             const panel = document.getElementById(panelId);
             if (panel) {

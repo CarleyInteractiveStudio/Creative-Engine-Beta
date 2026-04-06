@@ -8,6 +8,7 @@
 import { showNotification, showConfirmation } from './ui/DialogWindow.js';
 import * as SceneManager from '../engine/SceneManager.js';
 import * as CodeMirror from './CodeMirrorBundle.js';
+import * as CollabActivityWindow from './ui/CollabActivityWindow.js';
 
 let peer = null;
 let connections = [];
@@ -133,7 +134,7 @@ export function initialize(dom) {
                 statusText.style.color = '#00ff64';
                 activeOptions.classList.remove('hidden');
                 hostBtn.classList.add('hidden');
-                codeDisplay.textContent = id; // The remote ID
+                codeDisplay.textContent = conn.peer.replace('CE-', ''); // The remote ID
             }
         });
 
@@ -150,7 +151,7 @@ export function initialize(dom) {
         });
     }
 
-    function applyRemoteScriptEdit(data) {
+    function applyRemoteScriptEdit(data, conn) {
         if (!window._CodeEditor) return;
         const editor = window._CodeEditor.getEditorView?.();
         const openFile = window._CodeEditor.getCurrentlyOpenFile?.();
@@ -161,6 +162,10 @@ export function initialize(dom) {
                 changes,
                 annotations: [CodeMirror.Transaction.remote.of(true)]
             });
+        }
+
+        if (isHosting) {
+            CollabActivityWindow.addLog(conn.peer.replace('CE-', ''), `Modificó el archivo script: ${data.file}`);
         }
     }
 
@@ -187,7 +192,7 @@ export function initialize(dom) {
         }
     }
 
-    async function applyRemoteAssetCreate(data) {
+    async function applyRemoteAssetCreate(data, conn) {
         console.log("[Collab] Received remote asset:", data.path);
         // data.content is a Data URL
         const response = await fetch(data.content);
@@ -197,9 +202,13 @@ export function initialize(dom) {
             await window.ceCreateAsset(data.path, blob);
             if (window.updateAssetBrowser) window.updateAssetBrowser();
         }
+
+        if (isHosting) {
+            CollabActivityWindow.addLog(conn.peer.replace('CE-', ''), `Creó el asset: ${data.path}`);
+        }
     }
 
-    async function applyRemoteSceneUpdate(update) {
+    async function applyRemoteSceneUpdate(update, conn) {
         console.log("[Collab] Applying remote scene update:", update);
 
         // If game is running and not paused, queue update (or skip for now per user requirement)
@@ -219,6 +228,7 @@ export function initialize(dom) {
                 break;
             case 'DELETE':
                 scene.removeMateria(update.id);
+                if (isHosting) CollabActivityWindow.addLog(conn.peer.replace('CE-', ''), `Eliminó el objeto ID: ${update.id}`);
                 break;
             case 'MOVE':
             case 'UPDATE_PROP':
