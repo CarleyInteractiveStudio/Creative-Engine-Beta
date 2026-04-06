@@ -1,35 +1,35 @@
-import { EditorState, StateField, StateEffect } from "@codemirror/state";
-import {
+import * as StateModule from "@codemirror/state";
+import * as ViewModule from "@codemirror/view";
+import * as CommandsModule from "@codemirror/commands";
+import * as AutocompleteModule from "@codemirror/autocomplete";
+import * as LintModule from "@codemirror/lint";
+import * as LanguageModule from "@codemirror/language";
+import * as SearchModule from "@codemirror/search";
+import * as JSModule from "@codemirror/lang-javascript";
+import * as ThemeModule from "@codemirror/theme-one-dark";
+import * as HighlightModule from "@lezer/highlight";
+
+const { EditorState, StateField, StateEffect } = StateModule;
+const {
     EditorView, keymap, Decoration, lineNumbers,
     drawSelection, dropCursor, highlightSpecialChars,
     highlightActiveLine, highlightActiveLineGutter
-} from "@codemirror/view";
-import {
-    indentWithTab, undo, redo,
-    history, historyKeymap
-} from "@codemirror/commands";
-import {
-    autocompletion, acceptCompletion, completionKeymap,
-    closeBrackets, closeBracketsKeymap
-} from "@codemirror/autocomplete";
-import { linter, lintGutter, lintKeymap } from "@codemirror/lint";
-import {
-    StreamLanguage, syntaxHighlighting, HighlightStyle, defaultHighlightStyle,
-    foldNodeProp, foldService,
-    indentUnit,
-    LanguageDescription,
-    syntaxTree,
-    bracketMatching,
-    foldGutter,
-    foldKeymap,
-    indentOnInput
-} from "@codemirror/language";
-import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
-import { javascript } from "@codemirror/lang-javascript";
-import { oneDark } from "@codemirror/theme-one-dark";
-import { tags } from "@lezer/highlight";
+} = ViewModule;
+const lineWrapping = EditorView.lineWrapping;
 
-// Manual basicSetup equivalent that we can use as a base
+const { indentWithTab, undo, redo, history, historyKeymap } = CommandsModule;
+const { autocompletion, acceptCompletion, completionKeymap, closeBrackets, closeBracketsKeymap } = AutocompleteModule;
+const { linter, lintGutter, lintKeymap } = LintModule;
+const {
+    StreamLanguage, syntaxHighlighting, HighlightStyle, defaultHighlightStyle,
+    foldNodeProp, foldService, indentUnit, bracketMatching, foldGutter, foldKeymap, indentOnInput, syntaxTree
+} = LanguageModule;
+const { searchKeymap, highlightSelectionMatches } = SearchModule;
+const { javascript } = JSModule;
+const { oneDark } = ThemeModule;
+const { tags } = HighlightModule;
+
+// Manual basicSetup equivalent (Safe version without problematic exports)
 const basicSetup = [
     lineNumbers(),
     highlightActiveLineGutter(),
@@ -46,6 +46,7 @@ const basicSetup = [
     autocompletion(),
     highlightActiveLine(),
     highlightSelectionMatches(),
+    indentUnit.of("    "),
     keymap.of([
         ...closeBracketsKeymap,
         ...historyKeymap,
@@ -61,9 +62,10 @@ export {
     basicSetup,
     EditorState, StateField, StateEffect,
     EditorView, keymap, Decoration, lineNumbers, drawSelection, dropCursor, highlightSpecialChars,
+    highlightActiveLine, highlightActiveLineGutter, lineWrapping,
     javascript,
     oneDark,
-    undo, redo, indentWithTab, foldGutter, foldKeymap,
+    undo, redo, indentWithTab,
     autocompletion, acceptCompletion, completionKeymap,
     linter, lintGutter, lintKeymap,
     StreamLanguage, foldNodeProp, foldService,
@@ -74,7 +76,13 @@ export {
     indentUnit,
     syntaxTree,
     history,
+    historyKeymap,
     bracketMatching,
+    foldGutter,
+    foldKeymap,
+    indentOnInput,
     closeBrackets,
-    indentOnInput
+    closeBracketsKeymap,
+    searchKeymap,
+    highlightSelectionMatches
 };

@@ -1,16 +1,16 @@
 // --- Module for the Code Editor Window (CodeMirror) ---
 
-import {
+import * as CM from './CodeMirrorBundle.js';
+const {
     basicSetup,
     EditorState, StateField, StateEffect,
-    EditorView, keymap, Decoration, lineNumbers, drawSelection, dropCursor, highlightSpecialChars,
+    EditorView, keymap, Decoration, lineWrapping,
     javascript,
-    oneDark,
-    undo, redo, indentWithTab, foldGutter, foldKeymap,
-    autocompletion, acceptCompletion, completionKeymap,
+    undo, redo, indentWithTab,
+    autocompletion, completionKeymap, acceptCompletion,
     linter, lintGutter,
-    syntaxHighlighting
-} from './CodeMirrorBundle.js';
+    foldKeymap
+} = CM;
 import { transpile } from './CES_Transpiler.js';
 import { cesLanguage } from './CES_Language.js';
 import { cesTheme, cesHighlighting } from './CES_Theme.js';
@@ -305,20 +305,13 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
         const isCes = fileName.endsWith('.ces');
 
         const extensions = [
-            // basicSetup is too heavy and sometimes conflicts, we prefer modular extensions
-            lineNumbers(),
-            highlightSpecialChars(),
-            drawSelection(),
-            dropCursor(),
-            EditorState.allowMultipleSelections.of(true),
-            indentWithTab,
-            foldGutter(),
-            lintGutter(),
+            basicSetup,
             isCes ? cesLanguage : javascript(),
             cesTheme,
             cesHighlighting,
             errorHighlightField,
             cesLinter,
+            lintGutter(),
             autocompletion({ override: [cesCompletions] }),
             keymap.of([
                 ...completionKeymap,
@@ -326,7 +319,7 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
                 ...foldKeymap,
                 indentWithTab
             ]),
-            EditorView.lineWrapping
+            lineWrapping
         ];
 
         if (!codeEditor) {
