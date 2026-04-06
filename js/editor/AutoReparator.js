@@ -89,7 +89,7 @@ export async function repair(code, fileName, runtimeError = null) {
         'posicion': ['position', 'pos', 'posição', 'позиция', '位置'],
         'fisica': ['physics', 'rigidbody', 'física', 'физика', '物理'],
         'imprimir': ['log', 'print', 'console.log', 'вывод', '打印'],
-        'teclaPresionada': ['teclaPrecionada', 'teclaPrecionda', 'teclaPressionada', 'isKeyPressed'],
+        'teclaPresionada': ['teclaPrecionada', 'teclaPrecionda', 'teclaPressionada', 'teclapprecionada', 'isKeyPressed'],
         'teclaRecienPresionada': ['teclaRecienPrecionada', 'teclaRecienPrecionda', 'teclaRecemPressionada', 'isKeyJustPressed'],
         'instanciar': ['instantiate', 'crear', 'criar', 'создать', '创建'],
         'velocidad': ['speed', 'velocity'],
@@ -161,24 +161,55 @@ export async function repair(code, fileName, runtimeError = null) {
         repairedCode = lines.join('\n');
     }
 
-    // --- 6. Function Call Healer ---
+    // --- 6. Function Call Healer (v4.7 Enhanced) ---
     if (isSmartEnabled) {
-        const functionsToHeal = ['teclaPresionada', 'teclaRecienPresionada', 'imprimir', 'esperar', 'cada', 'instanciar', 'destruir', 'buscar', 'difundir'];
+        const structuralKeywords = ['si', 'mientras', 'para', 'se', 'если', '如果', '当', '对于', 'enquanto'];
+        const mathFunctions = ['seno', 'coseno', 'tangente', 'raizCuadrada', 'absoluto', 'sin', 'cos', 'tan', 'sqrt', 'abs'];
+        const engineFunctions = ['teclaPresionada', 'teclaRecienPresionada', 'imprimir', 'esperar', 'cada', 'instanciar', 'destruir', 'buscar', 'difundir', 'isKeyPressed', 'isKeyJustPressed', 'log', 'wait', 'every', 'instantiate', 'destroy', 'find', 'broadcast'];
+
         const lines = repairedCode.split('\n');
         for(let i=0; i<lines.length; i++) {
-            functionsToHeal.forEach(fn => {
-                const regex = new RegExp("\\b" + fn + "\\s+(['\"`\\w])", 'g');
-                if (regex.test(lines[i])) {
-                    if (!lines[i].includes(fn + "(")) lines[i] = lines[i].replace(regex, fn + "($1");
-                    const lineOpen = (lines[i].match(/\(/g) || []).length;
-                    const lineClose = (lines[i].match(/\)/g) || []).length;
-                    if (lineOpen > lineClose) {
-                        if (lines[i].includes('{')) lines[i] = lines[i].replace(/\s*{/, ") {");
-                        else if (lines[i].includes(';')) lines[i] = lines[i].replace(/;/, ");");
-                        else lines[i] = lines[i].trimEnd() + ")";
+            let line = lines[i];
+
+            // 6a. Fix missing parentheses in structural keywords (e.g. si teclaPresionada("W") -> si (teclaPresionada("W")))
+            structuralKeywords.forEach(kw => {
+                const regex = new RegExp("^(\\s*)" + kw + "\\s+([^({][^{]+)(\\s*{)?$", 'i');
+                const match = line.match(regex);
+                if (match) {
+                    const indent = match[1];
+                    const condition = match[2].trim();
+                    const tail = match[3] || "";
+                    // Only wrap if it doesn't start with (
+                    if (!condition.startsWith('(')) {
+                        line = indent + kw + " (" + condition + ")" + tail;
                     }
                 }
             });
+
+            // 6b. Fix missing parentheses in functions (e.g. coseno rad -> coseno(rad))
+            [...mathFunctions, ...engineFunctions].forEach(fn => {
+                const regex = new RegExp("\\b" + fn + "\\s+(['\"`\\w\\u00C0-\\u017F]+)", 'g');
+                if (regex.test(line)) {
+                    if (!line.includes(fn + "(")) {
+                         line = line.replace(regex, fn + "($1)");
+                    }
+                }
+            });
+
+            // 6c. Ensure balanced parentheses on the same line if it looks like a call
+            [...mathFunctions, ...engineFunctions].forEach(fn => {
+                if (line.includes(fn + "(")) {
+                    const lineOpen = (line.match(/\(/g) || []).length;
+                    const lineClose = (line.match(/\)/g) || []).length;
+                    if (lineOpen > lineClose) {
+                        if (line.includes('{')) line = line.replace(/\s*{/, ")".repeat(lineOpen - lineClose) + " {");
+                        else if (line.includes(';')) line = line.replace(/;/, ")".repeat(lineOpen - lineClose) + ";");
+                        else line = line.trimEnd() + ")".repeat(lineOpen - lineClose);
+                    }
+                }
+            });
+
+            lines[i] = line;
         }
         repairedCode = lines.join('\n');
     }

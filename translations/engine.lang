@@ -26,7 +26,7 @@ NUESTROS_CANALES: Nuestros Canales
 CANALES: Canales
 SOLUCION_RAPIDA: Soluciones Rápidas
 PROYECTO_COLABORATIVO: Proyecto Colaborativo
-UNIRSE_COLAB: Unirse a Colaboración
+UNIRSE_COLAB: Unirse a una Colaboración
 UNIRSE_PROYECTO_TITULO: Unirse a un Proyecto
 UNIRSE_PROYECTO_DESC: Introduce el código que te enviaron para empezar a trabajar juntos en tiempo real.
 CONECTAR: Conectar
@@ -571,7 +571,7 @@ NUESTROS_CANALES: Our Channels
 CANALES: Channels
 SOLUCION_RAPIDA: Quick Solutions
 PROYECTO_COLABORATIVO: Collaborative Project
-UNIRSE_COLAB: Join Collaboration
+UNIRSE_COLAB: Join a Collaboration
 UNIRSE_PROYECTO_TITULO: Join a Project
 UNIRSE_PROYECTO_DESC: Enter the code you were sent to start working together in real time.
 CONECTAR: Connect
@@ -1109,10 +1109,11 @@ NUESTROS_CANALES: Nossos Canais
 CANALES: Canais
 SOLUCION_RAPIDA: Soluções Rápidas
 PROYECTO_COLABORATIVO: Projeto Colaborativo
-UNIRSE_COLAB: Participar da Colaboração
+UNIRSE_COLAB: Participar de uma Colaboração
 UNIRSE_PROYECTO_TITULO: Participar de um Projeto
 UNIRSE_PROYECTO_DESC: Digite o código que lhe foi enviado para começarem a trabalhar juntos em tempo real.
 CONECTAR: Conectar
+UNIRSE: Juntar-se
 COMPARTIR_CON_CARLEY: Compartilhar com Carley
 COMPARTIR_CON_CARLEY_HINT: Compartilhe seus códigos toda vez que publicar um videogame
 COMPARTIR_CON_CARLEY_DESC: Agradeceríamos muito se você compartilhasse seus códigos CES, pois isso nos ajudará a treinar nosso modelo de IA Carley Creative Code, que foi projetado do zero especialmente para o motor. O modelo consumirá menos de 1 GB de RAM, o que tornará seu uso menos dispendioso nos servidores e não teremos que pagar muito. Também permitirá que mais usuários tenham acesso à IA e é feito de forma que programar no motor seja muito fácil e simples. Não compartilhamos seu código com ninguém; só o usaremos para fins de treinamento para que, em um futuro próximo, você apenas diga ao motor o que deseja e ele o torne realidade.
@@ -1560,10 +1561,11 @@ NUESTROS_CANALES: Наши каналы
 CANALES: Каналы
 SOLUCION_RAPIDA: Быстрые решения
 PROYECTO_COLABORATIVO: Совместный проект
-UNIRSE_COLAB: Присоединиться к совместной работе
+UNIRSE_COLAB: Присоединиться к коллаборации
 UNIRSE_PROYECTO_TITULO: Присоединиться к проекту
 UNIRSE_PROYECTO_DESC: Введите код, который вам прислали, чтобы начать совместную работу в режиме реального времени.
 CONECTAR: Подключиться
+UNIRSE: Присоединиться
 COMPARTIR_CON_CARLEY: Поделиться с Carley
 COMPARTIR_CON_CARLEY_HINT: Делитесь своими кодами каждый раз, когда публикуете видеоигру
 COMPARTIR_CON_CARLEY_DESC: Мы будем очень признательны, если вы поделитесь своими кодами CES, потому что это поможет нам обучить нашу модель ИИ Carley Creative Code, которая была разработана с нуля специально для движка. Модель будет потреблять менее 1 ГБ оперативной памяти, что сделает её использование на серверах менее затратным, и нам не придется много платить. Это также позволит большему количеству пользователей получить доступ к ИИ и сделано так, чтобы программирование на движке было очень простым и понятным. Мы ни с кем не делимся вашим кодом; мы будем использовать его только в целях обучения, чтобы в ближайшем будущем вы могли просто сказать движку, чего хотите, и он воплотил это в реальность.
@@ -2010,6 +2012,7 @@ UNIRSE_COLAB: 加入协作
 UNIRSE_PROYECTO_TITULO: 加入项目
 UNIRSE_PROYECTO_DESC: 输入您收到的代码，开始实时共同创作。
 CONECTAR: 连接
+UNIRSE: 加入
 COMPARTIR_CON_CARLEY: 与 Carley 分享
 COMPARTIR_CON_CARLEY_HINT: 每次发布视频游戏时分享您的代码
 COMPARTIR_CON_CARLEY_DESC: 我们非常感谢您分享您的 CES 代码，因为这将帮助我们训练我们的 AI 模型 Carley Creative Code，它是专门为该引擎从头开始设计的。该模型将消耗不到 1 GB 的 RAM，这将降低其在服务器上的使用成本，使我们不必支付太多费用。它还将让更多用户能够访问 AI，并且其设计使得在引擎中编程变得非常容易和简单。我们不会与任何人分享您的代码；我们只会将其用于培训目的，以便在不久的将来，您只需告诉引擎您想要什么，它就会将其变为现实。

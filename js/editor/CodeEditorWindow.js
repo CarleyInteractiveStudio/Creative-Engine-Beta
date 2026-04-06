@@ -3,7 +3,7 @@
 import * as CM from './CodeMirrorBundle.js';
 const {
     basicSetup,
-    EditorState, StateField, StateEffect,
+    EditorState, StateField, StateEffect, Prec,
     EditorView, keymap, Decoration, lineWrapping,
     javascript,
     undo, redo, indentWithTab,
@@ -176,7 +176,29 @@ const cesKeywords = [
     { label: "redondear", type: "function" },
     { label: "round", type: "function" },
     { label: "limitar", type: "function" },
-    { label: "clamp", type: "function" }
+    { label: "clamp", type: "function" },
+
+    // Input
+    { label: "teclaPresionada", type: "function" },
+    { label: "isKeyPressed", type: "function" },
+    { label: "teclaRecienPresionada", type: "function" },
+    { label: "isKeyJustPressed", type: "function" },
+    { label: "botonMousePresionado", type: "function" },
+    { label: "isMouseButtonPressed", type: "function" },
+    { label: "obtenerPosicionMouse", type: "function" },
+    { label: "getMousePosition", type: "function" },
+
+    // Math
+    { label: "seno", type: "function" },
+    { label: "sin", type: "function" },
+    { label: "coseno", type: "function" },
+    { label: "cos", type: "function" },
+    { label: "tangente", type: "function" },
+    { label: "tan", type: "function" },
+    { label: "raizCuadrada", type: "function" },
+    { label: "sqrt", type: "function" },
+    { label: "absoluto", type: "function" },
+    { label: "abs", type: "function" }
 ];
 
 function cesCompletions(context) {
@@ -314,9 +336,12 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
             cesLinter,
             lintGutter(),
             autocompletion({ override: [cesCompletions] }),
+            Prec.highest(keymap.of([
+                { key: "Tab", run: acceptCompletion },
+                { key: "Enter", run: acceptCompletion }
+            ])),
             keymap.of([
                 ...completionKeymap,
-                { key: "Tab", run: acceptCompletion },
                 ...foldKeymap,
                 indentWithTab
             ]),
