@@ -4,7 +4,7 @@ import { transpile } from './CES_Transpiler.js';
 import { getPreferences } from './ui/PreferencesWindow.js';
 
 /**
- * Auto Reparator Module v4.6 "Truly Intelligent Expert Brain"
+ * Auto Reparator Module v5.0 "Truly Intelligent Expert Brain - Creative Surgeon"
  * Analyzes and fixes common syntax errors and misspellings in CES scripts using advanced surgery.
  * Now scales to 2000+ logic variations using IndexedDB.
  */
@@ -22,41 +22,62 @@ export async function repair(code, fileName, runtimeError = null) {
     const L = window.Localization || { get: (k, d) => d };
     let addComponent = null;
 
-    console.log("[AutoReparator v4.6] Iniciando reparación de " + fileName + "...");
+    console.log("[AutoReparator v5.0] Iniciando reparación de " + fileName + "...");
 
     // --- 0. Runtime Error Analysis (Missing Components) ---
-    if (isSmartEnabled && runtimeError) {
-        const msg = runtimeError.message.toLowerCase();
-        const errorMappings = [
-            { keywords: ["velocity", "applyimpulse", "addforce", "rigidbody", "física", "velocidad"], component: "Rigidbody2D" },
-            { keywords: ["play", "stop", "animation", "animator", "animación", "animador"], component: "Animator" },
-            { keywords: ["audiosource", "playaudio", "stopaudio", "fuente", "audio", "sonido"], component: "AudioSource" },
-            { keywords: ["spriterenderer", "sprite", "color", "renderizador"], component: "SpriteRenderer" }
-        ];
+    if (isSmartEnabled) {
+        const materia = window.getSelectedMateria ? window.getSelectedMateria() : null;
 
-        for (const mapping of errorMappings) {
-            if (mapping.keywords.some(k => msg.includes(k.toLowerCase()))) {
-                const materia = window.getSelectedMateria();
-                if (materia && !materia.getComponent(mapping.component)) {
-                    addComponent = {
-                        materiaId: materia.id,
-                        componentType: mapping.component
-                    };
-                    break;
+        if (runtimeError) {
+            const msg = runtimeError.message.toLowerCase();
+            const errorMappings = [
+                { keywords: ["velocity", "applyimpulse", "addforce", "rigidbody", "física", "fisica", "velocidad", "gravedad", "gravity", "caer", "cae"], component: "Rigidbody2D" },
+                { keywords: ["play", "stop", "animation", "animator", "animación", "animador", "controlador"], component: "Animator" },
+                { keywords: ["audiosource", "playaudio", "stopaudio", "fuente", "audio", "sonido"], component: "AudioSource" },
+                { keywords: ["spriterenderer", "sprite", "color", "renderizador"], component: "SpriteRenderer" }
+            ];
+
+            for (const mapping of errorMappings) {
+                if (mapping.keywords.some(k => msg.includes(k.toLowerCase()))) {
+                    if (materia && !materia.getComponentByName(mapping.component)) {
+                        addComponent = {
+                            materiaId: materia.id,
+                            componentType: mapping.component
+                        };
+                        break;
+                    }
                 }
+            }
+        }
+
+        // --- 0b. Proactive Analysis (Contextual dependencies) ---
+        // If no runtime error was passed, or no component was found yet, check common dependencies
+        if (!addComponent && materia) {
+            const hasMovement = materia.getComponentByName('Movement');
+            const hasRigidbody = materia.getComponentByName('Rigidbody2D');
+            const hasAttack = materia.getComponentByName('Attack');
+            const hasAudio = materia.getComponentByName('AudioSource');
+
+            if (hasMovement && !hasRigidbody) {
+                addComponent = { materiaId: materia.id, componentType: "Rigidbody2D" };
+            } else if (hasAttack && !hasAudio) {
+                addComponent = { materiaId: materia.id, componentType: "AudioSource" };
             }
         }
     }
 
-    // --- 1. Variable Declaration Healer ---
+    // --- 1. Variable Declaration Healer (v5.0) ---
     if (isSmartEnabled) {
         const lines = repairedCode.split('\n');
         for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-            const decRegex = /^(publico|variable|constante)\s+(\w+)\s+(\w+)\s+([^=;{}()]+);?$/i;
-            const match = line.match(decRegex);
+            const trimmed = lines[i].trim();
+
+            // 1a. Fix declarations missing '=' (e.g. publico numero x 5;)
+            const decRegex = /^(publico|variable|constante)\s+([\w\u00C0-\u017F]+)\s+([\w\u00C0-\u017F]+)\s+([^=;{}()]+);?$/i;
+            const match = trimmed.match(decRegex);
             if (match) {
-                lines[i] = match[1] + " " + match[2] + " " + match[3] + " = " + match[4].trim() + ";";
+                const indent = lines[i].match(/^\s*/)[0];
+                lines[i] = indent + match[1] + " " + match[2] + " " + match[3] + " = " + match[4].trim() + ";";
             }
         }
         repairedCode = lines.join('\n');
@@ -89,7 +110,7 @@ export async function repair(code, fileName, runtimeError = null) {
         'posicion': ['position', 'pos', 'posição', 'позиция', '位置'],
         'fisica': ['physics', 'rigidbody', 'física', 'физика', '物理'],
         'imprimir': ['log', 'print', 'console.log', 'вывод', '打印'],
-        'teclaPresionada': ['teclaPrecionada', 'teclaPrecionda', 'teclaPressionada', 'isKeyPressed'],
+        'teclaPresionada': ['teclaPrecionada', 'teclaPrecionda', 'teclaPressionada', 'teclapprecionada', 'isKeyPressed'],
         'teclaRecienPresionada': ['teclaRecienPrecionada', 'teclaRecienPrecionda', 'teclaRecemPressionada', 'isKeyJustPressed'],
         'instanciar': ['instantiate', 'crear', 'criar', 'создать', '创建'],
         'velocidad': ['speed', 'velocity'],
@@ -161,24 +182,54 @@ export async function repair(code, fileName, runtimeError = null) {
         repairedCode = lines.join('\n');
     }
 
-    // --- 6. Function Call Healer ---
+    // --- 6. Function Call Healer (v4.7 Enhanced) ---
     if (isSmartEnabled) {
-        const functionsToHeal = ['teclaPresionada', 'teclaRecienPresionada', 'imprimir', 'esperar', 'cada', 'instanciar', 'destruir', 'buscar', 'difundir'];
+        const structuralKeywords = ['si', 'mientras', 'para', 'se', 'если', '如果', '当', '对于', 'enquanto'];
+        const mathFunctions = ['seno', 'coseno', 'tangente', 'raizCuadrada', 'absoluto', 'sin', 'cos', 'tan', 'sqrt', 'abs'];
+        const engineFunctions = ['teclaPresionada', 'teclaRecienPresionada', 'imprimir', 'esperar', 'cada', 'instanciar', 'destruir', 'buscar', 'difundir', 'isKeyPressed', 'isKeyJustPressed', 'log', 'wait', 'every', 'instantiate', 'destroy', 'find', 'broadcast'];
+
         const lines = repairedCode.split('\n');
         for(let i=0; i<lines.length; i++) {
-            functionsToHeal.forEach(fn => {
-                const regex = new RegExp("\\b" + fn + "\\s+(['\"`\\w])", 'g');
-                if (regex.test(lines[i])) {
-                    if (!lines[i].includes(fn + "(")) lines[i] = lines[i].replace(regex, fn + "($1");
-                    const lineOpen = (lines[i].match(/\(/g) || []).length;
-                    const lineClose = (lines[i].match(/\)/g) || []).length;
-                    if (lineOpen > lineClose) {
-                        if (lines[i].includes('{')) lines[i] = lines[i].replace(/\s*{/, ") {");
-                        else if (lines[i].includes(';')) lines[i] = lines[i].replace(/;/, ");");
-                        else lines[i] = lines[i].trimEnd() + ")";
+            let line = lines[i];
+
+            // 6a. Structural Keyword Healer (v5.0) - si, mientras, para
+            structuralKeywords.forEach(kw => {
+                // Improved regex to catch si(cond) and si (cond) without wrapping if already correct
+                const regex = new RegExp("^(\\s*)" + kw + "\\b\\s*(?!\\()([^;{]+)(.*)$", 'i');
+                const match = line.match(regex);
+                if (match) {
+                    const indent = match[1];
+                    let condition = match[2].trim();
+                    let tail = match[3] || "";
+
+                    // If it doesn't already have parens around the whole thing
+                    if (!condition.startsWith('(')) {
+                        line = indent + kw + " (" + condition + ")" + tail;
                     }
                 }
             });
+
+            // 6b. Math & Engine Function Healer (v4.8) - coseno rad -> coseno(rad)
+            [...mathFunctions, ...engineFunctions].forEach(fn => {
+                // Ensure we don't match function definitions or already correct calls.
+                // We look for the function name followed by a space and then a word/number.
+                const regex = new RegExp("\\b" + fn + "\\s+([\\w\\u00C0-\\u017F\\d.]+)", 'g');
+                if (!line.includes(fn + "(") && !line.includes("funcion " + fn) && !line.includes("function " + fn)) {
+                    line = line.replace(regex, fn + "($1)");
+                }
+            });
+
+            // 6c. Balanced Parentheses (Per-Line Healer)
+            const openCount = (line.match(/\(/g) || []).length;
+            const closeCount = (line.match(/\)/g) || []).length;
+            if (openCount > closeCount) {
+                const diff = openCount - closeCount;
+                if (line.includes('{')) line = line.replace(/(\s*{)/, ")".repeat(diff) + "$1");
+                else if (line.includes(';')) line = line.replace(/(;)/, ")".repeat(diff) + "$1");
+                else line = line.trimEnd() + ")".repeat(diff);
+            }
+
+            lines[i] = line;
         }
         repairedCode = lines.join('\n');
     }
@@ -261,6 +312,22 @@ export async function repair(code, fileName, runtimeError = null) {
     // --- 9. Post-processing Substitutions ---
     repairedCode = runSubstitutions(repairedCode);
 
+    // --- 9b. Shadowing Protection (v5.0) ---
+    if (isSmartEnabled) {
+        const engineConflictWords = ['teclaPresionada', 'teclaRecienPresionada', 'imprimir', 'esperar', 'cada', 'instanciar', 'destruir', 'buscar', 'difundir', 'isKeyPressed', 'isKeyJustPressed', 'log', 'wait', 'every', 'instantiate', 'destroy', 'find', 'broadcast'];
+        const lines = repairedCode.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+            const trimmed = lines[i].trim();
+            engineConflictWords.forEach(word => {
+                const shadowRegex = new RegExp("^(publico|variable|constante)\\s+([\\w\\u00C0-\\u017F]+)\\s+" + word + "\\b", 'i');
+                if (shadowRegex.test(trimmed)) {
+                    lines[i] = "// [Creative Code REMOVED] Declaración en conflicto con función del sistema: " + lines[i];
+                }
+            });
+        }
+        repairedCode = lines.join('\n');
+    }
+
     // --- 10. Garbage Cleaner ---
     if (isSmartEnabled) {
         const lines = repairedCode.split('\n');
@@ -317,7 +384,7 @@ export async function repair(code, fileName, runtimeError = null) {
     const finalValidation = transpile(repairedCode, fileName);
     const success = !finalValidation.errors || finalValidation.errors.length === 0;
 
-    let finalMessage = success ? L.get('REPARACION_EXITOSA', 'Código reparado con éxito por Expert Brain (v4.6).') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero el script requiere intervención manual.');
+    let finalMessage = success ? L.get('REPARACION_EXITOSA', 'Código reparado con éxito por Expert Brain (v5.0).') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero el script requiere intervención manual.');
 
     if (addComponent) {
         finalMessage += " " + (L.get('SUGERENCIA_COMPONENTE', 'Además, parece que te falta el componente {comp}. ¿Quieres añadirlo?').replace('{comp}', addComponent.componentType));

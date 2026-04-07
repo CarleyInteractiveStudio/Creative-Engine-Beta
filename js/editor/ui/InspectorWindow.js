@@ -1234,6 +1234,24 @@ function renderComponentHeader(title, icon, leyIndex, canRemove = true) {
     `;
 }
 
+function renderDependencyWarning(componentName, missingComponent) {
+    const L = window.Localization;
+    const msg = L.get('SUGERENCIA_COMPONENTE', 'Además, parece que te falta el componente {comp}. ¿Quieres añadirlo?').replace('{comp}', missingComponent);
+
+    return `
+        <div class="inspector-warning-box">
+            <div class="warning-header">
+                ${getIconHTML('alert-circle')}
+                <span>${L.get('AVISO', 'Aviso')}</span>
+            </div>
+            <div class="warning-text">${msg}</div>
+            <button class="warning-btn" onclick="const mtr = window.getSelectedMateria(); if(mtr) { const Comp = window.Components['${missingComponent}']; if(Comp) { mtr.addComponent(new Comp(mtr)); window.updateInspector(); window.updateScene(); } }">
+                ${L.get('REPARAR', 'Reparar')}
+            </button>
+        </div>
+    `;
+}
+
 function renderLightColorPresets(componentName) {
     const presets = [
         { color: '#ffffff', name: 'Blanco' },
@@ -1751,9 +1769,15 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.Health) {
+            let warningHTML = '';
+            if (ley.deathAnimation && !selectedMateria.getComponentByName('Animator')) {
+                warningHTML = renderDependencyWarning('Health', 'Animator');
+            }
+
             componentHTML = `
                 ${renderComponentHeader(L.get('HEALTH_COMPONENT', "Vida (Health)"), icon, index)}
                 <div class="component-content">
+                    ${warningHTML}
                     <div class="prop-row-multi">
                         <label data-i18n="MAX_HEALTH">${L.get('MAX_HEALTH', 'Vida Máxima')}</label>
                         <input type="number" class="prop-input" step="1" min="1" data-component="Health" data-prop="maxHealth" value="${ley.maxHealth}">
@@ -1785,9 +1809,15 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.Attack) {
+            let warningHTML = '';
+            if (ley.attacks.some(atk => atk.sound) && !selectedMateria.getComponentByName('AudioSource')) {
+                warningHTML = renderDependencyWarning('Attack', 'AudioSource');
+            }
+
             componentHTML = `
                 ${renderComponentHeader(L.get('ATTACK_COMPONENT', "Ataque (Attack)"), icon, index)}
                 <div class="component-content">
+                    ${warningHTML}
                     <div class="inspector-row">
                         <label data-i18n="COLLIDER_MATERIA">${L.get('COLLIDER_MATERIA', 'Materia Colisionador')}</label>
                         ${renderPropertyDropper('Materia', ley.colliderMateria, 'data-component="Attack" data-prop="colliderMateria"')}
@@ -2825,10 +2855,24 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             </div>`;
         } else if (ley instanceof Components.Rigidbody2D) {
+            let warningHTML = '';
+            if (ley.bodyType !== 'Static' && !selectedMateria.leyes.some(l => l.constructor.name.includes('Collider2D'))) {
+                warningHTML = `
+                    <div class="inspector-warning-box">
+                        <div class="warning-header">${getIconHTML('alert-circle')} <span>${L.get('AVISO', 'Aviso')}</span></div>
+                        <div class="warning-text">${L.get('RIGIDBODY_COLLIDER_WARNING', 'El Rigidbody necesita un Colisionador para interactuar físicamente.')}</div>
+                        <button class="warning-btn" onclick="const mtr = window.getSelectedMateria(); if(mtr) { mtr.addComponent(new window.Components.BoxCollider2D(mtr)); window.updateInspector(); window.updateScene(); }">
+                            + BoxCollider2D
+                        </button>
+                    </div>
+                `;
+            }
+
             const rigidbody = ley; // Rename for clarity as suggested in review
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader(L.get('RIGIDBODY_2D', "Rigidbody 2D"), icon, index)}
+                <div class="component-content" style="padding-top:0;">${warningHTML}</div>
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="BODY_TYPE">${L.get('BODY_TYPE', 'Body Type')}</label>
@@ -2900,9 +2944,15 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.BoxCollider2D) {
+            let warningHTML = '';
+            if (!selectedMateria.getComponentByName('Rigidbody2D')) {
+                warningHTML = renderDependencyWarning('BoxCollider2D', 'Rigidbody2D');
+            }
+
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader(L.get('BOX_COLLIDER_2D', "Box Collider 2D"), icon, index)}
+                <div class="component-content" style="padding-top:0;">${warningHTML}</div>
                 <div class="component-content">
                     <div class="checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="BoxCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
@@ -2926,9 +2976,15 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             </div>`;
         } else if (ley instanceof Components.Movement) {
+            let warningHTML = '';
+            if (ley.useRigidbody && !selectedMateria.getComponentByName('Rigidbody2D')) {
+                warningHTML = renderDependencyWarning('Movement', 'Rigidbody2D');
+            }
+
             componentHTML = `
                 ${renderComponentHeader(L.get('MOVEMENT_BASIC', "Movimiento (Básico)"), icon, index)}
                 <div class="component-content">
+                    ${warningHTML}
                     <div class="inspector-section-header"><span>${L.get('CONTROLS', 'Controles')}</span></div>
                     <div class="prop-row-multi">
                         <label data-i18n="KEYS_UP_DOWN">${L.get('KEYS_UP_DOWN', 'Teclas (Arriba/Abajo)')}</label>
@@ -2997,9 +3053,15 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.ProjectileLauncher) {
+            let warningHTML = '';
+            if (ley.fireSound && !selectedMateria.getComponentByName('AudioSource')) {
+                warningHTML = renderDependencyWarning('ProjectileLauncher', 'AudioSource');
+            }
+
             componentHTML = `
                 ${renderComponentHeader(L.get('PROJECTILE_LAUNCHER_COMPONENT', "Lanzador de Proyectiles"), icon, index)}
                 <div class="component-content">
+                    ${warningHTML}
                     <div class="inspector-row">
                         <label data-i18n="PROJECTILE_PREFAB">${L.get('PROJECTILE_PREFAB', 'Prefab Proyectil')}</label>
                         <div class="file-picker">
@@ -3032,6 +3094,10 @@ async function updateInspectorForMateria(selectedMateria) {
                             <input type="number" class="prop-input" step="0.1" data-component="ProjectileLauncher" data-prop="direction.x" value="${ley.direction.x}" title="X">
                             <input type="number" class="prop-input" step="0.1" data-component="ProjectileLauncher" data-prop="direction.y" value="${ley.direction.y}" title="Y">
                         </div>
+                    </div>
+                    <div class="inspector-row">
+                        <label data-i18n="FIRE_SOUND">${L.get('FIRE_SOUND', 'Sonido Disparo')}</label>
+                        ${renderPropertyDropper('Audio', ley.fireSound, 'data-component="ProjectileLauncher" data-prop="fireSound"')}
                     </div>
                 </div>
             `;
@@ -3568,9 +3634,18 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.VehicleTopDown) {
+            let warningHTML = '';
+            if ((ley.engineSound || ley.brakeSound) && !selectedMateria.getComponentByName('AudioSource')) {
+                warningHTML = renderDependencyWarning('VehicleTopDown', 'AudioSource');
+            }
+            if (!selectedMateria.getComponentByName('Rigidbody2D')) {
+                warningHTML += renderDependencyWarning('VehicleTopDown', 'Rigidbody2D');
+            }
+
             componentHTML = `
                 ${renderComponentHeader(L.get('VEHICLE_TOPDOWN', "Vehicle TopDown"), icon, index)}
                 <div class="component-content">
+                    ${warningHTML}
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="VehicleTopDown" data-prop="autoAcelerar" ${ley.autoAcelerar ? 'checked' : ''}>
                         <label data-i18n="AUTO_ACCELERATE">${L.get('AUTO_ACCELERATE', 'Auto-Acelerar')}</label>
@@ -3639,9 +3714,18 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.PlaneController) {
+            let warningHTML = '';
+            if ((ley.engineSound || ley.takeoffSound) && !selectedMateria.getComponentByName('AudioSource')) {
+                warningHTML = renderDependencyWarning('PlaneController', 'AudioSource');
+            }
+            if (!selectedMateria.getComponentByName('Rigidbody2D')) {
+                warningHTML += renderDependencyWarning('PlaneController', 'Rigidbody2D');
+            }
+
             componentHTML = `
                 ${renderComponentHeader(L.get('PLANE_CONTROLLER', "Plane Controller"), icon, index)}
                 <div class="component-content">
+                    ${warningHTML}
                     <div class="inspector-section-header"><span data-i18n="FLIGHT_SETTINGS">${L.get('FLIGHT_SETTINGS', 'Configuración de Vuelo')}</span></div>
                     <div class="prop-row-multi">
                         <label data-i18n="THRUST">${L.get('THRUST', 'Potencia Motor')}</label>
@@ -3712,9 +3796,18 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.HelicopterController) {
+            let warningHTML = '';
+            if (ley.engineSound && !selectedMateria.getComponentByName('AudioSource')) {
+                warningHTML = renderDependencyWarning('HelicopterController', 'AudioSource');
+            }
+            if (!selectedMateria.getComponentByName('Rigidbody2D')) {
+                warningHTML += renderDependencyWarning('HelicopterController', 'Rigidbody2D');
+            }
+
             componentHTML = `
                 ${renderComponentHeader(L.get('HELICOPTER_CONTROLLER', "Helicopter Controller"), icon, index)}
                 <div class="component-content">
+                    ${warningHTML}
                     <div class="inspector-section-header"><span data-i18n="HELICOPTER_SETTINGS">${L.get('HELICOPTER_SETTINGS', 'Configuración de Helicóptero')}</span></div>
                     <div class="prop-row-multi">
                         <label data-i18n="MOTOR_POWER">${L.get('MOTOR_POWER', 'Potencia Motor')}</label>

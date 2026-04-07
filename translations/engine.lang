@@ -26,7 +26,7 @@ NUESTROS_CANALES: Nuestros Canales
 CANALES: Canales
 SOLUCION_RAPIDA: Soluciones Rápidas
 PROYECTO_COLABORATIVO: Proyecto Colaborativo
-UNIRSE_COLAB: Unirse a Colaboración
+UNIRSE_COLAB: Unirse a una Colaboración
 UNIRSE_PROYECTO_TITULO: Unirse a un Proyecto
 UNIRSE_PROYECTO_DESC: Introduce el código que te enviaron para empezar a trabajar juntos en tiempo real.
 CONECTAR: Conectar
@@ -152,6 +152,13 @@ SIN_PROYECTOS: Aún no tienes proyectos. ¡Crea uno para empezar!
 VER_UBICACION: Ver ubicación
 UBICACION_DEL_PROYECTO: Ubicación del Proyecto
 HINT_RUTA_PROYECTO: El proyecto se encuentra en la carpeta de proyectos configurada, dentro de la subcarpeta:
+TIPO_COLAB: Tipo de Colaboración:
+COLAB_LOCAL: Local
+COLAB_ONLINE: Online
+HINT_COLAB_LOCAL: Conéctate a un compañero en tu misma red wifi.
+HINT_COLAB_ONLINE: Conéctate a través de los servidores de Carley.
+INGRESAR_CODIGO: Ingresar Código
+NO_DISPONIBLE: No disponible
 
 # Libraries
 LIBRERIAS: Librerías
@@ -225,6 +232,7 @@ ME_GUSTAS: Me Gusta
 # Asset Browser
 CREAR_CARPETA: Crear Carpeta
 NOMBRE_CARPETA_PROMPT: Introduce el nombre de la nueva carpeta:
+CREAR_CONTROLADOR_ANIMACION: Crear Controlador de Animación
 CREAR_CONTROLADOR_ANIMACION: Crear Controlador de Animação
 NOMBRE_CONTROLADOR_PROMPT: Introduce el nombre del nuevo controlador (.ceanim):
 CREAR_PREFAB: Crear Prefab
@@ -343,6 +351,42 @@ TRANSFORM: Transform
 POSICION: Posición
 ROTACION: Rotación
 ESCALA: Escala
+MOVEMENT_BASIC: Movimiento (Básico)
+TEXTURE_RENDER: Renderizador de Textura
+VERTICAL_LAYOUT: Auto-Disposición Vertical
+HORIZONTAL_LAYOUT: Auto-Disposición Horizontal
+GRID_LAYOUT: Auto-Disposición Rejilla
+SIZE_FITTER: Ajuste de Tamaño
+VIDEO_PLAYER: Reproductor de Vídeo
+HEALTH_COMPONENT: Vida (Health)
+ATTACK_COMPONENT: Ataque (Attack)
+SCROLL_RECT: Rect de Desplazamiento
+UI_MASK: Máscara UI
+UI_COLLIDER: Colisionador UI
+PATROL_COMPONENT: Patrulla (Patrol)
+POLYGON_COLLIDER_2D: Colisionador Polígono 2D
+UI_TRANSFORM: Transformación UI
+UI_IMAGE: Imagen UI
+UI_TEXT: Texto UI
+SPRITE_RENDERER: Renderizador de Sprite
+AUDIO_SOURCE: Fuente de Audio
+SUSPENSION_HC: Suspensión HC
+VEHICLE_TOPDOWN: Vehículo Top-Down
+PLANE_CONTROLLER: Controlador de Avión
+HELICOPTER_CONTROLLER: Controlador de Helicóptero
+SKELETON_RENDERER: Renderizador de Esqueleto
+IK_MANAGER_2D: Gestor IK 2D
+BASIC_AI: IA Básica
+RIGIDBODY_2D: Rigidbody 2D
+BOX_COLLIDER_2D: Colisionador Caja 2D
+BODY_TYPE: Tipo de Cuerpo
+DYNAMIC: Dinámico
+STATIC: Estático
+KINEMATIC: Cinemático
+RIGIDBODY_COLLIDER_WARNING: El Rigidbody necesita un Colisionador para interactuar físicamente.
+PROJECTILE_LAUNCHER_COMPONENT: Lanzador de Proyectiles
+AUTO_DESTROY_COMPONENT: Destrucción Automática
+CAMERA_FOLLOW_COMPONENT: Seguimiento de Cámara
 PROP_FLIP_X: Voltear Horizontal
 PROP_FLIP_Y: Voltear Vertical
 NADA_SELECCIONADO: Nada seleccionado
@@ -418,6 +462,8 @@ VERSION_RESTAURADA: Versión restaurada en el editor. Recuerda guardar para apli
 NADA_QUE_REPARAR: No se encontraron errores obvios que reparar.
 REPARACION_EXITOSA: Código reparado con éxito.
 REPARACION_PARCIAL: Se realizaron correcciones, pero aún quedan errores complejos.
+SUGERENCIA_COMPONENTE: Además, parece que te falta el componente {comp}. ¿Quieres añadirlo?
+ERROR_EJECUCION: Error de Ejecución
 CARGA_ANIM_HINT: Selecciona un asset de animación (.cea) para empezar.
 CREAR_ANIM_RAPIDA: Crear Nueva Animación
 ABRIR_ANIM_RAPIDA: Abrir Existente
@@ -564,7 +610,7 @@ NUESTROS_CANALES: Our Channels
 CANALES: Channels
 SOLUCION_RAPIDA: Quick Solutions
 PROYECTO_COLABORATIVO: Collaborative Project
-UNIRSE_COLAB: Join Collaboration
+UNIRSE_COLAB: Join a Collaboration
 UNIRSE_PROYECTO_TITULO: Join a Project
 UNIRSE_PROYECTO_DESC: Enter the code you were sent to start working together in real time.
 CONECTAR: Connect
@@ -690,6 +736,13 @@ SIN_PROYECTOS: You don't have any projects yet. Create one to start!
 VER_UBICACION: View location
 UBICACION_DEL_PROYECTO: Project Location
 HINT_RUTA_PROYECTO: The project is located in the configured projects folder, inside the subfolder:
+TIPO_COLAB: Collaboration Type:
+COLAB_LOCAL: Local
+COLAB_ONLINE: Online
+HINT_COLAB_LOCAL: Connect to a partner on your same wifi network.
+HINT_COLAB_ONLINE: Connect through Carley's servers.
+INGRESAR_CODIGO: Enter Code
+NO_DISPONIBLE: Not available
 
 # Libraries
 LIBRERIAS: Libraries
@@ -763,6 +816,7 @@ ME_GUSTAS: Likes
 # Asset Browser
 CREAR_CARPETA: Create Folder
 NOMBRE_CARPETA_PROMPT: Enter the name for the new folder:
+CREAR_CONTROLADOR_ANIMACION: Create Animation Controller
 CREAR_CONTROLADOR_ANIMACION: Create Animation Controller
 NOMBRE_CONTROLADOR_PROMPT: Enter the name for the new controller (.ceanim):
 CREAR_PREFAB: Create Prefab
@@ -881,6 +935,43 @@ TRANSFORM: Transform
 POSICION: Position
 ROTACION: Rotation
 ESCALA: Scale
+MOVEMENT_BASIC: Movement (Basic)
+TEXTURE_RENDER: Texture Renderer
+VERTICAL_LAYOUT: Vertical Layout
+HORIZONTAL_LAYOUT: Horizontal Layout
+GRID_LAYOUT: Grid Layout
+SIZE_FITTER: Size Fitter
+VIDEO_PLAYER: Video Player
+HEALTH_COMPONENT: Health Component
+ATTACK_COMPONENT: Attack Component
+SCROLL_RECT: Scroll Rect
+UI_MASK: UI Mask
+UI_COLLIDER: UI Collider
+PATROL_COMPONENT: Patrol
+POLYGON_COLLIDER_2D: Polygon Collider 2D
+UI_TRANSFORM: UI Transform
+UI_IMAGE: UI Image
+UI_TEXT: UI Text
+SPRITE_RENDERER: Sprite Renderer
+AUDIO_SOURCE: Audio Source
+SUSPENSION_HC: Suspension HC
+VEHICLE_TOPDOWN: Vehicle Top-Down
+PLANE_CONTROLLER: Plane Controller
+HELICOPTER_CONTROLLER: Helicopter Controller
+SKELETON_RENDERER: Skeleton Renderer
+IK_MANAGER_2D: IK Manager 2D
+BASIC_AI: Basic AI
+RIGIDBODY_2D: Rigidbody 2D
+BOX_COLLIDER_2D: Box Collider 2D
+BODY_TYPE: Body Type
+DYNAMIC: Dynamic
+STATIC: Static
+KINEMATIC: Kinematic
+RIGIDBODY_COLLIDER_WARNING: Rigidbody needs a Collider to interact physically.
+PROJECTILE_LAUNCHER_COMPONENT: Projectile Launcher
+AUTO_DESTROY_COMPONENT: Auto Destroy
+CAMERA_FOLLOW_COMPONENT: Camera Follow
+FIRE_SOUND: Fire Sound
 PROP_FLIP_X: Flip Horizontal
 PROP_FLIP_Y: Flip Vertical
 NADA_SELECCIONADO: Nothing selected
@@ -956,6 +1047,8 @@ VERSION_RESTAURADA: Version restored in the editor. Remember to save to apply ch
 NADA_QUE_REPARAR: No obvious errors found to repair.
 REPARACION_EXITOSA: Code repaired successfully.
 REPARACION_PARCIAL: Corrections were made, but complex errors remain.
+SUGERENCIA_COMPONENTE: Also, it seems you are missing the {comp} component. Do you want to add it?
+ERROR_EJECUCION: Execution Error
 CARGA_ANIM_HINT: Select an animation asset (.cea) to start.
 CREAR_ANIM_RAPIDA: Create New Animation
 ABRIR_ANIM_RAPIDA: Open Existing
@@ -1095,10 +1188,11 @@ NUESTROS_CANALES: Nossos Canais
 CANALES: Canais
 SOLUCION_RAPIDA: Soluções Rápidas
 PROYECTO_COLABORATIVO: Projeto Colaborativo
-UNIRSE_COLAB: Participar da Colaboração
+UNIRSE_COLAB: Participar de uma Colaboração
 UNIRSE_PROYECTO_TITULO: Participar de um Projeto
 UNIRSE_PROYECTO_DESC: Digite o código que lhe foi enviado para começarem a trabalhar juntos em tempo real.
 CONECTAR: Conectar
+UNIRSE: Juntar-se
 COMPARTIR_CON_CARLEY: Compartilhar com Carley
 COMPARTIR_CON_CARLEY_HINT: Compartilhe seus códigos toda vez que publicar um videogame
 COMPARTIR_CON_CARLEY_DESC: Agradeceríamos muito se você compartilhasse seus códigos CES, pois isso nos ajudará a treinar nosso modelo de IA Carley Creative Code, que foi projetado do zero especialmente para o motor. O modelo consumirá menos de 1 GB de RAM, o que tornará seu uso menos dispendioso nos servidores e não teremos que pagar muito. Também permitirá que mais usuários tenham acesso à IA e é feito de forma que programar no motor seja muito fácil e simples. Não compartilhamos seu código com ninguém; só o usaremos para fins de treinamento para que, em um futuro próximo, você apenas diga ao motor o que deseja e ele o torne realidade.
@@ -1188,6 +1282,13 @@ SOY_NUEVO: Sou novo
 HINT_SOY_NUEVO: Ative isso para receber um guia básico ao abrir o projeto.
 CREAR: Criar
 SIN_PROYECTOS: Você ainda não tem projetos. Crie um para começar!
+TIPO_COLAB: Tipo de Colaboração:
+COLAB_LOCAL: Local
+COLAB_ONLINE: Online
+HINT_COLAB_LOCAL: Conecte-se a um parceiro na sua mesma rede wifi.
+HINT_COLAB_ONLINE: Conecte-se através dos servidores da Carley.
+INGRESAR_CODIGO: Inserir Código
+NO_DISPONIBLE: Não disponível
 
 # Libraries
 LIBRERIAS: Bibliotecas
@@ -1360,6 +1461,43 @@ TRANSFORM: Transform
 POSICION: Posição
 ROTACION: Rotação
 ESCALA: Escala
+MOVEMENT_BASIC: Movimento (Básico)
+TEXTURE_RENDER: Renderizador de Textura
+VERTICAL_LAYOUT: Auto-Disposição Vertical
+HORIZONTAL_LAYOUT: Auto-Disposição Horizontal
+GRID_LAYOUT: Auto-Disposição Grade
+SIZE_FITTER: Ajuste de Tamanho
+VIDEO_PLAYER: Reprodutor de Vídeo
+HEALTH_COMPONENT: Vida (Health)
+ATTACK_COMPONENT: Ataque (Attack)
+SCROLL_RECT: Retângulo de Rolagem
+UI_MASK: Máscara UI
+UI_COLLIDER: Colisor UI
+PATROL_COMPONENT: Patrulha (Patrol)
+POLYGON_COLLIDER_2D: Colisor de Polígono 2D
+UI_TRANSFORM: Transformação UI
+UI_IMAGE: Imagem UI
+UI_TEXT: Texto UI
+SPRITE_RENDERER: Renderizador de Sprite
+AUDIO_SOURCE: Fonte de Áudio
+SUSPENSION_HC: Suspensão HC
+VEHICLE_TOPDOWN: Veículo Top-Down
+PLANE_CONTROLLER: Controlador de Avião
+HELICOPTER_CONTROLLER: Controlador de Helicóptero
+SKELETON_RENDERER: Renderizador de Esqueleto
+IK_MANAGER_2D: Gestor IK 2D
+BASIC_AI: IA Básica
+RIGIDBODY_2D: Rigidbody 2D
+BOX_COLLIDER_2D: Colisor de Caixa 2D
+BODY_TYPE: Tipo de Corpo
+DYNAMIC: Dinâmico
+STATIC: Estático
+KINEMATIC: Cinemático
+RIGIDBODY_COLLIDER_WARNING: O Rigidbody precisa de un Colisor para interagir fisicamente.
+PROJECTILE_LAUNCHER_COMPONENT: Lançador de Projéteis
+AUTO_DESTROY_COMPONENT: Destruição Automática
+CAMERA_FOLLOW_COMPONENT: Seguimento de Câmara
+FIRE_SOUND: Som de Disparo
 PROP_FLIP_X: Inverter Horizontal
 PROP_FLIP_Y: Inverter Vertical
 NADA_SELECCIONADO: Nada selecionado
@@ -1539,10 +1677,11 @@ NUESTROS_CANALES: Наши каналы
 CANALES: Каналы
 SOLUCION_RAPIDA: Быстрые решения
 PROYECTO_COLABORATIVO: Совместный проект
-UNIRSE_COLAB: Присоединиться к совместной работе
+UNIRSE_COLAB: Присоединиться к коллаборации
 UNIRSE_PROYECTO_TITULO: Присоединиться к проекту
 UNIRSE_PROYECTO_DESC: Введите код, который вам прислали, чтобы начать совместную работу в режиме реального времени.
 CONECTAR: Подключиться
+UNIRSE: Присоединиться
 COMPARTIR_CON_CARLEY: Поделиться с Carley
 COMPARTIR_CON_CARLEY_HINT: Делитесь своими кодами каждый раз, когда публикуете видеоигру
 COMPARTIR_CON_CARLEY_DESC: Мы будем очень признательны, если вы поделитесь своими кодами CES, потому что это поможет нам обучить нашу модель ИИ Carley Creative Code, которая была разработана с нуля специально для движка. Модель будет потреблять менее 1 ГБ оперативной памяти, что сделает её использование на серверах менее затратным, и нам не придется много платить. Это также позволит большему количеству пользователей получить доступ к ИИ и сделано так, чтобы программирование на движке было очень простым и понятным. Мы ни с кем не делимся вашим кодом; мы будем использовать его только в целях обучения, чтобы в ближайшем будущем вы могли просто сказать движку, чего хотите, и он воплотил это в реальность.
@@ -1632,6 +1771,13 @@ SOY_NUEVO: Я новичок
 HINT_SOY_NUEVO: Включите это, чтобы получить базовое руководство при открытии проекта.
 CREAR: Создать
 SIN_PROYECTOS: У вас пока нет проектов. Создайте один, чтобы начать!
+TIPO_COLAB: Тип совместной работы:
+COLAB_LOCAL: Локальная
+COLAB_ONLINE: Онлайн
+HINT_COLAB_LOCAL: Подключитесь к партнеру в той же сети Wi-Fi.
+HINT_COLAB_ONLINE: Подключайтесь через серверы Carley.
+INGRESAR_CODIGO: Введите код
+NO_DISPONIBLE: Недоступно
 
 # Libraries
 LIBRERIAS: Библиотеки
@@ -1788,6 +1934,43 @@ TRANSFORM: Transform
 POSICION: Позиция
 ROTACION: Вращение
 ESCALA: Масштаб
+MOVEMENT_BASIC: Движение (Базовое)
+TEXTURE_RENDER: Рендерер текстуры
+VERTICAL_LAYOUT: Вертикальная компоновка
+HORIZONTAL_LAYOUT: Горизонтальная компоновка
+GRID_LAYOUT: Сеточная компоновка
+SIZE_FITTER: Подгонка размера
+VIDEO_PLAYER: Видеоплеер
+HEALTH_COMPONENT: Компонент здоровья
+ATTACK_COMPONENT: Компонент атаки
+SCROLL_RECT: Область прокрутки
+UI_MASK: Маска UI
+UI_COLLIDER: Коллайдер UI
+PATROL_COMPONENT: Патруль
+POLYGON_COLLIDER_2D: Полигональный коллайдер 2D
+UI_TRANSFORM: UI Трансформ
+UI_IMAGE: UI Изображение
+UI_TEXT: UI Текст
+SPRITE_RENDERER: Рендерер спрайта
+AUDIO_SOURCE: Источник звука
+SUSPENSION_HC: Подвеска HC
+VEHICLE_TOPDOWN: Транспорт (Вид сверху)
+PLANE_CONTROLLER: Контроллер самолета
+HELICOPTER_CONTROLLER: Контроллер вертолета
+SKELETON_RENDERER: Скелетный рендерер
+IK_MANAGER_2D: ИК Менеджер 2D
+BASIC_AI: Базовый ИИ
+RIGIDBODY_2D: Rigidbody 2D
+BOX_COLLIDER_2D: Коробочный коллайдер 2D
+BODY_TYPE: Тип тела
+DYNAMIC: Динамический
+STATIC: Статический
+KINEMATIC: Кинематический
+RIGIDBODY_COLLIDER_WARNING: Rigidbody требуется коллайдер для физического взаимодействия.
+PROJECTILE_LAUNCHER_COMPONENT: Запуск снарядов
+AUTO_DESTROY_COMPONENT: Авто-уничтожение
+CAMERA_FOLLOW_COMPONENT: Слежение камеры
+FIRE_SOUND: Звук выстрела
 PROP_FLIP_X: Отразить по горизонтали
 PROP_FLIP_Y: Отразить по вертикали
 NADA_SELECCIONADO: Ничего не выбрано
@@ -1982,6 +2165,7 @@ UNIRSE_COLAB: 加入协作
 UNIRSE_PROYECTO_TITULO: 加入项目
 UNIRSE_PROYECTO_DESC: 输入您收到的代码，开始实时共同创作。
 CONECTAR: 连接
+UNIRSE: 加入
 COMPARTIR_CON_CARLEY: 与 Carley 分享
 COMPARTIR_CON_CARLEY_HINT: 每次发布视频游戏时分享您的代码
 COMPARTIR_CON_CARLEY_DESC: 我们非常感谢您分享您的 CES 代码，因为这将帮助我们训练我们的 AI 模型 Carley Creative Code，它是专门为该引擎从头开始设计的。该模型将消耗不到 1 GB 的 RAM，这将降低其在服务器上的使用成本，使我们不必支付太多费用。它还将让更多用户能够访问 AI，并且其设计使得在引擎中编程变得非常容易和简单。我们不会与任何人分享您的代码；我们只会将其用于培训目的，以便在不久的将来，您只需告诉引擎您想要什么，它就会将其变为现实。
@@ -2071,6 +2255,13 @@ SOY_NUEVO: 我是新手
 HINT_SOY_NUEVO: 启用此选项可在打开项目时获得基础指南。
 CREAR: 创建
 SIN_PROYECTOS: 您还没有任何项目。创建一个开始吧！
+TIPO_COLAB: 协作类型:
+COLAB_LOCAL: 本地
+COLAB_ONLINE: 在线
+HINT_COLAB_LOCAL: 连接到同一 wifi 网络中的伙伴。
+HINT_COLAB_ONLINE: 通过 Carley 服务器连接。
+INGRESAR_CODIGO: 输入代码
+NO_DISPONIBLE: 不可用
 
 # Libraries
 LIBRERIAS: 库
@@ -2227,6 +2418,43 @@ TRANSFORM: 变换
 POSICION: 位置
 ROTACION: 旋转
 ESCALA: 缩放
+MOVEMENT_BASIC: 基础移动
+TEXTURE_RENDER: 纹理渲染器
+VERTICAL_LAYOUT: 垂直布局
+HORIZONTAL_LAYOUT: 水平布局
+GRID_LAYOUT: 网格布局
+SIZE_FITTER: 尺寸适配器
+VIDEO_PLAYER: 视频播放器
+HEALTH_COMPONENT: 生命组件
+ATTACK_COMPONENT: 攻击组件
+SCROLL_RECT: 滚动区域
+UI_MASK: UI 遮罩
+UI_COLLIDER: UI 碰撞体
+PATROL_COMPONENT: 巡逻
+POLYGON_COLLIDER_2D: 多边形碰撞体 2D
+UI_TRANSFORM: UI 变换
+UI_IMAGE: UI 图像
+UI_TEXT: UI 文本
+SPRITE_RENDERER: 精灵渲染器
+AUDIO_SOURCE: 音源
+SUSPENSION_HC: 悬挂系统 HC
+VEHICLE_TOPDOWN: 俯视载具
+PLANE_CONTROLLER: 飞机控制器
+HELICOPTER_CONTROLLER: 直升机控制器
+SKELETON_RENDERER: 骨骼渲染器
+IK_MANAGER_2D: IK 管理器 2D
+BASIC_AI: 基础人工智能
+RIGIDBODY_2D: 刚体 2D
+BOX_COLLIDER_2D: 盒体碰撞体 2D
+BODY_TYPE: 刚体类型
+DYNAMIC: 动态
+STATIC: 静态
+KINEMATIC: 运动学
+RIGIDBODY_COLLIDER_WARNING: 刚体需要碰撞体才能进行物理交互。
+PROJECTILE_LAUNCHER_COMPONENT: 弹射器
+AUTO_DESTROY_COMPONENT: 自动销毁
+CAMERA_FOLLOW_COMPONENT: 摄像机跟随
+FIRE_SOUND: 发射声音
 PROP_FLIP_X: 水平翻转
 PROP_FLIP_Y: 垂直翻转
 NADA_SELECCIONADO: 未选择任何内容

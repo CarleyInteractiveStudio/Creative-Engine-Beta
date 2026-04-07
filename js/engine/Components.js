@@ -1839,6 +1839,10 @@ export class Animator extends Leyes {
         if (this.playOnAwake && !this.isPlaying) {
             this.play();
         }
+        // Validation check
+        if (this.playOnAwake && !this.materia.getComponentByName('Rigidbody2D') && !this.materia.getComponentByName('Transform')) {
+             console.error(`[Animator] El objeto '${this.materia.name}' no tiene Rigidbody2D ni Transform para ser renderizado.`);
+        }
     }
 
     async loadAnimationClip(projectsDirHandle) {
@@ -3995,8 +3999,25 @@ export class Movement extends Leyes {
         this.fallAnim = "fall";
 
         this._warnedMissing = new Set();
+        this._lastErrorTime = 0;
+    }
+
+    start() {
+        if (this.useRigidbody && !this.materia.getComponentByName('Rigidbody2D')) {
+            console.error(`[Movement] El objeto '${this.materia.name}' requiere un componente 'Rigidbody2D' (Fisicas) para caer y moverse.`);
+        }
     }
     update(deltaTime) {
+        if (this.useRigidbody && !this.materia.getComponentByName('Rigidbody2D')) {
+            // Notificar de nuevo cada 5 segundos si sigue faltando el componente
+            if (!this._lastErrorTime || (performance.now() - this._lastErrorTime > 5000)) {
+                console.error(`[FÍSICAS] ¡El objeto '${this.materia.name}' no tiene Rigidbody2D! No podrá caer ni moverse físicamente.`);
+                this._lastErrorTime = performance.now();
+            }
+            // En modo no-rigidbody el update seguiría, pero aquí devolvemos para no causar errores de 'null' velocity
+            return;
+        }
+
         const input = RuntimeAPIManager.getAPI('input');
         const engine = RuntimeAPIManager.getAPI('engine');
         if (!input) return;
@@ -5273,8 +5294,10 @@ export class ProjectileLauncher extends Leyes {
         this.projectileSpeed = 500;
         this.offset = { x: 0, y: 0 };
         this.direction = { x: 1, y: 0 };
+        this.fireSound = "";
 
         this._lastFireTime = 0;
+        this._warnedMissing = new Set();
     }
 
     update(deltaTime) {
@@ -5299,6 +5322,16 @@ export class ProjectileLauncher extends Leyes {
 
         if (!this.projectilePrefab) return;
 
+        if (this.fireSound) {
+            const audio = this.materia.getComponent(AudioSource);
+            if (audio) {
+                audio.play(this.fireSound);
+            } else if (!this._warnedMissing.has('AudioSource')) {
+                this._warnedMissing.add('AudioSource');
+                console.error(`[Lanzador] El objeto '${this.materia.name}' necesita un componente 'AudioSource' para reproducir el sonido: ${this.fireSound}`);
+            }
+        }
+
         // Usar SceneManager global para evitar dependencias circulares
         if (window.SceneManager && window.SceneManager.instantiatePrefabFromPath) {
             const projectile = await window.SceneManager.instantiatePrefabFromPath(this.projectilePrefab, spawnPos.x, spawnPos.y);
@@ -5322,6 +5355,8 @@ export class ProjectileLauncher extends Leyes {
     set cadencia(v) { this.fireRate = v; }
     get velocidadProyectil() { return this.projectileSpeed; }
     set velocidadProyectil(v) { this.projectileSpeed = v; }
+    get sonidoDisparo() { return this.fireSound; }
+    set sonidoDisparo(v) { this.fireSound = v; }
 
     clone() {
         const newPl = new ProjectileLauncher(null);
@@ -5331,6 +5366,8 @@ export class ProjectileLauncher extends Leyes {
         newPl.projectileSpeed = this.projectileSpeed;
         newPl.direction = { ...this.direction };
         newPl.offset = { ...this.offset };
+        newPl.fireSound = this.fireSound;
+        newPl._warnedMissing = new Set();
         return newPl;
     }
 }
@@ -5555,6 +5592,11 @@ export class Attack extends Leyes {
     }
 
     executeAttack(atk) {
+        const audio = this.materia.getComponentByName('AudioSource');
+        if (atk.sound && !audio) {
+            console.error(`[Ataque] El objeto '${this.materia.name}' necesita un componente 'AudioSource' para reproducir el sonido: ${atk.sound}`);
+        }
+
         this._isAttacking = true;
         this._currentAttack = atk;
         this._attackWindow = atk.duration || 0.2;
