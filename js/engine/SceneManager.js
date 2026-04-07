@@ -239,6 +239,8 @@ export function setCurrentSceneFileHandle(fileHandle) {
 
 export function setSceneDirty(dirty) {
     isSceneDirty = dirty;
+    // Note: If dirty is true, it usually means something changed.
+    // However, for collaboration, we should broadcast specific actions rather than just "dirty".
 }
 
 export function clearScene() {

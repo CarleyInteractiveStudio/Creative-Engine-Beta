@@ -9,7 +9,7 @@ import * as JSModule from "@codemirror/lang-javascript";
 import * as ThemeModule from "@codemirror/theme-one-dark";
 import * as HighlightModule from "@lezer/highlight";
 
-const { EditorState, StateField, StateEffect } = StateModule;
+const { EditorState, StateField, StateEffect, Annotation, Transaction, ChangeSet } = StateModule;
 const {
     EditorView, keymap, Decoration, lineNumbers,
     drawSelection, dropCursor, highlightSpecialChars,
@@ -60,7 +60,7 @@ const basicSetup = [
 
 export {
     basicSetup,
-    EditorState, StateField, StateEffect,
+    EditorState, StateField, StateEffect, Annotation, Transaction, ChangeSet,
     EditorView, keymap, Decoration, lineNumbers, drawSelection, dropCursor, highlightSpecialChars,
     highlightActiveLine, highlightActiveLineGutter, lineWrapping,
     javascript,

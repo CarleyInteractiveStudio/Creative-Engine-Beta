@@ -13,6 +13,7 @@ import { Materia } from '../../engine/Materia.js';
 import * as Components from '../../engine/Components.js';
 import { showConfirmation } from './DialogWindow.js';
 import { createBaseMateria, generateUniqueName, createPanelObject, createTextObject, createButtonObject, createTerrenoObject, createAudioObject, createVideoObject, createWaterObject, createLineColliderObject, createProgressBarObject, createCombatantObject, createScrollViewObject } from '../MateriaFactory.js';
+import { broadcastUpdate } from '../CollaborationSystem.js';
 
 // Module-level state and dependencies
 let dom = {};
@@ -441,6 +442,9 @@ export function handleContextMenuAction(action) {
                 if (currentlySelected && currentlySelected.id === idToDelete) {
                     selectMateriaCallback(null);
                 }
+
+                broadcastUpdate({ op: 'DELETE', id: idToDelete });
+
                 SceneManager.currentScene.removeMateria(idToDelete);
                 updateHierarchy();
                 updateInspector();
@@ -480,6 +484,12 @@ export function handleContextMenuAction(action) {
 
     // Centralized update for creation and rename actions
     if (newMateria) {
+        // Broadcast creation
+        broadcastUpdate({
+            op: 'CREATE',
+            data: SceneManager.serializeMateria(newMateria, true)
+        });
+
         // For new objects, update hierarchy and then select the new one.
         // A timeout is used to prevent a race condition where the Inspector tries
         // to render the new object before the editor state is fully updated.

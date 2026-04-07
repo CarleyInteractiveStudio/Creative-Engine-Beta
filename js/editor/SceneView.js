@@ -5,6 +5,7 @@ import { TerrenoEditorWindow } from './ui/TerrenoEditorWindow.js';
 import { getCurrentDirectoryHandle, getCurrentDirectoryPath } from './ui/AssetBrowserWindow.js';
 import * as MateriaFactory from './MateriaFactory.js';
 import { WeightPainter } from './WeightPainter.js';
+import { broadcastUpdate } from './CollaborationSystem.js';
 
 // Dependencies from editor.js
 let dom;
@@ -985,6 +986,13 @@ export function initialize(dependencies) {
 
         lastMousePosition = { x: moveEvent.clientX, y: moveEvent.clientY };
         updateInspector();
+
+        // Broadcast movement
+        broadcastUpdate({
+            op: 'MOVE',
+            id: dragState.materia.id,
+            pos: { x: transform.x, y: transform.y }
+        });
     };
 
     const onGizmoDragEnd = () => {

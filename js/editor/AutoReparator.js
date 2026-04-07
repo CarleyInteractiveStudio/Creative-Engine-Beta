@@ -18,9 +18,35 @@ export async function repair(code, fileName, runtimeError = null) {
     const userLang = (prefs.language || 'es').toLowerCase();
 
     let repairedCode = code;
+    let bestIntent = 'desconocido';
     const L = window.Localization || { get: (k, d) => d };
+    let addComponent = null;
 
     console.log("[AutoReparator v4.6] Iniciando reparación de " + fileName + "...");
+
+    // --- 0. Runtime Error Analysis (Missing Components) ---
+    if (isSmartEnabled && runtimeError) {
+        const msg = runtimeError.message.toLowerCase();
+        const errorMappings = [
+            { keywords: ["velocity", "applyimpulse", "addforce", "rigidbody", "física", "velocidad"], component: "Rigidbody2D" },
+            { keywords: ["play", "stop", "animation", "animator", "animación", "animador"], component: "Animator" },
+            { keywords: ["audiosource", "playaudio", "stopaudio", "fuente", "audio", "sonido"], component: "AudioSource" },
+            { keywords: ["spriterenderer", "sprite", "color", "renderizador"], component: "SpriteRenderer" }
+        ];
+
+        for (const mapping of errorMappings) {
+            if (mapping.keywords.some(k => msg.includes(k.toLowerCase()))) {
+                const materia = window.getSelectedMateria();
+                if (materia && !materia.getComponent(mapping.component)) {
+                    addComponent = {
+                        materiaId: materia.id,
+                        componentType: mapping.component
+                    };
+                    break;
+                }
+            }
+        }
+    }
 
     // --- 1. Variable Declaration Healer ---
     if (isSmartEnabled) {
@@ -95,16 +121,28 @@ export async function repair(code, fileName, runtimeError = null) {
         }
     }
 
-    // --- 4. Intent Detection ---
-    const codeWords = repairedCode.toLowerCase().match(/\w+/g) || [];
-    let bestIntent = 'desconocido';
+    // --- 4. Intent Detection (Improved Surgical Analysis) ---
+    const cleanForIntent = stripCommentsAndStrings(repairedCode).toLowerCase();
+    const codeWords = cleanForIntent.match(/\w+/g) || [];
     let maxIntentScore = 0;
     for (const [intent, config] of Object.entries(intentWeights)) {
         let score = 0;
-        config.keywords.forEach(k => { if (codeWords.includes(k)) score += 2; });
-        if (intent === 'fisica' && (repairedCode.includes('applyImpulse') || repairedCode.includes('velocity'))) score += 10;
-        if (score > maxIntentScore) { maxIntentScore = score; bestIntent = intent; }
+        config.keywords.forEach(k => {
+            const occurrences = codeWords.filter(word => word === k.toLowerCase()).length;
+            score += occurrences * 2;
+        });
+
+        // Contextual Boosts
+        if (intent === 'fisica' && (cleanForIntent.includes('fisica.') || cleanForIntent.includes('rigidbody'))) score += 15;
+        if (intent === 'movimiento' && (cleanForIntent.includes('posicion.') || cleanForIntent.includes('tecla'))) score += 10;
+        if (intent === 'combate' && (cleanForIntent.includes('instanciar') || cleanForIntent.includes('bala'))) score += 12;
+
+        if (score > maxIntentScore && score > 3) {
+            maxIntentScore = score;
+            bestIntent = intent;
+        }
     }
+    console.log("[AutoReparator] Script Intent detected:", bestIntent, "(Score:", maxIntentScore + ")");
 
     // --- 5. Physics Converter (v4.6 Enhanced) ---
     if (isSmartEnabled && (bestIntent === 'movimiento' || bestIntent === 'fisica')) {
@@ -158,7 +196,10 @@ export async function repair(code, fileName, runtimeError = null) {
                     'proyectil', 'projectile', 'voltearH', 'voltearV', 'renderizadorDeSprite', 'fuenteDeAudio',
                     'animador', 'lienzo', 'uiBarra', 'tiempoDelta', 'azar', 'instanciar', 'destruir', 'lanzarRayo',
                     'buscar', 'cargarEscena', 'difundir', 'obtenerPosicionMouse', 'verdadero', 'falso', 'nulo',
-                    'fisicaX', 'fisicaY', 'velocidadX', 'velocidadY', 'velocityX', 'velocityY', 'flipX', 'flipY'
+                    'fisicaX', 'fisicaY', 'velocidadX', 'velocidadY', 'velocityX', 'velocityY', 'flipX', 'flipY',
+                    'numero', 'texto', 'booleano', 'Materia', 'mtr', 'Prefab', 'Sprite', 'Audio', 'Scene',
+                    'number', 'text', 'boolean', 'sprite', 'audio', 'scene',
+                    'numeto', 'nmero', 'número', 'funsion', 'fucion', 'funcio'
                 ];
                 if (!blacklist.includes(v)) declarations += "publico " + type + " " + v + ";\n";
             });
@@ -175,7 +216,11 @@ export async function repair(code, fileName, runtimeError = null) {
     // --- 8. Logic Pattern Completion (v4.6 Bilingual) ---
     if (isSmartEnabled) {
         logicPatterns.forEach(pattern => {
-            if (pattern.trigger.test(repairedCode)) {
+            // Surgical check: Trigger matches AND (No intent specified OR Intent matches bestIntent)
+            const triggerMatch = pattern.trigger.test(repairedCode);
+            const intentMatch = !pattern.intent || pattern.intent === bestIntent;
+
+            if (triggerMatch && intentMatch) {
                 const missingElements = pattern.elements.filter(el => !(new RegExp(el, 'i').test(repairedCode)));
                 if (missingElements.length > 0 && missingElements.length <= 3) {
                     const targetLifecycle = (pattern.preferredLifecycle === 'alActualizar' && !repairedCode.includes('alActualizar') && repairedCode.includes('update')) ? 'update' :
@@ -271,10 +316,18 @@ export async function repair(code, fileName, runtimeError = null) {
 
     const finalValidation = transpile(repairedCode, fileName);
     const success = !finalValidation.errors || finalValidation.errors.length === 0;
+
+    let finalMessage = success ? L.get('REPARACION_EXITOSA', 'Código reparado con éxito por Expert Brain (v4.6).') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero el script requiere intervención manual.');
+
+    if (addComponent) {
+        finalMessage += " " + (L.get('SUGERENCIA_COMPONENTE', 'Además, parece que te falta el componente {comp}. ¿Quieres añadirlo?').replace('{comp}', addComponent.componentType));
+    }
+
     return {
         success,
         code: repairedCode,
-        message: success ? L.get('REPARACION_EXITOSA', 'Código reparado con éxito por Expert Brain (v4.6).') : L.get('REPARACION_PARCIAL', 'Se realizaron correcciones, pero el script requiere intervención manual.')
+        addComponent,
+        message: finalMessage
     };
 }
 

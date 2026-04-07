@@ -191,6 +191,7 @@ export const logicPatterns = [
     {
         name: "Input to Movement",
         trigger: /teclaPresionada|teclaRecienPresionada|isKeyPressed|isKeyJustPressed/i,
+        intent: "movimiento",
         elements: ["posicion", "velocidad", "delta", "position", "speed"],
         completion: {
             es: "posicion.x += velocidad * delta;",
@@ -201,6 +202,7 @@ export const logicPatterns = [
     {
         name: "Collision to Health",
         trigger: /alEntrarEnColision|alChocar|onCollisionEnter/i,
+        intent: "salud",
         elements: ["tieneTag", "vida", "danio|daño", "hasTag", "health", "damage"],
         completion: {
             es: "si (otro.tieneTag('Enemigo')) { vida -= 10; }",
@@ -230,7 +232,8 @@ export const logicPatterns = [
     },
     {
         name: "Prefab Instantiation",
-        trigger: /teclaRecienPresionada|alActualizar|isKeyJustPressed|update/i,
+        trigger: /disparar|bala|fuego|shoot|bullet|fire/i,
+        intent: "combate",
         elements: ["instanciar|crear|instantiate|create", "Vector2", "posicion|position"],
         completion: {
             es: "instanciar(proyectil, posicion.x, posicion.y);",
@@ -241,6 +244,7 @@ export const logicPatterns = [
     {
         name: "Health Decay and Death",
         trigger: /vida\s*-=|dañar|health\s*-=|damage/i,
+        intent: "salud",
         elements: ["si|if", "0", "destruir|muerte|destroy|death"],
         completion: {
             es: "si (vida <= 0) {\n    reproducir.Muerte();\n    destruir(materia);\n}",
@@ -251,6 +255,7 @@ export const logicPatterns = [
     {
         name: "Advanced Movement",
         trigger: /velocidad|moverse|speed|move/i,
+        intent: "movimiento",
         elements: ["rotacion|rotation", "coseno|cos", "seno|sin", "fisica"],
         completion: {
             es: "variable rad = rotacion * 3.14 / 180;\nfisica.velocidad.x = coseno(rad) * velocidad;\nfisica.velocidad.y = seno(rad) * velocidad;",
@@ -271,6 +276,7 @@ export const logicPatterns = [
     {
         name: "Automatic Flip",
         trigger: /velocidad|velX|velY|x\s*\+=|x\s*-=|speed/i,
+        intent: "movimiento",
         elements: ["voltearH|flipX", "voltear|flip"],
         completion: {
             es: "si (fisica.velocidad.x > 0) voltearH = falso;\nsi (fisica.velocidad.x < 0) voltearH = verdadero;",
