@@ -74,6 +74,7 @@ const componentAliases = {
     'IKManager2D': 'gestorIK2D',
     'Attack': 'ataque',
     'ProgressBar': 'barraDeProgreso',
+    'SceneLoader': 'cargarEscena',
 };
 
 
@@ -119,7 +120,8 @@ export class CreativeScriptBehavior {
             const shortcutName = componentName.charAt(0).toLowerCase() + componentName.slice(1);
 
             // Create the primary (English) shortcut (e.g., this.spriteRenderer)
-            if (!this.hasOwnProperty(shortcutName)) {
+            // Use 'in' to avoid overwriting existing getters on the prototype (like transform, fisica, etc.)
+            if (!(shortcutName in this)) {
                 this[shortcutName] = component;
             }
 
@@ -128,7 +130,7 @@ export class CreativeScriptBehavior {
             if (aliases) {
                 const aliasList = Array.isArray(aliases) ? aliases : [aliases];
                 for (const alias of aliasList) {
-                    if (!this.hasOwnProperty(alias)) {
+                    if (!(alias in this)) {
                         this[alias] = component;
                     }
                 }
@@ -324,43 +326,66 @@ export class CreativeScriptBehavior {
     get audio() { return this.materia.getComponent(AudioSource); }
     get sonido() { return this.audio; }
 
+    /**
+     * @private
+     * Regresa un Proxy de seguridad que lanza un error descriptivo si se intenta acceder a un componente que no existe.
+     */
+    _missingComponentProxy(name, technicalName) {
+        const handler = {
+            get: (target, prop) => {
+                throw new Error(`Intentaste usar '${name}', pero el componente '${technicalName}' no está añadido a este objeto en el Inspector.`);
+            },
+            set: (target, prop, value) => {
+                throw new Error(`No puedes asignar '${prop}' en '${name}' porque el componente '${technicalName}' no existe en este objeto.`);
+            },
+            apply: (target, thisArg, args) => {
+                throw new Error(`Intentaste llamar a '${name}' como función, pero el componente '${technicalName}' no existe.`);
+            }
+        };
+        // We use a dummy function so it's also "callable" for proxies that might be used as functions
+        return new Proxy(() => {}, handler);
+    }
+
     // --- Common Component Shortcuts (Robust) ---
-    get transform() { return this.obtenerComponente('Transform'); }
+    get transform() { return this.obtenerComponente('Transform') || this._missingComponentProxy('posicion', 'Transform'); }
     get transformacion() { return this.transform; }
     get posicion() { return this.transform; }
 
-    get fisica() { return this.obtenerComponente('Rigidbody2D'); }
+    get fisica() { return this.obtenerComponente('Rigidbody2D') || this._missingComponentProxy('fisica', 'Rigidbody2D'); }
     get rigidbody2D() { return this.fisica; }
 
-    get vida() { return this.obtenerComponente('Health'); }
+    get vida() { return this.obtenerComponente('Health') || this._missingComponentProxy('vida', 'Health'); }
     get salud() { return this.vida; }
     get health() { return this.vida; }
 
-    get animacion() { return this.obtenerComponente('Animator'); }
+    get animacion() { return this.obtenerComponente('Animator') || this._missingComponentProxy('animador', 'Animator'); }
     get animador() { return this.animacion; }
     get animator() { return this.animacion; }
 
-    get controlador() { return this.obtenerComponente('AnimatorController'); }
+    get controlador() { return this.obtenerComponente('AnimatorController') || this._missingComponentProxy('controlador', 'AnimatorController'); }
     get controladorAnimacion() { return this.controlador; }
     get animatorController() { return this.controlador; }
 
-    get ataque() { return this.obtenerComponente('Attack'); }
+    get ataque() { return this.obtenerComponente('Attack') || this._missingComponentProxy('ataque', 'Attack'); }
     get attack() { return this.ataque; }
 
-    get barra() { return this.obtenerComponente('ProgressBar'); }
+    get barra() { return this.obtenerComponente('ProgressBar') || this._missingComponentProxy('barra', 'ProgressBar'); }
     get uiBarra() { return this.barra; }
     get progressBar() { return this.barra; }
 
-    get video() { return this.obtenerComponente('VideoPlayer'); }
+    get cargadorDeEscena() { return this.obtenerComponente('SceneLoader') || this._missingComponentProxy('cargadorDeEscena', 'SceneLoader'); }
+    get sceneLoader() { return this.cargadorDeEscena; }
+
+    get video() { return this.obtenerComponente('VideoPlayer') || this._missingComponentProxy('video', 'VideoPlayer'); }
     get pelicula() { return this.video; }
 
-    get agua() { return this.obtenerComponente('Water'); }
+    get agua() { return this.obtenerComponente('Water') || this._missingComponentProxy('agua', 'Water'); }
     get water() { return this.agua; }
 
-    get texto() { return this.obtenerComponente('UIText'); }
-    get boton() { return this.obtenerComponente('Button'); }
-    get imagen() { return this.obtenerComponente('UIImage'); }
-    get lienzo() { return this.obtenerComponente('Canvas'); }
+    get texto() { return this.obtenerComponente('UIText') || this._missingComponentProxy('texto', 'UIText'); }
+    get boton() { return this.obtenerComponente('Button') || this._missingComponentProxy('boton', 'Button'); }
+    get imagen() { return this.obtenerComponente('UIImage') || this._missingComponentProxy('imagen', 'UIImage'); }
+    get lienzo() { return this.obtenerComponente('Canvas') || this._missingComponentProxy('lienzo', 'Canvas'); }
 
     get ui() {
         const self = this;
@@ -865,7 +890,37 @@ export class CreativeScript extends Leyes {
             // but we do await it here for error handling.
             await this.instance[methodName](...args);
         } catch (e) {
-            console.error(`[CreativeScript] Error en el método '${methodName}' del script '${this.scriptName}' en el objeto '${this.materia ? this.materia.name : 'Desconocido'}':\n`, e);
+            // --- Improved Runtime Error Reporting ---
+            let cesLine = 0;
+            const stack = e.stack || "";
+
+            // Attempt to parse JS line from stack and map to CES
+            const match = stack.match(/<anonymous>:(\d+):/);
+            if (match) {
+                const jsLine = parseInt(match[1]);
+                const metadataSource = window.CE_Script_Metadata || (editorLogic ? editorLogic.getAllMetadata() : {});
+                const meta = metadataSource[this.scriptName];
+                if (meta && meta.lineMap && meta.lineMap.methods[methodName]) {
+                    const map = meta.lineMap.methods[methodName].find(m => m.js === jsLine);
+                    if (map) cesLine = map.ces;
+                }
+            }
+
+            const errorObj = {
+                line: cesLine,
+                message: e.message,
+                scriptName: this.scriptName,
+                methodName: methodName,
+                materiaName: this.materia ? this.materia.name : 'Desconocido',
+                materiaId: this.materia ? this.materia.id : null,
+                stack: e.stack
+            };
+
+            if (typeof window !== 'undefined' && window.logToUIConsole) {
+                window.logToUIConsole(errorObj, 'error', false);
+            } else {
+                console.error(`[CreativeScript] Error en '${this.scriptName}' (${methodName}):`, e);
+            }
         }
     }
 
@@ -934,18 +989,18 @@ export class CreativeScript extends Leyes {
                     onDisable: ['alDeshabilitar', 'desactivar'],
                     onDestroy: ['alDestruir'],
                     fixedUpdate: ['actualizarFijo'],
-                    alEntrarEnColision: ['OnCollisionEnter'],
+                    alEntrarEnColision: ['OnCollisionEnter', 'alChocar'],
                     alPermanecerEnColision: ['OnCollisionStay'],
                     alSalirDeColision: ['OnCollisionExit'],
                     alEntrarEnTrigger: ['OnTriggerEnter'],
                     alPermanecerEnTrigger: ['OnTriggerStay'],
                     alSalirDeTrigger: ['OnTriggerExit'],
                     alFinalizarAnimacion: ['OnAnimationEnd'],
-                    onPointerDown: ['alPresionar'],
+                    onPointerDown: ['alPresionar', 'alPulsar'],
                     onPointerUp: ['alSoltar'],
                     onPointerEnter: ['alEntrar'],
                     onPointerExit: ['alSalir'],
-                    onPointerClick: ['alHacerClick'],
+                    onPointerClick: ['alHacerClick', 'alClicar'],
                     onPointerDrag: ['alDeslizar'],
                     onPointerHold: ['alMantener']
                 };
@@ -1040,8 +1095,21 @@ export class CreativeScript extends Leyes {
                 throw new Error(`El script '${this.scriptName}' no exporta una clase por defecto.`);
             }
         } catch (error) {
-            console.error(`Error al inicializar la instancia del script '${this.scriptName}':`, error);
-            this.isInitialized = false; // Mark as failed
+            const errorObj = {
+                line: 0,
+                message: error.message,
+                scriptName: this.scriptName,
+                materiaName: this.materia ? this.materia.name : 'Desconocido',
+                materiaId: this.materia ? this.materia.id : null,
+                stack: error.stack
+            };
+
+            if (typeof window !== 'undefined' && window.logToUIConsole) {
+                window.logToUIConsole(errorObj, 'error', false);
+            } else {
+                console.error(`Error al inicializar script '${this.scriptName}':`, error);
+            }
+            this.isInitialized = false;
         }
     }
 
@@ -1085,6 +1153,14 @@ export class Rigidbody2D extends Leyes {
 
     get velocidad() { return this.velocity; }
     set velocidad(v) { this.velocity = v; }
+    get velocidadX() { return this.velocity.x; }
+    set velocidadX(v) { this.velocity.x = v; }
+    get velocidadY() { return this.velocity.y; }
+    set velocidadY(v) { this.velocity.y = v; }
+    get velocityX() { return this.velocity.x; }
+    set velocityX(v) { this.velocity.x = v; }
+    get velocityY() { return this.velocity.y; }
+    set velocityY(v) { this.velocity.y = v; }
     get velocidadAngular() { return this.angularVelocity; }
     set velocidadAngular(v) { this.angularVelocity = v; }
     get masa() { return this.mass; }
@@ -7025,6 +7101,103 @@ registerComponent('GridLayoutGroup', GridLayoutGroup);
 registerComponent('ContentSizeFitter', ContentSizeFitter);
 registerComponent('Attack', Attack);
 registerComponent('ProgressBar', ProgressBar);
+
+/**
+ * Componente SceneLoader: Carga una escena nueva al detectar colisiones, teclas o clicks en UI.
+ */
+export class SceneLoader extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.scenePath = ""; // Ruta a la escena (ej: Assets/Nivel2.ceScene)
+        this.triggerTag = "Player"; // Tag que debe colisionar
+        this.triggerKey = ""; // Tecla opcional (ej: 'Enter')
+        this.buttonMateria = null; // ID o nombre de la Materia UI (Botón)
+
+        this._isSceneLoaded = false;
+        this._buttonListenerAdded = false;
+    }
+
+    async start() {
+        this._isSceneLoaded = false;
+        this._buttonListenerAdded = false;
+    }
+
+    update(deltaTime) {
+        if (this._isSceneLoaded || !this.scenePath) return;
+
+        // 1. Detectar Tecla
+        if (this.triggerKey) {
+            const input = RuntimeAPIManager.getAPI('input');
+            if (input && input.isKeyJustPressed(this.triggerKey)) {
+                this.load();
+                return;
+            }
+        }
+
+        // 2. Detectar Botón UI y registrar listener
+        if (this.buttonMateria && !this._buttonListenerAdded) {
+            const scene = this.materia.scene;
+            if (scene) {
+                let btnMtr = null;
+                if (typeof this.buttonMateria === 'number') btnMtr = scene.findMateriaById(this.buttonMateria);
+                else if (typeof this.buttonMateria === 'string') btnMtr = scene.findMateriaByName(this.buttonMateria) || this.materia.findChildByName(this.buttonMateria, true);
+
+                if (btnMtr) {
+                    const btn = btnMtr.getComponentByName('Button');
+                    if (btn) {
+                        this._buttonListenerAdded = true;
+                        if (!btn.onClick) btn.onClick = [];
+                        btn.onClick.push(() => this.load());
+                    }
+                    const trigger = btnMtr.getComponentByName('UIEventTrigger');
+                    if (trigger) {
+                        this._buttonListenerAdded = true;
+                        if (!trigger.events.onPointerClick) trigger.events.onPointerClick = [];
+                        trigger.events.onPointerClick.push(() => this.load());
+                    }
+                }
+            }
+        }
+    }
+
+    alEntrarEnColision(col) {
+        if (this._isSceneLoaded || !this.scenePath) return;
+        if (this.triggerTag && col.materia && col.materia.tag === this.triggerTag) {
+            this.load();
+        }
+    }
+
+    load() {
+        if (this._isSceneLoaded || !this.scenePath) return;
+        this._isSceneLoaded = true;
+
+        const sceneAPI = RuntimeAPIManager.getAPI('scene');
+        if (sceneAPI && sceneAPI.loadScene) {
+            console.log(`[SceneLoader] Cargando nueva escena: ${this.scenePath}`);
+            sceneAPI.loadScene(this.scenePath);
+        }
+    }
+
+    // Spanish Aliases
+    get rutaEscena() { return this.scenePath; }
+    set rutaEscena(v) { this.scenePath = v; }
+    get tagActivador() { return this.triggerTag; }
+    set tagActivador(v) { this.triggerTag = v; }
+    get teclaActivadora() { return this.triggerKey; }
+    set teclaActivadora(v) { this.triggerKey = v; }
+    get materiaBoton() { return this.buttonMateria; }
+    set materiaBoton(v) { this.buttonMateria = v; }
+
+    clone() {
+        const copy = new SceneLoader(null);
+        copy.scenePath = this.scenePath;
+        copy.triggerTag = this.triggerTag;
+        copy.triggerKey = this.triggerKey;
+        copy.buttonMateria = this.buttonMateria;
+        return copy;
+    }
+}
+registerComponent('SceneLoader', SceneLoader);
 
 /**
  * Componente Bone (Hueso): Define un hueso en una jerarquía esquelética.

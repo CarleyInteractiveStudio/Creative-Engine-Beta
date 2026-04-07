@@ -5,14 +5,35 @@ import { javascript } from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
 import { oneDark } from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
 import { undo, redo, indentWithTab } from "https://esm.sh/@codemirror/commands@6.3.3";
 import { autocompletion, acceptCompletion } from "https://esm.sh/@codemirror/autocomplete@6.16.0";
-import { keymap } from "https://esm.sh/@codemirror/view@6.26.3";
+import { keymap, Decoration } from "https://esm.sh/@codemirror/view@6.26.3";
+import { StateField, StateEffect } from "https://esm.sh/@codemirror/state@6.4.1";
 import { transpile } from './CES_Transpiler.js';
+import * as AutoReparator from './AutoReparator.js';
 import * as AIHandler from './AIHandler.js';
 import { getPreferences } from './ui/PreferencesWindow.js';
 
 // --- Module State ---
 let dom;
 let codeEditor = null;
+
+const addErrorHighlight = StateEffect.define();
+const errorHighlightField = StateField.define({
+    create() { return Decoration.none },
+    update(underlines, tr) {
+        underlines = underlines.map(tr.changes);
+        for (let e of tr.effects) if (e.is(addErrorHighlight)) {
+            underlines = underlines.update({
+                add: [errorHighlightMark.range(e.value.from, e.value.to)]
+            });
+        }
+        return underlines;
+    },
+    provide: f => EditorView.decorations.from(f)
+});
+
+const errorHighlightMark = Decoration.line({
+    attributes: { style: "background-color: rgba(255, 0, 0, 0.2); border-left: 3px solid red;" }
+});
 let currentlyOpenFileHandle = null;
 let currentlyOpenDirHandle = null;
 let showConsoleCallback = () => {}; // Placeholder for the callback
@@ -190,6 +211,7 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
                     basicSetup,
                     javascript(),
                     oneDark,
+                    errorHighlightField,
                     autocompletion({ override: [cesCompletions] }),
                     keymap.of([
                         { key: "Tab", run: acceptCompletion },
@@ -238,20 +260,72 @@ export async function saveCurrentScript() {
 
     try {
         const scriptContent = isChc ? dom.chcHumanText.value : codeEditor.state.doc.toString();
+
+        // --- Backup Logic ---
+        try {
+            const metaFileName = `${currentlyOpenFileHandle.name}.meta`;
+            let metaHandle;
+            try {
+                metaHandle = await currentlyOpenDirHandle.getFileHandle(metaFileName, { create: true });
+            } catch (e) {
+                // If it fails, maybe directory not reachable, ignore backup for now
+            }
+
+            if (metaHandle) {
+                const metaFile = await metaHandle.getFile();
+                const metaContentText = await metaFile.text();
+                let metaData = {};
+                try { metaData = JSON.parse(metaContentText); } catch(e) {}
+
+                if (!metaData.history) metaData.history = [];
+
+                // Read current file content to save as backup before overwriting
+                const currentFile = await currentlyOpenFileHandle.getFile();
+                const currentContent = await currentFile.text();
+
+                // Only add to history if content changed
+                if (currentContent !== scriptContent) {
+                    metaData.history.unshift({
+                        content: currentContent,
+                        timestamp: Date.now()
+                    });
+
+                    // Keep only last 10 versions
+                    if (metaData.history.length > 10) {
+                        metaData.history = metaData.history.slice(0, 10);
+                    }
+
+                    const metaWritable = await metaHandle.createWritable();
+                    await metaWritable.write(JSON.stringify(metaData, null, 2));
+                    await metaWritable.close();
+                }
+            }
+        } catch (backupError) {
+            console.warn("Backup error (non-fatal):", backupError);
+        }
+
         const writable = await currentlyOpenFileHandle.createWritable();
         await writable.write(scriptContent);
         await writable.close();
-        window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_SCRIPT_GUARDADO', "Script guardado correctamente")}: '${currentlyOpenFileHandle.name}'.`);
+
+        // window.Dialogs.showNotification removed here, will show specialized one below
 
         // Ahora, transpila y comprueba si hay errores
         console.clear(); // Limpia la consola antes de mostrar nuevos errores
         const result = transpile(scriptContent, currentlyOpenFileHandle.name);
         if (result.errors && result.errors.length > 0) {
             console.error(`${L.get('ERROR_COMPILACION', 'Errores de compilación en')} ${currentlyOpenFileHandle.name}:`);
-            result.errors.forEach(error => console.error(`- ${error}`));
+            result.errors.forEach(error => window.logToUIConsole(error, 'error', false));
+
+            window.Dialogs.showNotification(
+                L.get('AVISO', 'Aviso'),
+                `${L.get('EXITO_SCRIPT_GUARDADO', "Script guardado")} pero tiene ERRORES DE SINTAXIS. Revisa la consola.`,
+                'warning'
+            );
             showConsoleCallback(); // Muestra la consola al usuario
         } else {
             console.log(`${currentlyOpenFileHandle.name}: ${L.get('EXITO_COMPILACION', 'Script compilado exitosamente.')}`);
+            window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_SCRIPT_GUARDADO', "Script guardado correctamente")}: '${currentlyOpenFileHandle.name}'.`);
         }
 
     } catch (error) {
@@ -485,15 +559,217 @@ Por favor, devuelve solo el código corregido y funcional.`;
     }
 }
 
+let lastRuntimeError = null;
+
+export function setLastRuntimeError(error) {
+    lastRuntimeError = error;
+}
+
+export async function runAutoReparator(targetFileName = null) {
+    const L = window.Localization;
+
+    // If a specific file is requested and it's not the current one, try to open it
+    if (targetFileName && (!currentlyOpenFileHandle || currentlyOpenFileHandle.name !== targetFileName)) {
+        await openScriptAtLine(targetFileName, 1);
+    }
+
+    if (!currentlyOpenFileHandle) return;
+
+    const isChc = currentlyOpenFileHandle.name.endsWith('.chc');
+    const content = isChc ? dom.chcHumanText.value : codeEditor.state.doc.toString();
+
+    // Only pass runtime error if it belongs to the current file
+    const errorToPass = (lastRuntimeError && lastRuntimeError.scriptName === currentlyOpenFileHandle.name) ? lastRuntimeError : null;
+
+    try {
+        const result = await AutoReparator.repair(content, currentlyOpenFileHandle.name, errorToPass);
+
+        if (result.code !== content) {
+            if (isChc) {
+                dom.chcHumanText.value = result.code;
+            } else if (codeEditor) {
+                codeEditor.dispatch({
+                    changes: { from: 0, to: codeEditor.state.doc.length, insert: result.code }
+                });
+            }
+
+            if (result.addComponent && window.SceneManager) {
+                window.Dialogs.showConfirmation(
+                    L.get('AUTOCORRECTOR', 'Auto Corrector'),
+                    result.message,
+                    async () => {
+                        const mtr = window.SceneManager.currentScene.findMateriaById(result.addComponent.materiaId);
+                        if (mtr) {
+                            const CompClass = window.Components[result.addComponent.componentType];
+                            if (CompClass) {
+                                mtr.addComponent(new CompClass(mtr));
+                                window.Dialogs.showNotification(L.get('EXITO'), `Componente ${result.addComponent.componentType} añadido con éxito.`);
+                                if (window.updateInspector) window.updateInspector();
+                            }
+                        }
+                    }
+                );
+            } else {
+                window.Dialogs.showNotification(
+                    result.success ? L.get('EXITO', 'Éxito') : L.get('AVISO', 'Aviso'),
+                    result.message
+                );
+            }
+        } else if (result.addComponent && window.SceneManager) {
+            // Case where code didn't change but we need to add a component
+            window.Dialogs.showConfirmation(
+                L.get('AUTOCORRECTOR', 'Auto Corrector'),
+                result.message,
+                async () => {
+                    const mtr = window.SceneManager.currentScene.findMateriaById(result.addComponent.materiaId);
+                    if (mtr) {
+                        const CompClass = window.Components[result.addComponent.componentType];
+                        if (CompClass) {
+                            mtr.addComponent(new CompClass(mtr));
+                            window.Dialogs.showNotification(L.get('EXITO'), `Componente ${result.addComponent.componentType} añadido con éxito.`);
+                            if (window.updateInspector) window.updateInspector();
+                        }
+                    }
+                }
+            );
+        } else {
+            window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('NADA_QUE_REPARAR', 'No se encontraron errores obvios que reparar.'));
+        }
+    } catch (e) {
+        console.error("AutoReparator Error:", e);
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), "Fallo al ejecutar el Auto Reparator.");
+    }
+}
+
+export async function openScriptAtLine(fileName, lineNumber) {
+    if (!lineNumber) lineNumber = 1;
+    console.log(`[CodeEditor] Abriendo ${fileName} en la línea ${lineNumber}`);
+
+    // Switch to assets tab and find the file (approximate)
+    // Actually, we can just use the dirHandle if we have it or find it.
+    // Let's assume the file is in 'Assets/'
+
+    const projectName = new URLSearchParams(window.location.search).get('project');
+    const projectHandle = await window.projectsDirHandle.getDirectoryHandle(projectName);
+    const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+
+    // We need to find which subfolder the file is in.
+    // For simplicity, let's try Assets directly first, then subfolders if needed.
+    // Better: use the AssetBrowser to find it or a recursive search.
+
+    async function findFile(dirHandle) {
+        for await (const entry of dirHandle.values()) {
+            if (entry.kind === 'file' && entry.name === fileName) return dirHandle;
+            if (entry.kind === 'directory') {
+                const found = await findFile(entry);
+                if (found) return found;
+            }
+        }
+        return null;
+    }
+
+    const dirHandle = await findFile(assetsHandle) || assetsHandle;
+
+    await openScriptInEditor(fileName, dirHandle, dom.scenePanel);
+
+    // Highlight line
+    setTimeout(() => {
+        if (codeEditor) {
+            const line = codeEditor.state.doc.line(Math.min(lineNumber, codeEditor.state.doc.lines));
+            codeEditor.dispatch({
+                selection: { anchor: line.from },
+                effects: [
+                    EditorView.scrollIntoView(line.from, { y: "center" }),
+                    addErrorHighlight.of({ from: line.from, to: line.to })
+                ]
+            });
+        }
+    }, 100);
+}
+
+export async function showScriptHistory() {
+    if (!currentlyOpenFileHandle) return;
+    const L = window.Localization;
+
+    try {
+        const metaFileName = `${currentlyOpenFileHandle.name}.meta`;
+        const metaHandle = await currentlyOpenDirHandle.getFileHandle(metaFileName);
+        const metaFile = await metaHandle.getFile();
+        const metaData = JSON.parse(await metaFile.text());
+
+        const history = metaData.history || [];
+        const historyList = document.getElementById('script-history-list');
+        const modal = document.getElementById('script-history-modal');
+
+        historyList.innerHTML = '';
+
+        if (history.length === 0) {
+            historyList.innerHTML = `<div class="empty-list-msg">${L.get('SIN_HISTORIAL', 'No hay versiones anteriores guardadas.')}</div>`;
+        } else {
+            history.forEach((entry, index) => {
+                const item = document.createElement('div');
+                item.className = 'dialog-selection-item';
+                const date = new Date(entry.timestamp).toLocaleString();
+                item.innerHTML = `
+                    <div class="item-info">
+                        <span class="item-name">${L.get('VERSION', 'Versión')} ${history.length - index}</span>
+                        <span class="item-details">${date}</span>
+                    </div>
+                    <button class="restore-btn primary-btn" style="padding: 4px 8px; font-size: 0.8em;">${L.get('RESTAURAR', 'Restaurar')}</button>
+                `;
+
+                item.querySelector('.restore-btn').onclick = () => {
+                    const isChc = currentlyOpenFileHandle.name.endsWith('.chc');
+                    if (isChc) {
+                        dom.chcHumanText.value = entry.content;
+                    } else if (codeEditor) {
+                        codeEditor.dispatch({
+                            changes: { from: 0, to: codeEditor.state.doc.length, insert: entry.content }
+                        });
+                    }
+                    modal.classList.add('hidden');
+                    window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), L.get('VERSION_RESTAURADA', 'Versión restaurada en el editor. Recuerda guardar para aplicar los cambios.'));
+                };
+
+                historyList.appendChild(item);
+            });
+        }
+
+        modal.classList.remove('hidden');
+        window.bringToFront(modal);
+
+    } catch (e) {
+        console.error("Error al cargar historial:", e);
+        window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('SIN_HISTORIAL', 'No hay versiones anteriores guardadas para este archivo.'));
+    }
+}
+
 export function initialize(domCache, showConsole, hotReload) {
     dom = domCache;
     showConsoleCallback = showConsole; // Almacena el callback
     hotReloadCallback = hotReload;
 
+    // Register global access for Console actions
+    window._CodeEditor = {
+        openScriptAtLine,
+        runAutoReparator,
+        setLastRuntimeError
+    };
+
     // Configura los event listeners para los botones de la barra de herramientas
     dom.codeSaveBtn.addEventListener('click', () => saveCurrentScript());
     dom.codeUndoBtn.addEventListener('click', () => undoLastChange());
     dom.codeRedoBtn.addEventListener('click', () => redoLastChange());
+
+    const historyBtn = document.getElementById('code-history-btn');
+    if (historyBtn) {
+        historyBtn.addEventListener('click', () => showScriptHistory());
+    }
+
+    const repairBtn = document.getElementById('code-reparar-btn');
+    if (repairBtn) {
+        repairBtn.addEventListener('click', () => runAutoReparator());
+    }
 
     // CHC specific
     if (dom.chcRunBtn) {

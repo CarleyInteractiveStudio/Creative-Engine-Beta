@@ -33,11 +33,13 @@ const sceneAPI = {
     setAmbientLight: setAmbientLight,
     setTime: setTime,
     instantiatePrefab: SceneManager.instanciarPrefab,
+    loadScene: SceneManager.loadSceneByPath,
 
     // Spanish aliases
     establecerLuzAmbiental: setAmbientLight,
     establecerHora: setTime,
     instanciarPrefab: SceneManager.instanciarPrefab,
+    cargarEscena: SceneManager.loadSceneByPath,
 
     get loadingProgress() { return SceneManager.loadingProgress || 0; },
     get progresoCarga() { return SceneManager.loadingProgress || 0; }

@@ -557,6 +557,44 @@ export async function instanciarPrefabDesdeRuta(path, x, y) {
 export const instantiatePrefabFromPath = instanciarPrefabDesdeRuta;
 
 /**
+ * Carga una escena a partir de su ruta (ej: "Assets/Levels/Nivel1.ceScene").
+ */
+export async function loadSceneByPath(path) {
+    try {
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        let currentHandle = await window.projectsDirHandle.getDirectoryHandle(projectName);
+        const parts = path.split('/');
+        const fileName = parts.pop();
+
+        for (const part of parts) {
+            if (part && (part !== 'Assets' || path.startsWith('Assets/Assets'))) {
+                currentHandle = await currentHandle.getDirectoryHandle(part);
+            } else if (part === 'Assets') {
+                currentHandle = await currentHandle.getDirectoryHandle('Assets');
+            }
+        }
+
+        const fileHandle = await currentHandle.getFileHandle(fileName);
+        const result = await loadScene(fileHandle, window.projectsDirHandle);
+
+        if (result) {
+            setCurrentScene(result.scene);
+            setCurrentSceneFileHandle(result.fileHandle);
+
+            // If there's an active runtime, it should restart or swap
+            if (window.Runtime && typeof window.Runtime.restartWithScene === 'function') {
+                window.Runtime.restartWithScene(result.scene);
+            }
+
+            return result.scene;
+        }
+    } catch (error) {
+        console.error(`Error al cargar escena desde ruta '${path}':`, error);
+        return null;
+    }
+}
+
+/**
  * Crea una copia de una Materia (objeto) existente y la añade a la escena actual.
  * @param {Materia} original - El objeto a copiar.
  * @param {number} [x] - Posición X opcional.

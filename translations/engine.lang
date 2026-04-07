@@ -391,6 +391,16 @@ SCROLL_VIEW: Vista de Desplazamiento
 TARGET_MATERIA: Materia Objetivo
 FILL_MATERIA: Materia Relleno
 ORIENTATION: Orientación
+REPARAR: Reparar
+HISTORIAL_SCRIPT: Historial de Versiones
+SELECCIONAR_VERSION_HINT: Selecciona una versión para restaurarla. Se conservan las últimas 10.
+SIN_HISTORIAL: No hay versiones anteriores guardadas para este archivo.
+VERSION: Versión
+RESTAURAR: Restaurar
+VERSION_RESTAURADA: Versión restaurada en el editor. Recuerda guardar para aplicar los cambios.
+NADA_QUE_REPARAR: No se encontraron errores obvios que reparar.
+REPARACION_EXITOSA: Código reparado con éxito.
+REPARACION_PARCIAL: Se realizaron correcciones, pero aún quedan errores complejos.
 
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
@@ -465,6 +475,12 @@ OBJETIVO_TARGET: Objetivo (Target)
 LARGO_CADENA: Largo Cadena
 ITERACIONES: Iteraciones
 TOLERANCIA: Tolerancia
+SCENE_LOADER: Cargar Escena
+SCENE_PATH: Ruta de Escena
+TRIGGER_TAG: Tag Activador
+TRIGGER_KEY: Tecla Activadora
+BUTTON_MATERIA: Materia Botón
+SCENE_LOADER_DESC: Carga una escena cuando el jugador colisiona, se presiona una tecla o se clica en el botón asignado.
 
 [EN]
 # Header
@@ -859,6 +875,16 @@ SCROLL_VIEW: Scroll View
 TARGET_MATERIA: Target Matter
 FILL_MATERIA: Fill Matter
 ORIENTATION: Orientation
+REPARAR: Repair
+HISTORIAL_SCRIPT: Version History
+SELECCIONAR_VERSION_HINT: Select a version to restore it. The last 10 are kept.
+SIN_HISTORIAL: No previous versions saved for this file.
+VERSION: Version
+RESTAURAR: Restore
+VERSION_RESTAURADA: Version restored in the editor. Remember to save to apply changes.
+NADA_QUE_REPARAR: No obvious errors found to repair.
+REPARACION_EXITOSA: Code repaired successfully.
+REPARACION_PARCIAL: Corrections were made, but complex errors remain.
 
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
@@ -933,6 +959,12 @@ OBJETIVO_TARGET: Target
 LARGO_CADENA: Chain Length
 ITERACIONES: Iterations
 TOLERANCIA: Tolerance
+SCENE_LOADER: Scene Loader
+SCENE_PATH: Scene Path
+TRIGGER_TAG: Trigger Tag
+TRIGGER_KEY: Trigger Key
+BUTTON_MATERIA: Button Matter
+SCENE_LOADER_DESC: Loads a scene when the player collides, a key is pressed, or the assigned button is clicked.
 
 [PT]
 # Header
@@ -1259,6 +1291,12 @@ SCROLL_VIEW: Vista de Rolagem
 TARGET_MATERIA: Matéria Alvo
 FILL_MATERIA: Matéria de Preenchimento
 ORIENTATION: Orientação
+SCENE_LOADER: Carregar Cena
+SCENE_PATH: Caminho da Cena
+TRIGGER_TAG: Tag Ativadora
+TRIGGER_KEY: Tecla Ativadora
+BUTTON_MATERIA: Matéria Botão
+SCENE_LOADER_DESC: Carrega uma cena quando o jogador colide, uma tecla é pressionada ou o botão atribuído é clicado.
 
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
@@ -1643,6 +1681,12 @@ SCROLL_VIEW: Прокрутка
 TARGET_MATERIA: Целевой объект
 FILL_MATERIA: Объект заполнения
 ORIENTATION: Ориентация
+SCENE_LOADER: Загрузка сцены
+SCENE_PATH: Путь к сцене
+TRIGGER_TAG: Тег-активатор
+TRIGGER_KEY: Клавиша-активатор
+BUTTON_MATERIA: Объект кнопки
+SCENE_LOADER_DESC: Загружает сцену при столкновении игрока, нажатии клавиши или клике на назначенную кнопку.
 
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
@@ -2027,6 +2071,12 @@ SCROLL_VIEW: 滚动视图
 TARGET_MATERIA: 目标对象
 FILL_MATERIA: 填充对象
 ORIENTATION: 方向
+SCENE_LOADER: 加载场景
+SCENE_PATH: 场景路径
+TRIGGER_TAG: 触发标签
+TRIGGER_KEY: 触发按键
+BUTTON_MATERIA: 按钮对象
+SCENE_LOADER_DESC: 当玩家发生碰撞、按下按键或点击指定的按钮时加载场景。
 
 # Novice Guide
 TITULO_NOVATO: ¡Bienvenido!

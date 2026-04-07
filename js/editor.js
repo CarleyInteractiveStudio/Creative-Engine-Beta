@@ -98,17 +98,61 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastLogElement = null;
     let lastLogCount = 1;
 
+    function translateErrorMessage(msg) {
+        const translations = [
+            { key: 'reading \'velocity\'', value: 'Te falta el componente "Rigidbody2D" (Físicas) en este objeto para poder moverlo.' },
+            { key: 'reading \'x\'', value: 'Intentaste acceder a una posición (.x) de algo que no existe. ¿Añadiste el componente Transform?' },
+            { key: 'reading \'y\'', value: 'Intentaste acceder a una posición (.y) de algo que no existe. ¿Añadiste el componente Transform?' },
+            { key: 'reading \'play\'', value: 'Te falta el componente "Animator" o "AnimatorController" para reproducir animaciones.' },
+            { key: 'reading \'stop\'', value: 'Te falta el componente "Animator" para detener la animación.' },
+            { key: 'is not a function', value: 'Has intentado llamar a una función que no existe o el nombre está mal escrito.' },
+            { key: 'is not defined', value: 'Estás usando una palabra que el motor no conoce o una variable que no has creado.' },
+            { key: 'Unexpected identifier', value: 'Hay una palabra fuera de lugar. Revisa que no falten puntos (.) o comas (,).' },
+            { key: 'Unexpected token', value: 'Símbolo inesperado. Revisa si te falta cerrar un paréntesis ")" o una llave "}".' },
+            { key: 'NotFoundError', value: 'No se pudo encontrar el archivo o carpeta. Revisa que el nombre sea exacto.' },
+            { key: 'cannot read property', value: 'Intentaste acceder a algo que es nulo o no existe.' }
+        ];
+
+        for (const entry of translations) {
+            if (msg.toLowerCase().includes(entry.key.toLowerCase())) return entry.value;
+        }
+        return msg;
+    }
+
     function logToUIConsole(message, type = 'log', isSystem = true, ...args) {
         const consoleMessages = dom.consoleMessages || document.getElementById('console-messages');
         if (!consoleMessages) return;
 
         let fullMessage = message;
+        let structuredError = null;
+
+        // Detection of structured errors (transpile or runtime)
+        if (typeof message === 'object' && message !== null && message.message && (message.line !== undefined || message.scriptName)) {
+            structuredError = message;
+
+            // If it's a runtime error, store it globally for the reparator
+            if (message.scriptName) {
+                window._CodeEditor.setLastRuntimeError(message);
+            }
+
+            const lineStr = message.line ? `[Línea ${message.line}] ` : '';
+            const scriptStr = message.scriptName ? `en '${message.scriptName}' ` : '';
+            const friendlyMsg = translateErrorMessage(message.message);
+            fullMessage = `${lineStr}${scriptStr}${friendlyMsg}`;
+        }
 
         // Handle additional arguments
         if (args.length > 0) {
             args.forEach(arg => {
                 if (arg instanceof Error) {
-                    fullMessage += `\n${arg.stack || `${arg.name}: ${arg.message}`}`;
+                    // Clean stack trace for non-system errors
+                    let stack = arg.stack || `${arg.name}: ${arg.message}`;
+                    if (!isSystem) {
+                        stack = stack.split('\n')
+                            .filter(line => !line.includes('CreativeScript.initializeInstance') && !line.includes('startGame') && !line.includes('runChecksAndPlay'))
+                            .join('\n');
+                    }
+                    fullMessage += `\n${stack}`;
                 } else if (typeof arg === 'object') {
                     try {
                         fullMessage += ` ${JSON.stringify(arg, null, 2)}`;
@@ -143,14 +187,56 @@ document.addEventListener('DOMContentLoaded', () => {
         lastLogType = type;
         lastLogCount = 1;
 
-        const msgEl = document.createElement('div'); // Changed to div for potential multi-line content
+        const msgEl = document.createElement('div');
         msgEl.className = `console-msg log-${type}`;
         msgEl.dataset.category = isSystem ? 'system' : 'user';
-        msgEl.style.whiteSpace = 'pre-wrap'; // Preserve line breaks
+        msgEl.style.whiteSpace = 'pre-wrap';
 
-        const textSpan = document.createElement('span');
-        textSpan.textContent = `> ${fullMessage}`;
-        msgEl.appendChild(textSpan);
+        const iconMap = {
+            'log': '🔵',
+            'warn': '⚠️',
+            'error': '❌'
+        };
+
+        if (structuredError) {
+            msgEl.classList.add('structured-error');
+            const icon = iconMap[type] || '❌';
+            const title = structuredError.scriptName ? 'Error de Ejecución' : 'Error de Sintaxis';
+
+            let actionButtons = '';
+            // Show action buttons for both syntax (transpile) and runtime errors if filename is known
+            const targetFile = structuredError.scriptName;
+            if (targetFile) {
+                actionButtons = `
+                    <div class="msg-actions">
+                        <button class="console-action-btn" onclick="window._CodeEditor.openScriptAtLine('${targetFile}', ${structuredError.line || 1})">Ir a la línea</button>
+                        <button class="console-action-btn special" onclick="window._CodeEditor.runAutoReparator('${targetFile}')">Auto Reparar</button>
+                    </div>
+                `;
+            }
+
+            msgEl.innerHTML = `
+                <span class="msg-icon">${icon}</span>
+                <div class="msg-body">
+                    <span class="msg-text"><b>${title}:</b> ${fullMessage}</span>
+                    ${actionButtons}
+                </div>
+            `;
+
+            msgEl.style.borderLeft = type === 'error' ? "4px solid #ff4444" : "4px solid #f3ca58";
+            msgEl.style.backgroundColor = type === 'error' ? "rgba(255, 68, 68, 0.15)" : "rgba(243, 202, 88, 0.15)";
+        } else {
+            const icon = iconMap[type] || '>';
+            msgEl.innerHTML = `<span class="msg-icon">${icon}</span> <span class="msg-text">${fullMessage}</span>`;
+
+            if (type === 'error') {
+                msgEl.style.backgroundColor = "rgba(255, 68, 68, 0.1)";
+                msgEl.style.borderLeft = "3px solid #ff4444";
+            } else if (type === 'warn') {
+                msgEl.style.backgroundColor = "rgba(243, 202, 88, 0.1)";
+                msgEl.style.borderLeft = "3px solid #f3ca58";
+            }
+        }
 
         consoleMessages.appendChild(msgEl);
 
@@ -1254,26 +1340,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 2. Transpilar cada archivo y recolectar errores
         const transpilationPromises = cesFiles.map(async ({ handle, dir }) => {
-            const file = await handle.getFile();
-            let code = await file.text();
+            try {
+                const file = await handle.getFile();
+                let code = await file.text();
 
-            // Si es CHC, cargar el código generado de la meta
-            if (handle.name.endsWith('.chc')) {
-                try {
-                    const metaHandle = await dir.getFileHandle(`${handle.name}.meta`);
-                    const metaFile = await metaHandle.getFile();
-                    const metaData = JSON.parse(await metaFile.text());
-                    code = metaData.generatedCode;
-                } catch (e) {
-                    console.warn(`CHC script ${handle.name} no ha sido traducido aún. Omitiendo.`);
-                    return;
+                // Si es CHC, cargar el código generado de la meta
+                if (handle.name.endsWith('.chc')) {
+                    try {
+                        const metaHandle = await dir.getFileHandle(`${handle.name}.meta`);
+                        const metaFile = await metaHandle.getFile();
+                        const metaData = JSON.parse(await metaFile.text());
+                        code = metaData.generatedCode;
+                    } catch (e) {
+                        console.warn(`CHC script ${handle.name} no ha sido traducido aún. Omitiendo.`);
+                        return;
+                    }
                 }
-            }
 
-            const result = CES_Transpiler.transpile(code, handle.name);
+                const result = CES_Transpiler.transpile(code, handle.name);
 
-            if (result.errors && result.errors.length > 0) {
-                allErrors.push({ fileName: handle.name, errors: result.errors });
+                if (result.errors && result.errors.length > 0) {
+                    allErrors.push({ fileName: handle.name, errors: result.errors });
+                }
+            } catch (err) {
+                console.error(`Error procesando script ${handle.name}:`, err);
+                allErrors.push({ fileName: handle.name, errors: [{ line: 0, message: err.message }] });
             }
         });
 
@@ -1288,9 +1379,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             console.error(`Build fallido. Se encontraron errores en ${allErrors.length} archivo(s):`);
             for (const fileErrors of allErrors) {
-                console.error(`\n--- Errores en ${fileErrors.fileName} ---`);
                 for (const error of fileErrors.errors) {
-                    console.error(`  - ${error}`);
+                    // Attach script name for better console reporting
+                    error.scriptName = fileErrors.fileName;
+                    logToUIConsole(error, 'error', false);
                 }
             }
             // Cambiar a la pestaña de la consola para que los errores sean visibles
@@ -3659,6 +3751,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al último objeto cread
         window.TilePalette = TilePalette;
         window.SkeletonImporter = SkeletonImporter;
         window.CarlAgent = CarlAgent;
+        window.bringToFront = bringToFront;
 
         // --- Carl Agent Integration ---
         CarlAgent.initialize(dom);

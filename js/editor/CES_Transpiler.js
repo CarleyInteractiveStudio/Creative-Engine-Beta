@@ -7,6 +7,17 @@ const scriptMetadataMap = new Map(); // Nueva estructura para metadatos
 
 // --- Helper Functions ---
 
+function getLineNumber(code, index) {
+    const textBefore = code.substring(0, index);
+    return textBefore.split('\n').length;
+}
+
+function blankOut(code, start, end) {
+    const part = code.substring(start, end);
+    const blanked = part.replace(/[^\n\r]/g, ' ');
+    return code.substring(0, start) + blanked + code.substring(end);
+}
+
 const typeMap = {
     'number': 'number',
     'numero': 'number',
@@ -238,7 +249,8 @@ const componentShortcuts = [
     'agilidadGiro', 'arrastreAire', 'potenciaDespegue', 'autoEstabilizar', 'estabilidad', 'teclaDescenso', 'teclaGiroIzquierda', 'teclaGiroDerecha',
     'teclaBotonFreno', 'frenoEspacio', 'teclaPresionada', 'teclaRecienPresionada', 'teclaLiberada', 'tecla',
     'botonMousePresionado', 'botonMouseRecienPresionado', 'botonMouseLiberado', 'obtenerPosicionMouse',
-    'rotacion', 'rotation', 'escala', 'scale', 'rotar', 'rotate', 'mover', 'move', 'escalar'
+    'rotacion', 'rotation', 'escala', 'scale', 'rotar', 'rotate', 'mover', 'move', 'escalar',
+    'velocidadX', 'velocidadY', 'velocityX', 'velocityY', 'alChocar', 'alClicar', 'alPulsar'
 ];
 
 function getDefaultValueForType(canonicalType) {
@@ -415,6 +427,25 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
     body = body.replace(new RegExp(`${PUB}真${UB}`, 'g'), 'true');
     body = body.replace(new RegExp(`${PUB}假${UB}`, 'g'), 'false');
 
+    // 2.b.1: Logical Operators (Multilingual)
+    body = body.replace(new RegExp(`${PUB}y${UB}`, 'gi'), ' && ');
+    body = body.replace(new RegExp(`${PUB}o${UB}`, 'gi'), ' || ');
+    body = body.replace(new RegExp(`${PUB}e${UB}`, 'gi'), ' && '); // PT
+    body = body.replace(new RegExp(`${PUB}ou${UB}`, 'gi'), ' || '); // PT
+    body = body.replace(new RegExp(`${PUB} и ${UB}`, 'g'), ' && '); // RU
+    body = body.replace(new RegExp(`${PUB} или ${UB}`, 'g'), ' || '); // RU
+    body = body.replace(new RegExp(`${PUB} 和 ${UB}`, 'g'), ' && '); // ZH
+    body = body.replace(new RegExp(`${PUB} 或 ${UB}`, 'g'), ' || '); // ZH
+
+    // 2.b.2: Comparison Operators (Spanish)
+    body = body.replace(new RegExp(`${PUB}igual a${UB}`, 'gi'), ' === ');
+    body = body.replace(new RegExp(`${PUB}diferente a${UB}`, 'gi'), ' !== ');
+    body = body.replace(new RegExp(`${PUB}menor o igual a${UB}`, 'gi'), ' <= ');
+    body = body.replace(new RegExp(`${PUB}mayor o igual a${UB}`, 'gi'), ' >= ');
+    body = body.replace(new RegExp(`${PUB}menor a${UB}`, 'gi'), ' < ');
+    body = body.replace(new RegExp(`${PUB}mayor a${UB}`, 'gi'), ' > ');
+    body = body.replace(new RegExp(`${PUB}es${UB}`, 'gi'), ' === ');
+
     // 2.c: Coroutines support
     body = body.replace(/(?<![.\w])(esperar|aguardar|ждать|等待)\s*\(/g, 'await this.esperar(');
 
@@ -430,7 +461,8 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
     });
 
     // 2.d.1: Handle mtr. / materia. prefix mapping to this. for shortcuts
-    body = body.replace(/(?<![\w\u00C0-\u017Fа-яА-Я一-龥])(mtr|materia|matéria|материя|物质)\.([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)/g, (match, p1, p2) => {
+    // Use (?<![.\w]) to ensure we don't match properties of other objects (like col.materia.nombre)
+    body = body.replace(/(?<![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5])(mtr|materia|matéria|материя|物质)\.([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)/g, (match, p1, p2) => {
         if (componentShortcuts.includes(p2)) {
             return `this.${p2}`;
         }
@@ -482,10 +514,15 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
 /**
  * Transpiles a .ces script into an ES6 class.
  * @param {string} scriptName The name of the script file (e.g., 'PlayerController.ces').
- * @returns {{errors: string[] | null, jsCode: string | null}} An object with an errors array, or the generated JS code.
+ * @returns {{errors: object[] | null, jsCode: string | null, lineMap: object | null}} An object with errors, jsCode and lineMap.
  */
 export function transpile(code, scriptName = 'unnamed.ces') {
     const errors = [];
+    const lineMap = {
+        constructor: [], // {jsLine, cesLine}
+        methods: {} // name -> [{jsLine, cesLine}]
+    };
+
     if (!scriptName) scriptName = 'unnamed.ces';
     let className = scriptName.replace(/\.(ces|chc)$/, '').replace(/[^a-zA-Z0-9]/g, '_');
     // Asegurar que el nombre de la clase no empiece por un número
@@ -625,12 +662,15 @@ export function transpile(code, scriptName = 'unnamed.ces') {
         }
 
         if (bodyEndIndex === -1) {
-            errors.push(`Error: Método '${name}' no tiene una llave de cierre correspondiente.`);
+            errors.push({
+                line: getLineNumber(code, methodMatch.index),
+                message: `Método '${name}' no tiene una llave de cierre correspondiente.`,
+                word: name
+            });
             continue;
         }
 
         const body = tempCode.substring(bodyStartIndex, bodyEndIndex);
-        const fullMethodText = tempCode.substring(methodMatch.index, bodyEndIndex + 1);
 
         // Add to public functions if it's not a known internal/lifecycle method
         // In this engine, public methods don't necessarily need the 'funcion' keyword
@@ -648,10 +688,12 @@ export function transpile(code, scriptName = 'unnamed.ces') {
             publicFunctions.push(name);
         }
 
-        methodMatches.push({ name, args, body });
+        methodMatches.push({ name, args, body, index: methodMatch.index });
 
-        // Blank out the matched method to prevent it from being processed again
-        unprocessedCode = unprocessedCode.replace(fullMethodText, '');
+        // Blank out the matched method to prevent it from being processed again, preserving line numbers
+        unprocessedCode = blankOut(unprocessedCode, methodMatch.index, bodyEndIndex + 1);
+        // Important: we must also blank it in tempCode for the loop if we want to be safe,
+        // but since we use gm and global regex, exec handles the index.
     }
 
 
@@ -664,10 +706,14 @@ export function transpile(code, scriptName = 'unnamed.ces') {
         if (libName.startsWith('engine') || libName.startsWith('motor') || RuntimeAPIManager.getAPI(libName)) {
             importedLibs.add(libName);
         } else {
-            errors.push(`Error: La librería '${libName}' no se encontró o no está registrada.`);
+            errors.push({
+                line: getLineNumber(code, goMatch.index),
+                message: `La librería '${libName}' no se encontró o no está registrada.`,
+                word: libName
+            });
         }
+        unprocessedCode = blankOut(unprocessedCode, goMatch.index, goMatch.index + goMatch[0].length);
     }
-    unprocessedCode = unprocessedCode.replace(goRegex, '');
 
 
     // 1.c: Parse and remove public and private variables (multilingual with new syntax)
@@ -683,25 +729,29 @@ export function transpile(code, scriptName = 'unnamed.ces') {
 
         const canonicalType = typeMap[typeInput];
         if (!canonicalType) {
-            errors.push(`Error: Tipo de variable desconocido '${typeInput}' en la declaración de '${name}'.`);
-            continue;
-        }
-
-        const parsedValue = value ? parseInitialValue(value.trim(), canonicalType) : getDefaultValueForType(canonicalType);
-
-        if (scope === 'public') {
-            publicVars.push({ type: canonicalType, name: name, value: value, defaultValue: parsedValue });
+            errors.push({
+                line: getLineNumber(code, varMatch.index),
+                message: `Tipo de variable desconocido '${typeInput}' en la declaración de '${name}'.`,
+                word: typeInput
+            });
         } else {
-            privateVars.push({ name: name, value: value });
+            const parsedValue = value ? parseInitialValue(value.trim(), canonicalType) : getDefaultValueForType(canonicalType);
+
+            if (scope === 'public') {
+                publicVars.push({ type: canonicalType, name: name, value: value, defaultValue: parsedValue });
+            } else {
+                privateVars.push({ name: name, value: value });
+            }
         }
+        unprocessedCode = blankOut(unprocessedCode, varMatch.index, varMatch.index + varMatch[0].length);
     }
-    unprocessedCode = unprocessedCode.replace(varRegex, '');
 
 
     // Almacenar los metadatos de las variables públicas
     const metadata = {
         publicVars: publicVars.map(pv => ({ name: pv.name, type: pv.type, defaultValue: pv.defaultValue })),
-        publicFunctions: publicFunctions
+        publicFunctions: publicFunctions,
+        lineMap: lineMap
     };
     scriptMetadataMap.set(scriptName, metadata);
 
@@ -720,8 +770,9 @@ export function transpile(code, scriptName = 'unnamed.ces') {
         body = transpileBlock(body, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager, customFunctions);
 
         // 2.g: Map multilingual lifecycle methods to their English counterparts
-        if (name === 'iniciar' || name === 'alEmpezar' || name === 'começar' || name === 'начать' || name === '开始') name = 'start';
-        if (name === 'actualizar' || name === 'alActualizar' || name === 'atualizar' || name === 'обновить' || name === '更新') name = 'update';
+        const lowerName = name.toLowerCase();
+        if (name === 'iniciar' || name === 'alEmpezar' || lowerName === 'alempezar' || name === 'começar' || name === 'начать' || name === '开始') name = 'start';
+        if (name === 'actualizar' || name === 'alActualizar' || lowerName === 'alactualizar' || name === 'atualizar' || name === 'обновить' || name === '更新') name = 'update';
 
         if (name === 'start') {
             startMethod = body + '\n' + (rootCadaCode || '');
@@ -741,10 +792,26 @@ export function transpile(code, scriptName = 'unnamed.ces') {
     }
 
     // 1.d: Final check for leftover code
-    unprocessedCode = unprocessedCode.replace(/\/\/.*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
-    if (unprocessedCode.trim() !== '') {
-        const firstInvalidLine = unprocessedCode.trim().split('\n')[0];
-        errors.push(`Error: Código inválido encontrado fuera de una declaración: "${firstInvalidLine}..."`);
+    // We must find the original index of the leftover code.
+    // unprocessedCode still has correct indices because we used blankOut.
+
+    // First, blank out comments in the leftover code to ignore them
+    let finalCheckCode = unprocessedCode.replace(/\/\/.*|\/\*[\s\S]*?\*\//g, (match) => {
+        return " ".repeat(match.length);
+    });
+
+    const leftoverMatch = finalCheckCode.match(/[^\s]/);
+    if (leftoverMatch) {
+        const index = leftoverMatch.index;
+        const line = getLineNumber(code, index);
+        const text = unprocessedCode.substring(index).trim().split('\n')[0];
+        const firstWord = text.split(/\s+/)[0];
+
+        errors.push({
+            line: line,
+            message: `Código inválido o no reconocido fuera de una declaración: "${text.substring(0, 20)}${text.length > 20 ? '...' : ''}"`,
+            word: firstWord
+        });
     }
 
     if (errors.length > 0) {
@@ -753,40 +820,69 @@ export function transpile(code, scriptName = 'unnamed.ces') {
         return { errors, jsCode: null };
     }
 
-    // --- Phase 3: Build the JavaScript class ---
+    // --- Phase 3: Build the JavaScript class with Line Mapping ---
+    let currentJsLine = 4; // Start of constructor logic
+
     let jsCode = `(function(CreativeScriptBehavior, RuntimeAPIManager) {\n`;
     jsCode += `    class ${className} extends CreativeScriptBehavior {\n`;
     jsCode += `        constructor(materia) {\n            super(materia);\n`;
+
     publicVars.forEach(pv => {
         let val = pv.value ? transpileBlock(pv.value, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager, customFunctions) : JSON.stringify(pv.defaultValue);
-        // Replace Spanish booleans in default values (fallback for non-transpiled parts)
         val = val.replace(/\bverdadero\b/g, 'true').replace(/\bfalso\b/g, 'false');
         jsCode += `            this.${pv.name} = ${val}; // Type: ${pv.type}\n`;
+        currentJsLine++;
     });
     privateVars.forEach(pv => {
         let val = pv.value ? transpileBlock(pv.value, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager, customFunctions) : 'null';
         val = val.replace(/\bverdadero\b/g, 'true').replace(/\bfalso\b/g, 'false');
         jsCode += `            this.${pv.name} = ${val};\n`;
+        currentJsLine++;
     });
     jsCode += `        }\n\n`;
+    currentJsLine += 2;
 
-    const indentBody = (body) => body ? body.trim().split('\n').map(line => `            ${line.trim()}`).join('\n') : '';
+    const buildMappedMethod = (name, args, body, cesIndex) => {
+        const header = `        async ${name}(${args}) {\n`;
+        jsCode += header;
+        currentJsLine++;
 
-    jsCode += `        async start(${startArgs}) {\n${indentBody(startMethod)}\n        }\n\n`;
-    jsCode += `        async update(${updateArgs || 'deltaTime'}) {\n${indentBody(updateMethod)}\n        }\n\n`;
+        const cesStartLine = cesIndex !== undefined ? getLineNumber(code, cesIndex) : 1;
 
-    // Process custom methods to be async too
-    const processedCustomMethods = methodMatches
+        if (body) {
+            const bodyLines = body.trim().split('\n');
+            bodyLines.forEach((line, idx) => {
+                jsCode += `            ${line.trim()}\n`;
+                if (!lineMap.methods[name]) lineMap.methods[name] = [];
+                lineMap.methods[name].push({
+                    js: currentJsLine,
+                    ces: cesStartLine + idx // This is approximate for blocks, but better than nothing
+                });
+                currentJsLine++;
+            });
+        }
+        jsCode += `        }\n\n`;
+        currentJsLine += 2;
+    };
+
+    // Find original indices for lifecycle methods
+    const startMatch = methodMatches.find(m => m.name === 'start');
+    const updateMatch = methodMatches.find(m => m.name === 'update');
+
+    buildMappedMethod('start', startArgs, startMethod, startMatch?.index);
+    buildMappedMethod('update', updateArgs || 'deltaTime', updateMethod, updateMatch?.index);
+
+    // Process custom methods
+    methodMatches
         .filter(m => m.name !== 'start' && m.name !== 'update')
-        .map(m => `        async ${m.name}(${m.args}) {\n${indentBody(m.body)}\n        }\n`)
-        .join('\n');
-
-    jsCode += `${processedCustomMethods}\n`;
+        .forEach(m => {
+            buildMappedMethod(m.name, m.args, m.body, m.index);
+        });
 
     jsCode += `    }\n\n    return ${className};\n});`;
 
     transpiledCodeMap.set(scriptName, jsCode);
-    return { errors: null, jsCode };
+    return { errors: null, jsCode, lineMap };
 }
 
 /**

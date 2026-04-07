@@ -36,13 +36,13 @@ const availableComponents = {
     'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
     'CAT_CAMARA': [Components.Camera],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
-    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Attack, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.SuspensionHC, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController],
+    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Attack, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.SuspensionHC, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController, Components.SceneLoader],
     'CAT_SCRIPTING': [Components.CreativeScript]
 };
 
 const componentIcons = {
     Transform: 'move', Rigidbody2D: 'weight', BoxCollider2D: 'square', CapsuleCollider2D: 'pill', CircleCollider2D: 'disc', PolygonCollider2D: 'hexagon', SpriteRenderer: 'image',
-    Animator: 'run', AnimatorController: 'gamepad', AudioSource: 'music', VideoPlayer: 'video', Camera: 'camera', CreativeScript: 'scroll',
+    Animator: 'run', AnimatorController: 'gamepad', AudioSource: 'music', VideoPlayer: 'video', Camera: 'camera', CreativeScript: 'scroll', SceneLoader: 'clapperboard',
     UITransform: 'box', UICanvas: 'image', UIImage: 'image', PointLight2D: 'lightbulb', SpotLight2D: 'flashlight', FreeformLight2D: 'pencil', SpriteLight2D: 'sparkles',
     Grid: 'grid', Tilemap: 'map', TilemapRenderer: 'brush', TilemapCollider2D: 'grid',
     Terreno2D: 'mountain', TerrenoCollider2D: 'mountain',
@@ -3676,6 +3676,29 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
+        } else if (ley instanceof Components.SceneLoader) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('SCENE_LOADER', "Cargar Escena"), icon, index)}
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label data-i18n="SCENE_PATH">${L.get('SCENE_PATH', 'Ruta de Escena')}</label>
+                        ${renderPropertyDropper('Scene', ley.scenePath, 'data-component="SceneLoader" data-prop="scenePath"')}
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="TRIGGER_TAG">${L.get('TRIGGER_TAG', 'Tag Activador')}</label>
+                        <input type="text" class="prop-input" data-component="SceneLoader" data-prop="triggerTag" value="${ley.triggerTag || ''}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="TRIGGER_KEY">${L.get('TRIGGER_KEY', 'Tecla Activadora')}</label>
+                        <input type="text" class="prop-input" data-component="SceneLoader" data-prop="triggerKey" value="${ley.triggerKey || ''}">
+                    </div>
+                    <div class="inspector-row">
+                        <label data-i18n="BUTTON_MATERIA">${L.get('BUTTON_MATERIA', 'Materia Botón')}</label>
+                        ${renderPropertyDropper('Materia', ley.buttonMateria, 'data-component="SceneLoader" data-prop="buttonMateria"')}
+                    </div>
+                    <p class="field-description">${L.get('SCENE_LOADER_DESC', 'Carga una escena cuando el jugador colisiona, se presiona una tecla o se clica en el botón asignado.')}</p>
+                </div>
+            `;
         } else if (ley instanceof Components.BasicAI) {
             const renderAIFuncInput = (propName, label) => {
                 let inputHTML = `<input type="text" class="prop-input" data-component="BasicAI" data-prop="${propName}" value="${ley[propName] || ''}" placeholder="${L.get('EXAMPLE_AI_FUNC', 'ej: alDetectarEnemigo')}">`;
@@ -4563,6 +4586,8 @@ export async function showAddComponentModal() {
             else if (compTitle === 'UITransform') compTitle = L.get('UI_TRANSFORM', 'Transformación UI');
             else if (L.get(compTitle.toUpperCase()) !== compTitle.toUpperCase()) compTitle = L.get(compTitle.toUpperCase());
             else if (compTitle === 'Rigidbody2D') compTitle = L.get('RIGIDBODY_2D', 'Rigidbody 2D');
+            else if (compTitle === 'SceneLoader') compTitle = L.get('SCENE_LOADER', 'Cargar Escena');
+            else if (compTitle === 'BasicAI') compTitle = L.get('BASIC_AI', 'IA Básica');
 
             componentItem.innerHTML = `
                 <span>${compTitle}</span>

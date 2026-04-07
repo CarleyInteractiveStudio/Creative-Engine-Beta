@@ -58,7 +58,12 @@ This decoupled architecture allows your games to be extremely modular and easy t
 
 ## 🦴 Chapter 2: The CES Language
 
-CES is not a new language from scratch; it is a **High-Level Abstraction** over JavaScript (ES6+).
+CES is not a new language from scratch; it is a **High-Level Abstraction** over JavaScript (ES6+), designed to be natural and powerful.
+
+### Natural Logic (New)
+You can now write conditions as if you were speaking:
+- **`si (health is 10 and energy equals 100)`** -> Support for `y`, `o`, `es` (is), `igual a` (equals).
+- **`si (score different to 0 or time less than 10)`** -> Support for `diferente a`, `menor a`, `mayor a`.
 
 ### The Magic of Omission
 In CES, the context is implicit. The engine knows that if you are writing a script for the "Player", any mention of `health` refers to the health *of that player*.
@@ -120,6 +125,7 @@ Here we break down the capabilities of the most important components:
 - **`lookAt(target)`**: Instantly rotates the object towards another object or position.
 
 ### ⚖️ Physics (`fisica`, `rigidbody2D`)
+- **`.velocityX`, `.velocityY`**: Direct shortcuts for axis movement.
 - **`.velocity`**: Current movement vector `{x, y}`.
 - **`.gravityScale`**: How much gravity affects the object (0 = floats).
 - **`applyForce(x, y)`**: Constant push (like a motor).
@@ -239,13 +245,28 @@ This process ensures you write easy code but run professional code.
 
 ---
 
-## ❓ Chapter 12: Troubleshooting
+## 🛠️ Chapter 12: Smart Console and Auto Repair
+
+Creative Engine includes advanced tools to ensure you never get stuck:
+
+### 🧠 Smart Console
+The console doesn't just tell you what failed, but **where** and **how** to fix it:
+- **Error Translation**: Technical errors are converted into clear explanations.
+- **"Go to Line" Button**: Opens the editor and highlights the exact line of the failure.
+- **"Auto Repair" Button**: Analyzes your code and proposes a solution based on thousands of correct patterns.
+
+### 📜 History and Backups
+Did you delete something important? In the Code Editor, click on **"History"** to view and restore the last 10 saved versions of your script.
+
+### ❓ Troubleshooting
+
+If you have an error, check our **Quick Solution Guide** (available in the Spanish documentation) with over 50 solutions to common problems.
 
 **Q: My object passes through walls.**
 A: Make sure to use `fixedUpdate` for physical movement and that the `Rigidbody2D` is in "Continuous" mode if the object is very fast.
 
 **Q: "TypeError: Cannot read properties of undefined (reading 'damage')"**
-A: You are trying to call `health.damage()` on an object that does not have the **Health** component. Add it in the Inspector.
+A: You are trying to call `health.damage()` on an object that does not have the **Health** component. The Auto Repair tool can add it for you.
 
 ---
 

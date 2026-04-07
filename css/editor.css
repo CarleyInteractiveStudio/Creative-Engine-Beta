@@ -3266,6 +3266,24 @@ body.mobile-mode .grid-item {
     background-color: #4f4f56;
 }
 
+#code-editor-toolbar .special-btn {
+    background: linear-gradient(135deg, #0e639c 0%, #007acc 100%);
+    color: white;
+    border: none;
+    font-weight: bold;
+}
+
+#code-editor-toolbar .special-btn:hover {
+    filter: brightness(1.2);
+}
+
+.toolbar-separator {
+    width: 1px;
+    height: 20px;
+    background-color: var(--border-color);
+    margin: 0 5px;
+}
+
 #codemirror-container {
     flex-grow: 1;
     overflow: hidden; /* Ensures the container itself doesn't scroll */
@@ -3433,11 +3451,65 @@ body.mobile-mode .grid-item {
     line-height: 1.4;
 }
 .console-msg {
-    padding: 2px 4px;
+    padding: 4px 8px;
     border-bottom: 1px solid var(--bg-tertiary);
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.structured-error {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 10px;
+    padding: 10px 12px !important;
+    margin: 6px 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.msg-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-grow: 1;
+}
+
+.msg-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.console-action-btn {
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.console-action-btn:hover {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.console-action-btn.special {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    border: none;
+    color: white;
+    font-weight: 600;
+}
+
+.msg-icon {
+    font-size: 1.2em;
+    flex-shrink: 0;
+}
+
+.msg-text {
+    flex-grow: 1;
 }
 
 .log-count-badge {
