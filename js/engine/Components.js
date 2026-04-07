@@ -3999,6 +3999,7 @@ export class Movement extends Leyes {
         this.fallAnim = "fall";
 
         this._warnedMissing = new Set();
+        this._lastErrorTime = 0;
     }
 
     start() {
@@ -5293,8 +5294,10 @@ export class ProjectileLauncher extends Leyes {
         this.projectileSpeed = 500;
         this.offset = { x: 0, y: 0 };
         this.direction = { x: 1, y: 0 };
+        this.fireSound = "";
 
         this._lastFireTime = 0;
+        this._warnedMissing = new Set();
     }
 
     update(deltaTime) {
@@ -5319,6 +5322,16 @@ export class ProjectileLauncher extends Leyes {
 
         if (!this.projectilePrefab) return;
 
+        if (this.fireSound) {
+            const audio = this.materia.getComponent(AudioSource);
+            if (audio) {
+                audio.play(this.fireSound);
+            } else if (!this._warnedMissing.has('AudioSource')) {
+                this._warnedMissing.add('AudioSource');
+                console.error(`[Lanzador] El objeto '${this.materia.name}' necesita un componente 'AudioSource' para reproducir el sonido: ${this.fireSound}`);
+            }
+        }
+
         // Usar SceneManager global para evitar dependencias circulares
         if (window.SceneManager && window.SceneManager.instantiatePrefabFromPath) {
             const projectile = await window.SceneManager.instantiatePrefabFromPath(this.projectilePrefab, spawnPos.x, spawnPos.y);
@@ -5342,6 +5355,8 @@ export class ProjectileLauncher extends Leyes {
     set cadencia(v) { this.fireRate = v; }
     get velocidadProyectil() { return this.projectileSpeed; }
     set velocidadProyectil(v) { this.projectileSpeed = v; }
+    get sonidoDisparo() { return this.fireSound; }
+    set sonidoDisparo(v) { this.fireSound = v; }
 
     clone() {
         const newPl = new ProjectileLauncher(null);
@@ -5351,6 +5366,8 @@ export class ProjectileLauncher extends Leyes {
         newPl.projectileSpeed = this.projectileSpeed;
         newPl.direction = { ...this.direction };
         newPl.offset = { ...this.offset };
+        newPl.fireSound = this.fireSound;
+        newPl._warnedMissing = new Set();
         return newPl;
     }
 }

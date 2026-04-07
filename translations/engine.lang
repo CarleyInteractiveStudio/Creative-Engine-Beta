@@ -232,6 +232,7 @@ ME_GUSTAS: Me Gusta
 # Asset Browser
 CREAR_CARPETA: Crear Carpeta
 NOMBRE_CARPETA_PROMPT: Introduce el nombre de la nueva carpeta:
+CREAR_CONTROLADOR_ANIMACION: Crear Controlador de Animación
 CREAR_CONTROLADOR_ANIMACION: Crear Controlador de Animação
 NOMBRE_CONTROLADOR_PROMPT: Introduce el nombre del nuevo controlador (.ceanim):
 CREAR_PREFAB: Crear Prefab
@@ -350,6 +351,42 @@ TRANSFORM: Transform
 POSICION: Posición
 ROTACION: Rotación
 ESCALA: Escala
+MOVEMENT_BASIC: Movimiento (Básico)
+TEXTURE_RENDER: Renderizador de Textura
+VERTICAL_LAYOUT: Auto-Disposición Vertical
+HORIZONTAL_LAYOUT: Auto-Disposición Horizontal
+GRID_LAYOUT: Auto-Disposición Rejilla
+SIZE_FITTER: Ajuste de Tamaño
+VIDEO_PLAYER: Reproductor de Vídeo
+HEALTH_COMPONENT: Vida (Health)
+ATTACK_COMPONENT: Ataque (Attack)
+SCROLL_RECT: Rect de Desplazamiento
+UI_MASK: Máscara UI
+UI_COLLIDER: Colisionador UI
+PATROL_COMPONENT: Patrulla (Patrol)
+POLYGON_COLLIDER_2D: Colisionador Polígono 2D
+UI_TRANSFORM: Transformación UI
+UI_IMAGE: Imagen UI
+UI_TEXT: Texto UI
+SPRITE_RENDERER: Renderizador de Sprite
+AUDIO_SOURCE: Fuente de Audio
+SUSPENSION_HC: Suspensión HC
+VEHICLE_TOPDOWN: Vehículo Top-Down
+PLANE_CONTROLLER: Controlador de Avión
+HELICOPTER_CONTROLLER: Controlador de Helicóptero
+SKELETON_RENDERER: Renderizador de Esqueleto
+IK_MANAGER_2D: Gestor IK 2D
+BASIC_AI: IA Básica
+RIGIDBODY_2D: Rigidbody 2D
+BOX_COLLIDER_2D: Colisionador Caja 2D
+BODY_TYPE: Tipo de Cuerpo
+DYNAMIC: Dinámico
+STATIC: Estático
+KINEMATIC: Cinemático
+RIGIDBODY_COLLIDER_WARNING: El Rigidbody necesita un Colisionador para interactuar físicamente.
+PROJECTILE_LAUNCHER_COMPONENT: Lanzador de Proyectiles
+AUTO_DESTROY_COMPONENT: Destrucción Automática
+CAMERA_FOLLOW_COMPONENT: Seguimiento de Cámara
 PROP_FLIP_X: Voltear Horizontal
 PROP_FLIP_Y: Voltear Vertical
 NADA_SELECCIONADO: Nada seleccionado
@@ -780,6 +817,7 @@ ME_GUSTAS: Likes
 CREAR_CARPETA: Create Folder
 NOMBRE_CARPETA_PROMPT: Enter the name for the new folder:
 CREAR_CONTROLADOR_ANIMACION: Create Animation Controller
+CREAR_CONTROLADOR_ANIMACION: Create Animation Controller
 NOMBRE_CONTROLADOR_PROMPT: Enter the name for the new controller (.ceanim):
 CREAR_PREFAB: Create Prefab
 NOMBRE_PREFAB_PROMPT: Enter the name for the new prefab (.ceprefab):
@@ -897,6 +935,43 @@ TRANSFORM: Transform
 POSICION: Position
 ROTACION: Rotation
 ESCALA: Scale
+MOVEMENT_BASIC: Movement (Basic)
+TEXTURE_RENDER: Texture Renderer
+VERTICAL_LAYOUT: Vertical Layout
+HORIZONTAL_LAYOUT: Horizontal Layout
+GRID_LAYOUT: Grid Layout
+SIZE_FITTER: Size Fitter
+VIDEO_PLAYER: Video Player
+HEALTH_COMPONENT: Health Component
+ATTACK_COMPONENT: Attack Component
+SCROLL_RECT: Scroll Rect
+UI_MASK: UI Mask
+UI_COLLIDER: UI Collider
+PATROL_COMPONENT: Patrol
+POLYGON_COLLIDER_2D: Polygon Collider 2D
+UI_TRANSFORM: UI Transform
+UI_IMAGE: UI Image
+UI_TEXT: UI Text
+SPRITE_RENDERER: Sprite Renderer
+AUDIO_SOURCE: Audio Source
+SUSPENSION_HC: Suspension HC
+VEHICLE_TOPDOWN: Vehicle Top-Down
+PLANE_CONTROLLER: Plane Controller
+HELICOPTER_CONTROLLER: Helicopter Controller
+SKELETON_RENDERER: Skeleton Renderer
+IK_MANAGER_2D: IK Manager 2D
+BASIC_AI: Basic AI
+RIGIDBODY_2D: Rigidbody 2D
+BOX_COLLIDER_2D: Box Collider 2D
+BODY_TYPE: Body Type
+DYNAMIC: Dynamic
+STATIC: Static
+KINEMATIC: Kinematic
+RIGIDBODY_COLLIDER_WARNING: Rigidbody needs a Collider to interact physically.
+PROJECTILE_LAUNCHER_COMPONENT: Projectile Launcher
+AUTO_DESTROY_COMPONENT: Auto Destroy
+CAMERA_FOLLOW_COMPONENT: Camera Follow
+FIRE_SOUND: Fire Sound
 PROP_FLIP_X: Flip Horizontal
 PROP_FLIP_Y: Flip Vertical
 NADA_SELECCIONADO: Nothing selected
@@ -1386,6 +1461,43 @@ TRANSFORM: Transform
 POSICION: Posição
 ROTACION: Rotação
 ESCALA: Escala
+MOVEMENT_BASIC: Movimento (Básico)
+TEXTURE_RENDER: Renderizador de Textura
+VERTICAL_LAYOUT: Auto-Disposição Vertical
+HORIZONTAL_LAYOUT: Auto-Disposição Horizontal
+GRID_LAYOUT: Auto-Disposição Grade
+SIZE_FITTER: Ajuste de Tamanho
+VIDEO_PLAYER: Reprodutor de Vídeo
+HEALTH_COMPONENT: Vida (Health)
+ATTACK_COMPONENT: Ataque (Attack)
+SCROLL_RECT: Retângulo de Rolagem
+UI_MASK: Máscara UI
+UI_COLLIDER: Colisor UI
+PATROL_COMPONENT: Patrulha (Patrol)
+POLYGON_COLLIDER_2D: Colisor de Polígono 2D
+UI_TRANSFORM: Transformação UI
+UI_IMAGE: Imagem UI
+UI_TEXT: Texto UI
+SPRITE_RENDERER: Renderizador de Sprite
+AUDIO_SOURCE: Fonte de Áudio
+SUSPENSION_HC: Suspensão HC
+VEHICLE_TOPDOWN: Veículo Top-Down
+PLANE_CONTROLLER: Controlador de Avião
+HELICOPTER_CONTROLLER: Controlador de Helicóptero
+SKELETON_RENDERER: Renderizador de Esqueleto
+IK_MANAGER_2D: Gestor IK 2D
+BASIC_AI: IA Básica
+RIGIDBODY_2D: Rigidbody 2D
+BOX_COLLIDER_2D: Colisor de Caixa 2D
+BODY_TYPE: Tipo de Corpo
+DYNAMIC: Dinâmico
+STATIC: Estático
+KINEMATIC: Cinemático
+RIGIDBODY_COLLIDER_WARNING: O Rigidbody precisa de un Colisor para interagir fisicamente.
+PROJECTILE_LAUNCHER_COMPONENT: Lançador de Projéteis
+AUTO_DESTROY_COMPONENT: Destruição Automática
+CAMERA_FOLLOW_COMPONENT: Seguimento de Câmara
+FIRE_SOUND: Som de Disparo
 PROP_FLIP_X: Inverter Horizontal
 PROP_FLIP_Y: Inverter Vertical
 NADA_SELECCIONADO: Nada selecionado
@@ -1822,6 +1934,43 @@ TRANSFORM: Transform
 POSICION: Позиция
 ROTACION: Вращение
 ESCALA: Масштаб
+MOVEMENT_BASIC: Движение (Базовое)
+TEXTURE_RENDER: Рендерер текстуры
+VERTICAL_LAYOUT: Вертикальная компоновка
+HORIZONTAL_LAYOUT: Горизонтальная компоновка
+GRID_LAYOUT: Сеточная компоновка
+SIZE_FITTER: Подгонка размера
+VIDEO_PLAYER: Видеоплеер
+HEALTH_COMPONENT: Компонент здоровья
+ATTACK_COMPONENT: Компонент атаки
+SCROLL_RECT: Область прокрутки
+UI_MASK: Маска UI
+UI_COLLIDER: Коллайдер UI
+PATROL_COMPONENT: Патруль
+POLYGON_COLLIDER_2D: Полигональный коллайдер 2D
+UI_TRANSFORM: UI Трансформ
+UI_IMAGE: UI Изображение
+UI_TEXT: UI Текст
+SPRITE_RENDERER: Рендерер спрайта
+AUDIO_SOURCE: Источник звука
+SUSPENSION_HC: Подвеска HC
+VEHICLE_TOPDOWN: Транспорт (Вид сверху)
+PLANE_CONTROLLER: Контроллер самолета
+HELICOPTER_CONTROLLER: Контроллер вертолета
+SKELETON_RENDERER: Скелетный рендерер
+IK_MANAGER_2D: ИК Менеджер 2D
+BASIC_AI: Базовый ИИ
+RIGIDBODY_2D: Rigidbody 2D
+BOX_COLLIDER_2D: Коробочный коллайдер 2D
+BODY_TYPE: Тип тела
+DYNAMIC: Динамический
+STATIC: Статический
+KINEMATIC: Кинематический
+RIGIDBODY_COLLIDER_WARNING: Rigidbody требуется коллайдер для физического взаимодействия.
+PROJECTILE_LAUNCHER_COMPONENT: Запуск снарядов
+AUTO_DESTROY_COMPONENT: Авто-уничтожение
+CAMERA_FOLLOW_COMPONENT: Слежение камеры
+FIRE_SOUND: Звук выстрела
 PROP_FLIP_X: Отразить по горизонтали
 PROP_FLIP_Y: Отразить по вертикали
 NADA_SELECCIONADO: Ничего не выбрано
@@ -2269,6 +2418,43 @@ TRANSFORM: 变换
 POSICION: 位置
 ROTACION: 旋转
 ESCALA: 缩放
+MOVEMENT_BASIC: 基础移动
+TEXTURE_RENDER: 纹理渲染器
+VERTICAL_LAYOUT: 垂直布局
+HORIZONTAL_LAYOUT: 水平布局
+GRID_LAYOUT: 网格布局
+SIZE_FITTER: 尺寸适配器
+VIDEO_PLAYER: 视频播放器
+HEALTH_COMPONENT: 生命组件
+ATTACK_COMPONENT: 攻击组件
+SCROLL_RECT: 滚动区域
+UI_MASK: UI 遮罩
+UI_COLLIDER: UI 碰撞体
+PATROL_COMPONENT: 巡逻
+POLYGON_COLLIDER_2D: 多边形碰撞体 2D
+UI_TRANSFORM: UI 变换
+UI_IMAGE: UI 图像
+UI_TEXT: UI 文本
+SPRITE_RENDERER: 精灵渲染器
+AUDIO_SOURCE: 音源
+SUSPENSION_HC: 悬挂系统 HC
+VEHICLE_TOPDOWN: 俯视载具
+PLANE_CONTROLLER: 飞机控制器
+HELICOPTER_CONTROLLER: 直升机控制器
+SKELETON_RENDERER: 骨骼渲染器
+IK_MANAGER_2D: IK 管理器 2D
+BASIC_AI: 基础人工智能
+RIGIDBODY_2D: 刚体 2D
+BOX_COLLIDER_2D: 盒体碰撞体 2D
+BODY_TYPE: 刚体类型
+DYNAMIC: 动态
+STATIC: 静态
+KINEMATIC: 运动学
+RIGIDBODY_COLLIDER_WARNING: 刚体需要碰撞体才能进行物理交互。
+PROJECTILE_LAUNCHER_COMPONENT: 弹射器
+AUTO_DESTROY_COMPONENT: 自动销毁
+CAMERA_FOLLOW_COMPONENT: 摄像机跟随
+FIRE_SOUND: 发射声音
 PROP_FLIP_X: 水平翻转
 PROP_FLIP_Y: 垂直翻转
 NADA_SELECCIONADO: 未选择任何内容

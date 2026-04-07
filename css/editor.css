@@ -5343,3 +5343,53 @@ body.game-mode #loading-overlay {
     font-size: 10px;
     opacity: 0.6;
 }
+
+/* --- Inspector Warning Box --- */
+.inspector-warning-box {
+    background: rgba(255, 159, 67, 0.15);
+    border: 1px solid #ff9f43;
+    border-radius: 8px;
+    padding: 12px;
+    margin: 10px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    animation: fadeIn 0.3s ease;
+}
+
+.warning-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #ff9f43;
+    font-weight: bold;
+    font-size: 0.9em;
+}
+
+.warning-text {
+    font-size: 0.85em;
+    color: var(--text-primary);
+    line-height: 1.4;
+}
+
+.warning-btn {
+    background: #ff9f43;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: filter 0.2s;
+    align-self: flex-start;
+}
+
+.warning-btn:hover {
+    filter: brightness(1.1);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
