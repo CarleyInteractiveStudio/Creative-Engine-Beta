@@ -420,6 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'md-preview-content', 'md-edit-content',
             // CHC Editor Elements
             'chc-integrated-editor', 'chc-human-text', 'chc-run-btn', 'chc-loading-overlay', 'chc-loading-text',
+            'prefs-smart-reparator-toggle', 'code-creative-code-toggle',
             // Animation Skeletal Elements
             'animation-type-selector', 'animation-record-btn', 'skeletal-timeline', 'animation-time-slider', 'skeletal-tracks'
         ];
@@ -3771,6 +3772,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado
         window.openMarkdownViewer = openMarkdownViewerCallback;
         window.setActiveTool = SceneView.setActiveTool;
         window.CES_Transpiler = CES_Transpiler;
+        window.getSelectedMateria = () => selectedMateria;
         window.TerrenoEditorWindow = TerrenoEditorWindow;
         window.AnimationEditorWindow = AnimationEditorWindow;
         window.TilePalette = TilePalette;

@@ -10,6 +10,7 @@ import { keymap, Decoration } from "https://esm.sh/@codemirror/view@6.26.3";
 import { StateField, StateEffect } from "https://esm.sh/@codemirror/state@6.4.1";
 import { transpile } from './CES_Transpiler.js';
 import * as AutoReparator from './AutoReparator.js';
+import { intentWeights, blockTemplates } from './AutoReparatorData.js';
 import * as AIHandler from './AIHandler.js';
 import { getPreferences } from './ui/PreferencesWindow.js';
 
@@ -174,10 +175,51 @@ const cesKeywords = [
 
 function cesCompletions(context) {
     let word = context.matchBefore(/\w+/);
-    if (!word) return context.explicit ? { from: context.pos, options: cesKeywords } : null;
+    const code = context.state.doc.toString();
+    const prefs = getPreferences();
+
+    let options = [...cesKeywords];
+
+    // Smart context-aware suggestions
+    if (prefs.autoCorrectorInteligente !== false) {
+        const codeLower = code.toLowerCase();
+        for (const [intent, config] of Object.entries(intentWeights)) {
+            const hasKeyword = config.keywords.some(k => codeLower.includes(k));
+            if (hasKeyword) {
+                // Boost relevant keywords or add specific snippets
+                options = options.map(opt => {
+                    if (config.keywords.includes(opt.label)) {
+                        return { ...opt, boost: 10 };
+                    }
+                    return opt;
+                });
+            }
+        }
+
+        // Logic placement suggestions
+        if (codeLower.includes('alactualizar') && !codeLower.includes('teclapresionada')) {
+            options.push({ label: 'teclaPresionada("w")', type: 'function', info: 'Detecta si una tecla está siendo pulsada' });
+        }
+
+        // --- Block Prediction (Brain v3.3) ---
+        blockTemplates.forEach(block => {
+            const match = block.keywords.some(k => codeLower.includes(k));
+            if (match) {
+                options.push({
+                    label: block.name,
+                    type: "snippet",
+                    apply: block.code,
+                    detail: "Insertar bloque lógico completo",
+                    boost: 20
+                });
+            }
+        });
+    }
+
+    if (!word) return context.explicit ? { from: context.pos, options: options } : null;
     return {
         from: word.from,
-        options: cesKeywords,
+        options: options,
         validFor: /^\w*$/
     };
 }
@@ -792,7 +834,11 @@ export function initialize(domCache, showConsole, hotReload) {
     window._CodeEditor = {
         openScriptAtLine,
         runAutoReparator,
-        setLastRuntimeError
+        setLastRuntimeError,
+        isSmartEnabled: () => {
+            const prefs = getPreferences();
+            return prefs.autoCorrectorInteligente !== false;
+        }
     };
 
     // Configura los event listeners para los botones de la barra de herramientas
@@ -805,13 +851,61 @@ export function initialize(domCache, showConsole, hotReload) {
         historyBtn.addEventListener('click', () => showScriptHistory());
     }
 
+    const creativeToggle = document.getElementById('code-creative-code-toggle');
+    if (creativeToggle) {
+        creativeToggle.addEventListener('click', () => {
+            const prefs = getPreferences();
+            const newValue = prefs.autoCorrectorInteligente === false;
+
+            // This is a bit of a hack since we can't easily import PreferencesWindow's save logic here
+            // but we can update the pref object and the UI.
+            prefs.autoCorrectorInteligente = newValue;
+            localStorage.setItem('creativeEnginePrefs', JSON.stringify(prefs));
+
+            const checkbox = document.getElementById('prefs-smart-reparator-toggle');
+            if (checkbox) checkbox.checked = newValue;
+
+            window.Dialogs.showNotification(
+                window.Localization.get('EXITO'),
+                `Creative Code ${newValue ? 'ACTIVADO' : 'DESACTIVADO'}`
+            );
+        });
+    }
+
     const repairBtn = document.getElementById('code-reparar-btn');
     if (repairBtn) {
         repairBtn.addEventListener('click', () => runAutoReparator());
+        // Periodic check to update button visual status (v4 Expert Brain)
+        setInterval(() => {
+            const isSmart = getPreferences().autoCorrectorInteligente !== false;
+            if (creativeToggle) creativeToggle.classList.toggle('active', isSmart);
+
+            if (isSmart) {
+                repairBtn.classList.add('creative-code-active');
+                const span = repairBtn.querySelector('span');
+                if (span) span.textContent = 'Creative Code';
+            } else {
+                repairBtn.classList.remove('creative-code-active');
+                const span = repairBtn.querySelector('span');
+                if (span && window.Localization) span.textContent = window.Localization.get('REPARAR', 'Reparar');
+            }
+        }, 1000);
     }
 
     // CHC specific
     if (dom.chcRunBtn) {
         dom.chcRunBtn.addEventListener('click', () => runChc());
     }
+
+    // Shortcut "F" to trigger Auto Reparator
+    window.addEventListener('keydown', (e) => {
+        // Only if the editor container is visible and we're not typing in an input
+        const isEditorVisible = dom.codeEditorContent.classList.contains('active');
+        const isTyping = ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) || document.activeElement.classList.contains('cm-content');
+
+        if (isEditorVisible && !isTyping && (e.key === 'f' || e.key === 'F')) {
+            console.log("[Shortcut] F pressed - Triggering Auto Reparator");
+            runAutoReparator();
+        }
+    });
 }
