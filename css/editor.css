@@ -61,20 +61,29 @@ body.is-dragging-panel {
     flex-grow: 1;
     display: flex;
     align-items: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.menubar-center::-webkit-scrollbar {
+    display: none;
 }
 
 .menubar-right {
     justify-content: flex-end;
+    flex-shrink: 0;
 }
 
 body.mobile-mode #menubar {
-    padding: 10px 5px;
+    padding: 5px 2px;
     gap: 5px;
 }
 
 body.mobile-mode .menu-btn {
-    padding: 8px 12px;
-    font-size: 1.1em;
+    padding: 5px 8px;
+    font-size: 0.85em;
 }
 
 .menu-btn {
@@ -354,10 +363,19 @@ body {
     height: 22px;
 }
 
+body.mobile-mode .logo-area img {
+    width: 18px;
+    height: 18px;
+}
+
 .logo-area span {
     font-weight: bold;
     font-size: 1.1em;
     color: var(--text-secondary); /* Match old project name color */
+}
+
+body.mobile-mode .logo-area span {
+    font-size: 0.9em;
 }
 
 .left-header-controls {
@@ -509,6 +527,11 @@ body {
     box-sizing: border-box;
 }
 
+body.mobile-mode #editor-main-content {
+    grid-template-columns: 35% 6px 1fr 6px 35%;
+    padding: 2px;
+}
+
 /* --- Panel Assignments & Styles --- */
 #hierarchy-panel { grid-area: hierarchy; }
 #scene-panel { grid-area: scene; }
@@ -552,6 +575,13 @@ body {
 #editor-main-content.no-hierarchy.no-inspector {
     grid-template-columns: 0px 0px 1fr 0px 0px;
 }
+
+body.mobile-mode #editor-main-content.no-hierarchy {
+    grid-template-columns: 0px 0px 1fr 6px 40%;
+}
+body.mobile-mode #editor-main-content.no-inspector {
+    grid-template-columns: 40% 6px 1fr 0px 0px;
+}
 /* Add other combinations as needed */
 
 
@@ -573,6 +603,13 @@ body {
     justify-content: space-between;
     align-items: center;
     flex-shrink: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+}
+
+.panel-header::-webkit-scrollbar {
+    display: none;
 }
 
 .close-panel-btn {
@@ -750,6 +787,7 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-shrink: 0;
 }
 
 .toggle-switch {
@@ -2118,8 +2156,8 @@ body {
     position: absolute;
     width: 60vw; /* Initial width */
     height: 70vh; /* Initial height */
-    min-width: 400px; /* Prevent it from being too small */
-    min-height: 300px; /* Prevent it from being too small */
+    min-width: 250px; /* Reduced min-width for small screens */
+    min-height: 200px; /* Reduced min-height for small screens */
     top: 100px;
     left: 100px;
     z-index: 1500;
@@ -2209,6 +2247,12 @@ body {
     padding: 8px;
     background-color: var(--bg-tertiary);
     flex-shrink: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+#animation-toolbar::-webkit-scrollbar {
+    display: none;
 }
 
 #animation-timeline {
@@ -2693,6 +2737,7 @@ body {
     display: flex;
     gap: 8px;
     flex-shrink: 0;
+    margin-left: 10px;
 }
 
 .game-controls button {
@@ -2736,6 +2781,125 @@ body.mobile-mode .hierarchy-item {
 body.mobile-mode .grid-item {
     width: 90px;
     height: 100px;
+}
+
+/* Mobile Usability Fixes */
+body.mobile-mode {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+body.mobile-mode input,
+body.mobile-mode textarea,
+body.mobile-mode [contenteditable="true"],
+body.mobile-mode .cm-editor,
+body.mobile-mode #terminal-input {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+}
+
+body.mobile-mode .hierarchy-item,
+body.mobile-mode .grid-item,
+body.mobile-mode .folder-item,
+body.mobile-mode .tab-btn,
+body.mobile-mode .menu-btn,
+body.mobile-mode .panel-header,
+body.mobile-mode .inspector-row {
+    -webkit-tap-highlight-color: transparent;
+}
+
+body.mobile-mode .panel-header {
+    padding: 4px 8px;
+    font-size: 0.85em;
+}
+
+body.mobile-mode .close-panel-btn {
+    font-size: 1.1em;
+}
+
+body.mobile-mode .toolbar-btn,
+body.mobile-mode .panel-tool-btn {
+    min-width: 28px;
+    height: 28px;
+    padding: 0 4px;
+    font-size: 12px;
+}
+
+body.mobile-mode .inspector-row label {
+    font-size: 0.8em;
+}
+
+body.mobile-mode #inspector-panel input[type="text"],
+body.mobile-mode #inspector-panel input[type="number"] {
+    padding: 4px;
+    font-size: 0.85em;
+}
+
+body.mobile-mode .tab-btn {
+    padding: 6px 8px;
+    font-size: 0.85em;
+    flex-shrink: 0;
+}
+
+body.mobile-mode .view-toggle-btn {
+    flex-shrink: 0;
+}
+
+body.mobile-mode .donate-btn span {
+    display: none;
+}
+
+body.mobile-mode .inspector-materia-header {
+    margin-bottom: 5px;
+    padding-bottom: 5px;
+}
+
+body.mobile-mode #materia-name-input {
+    font-size: 0.95em;
+    padding: 4px;
+}
+
+body.mobile-mode .component-header {
+    padding: 2px 6px;
+}
+
+body.mobile-mode .component-header h4 {
+    font-size: 0.85em;
+}
+
+body.mobile-mode .prop-row-multi label {
+    font-size: 0.8em;
+}
+
+body.mobile-mode .context-menu li {
+    padding: 6px 12px;
+    font-size: 0.85em;
+}
+
+body.mobile-mode .dialog-container {
+    min-width: 280px;
+    max-width: 95vw;
+}
+
+body.mobile-mode .dialog-header {
+    padding: 8px 12px;
+    font-size: 0.9em;
+}
+
+body.mobile-mode .dialog-content {
+    padding: 12px;
+    font-size: 0.9em;
+}
+
+body.mobile-mode .hierarchy-item:active,
+body.mobile-mode .grid-item:active,
+body.mobile-mode .folder-item:active,
+body.mobile-mode .asset-item:active,
+body.mobile-mode .component-item:active {
+    background-color: rgba(14, 99, 156, 0.4) !important;
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
 }
 
 .hierarchy-item.active {
@@ -2977,6 +3141,7 @@ body.mobile-mode .grid-item {
 .layer-controls {
     display: flex;
     gap: 5px;
+    flex-shrink: 0;
 }
 
 .layer-btn {
@@ -3252,6 +3417,12 @@ body.mobile-mode .grid-item {
     background-color: var(--bg-tertiary);
     border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+#code-editor-toolbar::-webkit-scrollbar {
+    display: none;
 }
 
 #code-editor-toolbar button {

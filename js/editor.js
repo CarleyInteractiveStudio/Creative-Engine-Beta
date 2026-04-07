@@ -354,6 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'prefs-color-accent', 'prefs-autosave-toggle', 'prefs-autosave-interval-group', 'prefs-autosave-interval',
             'prefs-save-btn', 'prefs-script-lang', 'prefs-show-scene-grid', 'prefs-snapping-toggle', 'prefs-snapping-grid-size-group',
             'prefs-snapping-grid-size', 'prefs-zoom-speed', 'prefs-reset-layout-btn',
+            'prefs-share-with-carley',
             'prefs-ai-provider', 'prefs-ai-api-key-group', 'prefs-ai-api-key', 'prefs-ai-save-key-btn', 'prefs-ai-delete-key-btn',
             'prefs-ai-model-selection-group', 'prefs-ai-model-selector', 'prefs-ai-error-display',
             'prefs-carl-can-use-console', 'prefs-carl-can-manage-files', 'prefs-carl-can-manipulate-scenes', 'prefs-carl-can-download-files',
@@ -2832,7 +2833,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         openMarkdownViewerCallback(readmePath, content);
                     } catch (err) {
                         console.warn("No se pudo abrir la documentacion local, abriendo sitio externo.");
-                        window.open('https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/docs/', '_blank');
+                        window.open('https://carleystudio.com/documentacion.html#editores', '_blank');
                     }
                 })();
             });
@@ -2861,14 +2862,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }, { filter: ['.json'], title: L.get('IMPORTAR_ESQUELETO_SPINE', 'Import Skeleton (Spine)') });
         });
 
-        const reportBugBtn = document.getElementById('menu-report-bug');
-        if (reportBugBtn) {
-            reportBugBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                // We use the already available showNotification or a specialized one
-                showNotificationDialog('Reportar Fallo', 'Gracias por querer ayudarnos! Por favor, envia un mensaje detallado a nuestro correo de soporte o usa el formulario de contacto en el inicio.');
-            });
-        }
 
         dom.menuBuild.addEventListener('click', (e) => {
             e.preventDefault();

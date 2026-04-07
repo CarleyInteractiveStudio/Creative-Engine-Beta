@@ -95,10 +95,12 @@
                 <div class="menu-item">
                     <button class="menu-btn" data-i18n="AYUDA">Ayuda</button>
                     <div class="menu-content">
-                        <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/" target="_blank" id="menu-help" data-i18n="AYUDA">Ayuda</a>
-                        <a href="#" id="menu-docs" data-i18n="DOCUMENTACION">Documentación</a>
+                        <a href="https://carleystudio.com/documentacion.html#editores" target="_blank" id="menu-help" data-i18n="AYUDA">Ayuda</a>
+                        <a href="https://carleystudio.com/documentacion.html#editores" target="_blank" id="menu-docs" data-i18n="DOCUMENTACION">Documentación</a>
                         <a href="https://www.youtube.com/@CarleyInteractiveStudioOficial" target="_blank" data-i18n="TUTORIALES">Tutoriales</a>
-                        <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/creative-engine.html#report" target="_blank" id="menu-report-bug" data-i18n="REPORTAR_FALLOS">Reportar Bugs/Errores/Fallos</a>
+                        <a href="https://carleystudio.com/creative-engine.html#join" target="_blank" data-i18n="CANALES">Canales</a>
+                        <a href="https://carleystudio.com/soluciones-rapidas.html" target="_blank" data-i18n="SOLUCION_RAPIDA">Soluciones Rápidas</a>
+                        <a href="https://carleystudio.com/creative-engine.html#report" target="_blank" id="menu-report-bug" data-i18n="REPORTAR_FALLOS">Reportar Bugs/Errores/Fallos</a>
                         <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/creative-engine.html#opinions" target="_blank" data-i18n="OPINIONES">Opiniones</a>
                         <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/creative-engine.html#claims" target="_blank" data-i18n="RECLAMOS">Reclamos</a>
                         <hr>
@@ -789,8 +791,7 @@ public star() {
                 <div class="resize-handle" data-direction="w"></div>
                 <div class="resize-handle" data-direction="nw"></div>
             </div>
-        </main>
-    </div>
+
     <div id="context-menu" class="context-menu" style="display: none;">
         <ul>
             <li class="has-submenu">
@@ -1326,7 +1327,14 @@ public star() {
                 </fieldset>
 
                 <fieldset class="settings-section">
-                    <legend data-i18n="MULTIDISPOSITIVO">Multidispositivo <span class="badge development" data-i18n="EN_DESARROLLO">EN DESARROLLO</span></legend>
+                    <legend data-i18n="PROYECTO_COLABORATIVO">Proyecto Colaborativo</legend>
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="prefs-share-with-carley">
+                        <label for="prefs-share-with-carley" data-i18n="COMPARTIR_CON_CARLEY">Compartir con Carley</label>
+                    </div>
+                    <p class="field-description"><b data-i18n="COMPARTIR_CON_CARLEY_HINT">Comparte tus códigos cada vez que publicas un videojuego</b></p>
+                    <p class="field-description" data-i18n="COMPARTIR_CON_CARLEY_DESC" style="font-size: 0.85em; opacity: 0.8; line-height: 1.4;"></p>
+                    <hr>
                     <div class="development-feature disabled">
                          <div class="checkbox-field">
                             <input type="checkbox" id="prefs-dev-remote-test" disabled>
@@ -1403,7 +1411,6 @@ public star() {
             <span data-i18n="REPRODUCTOR_MUSICA">Reproductor de Música</span>
             <button class="close-panel-btn" data-panel="music-player-panel">&times;</button>
         </div>
-    </div>
 
         <div class="panel-content no-padding">
             <div id="now-playing-bar">
@@ -1710,6 +1717,8 @@ public star() {
                 <!-- Items will be populated by JS -->
             </div>
         </div>
+    </div>
+        </main>
     </div>
 </body>
 </html>
