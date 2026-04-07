@@ -731,18 +731,19 @@ export async function runAutoReparator(targetFileName = null) {
         await openScriptAtLine(targetFileName, 1);
     }
 
-    if (!currentlyOpenFileHandle) return;
+    const isChc = currentlyOpenFileHandle?.name.endsWith('.chc') || false;
+    const content = currentlyOpenFileHandle ?
+        (isChc ? dom.chcHumanText.value : codeEditor.state.doc.toString())
+        : "";
+    const fileName = currentlyOpenFileHandle ? currentlyOpenFileHandle.name : "System";
 
-    const isChc = currentlyOpenFileHandle.name.endsWith('.chc');
-    const content = isChc ? dom.chcHumanText.value : codeEditor.state.doc.toString();
-
-    // Only pass runtime error if it belongs to the current file
-    const errorToPass = (lastRuntimeError && lastRuntimeError.scriptName === currentlyOpenFileHandle.name) ? lastRuntimeError : null;
+    // Pass runtime error if it belongs to the current file or if it's a system string error
+    const errorToPass = (lastRuntimeError && (lastRuntimeError.scriptName === fileName || lastRuntimeError.isSystemString)) ? lastRuntimeError : null;
 
     try {
-        const result = await AutoReparator.repair(content, currentlyOpenFileHandle.name, errorToPass);
+        const result = await AutoReparator.repair(content, fileName, errorToPass);
 
-        if (result.code !== content) {
+        if (currentlyOpenFileHandle && result.code !== content) {
             if (isChc) {
                 dom.chcHumanText.value = result.code;
             } else if (codeEditor) {

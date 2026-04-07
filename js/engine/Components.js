@@ -1839,6 +1839,10 @@ export class Animator extends Leyes {
         if (this.playOnAwake && !this.isPlaying) {
             this.play();
         }
+        // Validation check
+        if (this.playOnAwake && !this.materia.getComponentByName('Rigidbody2D') && !this.materia.getComponentByName('Transform')) {
+             console.error(`[Animator] El objeto '${this.materia.name}' no tiene Rigidbody2D ni Transform para ser renderizado.`);
+        }
     }
 
     async loadAnimationClip(projectsDirHandle) {
@@ -3996,7 +4000,23 @@ export class Movement extends Leyes {
 
         this._warnedMissing = new Set();
     }
+
+    start() {
+        if (this.useRigidbody && !this.materia.getComponentByName('Rigidbody2D')) {
+            console.error(`[Movement] El objeto '${this.materia.name}' requiere un componente 'Rigidbody2D' (Fisicas) para caer y moverse.`);
+        }
+    }
     update(deltaTime) {
+        if (this.useRigidbody && !this.materia.getComponentByName('Rigidbody2D')) {
+            // Notificar de nuevo cada 5 segundos si sigue faltando el componente
+            if (!this._lastErrorTime || (performance.now() - this._lastErrorTime > 5000)) {
+                console.error(`[FÍSICAS] ¡El objeto '${this.materia.name}' no tiene Rigidbody2D! No podrá caer ni moverse físicamente.`);
+                this._lastErrorTime = performance.now();
+            }
+            // En modo no-rigidbody el update seguiría, pero aquí devolvemos para no causar errores de 'null' velocity
+            return;
+        }
+
         const input = RuntimeAPIManager.getAPI('input');
         const engine = RuntimeAPIManager.getAPI('engine');
         if (!input) return;
@@ -5555,6 +5575,11 @@ export class Attack extends Leyes {
     }
 
     executeAttack(atk) {
+        const audio = this.materia.getComponentByName('AudioSource');
+        if (atk.sound && !audio) {
+            console.error(`[Ataque] El objeto '${this.materia.name}' necesita un componente 'AudioSource' para reproducir el sonido: ${atk.sound}`);
+        }
+
         this._isAttacking = true;
         this._currentAttack = atk;
         this._attackWindow = atk.duration || 0.2;

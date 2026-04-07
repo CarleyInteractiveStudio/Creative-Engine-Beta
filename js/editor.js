@@ -102,10 +102,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastLogCount = 1;
 
     function translateErrorMessage(msg) {
+        if (typeof msg !== 'string') return msg;
         const translations = [
-            { key: 'reading \'velocity\'', value: 'Te falta el componente "Rigidbody2D" (Fisicas) en este objeto para poder moverlo.' },
-            { key: 'reading \'x\'', value: 'Intentaste acceder a una posicion (.x) de algo que no existe. Anadiste el componente Transform?' },
-            { key: 'reading \'y\'', value: 'Intentaste acceder a una posicion (.y) de algo que no existe. Anadiste el componente Transform?' },
+            { key: 'reading \'velocity\'', value: 'Te falta el componente "Rigidbody2D" (Fisicas) en este objeto para poder usar la propiedad "velocidad".' },
+            { key: 'reading \'applyImpulse\'', value: 'Te falta el componente "Rigidbody2D" (Fisicas) en este objeto para poder aplicar impulsos.' },
+            { key: 'reading \'addForce\'', value: 'Te falta el componente "Rigidbody2D" (Fisicas) en este objeto para poder aplicar fuerzas.' },
+            { key: 'reading \'x\'', value: 'Intentaste acceder a una posicion (.x) de algo que no existe. ¿Añadiste el componente Transform?' },
+            { key: 'reading \'y\'', value: 'Intentaste acceder a una posicion (.y) de algo que no existe. ¿Añadiste el componente Transform?' },
             { key: 'reading \'play\'', value: 'Te falta el componente "Animator" o "AnimatorController" para reproducir animaciones.' },
             { key: 'reading \'stop\'', value: 'Te falta el componente "Animator" para detener la animacion.' },
             { key: 'is not a function', value: 'Has intentado llamar a una funcion que no existe o el nombre esta mal escrito.' },
@@ -120,8 +123,9 @@ document.addEventListener('DOMContentLoaded', () => {
             { key: 'identifier starts immediately after numeric literal', value: 'Hay un numero pegado a una palabra. Deja un espacio, ej: "10 + x" en lugar de "10+x" si da error.' },
             { key: 'assignment to constant variable', value: 'Estas intentando cambiar el valor de una "constante". Usa "variable" si quieres que cambie.' },
             { key: 'too much recursion', value: 'Error de bucle infinito. Una funcion se esta llamando a si misma sin parar.' },
-            { key: 'out of memory', value: 'El juego se ha quedado sin memoria. Hay demasiados objetos o un bucle infinito?' },
-            { key: 'script error', value: 'Error desconocido en el script. Revisa la sintaxis general.' }
+            { key: 'out of memory', value: 'El juego se ha quedado sin memoria. ¿Hay demasiados objetos o un bucle infinito?' },
+            { key: 'script error', value: 'Error desconocido en el script. Revisa la sintaxis general.' },
+            { key: 'requiere un componente \'Rigidbody2D\'', value: '¡Faltan Físicas! Este objeto necesita un Rigidbody2D para caer y moverse.' }
         ];
 
         for (const entry of translations) {
@@ -134,25 +138,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const consoleMessages = dom.consoleMessages || document.getElementById('console-messages');
         if (!consoleMessages) return;
 
-        let fullMessage = message;
+        let fullMessage = "";
         let structuredError = null;
 
-        // Detection of structured errors (transpile or runtime)
-        if (typeof message === 'object' && message !== null && message.message && (message.line !== undefined || message.scriptName)) {
-            structuredError = message;
-
-            // If it's a runtime error, store it globally for the reparator
-            if (message.scriptName) {
-                window._CodeEditor.setLastRuntimeError(message);
+        // 1. Detect and wrap Error objects or structured objects
+        if (typeof message === 'object' && message !== null) {
+            if (message.message && (message.line !== undefined || message.scriptName)) {
+                structuredError = message;
+                fullMessage = message.message;
+            } else if (message instanceof Error) {
+                fullMessage = message.message;
+            } else {
+                try { fullMessage = JSON.stringify(message); } catch(e) { fullMessage = String(message); }
             }
-
-            const lineStr = message.line ? `[Linea ${message.line}] ` : '';
-            const scriptStr = message.scriptName ? `en '${message.scriptName}' ` : '';
-            const friendlyMsg = translateErrorMessage(message.message);
-            fullMessage = `${lineStr}${scriptStr}${friendlyMsg}`;
+        } else {
+            fullMessage = String(message);
         }
 
-        // Handle additional arguments
+        // 2. Add arguments to fullMessage
         if (args.length > 0) {
             args.forEach(arg => {
                 if (arg instanceof Error) {
@@ -174,6 +177,30 @@ document.addEventListener('DOMContentLoaded', () => {
                     fullMessage += ` ${arg}`;
                 }
             });
+        }
+
+        // 3. Detect system component errors in fullMessage to offer Auto Repair
+        if (type === 'error' && !structuredError) {
+            const lowerFull = fullMessage.toLowerCase();
+            const componentKeywords = ['rigidbody2d', 'animator', 'audiosource', 'spriterenderer', 'fuente', 'fisica', 'renderizador', 'animador', 'velocity', 'velocidad', 'gravedad', 'gravity', 'applyimpulse', 'addforce'];
+            if (componentKeywords.some(k => lowerFull.includes(k))) {
+                structuredError = {
+                    message: fullMessage,
+                    isSystemString: true
+                };
+                window._CodeEditor.setLastRuntimeError(structuredError);
+            }
+        }
+
+        // 4. Final preparation for structured display (if matched)
+        if (structuredError) {
+            if (structuredError.scriptName) {
+                window._CodeEditor.setLastRuntimeError(structuredError);
+            }
+            const lineStr = structuredError.line ? `[Linea ${structuredError.line}] ` : '';
+            const scriptStr = structuredError.scriptName ? `en '${structuredError.scriptName}' ` : '';
+            const friendlyMsg = translateErrorMessage(structuredError.message);
+            fullMessage = `${lineStr}${scriptStr}${friendlyMsg}`;
         }
 
         // Group identical messages
@@ -211,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (structuredError) {
             msgEl.classList.add('structured-error');
-            const isRuntime = !!structuredError.scriptName;
+            const isRuntime = !!structuredError.scriptName || structuredError.isSystemString;
             const icon = isRuntime ? '⚙️' : '📝';
             const title = isRuntime ? 'Error de Ejecucion' : 'Error de Sintaxis';
             const errorClass = isRuntime ? 'runtime-error' : 'syntax-error';
@@ -226,6 +253,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             🔍 Ir a la linea
                         </button>
                         <button class="console-action-btn special" onclick="window._CodeEditor.runAutoReparator('${targetFile}')">
+                            🛠️ Auto Reparar
+                        </button>
+                    </div>
+                `;
+            } else if (structuredError.isSystemString) {
+                actionButtons = `
+                    <div class="msg-actions">
+                        <button class="console-action-btn special" onclick="window._CodeEditor.runAutoReparator()">
                             🛠️ Auto Reparar
                         </button>
                     </div>

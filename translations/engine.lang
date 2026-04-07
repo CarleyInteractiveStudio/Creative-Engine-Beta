@@ -425,6 +425,8 @@ VERSION_RESTAURADA: Versión restaurada en el editor. Recuerda guardar para apli
 NADA_QUE_REPARAR: No se encontraron errores obvios que reparar.
 REPARACION_EXITOSA: Código reparado con éxito.
 REPARACION_PARCIAL: Se realizaron correcciones, pero aún quedan errores complejos.
+SUGERENCIA_COMPONENTE: Además, parece que te falta el componente {comp}. ¿Quieres añadirlo?
+ERROR_EJECUCION: Error de Ejecución
 CARGA_ANIM_HINT: Selecciona un asset de animación (.cea) para empezar.
 CREAR_ANIM_RAPIDA: Crear Nueva Animación
 ABRIR_ANIM_RAPIDA: Abrir Existente
@@ -970,6 +972,8 @@ VERSION_RESTAURADA: Version restored in the editor. Remember to save to apply ch
 NADA_QUE_REPARAR: No obvious errors found to repair.
 REPARACION_EXITOSA: Code repaired successfully.
 REPARACION_PARCIAL: Corrections were made, but complex errors remain.
+SUGERENCIA_COMPONENTE: Also, it seems you are missing the {comp} component. Do you want to add it?
+ERROR_EJECUCION: Execution Error
 CARGA_ANIM_HINT: Select an animation asset (.cea) to start.
 CREAR_ANIM_RAPIDA: Create New Animation
 ABRIR_ANIM_RAPIDA: Open Existing

@@ -25,25 +25,43 @@ export async function repair(code, fileName, runtimeError = null) {
     console.log("[AutoReparator v5.0] Iniciando reparación de " + fileName + "...");
 
     // --- 0. Runtime Error Analysis (Missing Components) ---
-    if (isSmartEnabled && runtimeError) {
-        const msg = runtimeError.message.toLowerCase();
-        const errorMappings = [
-            { keywords: ["velocity", "applyimpulse", "addforce", "rigidbody", "física", "velocidad"], component: "Rigidbody2D" },
-            { keywords: ["play", "stop", "animation", "animator", "animación", "animador"], component: "Animator" },
-            { keywords: ["audiosource", "playaudio", "stopaudio", "fuente", "audio", "sonido"], component: "AudioSource" },
-            { keywords: ["spriterenderer", "sprite", "color", "renderizador"], component: "SpriteRenderer" }
-        ];
+    if (isSmartEnabled) {
+        const materia = window.getSelectedMateria ? window.getSelectedMateria() : null;
 
-        for (const mapping of errorMappings) {
-            if (mapping.keywords.some(k => msg.includes(k.toLowerCase()))) {
-                const materia = window.getSelectedMateria();
-                if (materia && !materia.getComponent(mapping.component)) {
-                    addComponent = {
-                        materiaId: materia.id,
-                        componentType: mapping.component
-                    };
-                    break;
+        if (runtimeError) {
+            const msg = runtimeError.message.toLowerCase();
+            const errorMappings = [
+                { keywords: ["velocity", "applyimpulse", "addforce", "rigidbody", "física", "fisica", "velocidad", "gravedad", "gravity", "caer", "cae"], component: "Rigidbody2D" },
+                { keywords: ["play", "stop", "animation", "animator", "animación", "animador", "controlador"], component: "Animator" },
+                { keywords: ["audiosource", "playaudio", "stopaudio", "fuente", "audio", "sonido"], component: "AudioSource" },
+                { keywords: ["spriterenderer", "sprite", "color", "renderizador"], component: "SpriteRenderer" }
+            ];
+
+            for (const mapping of errorMappings) {
+                if (mapping.keywords.some(k => msg.includes(k.toLowerCase()))) {
+                    if (materia && !materia.getComponentByName(mapping.component)) {
+                        addComponent = {
+                            materiaId: materia.id,
+                            componentType: mapping.component
+                        };
+                        break;
+                    }
                 }
+            }
+        }
+
+        // --- 0b. Proactive Analysis (Contextual dependencies) ---
+        // If no runtime error was passed, or no component was found yet, check common dependencies
+        if (!addComponent && materia) {
+            const hasMovement = materia.getComponentByName('Movement');
+            const hasRigidbody = materia.getComponentByName('Rigidbody2D');
+            const hasAttack = materia.getComponentByName('Attack');
+            const hasAudio = materia.getComponentByName('AudioSource');
+
+            if (hasMovement && !hasRigidbody) {
+                addComponent = { materiaId: materia.id, componentType: "Rigidbody2D" };
+            } else if (hasAttack && !hasAudio) {
+                addComponent = { materiaId: materia.id, componentType: "AudioSource" };
             }
         }
     }
