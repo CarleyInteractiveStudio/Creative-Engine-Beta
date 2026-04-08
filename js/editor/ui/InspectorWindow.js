@@ -36,12 +36,12 @@ const availableComponents = {
     'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
     'CAT_CAMARA': [Components.Camera],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
-    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.VehicleController, Components.WheelSuspension],
+    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.VehicleController, Components.AdvancedWheel, Components.WheelSuspension],
     'CAT_SCRIPTING': [Components.CreativeScript]
 };
 
 const componentIcons = {
-    Transform: 'move', Rigidbody2D: 'weight', BoxCollider2D: 'square', CapsuleCollider2D: 'pill', CircleCollider2D: 'disc', PolygonCollider2D: 'hexagon', SpriteRenderer: 'image',
+    Transform: 'move', Rigidbody2D: 'weight', BoxCollider2D: 'square', CapsuleCollider2D: 'pill', CircleCollider2D: 'target', PolygonCollider2D: 'hexagon', SpriteRenderer: 'image',
     Animator: 'run', AnimatorController: 'gamepad', AudioSource: 'music', VideoPlayer: 'video', Camera: 'camera', CreativeScript: 'scroll',
     UITransform: 'box', UICanvas: 'image', UIImage: 'image', PointLight2D: 'lightbulb', SpotLight2D: 'flashlight', FreeformLight2D: 'pencil', SpriteLight2D: 'sparkles',
     Grid: 'grid', Tilemap: 'map', TilemapRenderer: 'brush', TilemapCollider2D: 'grid',
@@ -55,7 +55,8 @@ const componentIcons = {
     'RaycastSource': 'route',
     'BasicAI': 'bot',
     'VehicleController': 'truck',
-    'WheelSuspension': 'disc'
+    'WheelSuspension': 'target',
+    'AdvancedWheel': 'target'
 };
 
 const fileIcons = {
@@ -2043,7 +2044,7 @@ async function updateInspectorForMateria(selectedMateria) {
         else if (ley instanceof Components.CircleCollider2D) {
             componentHTML = `
             <div class="component-inspector">
-                ${renderComponentHeader(L.get('CIRCLE_COLLIDER_2D', "Circle Collider 2D"), 'disc', index)}
+                ${renderComponentHeader(L.get('CIRCLE_COLLIDER_2D', "Circle Collider 2D"), 'target', index)}
                 <div class="component-content">
                     <div class="checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="CircleCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
@@ -3317,7 +3318,7 @@ async function updateInspectorForMateria(selectedMateria) {
                                      onclick="const w = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.WheelSuspension); w.selectedIndex = ${wIdx}; window.updateInspector();">
 
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <span class="component-icon" style="font-size: 10px; opacity: 0.7;">${getIconHTML('disc')}</span>
+                                        <span class="component-icon" style="font-size: 10px; opacity: 0.7;">${getIconHTML('target')}</span>
                                         <span style="font-weight: ${ley.selectedIndex === wIdx ? 'bold' : 'normal'};">
                                             ${L.get('WHEEL', 'Rueda')} ${wIdx + 1} ${wheel.materiaId ? '(' + (window.SceneManager.currentScene.findMateriaById(wheel.materiaId)?.name || '...') + ')' : ''}
                                         </span>
@@ -3365,6 +3366,48 @@ async function updateInspectorForMateria(selectedMateria) {
                                 </div>
                             </div>
                         ` : `<p style="text-align: center; opacity: 0.5; padding: 10px;">${L.get('NO_WHEEL_SELECTED', 'Selecciona o añade una rueda')}</p>`}
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.AdvancedWheel) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('ADVANCED_WHEEL', "Rueda Avanzada"), icon, index)}
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label>${L.get('CHASSIS', 'Chasis')}</label>
+                        ${renderPropertyDropper('Rigidbody2D', ley.chassisId, 'data-component="AdvancedWheel" data-prop="chassisId"')}
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('LOCAL_ANCHOR', 'Anclaje Local')}</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" data-component="AdvancedWheel" data-prop="localAnchor.x" value="${ley.localAnchor.x}" title="X">
+                            <input type="number" class="prop-input" data-component="AdvancedWheel" data-prop="localAnchor.y" value="${ley.localAnchor.y}" title="Y">
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="prop-row-multi">
+                        <label>${L.get('STIFFNESS', 'Dureza (Stiffness)')}</label>
+                        <input type="number" class="prop-input" data-component="AdvancedWheel" data-prop="stiffness" value="${ley.stiffness}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('DAMPING', 'Amortiguación')}</label>
+                        <input type="number" class="prop-input" data-component="AdvancedWheel" data-prop="damping" value="${ley.damping}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('REST_LENGTH', 'Largo Reposo')}</label>
+                        <input type="number" class="prop-input" data-component="AdvancedWheel" data-prop="restLength" value="${ley.restLength}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('TRAVEL_LIMIT', 'Límite Recorrido')}</label>
+                        <input type="number" class="prop-input" data-component="AdvancedWheel" data-prop="travelLimit" value="${ley.travelLimit}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('WHEEL_RADIUS', 'Radio Rueda')}</label>
+                        <input type="number" class="prop-input" data-component="AdvancedWheel" data-prop="wheelRadius" value="${ley.wheelRadius}">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="AdvancedWheel" data-prop="showGizmo" ${ley.showGizmo ? 'checked' : ''}>
+                        <label>${L.get('SHOW_GIZMO', 'Mostrar Gizmo')}</label>
                     </div>
                 </div>
             `;

@@ -66,6 +66,7 @@ const componentAliases = {
     'GridLayoutGroup': 'autoDisposicionRejilla',
     'VehicleController': 'controladorDeVehiculo',
     'WheelSuspension': 'suspensionDeRueda',
+    'AdvancedWheel': 'ruedaAvanzada',
 };
 
 
@@ -4982,6 +4983,7 @@ export class VehicleController extends Leyes {
         this.turnSpeed = 100;
         this.mass = 1200;
         this.autoFlip = false;
+        this.advancedWheelIds = []; // IDs de Materias con componente AdvancedWheel
 
         // Controles configurables
         this.accelerateKey = 'd'; // A la derecha en Side-View
@@ -5037,19 +5039,36 @@ export class VehicleController extends Leyes {
             if (input.isKeyPressed('a')) steerInput -= 1;
         }
 
-        // Buscar amortiguadores en el mismo objeto o hijos para calcular tracción
+        // Buscar amortiguadores clásicos y nuevas ruedas avanzadas para calcular tracción
         const suspensions = this.materia.leyes.filter(l => l instanceof WheelSuspension)
             .concat(this.materia.children.map(child => child.getComponent(WheelSuspension)).filter(s => s !== null));
 
+        // Detección automática de ruedas avanzadas en la jerarquía
+        const advancedWheels = [];
+        const findAdvancedWheels = (mtr) => {
+            mtr.children.forEach(child => {
+                const wheel = child.getComponent(AdvancedWheel);
+                if (wheel) advancedWheels.push(wheel);
+                findAdvancedWheels(child);
+            });
+        };
+        findAdvancedWheels(this.materia);
+
         let groundedCount = 0;
         let totalWheels = 0;
-        if (suspensions.length > 0) {
-            suspensions.forEach(s => {
-                if (!s) return;
-                totalWheels += s.wheels.length;
-                groundedCount += s.wheels.filter(w => w && w.isGrounded).length;
-            });
-        }
+
+        // Contar ruedas clásicas
+        suspensions.forEach(s => {
+            if (!s) return;
+            totalWheels += s.wheels.length;
+            groundedCount += s.wheels.filter(w => w && w.isGrounded).length;
+        });
+
+        // Contar ruedas avanzadas
+        advancedWheels.forEach(w => {
+            totalWheels++;
+            if (w.isGrounded) groundedCount++;
+        });
 
         // Tracción: proporcional a ruedas en suelo. Mínimo 1 si no hay suspensión (basado en collider del cuerpo)
         const traction = totalWheels > 0 ? (groundedCount / Math.max(1, totalWheels / 2)) : (this.materia.isActive ? 1.0 : 0);
@@ -5124,8 +5143,8 @@ export class VehicleController extends Leyes {
             // La sustentación empuja "hacia arriba" relativo a la inclinación del ala (pitch)
             // En coordenadas Y-Down, el vector "arriba" relativo al frente {x, y} es {y, -x}
             const up = { x: forward.y, y: -forward.x };
-            // Aumentamos la fuerza de sustentación para que realmente pueda volar
-            rb.addForce({ x: up.x * 9.8 * rb.mass * 150 * liftFactor * deltaTime, y: up.y * 9.8 * rb.mass * 150 * liftFactor * deltaTime });
+            // Aumentamos la fuerza de sustentación para que realmente pueda volar (Ajustado de 150 a 1.5)
+            rb.addForce({ x: up.x * 9.8 * rb.mass * 1.5 * liftFactor * deltaTime, y: up.y * 9.8 * rb.mass * 1.5 * liftFactor * deltaTime });
         }
 
         // Pitch (Inclinar para subir/bajar)
@@ -5140,7 +5159,7 @@ export class VehicleController extends Leyes {
         const forward = { x: Math.cos(rad), y: Math.sin(rad) };
 
         // Rotor Principal (Altura)
-        let liftForce = 9.8 * rb.mass * 50; // Fuerza base para contrarrestar gravedad
+        let liftForce = 9.8 * rb.mass; // Fuerza base para contrarrestar gravedad
 
         // Si está en el suelo, el rotor necesita potencia para despegar
         liftForce += upInput * this.power * 15;
@@ -5169,6 +5188,172 @@ export class VehicleController extends Leyes {
 /**
  * Componente WheelSuspension (Suspensión de Rueda): Amortiguación y Grip realista.
  */
+/**
+ * AdvancedWheel: Rueda individual modular.
+ * Se encarga de seguir al chasis, detectar el suelo y aplicar fuerzas de empuje.
+ */
+export class AdvancedWheel extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.chassisId = null;
+        this.localAnchor = { x: 0, y: 0 };
+        this.restLength = 40;
+        this.stiffness = 100;
+        this.damping = 10;
+        this.wheelRadius = 15;
+        this.gripTags = ['Ground'];
+        this.travelLimit = 60;
+        this.showGizmo = true;
+
+        // Estado interno
+        this.isGrounded = false;
+        this.compression = 0;
+        this.currentDist = 40;
+    }
+
+    update(deltaTime) {
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (isGame) return;
+
+        // En el Editor: Si no hay anclaje definido, usar la posición actual relativa al chasis
+        const scene = this.materia.scene;
+        if (!scene) return;
+        const chassis = this.chassisId ? scene.findMateriaById(this.chassisId) : this.materia.findAncestorWithComponent(Rigidbody2D);
+        if (chassis && this.localAnchor.x === 0 && this.localAnchor.y === 0) {
+             const chTrans = chassis.getComponent(Transform);
+             const myTrans = this.materia.getComponent(Transform);
+             if (chTrans && myTrans) {
+                 const dx = myTrans.x - chTrans.x;
+                 const dy = myTrans.y - chTrans.y;
+                 const rad = -chTrans.rotation * Math.PI / 180;
+                 this.localAnchor.x = dx * Math.cos(rad) - dy * Math.sin(rad);
+                 this.localAnchor.y = dx * Math.sin(rad) + dy * Math.cos(rad);
+             }
+        }
+    }
+
+    fixedUpdate(deltaTime) {
+        if (typeof window !== 'undefined' && !window.isGameRunning && !window.CE_Standalone_Scripts) return;
+
+        const scene = this.materia.scene;
+        if (!scene) return;
+
+        const chassis = this.chassisId ? scene.findMateriaById(this.chassisId) : this.materia.findAncestorWithComponent(Rigidbody2D);
+        const myTrans = this.materia.getComponent(Transform);
+        const myRb = this.materia.getComponent(Rigidbody2D);
+        const engine = RuntimeAPIManager.getAPI('engine');
+        if (!myTrans || !engine || !chassis) return;
+
+        const chassisTrans = chassis.getComponent(Transform);
+        const chassisRb = chassis.getComponent(Rigidbody2D);
+        if (!chassisTrans || !chassisRb) return;
+
+        const rad = chassisTrans.rotation * Math.PI / 180;
+        const cos = Math.cos(rad), sin = Math.sin(rad);
+
+        // Dirección de suspensión (Local UP respecto al chasis = 0, -1)
+        const springDir = {
+            x: (0 * cos - (-1) * sin),
+            y: (0 * sin + (-1) * cos)
+        };
+        const downDir = { x: -springDir.x, y: -springDir.y };
+
+        // 1. Anclaje en Espacio Mundial
+        const anchorWorld = {
+            x: chassisTrans.x + (this.localAnchor.x * cos - this.localAnchor.y * sin),
+            y: chassisTrans.y + (this.localAnchor.x * sin + this.localAnchor.y * cos)
+        };
+
+        // 2. Detección de Suelo
+        const excludeIds = [this.materia.id, chassis.id];
+        const filter = {
+            tags: (this.gripTags && this.gripTags.length > 0) ? this.gripTags : null,
+            excludeIds: excludeIds,
+            excludeAncestors: [chassis]
+        };
+
+        const margin = this.wheelRadius * 0.8;
+        const castOrigin = { x: anchorWorld.x - downDir.x * margin, y: anchorWorld.y - downDir.y * margin };
+        const maxSearch = this.travelLimit + margin;
+        const hit = engine.circleCast(castOrigin, downDir, this.wheelRadius, maxSearch, filter);
+
+        if (hit) {
+            this.isGrounded = true;
+            this.currentDist = Math.max(0, hit.distance - margin);
+        } else {
+            this.isGrounded = false;
+            this.currentDist = this.travelLimit;
+        }
+
+        // 3. Lógica de Suspensión
+        const velChassis = chassisRb.velocity.x * springDir.x + chassisRb.velocity.y * springDir.y;
+        const velWheel = myRb ? (myRb.velocity.x * springDir.x + myRb.velocity.y * springDir.y) : 0;
+        const relVel = velChassis - velWheel;
+
+        this.compression = Math.max(0, this.restLength - this.currentDist);
+
+        if (this.compression > 0) {
+            const forceMag = (this.compression * this.stiffness) - (relVel * this.damping);
+            const finalForce = Math.max(0, forceMag * chassisRb.mass * 0.06);
+
+            const worldForce = { x: springDir.x * finalForce * deltaTime, y: springDir.y * finalForce * deltaTime };
+            chassisRb.addForce(worldForce);
+
+            const leverArm = { x: anchorWorld.x - chassisTrans.x, y: anchorWorld.y - chassisTrans.y };
+            const torque = (leverArm.x * worldForce.y - leverArm.y * worldForce.x);
+            chassisRb.addTorque(torque);
+
+            if (myRb) {
+                myRb.addForce({ x: -worldForce.x, y: -worldForce.y });
+            }
+        }
+
+        // 4. Posicionamiento Constreñido
+        const targetWorldPos = {
+            x: anchorWorld.x + downDir.x * this.currentDist,
+            y: anchorWorld.y + downDir.y * this.currentDist
+        };
+
+        if (myRb) {
+            // "Stick" a la posición del eje usando impulsos de velocidad
+            const posDiff = { x: targetWorldPos.x - myTrans.x, y: targetWorldPos.y - myTrans.y };
+            myRb.velocity.x += (posDiff.x / deltaTime) * 0.15;
+            myRb.velocity.y += (posDiff.y / deltaTime) * 0.15;
+
+            // Sincronizar velocidad lateral con chasis (evitar que la rueda se deslice sola)
+            const lateralDir = { x: -downDir.y, y: downDir.x };
+            const chassisLatVel = chassisRb.velocity.x * lateralDir.x + chassisRb.velocity.y * lateralDir.y;
+            const wheelLatVel = myRb.velocity.x * lateralDir.x + myRb.velocity.y * lateralDir.y;
+            const latVelDiff = chassisLatVel - wheelLatVel;
+
+            myRb.velocity.x += lateralDir.x * latVelDiff;
+            myRb.velocity.y += lateralDir.y * latVelDiff;
+
+            myTrans.rotation = chassisTrans.rotation;
+        } else {
+            myTrans.x = targetWorldPos.x;
+            myTrans.y = targetWorldPos.y;
+            myTrans.rotation = chassisTrans.rotation;
+        }
+
+        // 5. Rotación Visual de Rodamiento
+        const rollDir = { x: springDir.y, y: -springDir.x };
+        const rollVel = chassisRb.velocity.x * rollDir.x + chassisRb.velocity.y * rollDir.y;
+        if (Math.abs(rollVel) > 0.1) {
+            const angVel = (rollVel * 50) / this.wheelRadius;
+            myTrans.rotation += angVel * deltaTime * (180 / Math.PI);
+        }
+    }
+
+    clone() {
+        const copy = new AdvancedWheel(null);
+        Object.assign(copy, this);
+        copy.localAnchor = { ...this.localAnchor };
+        copy.gripTags = [...this.gripTags];
+        return copy;
+    }
+}
+
 export class WheelSuspension extends Leyes {
     constructor(materia) {
         super(materia);
@@ -5243,16 +5428,9 @@ export class WheelSuspension extends Leyes {
                             const col = wheelMateria.getComponent(CircleCollider2D);
                             if (col) actualRadius = col.radius * Math.max(Math.abs(wheelTransform.scale.x), Math.abs(wheelTransform.scale.y));
 
-                            if (wheel.isGrounded && wheel._groundPoint && distToGround <= wheel.restDistance + actualRadius + 5) {
-                                // POSICIONAMIENTO CORRECTO: El centro de la rueda debe estar arriba del punto de impacto
-                                // para que la "goma" no atraviese el suelo.
-                                wheelTransform.x = wheel._groundPoint.x - springDir.x * actualRadius;
-                                wheelTransform.y = wheel._groundPoint.y - springDir.y * actualRadius;
-                            } else {
-                                // Sigue al coche a la distancia de reposo
-                                wheelTransform.x = anchorWorldX + springDir.x * wheel.restDistance;
-                                wheelTransform.y = anchorWorldY + springDir.y * wheel.restDistance;
-                            }
+                            const visualDist = Math.min(wheel.restDistance, Math.max(0, wheel.currentDist));
+                            wheelTransform.x = anchorWorldX + springDir.x * visualDist;
+                            wheelTransform.y = anchorWorldY + springDir.y * visualDist;
 
                             // Forzamos a que la rueda visual sea Kinematic y SIN colisiones para evitar rebotes con el mapa
                             const wheelRb = wheelMateria.getComponent(Rigidbody2D);
@@ -5325,6 +5503,9 @@ export class WheelSuspension extends Leyes {
         // Usamos una caché por frame para no repetir este cálculo costoso por cada componente de suspensión
         if (rb._lastGCountFrame !== this.materia.scene.physicsSystem.currentFrame) {
             let count = 0;
+            const allWheelIds = [];
+            allSuspensions.forEach(s => s.wheels.forEach(w => { if (w.materiaId) allWheelIds.push(w.materiaId); }));
+
             allSuspensions.forEach(s => {
                 const sTrans = s.materia.getComponent(Transform);
                 const sRad = sTrans.rotation * Math.PI / 180;
@@ -5351,10 +5532,16 @@ export class WheelSuspension extends Leyes {
                         x: sTrans.x + (wOffX * sCos - wOffY * sSin),
                         y: sTrans.y + (wOffX * sSin + wOffY * sCos)
                     };
-                    // ORIGEN ELEVADO AL MÁXIMO (10 radios) para ver el suelo incluso si estamos enterrados
-                    const wOrigin = { x: wAncW.x - sSpringDir.x * (r * 10), y: wAncW.y - sSpringDir.y * (r * 10) };
-                    const wMaxDist = w.restDistance + r * 10;
-                    const wHit = engine.circleCast(wOrigin, sSpringDir, r, wMaxDist, { tags: s.gripTags, excludeAncestors: [vehicleRoot] });
+                    // ORIGEN ELEVADO (2.0 radios) para mayor margen de detección en saltos
+                    const wOrigin = { x: wAncW.x - sSpringDir.x * (r * 2.0), y: wAncW.y - sSpringDir.y * (r * 2.0) };
+                    const wMaxDist = w.restDistance + r * 2.0;
+                    // Excluimos las gomas para evitar auto-detección que infla el conteo
+                    const wFilter = {
+                        tags: (s.gripTags && s.gripTags.length > 0) ? s.gripTags : null,
+                        excludeAncestors: [vehicleRoot],
+                        excludeIds: allWheelIds
+                    };
+                    const wHit = engine.circleCast(wOrigin, sSpringDir, r, wMaxDist, wFilter);
                     if (wHit && wHit.distance <= wMaxDist) count++;
                 });
             });
@@ -5393,15 +5580,15 @@ export class WheelSuspension extends Leyes {
             }
 
             const castOrigin = {
-                x: anchorWorldX - springDir.x * (actualRadius * 10),
-                y: anchorWorldY - springDir.y * (actualRadius * 10)
+                x: anchorWorldX - springDir.x * (actualRadius * 2.0),
+                y: anchorWorldY - springDir.y * (actualRadius * 2.0)
             };
 
             const vehicleRoot = this.materia.parent || this.materia;
             const excludeIds = this.wheels.map(w => w.materiaId).filter(id => id !== null);
-            const filter = { tags: this.gripTags, excludeAncestors: [vehicleRoot], excludeIds: excludeIds };
+            const filter = { tags: (this.gripTags && this.gripTags.length > 0) ? this.gripTags : null, excludeAncestors: [vehicleRoot], excludeIds: excludeIds };
 
-            const maxCastDist = wheel.restDistance + actualRadius * 10;
+            const maxCastDist = wheel.restDistance + actualRadius * 2.0;
             const hit = engine.circleCast(castOrigin, springDir, actualRadius, maxCastDist, filter);
 
             if (hit && hit.distance <= maxCastDist) {
@@ -5430,7 +5617,10 @@ export class WheelSuspension extends Leyes {
                 const wt = wm?.getComponent(Transform);
                 if (col && wt) actualRadius = col.radius * Math.max(Math.abs(wt.scale.x), Math.abs(wt.scale.y));
 
-                const distToAnchor = (hit.distance - actualRadius * 10);
+                // Fórmula corregida: hit.distance es el viaje del centro desde (Anchor - 2r).
+                // Al impactar, el centro está en (Anchor - 2r + hit.distance).
+                // La distancia desde Anchor al centro es (hit.distance - 2r).
+                const distToAnchor = hit.distance - (actualRadius * 2.0);
                 wheel.currentDist = distToAnchor;
 
                 // Velocidad proyectada (usamos la fija para estabilidad)
@@ -5453,19 +5643,12 @@ export class WheelSuspension extends Leyes {
                         if (distToAnchor < wheel.limitDistance) {
                             const overshoot = (wheel.limitDistance - distToAnchor);
 
-                            // Corrección de posición promediada para evitar saltos violentos
-                            transform.x -= (springDir.x * overshoot * 0.5) / gCount;
-                            transform.y -= (springDir.y * overshoot * 0.5) / gCount;
+                            // Corrección de posición promediada (15% balanceado) para evitar atravesar el suelo
+                            transform.x -= (springDir.x * overshoot * 0.15) / gCount;
+                            transform.y -= (springDir.y * overshoot * 0.15) / gCount;
 
-                            // Comprobamos la velocidad ACTUAL del Rigidbody (que puede haber sido modificada por otra rueda)
-                            const currentVelAlongSpring = rb.velocity.x * springDir.x + rb.velocity.y * springDir.y;
-
-                            // SOLO anulamos si el coche SIGUE cayendo.
-                            // Esto evita que 4 ruedas sumen sus impulsos y lancen el coche hacia arriba.
-                            if (currentVelAlongSpring > 0) {
-                                rb.velocity.x -= (springDir.x * currentVelAlongSpring);
-                                rb.velocity.y -= (springDir.y * currentVelAlongSpring);
-                            }
+                            // La velocidad ya se gestiona mediante totalForce, no anulamos velocity directamente aquí
+                            // para evitar discontinuidades físicas bruscas que lanzan el coche.
                         }
                     }
                 }
@@ -5473,18 +5656,19 @@ export class WheelSuspension extends Leyes {
                 // --- LOGICA DE RECUPERACIÓN (SUBIDA) ---
                 if (distToAnchor < wheel.restDistance) {
                     const diff = wheel.restDistance - distToAnchor;
-                    const recoveryForce = (diff * (wheel.recoverySpeed || 100) * (rb.mass / 200)) / gCount;
+                    // Multiplicador de recuperación aumentado para soportar mejor el peso del chasis
+                    const recoveryForce = (diff * (wheel.recoverySpeed || 100) * (rb.mass / 60)) / gCount;
                     const damping = (velAlongSpring < 0) ? (Math.abs(velAlongSpring) * rb.mass * 6.0) / gCount : 0;
 
                     const weightSupport = (9.8 * rb.mass) / gCount;
-                    const finalRecovery = Math.min(recoveryForce, weightSupport * 1.5);
+                    const finalRecovery = Math.min(recoveryForce, weightSupport * 5.0);
 
                     totalForce += (finalRecovery - damping);
                 }
 
                 // Seguridad: Permitimos fuerzas negativas moderadas
                 totalForce = Math.max(-rb.mass * 100, totalForce);
-                const maxForce = rb.mass * 12000;
+                const maxForce = rb.mass * 8000; // Aumentado para firmeza en impactos sin llegar a extremos inestables
                 totalForce = Math.min(totalForce, maxForce);
 
                 const worldForce = { x: -springDir.x * totalForce * deltaTime, y: -springDir.y * totalForce * deltaTime };
@@ -5495,15 +5679,15 @@ export class WheelSuspension extends Leyes {
                 const torque = (leverArm.x * worldForce.y - leverArm.y * worldForce.x);
                 rb.addTorque(torque);
 
-                // Grip y Fricción Lateral
+                // Grip y Fricción Lateral (Ajustado para estabilidad y tracción)
                 const lateralVel = rb.velocity.x * perpDir.x + rb.velocity.y * perpDir.y;
-                const lateralGrip = -lateralVel * this.grip * rb.mass * 400;
+        const lateralGrip = -lateralVel * this.grip * rb.mass * 15.0;
                 rb.addForce({ x: perpDir.x * lateralGrip * deltaTime, y: perpDir.y * lateralGrip * deltaTime });
 
-                // Fricción Longitudinal
+                // Fricción Longitudinal (Ajustado para un rodamiento más natural)
                 const rollDir = { x: -springDir.y, y: springDir.x };
                 const forwardVel = rb.velocity.x * rollDir.x + rb.velocity.y * rollDir.y;
-                let rollingResistance = -forwardVel * 0.2 * rb.mass * 50;
+                let rollingResistance = -forwardVel * 0.2 * rb.mass * 5;
                 rb.addForce({ x: rollDir.x * rollingResistance * deltaTime, y: rollDir.y * rollingResistance * deltaTime });
             } else {
                 wheel.isGrounded = false;
@@ -5511,6 +5695,23 @@ export class WheelSuspension extends Leyes {
                 wheel.currentDist = wheel.restDistance;
             }
         }
+    }
+
+    start() {
+        // Asegurar que las materias de las ruedas estén marcadas para evitar colisiones dobles
+        this.wheels.forEach(w => {
+            if (w.materiaId && this.materia.scene) {
+                const wm = this.materia.scene.findMateriaById(w.materiaId);
+                if (wm) {
+                    wm.isWheel = true;
+                    const wrb = wm.getComponent(Rigidbody2D);
+                    if (wrb) {
+                        wrb.bodyType = 'Kinematic';
+                        wrb.simulated = false;
+                    }
+                }
+            }
+        });
     }
 
     estaTocandoSuelo() {
@@ -6129,6 +6330,7 @@ registerComponent('WheelSuspension', WheelSuspension);
 registerComponent('BasicAI', BasicAI);
 registerComponent('Water', Water);
 registerComponent('LineCollider2D', LineCollider2D);
+registerComponent('AdvancedWheel', AdvancedWheel);
 registerComponent('VerticalLayoutGroup', VerticalLayoutGroup);
 registerComponent('HorizontalLayoutGroup', HorizontalLayoutGroup);
 registerComponent('GridLayoutGroup', GridLayoutGroup);

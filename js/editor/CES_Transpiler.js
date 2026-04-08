@@ -115,6 +115,7 @@ const componentShortcuts = [
     'basicAI', 'iaBasica',
     'vehicleController', 'controladorDeVehiculo',
     'wheelSuspension', 'suspensionDeRueda',
+    'advancedWheel', 'ruedaAvanzada',
     'textureRender', 'renderizadorDeTextura',
     'canvas', 'lienzo',
     'uiImage', 'imagenUI',
