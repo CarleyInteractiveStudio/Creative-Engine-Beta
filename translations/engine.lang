@@ -507,6 +507,9 @@ COLLISION_LAYERS: Collision Layers
 HINT_COLLISION_LAYERS: Usados por el motor de físicas para filtrar colisiones.
 NUEVO_LAYER_HINT: Nuevo layer...
 TAGS_LAYERS: Tags & Layers
+CAMARAS_EN_ESCENA: Cámaras en la Escena
+SIN_CAMARAS_HINT: No se encontraron cámaras en la escena activa.
+SOLO: Solo
 FIRMA_ANDROID: Firma de Android (Keystore)
 RUTA_KEYSTORE: Ruta al Keystore
 PASS_KEYSTORE: Contraseña del Keystore
@@ -1474,6 +1477,9 @@ COLLISION_LAYERS: Collision Layers
 HINT_COLLISION_LAYERS: Used by physics engine to filter collisions.
 NUEVO_LAYER_HINT: New layer...
 TAGS_LAYERS: Tags & Layers
+CAMARAS_EN_ESCENA: Cameras in Scene
+SIN_CAMARAS_HINT: No cameras found in the active scene.
+SOLO: Solo
 FIRMA_ANDROID: Android Signing (Keystore)
 RUTA_KEYSTORE: Keystore Path
 PASS_KEYSTORE: Keystore Password

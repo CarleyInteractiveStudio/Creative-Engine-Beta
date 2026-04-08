@@ -874,8 +874,9 @@ export function initialize(dependencies) {
             const rad = -transform.rotation * Math.PI / 180;
             const cos = Math.cos(rad);
             const sin = Math.sin(rad);
-            const localDx = dx * cos + dy * sin;
-            const localDy = -dx * sin + dy * cos;
+            // Mouse deltas in collider local space
+            const localDx = (dx * cos + dy * sin) / (Math.abs(transform.scale.x) || 1);
+            const localDy = (-dx * sin + dy * cos) / (Math.abs(transform.scale.y) || 1);
 
             switch (dragState.handle) {
                 case 'collider-top':
@@ -927,8 +928,10 @@ export function initialize(dependencies) {
             const rad = -transform.rotation * Math.PI / 180;
             const cos = Math.cos(rad);
             const sin = Math.sin(rad);
-            const localDx = dx * cos + dy * sin;
-            const localDy = -dx * sin + dy * cos;
+
+            const scaleFac = Math.max(Math.abs(transform.scale.x), Math.abs(transform.scale.y)) || 1;
+            const localDx = (dx * cos + dy * sin) / scaleFac;
+            const localDy = (-dx * sin + dy * cos) / scaleFac;
 
             switch (dragState.handle) {
                 case 'collider-circle-handle':
@@ -949,8 +952,8 @@ export function initialize(dependencies) {
             const rad = -transform.rotation * Math.PI / 180;
             const cos = Math.cos(rad);
             const sin = Math.sin(rad);
-            const localDx = dx * cos + dy * sin;
-            const localDy = -dx * sin + dy * cos;
+            const localDx = (dx * cos + dy * sin) / (Math.abs(transform.scale.x) || 1);
+            const localDy = (-dx * sin + dy * cos) / (Math.abs(transform.scale.y) || 1);
 
             switch (dragState.handle) {
                 case 'collider-capsule-top':

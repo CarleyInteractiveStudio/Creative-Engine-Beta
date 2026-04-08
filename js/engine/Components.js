@@ -745,6 +745,7 @@ export class Camera extends Leyes {
         this.clearFlags = 'SolidColor'; // 'SolidColor', 'Skybox', or 'DontClear'
         this.backgroundColor = '#1e293b'; // Default solid color
         this.cullingMask = -1; // Bitmask, -1 means 'Everything'
+        this.rect = { x: 0, y: 0, w: 1, h: 1 }; // Viewport rect (0-1)
         this.zoom = 1.0; // Editor-only zoom, not part of the component's data.
     }
     clone() {
@@ -757,6 +758,7 @@ export class Camera extends Leyes {
         newCamera.clearFlags = this.clearFlags;
         newCamera.backgroundColor = this.backgroundColor;
         newCamera.cullingMask = this.cullingMask;
+        newCamera.rect = { ...this.rect };
         return newCamera;
     }
 }
@@ -3215,7 +3217,8 @@ export class CameraFollow extends Leyes {
     update(deltaTime) {
         let targetObj = this.target;
         if (typeof targetObj === 'number') {
-            targetObj = this.materia.scene.findMateriaById(targetObj);
+            const scene = this.materia.scene || (typeof window !== 'undefined' ? window.SceneManager?.currentScene : null);
+            if (scene) targetObj = scene.findMateriaById(targetObj);
         }
         if (!targetObj) return;
 
@@ -3223,11 +3226,12 @@ export class CameraFollow extends Leyes {
         const camTransform = this.materia.getComponent(Transform);
         if (!targetTransform || !camTransform) return;
 
-        const targetX = this.followX ? targetTransform.position.x + this.offset.x : camTransform.position.x;
-        const targetY = this.followY ? targetTransform.position.y + this.offset.y : camTransform.position.y;
+        const targetX = this.followX ? targetTransform.position.x + this.offset.x : camTransform.x;
+        const targetY = this.followY ? targetTransform.position.y + this.offset.y : camTransform.y;
 
-        camTransform.position.x += (targetX - camTransform.position.x) * this.smoothness;
-        camTransform.position.y += (targetY - camTransform.position.y) * this.smoothness;
+        // Apply movement using setters to ensure the actual transform is updated
+        camTransform.x += (targetX - camTransform.x) * this.smoothness;
+        camTransform.y += (targetY - camTransform.y) * this.smoothness;
     }
     clone() {
         const newFollow = new CameraFollow(null);
@@ -5313,6 +5317,7 @@ export class PlaneController extends Leyes {
         // Controles
         this.teclaPotencia = 'w';
         this.teclaFreno = 's';
+        this.teclaBotonFreno = 'space'; // New dedicated brake key
         this.teclaNarizArriba = 'a';
         this.teclaNarizAbajo = 'd';
 
@@ -5332,6 +5337,8 @@ export class PlaneController extends Leyes {
     set giro(v) { this.agilidadGiro = v; }
     get arrastre() { return this.arrastreAire; }
     set arrastre(v) { this.arrastreAire = v; }
+    get frenoEspacio() { return this.teclaBotonFreno; }
+    set frenoEspacio(v) { this.teclaBotonFreno = v; }
 
     get controladorDeAvion() { return this; }
 
@@ -5369,9 +5376,24 @@ export class PlaneController extends Leyes {
 
         this.velocidadAvance = rb.velocity.x * forward.x + rb.velocity.y * forward.y;
 
+        // 2.1 Manejar Frenado (Brake)
+        const isBraking = input.isKeyPressed(this.teclaBotonFreno);
+        if (isBraking) {
+            // Deceleración aerodinámica y de motor suave
+            // Reducido brakeStrength de 2.0 a 0.8 para evitar paradas "en seco" irreales
+            const brakeStrength = 0.8;
+            rb.velocity.x *= Math.exp(-brakeStrength * deltaTime);
+            rb.velocity.y *= Math.exp(-brakeStrength * deltaTime);
+
+            // Amortiguar rotación ligeramente durante el frenado para estabilidad
+            rb.angularVelocity *= Math.exp(-0.5 * deltaTime);
+        }
+
         if (thrustInput !== 0) {
             if (Math.abs(this.velocidadAvance) < this.velocidadMaxima / 100) {
-                const force = thrustInput * this.potenciaMotor * deltaTime * 10;
+                // Reverse thrust (thrustInput < 0) is much weaker than forward thrust
+                const thrustMult = thrustInput > 0 ? 1.0 : 0.3;
+                const force = thrustInput * this.potenciaMotor * thrustMult * deltaTime * 10;
                 rb.addForce(forward.x * force, forward.y * force);
 
                 // Si estamos en el suelo, también damos potencia a las ruedas para taxear

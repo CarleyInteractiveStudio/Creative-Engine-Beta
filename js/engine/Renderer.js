@@ -101,11 +101,18 @@ export class Renderer {
         if (cameraComponent && cameraComponent.clearFlags === 'DontClear') {
             return;
         }
+
+        const rect = (cameraComponent && cameraComponent.rect) ? cameraComponent.rect : { x: 0, y: 0, w: 1, h: 1 };
+        const x = rect.x * this.canvas.width;
+        const y = rect.y * this.canvas.height;
+        const w = rect.w * this.canvas.width;
+        const h = rect.h * this.canvas.height;
+
         if (cameraComponent && cameraComponent.clearFlags === 'SolidColor') {
             this.ctx.fillStyle = cameraComponent.backgroundColor;
-            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.fillRect(x, y, w, h);
         } else {
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.clearRect(x, y, w, h);
         }
     }
 
@@ -116,15 +123,27 @@ export class Renderer {
         if (cameraMateria) {
             const cameraComponent = cameraMateria.getComponent(Camera);
             const cameraTransform = cameraMateria.getComponent(Transform);
+            const rect = cameraComponent.rect || { x: 0, y: 0, w: 1, h: 1 };
+
             this.clear(cameraComponent);
+
+            // Set Clip region for this camera
+            const cx = rect.x * this.canvas.width;
+            const cy = rect.y * this.canvas.height;
+            const cw = rect.w * this.canvas.width;
+            const ch = rect.h * this.canvas.height;
+
+            this.ctx.beginPath();
+            this.ctx.rect(cx, cy, cw, ch);
+            this.ctx.clip();
 
             let effectiveZoom = 1.0;
             if (cameraComponent.projection === 'Orthographic') {
-                effectiveZoom = this.canvas.height / (cameraComponent.orthographicSize * 2 || 1);
+                effectiveZoom = ch / (cameraComponent.orthographicSize * 2 || 1);
             } else {
                 effectiveZoom = 1 / Math.tan(cameraComponent.fov * 0.5 * Math.PI / 180);
             }
-            activeCamera = { x: cameraTransform.x, y: cameraTransform.y, effectiveZoom };
+            activeCamera = { x: cameraTransform.x, y: cameraTransform.y, effectiveZoom, rect: { cx, cy, cw, ch } };
             transform = cameraTransform;
         } else if (this.isEditor) {
             this.clear(null);
@@ -144,7 +163,11 @@ export class Renderer {
 
         this.camera = activeCamera;
 
-        this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+        if (activeCamera.rect) {
+            this.ctx.translate(activeCamera.rect.cx + activeCamera.rect.cw / 2, activeCamera.rect.cy + activeCamera.rect.ch / 2);
+        } else {
+            this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+        }
         this.ctx.scale(activeCamera.effectiveZoom, activeCamera.effectiveZoom);
         const rotationInRadians = (transform.rotation || 0) * Math.PI / 180;
         this.ctx.rotate(-rotationInRadians);
