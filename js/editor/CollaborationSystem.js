@@ -144,7 +144,7 @@ export function initialize(dom) {
 
     async function startHFHosting() {
         // En un futuro esto vendría de una configuración, por ahora pedimos al usuario el Space
-        const relayUrl = prompt("Introduce la URL de tu Relay Server (Hugging Face):", "https://tu-usuario-ce-relay.hf.space");
+        const relayUrl = prompt("Introduce la URL de tu Relay Server (Hugging Face):", "https://carley1234-colabce.hf.space");
         if (!relayUrl) return;
 
         statusText.textContent = 'Iniciando Pro...';
