@@ -387,6 +387,15 @@ async function registerInSupabase(code, relayUrl) {
             }
         }]);
 
+    if (error) {
+        console.error('[HFCollab] Supabase registration error:', error);
+        if (error.code === 'PGRST116') {
+             console.error('[HFCollab] Error: La tabla "proyectos_activos" no parece existir en Supabase.');
+        } else if (error.message.includes('permission denied')) {
+             console.error('[HFCollab] Error de RLS: El usuario no tiene permisos para insertar en la tabla.');
+        }
+    }
+
     return !error;
 }
 

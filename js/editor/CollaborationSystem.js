@@ -143,9 +143,18 @@ export function initialize(dom) {
     }
 
     async function startHFHosting() {
-        // En un futuro esto vendría de una configuración, por ahora pedimos al usuario el Space
-        const relayUrl = prompt("Introduce la URL de tu Relay Server (Hugging Face):", "https://carley1234-colabce.hf.space");
-        if (!relayUrl) return;
+        // Verificar si el usuario está logueado antes de empezar Pro
+        if (window.auth) {
+            const user = await window.auth.getUser();
+            if (!user) {
+                showNotification('Acceso Denegado', 'Debes iniciar sesión con tu cuenta de Carley Studio para hospedar una colaboración online.', 'error');
+                window.auth.openAuthModal();
+                return;
+            }
+        }
+
+        // Usar URL por defecto de Hugging Face
+        const relayUrl = "https://carley1234-colabce.hf.space";
 
         statusText.textContent = 'Iniciando Pro...';
         statusText.style.color = '#f3ca58';
