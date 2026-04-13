@@ -116,7 +116,7 @@
                     </button>
                 </div>
                 <div class="menu-item">
-                    <button id="menubar-collab-btn" class="menu-btn" data-i18n="COLABORAR">Colaborar</button>
+                    <button id="menubar-collab-btn" class="menu-btn hidden" data-i18n="COLABORAR">Colaborar</button>
                     <div class="menu-content" id="collab-menu-content">
                         <div id="collab-status-info" style="padding: 10px; font-size: 0.85em; border-bottom: 1px solid #444; color: #aaa;">
                             <span data-i18n="ESTADO">Estado</span>: <b id="collab-status-text" style="color: #ff4444;" data-i18n="DESCONECTADO">Desconectado</b>
@@ -1144,6 +1144,30 @@ public star() {
                     <p class="field-description" data-i18n="HINT_CAMARAS">Activa las cámaras que quieres que el motor use. Si activas varias, se dibujarán en orden según su 'Depth'.</p>
                     <div id="settings-camera-list" class="layer-list">
                         <!-- List of cameras in the current scene will be populated here -->
+                    </div>
+                </fieldset>
+
+                <fieldset class="settings-section">
+                    <legend data-i18n="PROYECTO_COLABORATIVO">Proyecto Colaborativo</legend>
+                    <p class="field-description">Gestiona la colaboración en tiempo real para este proyecto.</p>
+
+                    <div id="collab-settings-actions" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+                        <div style="display: flex; gap: 10px;">
+                            <button id="settings-collab-p2p-btn" class="modal-btn secondary small" style="flex: 1;">
+                                <img src="icons/wifi.svg" class="ce-icon small"> Activar Local (P2P)
+                            </button>
+                            <button id="settings-collab-pro-btn" class="modal-btn pro-btn small" style="flex: 1; background: linear-gradient(135deg, #f3ca58, #ff9800); color: #000;">
+                                <img src="icons/globe.svg" class="ce-icon small" style="filter: brightness(0);"> Activar Online (Pro)
+                            </button>
+                        </div>
+                        <button id="settings-collab-stop-btn" class="modal-btn danger small hidden">Detener Colaboración</button>
+                    </div>
+
+                    <div id="gamecollab-ad" style="margin-top: 20px; padding: 15px; background: rgba(0, 122, 204, 0.1); border: 1px solid rgba(0, 122, 204, 0.3); border-radius: 8px; text-align: center;">
+                        <p style="font-size: 0.9em; margin-bottom: 10px;">Estamos en colaboración con <b>GameCollab</b>. Puedes buscar colaboradores en su plataforma.</p>
+                        <a href="https://gamecollab.site/" target="_blank" class="modal-btn blue small" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none; justify-content: center;">
+                            <img src="icons/user.svg" class="ce-icon small" style="filter: brightness(0) invert(1);"> Buscar Colaboradores
+                        </a>
                     </div>
                 </fieldset>
 
