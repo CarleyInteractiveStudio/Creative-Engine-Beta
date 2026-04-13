@@ -401,19 +401,25 @@ function setupHeartbeat() {
 async function cleanupSensitiveData() {
     console.log('[HFCollab] Security cleanup triggered.');
 
-    try {
-        const projectName = new URLSearchParams(window.location.search).get('project');
-        if (projectName && window.projectsDirHandle) {
-            // Attempt to remove the project folder from IndexedDB/OPFS
-            // This prevents "filtraciones" as requested.
-            await window.projectsDirHandle.removeEntry(projectName, { recursive: true });
-            console.log(`[HFCollab] Project ${projectName} wiped from device.`);
+    // Safety check: Only wipe if we are a guest, NOT the host.
+    // The host should never have their own project files deleted!
+    if (!isHostInstance) {
+        try {
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            if (projectName && window.projectsDirHandle) {
+                // Attempt to remove the project folder from IndexedDB/OPFS
+                // This prevents "filtraciones" as requested.
+                await window.projectsDirHandle.removeEntry(projectName, { recursive: true });
+                console.log(`[HFCollab] Project ${projectName} wiped from guest device.`);
+            }
+        } catch (e) {
+            console.warn('[HFCollab] Failed to wipe temporary project files:', e);
         }
-    } catch (e) {
-        console.warn('[HFCollab] Failed to wipe project files:', e);
+        alert('La sesión colaborativa ha terminado. Por seguridad, el proyecto temporal ha sido borrado de este dispositivo.');
+    } else {
+        alert('La sesión de colaboración ha finalizado.');
     }
 
     // Refreshing the page is a scorched-earth but effective policy for RAM
-    alert('La sesión colaborativa ha terminado. Por seguridad, el proyecto temporal ha sido borrado de este dispositivo.');
     window.location.href = 'index.html';
 }
