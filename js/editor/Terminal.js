@@ -379,7 +379,7 @@ function registerCoreCommands() {
         log('  <span style="color: #50fa7b;">addcomp   </span> - Añade componente. Uso: addcomp &lt;id&gt; &lt;tipo&gt;');
         log('  <span style="color: #50fa7b;">setprop   </span> - Cambia propiedad. Uso: setprop &lt;id&gt; &lt;comp&gt; &lt;prop&gt; &lt;valor&gt;');
     }, window.Localization?.get('AYUDA_DESC') || 'Muestra esta lista de ayuda.');
-    registerCommand('version', () => log('Creative Engine Version: 0.1.0-beta'), window.Localization?.get('VERSION_DESC') || 'Muestra la versión del motor.');
+    registerCommand('version', () => log('Creative Engine Version: 0.1.2'), window.Localization?.get('VERSION_DESC') || 'Muestra la versión del motor.');
 
     // Filesystem commands
     registerCommand('ls', lsCommand, window.Localization?.get('LS_DESC') || 'Lista los archivos y directorios.');

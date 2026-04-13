@@ -1188,7 +1188,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 appName: 'MiJuego',
                 authorName: 'Un Creador',
                 appVersion: '1.0.0',
-                engineVersion: '0.1.0-beta',
+                engineVersion: '0.1.2',
                 iconPath: '',
                 splashLogos: [],
                 showEngineLogo: true,

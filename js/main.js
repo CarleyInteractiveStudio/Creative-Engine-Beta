@@ -444,7 +444,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 appVersion: '1.0.0',
                 projectType: projectType,
                 isNewUser: isNewUser,
-                engineVersion: '0.1.0-beta'
+                engineVersion: '0.1.2'
             };
             const configFileHandle = await projectDirHandle.getFileHandle('project.ceconfig', { create: true });
             let writableConfig = await configFileHandle.createWritable();
@@ -711,6 +711,29 @@ Para más detalles, consulta la sección "Ayuda" del editor.`;
     // AI Key Logic
     const aiKeyInput = document.getElementById('carl-ai-key');
     const saveAiKeyBtn = document.getElementById('btn-save-ai-key');
+    const shareWithCarleyToggle = document.getElementById('prefs-share-with-carley');
+
+    // Share with Carley Preference Logic (Launcher)
+    if (shareWithCarleyToggle) {
+        const savedPrefs = localStorage.getItem('creativeEnginePrefs');
+        if (savedPrefs) {
+            try {
+                const prefs = JSON.parse(savedPrefs);
+                shareWithCarleyToggle.checked = prefs.shareWithCarley !== false;
+            } catch(e) {}
+        }
+
+        shareWithCarleyToggle.addEventListener('change', () => {
+            const savedPrefs = localStorage.getItem('creativeEnginePrefs');
+            let prefs = {};
+            if (savedPrefs) {
+                try { prefs = JSON.parse(savedPrefs); } catch(e) {}
+            }
+            prefs.shareWithCarley = shareWithCarleyToggle.checked;
+            localStorage.setItem('creativeEnginePrefs', JSON.stringify(prefs));
+            Dialogs.showNotification('Preferencia Actualizada', 'Tu preferencia de telemetría ha sido guardada.');
+        });
+    }
 
     if (aiKeyInput) {
         const savedKey = localStorage.getItem('creativeEngine_gemini_apiKey');
