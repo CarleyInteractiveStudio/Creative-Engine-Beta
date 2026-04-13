@@ -1,0 +1,12 @@
+{
+  "name": "ce-hf-relay-server",
+  "version": "1.0.0",
+  "description": "Relay server for Creative Engine collaboration on Hugging Face",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  }
+}

@@ -274,15 +274,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (closeCollab) closeCollab.addEventListener('click', closeModal);
 
     if (confirmJoinBtn) {
-        confirmJoinBtn.addEventListener('click', () => {
+        confirmJoinBtn.addEventListener('click', async () => {
             const code = collabCodeInput.value.trim().toUpperCase();
             if (code.length < 4) {
                 Dialogs.showNotification(Localization.get('AVISO'), 'Por favor, introduce un código de colaboración válido.');
                 return;
             }
 
-            // Redirect to editor in collaboration mode
-            window.location.href = `editor.html?collab=${encodeURIComponent(code)}`;
+            const collabType = document.querySelector('input[name="collabType"]:checked').value;
+
+            if (collabType === 'online') {
+                // Online mode requires checking Supabase for the relay URL
+                if (!window.auth || !window.auth._supabase) {
+                    Dialogs.showNotification('Error', 'Debes estar conectado para usar la colaboración online.');
+                    return;
+                }
+
+                confirmJoinBtn.disabled = true;
+                confirmJoinBtn.textContent = 'Buscando...';
+
+                const { data, error } = await window.auth._supabase
+                    .from('proyectos_activos')
+                    .select('url_hf')
+                    .eq('codigo', code)
+                    .single();
+
+                if (error || !data) {
+                    Dialogs.showNotification('Error', 'El código de proyecto no existe o ha expirado.');
+                    confirmJoinBtn.disabled = false;
+                    confirmJoinBtn.textContent = Localization.get('UNIRSE', 'Unirse');
+                    return;
+                }
+
+                // Redirect with both code and relay
+                window.location.href = `editor.html?collab=${encodeURIComponent(code)}&relay=${encodeURIComponent(data.url_hf)}`;
+            } else {
+                // Redirect to editor in local collaboration mode
+                window.location.href = `editor.html?collab=${encodeURIComponent(code)}`;
+            }
         });
 
         collabCodeInput.addEventListener('keydown', (e) => {
