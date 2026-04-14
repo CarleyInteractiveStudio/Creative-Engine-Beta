@@ -72,7 +72,7 @@ Lanza rayos desde el objeto para detectar obstáculos o sensores.
 
 ## 🚗 4. Vehículos y Movilidad
 
-### 🚜 SuspensionHC
+### 🚜 Suspension
 Simulación avanzada de suspensión tipo Hill Climb Racing.
 - **Propiedades:** `chasis` (Materia), `dureza`, `amortiguacion`, `longitudReposo`, `potenciaMotor`.
 - **Uso:** Se añade a los objetos que actúan como ruedas.

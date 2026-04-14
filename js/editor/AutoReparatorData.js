@@ -52,7 +52,7 @@ export const componentShortcuts = [
     'grid', 'rejilla',
     'raycastSource', 'rallo',
     'basicAI', 'iaBasica',
-    'suspensionHC',
+    'suspension',
     'vehicleTopDown', 'controladorVehiculoTopDown',
     'planeController', 'controladorDeAvion',
     'helicopterController', 'controladorDeHelicoptero',

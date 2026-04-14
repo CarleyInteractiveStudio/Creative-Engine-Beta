@@ -3344,7 +3344,7 @@ CONOCIMIENTO DE COMPONENTES (LEYES):
 - Basicos: Transform (posicion), Camara (camara), AudioSource (fuenteDeAudio), VideoPlayer, CreativeScript.
 - Renderizado: SpriteRenderer (renderizadorDeSprite), TextureRender, ParticleSystem, Water (agua).
 - Fisicas 2D: Rigidbody2D (fisica), BoxCollider2D, CapsuleCollider2D, CircleCollider2D, TilemapCollider2D, LineCollider2D.
-- Vehiculos y Controladores: SuspensionHC, VehicleTopDown, PlaneController, HelicopterController.
+- Vehiculos y Controladores: Suspension, VehicleTopDown, PlaneController, HelicopterController.
 - Mapas: Tilemap (rejilla), Terreno2D.
 - Iluminacion: PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D.
 - Interfaz (UI): Canvas (lienzo), UIImage (imagen), UIText (texto), Button (boton), UIEventTrigger.

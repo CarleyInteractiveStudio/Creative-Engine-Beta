@@ -334,9 +334,9 @@ export class PhysicsSystem {
                 // --- 2.1 Collision Filtering ---
 
                 // 2. Assembly Filter (Vehicle Support):
-                // If they share a SuspensionHC connection (Wheel vs Chassis), don't collide.
-                const suspA = materiaA.getComponent(Components.SuspensionHC);
-                const suspB = materiaB.getComponent(Components.SuspensionHC);
+                // If they share a Suspension connection (Wheel vs Chassis), don't collide.
+                const suspA = materiaA.getComponent(Components.Suspension);
+                const suspB = materiaB.getComponent(Components.Suspension);
 
                 if (suspA || suspB) {
                     const susp = suspA || suspB;
@@ -352,7 +352,7 @@ export class PhysicsSystem {
                 }
 
                 // 3. Wheel Filter: Allow wheels to collide with anything unless explicitly filtered.
-                // We rely on the SuspensionHC filter above to prevent chassis collisions.
+                // We rely on the Suspension filter above to prevent chassis collisions.
                 // (Removed the restriction to ONLY terrain to allow collision with BoxCollider grounds)
 
                 if (materiaA.isAncestorOf(materiaB) || materiaB.isAncestorOf(materiaA)) {

@@ -336,7 +336,7 @@ Ajusta la **Viscosidad** para simular desde agua cristalina hasta lava espesa.
 
 ## 🚗 Vehículos: Suspensión Hill Climb
 
-El componente `SuspensionHC` conecta ruedas y chasis para un comportamiento físico todoterreno real.
+El componente `Suspension` conecta ruedas y chasis para un comportamiento físico todoterreno real.
 
 ---
 
@@ -758,7 +758,7 @@ Crea un objeto pequeño con mucha masa pero con una escala de gravedad muy baja;
 
 ## 🚗 Vehículos Pro: Suspensiones Off-road para Terrenos Difíciles
 
-En el componente `SuspensionHC`, aumenta el valor de "Dureza" para terrenos con muchos baches y obstáculos, y disminúyela para una conducción suave y relajante en carreteras de asfalto liso. Puedes cambiar estos valores por script según la superficie.
+En el componente `Suspension`, aumenta el valor de "Dureza" para terrenos con muchos baches y obstáculos, y disminúyela para una conducción suave y relajante en carreteras de asfalto liso. Puedes cambiar estos valores por script según la superficie.
 
 ---
 

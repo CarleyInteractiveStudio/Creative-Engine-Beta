@@ -954,7 +954,7 @@ UI_IMAGE: UI Image
 UI_TEXT: UI Text
 SPRITE_RENDERER: Sprite Renderer
 AUDIO_SOURCE: Audio Source
-SUSPENSION_HC: Suspension HC
+SUSPENSION: Suspensión
 VEHICLE_TOPDOWN: Vehicle Top-Down
 PLANE_CONTROLLER: Plane Controller
 HELICOPTER_CONTROLLER: Helicopter Controller
@@ -2669,3 +2669,18 @@ SUSTENTACION: 升力
 VELOCIDAD_DESPEGUE: 起飞速度
 DERRAPE: 漂移
 FRENO_MOTOR: 引擎制动
+VEHICLE_SIDE_VIEW_2D: Vehículo Lateral 2D
+WHEELS: Ruedas
+SPRING_SETTINGS: Configuración de Muelle
+STIFFNESS: Dureza
+DAMPING: Amortiguación
+REST_LENGTH: Largo Reposo
+CONSTRAINT_AXIS: Eje (Local)
+ENGINE_SETTINGS: Configuración de Motor
+MOTOR_BRAKE: Freno Motor
+PITCH_STRENGTH: Inclinación
+AIR_TURN: Giro Aire
+AUTO_STABILIZE: Auto-Estabilizar
+GROUND_CENTERING: Centrado Suelo
+ACCELERATE_KEY: Tecla Acelerar
+BRAKE_KEY: Tecla Frenar

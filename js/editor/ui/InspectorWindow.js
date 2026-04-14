@@ -37,7 +37,7 @@ const availableComponents = {
     'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.PlatformEffector2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
     'CAT_CAMARA': [Components.Camera],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
-    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Attack, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.SuspensionHC, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController, Components.SceneLoader],
+    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Attack, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.Suspension, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController, Components.SceneLoader],
     'CAT_SCRIPTING': [Components.CreativeScript]
 };
 
@@ -55,7 +55,7 @@ const componentIcons = {
     'Gyzmo': 'target',
     'RaycastSource': 'route',
     'BasicAI': 'bot',
-    'SuspensionHC': 'wrench',
+    'Suspension': 'wrench',
     'VehicleTopDown': 'rocket',
     'PlaneController': 'rocket',
     'HelicopterController': 'rocket',
@@ -3559,77 +3559,90 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.SuspensionHC) {
+        } else if (ley instanceof Components.Suspension) {
             componentHTML = `
-                ${renderComponentHeader(L.get('SUSPENSION_HC', "Suspension HC"), icon, index)}
+                ${renderComponentHeader(L.get('SUSPENSION', "Suspensión"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label data-i18n="CHASSIS">${L.get('CHASSIS', 'Chasis')}</label>
-                        ${renderPropertyDropper('Materia', ley.chasis, 'data-component="SuspensionHC" data-prop="chasis"')}
+                        ${renderPropertyDropper('Materia', ley.chasis, 'data-component="Suspension" data-prop="chasis"')}
                     </div>
                     <div class="inspector-section-header"><span data-i18n="SPRING_SETTINGS">${L.get('SPRING_SETTINGS', 'Configuración de Muelle')}</span></div>
                     <div class="prop-row-multi">
                         <label title="K" data-i18n="STIFFNESS">${L.get('STIFFNESS', 'Dureza')}</label>
-                        <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="dureza" value="${ley.dureza}">
+                        <input type="number" class="prop-input" data-component="Suspension" data-prop="dureza" value="${ley.dureza}">
                     </div>
                     <div class="prop-row-multi">
                         <label title="D" data-i18n="DAMPING">${L.get('DAMPING', 'Amortiguación')}</label>
-                        <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="amortiguacion" value="${ley.amortiguacion}">
+                        <input type="number" class="prop-input" data-component="Suspension" data-prop="amortiguacion" value="${ley.amortiguacion}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="REST_LENGTH">${L.get('REST_LENGTH', 'Largo Reposo')}</label>
-                        <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="longitudReposo" value="${ley.longitudReposo}">
+                        <input type="number" class="prop-input" data-component="Suspension" data-prop="longitudReposo" value="${ley.longitudReposo}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="CONSTRAINT_AXIS">${L.get('CONSTRAINT_AXIS', 'Eje (Local)')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="eje.x" value="${ley.eje.x}" title="X">
-                            <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="eje.y" value="${ley.eje.y}" title="Y">
+                            <input type="number" class="prop-input" data-component="Suspension" data-prop="eje.x" value="${ley.eje.x}" title="X">
+                            <input type="number" class="prop-input" data-component="Suspension" data-prop="eje.y" value="${ley.eje.y}" title="Y">
                         </div>
                     </div>
                     <div class="inspector-row">
                         <label>Sonido Susp</label>
-                        ${renderPropertyDropper('Audio', ley.suspensionSound, 'data-component="SuspensionHC" data-prop="suspensionSound"')}
+                        ${renderPropertyDropper('Audio', ley.suspensionSound, 'data-component="Suspension" data-prop="suspensionSound"')}
                     </div>
-
+                </div>
+            `;
+        } else if (ley instanceof Components.VehicleSideView2D) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('VEHICLE_SIDE_VIEW_2D', "Vehículo Lateral 2D"), icon, index)}
+                <div class="component-content">
+                    <div class="inspector-section-header"><span data-i18n="WHEELS">${L.get('WHEELS', 'Ruedas')}</span></div>
+                    <div class="inspector-row">
+                        <p class="field-description" style="font-size: 0.8em; opacity: 0.7;">Si la lista está vacía, se detectarán automáticamente los hijos con el componente 'Suspensión'.</p>
+                    </div>
                     <div class="inspector-section-header"><span data-i18n="ENGINE_SETTINGS">${L.get('ENGINE_SETTINGS', 'Configuración de Motor')}</span></div>
                     <div class="prop-row-multi">
                         <label data-i18n="POWER">${L.get('POWER', 'Potencia')}</label>
-                        <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="potenciaMotor" value="${ley.potenciaMotor}">
+                        <input type="number" class="prop-input" data-component="VehicleSideView2D" data-prop="potenciaMotor" value="${ley.potenciaMotor}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="MAX_SPEED">${L.get('MAX_SPEED', 'Velocidad Máx')}</label>
-                        <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="velocidadMaxima" value="${ley.velocidadMaxima}">
+                        <input type="number" class="prop-input" data-component="VehicleSideView2D" data-prop="velocidadMaxima" value="${ley.velocidadMaxima}">
                     </div>
                     <div class="prop-row">
                         <label title="Resistencia al rodamiento o freno motor (0-1)" data-i18n="MOTOR_BRAKE">${L.get('MOTOR_BRAKE', 'Freno Motor')}</label>
-                        <input type="number" step="0.01" min="0" max="1" class="prop-input" data-component="SuspensionHC" data-prop="frenadoMotor" value="${ley.frenadoMotor}">
+                        <input type="number" step="0.01" min="0" max="1" class="prop-input" data-component="VehicleSideView2D" data-prop="frenadoMotor" value="${ley.frenadoMotor}">
                     </div>
-                        <div class="prop-row">
-                            <label title="Controla cuánto se inclina el chasis al acelerar" data-i18n="PITCH_STRENGTH">${L.get('PITCH_STRENGTH', 'Inclinación')}</label>
-                            <input type="number" step="0.1" class="prop-input" data-component="SuspensionHC" data-prop="fuerzaInclinacion" value="${ley.fuerzaInclinacion}">
-                        </div>
-                        <div class="prop-row">
-                            <label title="Control manual de giro en el aire" data-i18n="AIR_TURN">${L.get('AIR_TURN', 'Giro Aire')}</label>
-                            <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="controlAire" value="${ley.controlAire}">
-                        </div>
-                        <div class="prop-row">
-                            <label title="Estabilización automática en el aire (0-1)" data-i18n="AUTO_STABILIZE">${L.get('AUTO_STABILIZE', 'Auto-Estabilizar')}</label>
-                            <input type="number" step="0.1" min="0" max="1" class="prop-input" data-component="SuspensionHC" data-prop="estabilidadAire" value="${ley.estabilidadAire}">
-                        </div>
-                        <div class="prop-row">
-                            <label title="Recuperación de posición horizontal en suelo (0-1)" data-i18n="GROUND_CENTERING">${L.get('GROUND_CENTERING', 'Centrado Suelo')}</label>
-                            <input type="number" step="0.1" min="0" max="1" class="prop-input" data-component="SuspensionHC" data-prop="recuperacionGiro" value="${ley.recuperacionGiro}">
-                        </div>
+                    <div class="prop-row">
+                        <label title="Controla cuánto se inclina el chasis al acelerar" data-i18n="PITCH_STRENGTH">${L.get('PITCH_STRENGTH', 'Inclinación')}</label>
+                        <input type="number" step="0.1" class="prop-input" data-component="VehicleSideView2D" data-prop="fuerzaInclinacion" value="${ley.fuerzaInclinacion}">
+                    </div>
+                    <div class="prop-row">
+                        <label title="Control manual de giro en el aire" data-i18n="AIR_TURN">${L.get('AIR_TURN', 'Giro Aire')}</label>
+                        <input type="number" class="prop-input" data-component="VehicleSideView2D" data-prop="controlAire" value="${ley.controlAire}">
+                    </div>
+                    <div class="prop-row">
+                        <label title="Estabilización automática en el aire (0-1)" data-i18n="AUTO_STABILIZE">${L.get('AUTO_STABILIZE', 'Auto-Estabilizar')}</label>
+                        <input type="number" step="0.1" min="0" max="1" class="prop-input" data-component="VehicleSideView2D" data-prop="estabilidadAire" value="${ley.estabilidadAire}">
+                    </div>
+                    <div class="prop-row">
+                        <label title="Recuperación de posición horizontal en suelo (0-1)" data-i18n="GROUND_CENTERING">${L.get('GROUND_CENTERING', 'Centrado Suelo')}</label>
+                        <input type="number" step="0.1" min="0" max="1" class="prop-input" data-component="VehicleSideView2D" data-prop="recuperacionGiro" value="${ley.recuperacionGiro}">
+                    </div>
 
                     <div class="inspector-section-header"><span data-i18n="CONTROLS">${L.get('CONTROLS', 'Controles')}</span></div>
                     <div class="prop-row-multi">
                         <label data-i18n="ACCELERATE_KEY">${L.get('ACCELERATE_KEY', 'Tecla Acelerar')}</label>
-                        <input type="text" class="prop-input" data-component="SuspensionHC" data-prop="teclaAcelerar" value="${ley.teclaAcelerar}">
+                        <input type="text" class="prop-input" data-component="VehicleSideView2D" data-prop="teclaAcelerar" value="${ley.teclaAcelerar}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="BRAKE_KEY">${L.get('BRAKE_KEY', 'Tecla Frenar')}</label>
-                        <input type="text" class="prop-input" data-component="SuspensionHC" data-prop="teclaFrenar" value="${ley.teclaFrenar}">
+                        <input type="text" class="prop-input" data-component="VehicleSideView2D" data-prop="teclaFrenar" value="${ley.teclaFrenar}">
+                    </div>
+                    <div class="inspector-row">
+                        <label>Sonido Motor</label>
+                        ${renderPropertyDropper('Audio', ley.motorSound, 'data-component="VehicleSideView2D" data-prop="motorSound"')}
                     </div>
                 </div>
             `;
