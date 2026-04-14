@@ -1131,7 +1131,23 @@ public star() {
                     </div>
                 </fieldset>
                 <fieldset class="settings-section">
-                    <legend data-i18n="SISTEMA">Sistema</legend>
+                    <legend data-i18n="RENDIMIENTO">Rendimiento</legend>
+
+                    <div class="inspector-row">
+                        <label for="settings-max-fps" data-i18n="MAX_FPS">FPS Máximo</label>
+                        <input type="number" id="settings-max-fps" min="0" value="60">
+                    </div>
+                    <p class="field-description" data-i18n="HINT_MAX_FPS">Limita los FPS para ahorrar batería y recursos. Usa 0 para sin límite.</p>
+
+                    <div class="inspector-row">
+                        <label for="settings-min-fps" data-i18n="MIN_FPS">FPS Mínimo</label>
+                        <input type="number" id="settings-min-fps" min="10" value="30">
+                    </div>
+                    <p class="field-description" data-i18n="HINT_MIN_FPS">El motor activará optimizaciones extremas si el rendimiento cae cerca de este valor.</p>
+                    <p class="field-description" style="color: #f3ca58; font-style: italic; font-size: 0.85em;" data-i18n="HINT_MIN_FPS_NOTICE">Nota: Esta cantidad mínima no está garantizada, pero activará una optimización profunda para intentar mantener la fluidez.</p>
+
+                    <hr>
+
                     <div class="inspector-row">
                         <label for="settings-ram-limit" data-i18n="LIMITE_RAM">Límite de RAM (MB)</label>
                         <input type="number" id="settings-ram-limit" min="256" step="128" value="2048">

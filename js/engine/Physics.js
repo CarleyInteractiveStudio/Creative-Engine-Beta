@@ -89,12 +89,12 @@ export class PhysicsSystem {
         return id1 < id2 ? `${id1}-${id2}` : `${id2}-${id1}`;
     }
 
-    update(deltaTime) {
+    update(deltaTime, subStepsOverride = null) {
         this.currentFrame++;
         this.lastDeltaTime = deltaTime;
 
         // Sub-stepping to prevent tunneling and improve stability
-        const SUB_STEPS = 4;
+        const SUB_STEPS = subStepsOverride !== null ? subStepsOverride : 4;
         const subDeltaTime = deltaTime / SUB_STEPS;
 
         for (let s = 0; s < SUB_STEPS; s++) {

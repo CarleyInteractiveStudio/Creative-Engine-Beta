@@ -134,6 +134,7 @@ Todo script debe empezar con `ve motor;`. No necesitas clases ni funciones `main
 - `alEmpezar()`: Configuración inicial.
 - `alActualizar(delta)`: Lógica de juego por frame.
 - `actualizarFijo(delta)`: Lógica de física (60fps).
+- `alBajoRendimiento(nivel)`: Se dispara cuando el motor entra en modo de optimización extrema (nivel 1-3).
 
 ---
 

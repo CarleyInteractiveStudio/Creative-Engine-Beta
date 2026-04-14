@@ -1,17 +1,31 @@
 // js/engine/CEEngine.js
 
 import * as SceneManager from './SceneManager.js';
+import { PerformanceMonitor } from './PerformanceMonitor.js';
+import * as PerformanceAPI from './PerformanceAPI.js';
 
 let physicsSystem = null;
 let currentDeltaTime = 0;
+let performanceMonitor = null;
 
 export function initialize(dependencies) {
     physicsSystem = dependencies.physicsSystem;
+    if (!performanceMonitor) {
+        performanceMonitor = new PerformanceMonitor(this);
+        PerformanceAPI.setPerformanceMonitor(performanceMonitor);
+    }
 }
 
 export function update(dt) {
     currentDeltaTime = dt;
+    if (performanceMonitor) {
+        performanceMonitor.recordFrame(dt);
+    }
     checkMemory();
+}
+
+export function getPerformanceMonitor() {
+    return performanceMonitor;
 }
 
 let lastOptimizationTime = 0;
@@ -37,10 +51,24 @@ function checkMemory() {
 
 export function optimize() {
     // 1. Clear AssetUtils cache (if it had one, currently it doesn't cache heavily)
-    // 2. Clear Scratch Canvases in editor.js if we could access them
-    // 3. For now, we'll just log and maybe suggest GC if in a supported env
+    // 2. Suggest GC if in a supported env
     if (window.gc) {
         window.gc();
+    }
+
+    // 3. Trigger deep optimization in all components if performance is extremely low
+    if (performanceMonitor && performanceMonitor.optimizationLevel >= 3) {
+        if (SceneManager.currentScene) {
+            SceneManager.currentScene.getAllMaterias().forEach(m => {
+                const terrain = m.getComponent(Components.Terreno2D);
+                if (terrain && terrain.imageCache) {
+                    // Clear terrain texture cache if it gets too large
+                    if (terrain.imageCache.size > 5) {
+                        terrain.imageCache.clear();
+                    }
+                }
+            });
+        }
     }
 }
 

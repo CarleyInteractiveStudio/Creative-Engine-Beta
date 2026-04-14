@@ -1,4 +1,5 @@
 import * as SceneManager from './SceneManager.js';
+import * as PerformanceAPI from './PerformanceAPI.js';
 import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder, Terreno2D, Gyzmo, Animator, UIEventTrigger, VideoPlayer, Water, LineCollider2D, Bone, SkeletonRenderer, UIMask, UIScrollRect, UICollider } from './Components.js';
 import { getAbsoluteRect, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
@@ -392,6 +393,22 @@ export class Renderer {
         const transform = water.materia.getComponent(Transform);
         if (!transform) return;
 
+        const perfMonitor = PerformanceAPI.getPerformanceMonitor();
+        if (perfMonitor && perfMonitor.getShouldSimplifyWater()) {
+             // In Extreme optimization, just draw a simple rectangle for water
+             const ctx = this.ctx;
+             ctx.save();
+             const drawX = x !== null ? x : transform.x;
+             const drawY = y !== null ? y : transform.y;
+             ctx.translate(drawX, drawY);
+             ctx.rotate(transform.rotation * Math.PI / 180);
+             ctx.scale(transform.scale.x, transform.scale.y);
+             ctx.fillStyle = water.color || 'rgba(52, 152, 219, 0.5)';
+             ctx.fillRect(-water.width/2, -water.height/2, water.width, water.height);
+             ctx.restore();
+             return;
+        }
+
         // Culling: Si el agua está fuera de la cámara, no procesar renderizado
         if (this.camera && water.bounds) {
             const b = water.bounds;
@@ -586,6 +603,9 @@ export class Renderer {
         const transform = terreno.materia.getComponent(Transform);
         if (!transform || !terreno.layers) return;
 
+        const perfMonitor = PerformanceAPI.getPerformanceMonitor();
+        const quality = perfMonitor ? perfMonitor.getTextureQuality() : 'high';
+
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
         this.ctx.rotate(transform.rotation * Math.PI / 180);
@@ -610,6 +630,9 @@ export class Renderer {
 
             const img = terreno.getImageForLayer(l);
             bCtx.clearRect(0, 0, w, h);
+
+            // Skip non-base layers if extreme optimization is active
+            if (quality === 'low' && l > 0 && perfMonitor && perfMonitor.getShouldReduceMapDetail()) continue;
 
             if (img && img.complete && img.naturalWidth > 0) {
                 const pattern = bCtx.createPattern(img, 'repeat');

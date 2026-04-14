@@ -432,6 +432,22 @@ REPRODUCIR: Reproducir
 DETENER: Detener
 PAUSAR: Pausar
 
+# Performance
+RENDIMIENTO: Rendimiento
+MAX_FPS: FPS Máximo
+MIN_FPS: FPS Mínimo
+HINT_MAX_FPS: Limita los FPS para ahorrar batería y recursos. Usa 0 para sin límite.
+HINT_MIN_FPS: El motor activará optimizaciones extremas si el rendimiento cae cerca de este valor.
+HINT_MIN_FPS_NOTICE: Nota: Esta cantidad mínima no está garantizada, pero activará una optimización profunda para intentar mantener la fluidez.
+
+# Performance
+RENDIMIENTO: Desempenho
+MAX_FPS: FPS Máximo
+MIN_FPS: FPS Mínimo
+HINT_MAX_FPS: Limita os FPS para economizar bateria e recursos. Use 0 para sem limite.
+HINT_MIN_FPS: O motor ativará otimizações extremas se o desempenho cair perto deste valor.
+HINT_MIN_FPS_NOTICE: Nota: Esta quantidade mínima não é garantida, mas ativará uma otimização profunda para tentar manter a fluidez.
+
 # Combat & Health
 HEALTH: Vida
 MAX_HEALTH: Vida Máxima
@@ -1016,6 +1032,14 @@ BUCLE: Loop
 REPRODUCIR: Play
 DETENER: Stop
 PAUSAR: Pause
+
+# Performance
+RENDIMIENTO: Performance
+MAX_FPS: Max FPS
+MIN_FPS: Min FPS
+HINT_MAX_FPS: Limits FPS to save battery and resources. Use 0 for no limit.
+HINT_MIN_FPS: The engine will trigger extreme optimizations if performance drops near this value.
+HINT_MIN_FPS_NOTICE: Note: This minimum amount is not guaranteed, but it will trigger deep optimization to try to maintain fluidity.
 
 # Combat & Health
 HEALTH: Health
@@ -2022,6 +2046,14 @@ REPRODUCIR: Воспроизвести
 DETENER: Стоп
 PAUSAR: Пауза
 
+# Performance
+RENDIMIENTO: Производительность
+MAX_FPS: Макс. FPS
+MIN_FPS: Мин. FPS
+HINT_MAX_FPS: Ограничение FPS для экономии заряда батареи и ресурсов. Используйте 0 для отсутствия лимита.
+HINT_MIN_FPS: Движок активирует экстремальную оптимизацию, если производительность упадет ниже этого значения.
+HINT_MIN_FPS_NOTICE: Примечание: Это минимальное количество не гарантировано, но оно активирует глубокую оптимизацию для поддержания плавности.
+
 # Combat & Health
 HEALTH: Здоровье
 MAX_HEALTH: Макс. здоровье
@@ -2505,6 +2537,14 @@ BUCLE: 循环 (Loop)
 REPRODUCIR: 播放
 DETENER: 停止
 PAUSAR: 暂停
+
+# Performance
+RENDIMIENTO: 性能
+MAX_FPS: 最大 FPS
+MIN_FPS: 最小 FPS
+HINT_MAX_FPS: 限制 FPS 以节省电池和资源。使用 0 表示无限制。
+HINT_MIN_FPS: 如果性能接近此值，引擎将触发极端优化。
+HINT_MIN_FPS_NOTICE: 注意：此最小量无法保证，但它将触发深度优化以尝试保持流畅性。
 
 # Combat & Health
 HEALTH: 生命值

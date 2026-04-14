@@ -6,6 +6,7 @@ import { registerComponent } from './ComponentRegistry.js';
 import { getURLForAssetPath, getFileHandleForPath } from './AssetUtils.js';
 import { InputManager } from './Input.js';
 import * as RuntimeAPIManager from './RuntimeAPIManager.js';
+import * as PerformanceAPI from './PerformanceAPI.js';
 import { bus as MessageBus } from './Messaging.js';
 
 let editorLogic = null;
@@ -168,6 +169,8 @@ export class CreativeScriptBehavior {
     }
     start() { /* To be overridden by user scripts */ }
     update(deltaTime) { /* To be overridden by user scripts */ } // Kept for compatibility; user scripts receive deltaTime now
+    onLowPerformance(level) { /* To be overridden by user scripts */ }
+    alBajoRendimiento(nivel) { /* To be overridden by user scripts */ }
 
     /**
      * Pausa la ejecución del script por una cantidad determinada de segundos.
@@ -1178,7 +1181,8 @@ export class CreativeScript extends Leyes {
                     onPointerEnter: ['alEntrar'],
                     onPointerExit: ['alSalir'],
                     onPointerClick: ['alHacerClick', 'alClicar'],
-                    onPointerDrag: ['alDeslizar'],
+                    onReceive: ['alRecibir'],
+                    onLowPerformance: ['alBajoRendimiento'],
                     onPointerHold: ['alMantener']
                 };
 
@@ -5993,6 +5997,9 @@ export class ParticleSystem extends Leyes {
     停止() { this.stop(); }
 
     update(deltaTime) {
+        const perfMonitor = PerformanceAPI.getPerformanceMonitor();
+        const throttle = perfMonitor ? perfMonitor.getParticleThrottle() : 1.0;
+
         // Gestionar vida de partículas activas en el pool
         for (let i = 0; i < this._pool.length; i++) {
             const p = this._pool[i];
@@ -6007,7 +6014,7 @@ export class ParticleSystem extends Leyes {
         if (!this._active) return;
 
         this._emissionAccumulator += deltaTime;
-        const interval = 1 / Math.max(0.1, this.emissionRate);
+        const interval = 1 / Math.max(0.1, this.emissionRate * throttle);
 
         while (this._emissionAccumulator >= interval) {
             this.emit();

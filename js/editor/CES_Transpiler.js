@@ -263,7 +263,7 @@ const componentShortcuts = [
     'ejecutarAccion', 'executeAction',
     'alEntrarEnColision', 'getCollisionEnter', 'alPermanecerEnColision', 'getCollisionStay', 'alSalirDeColision', 'getCollisionExit',
     'estaTocandoTag', 'isTouchingTag',
-    'difundir', 'broadcast', 'alRecibir', 'onReceive',
+    'difundir', 'broadcast', 'alRecibir', 'onReceive', 'alBajoRendimiento', 'onLowPerformance',
     'onPointerDown', 'alPresionar', 'onPointerUp', 'alSoltar',
     'onPointerEnter', 'alEntrar', 'onPointerExit', 'alSalir',
     'onPointerClick', 'alHacerClick', 'onPointerDrag', 'alDeslizar',
@@ -808,7 +808,7 @@ export function transpile(code, scriptName = 'unnamed.ces') {
             'alFinalizarAnimacion', 'OnAnimationEnd', 'onPointerDown', 'alPresionar', 'onPointerUp', 'alSoltar',
             'onPointerEnter', 'alEntrar', 'onPointerExit', 'alSalir', 'onPointerClick', 'alHacerClick',
             'alPointerDrag', 'alDeslizar', 'onPointerHold', 'alMantener', 'alHabilitar', 'activar', 'alDeshabilitar', 'desactivar', 'alDestruir',
-            'alRecibir', 'onReceive'
+            'alRecibir', 'onReceive', 'alBajoRendimiento', 'onLowPerformance'
         ];
         if (!internalMethods.includes(name)) {
             publicFunctions.push(name);

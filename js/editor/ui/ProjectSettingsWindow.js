@@ -33,6 +33,8 @@ export async function saveProjectConfig(showAlert = true) {
         currentProjectConfig.authorName = dom.settingsAuthorName.value;
         currentProjectConfig.appVersion = dom.settingsAppVersion.value;
         currentProjectConfig.rendererMode = dom.settingsRendererMode.value;
+        currentProjectConfig.maxFps = parseInt(dom.settingsMaxFps.value) || 0;
+        currentProjectConfig.minFps = parseInt(dom.settingsMinFps.value) || 30;
         currentProjectConfig.ramLimit = parseInt(dom.settingsRamLimit.value) || 2048;
         // Note: The mask type is saved via the AmbienteControlWindow, not here.
         currentProjectConfig.showEngineLogo = dom.settingsShowEngineLogo.checked;
@@ -385,6 +387,8 @@ export function populateUI(config) {
     if (dom.settingsAuthorName) dom.settingsAuthorName.value = currentProjectConfig.authorName;
     if (dom.settingsAppVersion) dom.settingsAppVersion.value = currentProjectConfig.appVersion;
     if (dom.settingsRendererMode) dom.settingsRendererMode.value = currentProjectConfig.rendererMode;
+    if (dom.settingsMaxFps) dom.settingsMaxFps.value = currentProjectConfig.maxFps !== undefined ? currentProjectConfig.maxFps : 60;
+    if (dom.settingsMinFps) dom.settingsMinFps.value = currentProjectConfig.minFps !== undefined ? currentProjectConfig.minFps : 30;
     if (dom.settingsRamLimit) dom.settingsRamLimit.value = currentProjectConfig.ramLimit || 2048;
     if (dom.settingsShowEngineLogo) dom.settingsShowEngineLogo.checked = currentProjectConfig.showEngineLogo;
     if (dom.settingsKeystorePath) dom.settingsKeystorePath.value = currentProjectConfig.keystore.path;
