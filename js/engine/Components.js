@@ -274,6 +274,13 @@ export class CreativeScriptBehavior {
         return engine ? engine.getDeltaTime() : 0;
     }
 
+    /**
+     * Devuelve los segundos totales desde que inició la escena.
+     */
+    get tiempoJuego() {
+        return (window.isGameRunning || window.CE_Standalone_Scripts) ? (performance.now() / 1000) : 0;
+    }
+
     /** Alias Multilingües */
     get tiempoDelta() { return this.deltaTime; }
     get tempoDelta() { return this.deltaTime; }
@@ -544,6 +551,16 @@ export class CreativeScriptBehavior {
     найти(name) { return this.buscar(name); }
     查找(name) { return this.buscar(name); }
 
+    findAllWithTag(tag) { return this.buscarTodosConTag(tag); }
+    procurarTodosComTag(tag) { return this.buscarTodosConTag(tag); }
+    найтиВсеСТегом(tag) { return this.buscarTodosConTag(tag); }
+    查找所有带标签(tag) { return this.buscarTodosConTag(tag); }
+
+    findClosestWithTag(tag) { return this.buscarCercanoConTag(tag); }
+    procurarMaisProximoComTag(tag) { return this.buscarCercanoConTag(tag); }
+    найтиБлижайшийСТегом(tag) { return this.buscarCercanoConTag(tag); }
+    查找最近的带标签(tag) { return this.buscarCercanoConTag(tag); }
+
     raycast(origin, direction, distance, tag) { return this.lanzarRayo(origin, direction, distance, tag); }
     lancarRaio(origin, direction, distance, tag) { return this.lanzarRayo(origin, direction, distance, tag); }
     пускатьЛуч(origin, direction, distance, tag) { return this.lanzarRayo(origin, direction, distance, tag); }
@@ -587,6 +604,24 @@ export class CreativeScriptBehavior {
         return engine ? engine.buscar(nombre) : null;
     }
     find(nombre) { return this.buscar(nombre); }
+
+    /**
+     * Busca todos los objetos con un tag específico.
+     */
+    buscarTodosConTag(tag) {
+        const engine = RuntimeAPIManager.getAPI('engine');
+        return engine ? engine.buscarTodosConTag(tag) : [];
+    }
+    findAllWithTag(tag) { return this.buscarTodosConTag(tag); }
+
+    /**
+     * Busca el objeto más cercano con un tag específico.
+     */
+    buscarCercanoConTag(tag) {
+        const engine = RuntimeAPIManager.getAPI('engine');
+        return engine ? engine.buscarCercanoConTag(this.materia, tag) : null;
+    }
+    findClosestWithTag(tag) { return this.buscarCercanoConTag(tag); }
 
     /**
      * Detecta objetos en una línea.
@@ -764,6 +799,13 @@ export class CreativeScriptBehavior {
     raizCuadrada(v) { return Math.sqrt(v); }
     abs(v) { return Math.abs(v); }
     absoluto(v) { return Math.abs(v); }
+    valorAbsoluto(v) { return Math.abs(v); }
+
+    atan2(y, x) { return Math.atan2(y, x); }
+    arcotangente2(y, x) { return Math.atan2(y, x); }
+
+    lerp(a, b, t) { return a + (b - a) * t; }
+    interpolacionLineal(a, b, t) { return this.lerp(a, b, t); }
 
     round(v) { return Math.round(v); }
     redondear(v) { return Math.round(v); }

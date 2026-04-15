@@ -85,6 +85,35 @@ function find(name) {
     return SceneManager.currentScene ? SceneManager.currentScene.findMateriaByName(name) : null;
 }
 
+/**
+ * Encuentra todos los objetos con un tag específico.
+ */
+function findAllWithTag(tag) {
+    if (!SceneManager.currentScene) return [];
+    return SceneManager.currentScene.getAllMaterias().filter(m => m.tag === tag);
+}
+
+/**
+ * Busca el objeto más cercano con un tag específico.
+ */
+function findClosestWithTag(materia, tag) {
+    const all = findAllWithTag(tag);
+    if (all.length === 0) return null;
+    let closest = null;
+    let minDist = Infinity;
+    const pos = materia.getComponent(Transform)?.position || { x: 0, y: 0 };
+    for (const m of all) {
+        if (m === materia) continue;
+        const mPos = m.getComponent(Transform)?.position || { x: 0, y: 0 };
+        const dist = Math.hypot(pos.x - mPos.x, pos.y - mPos.y);
+        if (dist < minDist) {
+            minDist = dist;
+            closest = m;
+        }
+    }
+    return closest;
+}
+
 
 function getCollisionEnter(materia, tag = null) {
     if (!physicsSystem) return [];
@@ -167,6 +196,8 @@ const engineAPIs = {
 
     // Spanish aliases
     buscar: find,
+    buscarTodosConTag: findAllWithTag,
+    buscarCercanoConTag: findClosestWithTag,
     alEntrarEnColision: getCollisionEnter,
     alPermanecerEnColision: getCollisionStay,
     alSalirDeColision: getCollisionExit,
