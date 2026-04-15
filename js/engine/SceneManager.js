@@ -289,7 +289,7 @@ export function serializeMateria(materia, recursive = false) {
                         }));
                     } else if (ley.constructor.name === 'Tilemap' && (key === '_width' || key === '_height')) {
                         leyData.properties[key.substring(1)] = ley[key];
-                    } else if (ley.constructor.name === 'TilemapCollider2D' && (key === '_sourceLayerIndex' || key === '_useAllLayers')) {
+                    } else if ((ley.constructor.name === 'TilemapCollider2D' || ley.constructor.name === 'TerrenoCollider2D') && (key === '_sourceLayerIndex' || key === '_useAllLayers' || key === '_mode' || key === '_resolution' || key === '_simplifyTolerance')) {
                         leyData.properties[key.substring(1)] = ley[key];
                     } else if (ley.constructor.name === 'Terreno2D' && (key === 'maskCanvas' || key === 'maskCtx' || key === 'imageCache')) {
                         // Skip internal properties
@@ -405,6 +405,11 @@ async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, mate
                     if (leyData.properties.useAllLayers !== undefined) newLey.useAllLayers = leyData.properties.useAllLayers;
                     Object.assign(newLey, leyData.properties);
                     newLey._cachedMesh = new Map(newLey._cachedMesh || []);
+                } else if (leyData.type === 'TerrenoCollider2D') {
+                    if (leyData.properties.mode !== undefined) newLey.mode = leyData.properties.mode;
+                    if (leyData.properties.resolution !== undefined) newLey.resolution = leyData.properties.resolution;
+                    if (leyData.properties.simplifyTolerance !== undefined) newLey.simplifyTolerance = leyData.properties.simplifyTolerance;
+                    Object.assign(newLey, leyData.properties);
                 } else if (leyData.type === 'TilemapRenderer' || leyData.type === 'Terreno2D') {
                     Object.assign(newLey, leyData.properties);
                     newLey.imageCache = new Map();

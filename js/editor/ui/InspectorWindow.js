@@ -371,6 +371,7 @@ function handleInspectorInput(e) {
         value = e.target.checked;
     } else if (e.target.type === 'number' || e.target.type === 'range') {
         value = parseFloat(e.target.value);
+        if (isNaN(value)) value = 0;
     } else {
         value = e.target.value;
     }
