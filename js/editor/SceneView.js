@@ -1057,7 +1057,16 @@ export function initialize(dependencies) {
     };
 
     // Setup event listeners
-    dom.sceneCanvas.addEventListener('contextmenu', e => e.preventDefault());
+    dom.sceneCanvas.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        e.stopPropagation();
+    });
+    if (dom.sceneCanvas3d) {
+        dom.sceneCanvas3d.addEventListener('contextmenu', e => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    }
 
     const toggleGizmosBtn = document.getElementById('btn-toggle-gizmos');
     if (toggleGizmosBtn) {

@@ -497,7 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- 5. Core Editor Functions ---
-    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, openMarkdownViewerCallback, saveAssetContentCallback, hotReloadScript, scanAndTranspileAllScripts;
+    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, openMarkdownViewerCallback, saveAssetContentCallback, hotReloadScript, scanAndTranspileAllScripts, updateCanvasInteractivity;
 
     hotReloadScript = async function(scriptName) {
         if (!isGameRunning || !SceneManager.currentScene) return;
@@ -1095,6 +1095,29 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    updateCanvasInteractivity = function() {
+        if (!currentProjectConfig) return;
+        const is3D = currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d';
+
+        if (dom.sceneCanvas) {
+            dom.sceneCanvas.style.pointerEvents = is3D ? 'none' : 'all';
+            dom.sceneCanvas.style.zIndex = is3D ? '1' : '2';
+        }
+        if (dom.sceneCanvas3d) {
+            dom.sceneCanvas3d.style.pointerEvents = is3D ? 'all' : 'none';
+            dom.sceneCanvas3d.style.zIndex = is3D ? '2' : '1';
+        }
+
+        if (dom.gameCanvas) {
+            dom.gameCanvas.style.pointerEvents = is3D ? 'none' : 'all';
+            dom.gameCanvas.style.zIndex = is3D ? '1' : '2';
+        }
+        if (dom.gameCanvas3d) {
+            dom.gameCanvas3d.style.pointerEvents = is3D ? 'all' : 'none';
+            dom.gameCanvas3d.style.zIndex = is3D ? '2' : '1';
+        }
+    };
+
     function updateWindowMenuUI() {
         const menuItems = {
             'console': 'menu-window-console',
@@ -1193,6 +1216,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (perfMonitor) {
                 perfMonitor.updateConfig(currentProjectConfig);
             }
+
+            // Update canvas interactivity based on mode
+            updateCanvasInteractivity();
         } catch (error) {
             console.warn("No se encontro 'project.ceconfig'. Creando uno nuevo con valores por defecto.");
             currentProjectConfig = {
@@ -4467,6 +4493,7 @@ public start() {
             }
 
             updateLoadingProgress(85, "Actualizando paneles...");
+            updateCanvasInteractivity();
             updateHierarchy();
             updateInspector();
             await updateAssetBrowser();
