@@ -1658,6 +1658,7 @@ export class SpriteRenderer extends Leyes {
         this.isLoading = false;
         this._lastLoadedSource = '';
         this.pivot = { x: 0.5, y: 0.5 };
+        this.billboard = false; // For 3D mode
     }
 
     get spriteName() { return this._spriteName; }
@@ -3007,6 +3008,7 @@ export class TextureRender extends Leyes {
         this._lastLoadedPath = '';
         this.isLoading = false;
         this.isError = false;
+        this.billboard = false; // For 3D mode
     }
 
     update(deltaTime) {

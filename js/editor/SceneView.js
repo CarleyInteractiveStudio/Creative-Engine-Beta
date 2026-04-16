@@ -1057,16 +1057,15 @@ export function initialize(dependencies) {
     };
 
     // Setup event listeners
-    dom.sceneCanvas.addEventListener('contextmenu', e => {
-        e.preventDefault();
-        e.stopPropagation();
-    });
-    if (dom.sceneCanvas3d) {
-        dom.sceneCanvas3d.addEventListener('contextmenu', e => {
+    const sceneCanvases = [dom.sceneCanvas];
+    if (dom.sceneCanvas3d) sceneCanvases.push(dom.sceneCanvas3d);
+
+    sceneCanvases.forEach(canvas => {
+        canvas.addEventListener('contextmenu', e => {
             e.preventDefault();
             e.stopPropagation();
         });
-    }
+    });
 
     const toggleGizmosBtn = document.getElementById('btn-toggle-gizmos');
     if (toggleGizmosBtn) {
@@ -1078,175 +1077,177 @@ export function initialize(dependencies) {
     }
 
     // --- Drag and Drop Sprite Creation ---
-    dom.sceneCanvas.addEventListener('dragover', (e) => {
-        e.preventDefault(); // Necessary to allow a drop
-        dom.sceneCanvas.classList.add('drag-over-scene');
-    });
+    sceneCanvases.forEach(canvas => {
+        canvas.addEventListener('dragover', (e) => {
+            e.preventDefault(); // Necessary to allow a drop
+            canvas.classList.add('drag-over-scene');
+        });
 
-    dom.sceneCanvas.addEventListener('dragleave', () => {
-        dom.sceneCanvas.classList.remove('drag-over-scene');
-    });
+        canvas.addEventListener('dragleave', () => {
+            canvas.classList.remove('drag-over-scene');
+        });
 
-    dom.sceneCanvas.addEventListener('drop', async (e) => {
-        e.preventDefault();
-        dom.sceneCanvas.classList.remove('drag-over-scene');
+        canvas.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            canvas.classList.remove('drag-over-scene');
 
-        const rect = dom.sceneCanvas.getBoundingClientRect();
-        const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-        const worldPos = screenToWorld(canvasPos.x, canvasPos.y);
+            const rect = canvas.getBoundingClientRect();
+            const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            const worldPos = screenToWorld(canvasPos.x, canvasPos.y);
 
-        // Handle external files from OS
-        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            let currentDirHandle = getCurrentDirectoryHandle();
-            let currentPath = getCurrentDirectoryPath() || 'Assets';
+            // Handle external files from OS
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                let currentDirHandle = getCurrentDirectoryHandle();
+                let currentPath = getCurrentDirectoryPath() || 'Assets';
 
-            // Fallback to root Assets if no directory is selected
-            if (!currentDirHandle) {
-                try {
-                    const projectName = new URLSearchParams(window.location.search).get('project') || 'TestProject';
-                    const projectsDir = window.projectsDirHandle || projectsDirHandle;
-                    if (!projectsDir) throw new Error("No projects directory handle available.");
-
-                    const projectHandle = await projectsDir.getDirectoryHandle(projectName, { create: true });
-                    currentDirHandle = await projectHandle.getDirectoryHandle('Assets', { create: true });
-                    currentPath = 'Assets';
-                } catch (err) {
-                    console.error("[SceneView] Error al obtener el directorio raíz de Assets:", err);
-                }
-            }
-
-            if (currentDirHandle) {
-                for (const file of e.dataTransfer.files) {
+                // Fallback to root Assets if no directory is selected
+                if (!currentDirHandle) {
                     try {
-                        const targetFileHandle = await currentDirHandle.getFileHandle(file.name, { create: true });
-                        const writable = await targetFileHandle.createWritable();
-                        await writable.write(file);
-                        await writable.close();
+                        const projectName = new URLSearchParams(window.location.search).get('project') || 'TestProject';
+                        const projectsDir = window.projectsDirHandle || projectsDirHandle;
+                        if (!projectsDir) throw new Error("No projects directory handle available.");
 
-                        // Instantiate in scene if it's a video or image
-                        const lowerName = file.name.toLowerCase();
-                        const assetPath = currentPath + '/' + file.name;
-
-                        if (lowerName.endsWith('.mp4') || lowerName.endsWith('.webm') || lowerName.endsWith('.ogv')) {
-                            // Find existing Canvas or create one
-                            let parentCanvas = SceneManager.currentScene.getAllMaterias().find(m => m.getComponent(Components.Canvas));
-                            if (!parentCanvas) {
-                                parentCanvas = MateriaFactory.createCanvasObject();
-                            }
-
-                            const newMateria = MateriaFactory.createBaseMateria(MateriaFactory.generateUniqueName(file.name), parentCanvas);
-                            newMateria.removeComponent(Components.Transform);
-                            const uiTransform = new Components.UITransform(newMateria);
-                            uiTransform.position = { x: worldPos.x, y: worldPos.y }; // Placeholder position
-                            newMateria.addComponent(uiTransform);
-
-                            const videoPlayer = new Components.VideoPlayer(newMateria);
-                            await videoPlayer.setSourcePath(assetPath);
-                            newMateria.addComponent(videoPlayer);
-
-                            // Initialize size if possible
-                            if (videoPlayer.videoWidth > 0) {
-                                videoPlayer.syncSizeToUITransform();
-                            }
-                        }
+                        const projectHandle = await projectsDir.getDirectoryHandle(projectName, { create: true });
+                        currentDirHandle = await projectHandle.getDirectoryHandle('Assets', { create: true });
+                        currentPath = 'Assets';
                     } catch (err) {
-                        console.error("Error al importar archivo desde OS:", err);
+                        console.error("[SceneView] Error al obtener el directorio raíz de Assets:", err);
                     }
                 }
-                if (updateAssetBrowser) await updateAssetBrowser();
-                console.log("Archivos importados con éxito.");
-            }
-            return;
-        }
 
-        try {
-            const dataText = e.dataTransfer.getData('text/plain');
-            if (!dataText) return;
-            const data = JSON.parse(dataText);
+                if (currentDirHandle) {
+                    for (const file of e.dataTransfer.files) {
+                        try {
+                            const targetFileHandle = await currentDirHandle.getFileHandle(file.name, { create: true });
+                            const writable = await targetFileHandle.createWritable();
+                            await writable.write(file);
+                            await writable.close();
 
-            let newMateria = null;
+                            // Instantiate in scene if it's a video or image
+                            const lowerName = file.name.toLowerCase();
+                            const assetPath = currentPath + '/' + file.name;
 
-            if (data.type === 'sprite') {
-                // Create a new Materia at the drop position
-                newMateria = new Materia(data.spriteName);
-                newMateria.addComponent(new Components.Transform(newMateria));
-                const transform = newMateria.getComponent(Components.Transform);
-                transform.x = worldPos.x;
-                transform.y = worldPos.y;
-
-                // Add and configure the SpriteRenderer
-                const spriteRenderer = new Components.SpriteRenderer(newMateria);
-                await spriteRenderer.setSourcePath(data.assetPath, window.projectsDirHandle); // This will load the .ceSprite
-                spriteRenderer.spriteName = data.spriteName; // Set the specific sprite to render
-                newMateria.addComponent(spriteRenderer);
-
-                SceneManager.currentScene.addMateria(newMateria);
-            } else if (data.type === 'Asset' && data.name.endsWith('.ceprefab')) {
-                newMateria = await SceneManager.instantiatePrefabFromPath(data.path, worldPos.x, worldPos.y);
-            } else if (data.type === 'Asset' && (data.name.endsWith('.mp4') || data.name.endsWith('.webm') || data.name.endsWith('.ogv'))) {
-                // Find existing Canvas or create one
-                let parentCanvas = SceneManager.currentScene.getAllMaterias().find(m => m.getComponent(Components.Canvas));
-                if (!parentCanvas) {
-                    parentCanvas = MateriaFactory.createCanvasObject();
-                }
-
-                newMateria = MateriaFactory.createBaseMateria(MateriaFactory.generateUniqueName(data.name), parentCanvas);
-                newMateria.removeComponent(Components.Transform);
-                const uiTransform = new Components.UITransform(newMateria);
-                uiTransform.position = { x: worldPos.x, y: worldPos.y };
-                newMateria.addComponent(uiTransform);
-
-                const videoPlayer = new Components.VideoPlayer(newMateria);
-                await videoPlayer.setSourcePath(data.path);
-                newMateria.addComponent(videoPlayer);
-
-                // Initialize size if possible
-                if (videoPlayer.videoWidth > 0) {
-                    videoPlayer.syncSizeToUITransform();
-                }
-            }
-
-            if (newMateria) {
-                // Si el juego está en marcha, inicializar scripts inmediatamente
-                if (window.isGameRunning) {
-                    console.log(`[SceneView] Inicializando scripts para nuevo objeto '${newMateria.name}' en tiempo de ejecución.`);
-                    const initScriptsRecursive = async (mtr) => {
-                        for (const ley of mtr.leyes) {
-                            if (ley instanceof Components.CreativeScript) {
-                                await ley.initializeInstance();
-                                if (ley.isInitialized) {
-                                    try { ley.start(); } catch(e) {}
-                                    try { ley.onEnable(); } catch(e) {}
+                            if (lowerName.endsWith('.mp4') || lowerName.endsWith('.webm') || lowerName.endsWith('.ogv')) {
+                                // Find existing Canvas or create one
+                                let parentCanvas = SceneManager.currentScene.getAllMaterias().find(m => m.getComponent(Components.Canvas));
+                                if (!parentCanvas) {
+                                    parentCanvas = MateriaFactory.createCanvasObject();
                                 }
-                            } else if (ley instanceof Components.AnimatorController) {
-                                await ley.initialize(window.projectsDirHandle);
-                            } else if (ley instanceof Components.Animator) {
-                                if (!mtr.getComponent(Components.AnimatorController)) {
-                                    await ley.loadAnimationClip(window.projectsDirHandle);
-                                    if (ley.playOnAwake) ley.play();
-                                }
-                            } else if (ley instanceof Components.Terreno2D) {
-                                await ley.loadTextures(window.projectsDirHandle);
-                            }
 
-                            if (!(ley instanceof Components.CreativeScript) && typeof ley.start === 'function') {
-                                try { await ley.start(); } catch(e) {}
+                                const newMateria = MateriaFactory.createBaseMateria(MateriaFactory.generateUniqueName(file.name), parentCanvas);
+                                newMateria.removeComponent(Components.Transform);
+                                const uiTransform = new Components.UITransform(newMateria);
+                                uiTransform.position = { x: worldPos.x, y: worldPos.y }; // Placeholder position
+                                newMateria.addComponent(uiTransform);
+
+                                const videoPlayer = new Components.VideoPlayer(newMateria);
+                                await videoPlayer.setSourcePath(assetPath);
+                                newMateria.addComponent(videoPlayer);
+
+                                // Initialize size if possible
+                                if (videoPlayer.videoWidth > 0) {
+                                    videoPlayer.syncSizeToUITransform();
+                                }
                             }
+                        } catch (err) {
+                            console.error("Error al importar archivo desde OS:", err);
                         }
-                        for (const child of mtr.children) {
-                            await initScriptsRecursive(child);
-                        }
-                    };
-                    await initScriptsRecursive(newMateria);
+                    }
+                    if (updateAssetBrowser) await updateAssetBrowser();
+                    console.log("Archivos importados con éxito.");
+                }
+                return;
+            }
+
+            try {
+                const dataText = e.dataTransfer.getData('text/plain');
+                if (!dataText) return;
+                const data = JSON.parse(dataText);
+
+                let newMateria = null;
+
+                if (data.type === 'sprite') {
+                    // Create a new Materia at the drop position
+                    newMateria = new Materia(data.spriteName);
+                    newMateria.addComponent(new Components.Transform(newMateria));
+                    const transform = newMateria.getComponent(Components.Transform);
+                    transform.x = worldPos.x;
+                    transform.y = worldPos.y;
+
+                    // Add and configure the SpriteRenderer
+                    const spriteRenderer = new Components.SpriteRenderer(newMateria);
+                    await spriteRenderer.setSourcePath(data.assetPath, window.projectsDirHandle); // This will load the .ceSprite
+                    spriteRenderer.spriteName = data.spriteName; // Set the specific sprite to render
+                    newMateria.addComponent(spriteRenderer);
+
+                    SceneManager.currentScene.addMateria(newMateria);
+                } else if (data.type === 'Asset' && data.name.endsWith('.ceprefab')) {
+                    newMateria = await SceneManager.instantiatePrefabFromPath(data.path, worldPos.x, worldPos.y);
+                } else if (data.type === 'Asset' && (data.name.endsWith('.mp4') || data.name.endsWith('.webm') || data.name.endsWith('.ogv'))) {
+                    // Find existing Canvas or create one
+                    let parentCanvas = SceneManager.currentScene.getAllMaterias().find(m => m.getComponent(Components.Canvas));
+                    if (!parentCanvas) {
+                        parentCanvas = MateriaFactory.createCanvasObject();
+                    }
+
+                    newMateria = MateriaFactory.createBaseMateria(MateriaFactory.generateUniqueName(data.name), parentCanvas);
+                    newMateria.removeComponent(Components.Transform);
+                    const uiTransform = new Components.UITransform(newMateria);
+                    uiTransform.position = { x: worldPos.x, y: worldPos.y };
+                    newMateria.addComponent(uiTransform);
+
+                    const videoPlayer = new Components.VideoPlayer(newMateria);
+                    await videoPlayer.setSourcePath(data.path);
+                    newMateria.addComponent(videoPlayer);
+
+                    // Initialize size if possible
+                    if (videoPlayer.videoWidth > 0) {
+                        videoPlayer.syncSizeToUITransform();
+                    }
                 }
 
-                // Refresh UI
-                selectMateria(newMateria);
-                updateInspector();
+                if (newMateria) {
+                    // Si el juego está en marcha, inicializar scripts inmediatamente
+                    if (window.isGameRunning) {
+                        console.log(`[SceneView] Inicializando scripts para nuevo objeto '${newMateria.name}' en tiempo de ejecución.`);
+                        const initScriptsRecursive = async (mtr) => {
+                            for (const ley of mtr.leyes) {
+                                if (ley instanceof Components.CreativeScript) {
+                                    await ley.initializeInstance();
+                                    if (ley.isInitialized) {
+                                        try { ley.start(); } catch(e) {}
+                                        try { ley.onEnable(); } catch(e) {}
+                                    }
+                                } else if (ley instanceof Components.AnimatorController) {
+                                    await ley.initialize(window.projectsDirHandle);
+                                } else if (ley instanceof Components.Animator) {
+                                    if (!mtr.getComponent(Components.AnimatorController)) {
+                                        await ley.loadAnimationClip(window.projectsDirHandle);
+                                        if (ley.playOnAwake) ley.play();
+                                    }
+                                } else if (ley instanceof Components.Terreno2D) {
+                                    await ley.loadTextures(window.projectsDirHandle);
+                                }
+
+                                if (!(ley instanceof Components.CreativeScript) && typeof ley.start === 'function') {
+                                    try { await ley.start(); } catch(e) {}
+                                }
+                            }
+                            for (const child of mtr.children) {
+                                await initScriptsRecursive(child);
+                            }
+                        };
+                        await initScriptsRecursive(newMateria);
+                    }
+
+                    // Refresh UI
+                    selectMateria(newMateria);
+                    updateInspector();
+                }
+            } catch (error) {
+                console.error("Error al soltar el sprite:", error);
             }
-        } catch (error) {
-            console.error("Error al soltar el sprite:", error);
-        }
+        });
     });
 
 
@@ -1270,7 +1271,8 @@ export function initialize(dependencies) {
         }
     });
 
-    dom.sceneCanvas.addEventListener('wheel', (event) => {
+    sceneCanvases.forEach(canvas => {
+        canvas.addEventListener('wheel', (event) => {
         event.preventDefault(); // Stop the browser from scrolling the page
 
         if (!renderer || !renderer.camera) return;
@@ -1288,7 +1290,7 @@ export function initialize(dependencies) {
         renderer.camera.zoom = Math.max(0.001, Math.min(renderer.camera.zoom, 1000.0));
     }, { passive: false });
 
-    dom.sceneCanvas.addEventListener('mousedown', (e) => {
+    canvas.addEventListener('mousedown', (e) => {
         // --- Layer Placement Logic ---
         if (isAddingLayer) {
             e.stopPropagation();
@@ -1340,10 +1342,13 @@ export function initialize(dependencies) {
             return;
         }
 
-        // --- Panning Logic (Middle or Right-click) ---
-        if (e.button === 1 || e.button === 2) {
+        // --- Panning Logic (Middle click or Right-click in 2D) ---
+        const config = getCurrentProjectConfig();
+        const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+
+        if (e.button === 1 || (e.button === 2 && !is3D)) {
             e.preventDefault();
-            dom.sceneCanvas.style.cursor = 'grabbing';
+            canvas.style.cursor = 'grabbing';
             let lastPos = { x: e.clientX, y: e.clientY };
 
             const onPanMove = (moveEvent) => {
@@ -1358,7 +1363,7 @@ export function initialize(dependencies) {
             };
             const onPanEnd = (upEvent) => {
                 upEvent.preventDefault();
-                dom.sceneCanvas.style.cursor = 'grab';
+                canvas.style.cursor = 'grab';
                 window.removeEventListener('mousemove', onPanMove);
                 window.removeEventListener('mouseup', onPanEnd);
             };
@@ -1509,6 +1514,7 @@ export function initialize(dependencies) {
             }
         }
     });
+    });
 
 }
 
@@ -1526,15 +1532,15 @@ function handle3DCameraNavigation() {
     if (!renderer || !renderer.camera) return;
     const cam = renderer.camera;
     const dt = getDeltaTime();
-    const speed = 5.0 * (InputManager.getKey('Shift') ? 2.0 : 1.0);
+    const speed = 10.0 * (InputManager.getKey('Shift') ? 2.0 : 1.0);
     const rotSpeed = 0.2;
 
     // Movement
     const moveDir = vec3.create();
-    if (InputManager.getKey('w')) moveDir[2] += 1;
-    if (InputManager.getKey('s')) moveDir[2] -= 1;
-    if (InputManager.getKey('a')) moveDir[0] += 1;
-    if (InputManager.getKey('d')) moveDir[0] -= 1;
+    if (InputManager.getKey('w')) moveDir[2] -= 1;
+    if (InputManager.getKey('s')) moveDir[2] += 1;
+    if (InputManager.getKey('a')) moveDir[0] -= 1;
+    if (InputManager.getKey('d')) moveDir[0] += 1;
     if (InputManager.getKey('q')) moveDir[1] -= 1;
     if (InputManager.getKey('e')) moveDir[1] += 1;
 
@@ -1555,9 +1561,12 @@ function handle3DCameraNavigation() {
     // Rotation (Mouse look with right click)
     if (InputManager.getMouseButton(2)) {
         const delta = InputManager.getMouseDelta();
+        // Standard First Person Look
         cam.rotation.y -= delta.x * rotSpeed;
         cam.rotation.x -= delta.y * rotSpeed;
         cam.rotation.x = Math.max(-89, Math.min(89, cam.rotation.x));
+    } else if (InputManager.getMouseButton(1)) {
+        // Orbit/Pan alternative if needed, but let's stick to Right Click for look
     }
 }
 
