@@ -133,12 +133,78 @@ export class PerformanceMonitor {
                     message: msg,
                     isSystemString: true,
                     isOptimizer: true,
-                    culpritType: c.type
+                    culpritType: c.type,
+                    culpritData: c
                 }, 'warn');
             } else {
                 console.warn(msg);
             }
         });
+    }
+
+    /**
+     * Performs a surgical optimization based on the detected culprit.
+     * @param {string} type The type of component causing the issue.
+     */
+    surgicalOptimize(type) {
+        console.log(`[PerformanceMonitor] Optimización quirúrgica para: ${type}`);
+
+        const scene = SceneManager.currentScene;
+        if (!scene) return;
+
+        const materias = scene.getAllMaterias();
+
+        switch(type) {
+            case 'Light':
+            case 'PointLight2D':
+            case 'SpotLight2D':
+                // Reduce range and intensity of distant lights
+                const cam = scene.findFirstCamera();
+                const camPos = cam ? cam.getComponent(Components.Transform).position : { x: 0, y: 0 };
+
+                materias.forEach(m => {
+                    const l = m.getComponent(Components.PointLight2D) || m.getComponent(Components.SpotLight2D);
+                    if (l) {
+                        const t = m.getComponent(Components.Transform);
+                        const dist = Math.hypot(t.x - camPos.x, t.y - camPos.y);
+                        if (dist > 1000) {
+                            l.intensity *= 0.5;
+                            l.radius *= 0.8;
+                        }
+                    }
+                });
+                break;
+
+            case 'ParticleSystem':
+                // Cut emission rates in half
+                materias.forEach(m => {
+                    const ps = m.getComponent(Components.ParticleSystem);
+                    if (ps) ps.emissionRate *= 0.5;
+                });
+                break;
+
+            case 'Rigidbody2D':
+                // Increase sleep threshold or disable distant physics
+                materias.forEach(m => {
+                    const rb = m.getComponent(Components.Rigidbody2D);
+                    if (rb && rb.bodyType === 'Dynamic') {
+                        // For now, let's just make them sleep if they are slow
+                        if (Math.abs(rb.velocity.x) < 0.1 && Math.abs(rb.velocity.y) < 0.1) {
+                            rb.velocity = { x: 0, y: 0 };
+                        }
+                    }
+                });
+                break;
+
+            default:
+                // Generic component reduction if too many
+                if (materias.length > 500) {
+                    console.warn("[PerformanceMonitor] Demasiadas materias, se recomienda usar Prefabs y Pooling.");
+                }
+                break;
+        }
+
+        this.increaseOptimization();
     }
 
     increaseOptimization() {

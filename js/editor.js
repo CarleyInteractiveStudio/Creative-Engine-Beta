@@ -280,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${structuredError.scriptName ? `<div class="error-context">Archivo: <code>${structuredError.scriptName}</code></div>` : ''}
                     ${structuredError.isOptimizer ? `
                         <div class="msg-actions">
-                            <button class="console-action-btn special" onclick="window.EngineAPI.getPerformanceMonitor().increaseOptimization(); this.parentElement.parentElement.parentElement.remove();">
+                            <button class="console-action-btn special" onclick="window.EngineAPI.getPerformanceMonitor().surgicalOptimize('${structuredError.culpritType}'); this.parentElement.parentElement.parentElement.remove();">
                                 🛠️ Auto Optimizar '${structuredError.culpritType || 'Sistema'}'
                             </button>
                         </div>
@@ -1673,11 +1673,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (is3D && !isGameView) {
                     const has3DSupported = m.getComponent(Components.SpriteRenderer) ||
                                           m.getComponent(Components.TextureRender) ||
-                                          m.getComponent(Components.MeshRenderer3D);
+                                          m.getComponent(Components.MeshRenderer3D) ||
+                                          m.getComponent(Components.TilemapRenderer);
 
-                    // We only exclude it if it DOESN'T have 2D-only components like UI or Tilemaps
+                    // We only exclude it if it DOESN'T have 2D-only components like UI
                     const has2DOnly = m.getComponent(Components.Canvas) ||
-                                     m.getComponent(Components.TilemapRenderer) ||
                                      m.getComponent(Components.Terreno2D);
 
                     if (has3DSupported && !has2DOnly) return false;
