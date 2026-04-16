@@ -112,6 +112,10 @@ export class Renderer {
         if (cameraComponent && cameraComponent.clearFlags === 'SolidColor') {
             this.ctx.fillStyle = cameraComponent.backgroundColor;
             this.ctx.fillRect(x, y, w, h);
+        } else if (!cameraComponent && this.isEditor) {
+            // In editor mode with no specific camera, use ambient light as background
+            this.ctx.fillStyle = this.ambientLight;
+            this.ctx.fillRect(x, y, w, h);
         } else {
             this.ctx.clearRect(x, y, w, h);
         }
