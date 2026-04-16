@@ -4149,65 +4149,65 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley instanceof Components.MeshRenderer3D) {
             componentHTML = `
-                \${renderComponentHeader(L.get('MESH_RENDERER_3D', "Mesh Renderer 3D"), icon, index)}
+                ${renderComponentHeader(L.get('MESH_RENDERER_3D', "Mesh Renderer 3D"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="MESH_TYPE">Tipo de Malla</label>
                         <select class="prop-input" data-component="MeshRenderer3D" data-prop="meshType">
-                            <option value="Cube" \${ley.meshType === 'Cube' ? 'selected' : ''}>Cubo</option>
-                            <option value="Sphere" \${ley.meshType === 'Sphere' ? 'selected' : ''}>Esfera</option>
-                            <option value="Plane" \${ley.meshType === 'Plane' ? 'selected' : ''}>Plano</option>
+                            <option value="Cube" ${ley.meshType === 'Cube' ? 'selected' : ''}>Cubo</option>
+                            <option value="Sphere" ${ley.meshType === 'Sphere' ? 'selected' : ''}>Esfera</option>
+                            <option value="Plane" ${ley.meshType === 'Plane' ? 'selected' : ''}>Plano</option>
                         </select>
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="COLOR">Color</label>
-                        <input type="color" class="prop-input" data-component="MeshRenderer3D" data-prop="color" value="\${ley.color}">
+                        <input type="color" class="prop-input" data-component="MeshRenderer3D" data-prop="color" value="${ley.color}">
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
-                        <input type="checkbox" class="prop-input" data-component="MeshRenderer3D" data-prop="isUnlit" \${ley.isUnlit ? 'checked' : ''}>
+                        <input type="checkbox" class="prop-input" data-component="MeshRenderer3D" data-prop="isUnlit" ${ley.isUnlit ? 'checked' : ''}>
                         <label data-i18n="UNLIT">Sin Luces (Unlit)</label>
                     </div>
                 </div>
-            \`;
+            `;
         } else if (ley instanceof Components.DirectionalLight3D || ley instanceof Components.PointLight3D || ley instanceof Components.SpotLight3D) {
             const isDir = ley instanceof Components.DirectionalLight3D;
             const isSpot = ley instanceof Components.SpotLight3D;
             const type = isDir ? 'DirectionalLight3D' : (isSpot ? 'SpotLight3D' : 'PointLight3D');
 
-            componentHTML = \`
-                \${renderComponentHeader(L.get(type.toUpperCase(), type), icon, index)}
+            componentHTML = `
+                ${renderComponentHeader(L.get(type.toUpperCase(), type), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="COLOR">Color</label>
-                        <input type="color" class="prop-input" data-component="\${type}" data-prop="color" value="\${ley.color}">
+                        <input type="color" class="prop-input" data-component="${type}" data-prop="color" value="${ley.color}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="INTENSITY">Intensidad</label>
-                        <input type="number" class="prop-input" step="0.1" data-component="\${type}" data-prop="intensity" value="\${ley.intensity}">
+                        <input type="number" class="prop-input" step="0.1" data-component="${type}" data-prop="intensity" value="${ley.intensity}">
                     </div>
-                    \${isDir ? \`
+                    ${isDir ? `
                     <div class="prop-row-multi">
                         <label data-i18n="DIRECTION">Dirección</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.1" data-component="\${type}" data-prop="direction.x" value="\${ley.direction.x}">
-                            <input type="number" class="prop-input" step="0.1" data-component="\${type}" data-prop="direction.y" value="\${ley.direction.y}">
-                            <input type="number" class="prop-input" step="0.1" data-component="\${type}" data-prop="direction.z" value="\${ley.direction.z}">
+                            <input type="number" class="prop-input" step="0.1" data-component="${type}" data-prop="direction.x" value="${ley.direction.x}">
+                            <input type="number" class="prop-input" step="0.1" data-component="${type}" data-prop="direction.y" value="${ley.direction.y}">
+                            <input type="number" class="prop-input" step="0.1" data-component="${type}" data-prop="direction.z" value="${ley.direction.z}">
                         </div>
                     </div>
-                    \` : \`
+                    ` : `
                     <div class="prop-row-multi">
                         <label data-i18n="RANGE">Rango</label>
-                        <input type="number" class="prop-input" data-component="\${type}" data-prop="range" value="\${ley.range}">
+                        <input type="number" class="prop-input" data-component="${type}" data-prop="range" value="${ley.range}">
                     </div>
-                    \`}
-                    \${isSpot ? \`
+                    `}
+                    ${isSpot ? `
                     <div class="prop-row-multi">
                         <label data-i18n="ANGLE">Ángulo</label>
-                        <input type="number" class="prop-input" data-component="\${type}" data-prop="angle" value="\${ley.angle}">
+                        <input type="number" class="prop-input" data-component="${type}" data-prop="angle" value="${ley.angle}">
                     </div>
-                    \` : ''}
+                    ` : ''}
                 </div>
-            \`;
+            `;
         }
 
 
@@ -4220,7 +4220,6 @@ async function updateInspectorForMateria(selectedMateria) {
             while(componentWrapper.firstChild) {
                 componentsWrapper.appendChild(componentWrapper.firstChild);
             }
-        }
         } catch (e) {
             console.error(`Error rendering component ${index}:`, e);
             const errorWrapper = document.createElement('div');

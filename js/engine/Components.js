@@ -7662,8 +7662,8 @@ export class BasicAI extends Leyes {
     constructor(materia) {
         super(materia);
         this.target = null; // ID de la materia objetivo
-        this.behavior = 'Follow'; // 'Follow', 'Escape', 'Wander'
-        this.movementType = 'Top-Down'; // 'Top-Down', 'Platformer', 'Fighter'
+        this.behavior = 'Patrol'; // 'Follow', 'Escape', 'Wander', 'Patrol'
+        this.movementType = 'Platformer'; // 'Top-Down', 'Platformer', 'Fighter'
         this.speed = 100;
         this.stopDistance = 50;
         this.attackDistance = 30;
@@ -7694,6 +7694,8 @@ export class BasicAI extends Leyes {
         this._isTargetNear = false;
         this._isAttackRange = false;
         this._jumpCooldown = 0;
+        this._patrolDir = 1;
+        this._attackTimer = 0;
     }
 
     update(deltaTime) {
@@ -7725,7 +7727,12 @@ export class BasicAI extends Leyes {
             if (targetTransform) currentTargetPos = { x: targetTransform.x, y: targetTransform.y };
         }
 
-        if (this.behavior === 'Follow' && currentTargetPos) {
+        let effectiveBehavior = this.behavior;
+        if (this.behavior === 'Patrol' && this._isTargetInView) {
+            effectiveBehavior = 'Follow';
+        }
+
+        if (effectiveBehavior === 'Follow' && currentTargetPos) {
             const dx = currentTargetPos.x - transform.x;
             const dy = (this.movementType === 'Platformer' || this.movementType === 'Fighter') ? 0 : (currentTargetPos.y - transform.y);
             const dist = Math.hypot(dx, dy);
@@ -7733,7 +7740,16 @@ export class BasicAI extends Leyes {
             if (dist > this.stopDistance) {
                 desiredVelocity = { x: (dx / dist) * this.speed, y: (dy / dist) * this.speed };
             }
-        } else if (this.behavior === 'Escape' && currentTargetPos) {
+
+            // Auto-Attack logic
+            if (dist <= this.attackDistance && this._attackTimer <= 0) {
+                const atk = this.materia.getComponent(Attack);
+                if (atk && atk.attacks.length > 0) {
+                    atk.executeAttack(atk.attacks[0]);
+                    this._attackTimer = atk.cooldown || 0.5;
+                }
+            }
+        } else if (effectiveBehavior === 'Escape' && currentTargetPos) {
             const dx = transform.x - currentTargetPos.x;
             const dy = (this.movementType === 'Platformer' || this.movementType === 'Fighter') ? 0 : (transform.y - currentTargetPos.y);
             const dist = Math.hypot(dx, dy);
@@ -7741,7 +7757,7 @@ export class BasicAI extends Leyes {
             if (dist < this.detectionDistance) {
                 desiredVelocity = { x: (dx / dist) * this.speed, y: (dy / dist) * this.speed };
             }
-        } else if (this.behavior === 'Wander') {
+        } else if (effectiveBehavior === 'Wander') {
             this._wanderTimer -= deltaTime;
             if (this._wanderTimer <= 0) {
                 this._wanderAngle += (Math.random() - 0.5) * 90;
@@ -7749,7 +7765,17 @@ export class BasicAI extends Leyes {
             }
             const rad = this._wanderAngle * Math.PI / 180;
             desiredVelocity = { x: Math.cos(rad) * this.speed, y: Math.sin(rad) * this.speed };
+        } else if (effectiveBehavior === 'Patrol') {
+            // Autonomous walk side to side
+            if (this.movementType === 'Platformer' || this.movementType === 'Fighter') {
+                desiredVelocity = { x: this._patrolDir * this.speed, y: 0 };
+            } else {
+                const rad = this._wanderAngle * Math.PI / 180;
+                desiredVelocity = { x: Math.cos(rad) * this.speed, y: Math.sin(rad) * this.speed };
+            }
         }
+
+        if (this._attackTimer > 0) this._attackTimer -= deltaTime;
 
         // --- 3. Obstacle Avoidance & Steering ---
         if (this.obstacleAvoidance) {
@@ -7783,6 +7809,21 @@ export class BasicAI extends Leyes {
     _applySteering(velocity, transform) {
         const engine = RuntimeAPIManager.getAPI('engine');
         if (!engine) return velocity;
+
+        // If patrolling, check for obstacles to flip
+        if (effectiveBehavior === 'Patrol' && (this.movementType === 'Platformer' || this.movementType === 'Fighter')) {
+            const lookAhead = 30;
+            const hit = engine.lanzarRayo(
+                { x: transform.x, y: transform.y },
+                { x: this._patrolDir, y: 0 },
+                lookAhead,
+                'Ground'
+            );
+            if (hit) {
+                this._patrolDir *= -1;
+                velocity.x = this._patrolDir * this.speed;
+            }
+        }
 
         let avoidanceForce = { x: 0, y: 0 };
         const startAngle = -this.raySpread / 2;
@@ -7905,10 +7946,16 @@ export class BasicAI extends Leyes {
         this._isTargetNear = dist < this.stopDistance * 1.5;
         this._isAttackRange = dist < this.attackDistance;
 
-        // Si estamos en modo Follow y no tenemos un target fijo, seguir al detectado
-        if (this.behavior === 'Follow' && !this.target && bestTarget) {
+        // Si estamos en modo Follow o Patrol y no tenemos un target fijo, seguir al detectado si aparece
+        if ((this.behavior === 'Follow' || this.behavior === 'Patrol') && !this.target && bestTarget) {
             // No asignamos this.target permanentemente para permitir cambiar de objetivo dinámicamente
             // Pero usamos bestTarget para las notificaciones y el movimiento de este frame
+            if (this._isTargetInView) {
+                // Switch transient behavior to follow for this frame
+                if (this.behavior === 'Patrol') {
+                    // Logic for switching to combat state
+                }
+            }
         }
 
         // Events
