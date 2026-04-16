@@ -21,7 +21,8 @@
             "@codemirror/theme-one-dark": "https://esm.sh/@codemirror/theme-one-dark@6.1.2?deps=@codemirror/state@6.4.1,@codemirror/view@6.26.3",
             "@codemirror/lang-javascript": "https://esm.sh/@codemirror/lang-javascript@6.2.2?deps=@codemirror/state@6.4.1,@codemirror/language@6.10.1",
             "@codemirror/language": "https://esm.sh/@codemirror/language@6.10.1?deps=@codemirror/state@6.4.1,@codemirror/view@6.26.3",
-            "@lezer/highlight": "https://esm.sh/@lezer/highlight@1.2.1"
+            "@lezer/highlight": "https://esm.sh/@lezer/highlight@1.2.1",
+            "gl-matrix": "https://esm.sh/gl-matrix@3.4.3"
         }
     }
     </script>
@@ -440,10 +441,16 @@ public star() {
                 </div>
                 <div class="panel-content-container">
                     <div id="scene-content" class="panel-content view-content active">
-                        <canvas id="scene-canvas"></canvas>
+                        <div class="canvas-container">
+                            <canvas id="scene-canvas-3d"></canvas>
+                            <canvas id="scene-canvas"></canvas>
+                        </div>
                     </div>
                     <div id="game-content" class="panel-content view-content">
-                        <canvas id="game-canvas"></canvas>
+                        <div class="canvas-container">
+                            <canvas id="game-canvas-3d"></canvas>
+                            <canvas id="game-canvas"></canvas>
+                        </div>
                     </div>
                     <div id="code-editor-content" class="panel-content view-content no-padding">
                         <div id="code-editor-toolbar">
@@ -1067,6 +1074,9 @@ public star() {
                         <select id="settings-renderer-mode">
                             <option value="canvas2d" data-i18n="SIMPLE_2D">Simple (2D Estándar)</option>
                             <option value="realista" data-i18n="AVANZADO_LUCES">Avanzado (Iluminación y Noche/Día)</option>
+                            <option value="3d-mode" data-i18n="MODE_3D">3D World (Beta)</option>
+                            <option value="hybrid-3d" data-i18n="MODE_HYBRID">Mixed (2D + 3D)</option>
+                            <option value="anime-3d" data-i18n="MODE_ANIME">2.5D Anime (Cel-Shaded)</option>
                         </select>
                     </div>
                             <p class="field-description" data-i18n="HINT_MODO_AVANZADO">El modo 'Avanzado' permite usar el sistema de Noche/Día y luces dinámicas.</p>

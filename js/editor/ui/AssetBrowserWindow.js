@@ -186,9 +186,9 @@ export async function handleContextMenuAction(action) {
                                 {
                                     "type": "Transform",
                                     "properties": {
-                                        "localPosition": { "x": 0, "y": 0 },
-                                        "localRotation": 0,
-                                        "localScale": { "x": 1, "y": 1 }
+                                        "localPosition": { "x": 0, "y": 0, "z": 0 },
+                                        "localRotation": { "x": 0, "y": 0, "z": 0 },
+                                        "localScale": { "x": 1, "y": 1, "z": 1 }
                                     }
                                 }
                             ],

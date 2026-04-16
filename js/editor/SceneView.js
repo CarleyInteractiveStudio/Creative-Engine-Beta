@@ -6,6 +6,8 @@ import { getCurrentDirectoryHandle, getCurrentDirectoryPath } from './ui/AssetBr
 import * as MateriaFactory from './MateriaFactory.js';
 import { WeightPainter } from './WeightPainter.js';
 import { broadcastUpdate } from './CollaborationSystem.js';
+import * as glMatrix from 'gl-matrix';
+const { vec3, mat4, quat } = glMatrix;
 
 // Dependencies from editor.js
 let dom;
@@ -22,6 +24,8 @@ let SceneManager;
 let getPreferences;
 let getSelectedTile;
 let setPaletteActiveTool = null;
+let getCurrentProjectConfig;
+let getDeltaTime;
 
 // Module State
 let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan', 'tile-brush', 'tile-eraser', 'terrain-brush', 'weight-painter'
@@ -42,6 +46,38 @@ function screenToWorld(screenX, screenY) {
     const worldX = (screenX - renderer.canvas.width / 2) / renderer.camera.effectiveZoom + renderer.camera.x;
     const worldY = (screenY - renderer.canvas.height / 2) / renderer.camera.effectiveZoom + renderer.camera.y;
     return { x: worldX, y: worldY };
+}
+
+function world3DToScreen(worldPos) {
+    const r3d = window._Renderer3D;
+    if (!r3d || !r3d.lastProjectionMatrix || !r3d.lastViewMatrix) return null;
+
+    const canvas = r3d.canvas;
+    const clipPos = [0, 0, 0, 0];
+    const worldVec = [worldPos.x / 100, worldPos.y / 100, (worldPos.z || 0) / 100, 1.0];
+
+    const mvp = mat4.create();
+    mat4.multiply(mvp, r3d.lastProjectionMatrix, r3d.lastViewMatrix);
+
+    vec3.transformMat4(clipPos, worldVec, mvp);
+
+    // Check if behind camera
+    // vec3.transformMat4 doesn't give w, let's use full 4x4
+    const v4 = [worldVec[0], worldVec[1], worldVec[2], 1.0];
+    const res = [0, 0, 0, 0];
+    // manual multiplication to get W
+    for(let i=0; i<4; i++) {
+        res[i] = mvp[i]*v4[0] + mvp[i+4]*v4[1] + mvp[i+8]*v4[2] + mvp[i+12]*v4[3];
+    }
+
+    if (res[3] <= 0) return null;
+
+    const ndc = [res[0] / res[3], res[1] / res[3], res[2] / res[3]];
+
+    return {
+        x: (ndc[0] * 0.5 + 0.5) * canvas.width,
+        y: (1.0 - (ndc[1] * 0.5 + 0.5)) * canvas.height
+    };
 }
 
 function getRotateRadius(materia, transform, zoom) {
@@ -99,6 +135,13 @@ function checkGizmoHit(canvasPos) {
 
     const transform = selectedMateria.getComponent(Components.Transform);
     if (!transform) return null;
+
+    const config = getCurrentProjectConfig();
+    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+
+    if (is3D) {
+        return check3DGizmoHit(canvasPos, selectedMateria);
+    }
 
     const centerX = transform.x;
     const centerY = transform.y;
@@ -637,6 +680,14 @@ function drawGizmos(renderer, materia) {
     const transform = materia.getComponent(Components.Transform);
     if (!transform) return;
 
+    const config = getCurrentProjectConfig();
+    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+
+    if (is3D) {
+        draw3DGizmos(materia);
+        return;
+    }
+
     const { ctx, camera } = renderer;
     const zoom = camera.effectiveZoom;
 
@@ -721,6 +772,8 @@ export function initialize(dependencies) {
     getPreferences = dependencies.getPreferences;
     getSelectedTile = dependencies.getSelectedTile;
     setPaletteActiveTool = dependencies.setPaletteActiveTool;
+    getCurrentProjectConfig = dependencies.getCurrentProjectConfig;
+    getDeltaTime = dependencies.getDeltaTime;
 
     window.WeightPainter = new WeightPainter(this);
 
@@ -742,6 +795,7 @@ export function initialize(dependencies) {
             case 'move-x': transform.x += dx; break;
             case 'move-y': transform.y += dy; break;
             case 'move-xy': transform.x += dx; transform.y += dy; break;
+            case 'move-z': transform.z = (transform.z || 0) + dy; break;
             case 'camera-resize-tl': case 'camera-resize-tr': case 'camera-resize-bl': case 'camera-resize-br': {
                 const cam = dragState.materia.getComponent(Components.Camera);
                 if (!cam) break;
@@ -1401,9 +1455,25 @@ export function initialize(dependencies) {
         // --- Gizmo Dragging Logic (Left-click) ---
         if (e.button === 0) {
             const selectedMateria = getSelectedMateria();
+            const canvasPos = InputManager.getMousePositionInCanvas();
+
+            // 3D Object Picking
+            const config = getCurrentProjectConfig();
+            const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+
+            if (is3D && !isAddingLayer && activeTool !== 'pan') {
+                const renderer3D = window._Renderer3D; // Assumed exposed or accessible
+                if (renderer3D) {
+                    const pickedId = renderer3D.pick(SceneManager.currentScene, null, canvasPos.x, canvasPos.y, { editorCamera: renderer.camera });
+                    if (pickedId !== null) {
+                        selectMateria(pickedId);
+                        return;
+                    }
+                }
+            }
+
             if (!selectedMateria || activeTool === 'pan') return;
 
-            const canvasPos = InputManager.getMousePositionInCanvas();
             const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCircleColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos) || checkUIGizmoHit(canvasPos);
 
             if (hitHandle) {
@@ -1443,9 +1513,55 @@ function exitAddLayerMode() {
     dom.sceneCanvas.style.cursor = 'default';
 }
 
+function handle3DCameraNavigation() {
+    if (!renderer || !renderer.camera) return;
+    const cam = renderer.camera;
+    const dt = getDeltaTime();
+    const speed = 5.0 * (InputManager.getKey('Shift') ? 2.0 : 1.0);
+    const rotSpeed = 0.2;
+
+    // Movement
+    const moveDir = vec3.create();
+    if (InputManager.getKey('w')) moveDir[2] += 1;
+    if (InputManager.getKey('s')) moveDir[2] -= 1;
+    if (InputManager.getKey('a')) moveDir[0] += 1;
+    if (InputManager.getKey('d')) moveDir[0] -= 1;
+    if (InputManager.getKey('q')) moveDir[1] -= 1;
+    if (InputManager.getKey('e')) moveDir[1] += 1;
+
+    if (vec3.length(moveDir) > 0) {
+        vec3.normalize(moveDir, moveDir);
+
+        const rotationQuat = quat.create();
+        quat.fromEuler(rotationQuat, cam.rotation.x, cam.rotation.y, cam.rotation.z);
+
+        const rotatedDir = vec3.create();
+        vec3.transformQuat(rotatedDir, moveDir, rotationQuat);
+
+        cam.x += rotatedDir[0] * speed;
+        cam.y += rotatedDir[1] * speed;
+        cam.z += rotatedDir[2] * speed;
+    }
+
+    // Rotation (Mouse look with right click)
+    if (InputManager.getMouseButton(2)) {
+        const delta = InputManager.getMouseDelta();
+        cam.rotation.y -= delta.x * rotSpeed;
+        cam.rotation.x -= delta.y * rotSpeed;
+        cam.rotation.x = Math.max(-89, Math.min(89, cam.rotation.x));
+    }
+}
+
 export function update() {
     // This will be called from the main editorLoop
-    handleEditorInteractions();
+    const config = getCurrentProjectConfig();
+    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+
+    if (is3D && !window.isGameRunning && getActiveView() === 'scene-content') {
+        handle3DCameraNavigation();
+    } else {
+        handleEditorInteractions();
+    }
 
     const selectedMateria = getSelectedMateria();
     const currentSelectedId = selectedMateria ? selectedMateria.id : -1;
@@ -1773,10 +1889,82 @@ function drawLayerPlacementPreview() {
     }
 }
 
+function check3DGizmoHit(canvasPos, materia) {
+    const transform = materia.getComponent(Components.Transform);
+    const screenPos = world3DToScreen({ x: transform.x, y: transform.y, z: transform.z });
+    if (!screenPos) return null;
+
+    const dx = canvasPos.x - screenPos.x;
+    const dy = canvasPos.y - screenPos.y;
+    const hitRadius = 15;
+
+    if (activeTool === 'move' || activeTool === 'universal') {
+        // Simple 2D-on-3D hit detection
+        if (Math.abs(dx) < hitRadius && Math.abs(dy) < hitRadius) return 'move-xy';
+        if (Math.abs(dx - 50) < hitRadius && Math.abs(dy) < hitRadius) return 'move-x';
+        if (Math.abs(dx) < hitRadius && Math.abs(dy + 50) < hitRadius) return 'move-y';
+
+        // Check Blue Z axis hit
+        const zEnd = world3DToScreen({ x: transform.x, y: transform.y, z: transform.z + 100 });
+        if (zEnd) {
+            const zDx = canvasPos.x - zEnd.x;
+            const zDy = canvasPos.y - zEnd.y;
+            if (Math.abs(zDx) < hitRadius && Math.abs(zDy) < hitRadius) return 'move-z';
+        }
+    }
+    return null;
+}
+
+function draw3DGizmos(materia) {
+    const transform = materia.getComponent(Components.Transform);
+    const screenPos = world3DToScreen({ x: transform.x, y: transform.y, z: transform.z });
+    if (!screenPos) return;
+
+    const { ctx } = renderer;
+    const GIZMO_SIZE = 50;
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // Overlay in screen space
+    ctx.translate(screenPos.x, screenPos.y);
+
+    if (activeTool === 'move' || activeTool === 'universal') {
+        // Red X
+        ctx.strokeStyle = '#ff4444';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(GIZMO_SIZE, 0);
+        ctx.stroke();
+
+        // Green Y
+        ctx.strokeStyle = '#44ff44';
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, -GIZMO_SIZE);
+        ctx.stroke();
+
+        // Blue Z
+        const zEnd = world3DToScreen({ x: transform.x, y: transform.y, z: transform.z + 100 });
+        if (zEnd) {
+            ctx.strokeStyle = '#4444ff';
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(zEnd.x - screenPos.x, zEnd.y - screenPos.y);
+            ctx.stroke();
+        }
+    }
+
+    ctx.restore();
+}
+
 export function drawOverlay() {
     // This will be called from updateScene to draw grid/gizmos
     if (!renderer) return;
-    drawEditorGrid();
+
+    const config = getCurrentProjectConfig();
+    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+
+    if (!is3D) drawEditorGrid();
     drawComponentGrids();
     drawLayerPlacementPreview();
 

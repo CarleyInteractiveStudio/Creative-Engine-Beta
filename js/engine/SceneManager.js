@@ -289,7 +289,7 @@ export function serializeMateria(materia, recursive = false) {
                         }));
                     } else if (ley.constructor.name === 'Tilemap' && (key === '_width' || key === '_height')) {
                         leyData.properties[key.substring(1)] = ley[key];
-                    } else if (ley.constructor.name === 'TilemapCollider2D' && (key === '_sourceLayerIndex' || key === '_useAllLayers')) {
+                    } else if ((ley.constructor.name === 'TilemapCollider2D' || ley.constructor.name === 'TerrenoCollider2D') && (key === '_sourceLayerIndex' || key === '_useAllLayers' || key === '_mode' || key === '_resolution' || key === '_simplifyTolerance')) {
                         leyData.properties[key.substring(1)] = ley[key];
                     } else if (ley.constructor.name === 'Terreno2D' && (key === 'maskCanvas' || key === 'maskCtx' || key === 'imageCache')) {
                         // Skip internal properties
@@ -405,6 +405,11 @@ async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, mate
                     if (leyData.properties.useAllLayers !== undefined) newLey.useAllLayers = leyData.properties.useAllLayers;
                     Object.assign(newLey, leyData.properties);
                     newLey._cachedMesh = new Map(newLey._cachedMesh || []);
+                } else if (leyData.type === 'TerrenoCollider2D') {
+                    if (leyData.properties.mode !== undefined) newLey.mode = leyData.properties.mode;
+                    if (leyData.properties.resolution !== undefined) newLey.resolution = leyData.properties.resolution;
+                    if (leyData.properties.simplifyTolerance !== undefined) newLey.simplifyTolerance = leyData.properties.simplifyTolerance;
+                    Object.assign(newLey, leyData.properties);
                 } else if (leyData.type === 'TilemapRenderer' || leyData.type === 'Terreno2D') {
                     Object.assign(newLey, leyData.properties);
                     newLey.imageCache = new Map();
@@ -412,6 +417,18 @@ async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, mate
                 } else if (leyData.type === 'AnimatorController') {
                     Object.assign(newLey, leyData.properties);
                     newLey.states = new Map();
+                } else if (leyData.type === 'Transform') {
+                    // Upgrade legacy 2D transforms to 3D object format if needed
+                    if (leyData.properties.localPosition && leyData.properties.localPosition.z === undefined) {
+                        leyData.properties.localPosition.z = 0;
+                    }
+                    if (typeof leyData.properties.localRotation === 'number') {
+                        leyData.properties.localRotation = { x: 0, y: 0, z: leyData.properties.localRotation };
+                    }
+                    if (leyData.properties.localScale && leyData.properties.localScale.z === undefined) {
+                        leyData.properties.localScale.z = 1;
+                    }
+                    Object.assign(newLey, leyData.properties);
                 } else {
                     Object.assign(newLey, leyData.properties);
                 }
