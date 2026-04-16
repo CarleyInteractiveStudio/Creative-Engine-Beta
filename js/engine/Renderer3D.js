@@ -317,28 +317,31 @@ export class Renderer3D {
             if (camComp.projection === 'Orthographic') {
                 is3DView = false;
                 const size = camComp.orthographicSize;
-                mat4.ortho(projectionMatrix, -size * aspect, size * aspect, -size, size, 0.1, 1000);
+                // Adjust scale factor to match 2D renderer pixels
+                const orthoH = size;
+                const orthoW = size * aspect;
+                mat4.ortho(projectionMatrix, -orthoW, orthoW, -orthoH, orthoH, 0.1, 10000);
             } else {
-                mat4.perspective(projectionMatrix, camComp.fov * Math.PI / 180, aspect, 0.1, 1000);
+                mat4.perspective(projectionMatrix, camComp.fov * Math.PI / 180, aspect, 0.1, 50000);
             }
 
             const q = quat.create();
+            // Important: Camera in CE uses standard Euler for 3D
             quat.fromEuler(q, camTrans.localRotation.x, camTrans.localRotation.y, camTrans.localRotation.z);
             activeViewPosition = [camTrans.x, camTrans.y, camTrans.z];
             mat4.fromRotationTranslation(viewMatrix, q, activeViewPosition);
             mat4.invert(viewMatrix, viewMatrix);
         } else {
-            // Editor default camera
+            // Editor default camera (Scene View)
             const aspect = gl.canvas.width / gl.canvas.height;
-            mat4.perspective(projectionMatrix, 45 * Math.PI / 180, aspect, 1, 50000);
 
-            // In Renderer.js, this.camera in editor has {x, y, z, rotation: {x, y, z}, zoom}
-            // Use a default Z that allows seeing 2D objects at Z=0
             const editorCam = options.editorCamera || { x: 0, y: 0, z: 500, rotation: { x: 0, y: 0, z: 0 } };
             const q = quat.create();
             quat.fromEuler(q, editorCam.rotation.x, editorCam.rotation.y, editorCam.rotation.z);
 
-            // Adjust camera position to be compatible with 2D world coordinates (which are often large)
+            // Use Perspective for 3D Scene View
+            mat4.perspective(projectionMatrix, 45 * Math.PI / 180, aspect, 1, 100000);
+
             activeViewPosition = [editorCam.x, editorCam.y, editorCam.z];
             mat4.fromRotationTranslation(viewMatrix, q, activeViewPosition);
             mat4.invert(viewMatrix, viewMatrix);
@@ -378,7 +381,21 @@ export class Renderer3D {
         }
         gl.uniform1i(this.programInfo.uniformLocations.uPointLightCount, pointLights.length);
 
-        scene.getAllMaterias().forEach(materia => {
+        // Depth sorting for transparent objects (Sprites) in 3D
+        const materias = scene.getAllMaterias()
+            .filter(m => m.isActive)
+            .sort((a, b) => {
+                const transA = a.getComponent(Transform);
+                const transB = b.getComponent(Transform);
+                if (!transA || !transB) return 0;
+
+                // Sort by distance to camera (Back to Front)
+                const distA = vec3.sqrDist([transA.x, transA.y, transA.z || 0], activeViewPosition);
+                const distB = vec3.sqrDist([transB.x, transB.y, transB.z || 0], activeViewPosition);
+                return distB - distA;
+            });
+
+        materias.forEach(materia => {
             this.renderMateria(materia, projectionMatrix, viewMatrix, options);
         });
     }

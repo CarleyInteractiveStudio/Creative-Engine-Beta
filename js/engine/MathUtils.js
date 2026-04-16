@@ -259,3 +259,57 @@ export function getBoundsFromCorners(corners) {
     }
     return { left: minX, right: maxX, top: minY, bottom: maxY };
 }
+
+/**
+ * Estimates the memory consumption of a Materia and its components.
+ * Returns an object with individual and recursive totals in bytes.
+ * @param {Materia} materia
+ * @returns {{ individual: number, total: number }}
+ */
+export function estimateMateriaMemory(materia) {
+    if (!materia) return { individual: 0, total: 0 };
+
+    let individual = 512; // Base Materia overhead
+
+    materia.leyes.forEach(ley => {
+        individual += 1024; // Base component overhead
+
+        const constructorName = ley.constructor.name;
+
+        // Texture-based components
+        if (constructorName === 'SpriteRenderer' || constructorName === 'UIImage' || constructorName === 'TextureRender') {
+            const img = ley.sprite || ley.texture;
+            if (img && img.complete && img.naturalWidth > 0) {
+                individual += img.naturalWidth * img.naturalHeight * 4;
+            }
+        }
+
+        // Script components
+        if (constructorName === 'CreativeScript' || constructorName === 'CustomComponent') {
+            if (ley.scriptName && window.CE_Script_Metadata && window.CE_Script_Metadata[ley.scriptName]) {
+                const meta = window.CE_Script_Metadata[ley.scriptName];
+                individual += (meta.codeLength || 0) * 2; // UTF-16 characters
+            }
+            // Estimate variables memory
+            if (ley.instance) {
+                try {
+                    individual += JSON.stringify(ley.instance).length * 2;
+                } catch(e) {}
+            }
+        }
+
+        // Tilemaps
+        if (constructorName === 'Tilemap') {
+            ley.layers.forEach(layer => {
+                individual += layer.tileData.size * 128; // Estimate per tile data
+            });
+        }
+    });
+
+    let total = individual;
+    materia.children.forEach(child => {
+        total += estimateMateriaMemory(child).total;
+    });
+
+    return { individual, total };
+}

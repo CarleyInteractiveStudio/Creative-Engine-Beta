@@ -17,6 +17,11 @@ export class PerformanceMonitor {
 
         this.lastOptimizationCheck = 0;
         this.frameTimeHistory = 30; // Average over 30 frames
+
+        // Intelligent Frame Analyzer
+        this.lastStableSnapshots = [];
+        this.maxSnapshots = 5;
+        this.frameAnalysisResults = null;
     }
 
     updateConfig(config) {
@@ -45,10 +50,95 @@ export class PerformanceMonitor {
     checkPerformance() {
         // Optimization logic
         if (this.fps < this.targetMinFps + 5) {
+            this.analyzeFramePerformance();
             this.increaseOptimization();
         } else if (this.fps > this.targetMinFps + 15) {
             this.decreaseOptimization();
+            this.recordStableSnapshot();
         }
+    }
+
+    recordStableSnapshot() {
+        if (!SceneManager.currentScene) return;
+
+        const snapshot = this.capturePerformanceData();
+        this.lastStableSnapshots.push(snapshot);
+        if (this.lastStableSnapshots.length > this.maxSnapshots) {
+            this.lastStableSnapshots.shift();
+        }
+    }
+
+    capturePerformanceData() {
+        const scene = SceneManager.currentScene;
+        const materias = scene.getAllMaterias();
+
+        const data = {
+            timestamp: performance.now(),
+            fps: this.fps,
+            materiaCount: materias.length,
+            activeCount: materias.filter(m => m.isActive).length,
+            componentStats: {},
+            lightCount: 0,
+            particleCount: 0,
+            physicsCount: 0
+        };
+
+        materias.forEach(m => {
+            if (!m.isActive) return;
+            m.leyes.forEach(ley => {
+                const name = ley.constructor.name;
+                data.componentStats[name] = (data.componentStats[name] || 0) + 1;
+
+                if (name.includes('Light')) data.lightCount++;
+                if (name === 'ParticleSystem') data.particleCount++;
+                if (name === 'Rigidbody2D' && ley.bodyType === 'Dynamic') data.physicsCount++;
+            });
+        });
+
+        return data;
+    }
+
+    analyzeFramePerformance() {
+        if (this.lastStableSnapshots.length === 0) return;
+
+        const current = this.capturePerformanceData();
+        const stable = this.lastStableSnapshots[this.lastStableSnapshots.length - 1];
+
+        const culprits = [];
+
+        // Compare counts
+        if (current.lightCount > stable.lightCount * 1.5) culprits.push({ type: 'Light', msg: 'Aumento súbito de luces' });
+        if (current.physicsCount > stable.physicsCount * 1.5) culprits.push({ type: 'Rigidbody2D', msg: 'Demasiados objetos físicos activos' });
+        if (current.particleCount > stable.particleCount * 2) culprits.push({ type: 'ParticleSystem', msg: 'Saturación de partículas' });
+
+        // Check for specific components that might be leaking or growing
+        for (const [name, count] of Object.entries(current.componentStats)) {
+            const stableCount = stable.componentStats[name] || 0;
+            if (count > stableCount + 20 && count > stableCount * 2) {
+                culprits.push({ type: name, msg: `Exceso de componentes '${name}'` });
+            }
+        }
+
+        if (culprits.length > 0) {
+            this.frameAnalysisResults = culprits;
+            this.reportCulprits(culprits);
+        }
+    }
+
+    reportCulprits(culprits) {
+        culprits.forEach(c => {
+            const msg = `[Optimizer] CAUSA DETECTADA: ${c.msg}`;
+            if (window.logToUIConsole) {
+                window.logToUIConsole({
+                    message: msg,
+                    isSystemString: true,
+                    isOptimizer: true,
+                    culpritType: c.type
+                }, 'warn');
+            } else {
+                console.warn(msg);
+            }
+        });
     }
 
     increaseOptimization() {
