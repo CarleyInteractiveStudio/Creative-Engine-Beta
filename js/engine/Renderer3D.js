@@ -306,7 +306,7 @@ export class Renderer3D {
             const aspect = gl.canvas.width / gl.canvas.height;
 
             if (camComp.projection === 'Orthographic') {
-                is3D = false;
+                is3DView = false;
                 const size = camComp.orthographicSize;
                 mat4.ortho(projectionMatrix, -size * aspect, size * aspect, -size, size, 0.1, 1000);
             } else {
@@ -320,13 +320,16 @@ export class Renderer3D {
         } else {
             // Editor default camera
             const aspect = gl.canvas.width / gl.canvas.height;
-            mat4.perspective(projectionMatrix, 45 * Math.PI / 180, aspect, 0.1, 1000);
+            mat4.perspective(projectionMatrix, 45 * Math.PI / 180, aspect, 0.1, 5000);
 
             // In Renderer.js, this.camera in editor has {x, y, z, rotation: {x, y, z}, zoom}
-            const editorCam = options.editorCamera || { x: 0, y: 0, z: -5, rotation: { x: 0, y: 0, z: 0 } };
+            // Use a default Z that allows seeing 2D objects at Z=0
+            const editorCam = options.editorCamera || { x: 0, y: 0, z: 500, rotation: { x: 0, y: 0, z: 0 } };
             const q = quat.create();
             quat.fromEuler(q, editorCam.rotation.x, editorCam.rotation.y, editorCam.rotation.z);
-            mat4.fromRotationTranslation(viewMatrix, q, [editorCam.x/100, editorCam.y/100, editorCam.z/100]);
+
+            // Adjust camera position to be compatible with 2D world coordinates (which are often large)
+            mat4.fromRotationTranslation(viewMatrix, q, [editorCam.x / 100, editorCam.y / 100, editorCam.z / 100]);
             mat4.invert(viewMatrix, viewMatrix);
         }
 

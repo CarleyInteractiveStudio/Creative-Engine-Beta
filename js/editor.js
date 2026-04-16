@@ -1126,6 +1126,12 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.gameCanvas3d.style.pointerEvents = is3D ? 'all' : 'none';
             dom.gameCanvas3d.style.zIndex = is3D ? '2' : '1';
         }
+
+        // Sync 2D/3D toggle button UI
+        const label = document.getElementById('label-2d-3d');
+        const icon = document.getElementById('icon-2d-3d');
+        if (label) label.textContent = is3D ? '3D' : '2D';
+        if (icon) icon.src = is3D ? 'icons/box.svg' : 'icons/layers.svg';
     };
 
     function updateWindowMenuUI() {

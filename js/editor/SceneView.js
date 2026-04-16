@@ -1937,29 +1937,64 @@ function draw3DGizmos(materia) {
     ctx.translate(screenPos.x, screenPos.y);
 
     if (activeTool === 'move' || activeTool === 'universal') {
+        const ARROW_SIZE = 10;
+
         // Red X
         ctx.strokeStyle = '#ff4444';
+        ctx.fillStyle = '#ff4444';
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.lineTo(GIZMO_SIZE, 0);
         ctx.stroke();
+        // X Arrow head
+        ctx.beginPath();
+        ctx.moveTo(GIZMO_SIZE + ARROW_SIZE, 0);
+        ctx.lineTo(GIZMO_SIZE, -ARROW_SIZE / 2);
+        ctx.lineTo(GIZMO_SIZE, ARROW_SIZE / 2);
+        ctx.closePath();
+        ctx.fill();
 
         // Green Y
         ctx.strokeStyle = '#44ff44';
+        ctx.fillStyle = '#44ff44';
+        ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.lineTo(0, -GIZMO_SIZE);
         ctx.stroke();
+        // Y Arrow head
+        ctx.beginPath();
+        ctx.moveTo(0, -GIZMO_SIZE - ARROW_SIZE);
+        ctx.lineTo(-ARROW_SIZE / 2, -GIZMO_SIZE);
+        ctx.lineTo(ARROW_SIZE / 2, -GIZMO_SIZE);
+        ctx.closePath();
+        ctx.fill();
 
         // Blue Z
         const zEnd = world3DToScreen({ x: transform.x, y: transform.y, z: transform.z + 100 });
         if (zEnd) {
+            const zDx = zEnd.x - screenPos.x;
+            const zDy = zEnd.y - screenPos.y;
             ctx.strokeStyle = '#4444ff';
+            ctx.fillStyle = '#4444ff';
             ctx.beginPath();
             ctx.moveTo(0, 0);
-            ctx.lineTo(zEnd.x - screenPos.x, zEnd.y - screenPos.y);
+            ctx.lineTo(zDx, zDy);
             ctx.stroke();
+
+            // Z Arrow head (pointing towards zEnd)
+            const angle = Math.atan2(zDy, zDx);
+            ctx.save();
+            ctx.translate(zDx, zDy);
+            ctx.rotate(angle);
+            ctx.beginPath();
+            ctx.moveTo(ARROW_SIZE, 0);
+            ctx.lineTo(0, -ARROW_SIZE / 2);
+            ctx.lineTo(0, ARROW_SIZE / 2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
         }
     }
 
