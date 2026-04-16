@@ -439,7 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher', 'btn-grant-permissions',
-            'btn-play', 'btn-pause', 'btn-stop', 'btn-exit-prefab', 'btn-save-prefab',
+            'btn-play', 'btn-pause', 'btn-stop', 'btn-exit-prefab', 'btn-save-prefab', 'btn-toggle-2d-3d',
             'tool-tile-brush', 'tool-tile-bucket', 'tool-tile-rectangle-fill', 'tool-tile-eraser',
             // Menubar scene options
             'menu-new-scene', 'menu-open-scene', 'menu-save-scene', 'menu-build', 'menu-import-asset', 'menu-import-skeleton',
@@ -1046,6 +1046,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     break;
                 case 'n':
                     setActiveTool('tile-eraser');
+                    break;
+                case '2':
+                    if (dom.btnToggle2d3d && currentProjectConfig.rendererMode !== 'canvas2d') {
+                        dom.btnToggle2d3d.click();
+                    }
+                    break;
+                case '3':
+                    if (dom.btnToggle2d3d && currentProjectConfig.rendererMode !== '3d-mode') {
+                        dom.btnToggle2d3d.click();
+                    }
                     break;
                 case 'delete':
                 case 'backspace':
@@ -3251,6 +3261,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Project Settings Listeners are now in js/editor/ui/ProjectSettingsWindow.js ---
 
+        if (dom.btnToggle2d3d) {
+            dom.btnToggle2d3d.addEventListener('click', async () => {
+                const isCurrent3D = currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d';
+
+                if (isCurrent3D) {
+                    currentProjectConfig.rendererMode = 'canvas2d';
+                } else {
+                    currentProjectConfig.rendererMode = '3d-mode';
+                }
+
+                // Update UI toggle button state
+                const isNew3D = currentProjectConfig.rendererMode === '3d-mode';
+                const label = document.getElementById('label-2d-3d');
+                const icon = document.getElementById('icon-2d-3d');
+                if (label) label.textContent = isNew3D ? '3D' : '2D';
+                if (icon) icon.src = isNew3D ? 'icons/box.svg' : 'icons/layers.svg';
+
+                updateCanvasInteractivity();
+
+                // Save config
+                if (typeof saveProjectConfigFromModule === 'function') {
+                    await saveProjectConfigFromModule(false);
+                }
+
+                console.log(`Modo de renderizado cambiado a: ${currentProjectConfig.rendererMode}`);
+
+                // Trigger a scene update to show/hide relevant elements
+                if (updateScene) updateScene(renderer, false);
+            });
+        }
+
 
         // --- Preferences Listeners are in js/editor/ui/PreferencesWindow.js ---
 
@@ -4414,7 +4455,7 @@ public start() {
                 }
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
-            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, updateAssetBrowserCallback: updateAssetBrowser, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool, getCurrentProjectConfig: () => currentProjectConfig, getDeltaTime: () => deltaTime });
+            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, updateAssetBrowserCallback: updateAssetBrowser, Components, updateScene, getActiveView, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool, getCurrentProjectConfig: () => currentProjectConfig, getDeltaTime: () => deltaTime });
             Terminal.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(60, "Aplicando preferencias...");
@@ -4494,6 +4535,16 @@ public start() {
 
             updateLoadingProgress(85, "Actualizando paneles...");
             updateCanvasInteractivity();
+
+            // Sync 2D/3D toggle button on load
+            if (currentProjectConfig) {
+                const is3D = currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d';
+                const label = document.getElementById('label-2d-3d');
+                const icon = document.getElementById('icon-2d-3d');
+                if (label) label.textContent = is3D ? '3D' : '2D';
+                if (icon) icon.src = is3D ? 'icons/box.svg' : 'icons/layers.svg';
+            }
+
             updateHierarchy();
             updateInspector();
             await updateAssetBrowser();

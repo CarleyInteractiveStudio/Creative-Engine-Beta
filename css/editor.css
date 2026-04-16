@@ -5412,3 +5412,35 @@ body.game-mode #loading-overlay {
     from { opacity: 0; transform: translateY(-5px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* --- Hierarchy Scene Name Enhancements --- */
+.hierarchy-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.hierarchy-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.hierarchy-scene-name {
+    font-size: 0.75em;
+    opacity: 0.6;
+    font-weight: normal;
+    color: var(--accent-color);
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Ensure scene toolbar doesn't collapse without the name */
+.left-header-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 32px;
+}

@@ -392,8 +392,11 @@ public star() {
             </div>
             <!-- The editor panels will go here in the next step -->
              <div id="hierarchy-panel" class="editor-panel">
-                <div class="panel-header">
-                    <span data-i18n="JERARQUIA">Jerarquía</span>
+                <div class="panel-header hierarchy-header">
+                    <div class="hierarchy-title-group">
+                        <span data-i18n="JERARQUIA">Jerarquía</span>
+                        <span id="current-scene-name" class="hierarchy-scene-name" data-i18n="ESCENA_PRINCIPAL">Escena Principal</span>
+                    </div>
                     <div class="panel-header-controls">
                         <button id="btn-save-prefab" class="panel-tool-btn hidden" title="Guardar Prefab" data-i18n-title="GUARDAR_PREFAB"><img src="icons/save.svg" class="ce-icon"></button>
                         <button id="btn-exit-prefab" class="panel-tool-btn hidden" title="Cerrar Prefab" data-i18n-title="CERRAR_PREFAB"><img src="icons/x.svg" class="ce-icon"></button>
@@ -405,7 +408,6 @@ public star() {
              <div id="scene-panel" class="editor-panel">
                 <div class="panel-header">
                     <div class="left-header-controls">
-                        <span id="current-scene-name" data-i18n="ESCENA_PRINCIPAL">Escena Principal</span>
                         <div class="viewport-tools">
                             <div class="tool-dropdown">
                                 <button id="tool-active" class="toolbar-btn"><img src="icons/move.svg" class="ce-icon"></button>
@@ -425,6 +427,11 @@ public star() {
                                 </div>
                             </div>
                             <button id="btn-toggle-gizmos" class="toolbar-btn active" title="Mostrar/Ocultar Iconos (Audio/Cámara)"><img src="icons/star.svg" class="ce-icon"></button>
+                            <div class="toolbar-separator"></div>
+                            <button id="btn-toggle-2d-3d" class="toolbar-btn" title="Alternar 2D/3D (Tecla 2/3)" data-i18n-title="ALTERNAR_2D_3D">
+                                <img id="icon-2d-3d" src="icons/layers.svg" class="ce-icon">
+                                <span id="label-2d-3d" style="font-size: 10px; font-weight: bold; margin-left: 2px;">2D</span>
+                            </button>
                         </div>
                         <div class="view-toggle">
                             <button class="view-toggle-btn active" data-view="scene-content" data-i18n="VISTA_ESCENA">Escena</button>
