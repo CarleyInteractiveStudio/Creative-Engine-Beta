@@ -2,6 +2,7 @@
 
 import * as SceneManager from './SceneManager.js';
 import * as Components from './Components.js';
+import { Localization } from './Localization.js';
 
 export class PerformanceMonitor {
     constructor(engine) {
@@ -63,7 +64,11 @@ export class PerformanceMonitor {
     }
 
     applyOptimization() {
-        console.warn(`[PerformanceMonitor] Optimization Level: ${this.optimizationLevel} (FPS: ${Math.round(this.fps)})`);
+        const msg = (Localization.get('OPT_LEVEL_NOTICE') || 'Optimization Level: {level} (FPS: {fps})')
+            .replace('{level}', this.optimizationLevel)
+            .replace('{fps}', Math.round(this.fps));
+
+        console.warn(`[PerformanceMonitor] ${msg}`);
 
         // 1. Notify scripts via event
         if (this.optimizationLevel >= 2) {

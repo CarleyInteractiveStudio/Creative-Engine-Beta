@@ -180,10 +180,10 @@ export class Renderer3D {
 
         // Basic Plane (for 2D sprites in 3D)
         const planePositions = [
-            -1.0, -1.0,  0.0,
-             1.0, -1.0,  0.0,
-             1.0,  1.0,  0.0,
-            -1.0,  1.0,  0.0,
+            -0.5, -0.5,  0.0,
+             0.5, -0.5,  0.0,
+             0.5,  0.5,  0.0,
+            -0.5,  0.5,  0.0,
         ];
         this.planeBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.planeBuffer);
@@ -315,21 +315,21 @@ export class Renderer3D {
 
             const q = quat.create();
             quat.fromEuler(q, camTrans.localRotation.x, camTrans.localRotation.y, camTrans.localRotation.z);
-            mat4.fromRotationTranslation(viewMatrix, q, [camTrans.x/100, camTrans.y/100, camTrans.z/100]);
+            mat4.fromRotationTranslation(viewMatrix, q, [camTrans.x, camTrans.y, camTrans.z]);
             mat4.invert(viewMatrix, viewMatrix);
         } else {
             // Editor default camera
             const aspect = gl.canvas.width / gl.canvas.height;
-            mat4.perspective(projectionMatrix, 45 * Math.PI / 180, aspect, 0.1, 5000);
+            mat4.perspective(projectionMatrix, 45 * Math.PI / 180, aspect, 1, 50000);
 
             // In Renderer.js, this.camera in editor has {x, y, z, rotation: {x, y, z}, zoom}
             // Use a default Z that allows seeing 2D objects at Z=0
-            const editorCam = options.editorCamera || { x: 0, y: 0, z: 500, rotation: { x: 0, y: 0, z: 0 } };
+            const editorCam = options.editorCamera || { x: 0, y: 0, z: 1000, rotation: { x: 0, y: 0, z: 0 } };
             const q = quat.create();
             quat.fromEuler(q, editorCam.rotation.x, editorCam.rotation.y, editorCam.rotation.z);
 
             // Adjust camera position to be compatible with 2D world coordinates (which are often large)
-            mat4.fromRotationTranslation(viewMatrix, q, [editorCam.x / 100, editorCam.y / 100, editorCam.z / 100]);
+            mat4.fromRotationTranslation(viewMatrix, q, [editorCam.x, editorCam.y, editorCam.z]);
             mat4.invert(viewMatrix, viewMatrix);
         }
 
@@ -353,10 +353,10 @@ export class Renderer3D {
         pointLights.forEach(pl => {
             const comp = pl.getComponent(Components.PointLight3D);
             const trans = pl.getComponent(Transform);
-            plPos.push(trans.x/100, trans.y/100, trans.z/100);
+            plPos.push(trans.x, trans.y, trans.z);
             const rgb = this.hexToRgb(comp.color);
             plColor.push(rgb[0] * comp.intensity, rgb[1] * comp.intensity, rgb[2] * comp.intensity);
-            plRange.push(comp.range / 100);
+            plRange.push(comp.range);
         });
 
         if (pointLights.length > 0) {
@@ -385,7 +385,7 @@ export class Renderer3D {
         if (!meshRenderer && !spriteRenderer) return;
 
         const modelMatrix = mat4.create();
-        const pos = [transform.x / 100, transform.y / 100, (transform.z || 0) / 100];
+        const pos = [transform.x, transform.y, transform.z || 0];
         const scale = [transform.localScale.x, transform.localScale.y, transform.localScale.z || 1];
         const q = quat.create();
         const rot = transform.localRotation;
@@ -465,6 +465,20 @@ export class Renderer3D {
                     gl.uniform1i(this.programInfo.uniformLocations.uUseTexture, 0);
                 }
             }
+
+            // Adjust model matrix for sprite dimensions (2D to 3D mapping)
+            const sprite = spriteRenderer.sprite;
+            let spriteScaleX = 1;
+            let spriteScaleY = 1;
+            if (sprite && sprite.complete && sprite.naturalWidth > 0) {
+                spriteScaleX = sprite.naturalWidth; // Dividing by 200 because plane is 2x2 units
+                spriteScaleY = sprite.naturalHeight;
+            }
+
+            const spriteModelMatrix = mat4.create();
+            const spriteScale = [scale[0] * spriteScaleX, scale[1] * spriteScaleY, 1];
+            mat4.fromRotationTranslationScale(spriteModelMatrix, q, pos, spriteScale);
+            gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, spriteModelMatrix);
 
             gl.bindBuffer(gl.ARRAY_BUFFER, this.planeBuffer);
             gl.vertexAttribPointer(this.programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);

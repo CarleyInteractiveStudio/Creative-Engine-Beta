@@ -2008,7 +2008,11 @@ export function drawOverlay() {
     const config = getCurrentProjectConfig();
     const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
 
-    if (!is3D) drawEditorGrid();
+    if (!is3D) {
+        drawEditorGrid();
+    } else {
+        draw3DGrid();
+    }
     drawComponentGrids();
     drawLayerPlacementPreview();
 
@@ -2147,6 +2151,84 @@ function drawRaycastGizmos() {
         ctx.arc(endX, endY, dotSize / 2, 0, Math.PI * 2);
         ctx.fill();
     });
+
+    ctx.restore();
+}
+
+function draw3DGrid() {
+    const prefs = getPreferences();
+    if (!prefs.showSceneGrid) return;
+
+    const { ctx, camera, canvas } = renderer;
+    if (!camera) return;
+
+    const zoom = camera.effectiveZoom;
+    const viewLeft = camera.x - (canvas.width / 2 / zoom);
+    const viewRight = camera.x + (canvas.width / 2 / zoom);
+    const viewTop = camera.y - (canvas.height / 2 / zoom);
+    const viewBottom = camera.y + (canvas.height / 2 / zoom);
+
+    // Grid on the XZ plane (Y=0)
+    ctx.save();
+    ctx.lineWidth = 1 / zoom;
+
+    const step = 100; // Fixed grid step for 3D
+    const gridColor = 'rgba(255, 255, 255, 0.05)';
+    const axisColorX = 'rgba(255, 0, 0, 0.5)';
+    const axisColorZ = 'rgba(0, 0, 255, 0.5)';
+
+    // Horizontal lines (along X axis)
+    ctx.strokeStyle = gridColor;
+    ctx.beginPath();
+    const startZ = Math.floor((viewTop) / step) * step;
+    const endZ = Math.ceil((viewBottom) / step) * step;
+
+    for (let z = startZ; z <= endZ; z += step) {
+        const p1 = world3DToScreen({ x: viewLeft, y: 0, z: z });
+        const p2 = world3DToScreen({ x: viewRight, y: 0, z: z });
+        if (p1 && p2) {
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+        }
+    }
+
+    // Vertical lines (along Z axis)
+    const startX = Math.floor((viewLeft) / step) * step;
+    const endX = Math.ceil((viewRight) / step) * step;
+    for (let x = startX; x <= endX; x += step) {
+        const p1 = world3DToScreen({ x: x, y: 0, z: startZ });
+        const p2 = world3DToScreen({ x: x, y: 0, z: endZ });
+        if (p1 && p2) {
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+        }
+    }
+    ctx.stroke();
+
+    // Draw origin axes
+    // X Axis (Red)
+    const xOrigin1 = world3DToScreen({ x: viewLeft, y: 0, z: 0 });
+    const xOrigin2 = world3DToScreen({ x: viewRight, y: 0, z: 0 });
+    if (xOrigin1 && xOrigin2) {
+        ctx.strokeStyle = axisColorX;
+        ctx.lineWidth = 2 / zoom;
+        ctx.beginPath();
+        ctx.moveTo(xOrigin1.x, xOrigin1.y);
+        ctx.lineTo(xOrigin2.x, xOrigin2.y);
+        ctx.stroke();
+    }
+
+    // Z Axis (Blue)
+    const zOrigin1 = world3DToScreen({ x: 0, y: 0, z: startZ });
+    const zOrigin2 = world3DToScreen({ x: 0, y: 0, z: endZ });
+    if (zOrigin1 && zOrigin2) {
+        ctx.strokeStyle = axisColorZ;
+        ctx.lineWidth = 2 / zoom;
+        ctx.beginPath();
+        ctx.moveTo(zOrigin1.x, zOrigin1.y);
+        ctx.lineTo(zOrigin2.x, zOrigin2.y);
+        ctx.stroke();
+    }
 
     ctx.restore();
 }

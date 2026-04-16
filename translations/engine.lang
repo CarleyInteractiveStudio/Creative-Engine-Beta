@@ -46,6 +46,7 @@ CARGANDO_LIBS: Cargando librerías...
 HA_OCURRIDO_ERROR: Ha ocurrido un error.
 REINTENTAR: Reintentar
 VOLVER_INICIO: Volver al Inicio
+OPT_LEVEL_NOTICE: Nivel de Optimización: {level} (FPS: {fps})
 CONCEDER_PERMISOS: Conceder Permisos
 ERROR_PERMISOS_DETALLES: Creative Engine necesita tu permiso para leer y escribir en la carpeta de tus proyectos.
 CARL_WELCOME_MSG: ¡Hola! Soy Carl, tu asistente de Creative Engine. ¿En qué puedo ayudarte a construir hoy?
@@ -646,6 +647,7 @@ CARGANDO_LIBS: Loading libraries...
 HA_OCURRIDO_ERROR: An error occurred.
 REINTENTAR: Retry
 VOLVER_INICIO: Back to Start
+OPT_LEVEL_NOTICE: Nivel de Optimización: {level} (FPS: {fps})
 CONCEDER_PERMISOS: Grant Permissions
 ERROR_PERMISOS_DETALLES: Creative Engine needs your permission to read and write in your projects folder.
 CARL_WELCOME_MSG: Hello! I'm Carl, your Creative Engine assistant. How can I help you build today?
@@ -1197,6 +1199,7 @@ TUTORIALES: Tutoriais
 EMPEZAR: Começar a Criar
 CONTACTO: Contato e Suporte
 SOPORTE: Suporte
+OPT_LEVEL_NOTICE: Nível de Otimização: {level} (FPS: {fps})
 OPINIONES: Opiniões
 RECLAMOS: Reclamações
 DONAR: Doar com PayPal
@@ -1246,6 +1249,7 @@ CARGANDO_LIBS: Carregando bibliotecas...
 HA_OCURRIDO_ERROR: Ocorreu um erro.
 REINTENTAR: Repetir
 VOLVER_INICIO: Voltar ao Início
+OPT_LEVEL_NOTICE: Nivel de Optimización: {level} (FPS: {fps})
 CONCEDER_PERMISOS: Conceder Permissões
 ERROR_PERMISOS_DETALLES: O Creative Engine precisa da sua permissão para ler e escrever na pasta dos seus projetos.
 CARL_WELCOME_MSG: Olá! Eu sou o Carl, o seu assistente do Creative Engine. Como posso ajudar você a construir hoje?
@@ -1735,6 +1739,7 @@ CARGANDO_LIBS: Загрузка библиотек...
 HA_OCURRIDO_ERROR: Произошла ошибка.
 REINTENTAR: Повторить
 VOLVER_INICIO: Вернуться в начало
+OPT_LEVEL_NOTICE: Nivel de Optimización: {level} (FPS: {fps})
 CONCEDER_PERMISOS: Предоставить разрешения
 ERROR_PERMISOS_DETALLES: Creative Engine требуется ваше разрешение для чтения и записи в папку ваших проектов.
 CARL_WELCOME_MSG: Привет! Я Карл, твой помощник в Creative Engine. Чем я могу помочь тебе в создании сегодня?
@@ -2178,6 +2183,7 @@ TUTORIALES: 教程
 EMPEZAR: 开始创作
 CONTACTO: 联系与支持
 SOPORTE: 支持
+OPT_LEVEL_NOTICE: 优化级别: {level} (FPS: {fps})
 OPINIONES: 意见
 RECLAMOS: 投诉
 DONAR: 通过 PayPal 捐赠
@@ -2227,6 +2233,7 @@ CARGANDO_LIBS: 正在加载库...
 HA_OCURRIDO_ERROR: 发生错误。
 REINTENTAR: 重试
 VOLVER_INICIO: 返回首页
+OPT_LEVEL_NOTICE: Nivel de Optimización: {level} (FPS: {fps})
 CONCEDER_PERMISOS: 授予权限
 ERROR_PERMISOS_DETALLES: Creative Engine 需要您的许可才能在您的项目文件夹中进行读写操作。
 CARL_WELCOME_MSG: 你好！我是 Carl，你的 Creative Engine 助手。今天我能帮你构建什么？
