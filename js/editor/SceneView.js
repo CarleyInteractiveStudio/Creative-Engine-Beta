@@ -54,7 +54,8 @@ function world3DToScreen(worldPos) {
 
     const canvas = r3d.canvas;
     const clipPos = [0, 0, 0, 0];
-    const worldVec = [worldPos.x / 100, worldPos.y / 100, (worldPos.z || 0) / 100, 1.0];
+    // Units are 1:1 in Creative Engine
+    const worldVec = [worldPos.x, worldPos.y, (worldPos.z || 0), 1.0];
 
     const mvp = mat4.create();
     mat4.multiply(mvp, r3d.lastProjectionMatrix, r3d.lastViewMatrix);
@@ -1062,8 +1063,19 @@ export function initialize(dependencies) {
 
     sceneCanvases.forEach(canvas => {
         canvas.addEventListener('contextmenu', e => {
-            e.preventDefault();
-            e.stopPropagation();
+            const config = getCurrentProjectConfig();
+            const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+
+            // In 3D mode, we ALWAYS prevent context menu to allow right-click rotation
+            if (is3D) {
+                e.preventDefault();
+                e.stopPropagation();
+            } else {
+                // In 2D, we might want to allow it unless we are over an object
+                // For now, keep it consistent with the existing editor behavior
+                e.preventDefault();
+                e.stopPropagation();
+            }
         });
     });
 
@@ -1531,9 +1543,12 @@ function exitAddLayerMode() {
 function handle3DCameraNavigation() {
     if (!renderer || !renderer.camera) return;
     const cam = renderer.camera;
-    const dt = getDeltaTime();
-    const speed = 10.0 * (InputManager.getKey('Shift') ? 2.0 : 1.0);
-    const rotSpeed = 0.2;
+    const dt = getDeltaTime() || 0.016;
+
+    // Speed adjustments for larger 3D scenes
+    const baseSpeed = 500;
+    const speed = baseSpeed * (InputManager.getKey('Shift') ? 3.0 : 1.0) * dt;
+    const rotSpeed = 0.15;
 
     // Movement
     const moveDir = vec3.create();
@@ -1541,14 +1556,15 @@ function handle3DCameraNavigation() {
     if (InputManager.getKey('s')) moveDir[2] += 1;
     if (InputManager.getKey('a')) moveDir[0] -= 1;
     if (InputManager.getKey('d')) moveDir[0] += 1;
-    if (InputManager.getKey('q')) moveDir[1] -= 1;
-    if (InputManager.getKey('e')) moveDir[1] += 1;
+    if (InputManager.getKey('q')) moveDir[1] -= 1; // Down (Matching 2D Y positive DOWN)
+    if (InputManager.getKey('e')) moveDir[1] += 1; // Up
 
     if (vec3.length(moveDir) > 0) {
         vec3.normalize(moveDir, moveDir);
 
         const rotationQuat = quat.create();
-        quat.fromEuler(rotationQuat, cam.rotation.x, cam.rotation.y, cam.rotation.z);
+        // Camera in CE uses X=Pitch, Y=Yaw
+        quat.fromEuler(rotationQuat, cam.rotation.x, cam.rotation.y, 0);
 
         const rotatedDir = vec3.create();
         vec3.transformQuat(rotatedDir, moveDir, rotationQuat);
@@ -1561,12 +1577,14 @@ function handle3DCameraNavigation() {
     // Rotation (Mouse look with right click)
     if (InputManager.getMouseButton(2)) {
         const delta = InputManager.getMouseDelta();
-        // Standard First Person Look
-        cam.rotation.y -= delta.x * rotSpeed;
-        cam.rotation.x -= delta.y * rotSpeed;
-        cam.rotation.x = Math.max(-89, Math.min(89, cam.rotation.x));
-    } else if (InputManager.getMouseButton(1)) {
-        // Orbit/Pan alternative if needed, but let's stick to Right Click for look
+
+        if (Math.abs(delta.x) > 0.01 || Math.abs(delta.y) > 0.01) {
+            // Standard First Person Look: Mouse Right = Turn Right (Decrease Yaw in YXZ)
+            cam.rotation.y -= delta.x * rotSpeed;
+            // Mouse Down = Look Down (Increase Pitch in YXZ)
+            cam.rotation.x += delta.y * rotSpeed;
+            cam.rotation.x = Math.max(-89, Math.min(89, cam.rotation.x));
+        }
     }
 }
 
@@ -2171,72 +2189,84 @@ function draw3DGrid() {
     const { ctx, camera, canvas } = renderer;
     if (!camera) return;
 
-    const zoom = camera.effectiveZoom;
-    const viewLeft = camera.x - (canvas.width / 2 / zoom);
-    const viewRight = camera.x + (canvas.width / 2 / zoom);
-    const viewTop = camera.y - (canvas.height / 2 / zoom);
-    const viewBottom = camera.y + (canvas.height / 2 / zoom);
-
-    // Grid on the XZ plane (Y=0)
     ctx.save();
-    ctx.lineWidth = 1 / zoom;
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // Screen Space
 
-    const step = 100; // Fixed grid step for 3D
-    const gridColor = 'rgba(255, 255, 255, 0.05)';
-    const axisColorX = 'rgba(255, 0, 0, 0.5)';
-    const axisColorZ = 'rgba(0, 0, 255, 0.5)';
+    // --- Adaptive 3D Grid ---
+    // Calculate distance to origin or grid plane to adjust scale
+    const dist = Math.abs(camera.y) || 500;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(dist / 5)));
+    const step = Math.max(1, magnitude);
 
-    // Horizontal lines (along X axis)
-    ctx.strokeStyle = gridColor;
-    ctx.beginPath();
-    const startZ = Math.floor((viewTop) / step) * step;
-    const endZ = Math.ceil((viewBottom) / step) * step;
+    const gridRange = 40; // Visible lines around camera
+    const gridColor = 'rgba(255, 255, 255, 0.08)';
+    const majorGridColor = 'rgba(255, 255, 255, 0.2)';
+    const axisColorX = 'rgba(255, 50, 50, 0.7)'; // Red
+    const axisColorZ = 'rgba(50, 50, 255, 0.7)'; // Blue
+    const centerColor = 'rgba(255, 255, 255, 0.8)';
 
-    for (let z = startZ; z <= endZ; z += step) {
-        const p1 = world3DToScreen({ x: viewLeft, y: 0, z: z });
-        const p2 = world3DToScreen({ x: viewRight, y: 0, z: z });
-        if (p1 && p2) {
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-        }
-    }
+    // Infinite effect: snapped to steps
+    const startX = Math.floor((camera.x - (gridRange * step)) / step) * step;
+    const endX = Math.ceil((camera.x + (gridRange * step)) / step) * step;
+    const startZ = Math.floor((camera.z - (gridRange * step)) / step) * step;
+    const endZ = Math.ceil((camera.z + (gridRange * step)) / step) * step;
 
-    // Vertical lines (along Z axis)
-    const startX = Math.floor((viewLeft) / step) * step;
-    const endX = Math.ceil((viewRight) / step) * step;
+    ctx.lineWidth = 1;
+
+    // Grid lines parallel to Z (varying X)
     for (let x = startX; x <= endX; x += step) {
-        const p1 = world3DToScreen({ x: x, y: 0, z: startZ });
-        const p2 = world3DToScreen({ x: x, y: 0, z: endZ });
+        const isMajor = Math.abs(x) % (step * 5) === 0;
+        const isOrigin = Math.abs(x) < 0.01;
+        if (isOrigin) continue;
+
+        ctx.strokeStyle = isMajor ? majorGridColor : gridColor;
+        const p1 = world3DToScreen({ x, y: 0, z: startZ });
+        const p2 = world3DToScreen({ x, y: 0, z: endZ });
         if (p1 && p2) {
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
+            ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
         }
     }
-    ctx.stroke();
 
-    // Draw origin axes
+    // Grid lines parallel to X (varying Z)
+    for (let z = startZ; z <= endZ; z += step) {
+        const isMajor = Math.abs(z) % (step * 5) === 0;
+        const isOrigin = Math.abs(z) < 0.01;
+        if (isOrigin) continue;
+
+        ctx.strokeStyle = isMajor ? majorGridColor : gridColor;
+        const p1 = world3DToScreen({ x: startX, y: 0, z });
+        const p2 = world3DToScreen({ x: endX, y: 0, z });
+        if (p1 && p2) {
+            ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+        }
+    }
+
+    // Main Axes
+    ctx.lineWidth = 2;
+    const axisLen = Math.max(5000, gridRange * step * 2);
+
     // X Axis (Red)
-    const xOrigin1 = world3DToScreen({ x: viewLeft, y: 0, z: 0 });
-    const xOrigin2 = world3DToScreen({ x: viewRight, y: 0, z: 0 });
-    if (xOrigin1 && xOrigin2) {
+    const x1 = world3DToScreen({ x: -axisLen, y: 0, z: 0 });
+    const x2 = world3DToScreen({ x: axisLen, y: 0, z: 0 });
+    if (x1 && x2) {
         ctx.strokeStyle = axisColorX;
-        ctx.lineWidth = 2 / zoom;
-        ctx.beginPath();
-        ctx.moveTo(xOrigin1.x, xOrigin1.y);
-        ctx.lineTo(xOrigin2.x, xOrigin2.y);
-        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x1.x, x1.y); ctx.lineTo(x2.x, x2.y); ctx.stroke();
     }
 
     // Z Axis (Blue)
-    const zOrigin1 = world3DToScreen({ x: 0, y: 0, z: startZ });
-    const zOrigin2 = world3DToScreen({ x: 0, y: 0, z: endZ });
-    if (zOrigin1 && zOrigin2) {
+    const z1 = world3DToScreen({ x: 0, y: 0, z: -axisLen });
+    const z2 = world3DToScreen({ x: 0, y: 0, z: axisLen });
+    if (z1 && z2) {
         ctx.strokeStyle = axisColorZ;
-        ctx.lineWidth = 2 / zoom;
-        ctx.beginPath();
-        ctx.moveTo(zOrigin1.x, zOrigin1.y);
-        ctx.lineTo(zOrigin2.x, zOrigin2.y);
-        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(z1.x, z1.y); ctx.lineTo(z2.x, z2.y); ctx.stroke();
+    }
+
+    // Center Crosshair
+    const origin = world3DToScreen({ x: 0, y: 0, z: 0 });
+    if (origin) {
+        ctx.fillStyle = centerColor;
+        ctx.beginPath(); ctx.arc(origin.x, origin.y, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "white"; ctx.lineWidth = 1; ctx.stroke();
     }
 
     ctx.restore();

@@ -270,15 +270,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             msgEl.innerHTML = `
-                <span class="msg-icon">${icon}</span>
+                <span class="msg-icon">${structuredError.isOptimizer ? '🚀' : icon}</span>
                 <div class="msg-body">
                     <div class="msg-header">
-                        <span class="error-title">${title}</span>
+                        <span class="error-title">${structuredError.isOptimizer ? 'Optimizador Inteligente' : title}</span>
                         ${structuredError.line ? `<span class="error-line">Linea ${structuredError.line}</span>` : ''}
                     </div>
                     <span class="msg-text">${translateErrorMessage(structuredError.message)}</span>
                     ${structuredError.scriptName ? `<div class="error-context">Archivo: <code>${structuredError.scriptName}</code></div>` : ''}
-                    ${actionButtons}
+                    ${structuredError.isOptimizer ? `
+                        <div class="msg-actions">
+                            <button class="console-action-btn special" onclick="window.EngineAPI.getPerformanceMonitor().surgicalOptimize('${structuredError.culpritType}'); this.parentElement.parentElement.parentElement.remove();">
+                                🛠️ Auto Optimizar '${structuredError.culpritType || 'Sistema'}'
+                            </button>
+                        </div>
+                    ` : actionButtons}
                 </div>
             `;
 
@@ -1655,8 +1661,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // --- Pass 1: Draw Scene Geometry ---
+        const is3D = currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d';
+
         const materiasToRender = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform));
+            .filter(m => {
+                if (!m.getComponent(Components.Transform)) return false;
+
+                // In 3D/Hybrid mode, the 2D renderer (Renderer.js) should NOT draw objects
+                // that are already handled by the 3D renderer (Renderer3D.js).
+                // This prevents the "always facing camera" double-rendering issue.
+                if (is3D) {
+                    const has3DSupported = m.getComponent(Components.SpriteRenderer) ||
+                                          m.getComponent(Components.TextureRender) ||
+                                          m.getComponent(Components.MeshRenderer3D) ||
+                                          m.getComponent(Components.TilemapRenderer);
+
+                    // We only exclude it if it DOESN'T have 2D-only components like UI
+                    const has2DOnly = m.getComponent(Components.Canvas) ||
+                                     m.getComponent(Components.Terreno2D);
+
+                    if (has3DSupported && !has2DOnly) return false;
+                }
+                return true;
+            });
             // Sorting is now centralized in drawObjects' allInLayer sort
 
         const tilemapsToRender = SceneManager.currentScene.getAllMaterias()
@@ -3999,6 +4026,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado
         window.SkeletonImporter = SkeletonImporter;
         window.CarlAgent = CarlAgent;
         window.bringToFront = bringToFront;
+        window.EngineAPI = EngineAPI;
 
         // --- Carl Agent Integration ---
         CarlAgent.initialize(dom);
@@ -4483,6 +4511,7 @@ public start() {
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, updateAssetBrowserCallback: updateAssetBrowser, Components, updateScene, getActiveView, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool, getCurrentProjectConfig: () => currentProjectConfig, getDeltaTime: () => deltaTime });
+            window._SceneView = SceneView;
             Terminal.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(60, "Aplicando preferencias...");

@@ -14,6 +14,7 @@ export class Renderer3D {
         }
 
         this.gl.enable(this.gl.DEPTH_TEST);
+        this.gl.depthFunc(this.gl.LEQUAL);
         this.gl.enable(this.gl.BLEND);
         this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
 
@@ -297,7 +298,12 @@ export class Renderer3D {
             alpha = 0.0;
         }
 
-        gl.clearColor(bgColor[0], bgColor[1], bgColor[2], alpha);
+        // If alpha is 0, ensure we clear with a fully transparent color
+        if (alpha === 0) {
+            gl.clearColor(0, 0, 0, 0);
+        } else {
+            gl.clearColor(bgColor[0], bgColor[1], bgColor[2], alpha);
+        }
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         const projectionMatrix = mat4.create();
@@ -317,28 +323,31 @@ export class Renderer3D {
             if (camComp.projection === 'Orthographic') {
                 is3DView = false;
                 const size = camComp.orthographicSize;
-                mat4.ortho(projectionMatrix, -size * aspect, size * aspect, -size, size, 0.1, 1000);
+                // Adjust scale factor to match 2D renderer pixels
+                const orthoH = size;
+                const orthoW = size * aspect;
+                mat4.ortho(projectionMatrix, -orthoW, orthoW, -orthoH, orthoH, 0.1, 10000);
             } else {
-                mat4.perspective(projectionMatrix, camComp.fov * Math.PI / 180, aspect, 0.1, 1000);
+                mat4.perspective(projectionMatrix, camComp.fov * Math.PI / 180, aspect, 0.1, 50000);
             }
 
             const q = quat.create();
+            // Important: Camera in CE uses standard Euler for 3D
             quat.fromEuler(q, camTrans.localRotation.x, camTrans.localRotation.y, camTrans.localRotation.z);
             activeViewPosition = [camTrans.x, camTrans.y, camTrans.z];
             mat4.fromRotationTranslation(viewMatrix, q, activeViewPosition);
             mat4.invert(viewMatrix, viewMatrix);
         } else {
-            // Editor default camera
+            // Editor default camera (Scene View)
             const aspect = gl.canvas.width / gl.canvas.height;
-            mat4.perspective(projectionMatrix, 45 * Math.PI / 180, aspect, 1, 50000);
 
-            // In Renderer.js, this.camera in editor has {x, y, z, rotation: {x, y, z}, zoom}
-            // Use a default Z that allows seeing 2D objects at Z=0
             const editorCam = options.editorCamera || { x: 0, y: 0, z: 500, rotation: { x: 0, y: 0, z: 0 } };
             const q = quat.create();
             quat.fromEuler(q, editorCam.rotation.x, editorCam.rotation.y, editorCam.rotation.z);
 
-            // Adjust camera position to be compatible with 2D world coordinates (which are often large)
+            // Use Perspective for 3D Scene View
+            mat4.perspective(projectionMatrix, 45 * Math.PI / 180, aspect, 1, 100000);
+
             activeViewPosition = [editorCam.x, editorCam.y, editorCam.z];
             mat4.fromRotationTranslation(viewMatrix, q, activeViewPosition);
             mat4.invert(viewMatrix, viewMatrix);
@@ -378,7 +387,31 @@ export class Renderer3D {
         }
         gl.uniform1i(this.programInfo.uniformLocations.uPointLightCount, pointLights.length);
 
-        scene.getAllMaterias().forEach(materia => {
+        // Optimization: Filter out non-renderable materias once per frame
+        const renderableMaterias = scene.getAllMaterias().filter(m => {
+            if (!m.isActive) return false;
+            return m.getComponent(Components.MeshRenderer3D) ||
+                   m.getComponent(Components.SpriteRenderer) ||
+                   m.getComponent(Components.TextureRender) ||
+                   m.getComponent(Components.TilemapRenderer);
+        });
+
+        // Depth sorting for transparent objects (Sprites) in 3D
+        renderableMaterias.sort((a, b) => {
+                const transA = a.getComponent(Transform);
+                const transB = b.getComponent(Transform);
+                if (!transA || !transB) return 0;
+
+                // Sort by distance to camera (Back to Front)
+                // Using world position for correct sorting
+                const posA = transA.position;
+                const posB = transB.position;
+                const distA = vec3.sqrDist([posA.x, posA.y, posA.z || 0], activeViewPosition);
+                const distB = vec3.sqrDist([posB.x, posB.y, posB.z || 0], activeViewPosition);
+                return distB - distA;
+            });
+
+        renderableMaterias.forEach(materia => {
             this.renderMateria(materia, projectionMatrix, viewMatrix, options);
         });
     }
@@ -387,6 +420,7 @@ export class Renderer3D {
         const meshRenderer = materia.getComponent(Components.MeshRenderer3D);
         const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
         const textureRender = materia.getComponent(Components.TextureRender);
+        const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
 
         if (options.picking && !meshRenderer && !spriteRenderer && !textureRender) return;
 
@@ -395,13 +429,28 @@ export class Renderer3D {
         const transform = materia.getComponent(Transform);
         if (!transform || !materia.isActive) return;
 
-        if (!meshRenderer && !spriteRenderer && !textureRender) return;
+        if (!meshRenderer && !spriteRenderer && !textureRender && !tilemapRenderer) return;
+
+        // Support for rendering Tilemaps as billboarded planes in 3D for now
+        // This ensures they are perspective-correct but "flat" in the world.
+        if (tilemapRenderer) {
+            this.renderTilemap(materia, projectionMatrix, viewMatrix, options);
+            return;
+        }
 
         const modelMatrix = mat4.create();
-        const pos = [transform.x, transform.y, transform.z || 0];
-        const scale = [transform.localScale.x, transform.localScale.y, transform.localScale.z || 1];
+        const worldPos = transform.position;
+        const worldScale = transform.scale;
+        const pos = [worldPos.x, worldPos.y, worldPos.z || 0];
+        const scale = [Math.abs(worldScale.x), Math.abs(worldScale.y), Math.abs(worldScale.z || 1)];
+
         const q = quat.create();
-        const rot = transform.localRotation;
+        // Use global rotation
+        const rot = {
+            x: transform.rotationX || 0,
+            y: transform.rotationY || 0,
+            z: transform.rotationZ || 0
+        };
         quat.fromEuler(q, rot.x, rot.y, rot.z);
 
         mat4.fromRotationTranslationScale(modelMatrix, q, pos, scale);
@@ -496,10 +545,11 @@ export class Renderer3D {
 
             let finalRotation = q;
             if (spriteRenderer.billboard && !options.picking) {
-                // To billboard, we take the view matrix and invert its rotation
+                // Spherical Billboarding: face the camera position
                 const viewRot = quat.create();
                 mat4.getRotation(viewRot, viewMatrix);
                 quat.invert(viewRot, viewRot);
+                // Invert the view rotation to keep the sprite facing the camera
                 finalRotation = viewRot;
             }
 
@@ -552,6 +602,7 @@ export class Renderer3D {
                 const viewRot = quat.create();
                 mat4.getRotation(viewRot, viewMatrix);
                 quat.invert(viewRot, viewRot);
+                // Keep texture flat in world unless billboarded
                 finalRotationTex = viewRot;
             }
 
@@ -628,6 +679,105 @@ export class Renderer3D {
 
         const pickedId = pixels[0] + (pixels[1] << 8) + (pixels[2] << 16);
         return reverseIdMap.get(pickedId) || null;
+    }
+
+    /**
+     * Renders a Tilemap as a textured plane in 3D.
+     * This avoids the "flat background" look by placing it correctly in 3D space.
+     */
+    renderTilemap(materia, projectionMatrix, viewMatrix, options) {
+        if (options.picking) return; // Skip picking for tilemaps for now
+
+        const tilemap = materia.getComponent(Components.Tilemap);
+        const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
+        const transform = materia.getComponent(Transform);
+
+        // We use the 2D renderer to bake the tilemap into a texture
+        // This is a shortcut to avoid implementing the whole tilemap logic in GL
+        if (!tilemapRenderer._bakedTexture || tilemapRenderer.isDirty) {
+            this.bakeTilemap(materia);
+        }
+
+        const tex = this.getGLTexture(tilemapRenderer._bakedTexture);
+        if (!tex) return;
+
+        const gl = this.gl;
+        const worldPos = transform.position;
+        const worldScale = transform.scale;
+        const pos = [worldPos.x, worldPos.y, worldPos.z || 0];
+        const scale = [Math.abs(worldScale.x), Math.abs(worldScale.y), 1];
+
+        const q = quat.create();
+        const rot = {
+            x: transform.rotationX || 0,
+            y: transform.rotationY || 0,
+            z: transform.rotationZ || 0
+        };
+        quat.fromEuler(q, rot.x, rot.y, rot.z);
+
+        const modelMatrix = mat4.create();
+        const mapScale = [tilemapRenderer._bakedTexture.width, tilemapRenderer._bakedTexture.height, 1];
+        const finalScale = [scale[0] * mapScale[0], scale[1] * mapScale[1], 1];
+
+        mat4.fromRotationTranslationScale(modelMatrix, q, pos, finalScale);
+
+        gl.uniformMatrix4fv(this.programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
+        gl.uniformMatrix4fv(this.programInfo.uniformLocations.viewMatrix, false, viewMatrix);
+        gl.uniformMatrix4fv(this.programInfo.uniformLocations.modelMatrix, false, modelMatrix);
+
+        gl.uniform1i(this.programInfo.uniformLocations.uUseTexture, 1);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.uniform1i(this.programInfo.uniformLocations.uSampler, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.planeBuffer);
+        gl.vertexAttribPointer(this.programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexPosition);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.planeTexCoordBuffer);
+        gl.vertexAttribPointer(this.programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(this.programInfo.attribLocations.textureCoord);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.planeIndexBuffer);
+        gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+    }
+
+    bakeTilemap(materia) {
+        const tilemap = materia.getComponent(Components.Tilemap);
+        const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
+        const grid = materia.parent?.getComponent(Components.Grid);
+        if (!tilemap || !tilemapRenderer || !grid) return;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = tilemap.width * grid.cellSize.x;
+        canvas.height = tilemap.height * grid.cellSize.y;
+        const ctx = canvas.getContext('2d');
+
+        // Draw the tilemap using the existing 2D logic but into our canvas
+        // This is a bit recursive, but effective
+        const tempRenderer = { ctx: ctx, canvas: canvas, drawImage: (img, x, y, w, h) => ctx.drawImage(img, x, y, w, h) };
+
+        // Mocking the Renderer.drawTilemap logic
+        const mapTotalWidth = canvas.width;
+        const mapTotalHeight = canvas.height;
+
+        for (const layer of tilemap.layers) {
+            const layerOffsetX = layer.position.x * mapTotalWidth;
+            const layerOffsetY = layer.position.y * mapTotalHeight;
+            for (const [coord, tileData] of layer.tileData.entries()) {
+                const image = tilemapRenderer.getImageForTile(tileData);
+                if (image && image.complete && image.naturalWidth > 0) {
+                    const [x, y] = coord.split(',').map(Number);
+                    if (x < 0 || x >= tilemap.width || y < 0 || y >= tilemap.height) continue;
+                    const dx = layerOffsetX + (x * grid.cellSize.x);
+                    const dy = layerOffsetY + (y * grid.cellSize.y);
+                    ctx.drawImage(image, dx, dy, grid.cellSize.x + 0.5, grid.cellSize.y + 0.5);
+                }
+            }
+        }
+
+        tilemapRenderer._bakedTexture = canvas;
+        tilemapRenderer.isDirty = false;
     }
 
     initShaderProgram(gl, vsSource, fsSource) {

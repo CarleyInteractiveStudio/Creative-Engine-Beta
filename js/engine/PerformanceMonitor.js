@@ -17,6 +17,11 @@ export class PerformanceMonitor {
 
         this.lastOptimizationCheck = 0;
         this.frameTimeHistory = 30; // Average over 30 frames
+
+        // Intelligent Frame Analyzer
+        this.lastStableSnapshots = [];
+        this.maxSnapshots = 5;
+        this.frameAnalysisResults = null;
     }
 
     updateConfig(config) {
@@ -45,10 +50,161 @@ export class PerformanceMonitor {
     checkPerformance() {
         // Optimization logic
         if (this.fps < this.targetMinFps + 5) {
+            this.analyzeFramePerformance();
             this.increaseOptimization();
         } else if (this.fps > this.targetMinFps + 15) {
             this.decreaseOptimization();
+            this.recordStableSnapshot();
         }
+    }
+
+    recordStableSnapshot() {
+        if (!SceneManager.currentScene) return;
+
+        const snapshot = this.capturePerformanceData();
+        this.lastStableSnapshots.push(snapshot);
+        if (this.lastStableSnapshots.length > this.maxSnapshots) {
+            this.lastStableSnapshots.shift();
+        }
+    }
+
+    capturePerformanceData() {
+        const scene = SceneManager.currentScene;
+        const materias = scene.getAllMaterias();
+
+        const data = {
+            timestamp: performance.now(),
+            fps: this.fps,
+            materiaCount: materias.length,
+            activeCount: materias.filter(m => m.isActive).length,
+            componentStats: {},
+            lightCount: 0,
+            particleCount: 0,
+            physicsCount: 0
+        };
+
+        materias.forEach(m => {
+            if (!m.isActive) return;
+            m.leyes.forEach(ley => {
+                const name = ley.constructor.name;
+                data.componentStats[name] = (data.componentStats[name] || 0) + 1;
+
+                if (name.includes('Light')) data.lightCount++;
+                if (name === 'ParticleSystem') data.particleCount++;
+                if (name === 'Rigidbody2D' && ley.bodyType === 'Dynamic') data.physicsCount++;
+            });
+        });
+
+        return data;
+    }
+
+    analyzeFramePerformance() {
+        if (this.lastStableSnapshots.length === 0) return;
+
+        const current = this.capturePerformanceData();
+        const stable = this.lastStableSnapshots[this.lastStableSnapshots.length - 1];
+
+        const culprits = [];
+
+        // Compare counts
+        if (current.lightCount > stable.lightCount * 1.5) culprits.push({ type: 'Light', msg: 'Aumento súbito de luces' });
+        if (current.physicsCount > stable.physicsCount * 1.5) culprits.push({ type: 'Rigidbody2D', msg: 'Demasiados objetos físicos activos' });
+        if (current.particleCount > stable.particleCount * 2) culprits.push({ type: 'ParticleSystem', msg: 'Saturación de partículas' });
+
+        // Check for specific components that might be leaking or growing
+        for (const [name, count] of Object.entries(current.componentStats)) {
+            const stableCount = stable.componentStats[name] || 0;
+            if (count > stableCount + 20 && count > stableCount * 2) {
+                culprits.push({ type: name, msg: `Exceso de componentes '${name}'` });
+            }
+        }
+
+        if (culprits.length > 0) {
+            this.frameAnalysisResults = culprits;
+            this.reportCulprits(culprits);
+        }
+    }
+
+    reportCulprits(culprits) {
+        culprits.forEach(c => {
+            const msg = `[Optimizer] CAUSA DETECTADA: ${c.msg}`;
+            if (window.logToUIConsole) {
+                window.logToUIConsole({
+                    message: msg,
+                    isSystemString: true,
+                    isOptimizer: true,
+                    culpritType: c.type,
+                    culpritData: c
+                }, 'warn');
+            } else {
+                console.warn(msg);
+            }
+        });
+    }
+
+    /**
+     * Performs a surgical optimization based on the detected culprit.
+     * @param {string} type The type of component causing the issue.
+     */
+    surgicalOptimize(type) {
+        console.log(`[PerformanceMonitor] Optimización quirúrgica para: ${type}`);
+
+        const scene = SceneManager.currentScene;
+        if (!scene) return;
+
+        const materias = scene.getAllMaterias();
+
+        switch(type) {
+            case 'Light':
+            case 'PointLight2D':
+            case 'SpotLight2D':
+                // Reduce range and intensity of distant lights
+                const cam = scene.findFirstCamera();
+                const camPos = cam ? cam.getComponent(Components.Transform).position : { x: 0, y: 0 };
+
+                materias.forEach(m => {
+                    const l = m.getComponent(Components.PointLight2D) || m.getComponent(Components.SpotLight2D);
+                    if (l) {
+                        const t = m.getComponent(Components.Transform);
+                        const dist = Math.hypot(t.x - camPos.x, t.y - camPos.y);
+                        if (dist > 1000) {
+                            l.intensity *= 0.5;
+                            l.radius *= 0.8;
+                        }
+                    }
+                });
+                break;
+
+            case 'ParticleSystem':
+                // Cut emission rates in half
+                materias.forEach(m => {
+                    const ps = m.getComponent(Components.ParticleSystem);
+                    if (ps) ps.emissionRate *= 0.5;
+                });
+                break;
+
+            case 'Rigidbody2D':
+                // Increase sleep threshold or disable distant physics
+                materias.forEach(m => {
+                    const rb = m.getComponent(Components.Rigidbody2D);
+                    if (rb && rb.bodyType === 'Dynamic') {
+                        // For now, let's just make them sleep if they are slow
+                        if (Math.abs(rb.velocity.x) < 0.1 && Math.abs(rb.velocity.y) < 0.1) {
+                            rb.velocity = { x: 0, y: 0 };
+                        }
+                    }
+                });
+                break;
+
+            default:
+                // Generic component reduction if too many
+                if (materias.length > 500) {
+                    console.warn("[PerformanceMonitor] Demasiadas materias, se recomienda usar Prefabs y Pooling.");
+                }
+                break;
+        }
+
+        this.increaseOptimization();
     }
 
     increaseOptimization() {

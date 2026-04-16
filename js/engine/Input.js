@@ -183,6 +183,9 @@ class InputManager {
 
         // Also listen for mouse move on the window to track position even when not over canvas
         targetWindow.addEventListener('mousemove', (e) => {
+            // Update delta even when moving outside the canvas while a button is likely pressed
+            this._mouseDelta.x += e.clientX - this._mousePosition.x;
+            this._mouseDelta.y += e.clientY - this._mousePosition.y;
             this._mousePosition.x = e.clientX;
             this._mousePosition.y = e.clientY;
         });
