@@ -14,6 +14,7 @@ export class Renderer3D {
         }
 
         this.gl.enable(this.gl.DEPTH_TEST);
+        this.gl.depthFunc(this.gl.LEQUAL);
         this.gl.enable(this.gl.BLEND);
         this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
 
@@ -386,21 +387,31 @@ export class Renderer3D {
         }
         gl.uniform1i(this.programInfo.uniformLocations.uPointLightCount, pointLights.length);
 
+        // Optimization: Filter out non-renderable materias once per frame
+        const renderableMaterias = scene.getAllMaterias().filter(m => {
+            if (!m.isActive) return false;
+            return m.getComponent(Components.MeshRenderer3D) ||
+                   m.getComponent(Components.SpriteRenderer) ||
+                   m.getComponent(Components.TextureRender) ||
+                   m.getComponent(Components.TilemapRenderer);
+        });
+
         // Depth sorting for transparent objects (Sprites) in 3D
-        const materias = scene.getAllMaterias()
-            .filter(m => m.isActive)
-            .sort((a, b) => {
+        renderableMaterias.sort((a, b) => {
                 const transA = a.getComponent(Transform);
                 const transB = b.getComponent(Transform);
                 if (!transA || !transB) return 0;
 
                 // Sort by distance to camera (Back to Front)
-                const distA = vec3.sqrDist([transA.x, transA.y, transA.z || 0], activeViewPosition);
-                const distB = vec3.sqrDist([transB.x, transB.y, transB.z || 0], activeViewPosition);
+                // Using world position for correct sorting
+                const posA = transA.position;
+                const posB = transB.position;
+                const distA = vec3.sqrDist([posA.x, posA.y, posA.z || 0], activeViewPosition);
+                const distB = vec3.sqrDist([posB.x, posB.y, posB.z || 0], activeViewPosition);
                 return distB - distA;
             });
 
-        materias.forEach(materia => {
+        renderableMaterias.forEach(materia => {
             this.renderMateria(materia, projectionMatrix, viewMatrix, options);
         });
     }
@@ -428,10 +439,18 @@ export class Renderer3D {
         }
 
         const modelMatrix = mat4.create();
-        const pos = [transform.x, transform.y, transform.z || 0];
-        const scale = [transform.localScale.x, transform.localScale.y, transform.localScale.z || 1];
+        const worldPos = transform.position;
+        const worldScale = transform.scale;
+        const pos = [worldPos.x, worldPos.y, worldPos.z || 0];
+        const scale = [Math.abs(worldScale.x), Math.abs(worldScale.y), Math.abs(worldScale.z || 1)];
+
         const q = quat.create();
-        const rot = (typeof transform.localRotation === 'object') ? transform.localRotation : { x: 0, y: 0, z: transform.localRotation || 0 };
+        // Use global rotation
+        const rot = {
+            x: transform.rotationX || 0,
+            y: transform.rotationY || 0,
+            z: transform.rotationZ || 0
+        };
         quat.fromEuler(q, rot.x, rot.y, rot.z);
 
         mat4.fromRotationTranslationScale(modelMatrix, q, pos, scale);
@@ -530,6 +549,7 @@ export class Renderer3D {
                 const viewRot = quat.create();
                 mat4.getRotation(viewRot, viewMatrix);
                 quat.invert(viewRot, viewRot);
+                // Invert the view rotation to keep the sprite facing the camera
                 finalRotation = viewRot;
             }
 
@@ -582,6 +602,7 @@ export class Renderer3D {
                 const viewRot = quat.create();
                 mat4.getRotation(viewRot, viewMatrix);
                 quat.invert(viewRot, viewRot);
+                // Keep texture flat in world unless billboarded
                 finalRotationTex = viewRot;
             }
 
@@ -681,10 +702,17 @@ export class Renderer3D {
         if (!tex) return;
 
         const gl = this.gl;
-        const pos = [transform.x, transform.y, transform.z || 0];
-        const scale = [transform.localScale.x, transform.localScale.y, 1];
+        const worldPos = transform.position;
+        const worldScale = transform.scale;
+        const pos = [worldPos.x, worldPos.y, worldPos.z || 0];
+        const scale = [Math.abs(worldScale.x), Math.abs(worldScale.y), 1];
+
         const q = quat.create();
-        const rot = (typeof transform.localRotation === 'object') ? transform.localRotation : { x: 0, y: 0, z: transform.localRotation || 0 };
+        const rot = {
+            x: transform.rotationX || 0,
+            y: transform.rotationY || 0,
+            z: transform.rotationZ || 0
+        };
         quat.fromEuler(q, rot.x, rot.y, rot.z);
 
         const modelMatrix = mat4.create();

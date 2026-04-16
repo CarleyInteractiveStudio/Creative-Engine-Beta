@@ -1670,7 +1670,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // In 3D/Hybrid mode, the 2D renderer (Renderer.js) should NOT draw objects
                 // that are already handled by the 3D renderer (Renderer3D.js).
                 // This prevents the "always facing camera" double-rendering issue.
-                if (is3D && !isGameView) {
+                if (is3D) {
                     const has3DSupported = m.getComponent(Components.SpriteRenderer) ||
                                           m.getComponent(Components.TextureRender) ||
                                           m.getComponent(Components.MeshRenderer3D) ||
@@ -4511,6 +4511,7 @@ public start() {
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, updateAssetBrowserCallback: updateAssetBrowser, Components, updateScene, getActiveView, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool, getCurrentProjectConfig: () => currentProjectConfig, getDeltaTime: () => deltaTime });
+            window._SceneView = SceneView;
             Terminal.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(60, "Aplicando preferencias...");
