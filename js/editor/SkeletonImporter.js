@@ -19,7 +19,7 @@ export async function importSpineJSON(jsonContent, targetMateria, projectsDirHan
 
             const trans = boneMtr.getComponentByName('Transform');
             trans.localPosition = { x: boneData.x || 0, y: -(boneData.y || 0) }; // Spine Y is up
-            trans.localRotation = -(boneData.rotation || 0);
+            trans.rotationZ = -(boneData.rotation || 0);
 
             boneMap.set(boneData.name, boneMtr);
         }
@@ -71,7 +71,7 @@ export async function importSpineJSON(jsonContent, targetMateria, projectsDirHan
 
                     // Default from bind pose
                     let pos = { ...trans.localPosition };
-                    let rot = trans.localRotation;
+                    let rot = trans.rotationZ;
                     let scale = { ...trans.localScale };
 
                     if (spineBoneAnim) {
@@ -121,7 +121,7 @@ export async function importSpineJSON(jsonContent, targetMateria, projectsDirHan
 
                         const sTrans = spriteMtr.getComponentByName('Transform');
                         sTrans.localPosition = { x: att.x || 0, y: -(att.y || 0) };
-                        sTrans.localRotation = -(att.rotation || 0);
+                        sTrans.rotationZ = -(att.rotation || 0);
                         sTrans.localScale = { x: att.scaleX || 1, y: att.scaleY || 1 };
 
                         spriteMtr.setParent(parentMtr, false);

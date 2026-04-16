@@ -36,12 +36,14 @@ const availableComponents = {
     'CAT_AUDIO': [Components.AudioSource],
     'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.PlatformEffector2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
     'CAT_CAMARA': [Components.Camera],
+    'CAT_3D': [Components.MeshRenderer3D, Components.DirectionalLight3D, Components.PointLight3D, Components.SpotLight3D],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
     'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Attack, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.Suspension, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController, Components.SceneLoader],
     'CAT_SCRIPTING': [Components.CreativeScript]
 };
 
 const componentIcons = {
+    MeshRenderer3D: 'box', DirectionalLight3D: 'sun', PointLight3D: 'lightbulb', SpotLight3D: 'flashlight',
     Transform: 'move', Rigidbody2D: 'weight', BoxCollider2D: 'square', PlatformEffector2D: 'square', CapsuleCollider2D: 'pill', CircleCollider2D: 'disc', PolygonCollider2D: 'hexagon', SpriteRenderer: 'image',
     Animator: 'run', AnimatorController: 'gamepad', AudioSource: 'music', VideoPlayer: 'video', Camera: 'camera', CreativeScript: 'scroll', SceneLoader: 'clapperboard',
     UITransform: 'box', UICanvas: 'image', UIImage: 'image', PointLight2D: 'lightbulb', SpotLight2D: 'flashlight', FreeformLight2D: 'pencil', SpriteLight2D: 'sparkles',
@@ -1459,6 +1461,14 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
                     <input type="number" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.y"`)} value="${currentValue?.y || 0}" title="Y">
                 </div>
             `;
+        case 'Vector3':
+            return `
+                <div class="prop-inputs">
+                    <input type="number" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.x"`)} value="${currentValue?.x || 0}" title="X">
+                    <input type="number" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.y"`)} value="${currentValue?.y || 0}" title="Y">
+                    <input type="number" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.z"`)} value="${currentValue?.z || 0}" title="Z">
+                </div>
+            `;
         case 'Tag':
             {
                 const config = getCurrentProjectConfig();
@@ -2013,12 +2023,15 @@ async function updateInspectorForMateria(selectedMateria) {
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.x" value="${ley.localPosition.x}" title="X">
                             <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.y" value="${ley.localPosition.y}" title="Y">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.z" value="${ley.localPosition.z || 0}" title="Z">
                         </div>
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_ROTATION">${L.get('PROP_ROTATION', 'Rotation')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localRotation" value="${ley.localRotation || 0}" title="Z">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localRotation.x" value="${ley.localRotation?.x || 0}" title="X">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localRotation.y" value="${ley.localRotation?.y || 0}" title="Y">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localRotation.z" value="${(typeof ley.localRotation === 'number' ? ley.localRotation : ley.localRotation?.z) || 0}" title="Z">
                         </div>
                     </div>
                     <div class="prop-row-multi">
@@ -2026,6 +2039,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.x" value="${ley.localScale.x}" title="X">
                             <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.y" value="${ley.localScale.y}" title="Y">
+                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.z" value="${ley.localScale.z || 1}" title="Z">
                         </div>
                     </div>
                     <div class="inspector-section-header"><span>${L.get('ORIENTATION', 'Orientación')}</span></div>
@@ -2524,7 +2538,24 @@ async function updateInspectorForMateria(selectedMateria) {
                         </div>
                     </div>
 
-                     <div class="prop-row-multi">
+                    <div class="prop-row-multi">
+                        <label data-i18n="PROJECTION">Proyección</label>
+                        <div class="prop-inputs">
+                            <select class="prop-input inspector-re-render" data-component="Camera" data-prop="projection">
+                                <option value="Orthographic" ${projection === 'Orthographic' ? 'selected' : ''}>2D (Ortográfica)</option>
+                                <option value="Perspective" ${projection === 'Perspective' ? 'selected' : ''}>3D (Perspectiva)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="prop-row-multi" style="display: ${projection === 'Perspective' ? 'flex' : 'none'};">
+                        <label data-i18n="FOV">Campo de Visión (FOV)</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" data-component="Camera" data-prop="fov" value="${ley.fov || 60}" min="1" max="179">
+                        </div>
+                    </div>
+
+                     <div class="prop-row-multi" style="display: ${projection === 'Orthographic' ? 'flex' : 'none'};">
                         <label data-i18n="SIZE_ZOOM">${L.get('SIZE_ZOOM', 'Size (Zoom)')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" data-component="Camera" data-prop="orthographicSize" value="${ley.orthographicSize || 5}" min="0.1">
@@ -4116,6 +4147,67 @@ async function updateInspectorForMateria(selectedMateria) {
                     ${renderAIFuncInput('onAttackRange', L.get('ON_ATTACK_RANGE', 'Rango Ataque'))}
                 </div>
             `;
+        } else if (ley instanceof Components.MeshRenderer3D) {
+            componentHTML = `
+                \${renderComponentHeader(L.get('MESH_RENDERER_3D', "Mesh Renderer 3D"), icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label data-i18n="MESH_TYPE">Tipo de Malla</label>
+                        <select class="prop-input" data-component="MeshRenderer3D" data-prop="meshType">
+                            <option value="Cube" \${ley.meshType === 'Cube' ? 'selected' : ''}>Cubo</option>
+                            <option value="Sphere" \${ley.meshType === 'Sphere' ? 'selected' : ''}>Esfera</option>
+                            <option value="Plane" \${ley.meshType === 'Plane' ? 'selected' : ''}>Plano</option>
+                        </select>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="COLOR">Color</label>
+                        <input type="color" class="prop-input" data-component="MeshRenderer3D" data-prop="color" value="\${ley.color}">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="MeshRenderer3D" data-prop="isUnlit" \${ley.isUnlit ? 'checked' : ''}>
+                        <label data-i18n="UNLIT">Sin Luces (Unlit)</label>
+                    </div>
+                </div>
+            \`;
+        } else if (ley instanceof Components.DirectionalLight3D || ley instanceof Components.PointLight3D || ley instanceof Components.SpotLight3D) {
+            const isDir = ley instanceof Components.DirectionalLight3D;
+            const isSpot = ley instanceof Components.SpotLight3D;
+            const type = isDir ? 'DirectionalLight3D' : (isSpot ? 'SpotLight3D' : 'PointLight3D');
+
+            componentHTML = \`
+                \${renderComponentHeader(L.get(type.toUpperCase(), type), icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label data-i18n="COLOR">Color</label>
+                        <input type="color" class="prop-input" data-component="\${type}" data-prop="color" value="\${ley.color}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="INTENSITY">Intensidad</label>
+                        <input type="number" class="prop-input" step="0.1" data-component="\${type}" data-prop="intensity" value="\${ley.intensity}">
+                    </div>
+                    \${isDir ? \`
+                    <div class="prop-row-multi">
+                        <label data-i18n="DIRECTION">Dirección</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" data-component="\${type}" data-prop="direction.x" value="\${ley.direction.x}">
+                            <input type="number" class="prop-input" step="0.1" data-component="\${type}" data-prop="direction.y" value="\${ley.direction.y}">
+                            <input type="number" class="prop-input" step="0.1" data-component="\${type}" data-prop="direction.z" value="\${ley.direction.z}">
+                        </div>
+                    </div>
+                    \` : \`
+                    <div class="prop-row-multi">
+                        <label data-i18n="RANGE">Rango</label>
+                        <input type="number" class="prop-input" data-component="\${type}" data-prop="range" value="\${ley.range}">
+                    </div>
+                    \`}
+                    \${isSpot ? \`
+                    <div class="prop-row-multi">
+                        <label data-i18n="ANGLE">Ángulo</label>
+                        <input type="number" class="prop-input" data-component="\${type}" data-prop="angle" value="\${ley.angle}">
+                    </div>
+                    \` : ''}
+                </div>
+            \`;
         }
 
 

@@ -627,7 +627,9 @@ function previewSkeletalAnimationAt(time) {
             trans.localPosition.y = d1.pos.y + (d2.pos.y - d1.pos.y) * t;
             let r1 = d1.rot, r2 = d2.rot;
             while (r2 - r1 > 180) r2 -= 360; while (r2 - r1 < -180) r2 += 360;
-            trans.localRotation = r1 + (r2 - r1) * t;
+            const finalRotZ = r1 + (r2 - r1) * t;
+            if (typeof trans.localRotation === 'object') trans.localRotation.z = finalRotZ;
+            else trans.localRotation = finalRotZ;
             trans.localScale.x = d1.scale.x + (d2.scale.x - d1.scale.x) * t;
             trans.localScale.y = d1.scale.y + (d2.scale.y - d1.scale.y) * t;
         }

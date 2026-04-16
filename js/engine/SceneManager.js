@@ -417,6 +417,18 @@ async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, mate
                 } else if (leyData.type === 'AnimatorController') {
                     Object.assign(newLey, leyData.properties);
                     newLey.states = new Map();
+                } else if (leyData.type === 'Transform') {
+                    // Upgrade legacy 2D transforms to 3D object format if needed
+                    if (leyData.properties.localPosition && leyData.properties.localPosition.z === undefined) {
+                        leyData.properties.localPosition.z = 0;
+                    }
+                    if (typeof leyData.properties.localRotation === 'number') {
+                        leyData.properties.localRotation = { x: 0, y: 0, z: leyData.properties.localRotation };
+                    }
+                    if (leyData.properties.localScale && leyData.properties.localScale.z === undefined) {
+                        leyData.properties.localScale.z = 1;
+                    }
+                    Object.assign(newLey, leyData.properties);
                 } else {
                     Object.assign(newLey, leyData.properties);
                 }

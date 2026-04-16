@@ -2,6 +2,7 @@
 import { InputManager } from './engine/Input.js';
 import * as SceneManager from './engine/SceneManager.js';
 import { Renderer } from './engine/Renderer.js';
+import { Renderer3D } from './engine/Renderer3D.js';
 import { PhysicsSystem } from './engine/Physics.js';
 import * as UISystem from './engine/ui/UISystem.js';
 import * as Components from './engine/Components.js';
@@ -68,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const scratchCanvas = document.createElement('canvas');
     const scratchCtx = scratchCanvas.getContext('2d');
     let renderer = null, gameRenderer = null;
+    let renderer3D = null, gameRenderer3D = null;
     let activeView = 'scene-content'; // 'scene-content', 'game-content', or 'code-editor-content'
     const panelVisibility = {
         hierarchy: true,
@@ -460,7 +462,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'chc-integrated-editor', 'chc-human-text', 'chc-run-btn', 'chc-loading-overlay', 'chc-loading-text',
             'prefs-smart-reparator-toggle', 'code-creative-code-toggle',
             // Animation Skeletal Elements
-            'animation-type-selector', 'animation-record-btn', 'skeletal-timeline', 'animation-time-slider', 'skeletal-tracks'
+            'animation-type-selector', 'animation-record-btn', 'skeletal-timeline', 'animation-time-slider', 'skeletal-tracks',
+            'scene-canvas-3d', 'game-canvas-3d'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
@@ -1087,6 +1090,8 @@ document.addEventListener('DOMContentLoaded', () => {
         requestAnimationFrame(() => {
             if (renderer) renderer.resize();
             if (gameRenderer) gameRenderer.resize();
+            if (renderer3D) renderer3D.resize();
+            if (gameRenderer3D) gameRenderer3D.resize();
         });
     }
 
@@ -2129,20 +2134,41 @@ document.addEventListener('DOMContentLoaded', () => {
             gameRenderer.resize();
         }
 
+        const is3D = currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d';
+
         if (isGameRunning && !isGamePaused) {
             runGameLoop();
-            if (renderer) {
-                updateScene(renderer, false);
-            }
-            if (gameRenderer) {
-                gameRenderer.resize(); // Ensure canvas dimensions are correct
-                updateScene(gameRenderer, true);
+            if (is3D) {
+                if (renderer3D) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d' });
+                if (gameRenderer3D) {
+                    gameRenderer3D.resize();
+                    const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth)[0];
+                    if (mainCam) gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d' });
+                }
+            } else {
+                if (renderer) updateScene(renderer, false);
+                if (gameRenderer) {
+                    gameRenderer.resize();
+                    updateScene(gameRenderer, true);
+                }
             }
         } else {
-            if (activeView === 'scene-content' && renderer) {
-                updateScene(renderer, false);
-            } else if (activeView === 'game-content' && gameRenderer) {
-                updateScene(gameRenderer, true);
+            if (activeView === 'scene-content') {
+                if (is3D) {
+                    if (renderer3D) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d' });
+                } else {
+                    if (renderer) updateScene(renderer, false);
+                }
+            } else if (activeView === 'game-content') {
+                if (is3D) {
+                    if (gameRenderer3D) {
+                        gameRenderer3D.resize();
+                        const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth)[0];
+                        if (mainCam) gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d' });
+                    }
+                } else {
+                    if (gameRenderer) updateScene(gameRenderer, true);
+                }
             }
         }
 
@@ -3066,6 +3092,8 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('resize', () => {
             if (renderer) renderer.resize();
             if (gameRenderer) gameRenderer.resize();
+            if (renderer3D) renderer3D.resize();
+            if (gameRenderer3D) gameRenderer3D.resize();
         });
 
         // Scene/Game/Code View Toggle Logic
@@ -3092,9 +3120,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Ensure canvas is resized after being made visible
                 if (viewId === 'scene-content' && renderer) {
-                    setTimeout(() => { renderer.resize(); try { InputManager.setActiveCanvas(renderer.canvas); } catch(e) {}} , 0);
+                    setTimeout(() => {
+                        renderer.resize();
+                        if (renderer3D) renderer3D.resize();
+                        try { InputManager.setActiveCanvas(dom.sceneCanvas3d); } catch(e) {}
+                    } , 0);
                 } else if (viewId === 'game-content' && gameRenderer) {
-                    setTimeout(() => { gameRenderer.resize(); try { InputManager.setActiveCanvas(gameRenderer.canvas); } catch(e) {}} , 0);
+                    setTimeout(() => {
+                        gameRenderer.resize();
+                        if (gameRenderer3D) gameRenderer3D.resize();
+                        try { InputManager.setActiveCanvas(dom.gameCanvas3d); } catch(e) {}
+                    } , 0);
                 }
             }
         });
@@ -4172,6 +4208,9 @@ public start() {
             updateLoadingProgress(20, "Inicializando renderizadores...");
             renderer = new Renderer(dom.sceneCanvas, true);
             gameRenderer = new Renderer(dom.gameCanvas, false, true); // isGameView = true
+            renderer3D = new Renderer3D(dom.sceneCanvas3d);
+            gameRenderer3D = new Renderer3D(dom.gameCanvas3d);
+            window._Renderer3D = renderer3D;
             window.renderer = renderer; // Expose after initialization
 
             updateLoadingProgress(30, "Cargando escena principal...");
@@ -4349,7 +4388,7 @@ public start() {
                 }
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
-            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, updateAssetBrowserCallback: updateAssetBrowser, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool });
+            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, updateAssetBrowserCallback: updateAssetBrowser, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool, getCurrentProjectConfig: () => currentProjectConfig, getDeltaTime: () => deltaTime });
             Terminal.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(60, "Aplicando preferencias...");

@@ -129,7 +129,7 @@ export class PhysicsSystem {
             }
 
             // 2. Angular Limits
-            let localRot = transform.localRotation;
+            let localRot = typeof transform.localRotation === 'number' ? transform.localRotation : transform.localRotation.z;
             const limits = bone.angularLimits || { min: -45, max: 45 };
 
             if (localRot < limits.min || localRot > limits.max) {

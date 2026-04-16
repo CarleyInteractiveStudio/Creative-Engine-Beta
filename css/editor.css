@@ -3822,11 +3822,30 @@ body.mobile-mode .component-item:active {
     padding: 0; /* Remove padding to allow canvas to fill space */
 }
 
-#scene-canvas, #game-canvas {
+.canvas-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+#scene-canvas, #game-canvas, #scene-canvas-3d, #game-canvas-3d {
     width: 100%;
     height: 100%;
     display: block; /* Removes default bottom margin */
     cursor: default;
+}
+
+#scene-canvas, #game-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none; /* Let clicks pass through to the 3D canvas when needed */
+}
+
+#scene-canvas-3d, #game-canvas-3d {
+    position: absolute;
+    top: 0;
+    left: 0;
 }
 
 #scene-canvas.is-panning {
