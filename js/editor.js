@@ -1055,12 +1055,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     setActiveTool('tile-eraser');
                     break;
                 case '2':
-                    if (dom.btnToggle2d3d && currentProjectConfig.rendererMode !== 'canvas2d') {
+                    if (currentProjectConfig.projectType !== '2d' && dom.btnToggle2d3d && currentProjectConfig.rendererMode !== 'canvas2d') {
                         dom.btnToggle2d3d.click();
                     }
                     break;
                 case '3':
-                    if (dom.btnToggle2d3d && currentProjectConfig.rendererMode !== '3d-mode') {
+                    if (currentProjectConfig.projectType !== '2d' && dom.btnToggle2d3d && currentProjectConfig.rendererMode !== '3d-mode') {
                         dom.btnToggle2d3d.click();
                     }
                     break;
@@ -1114,7 +1114,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateCanvasInteractivity = function() {
         if (!currentProjectConfig) return;
-        const is3D = currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d';
+        const is3D = (currentProjectConfig.projectType !== '2d') && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
+
+        // Hide toggle for strict 2D projects
+        if (dom.btnToggle2d3d) {
+            dom.btnToggle2d3d.style.display = currentProjectConfig.projectType === '2d' ? 'none' : 'flex';
+        }
 
         if (dom.sceneCanvas) {
             // 2D Canvas on TOP of 3D for UI overlay
@@ -1250,6 +1255,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 appName: 'MiJuego',
                 authorName: 'Un Creador',
                 appVersion: '1.0.0',
+                projectType: '2d', // New: '2d' or '3d'
                 engineVersion: '0.1.2',
                 maxFps: 60,
                 minFps: 30,
@@ -1662,7 +1668,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // --- Pass 1: Draw Scene Geometry ---
-        const is3D = currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d';
+        const is3D = currentProjectConfig.projectType !== '2d' && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
 
         const materiasToRender = SceneManager.currentScene.getAllMaterias()
             .filter(m => {
@@ -2217,7 +2223,7 @@ document.addEventListener('DOMContentLoaded', () => {
             gameRenderer.resize();
         }
 
-        const is3D = currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d';
+        const is3D = currentProjectConfig.projectType !== '2d' && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
 
         if (isGameRunning && !isGamePaused) {
             runGameLoop();

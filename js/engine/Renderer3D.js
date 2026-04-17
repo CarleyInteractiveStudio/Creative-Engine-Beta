@@ -337,10 +337,10 @@ export class Renderer3D {
             if (camComp.projection === 'Orthographic') {
                 is3DView = false;
                 const size = camComp.orthographicSize;
-                // Adjust scale factor to match 2D renderer pixels
                 const orthoH = size;
                 const orthoW = size * aspect;
-                mat4.ortho(projectionMatrix, -orthoW, orthoW, -orthoH, orthoH, 0.1, 10000);
+                // Reverse Y for orthographic to match 2D Canvas coordinate system (Y-down)
+                mat4.ortho(projectionMatrix, -orthoW, orthoW, orthoH, -orthoH, 0.1, 10000);
             } else {
                 mat4.perspective(projectionMatrix, camComp.fov * Math.PI / 180, aspect, 0.1, 50000);
             }

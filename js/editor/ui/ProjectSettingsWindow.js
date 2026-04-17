@@ -32,6 +32,7 @@ export async function saveProjectConfig(showAlert = true) {
         currentProjectConfig.appName = dom.settingsAppName.value;
         currentProjectConfig.authorName = dom.settingsAuthorName.value;
         currentProjectConfig.appVersion = dom.settingsAppVersion.value;
+        currentProjectConfig.projectType = document.getElementById('settings-project-type').value;
         currentProjectConfig.rendererMode = dom.settingsRendererMode.value;
         currentProjectConfig.maxFps = parseInt(dom.settingsMaxFps.value) || 0;
         currentProjectConfig.minFps = parseInt(dom.settingsMinFps.value) || 30;
@@ -386,6 +387,13 @@ export function populateUI(config) {
     if (dom.settingsAppName) dom.settingsAppName.value = currentProjectConfig.appName;
     if (dom.settingsAuthorName) dom.settingsAuthorName.value = currentProjectConfig.authorName;
     if (dom.settingsAppVersion) dom.settingsAppVersion.value = currentProjectConfig.appVersion;
+
+    const typeSelect = document.getElementById('settings-project-type');
+    if (typeSelect) {
+        typeSelect.value = currentProjectConfig.projectType || '2d';
+        updateRendererModeOptions(typeSelect.value);
+    }
+
     if (dom.settingsRendererMode) dom.settingsRendererMode.value = currentProjectConfig.rendererMode;
     if (dom.settingsMaxFps) dom.settingsMaxFps.value = currentProjectConfig.maxFps !== undefined ? currentProjectConfig.maxFps : 60;
     if (dom.settingsMinFps) dom.settingsMinFps.value = currentProjectConfig.minFps !== undefined ? currentProjectConfig.minFps : 30;
