@@ -7,6 +7,55 @@ let projectsDirHandle = null;
 let currentProjectConfig = {};
 let getPreferences = null;
 
+function updateRendererModeOptions(projectType) {
+    const rendererSelect = dom.settingsRendererMode;
+    if (!rendererSelect) return;
+
+    // Clear and repopulate
+    const currentVal = rendererSelect.value;
+    rendererSelect.innerHTML = '';
+
+    const L = window.Localization;
+
+    if (projectType === '2d') {
+        const options = [
+            { value: 'canvas2d', text: L?.get('SIMPLE_2D') || 'Simple (2D Estándar)' },
+            { value: 'realista', text: L?.get('AVANZADO_LUCES') || 'Avanzado (Iluminación y Noche/Día)' }
+        ];
+        options.forEach(opt => {
+            const el = document.createElement('option');
+            el.value = opt.value;
+            el.textContent = opt.text;
+            rendererSelect.appendChild(el);
+        });
+
+        // Force valid value if switching from 3D
+        if (currentVal !== 'canvas2d' && currentVal !== 'realista') {
+            rendererSelect.value = 'canvas2d';
+        } else {
+            rendererSelect.value = currentVal;
+        }
+    } else {
+        const options = [
+            { value: '3d-mode', text: L?.get('MODE_3D') || '3D World (Beta)' },
+            { value: 'hybrid-3d', text: L?.get('MODE_HYBRID') || 'Mixed (2D + 3D)' },
+            { value: 'anime-3d', text: L?.get('MODE_ANIME') || '2.5D Anime (Cel-Shaded)' }
+        ];
+        options.forEach(opt => {
+            const el = document.createElement('option');
+            el.value = opt.value;
+            el.textContent = opt.text;
+            rendererSelect.appendChild(el);
+        });
+
+        if (!['3d-mode', 'hybrid-3d', 'anime-3d'].includes(currentVal)) {
+            rendererSelect.value = '3d-mode';
+        } else {
+            rendererSelect.value = currentVal;
+        }
+    }
+}
+
 // This function will be called from the main editor.js to initialize the module
 export function initialize(editorDom, editorProjectsDirHandle, config, getPrefsFunc) {
     dom = editorDom;
