@@ -1129,6 +1129,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentProjectConfig) return;
         const is3D = (currentProjectConfig.projectType !== '2d') && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
 
+        // RAM OPTIMIZATION: Clear 3D cache if we are in strict 2D mode
+        if (currentProjectConfig.projectType === '2d') {
+            if (renderer3D) renderer3D.clearCache();
+            if (gameRenderer3D) gameRenderer3D.clearCache();
+        }
+
         // Hide toggle for strict 2D projects
         if (dom.btnToggle2d3d) {
             dom.btnToggle2d3d.style.display = currentProjectConfig.projectType === '2d' ? 'none' : 'flex';
@@ -1253,6 +1259,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = await configFileHandle.getFile();
             const content = await file.text();
             currentProjectConfig = JSON.parse(content);
+            // Default projectType to 2d if missing in config file
+            if (!currentProjectConfig.projectType) {
+                currentProjectConfig.projectType = '2d';
+            }
             window.currentProjectConfig = currentProjectConfig;
             console.log("Configuracion del proyecto cargada:", currentProjectConfig);
 
@@ -1334,7 +1344,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Project Settings and Preferences Logic has been moved to their respective modules ---
 
     loadRuntimeApis = async function() {
-        RuntimeAPIManager.clearAPIs();
+        // NOTE: We don't clear APIs here because this is called AFTER some internal APIs
+        // might have been registered, or when reloading a project.
+        // clearAPIs() is handled at the start of Play or project change.
 
         const projectName = new URLSearchParams(window.location.search).get('project');
         if (!projectName || !projectsDirHandle) {
@@ -1446,14 +1458,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Clear previous runtime APIs to ensure a clean slate for every "Play"
         RuntimeAPIManager.clearAPIs();
 
-        // Load external libraries first
-        await loadRuntimeApis();
-
         // Now, register the internal engine APIs
         const internalApis = EngineAPI.getAllInternalApis();
         for (const [name, apiObject] of Object.entries(internalApis)) {
             RuntimeAPIManager.registerAPI(name, apiObject);
         }
+
+        // Load external libraries LAST so they can potentially override or use internal ones
+        await loadRuntimeApis();
         console.log("Registered internal and external runtime APIs.");
 
 

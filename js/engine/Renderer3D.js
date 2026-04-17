@@ -13,6 +13,15 @@ export class Renderer3D {
         this.textureCache = new Map();
     }
 
+    clearCache() {
+        if (!this.gl) return;
+        this.textureCache.forEach(tex => {
+            this.gl.deleteTexture(tex);
+        });
+        this.textureCache.clear();
+        console.log(`[Renderer3D] Texture cache cleared for ${this.canvas.id}`);
+    }
+
     init() {
         if (this.initialized) return true;
 
