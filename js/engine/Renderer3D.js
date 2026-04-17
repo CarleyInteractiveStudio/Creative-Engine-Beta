@@ -770,7 +770,18 @@ export class Renderer3D {
     bakeTilemap(materia) {
         const tilemap = materia.getComponent(Components.Tilemap);
         const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
-        const grid = materia.parent?.getComponent(Components.Grid);
+
+        let gridMateria = null;
+        const parent = materia.parent;
+        if (parent) {
+            if (typeof parent === 'object' && typeof parent.getComponent === 'function') {
+                gridMateria = parent;
+            } else if (typeof parent === 'number') {
+                gridMateria = (materia.scene || window.SceneManager?.currentScene)?.findMateriaById(parent);
+            }
+        }
+        const grid = gridMateria ? gridMateria.getComponent(Components.Grid) : null;
+
         if (!tilemap || !tilemapRenderer || !grid) return;
 
         const canvas = document.createElement('canvas');

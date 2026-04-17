@@ -1836,6 +1836,8 @@ function drawComponentGrids() {
     if (!transform) return;
 
     const { ctx, camera, canvas } = renderer;
+    const config = getCurrentProjectConfig();
+    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
     const zoom = camera.effectiveZoom;
     const prefs = getPreferences();
     const isSceneGridVisible = prefs.showSceneGrid;
@@ -1843,31 +1845,60 @@ function drawComponentGrids() {
     const { cellSize } = grid;
     if (cellSize.x <= 0 || cellSize.y <= 0) return;
 
-    const viewLeft = camera.x - (canvas.width / 2 / zoom);
-    const viewRight = camera.x + (canvas.width / 2 / zoom);
-    const viewTop = camera.y - (canvas.height / 2 / zoom);
-    const viewBottom = camera.y + (canvas.height / 2 / zoom);
-
     ctx.save();
-    ctx.lineWidth = 1 / zoom;
-    ctx.strokeStyle = isSceneGridVisible ? 'rgba(0, 100, 255, 0.5)' : 'rgba(255, 255, 255, 0.1)';
-    ctx.beginPath();
+    if (is3D) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0); // Screen Space for overlay
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(0, 150, 255, 0.4)';
 
-    const startX = Math.floor((viewLeft - transform.x) / cellSize.x) * cellSize.x + transform.x;
-    const endX = Math.ceil((viewRight - transform.x) / cellSize.x) * cellSize.x + transform.x;
-    for (let x = startX; x <= endX; x += cellSize.x) {
-        ctx.moveTo(x, viewTop);
-        ctx.lineTo(x, viewBottom);
+        const gridRange = 20; // Number of cells around object
+        const startX = transform.x - (gridRange * cellSize.x);
+        const endX = transform.x + (gridRange * cellSize.x);
+        const startZ = (transform.z || 0) - (gridRange * cellSize.y);
+        const endZ = (transform.z || 0) + (gridRange * cellSize.y);
+
+        const drawLine3D = (p1World, p2World) => {
+            const p1 = world3DToScreen(p1World);
+            const p2 = world3DToScreen(p2World);
+            if (p1 && p2) {
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+            }
+        };
+
+        for (let x = startX; x <= endX; x += cellSize.x) {
+            drawLine3D({ x, y: transform.y, z: startZ }, { x, y: transform.y, z: endZ });
+        }
+        for (let z = startZ; z <= endZ; z += cellSize.y) {
+            drawLine3D({ x: startX, y: transform.y, z }, { x: endX, y: transform.y, z });
+        }
+    } else {
+        const viewLeft = camera.x - (canvas.width / 2 / zoom);
+        const viewRight = camera.x + (canvas.width / 2 / zoom);
+        const viewTop = camera.y - (canvas.height / 2 / zoom);
+        const viewBottom = camera.y + (canvas.height / 2 / zoom);
+
+        ctx.lineWidth = 1 / zoom;
+        ctx.strokeStyle = isSceneGridVisible ? 'rgba(0, 100, 255, 0.5)' : 'rgba(255, 255, 255, 0.1)';
+        ctx.beginPath();
+
+        const startX = Math.floor((viewLeft - transform.x) / cellSize.x) * cellSize.x + transform.x;
+        const endX = Math.ceil((viewRight - transform.x) / cellSize.x) * cellSize.x + transform.x;
+        for (let x = startX; x <= endX; x += cellSize.x) {
+            ctx.moveTo(x, viewTop);
+            ctx.lineTo(x, viewBottom);
+        }
+
+        const startY = Math.floor((viewTop - transform.y) / cellSize.y) * cellSize.y + transform.y;
+        const endY = Math.ceil((viewBottom - transform.y) / cellSize.y) * cellSize.y + transform.y;
+        for (let y = startY; y <= endY; y += cellSize.y) {
+            ctx.moveTo(viewLeft, y);
+            ctx.lineTo(viewRight, y);
+        }
+        ctx.stroke();
     }
-
-    const startY = Math.floor((viewTop - transform.y) / cellSize.y) * cellSize.y + transform.y;
-    const endY = Math.ceil((viewBottom - transform.y) / cellSize.y) * cellSize.y + transform.y;
-    for (let y = startY; y <= endY; y += cellSize.y) {
-        ctx.moveTo(viewLeft, y);
-        ctx.lineTo(viewRight, y);
-    }
-
-    ctx.stroke();
     ctx.restore();
 }
 
@@ -2217,68 +2248,62 @@ function draw3DGrid() {
     const magnitude = Math.pow(10, Math.floor(Math.log10(dist / 5)));
     const step = Math.max(1, magnitude);
 
-    const gridRange = 40; // Visible lines around camera
-    const gridColor = 'rgba(255, 255, 255, 0.08)';
-    const majorGridColor = 'rgba(255, 255, 255, 0.2)';
-    const axisColorX = 'rgba(255, 50, 50, 0.7)'; // Red
-    const axisColorZ = 'rgba(50, 50, 255, 0.7)'; // Blue
-    const centerColor = 'rgba(255, 255, 255, 0.8)';
+    const gridRange = 60; // Increased range
+    const gridColor = 'rgba(255, 255, 255, 0.1)';
+    const majorGridColor = 'rgba(255, 255, 255, 0.3)';
+    const axisColorX = 'rgba(255, 50, 50, 0.8)'; // Red
+    const axisColorZ = 'rgba(50, 50, 255, 0.8)'; // Blue
+    const centerColor = 'rgba(255, 255, 255, 0.9)';
 
     // Infinite effect: snapped to steps
-    const startX = Math.floor((camera.x - (gridRange * step)) / step) * step;
-    const endX = Math.ceil((camera.x + (gridRange * step)) / step) * step;
-    const startZ = Math.floor((camera.z - (gridRange * step)) / step) * step;
-    const endZ = Math.ceil((camera.z + (gridRange * step)) / step) * step;
+    const snapX = Math.floor(camera.x / step) * step;
+    const snapZ = Math.floor(camera.z / step) * step;
+
+    const startX = snapX - (gridRange * step);
+    const endX = snapX + (gridRange * step);
+    const startZ = snapZ - (gridRange * step);
+    const endZ = snapZ + (gridRange * step);
 
     ctx.lineWidth = 1;
 
+    // Helper for clipped line drawing
+    const drawLine3D = (p1World, p2World, color) => {
+        const p1 = world3DToScreen(p1World);
+        const p2 = world3DToScreen(p2World);
+        if (p1 && p2) {
+            ctx.strokeStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+        }
+    };
+
     // Grid lines parallel to Z (varying X)
     for (let x = startX; x <= endX; x += step) {
-        const isMajor = Math.abs(x) % (step * 5) === 0;
+        const isMajor = Math.round(x / step) % 10 === 0;
         const isOrigin = Math.abs(x) < 0.01;
         if (isOrigin) continue;
-
-        ctx.strokeStyle = isMajor ? majorGridColor : gridColor;
-        const p1 = world3DToScreen({ x, y: 0, z: startZ });
-        const p2 = world3DToScreen({ x, y: 0, z: endZ });
-        if (p1 && p2) {
-            ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
-        }
+        drawLine3D({ x, y: 0, z: startZ }, { x, y: 0, z: endZ }, isMajor ? majorGridColor : gridColor);
     }
 
     // Grid lines parallel to X (varying Z)
     for (let z = startZ; z <= endZ; z += step) {
-        const isMajor = Math.abs(z) % (step * 5) === 0;
+        const isMajor = Math.round(z / step) % 10 === 0;
         const isOrigin = Math.abs(z) < 0.01;
         if (isOrigin) continue;
-
-        ctx.strokeStyle = isMajor ? majorGridColor : gridColor;
-        const p1 = world3DToScreen({ x: startX, y: 0, z });
-        const p2 = world3DToScreen({ x: endX, y: 0, z });
-        if (p1 && p2) {
-            ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
-        }
+        drawLine3D({ x: startX, y: 0, z }, { x: endX, y: 0, z }, isMajor ? majorGridColor : gridColor);
     }
 
     // Main Axes
     ctx.lineWidth = 2;
-    const axisLen = Math.max(5000, gridRange * step * 2);
+    const axisLen = gridRange * step * 1.5;
 
     // X Axis (Red)
-    const x1 = world3DToScreen({ x: -axisLen, y: 0, z: 0 });
-    const x2 = world3DToScreen({ x: axisLen, y: 0, z: 0 });
-    if (x1 && x2) {
-        ctx.strokeStyle = axisColorX;
-        ctx.beginPath(); ctx.moveTo(x1.x, x1.y); ctx.lineTo(x2.x, x2.y); ctx.stroke();
-    }
+    drawLine3D({ x: -axisLen, y: 0, z: 0 }, { x: axisLen, y: 0, z: 0 }, axisColorX);
 
     // Z Axis (Blue)
-    const z1 = world3DToScreen({ x: 0, y: 0, z: -axisLen });
-    const z2 = world3DToScreen({ x: 0, y: 0, z: axisLen });
-    if (z1 && z2) {
-        ctx.strokeStyle = axisColorZ;
-        ctx.beginPath(); ctx.moveTo(z1.x, z1.y); ctx.lineTo(z2.x, z2.y); ctx.stroke();
-    }
+    drawLine3D({ x: 0, y: 0, z: -axisLen }, { x: 0, y: 0, z: axisLen }, axisColorZ);
 
     // Center Crosshair
     const origin = world3DToScreen({ x: 0, y: 0, z: 0 });
