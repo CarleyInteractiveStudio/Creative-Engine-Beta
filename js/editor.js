@@ -1135,22 +1135,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (dom.sceneCanvas) {
-            // 2D Canvas on TOP of 3D for UI overlay
-            // In pure 2D, it MUST receive all events to block context menus and allow tools
             dom.sceneCanvas.style.pointerEvents = is3D ? 'none' : 'all';
             dom.sceneCanvas.style.zIndex = is3D ? '2' : '1';
         }
         if (dom.sceneCanvas3d) {
-            // 3D Canvas on BOTTOM, but receives events
+            dom.sceneCanvas3d.style.display = currentProjectConfig.projectType === '2d' ? 'none' : 'block';
             dom.sceneCanvas3d.style.pointerEvents = is3D ? 'all' : 'none';
             dom.sceneCanvas3d.style.zIndex = is3D ? '1' : '2';
         }
 
         if (dom.gameCanvas) {
-            dom.gameCanvas.style.pointerEvents = 'none';
+            // In game, 2D handles UI and 3D handles world.
+            // Clicks should go to 3D for picking or 2D for UI.
+            dom.gameCanvas.style.pointerEvents = is3D ? 'none' : 'all';
             dom.gameCanvas.style.zIndex = is3D ? '2' : '1';
         }
         if (dom.gameCanvas3d) {
+            dom.gameCanvas3d.style.display = currentProjectConfig.projectType === '2d' ? 'none' : 'block';
             dom.gameCanvas3d.style.pointerEvents = is3D ? 'all' : 'none';
             dom.gameCanvas3d.style.zIndex = is3D ? '1' : '2';
         }
@@ -2398,6 +2399,12 @@ document.addEventListener('DOMContentLoaded', () => {
         isGameRunning = true;
         window.isGameRunning = true;
 
+        // Auto-switch to Game View for better feedback
+        const gameViewBtn = dom.scenePanel.querySelector('[data-view="game-content"]');
+        if (gameViewBtn && activeView !== 'game-content') {
+            gameViewBtn.click();
+        }
+
         // Reset performance stats
         gamePerfStats = {
             minFps: Infinity,
@@ -3275,13 +3282,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     setTimeout(() => {
                         renderer.resize();
                         if (renderer3D) renderer3D.resize();
-                        try { InputManager.setActiveCanvas(dom.sceneCanvas3d); } catch(e) {}
+
+                        const is3D = (currentProjectConfig.projectType !== '2d') && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
+                        InputManager.setActiveCanvas(is3D ? dom.sceneCanvas3d : dom.sceneCanvas);
                     } , 0);
                 } else if (viewId === 'game-content' && gameRenderer) {
                     setTimeout(() => {
                         gameRenderer.resize();
                         if (gameRenderer3D) gameRenderer3D.resize();
-                        try { InputManager.setActiveCanvas(dom.gameCanvas3d); } catch(e) {}
+
+                        const is3D = (currentProjectConfig.projectType !== '2d') && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
+                        InputManager.setActiveCanvas(is3D ? dom.gameCanvas3d : dom.gameCanvas);
                     } , 0);
                 }
             }
@@ -4394,6 +4405,9 @@ public start() {
             gameRenderer = new Renderer(dom.gameCanvas, false, true); // isGameView = true
             renderer3D = new Renderer3D(dom.sceneCanvas3d);
             gameRenderer3D = new Renderer3D(dom.gameCanvas3d);
+
+            // Note: 3D Renderers will only initialize WebGL when needed (lazy)
+
             window._Renderer3D = renderer3D;
             window.renderer = renderer; // Expose after initialization
 

@@ -8,10 +8,19 @@ const { mat4, vec3, quat } = glMatrix;
 export class Renderer3D {
     constructor(canvas) {
         this.canvas = canvas;
-        this.gl = canvas.getContext('webgl', { antialias: true });
+        this.gl = null;
+        this.initialized = false;
+        this.textureCache = new Map();
+    }
+
+    init() {
+        if (this.initialized) return true;
+
+        console.log(`[Renderer3D] Initializing WebGL context for canvas: ${this.canvas.id}`);
+        this.gl = this.canvas.getContext('webgl', { antialias: true });
         if (!this.gl) {
             console.error('WebGL not supported');
-            return;
+            return false;
         }
 
         this.gl.enable(this.gl.DEPTH_TEST);
@@ -21,6 +30,8 @@ export class Renderer3D {
 
         this.initShaders();
         this.initBuffers();
+        this.initialized = true;
+        return true;
     }
 
     initShaders() {
@@ -307,6 +318,9 @@ export class Renderer3D {
     }
 
     render(scene, cameraMateria, options = {}) {
+        if (!this.initialized) {
+            if (!this.init()) return;
+        }
         if (!this.gl) return;
         const gl = this.gl;
         const ambiente = scene.ambiente || {};
@@ -668,6 +682,7 @@ export class Renderer3D {
     }
 
     pick(scene, cameraMateria, x, y, options = {}) {
+        if (!this.initialized) return null;
         if (!this.gl) return null;
         const gl = this.gl;
 
