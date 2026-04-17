@@ -181,6 +181,10 @@ class InputManager {
         targetWindow.addEventListener('keyup', this._onKeyUp.bind(this));
         targetWindow.addEventListener('wheel', this._onWheel.bind(this), { passive: false });
 
+        // Listen for mouse events on the window to ensure we catch releases outside the canvas
+        targetWindow.addEventListener('mousedown', this._onWindowMouseDown.bind(this));
+        targetWindow.addEventListener('mouseup', this._onWindowMouseUp.bind(this));
+
         // Also listen for mouse move on the window to track position even when not over canvas
         targetWindow.addEventListener('mousemove', (e) => {
             // Update delta even when moving outside the canvas while a button is likely pressed
@@ -203,6 +207,8 @@ class InputManager {
         targetWindow.removeEventListener('keydown', this._onKeyDown.bind(this));
         targetWindow.removeEventListener('keyup', this._onKeyUp.bind(this));
         targetWindow.removeEventListener('wheel', this._onWheel.bind(this));
+        targetWindow.removeEventListener('mousedown', this._onWindowMouseDown.bind(this));
+        targetWindow.removeEventListener('mouseup', this._onWindowMouseUp.bind(this));
     }
 
     // Keyboard Methods
@@ -466,6 +472,16 @@ class InputManager {
     }
 
     static _onMouseUp(event) {
+        this._onPointerUp(event.button);
+    }
+
+    static _onWindowMouseDown(event) {
+        // Only trigger if not already handled by canvas (optional, but avoids double counts)
+        // Actually, _onPointerDown handles double clicks via Map
+        this._onPointerDown(event.button);
+    }
+
+    static _onWindowMouseUp(event) {
         this._onPointerUp(event.button);
     }
 

@@ -1289,17 +1289,36 @@ export function initialize(dependencies) {
 
         if (!renderer || !renderer.camera) return;
 
+        const config = getCurrentProjectConfig();
+        const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+
         const scrollDelta = event.deltaY;
         const zoomFactor = getPreferences().zoomSpeed || 1.1;
 
-        if (scrollDelta < 0) { // Zoom in
-            renderer.camera.zoom *= zoomFactor;
-        } else { // Zoom out
-            renderer.camera.zoom /= zoomFactor;
-        }
+        if (is3D) {
+            const cam = renderer.camera;
+            const moveDir = vec3.create();
+            moveDir[2] = scrollDelta > 0 ? 1 : -1;
 
-        // Clamp zoom to avoid issues - expanded limits for more flexibility
-        renderer.camera.zoom = Math.max(0.001, Math.min(renderer.camera.zoom, 1000.0));
+            const rotationQuat = quat.create();
+            quat.fromEuler(rotationQuat, cam.rotation.x, cam.rotation.y, 0);
+
+            const rotatedDir = vec3.create();
+            vec3.transformQuat(rotatedDir, moveDir, rotationQuat);
+
+            const zoomSpeed = 200; // Physical movement in 3D
+            cam.x += rotatedDir[0] * zoomSpeed;
+            cam.y += rotatedDir[1] * zoomSpeed;
+            cam.z += rotatedDir[2] * zoomSpeed;
+        } else {
+            if (scrollDelta < 0) { // Zoom in
+                renderer.camera.zoom *= zoomFactor;
+            } else { // Zoom out
+                renderer.camera.zoom /= zoomFactor;
+            }
+            // Clamp zoom to avoid issues - expanded limits for more flexibility
+            renderer.camera.zoom = Math.max(0.001, Math.min(renderer.camera.zoom, 1000.0));
+        }
     }, { passive: false });
 
     canvas.addEventListener('mousedown', (e) => {
@@ -1581,8 +1600,8 @@ function handle3DCameraNavigation() {
         if (Math.abs(delta.x) > 0.01 || Math.abs(delta.y) > 0.01) {
             // Standard First Person Look: Mouse Right = Turn Right (Decrease Yaw in YXZ)
             cam.rotation.y -= delta.x * rotSpeed;
-            // Mouse Down = Look Down (Increase Pitch in YXZ)
-            cam.rotation.x += delta.y * rotSpeed;
+            // Mouse Down = Look UP (requested Inverted Y-axis)
+            cam.rotation.x -= delta.y * rotSpeed; // Changed + to -
             cam.rotation.x = Math.max(-89, Math.min(89, cam.rotation.x));
         }
     }

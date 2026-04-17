@@ -1117,22 +1117,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const is3D = currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d';
 
         if (dom.sceneCanvas) {
-            // In hybrid mode, we want both to receive events
-            dom.sceneCanvas.style.pointerEvents = 'all';
-            dom.sceneCanvas.style.zIndex = is3D ? '1' : '2'; // 1 in 3D, 2 in 2D
+            // 2D Canvas on TOP of 3D for UI overlay
+            dom.sceneCanvas.style.pointerEvents = 'none'; // UI is handled by specific listeners or clicks pass through
+            dom.sceneCanvas.style.zIndex = is3D ? '2' : '1';
         }
         if (dom.sceneCanvas3d) {
+            // 3D Canvas on BOTTOM, but receives events
             dom.sceneCanvas3d.style.pointerEvents = is3D ? 'all' : 'none';
-            dom.sceneCanvas3d.style.zIndex = is3D ? '2' : '1'; // 2 in 3D, 1 in 2D
+            dom.sceneCanvas3d.style.zIndex = is3D ? '1' : '2';
         }
 
         if (dom.gameCanvas) {
-            dom.gameCanvas.style.pointerEvents = 'all';
-            dom.gameCanvas.style.zIndex = is3D ? '1' : '2';
+            dom.gameCanvas.style.pointerEvents = 'none';
+            dom.gameCanvas.style.zIndex = is3D ? '2' : '1';
         }
         if (dom.gameCanvas3d) {
             dom.gameCanvas3d.style.pointerEvents = is3D ? 'all' : 'none';
-            dom.gameCanvas3d.style.zIndex = is3D ? '2' : '1';
+            dom.gameCanvas3d.style.zIndex = is3D ? '1' : '2';
         }
 
         // Sync 2D/3D toggle button UI
@@ -1674,11 +1675,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     const has3DSupported = m.getComponent(Components.SpriteRenderer) ||
                                           m.getComponent(Components.TextureRender) ||
                                           m.getComponent(Components.MeshRenderer3D) ||
-                                          m.getComponent(Components.TilemapRenderer);
+                                          m.getComponent(Components.TilemapRenderer) ||
+                                          m.getComponent(Components.Terreno2D) ||
+                                          m.getComponent(Components.Water);
 
                     // We only exclude it if it DOESN'T have 2D-only components like UI
-                    const has2DOnly = m.getComponent(Components.Canvas) ||
-                                     m.getComponent(Components.Terreno2D);
+                    // A Canvas can be world-space, but currently they are mostly 2D overlays or drawn in drawCanvas.
+                    const has2DOnly = m.getComponent(Components.Canvas);
 
                     if (has3DSupported && !has2DOnly) return false;
                 }
@@ -1687,7 +1690,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // Sorting is now centralized in drawObjects' allInLayer sort
 
         const tilemapsToRender = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.TilemapRenderer))
+            .filter(m => {
+                if (!m.getComponent(Components.Transform) || !m.getComponent(Components.TilemapRenderer)) return false;
+                if (is3D) return false; // Already handled by 3D renderer
+                return true;
+            })
             .sort((a, b) => {
                 const orderA = a.getComponent(Components.TilemapRenderer).orderInLayer || 0;
                 const orderB = b.getComponent(Components.TilemapRenderer).orderInLayer || 0;
@@ -2215,18 +2222,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isGameRunning && !isGamePaused) {
             runGameLoop();
             if (is3D) {
-                // In hybrid mode, we first render 2D as background, then 3D on top
+                // 3D background, 2D UI overlay
+                if (renderer3D) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1 });
                 if (renderer) updateScene(renderer, false);
-                if (renderer3D) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 0 });
 
-                if (gameRenderer) {
-                    gameRenderer.resize();
-                    updateScene(gameRenderer, true);
-                }
                 if (gameRenderer3D) {
                     gameRenderer3D.resize();
                     const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth)[0];
-                    if (mainCam) gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 0, isGameView: true });
+                    if (mainCam) gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1, isGameView: true });
+                }
+                if (gameRenderer) {
+                    gameRenderer.resize();
+                    updateScene(gameRenderer, true);
                 }
             } else {
                 if (renderer) updateScene(renderer, false);
@@ -2238,21 +2245,21 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             if (activeView === 'scene-content') {
                 if (is3D) {
+                    if (renderer3D) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1 });
                     if (renderer) updateScene(renderer, false);
-                    if (renderer3D) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 0 });
                 } else {
                     if (renderer) updateScene(renderer, false);
                 }
             } else if (activeView === 'game-content') {
                 if (is3D) {
-                    if (gameRenderer) {
-                        gameRenderer.resize();
-                        updateScene(gameRenderer, true);
-                    }
                     if (gameRenderer3D) {
                         gameRenderer3D.resize();
                         const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth)[0];
-                        if (mainCam) gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 0, isGameView: true });
+                        if (mainCam) gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1, isGameView: true });
+                    }
+                    if (gameRenderer) {
+                        gameRenderer.resize();
+                        updateScene(gameRenderer, true);
                     }
                 } else {
                     if (gameRenderer) updateScene(gameRenderer, true);
