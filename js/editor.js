@@ -1123,7 +1123,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (dom.sceneCanvas) {
             // 2D Canvas on TOP of 3D for UI overlay
-            dom.sceneCanvas.style.pointerEvents = 'none'; // UI is handled by specific listeners or clicks pass through
+            // In pure 2D, it MUST receive all events to block context menus and allow tools
+            dom.sceneCanvas.style.pointerEvents = is3D ? 'none' : 'all';
             dom.sceneCanvas.style.zIndex = is3D ? '2' : '1';
         }
         if (dom.sceneCanvas3d) {

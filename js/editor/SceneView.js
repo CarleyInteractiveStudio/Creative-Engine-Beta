@@ -1057,19 +1057,18 @@ export function initialize(dependencies) {
 
     sceneCanvases.forEach(canvas => {
         canvas.addEventListener('contextmenu', e => {
-            const config = getCurrentProjectConfig();
-            const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+            // ALWAYS prevent context menu on scene canvases to avoid browser interference
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    });
 
-            // In 3D mode, we ALWAYS prevent context menu to allow right-click rotation
-            if (is3D) {
-                e.preventDefault();
-                e.stopPropagation();
-            } else {
-                // In 2D, we might want to allow it unless we are over an object
-                // For now, keep it consistent with the existing editor behavior
-                e.preventDefault();
-                e.stopPropagation();
-            }
+    // Also prevent on containers to be double-safe
+    const containers = document.querySelectorAll('.canvas-container');
+    containers.forEach(container => {
+        container.addEventListener('contextmenu', e => {
+            e.preventDefault();
+            e.stopPropagation();
         });
     });
 
