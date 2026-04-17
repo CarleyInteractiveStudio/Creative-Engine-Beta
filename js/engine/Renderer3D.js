@@ -270,6 +270,14 @@ export class Renderer3D {
         const cacheKey = image.src || image;
         const gl = this.gl;
 
+        // RAM OPTIMIZATION: Limit texture cache size
+        if (this.textureCache.size > 50 && !this.textureCache.has(cacheKey)) {
+            const firstKey = this.textureCache.keys().next().value;
+            const tex = this.textureCache.get(firstKey);
+            gl.deleteTexture(tex);
+            this.textureCache.delete(firstKey);
+        }
+
         if (this.textureCache.has(cacheKey) && !forceUpdate) {
             return this.textureCache.get(cacheKey);
         }

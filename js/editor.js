@@ -84,6 +84,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let isGameRunning = false;
     let isGamePaused = false;
     let lastFrameTime = 0;
+
+    // Performance tracking state
+    let gamePerfStats = {
+        minFps: Infinity,
+        maxFps: -Infinity,
+        maxRam: 0,
+        startTime: 0
+    };
     let gameWindow = null;
     let isExternalRunnerReady = false;
 
@@ -309,6 +317,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         consoleMessages.appendChild(msgEl);
+
+        // RAM OPTIMIZATION: Limit total messages to 200 to prevent DOM bloat
+        if (consoleMessages.children.length > 200) {
+            consoleMessages.removeChild(consoleMessages.firstChild);
+        }
 
         // Apply current filter visibility immediately
         const activeFilterBtn = document.querySelector('.console-filters .filter-btn.active');
@@ -1509,6 +1522,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 3. Actuar segun el resultado
         if (allErrors.length > 0) {
+            console.warn("[Build] Build fallido debido a errores de script.");
             if (gameWindow) {
                 gameWindow.close();
                 gameWindow = null;
@@ -1526,7 +1540,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             console.log("[Build] Build exitoso. Todos los scripts se compilaron sin errores.");
             // 4. Iniciar el juego. La logica ahora esta en startGame.
-            originalStartGame();
+            if (typeof originalStartGame === 'function') {
+                originalStartGame();
+            } else {
+                console.error("[Build] Error fatal: originalStartGame no está definido.");
+            }
         }
         } catch (e) {
             console.error("Error durante la preparacion del juego:", e);
@@ -2228,6 +2246,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (isGameRunning && !isGamePaused) {
             runGameLoop();
+
+            // Track performance stats
+            if (deltaTime > 0) {
+                const currentFps = 1.0 / deltaTime;
+                if (currentFps < gamePerfStats.minFps) gamePerfStats.minFps = currentFps;
+                if (currentFps > gamePerfStats.maxFps) gamePerfStats.maxFps = currentFps;
+            }
+            if (window.performance && window.performance.memory) {
+                const currentRam = window.performance.memory.usedJSHeapSize / 1048576;
+                if (currentRam > gamePerfStats.maxRam) gamePerfStats.maxRam = currentRam;
+            }
+
             if (is3D) {
                 // 3D background, 2D UI overlay
                 if (renderer3D) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1 });
@@ -2367,6 +2397,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         isGameRunning = true;
         window.isGameRunning = true;
+
+        // Reset performance stats
+        gamePerfStats = {
+            minFps: Infinity,
+            maxFps: -Infinity,
+            maxRam: 0,
+            startTime: performance.now()
+        };
+
         // NO auto-cambiar a vista de juego - mantener vista actual
         // const gameViewButton = dom.scenePanel.querySelector('[data-view="game-content"]');
         // if (gameViewButton && activeView !== 'game-content') {
@@ -2450,6 +2489,17 @@ document.addEventListener('DOMContentLoaded', () => {
         isGameRunning = false;
         window.isGameRunning = false;
         document.body.classList.remove('game-mode');
+
+        // Show Performance Capture Summary
+        const totalTime = ((performance.now() - gamePerfStats.startTime) / 1000).toFixed(1);
+        if (totalTime > 0.5) {
+            const summary = `
+                <b>Tiempo total:</b> ${totalTime}s<br>
+                <b>FPS:</b> Min: ${gamePerfStats.minFps === Infinity ? 0 : gamePerfStats.minFps.toFixed(1)} | Max: ${gamePerfStats.maxFps.toFixed(1)}<br>
+                <b>RAM Pico:</b> ${gamePerfStats.maxRam.toFixed(1)} MB
+            `;
+            showNotificationDialog('Captura de Rendimiento', summary);
+        }
         // Restore InputManager out of game mode
         try { InputManager.setGameRunning(false); } catch(e) { /* ignore if not available */ }
         console.log("Game Stopped");
