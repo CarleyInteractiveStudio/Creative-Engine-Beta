@@ -215,9 +215,13 @@ class InputManager {
     static _onKeyDown(event) {
         // If the engine is playing, ignore keyboard input unless:
         // 1. It comes from an external game window
-        // 2. The active canvas is the game canvas (integrated mode)
+        // 2. The active canvas is a game canvas (integrated mode)
         const isFromGameWindow = this._gameWindows.has(event.view);
-        if (this._isGameRunning && !isFromGameWindow && this._activeCanvas !== this._gameCanvas) return;
+
+        // In hybrid mode, both gameCanvas and gameCanvas3d are valid for game input
+        const isGameCanvas = (this._activeCanvas && (this._activeCanvas.id === 'game-canvas' || this._activeCanvas.id === 'game-canvas-3d'));
+
+        if (this._isGameRunning && !isFromGameWindow && !isGameCanvas) return;
 
         const key = event.key;
         if (!this._keys.get(key)) {
@@ -228,7 +232,9 @@ class InputManager {
 
     static _onKeyUp(event) {
         const isFromGameWindow = this._gameWindows.has(event.view);
-        if (this._isGameRunning && !isFromGameWindow && this._activeCanvas !== this._gameCanvas) return;
+        const isGameCanvas = (this._activeCanvas && (this._activeCanvas.id === 'game-canvas' || this._activeCanvas.id === 'game-canvas-3d'));
+
+        if (this._isGameRunning && !isFromGameWindow && !isGameCanvas) return;
 
         const key = event.key;
         this._keys.set(key, false);

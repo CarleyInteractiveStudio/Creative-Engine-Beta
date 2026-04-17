@@ -1263,6 +1263,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!currentProjectConfig.projectType) {
                 currentProjectConfig.projectType = '2d';
             }
+
+            // ENFORCEMENT: If project is 2D, rendererMode MUST be 2D-compatible
+            if (currentProjectConfig.projectType === '2d') {
+                if (currentProjectConfig.rendererMode !== 'canvas2d' && currentProjectConfig.rendererMode !== 'realista') {
+                    console.warn(`[Config] Incompatible rendererMode '${currentProjectConfig.rendererMode}' for 2D project. Resetting to 'canvas2d'.`);
+                    currentProjectConfig.rendererMode = 'canvas2d';
+                }
+            }
+
             window.currentProjectConfig = currentProjectConfig;
             console.log("Configuracion del proyecto cargada:", currentProjectConfig);
 
@@ -2412,7 +2421,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.isGameRunning = true;
 
         // Auto-switch to Game View for better feedback
-        const gameViewBtn = dom.scenePanel.querySelector('[data-view="game-content"]');
+        const gameViewBtn = document.querySelector('.view-toggle-btn[data-view="game-content"]');
         if (gameViewBtn && activeView !== 'game-content') {
             gameViewBtn.click();
         }

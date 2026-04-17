@@ -29,6 +29,13 @@ export function initialize(dependencies) {
                 import('../../engine/CEEngine.js').then(CEEngine => {
                     CEEngine.optimize();
                 });
+            } else if (e.target.id === 'btn-debug-gc') {
+                if (window.gc) {
+                    window.gc();
+                    console.log("[Debug] Manual GC triggered.");
+                } else {
+                    console.warn("[Debug] window.gc() is not available in this browser.");
+                }
             }
         });
     }
@@ -143,6 +150,7 @@ export function update() {
         </div>
         <div class="debug-section">
             <button id="btn-debug-optimize" style="width: 100%; padding: 5px; cursor: pointer; background: #333; color: white; border: 1px solid #555; border-radius: 4px;">Optimizar Memoria</button>
+            <button id="btn-debug-gc" style="width: 100%; padding: 5px; cursor: pointer; background: #333; color: #aaa; border: 1px solid #555; border-radius: 4px; margin-top: 5px; font-size: 0.8em;">Forzar GC (Si está habilitado)</button>
         </div>
         <div class="debug-section">
             <h4>Input</h4>
