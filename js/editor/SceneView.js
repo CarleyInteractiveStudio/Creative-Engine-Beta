@@ -1861,10 +1861,15 @@ function drawComponentGrids() {
         ctx.strokeStyle = 'rgba(0, 150, 255, 0.4)';
 
         const gridRange = 20; // Number of cells around object
-        const startX = transform.x - (gridRange * cellSize.x);
-        const endX = transform.x + (gridRange * cellSize.x);
-        const startY = transform.y - (gridRange * cellSize.y);
-        const endY = transform.y + (gridRange * cellSize.y);
+
+        // Use local bounds for the component grid to ensure rotation is applied correctly
+        const startX = -(gridRange * cellSize.x);
+        const endX = (gridRange * cellSize.x);
+        const startY = -(gridRange * cellSize.y);
+        const endY = (gridRange * cellSize.y);
+
+        const rad = (transform.rotation || 0) * Math.PI / 180;
+        const cos = Math.cos(rad), sin = Math.sin(rad);
 
         const drawLine3D = (p1World, p2World) => {
             const p1 = world3DToScreen(p1World);
@@ -1877,11 +1882,17 @@ function drawComponentGrids() {
             }
         };
 
+        const getPt = (lx, ly) => {
+            const rx = lx * cos - ly * sin;
+            const ry = lx * sin + ly * cos;
+            return { x: transform.x + rx, y: transform.y + ry, z: transform.z || 0 };
+        };
+
         for (let x = startX; x <= endX; x += cellSize.x) {
-            drawLine3D({ x, y: startY, z: transform.z || 0 }, { x, y: endY, z: transform.z || 0 });
+            drawLine3D(getPt(x, startY), getPt(x, endY));
         }
         for (let y = startY; y <= endY; y += cellSize.y) {
-            drawLine3D({ x: startX, y, z: transform.z || 0 }, { x: endX, y, z: transform.z || 0 });
+            drawLine3D(getPt(startX, y), getPt(endX, y));
         }
     } else {
         const viewLeft = camera.x - (canvas.width / 2 / zoom);
@@ -2746,10 +2757,21 @@ function drawTilemapOutline() {
         const drawRect3D = (x, y, w, h) => {
             const hw = w / 2;
             const hh = h / 2;
-            const p1 = world3DToScreen({ x: x - hw, y: y - hh, z: transform.z || 0 });
-            const p2 = world3DToScreen({ x: x + hw, y: y - hh, z: transform.z || 0 });
-            const p3 = world3DToScreen({ x: x + hw, y: y + hh, z: transform.z || 0 });
-            const p4 = world3DToScreen({ x: x - hw, y: y + hh, z: transform.z || 0 });
+
+            // Apply object rotation to the corners locally before adding world position
+            const rad = (transform.rotation || 0) * Math.PI / 180;
+            const cos = Math.cos(rad), sin = Math.sin(rad);
+
+            const getCorner = (lx, ly) => {
+                const rx = lx * cos - ly * sin;
+                const ry = lx * sin + ly * cos;
+                return world3DToScreen({ x: x + rx, y: y + ry, z: transform.z || 0 });
+            };
+
+            const p1 = getCorner(-hw, -hh);
+            const p2 = getCorner(hw, -hh);
+            const p3 = getCorner(hw, hh);
+            const p4 = getCorner(-hw, hh);
 
             if (p1 && p2 && p3 && p4) {
                 ctx.beginPath();
@@ -2761,9 +2783,14 @@ function drawTilemapOutline() {
         };
 
         for (const layer of tilemap.layers) {
-            const offsetX = transform.x + layer.position.x * layerWidth;
-            const offsetY = transform.y + layer.position.y * layerHeight;
-            drawRect3D(offsetX, offsetY, layerWidth, layerHeight);
+            // offsetX/Y are local to the transform center
+            const localX = layer.position.x * layerWidth;
+            const localY = layer.position.y * layerHeight;
+
+            // In 3D pass, we need to apply world position correctly
+            const worldX = transform.x + localX;
+            const worldY = transform.y + localY;
+            drawRect3D(worldX, worldY, layerWidth, layerHeight);
         }
     } else {
         ctx.save();
@@ -2796,22 +2823,53 @@ function drawTerrenoColliders() {
     }
 
     const { ctx, camera } = renderer;
+    const config = getCurrentProjectConfig();
+    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+
+    const drawLine3D = (p1World, p2World) => {
+        const p1 = world3DToScreen(p1World);
+        const p2 = world3DToScreen(p2World);
+        if (p1 && p2) {
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+        }
+    };
+
+    const drawRect3D = (cx, cy, w, h) => {
+        const hw = w / 2, hh = h / 2;
+        const rad = (transform.rotation || 0) * Math.PI / 180;
+        const cos = Math.cos(rad), sin = Math.sin(rad);
+        const getPt = (lx, ly) => {
+            const rx = lx * cos - ly * sin;
+            const ry = lx * sin + ly * cos;
+            return { x: transform.x + rx, y: transform.y + ry, z: transform.z || 0 };
+        };
+        const p1 = getPt(cx - hw, cy - hh), p2 = getPt(cx + hw, cy - hh), p3 = getPt(cx + hw, cy + hh), p4 = getPt(cx - hw, cy + hh);
+        drawLine3D(p1, p2); drawLine3D(p2, p3); drawLine3D(p3, p4); drawLine3D(p4, p1);
+    };
 
     ctx.save();
-    ctx.translate(transform.x, transform.y);
-    ctx.rotate(transform.rotation * Math.PI / 180);
+    if (!is3D) {
+        ctx.translate(transform.x, transform.y);
+        ctx.rotate(transform.rotation * Math.PI / 180);
+    }
 
     ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
-    ctx.lineWidth = 2 / camera.effectiveZoom;
-    ctx.setLineDash([4 / camera.effectiveZoom, 4 / camera.effectiveZoom]);
+    ctx.lineWidth = is3D ? 2 : 2 / camera.effectiveZoom;
+    if (!is3D) ctx.setLineDash([4 / camera.effectiveZoom, 4 / camera.effectiveZoom]);
 
     // Draw based on mode to avoid visual clutter from old data
     if (collider.mode === 'Rectangles') {
         for (const rect of collider.generatedColliders) {
-            ctx.strokeRect(rect.x - rect.width / 2, rect.y - rect.height / 2, rect.width, rect.height);
+            if (is3D) {
+                drawRect3D(rect.x, rect.y, rect.width, rect.height);
+            } else {
+                ctx.strokeRect(rect.x - rect.width / 2, rect.y - rect.height / 2, rect.width, rect.height);
+            }
         }
     } else if (collider.mode === 'Polygon') {
-        // Draw the full polygon outlines for a cleaner look
         const polysToDraw = (collider.debugPolygons && collider.debugPolygons.length > 0)
             ? collider.debugPolygons
             : collider.generatedPolygons;
@@ -2819,13 +2877,33 @@ function drawTerrenoColliders() {
         if (polysToDraw) {
             for (const poly of polysToDraw) {
                 if (poly.vertices && poly.vertices.length > 2) {
-                    ctx.beginPath();
-                    ctx.moveTo(poly.vertices[0].x, poly.vertices[0].y);
-                    for (let i = 1; i < poly.vertices.length; i++) {
-                        ctx.lineTo(poly.vertices[i].x, poly.vertices[i].y);
+                    if (is3D) {
+                        const rad = (transform.rotation || 0) * Math.PI / 180;
+                        const cos = Math.cos(rad), sin = Math.sin(rad);
+                        for (let i = 0; i < poly.vertices.length; i++) {
+                            const v1 = poly.vertices[i];
+                            const v2 = poly.vertices[(i + 1) % poly.vertices.length];
+                            const p1 = {
+                                x: transform.x + (v1.x * cos - v1.y * sin),
+                                y: transform.y + (v1.x * sin + v1.y * cos),
+                                z: transform.z || 0
+                            };
+                            const p2 = {
+                                x: transform.x + (v2.x * cos - v2.y * sin),
+                                y: transform.y + (v2.x * sin + v2.y * cos),
+                                z: transform.z || 0
+                            };
+                            drawLine3D(p1, p2);
+                        }
+                    } else {
+                        ctx.beginPath();
+                        ctx.moveTo(poly.vertices[0].x, poly.vertices[0].y);
+                        for (let i = 1; i < poly.vertices.length; i++) {
+                            ctx.lineTo(poly.vertices[i].x, poly.vertices[i].y);
+                        }
+                        ctx.closePath();
+                        ctx.stroke();
                     }
-                    ctx.closePath();
-                    ctx.stroke();
                 }
             }
         }
@@ -2866,10 +2944,18 @@ function drawTilemapColliders() {
 
     const drawColliderRect = (rx, ry, rw, rh) => {
         if (is3D) {
-            const p1 = world3DToScreen({ x: rx, y: ry, z: transform.z || 0 });
-            const p2 = world3DToScreen({ x: rx + rw, y: ry, z: transform.z || 0 });
-            const p3 = world3DToScreen({ x: rx + rw, y: ry + rh, z: transform.z || 0 });
-            const p4 = world3DToScreen({ x: rx, y: ry + rh, z: transform.z || 0 });
+            // Tiles in Tilemap are local to the Tilemap center.
+            // We need to apply rotation manually since we are in screen-space overlay
+            const rad = (transform.rotation || 0) * Math.PI / 180;
+            const cos = Math.cos(rad), sin = Math.sin(rad);
+
+            const getPt = (lx, ly) => {
+                const rx_loc = lx * cos - ly * sin;
+                const ry_loc = lx * sin + ly * cos;
+                return world3DToScreen({ x: transform.x + rx_loc, y: transform.y + ry_loc, z: transform.z || 0 });
+            };
+
+            const p1 = getPt(rx, ry), p2 = getPt(rx + rw, ry), p3 = getPt(rx + rw, ry + rh), p4 = getPt(rx, ry + rh);
             if (p1 && p2 && p3 && p4) {
                 ctx.beginPath();
                 ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
@@ -2905,8 +2991,9 @@ function drawTilemapColliders() {
         const layerTopLeftY = layerOffsetY - layerHeight / 2;
 
         for (const rect of rects) {
-            const rectX = layerTopLeftX + rect.col * cellSize.x + (is3D ? transform.x : 0);
-            const rectY = layerTopLeftY + rect.row * cellSize.y + (is3D ? transform.y : 0);
+            // rect coordinates are relative to the Tilemap center (local)
+            const rectX = layerTopLeftX + rect.col * cellSize.x;
+            const rectY = layerTopLeftY + rect.row * cellSize.y;
             const rectWidth = rect.width * cellSize.x;
             const rectHeight = rect.height * cellSize.y;
             drawColliderRect(rectX, rectY, rectWidth, rectHeight);
