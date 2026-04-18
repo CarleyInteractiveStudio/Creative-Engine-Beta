@@ -2266,11 +2266,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
 
-        // Ensure game canvas is always resized correctly when active
-        if (activeView === 'game-content' && gameRenderer) {
-            gameRenderer.resize();
-        }
-
         const is3D = currentProjectConfig.projectType !== '2d' && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
 
         if (isGameRunning && !isGamePaused) {
@@ -2288,57 +2283,46 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (is3D) {
-                // 3D background, 2D UI overlay
-                if (renderer3D && renderer3D.initialized) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1 });
-                if (renderer) updateScene(renderer, false);
-
-                if (gameRenderer3D) {
-                    gameRenderer3D.resize();
-                    const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth)[0];
-                    if (mainCam) {
-                        if (!gameRenderer3D.initialized) gameRenderer3D.init();
-                        gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1, isGameView: true });
-                    }
-                }
-                if (gameRenderer) {
-                    gameRenderer.resize();
-                    updateScene(gameRenderer, true);
-                }
-            } else {
-                if (renderer) updateScene(renderer, false);
-                if (gameRenderer) {
-                    gameRenderer.resize();
-                    updateScene(gameRenderer, true);
-                }
-            }
-        } else {
-            if (activeView === 'scene-content') {
-                if (is3D) {
-                    if (renderer3D) {
-                        if (!renderer3D.initialized) renderer3D.init();
-                        renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1 });
-                    }
+                // Hybrid/3D: Only render views that are visible
+                if (activeView === 'scene-content') {
+                    if (renderer3D && renderer3D.initialized) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1 });
                     if (renderer) updateScene(renderer, false);
-                } else {
-                    if (renderer) updateScene(renderer, false);
-                }
-            } else if (activeView === 'game-content') {
-                if (is3D) {
+                } else if (activeView === 'game-content') {
                     if (gameRenderer3D) {
-                        gameRenderer3D.resize();
                         const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth)[0];
                         if (mainCam) {
                             if (!gameRenderer3D.initialized) gameRenderer3D.init();
                             gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1, isGameView: true });
                         }
                     }
-                    if (gameRenderer) {
-                        gameRenderer.resize();
-                        updateScene(gameRenderer, true);
-                    }
-                } else {
                     if (gameRenderer) updateScene(gameRenderer, true);
                 }
+            } else {
+                // 2D only: Update the active view
+                if (activeView === 'scene-content' && renderer) updateScene(renderer, false);
+                else if (activeView === 'game-content' && gameRenderer) updateScene(gameRenderer, true);
+            }
+        } else {
+            // Editor mode (not running): Only update visible view
+            if (activeView === 'scene-content') {
+                if (is3D) {
+                    if (renderer3D) {
+                        if (!renderer3D.initialized) renderer3D.init();
+                        renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1 });
+                    }
+                }
+                if (renderer) updateScene(renderer, false);
+            } else if (activeView === 'game-content') {
+                if (is3D) {
+                    if (gameRenderer3D) {
+                        const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth)[0];
+                        if (mainCam) {
+                            if (!gameRenderer3D.initialized) gameRenderer3D.init();
+                            gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1, isGameView: true });
+                        }
+                    }
+                }
+                if (gameRenderer) updateScene(gameRenderer, true);
             }
         }
 
