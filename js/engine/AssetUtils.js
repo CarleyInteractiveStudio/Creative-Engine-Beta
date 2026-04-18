@@ -14,6 +14,10 @@ const assetPromiseCache = new Map();
  */
 export function clearAssetCache(path) {
     if (path) {
+        const url = assetUrlCache.get(path);
+        if (url && typeof url === 'string' && url.startsWith('blob:')) {
+            URL.revokeObjectURL(url);
+        }
         assetUrlCache.delete(path);
         // Also remove leading slash variant if it exists, for robustness
         if (path.startsWith('/')) {
@@ -22,6 +26,11 @@ export function clearAssetCache(path) {
             assetUrlCache.delete('/' + path);
         }
     } else {
+        assetUrlCache.forEach(url => {
+            if (url && typeof url === 'string' && url.startsWith('blob:')) {
+                URL.revokeObjectURL(url);
+            }
+        });
         assetUrlCache.clear();
     }
 }

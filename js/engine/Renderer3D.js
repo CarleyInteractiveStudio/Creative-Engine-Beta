@@ -24,13 +24,17 @@ export class Renderer3D {
 
     init() {
         if (this.initialized) return true;
+        if (!this.canvas) return false;
 
         console.log(`[Renderer3D] Initializing WebGL context for canvas: ${this.canvas.id}`);
-        this.gl = this.canvas.getContext('webgl', { antialias: true });
+        this.gl = this.canvas.getContext('webgl', { antialias: true, alpha: true, preserveDrawingBuffer: false });
         if (!this.gl) {
             console.error('WebGL not supported');
             return false;
         }
+
+        // RAM OPTIMIZATION: Clear any existing texture cache before init
+        if (this.textureCache) this.textureCache.clear();
 
         this.gl.enable(this.gl.DEPTH_TEST);
         this.gl.depthFunc(this.gl.LEQUAL);
@@ -276,11 +280,57 @@ export class Renderer3D {
     }
 
     resize() {
+        if (!this.canvas || !this.gl) return;
         const clientWidth = this.canvas.clientWidth || 800;
         const clientHeight = this.canvas.clientHeight || 600;
         this.canvas.width = clientWidth;
         this.canvas.height = clientHeight;
         this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    }
+
+    /**
+     * RAM OPTIMIZATION: Releases WebGL resources and stops rendering.
+     * This is crucial for "separating" the engine and saving RAM when in strict 2D mode.
+     */
+    dispose() {
+        if (!this.initialized || !this.gl) return;
+
+        console.log(`[Renderer3D] Disposing WebGL resources for ${this.canvas.id}`);
+
+        this.clearCache();
+
+        // Delete buffers
+        if (this.planeBuffer) this.gl.deleteBuffer(this.planeBuffer);
+        if (this.planeTexCoordBuffer) this.gl.deleteBuffer(this.planeTexCoordBuffer);
+        if (this.planeIndexBuffer) this.gl.deleteBuffer(this.planeIndexBuffer);
+        if (this.planeNormalBuffer) this.gl.deleteBuffer(this.planeNormalBuffer);
+        if (this.cubeBuffer) this.gl.deleteBuffer(this.cubeBuffer);
+        if (this.cubeIndexBuffer) this.gl.deleteBuffer(this.cubeIndexBuffer);
+        if (this.cubeNormalBuffer) this.gl.deleteBuffer(this.cubeNormalBuffer);
+
+        // Delete programs
+        if (this.shaderProgram) this.gl.deleteProgram(this.shaderProgram);
+        if (this.pickingProgram) this.gl.deleteProgram(this.pickingProgram);
+
+        // Delete framebuffers
+        if (this.pickingFramebuffer) this.gl.deleteFramebuffer(this.pickingFramebuffer);
+        if (this.pickingTexture) this.gl.deleteTexture(this.pickingTexture);
+        if (this.pickingDepthBuffer) this.gl.deleteRenderbuffer(this.pickingDepthBuffer);
+
+        // Extension to lose context if possible
+        const ext = this.gl.getExtension('WEBGL_lose_context');
+        if (ext) ext.loseContext();
+
+        this.gl = null;
+        this.initialized = false;
+
+        // Hide canvas to ensure it doesn't take up any layout space or composite time
+        if (this.canvas) {
+            this.canvas.style.display = 'none';
+            // Clear dimensions to free up backbuffer RAM
+            this.canvas.width = 1;
+            this.canvas.height = 1;
+        }
     }
 
     getGLTexture(image, forceUpdate = false) {
