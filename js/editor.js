@@ -84,6 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isGameRunning = false;
     let isGamePaused = false;
     let lastFrameTime = 0;
+    let cpuExecutionTime = 0; // Time spent in JS execution this frame
 
     // Performance tracking state
     let gamePerfStats = {
@@ -2175,6 +2176,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const editorLoop = (timestamp) => {
+        const loopStartTime = performance.now();
         // --- FPS Control ---
         const perfMonitor = EngineAPI.getPerformanceMonitor();
         const targetMaxFps = perfMonitor ? perfMonitor.targetMaxFps : 0;
@@ -2340,6 +2342,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update InputManager at the very end of the frame
         InputManager.update();
 
+        cpuExecutionTime = performance.now() - loopStartTime;
         editorLoopId = requestAnimationFrame(editorLoop);
     };
 
@@ -4602,6 +4605,7 @@ public start() {
             const getSelectedMateria = () => selectedMateria;
             const getIsGameRunning = () => isGameRunning;
             const getDeltaTime = () => deltaTime;
+            const getCpuExecutionTime = () => cpuExecutionTime;
             const getActiveTool = () => SceneView.getActiveTool ? SceneView.getActiveTool() : 'move';
 
             updateLoadingProgress(50, "Configurando modulos del editor...");
@@ -4629,7 +4633,7 @@ public start() {
                     return await projectHandle.getDirectoryHandle('Assets');
                 }
             });
-            DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
+            DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime, getCpuExecutionTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, updateAssetBrowserCallback: updateAssetBrowser, Components, updateScene, getActiveView, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool, getCurrentProjectConfig: () => currentProjectConfig, getDeltaTime: () => deltaTime });
             window._SceneView = SceneView;
             Terminal.initialize(dom, projectsDirHandle);
