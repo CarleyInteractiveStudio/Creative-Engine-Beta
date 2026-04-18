@@ -443,6 +443,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 appName: projectName,
                 appVersion: '1.0.0',
                 projectType: projectType,
+                rendererMode: projectType === '3d' ? '3d-mode' : 'canvas2d',
                 isNewUser: isNewUser,
                 engineVersion: '0.1.2'
             };

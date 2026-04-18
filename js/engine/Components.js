@@ -3066,6 +3066,10 @@ export class TextureRender extends Leyes {
     }
 }
 registerComponent('TextureRender', TextureRender);
+registerComponent('MeshRenderer3D', MeshRenderer3D);
+registerComponent('DirectionalLight3D', DirectionalLight3D);
+registerComponent('PointLight3D', PointLight3D);
+registerComponent('SpotLight3D', SpotLight3D);
 
 registerComponent('CreativeScript', CreativeScript);
 registerComponent('Rigidbody2D', Rigidbody2D);

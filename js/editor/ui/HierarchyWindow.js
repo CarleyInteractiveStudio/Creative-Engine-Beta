@@ -402,6 +402,49 @@ export function handleContextMenuAction(action) {
                 newMateria = createScrollViewObject(parentCanvas);
             }
             break;
+        // --- 3D Creation Actions ---
+        case 'create-cube':
+            newMateria = createBaseMateria(generateUniqueName(L.get('CUBE', 'Cubo')), selectedMateria);
+            newMateria.addComponent(new Components.MeshRenderer3D(newMateria));
+            break;
+        case 'create-sphere':
+            newMateria = createBaseMateria(generateUniqueName(L.get('SPHERE', 'Esfera')), selectedMateria);
+            const sphereRenderer = new Components.MeshRenderer3D(newMateria);
+            sphereRenderer.meshType = 'Sphere';
+            newMateria.addComponent(sphereRenderer);
+            break;
+        case 'create-capsule-3d':
+            newMateria = createBaseMateria(generateUniqueName(L.get('CAPSULA', 'Cápsula')), selectedMateria);
+            const capRenderer = new Components.MeshRenderer3D(newMateria);
+            capRenderer.meshType = 'Capsule';
+            newMateria.addComponent(capRenderer);
+            break;
+        case 'create-triangle-3d':
+            newMateria = createBaseMateria(generateUniqueName(L.get('TRIANGULO', 'Triángulo')), selectedMateria);
+            const triRenderer = new Components.MeshRenderer3D(newMateria);
+            triRenderer.meshType = 'Triangle';
+            newMateria.addComponent(triRenderer);
+            break;
+        case 'create-plane-3d':
+            newMateria = createBaseMateria(generateUniqueName(L.get('PLANE', 'Plano')), selectedMateria);
+            const planeRenderer = new Components.MeshRenderer3D(newMateria);
+            planeRenderer.meshType = 'Plane';
+            newMateria.addComponent(planeRenderer);
+            break;
+
+        case 'create-dir-light-3d':
+            newMateria = createBaseMateria(generateUniqueName(L.get('DIRECTIONAL_LIGHT', 'Luz Direccional')), selectedMateria);
+            newMateria.addComponent(new Components.DirectionalLight3D(newMateria));
+            break;
+        case 'create-point-light-3d':
+            newMateria = createBaseMateria(generateUniqueName(L.get('POINT_LIGHT', 'Luz Punto 3D')), selectedMateria);
+            newMateria.addComponent(new Components.PointLight3D(newMateria));
+            break;
+        case 'create-spot-light-3d':
+            newMateria = createBaseMateria(generateUniqueName(L.get('SPOT_LIGHT', 'Luz Focal 3D')), selectedMateria);
+            newMateria.addComponent(new Components.SpotLight3D(newMateria));
+            break;
+
         case 'create-ui-health-bar':
             {
                 let parentCanvas = selectedMateria;

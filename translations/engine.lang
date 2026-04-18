@@ -309,6 +309,9 @@ CIRCLE_COLLIDER_2D: Círculo 2D
 CREAR_MATERIA: Crear Materia
 MATERIA_VACIA: Materia Vacía
 MATERIA_2D: Materia 2D
+MATERIA_3D: Materia 3D
+CUBE: Cubo
+SPHERE: Esfera
 SPRITE: Sprite
 TILEMAP: Tilemap
 TERRENO_2D: Terreno 2D
@@ -324,6 +327,9 @@ TEXTO: Texto
 LUZ: Luz
 LUZ_PUNTO: Luz Punto
 LUZ_FOCAL: Luz Focal
+DIRECTIONAL_LIGHT: Luz Direccional
+POINT_LIGHT: Luz Punto 3D
+SPOT_LIGHT: Luz Focal 3D
 LUZ_FORMA_LIBRE: Luz Libre
 LUZ_SPRITE: Luz Sprite
 CAMARA: Cámara
@@ -915,6 +921,9 @@ CIRCLE_COLLIDER_2D: Circle Collider 2D
 CREAR_MATERIA: Create Matter
 MATERIA_VACIA: Empty Matter
 MATERIA_2D: 2D Matter
+MATERIA_3D: 3D Matter
+CUBE: Cube
+SPHERE: Sphere
 SPRITE: Sprite
 TILEMAP: Tilemap
 TERRENO_2D: 2D Terrain
@@ -930,6 +939,9 @@ TEXTO: Text
 LUZ: Light
 LUZ_PUNTO: Point Light
 LUZ_FOCAL: Spot Light
+DIRECTIONAL_LIGHT: Directional Light
+POINT_LIGHT: Point Light 3D
+SPOT_LIGHT: Spot Light 3D
 LUZ_FORMA_LIBRE: Freeform Light
 LUZ_SPRITE: Sprite Light
 CAMARA: Camera
