@@ -4504,6 +4504,14 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 </div>
 
                 <div id="animation-sheet-settings-container" class="${metaData.textureType !== 'Animation Sheet' ? 'hidden' : ''}">
+                    <style>
+                        #animation-sheet-settings-container ~ #save-meta-btn {
+                            display: none;
+                        }
+                        #animation-sheet-settings-container.hidden ~ #save-meta-btn {
+                            display: block;
+                        }
+                    </style>
                     <fieldset class="inspector-section">
                         <legend data-i18n="ANIMATION_PREVIEW">${L.get('ANIMATION_PREVIEW', 'Animation Preview')}</legend>
                         <div class="anim-preview-bubble">
@@ -4728,6 +4736,10 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 document.getElementById('create-anim-asset-btn').addEventListener('click', async () => {
                     const L = window.Localization;
 
+                    const speed = parseInt(document.getElementById('anim-preview-speed').value, 10) || 10;
+                    const cols = parseInt(document.getElementById('anim-columns').value, 10) || 1;
+                    const rows = parseInt(document.getElementById('anim-rows').value, 10) || 1;
+
                     // Automatically trigger the "Apply" logic first to ensure columns/rows are saved
                     await applySettings();
 
@@ -4735,10 +4747,6 @@ async function updateInspectorForAsset(assetName, assetPath) {
                         console.error("createAssetCallback no está disponible.");
                         return;
                     }
-
-                    const speed = parseInt(document.getElementById('anim-preview-speed').value, 10) || 10;
-                    const cols = parseInt(document.getElementById('anim-columns').value, 10) || 1;
-                    const rows = parseInt(document.getElementById('anim-rows').value, 10) || 1;
 
                     const imageUrl = await getURLForAssetPath(assetPath, projectsDirHandle);
                     if (!imageUrl) {

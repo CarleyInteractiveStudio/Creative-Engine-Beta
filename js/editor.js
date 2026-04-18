@@ -91,6 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
         minFps: Infinity,
         maxFps: -Infinity,
         maxRam: 0,
+        maxCpu: 0,
         startTime: 0
     };
     let gameWindow = null;
@@ -282,7 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <span class="msg-icon">${structuredError.isOptimizer ? '🚀' : icon}</span>
                 <div class="msg-body">
                     <div class="msg-header">
-                        <span class="error-title">${structuredError.isOptimizer ? 'Optimizador Inteligente' : title}</span>
+                        <span class="error-title">${structuredError.isOptimizer ? 'Monitor de Rendimiento' : title}</span>
                         ${structuredError.line ? `<span class="error-line">Linea ${structuredError.line}</span>` : ''}
                     </div>
                     <span class="msg-text">${translateErrorMessage(structuredError.message)}</span>
@@ -297,7 +298,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
 
-            if (isRuntime) {
+            if (structuredError.isOptimizer) {
+                msgEl.style.borderLeft = "4px solid #00a8ff";
+                msgEl.style.backgroundColor = "rgba(0, 168, 255, 0.1)";
+            } else if (isRuntime) {
                 msgEl.style.borderLeft = "4px solid #ff9f43";
                 msgEl.style.backgroundColor = "rgba(255, 159, 67, 0.15)";
             } else {
@@ -2294,6 +2298,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const currentRam = window.performance.memory.usedJSHeapSize / 1048576;
                 if (currentRam > gamePerfStats.maxRam) gamePerfStats.maxRam = currentRam;
             }
+            if (deltaTime > 0) {
+                const cpuUsage = Math.min(100, (cpuExecutionTime / (deltaTime * 1000)) * 100);
+                if (cpuUsage > gamePerfStats.maxCpu) gamePerfStats.maxCpu = cpuUsage;
+            }
 
             if (is3D) {
                 // Hybrid/3D: Only render views that are visible
@@ -2445,6 +2453,7 @@ document.addEventListener('DOMContentLoaded', () => {
             minFps: Infinity,
             maxFps: -Infinity,
             maxRam: 0,
+            maxCpu: 0,
             startTime: performance.now()
         };
 
@@ -2578,19 +2587,32 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show Performance Capture Summary (Moved here to show after all restoration logs)
         const totalTime = ((performance.now() - gamePerfStats.startTime) / 1000).toFixed(1);
         if (totalTime > 0.5) {
+            const minFps = gamePerfStats.minFps === Infinity ? 0 : gamePerfStats.minFps.toFixed(1);
+            const maxFps = gamePerfStats.maxFps === -Infinity ? 0 : gamePerfStats.maxFps.toFixed(1);
+            const ramMax = gamePerfStats.maxRam.toFixed(1);
+            const cpuMax = gamePerfStats.maxCpu.toFixed(1);
+
             const stats = {
                 'Duración': totalTime + 's',
-                'FPS Mínimo': gamePerfStats.minFps === Infinity ? 0 : gamePerfStats.minFps.toFixed(1),
-                'FPS Máximo': gamePerfStats.maxFps.toFixed(1),
-                'RAM Máxima': gamePerfStats.maxRam.toFixed(1) + ' MB'
+                'FPS Mínimo': minFps,
+                'FPS Máximo': maxFps,
+                'RAM Máxima': ramMax + ' MB',
+                'CPU Máxima': cpuMax + '%'
             };
             console.log("%c CAPTURA DE RENDIMIENTO ", "background: #222; color: #bada55; font-weight: bold; padding: 2px; border-radius: 3px;");
             console.table(stats);
 
             // Also log to UI Console for visibility
             if (window.logToUIConsole) {
+                const summaryMsg = `Análisis de rendimiento de la sesión:
+- Tiempo total de ejecución: ${totalTime}s
+- FPS Máximos alcanzados: ${maxFps}
+- FPS Mínimos detectados: ${minFps}
+- Uso máximo de RAM: ${ramMax} MB
+- Carga máxima de CPU: ${cpuMax}%`;
+
                 window.logToUIConsole({
-                    message: `Rendimiento: ${totalTime}s | FPS: ${stats['FPS Mínimo']}-${stats['FPS Máximo']} | RAM Pico: ${stats['RAM Máxima']}`,
+                    message: summaryMsg,
                     isSystemString: true
                 }, 'info');
             }

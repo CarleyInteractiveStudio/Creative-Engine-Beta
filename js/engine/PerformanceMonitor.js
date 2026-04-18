@@ -18,6 +18,8 @@ export class PerformanceMonitor {
 
         this.lastOptimizationCheck = 0;
         this.frameTimeHistory = 30; // Average over 30 frames
+        this.warmupFrames = 100; // Wait 100 frames before first optimization check
+        this.framesTracked = 0;
 
         // Intelligent Frame Analyzer
         this.lastStableSnapshots = [];
@@ -34,6 +36,7 @@ export class PerformanceMonitor {
 
     recordFrame(dt) {
         const now = performance.now();
+        this.framesTracked++;
         this.lastFrameTimes.push(dt);
         if (this.lastFrameTimes.length > this.frameTimeHistory) {
             this.lastFrameTimes.shift();
@@ -43,7 +46,7 @@ export class PerformanceMonitor {
         this.fps = 1 / avgDt;
 
         // Check for optimization every 500ms
-        if (now - this.lastOptimizationCheck > 500) {
+        if (now - this.lastOptimizationCheck > 500 && this.framesTracked > this.warmupFrames) {
             this.checkPerformance();
             this.lastOptimizationCheck = now;
         }
@@ -129,7 +132,7 @@ export class PerformanceMonitor {
 
     reportCulprits(culprits) {
         culprits.forEach(c => {
-            const msg = `[PerformanceMonitor] Caída de FPS detectada. Causa: ${c.msg}. Nivel de optimización actual: ${this.optimizationLevel}`;
+            const msg = `[PerformanceMonitor] Se ha detectado una caída de FPS. Causa probable: ${c.msg}. Nivel de optimización: ${this.optimizationLevel}`;
             console.warn(msg);
             if (window.logToUIConsole) {
                 window.logToUIConsole({
@@ -138,7 +141,7 @@ export class PerformanceMonitor {
                     isOptimizer: true,
                     culpritType: c.type,
                     culpritData: c
-                }, 'warn');
+                }, 'info');
             }
         });
     }
@@ -221,7 +224,12 @@ export class PerformanceMonitor {
     }
 
     applyOptimization() {
-        const msg = `[PerformanceMonitor] Ajuste de rendimiento: Nivel ${this.optimizationLevel} (FPS: ${Math.round(this.fps)})`;
+        let levelDesc = "Normal";
+        if (this.optimizationLevel === 1) levelDesc = "Ligera (Ajuste de física)";
+        else if (this.optimizationLevel === 2) levelDesc = "Alta (Reducción de luces y partículas)";
+        else if (this.optimizationLevel === 3) levelDesc = "Extrema (Simplificación de mapa y terreno)";
+
+        const msg = `[PerformanceMonitor] Optimizador Activo: Nivel ${this.optimizationLevel} - ${levelDesc} (FPS: ${Math.round(this.fps)})`;
 
         console.warn(msg);
         if (window.logToUIConsole) {
