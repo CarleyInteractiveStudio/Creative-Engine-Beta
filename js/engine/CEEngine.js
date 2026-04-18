@@ -3,6 +3,8 @@
 import * as SceneManager from './SceneManager.js';
 import { PerformanceMonitor } from './PerformanceMonitor.js';
 import * as PerformanceAPI from './PerformanceAPI.js';
+import * as AssetUtils from './AssetUtils.js';
+import * as Components from './Components.js';
 
 let physicsSystem = null;
 let currentDeltaTime = 0;
@@ -50,16 +52,19 @@ function checkMemory() {
 }
 
 export function optimize() {
-    // 1. Clear AssetUtils cache (if it had one, currently it doesn't cache heavily)
+    console.log("[Engine] Optimización manual de memoria iniciada...");
+
+    // 1. Clear AssetUtils cache
+    AssetUtils.clearAssetCache();
+
     // 2. Suggest GC if in a supported env
     if (window.gc) {
         window.gc();
     }
 
-    // 3. Trigger deep optimization in all components if performance is extremely low
-    if (performanceMonitor && performanceMonitor.optimizationLevel >= 3) {
-        if (SceneManager.currentScene) {
-            SceneManager.currentScene.getAllMaterias().forEach(m => {
+    // 3. Trigger deep optimization in all components
+    if (SceneManager.currentScene) {
+        SceneManager.currentScene.getAllMaterias().forEach(m => {
                 const terrain = m.getComponent(Components.Terreno2D);
                 if (terrain && terrain.imageCache) {
                     // Clear terrain texture cache if it gets too large

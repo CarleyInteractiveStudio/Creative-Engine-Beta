@@ -439,6 +439,8 @@ MIN_FPS: FPS Mínimo
 HINT_MAX_FPS: Limita los FPS para ahorrar batería y recursos. Usa 0 para sin límite.
 HINT_MIN_FPS: El motor activará optimizaciones extremas si el rendimiento cae cerca de este valor.
 HINT_MIN_FPS_NOTICE: Nota: Esta cantidad mínima no está garantizada, pero activará una optimización profunda para intentar mantener la fluidez.
+FORZAR_FPS: Forzar FPS (Consumo alto)
+OPTIMIZAR_MEMORIA_AHORA: Optimizar Memoria Ahora
 
 # Performance
 RENDIMIENTO: Desempenho
@@ -1041,6 +1043,8 @@ MIN_FPS: Min FPS
 HINT_MAX_FPS: Limits FPS to save battery and resources. Use 0 for no limit.
 HINT_MIN_FPS: The engine will trigger extreme optimizations if performance drops near this value.
 HINT_MIN_FPS_NOTICE: Note: This minimum amount is not guaranteed, but it will trigger deep optimization to try to maintain fluidity.
+FORZAR_FPS: Force FPS (High consumption)
+OPTIMIZAR_MEMORIA_AHORA: Optimize Memory Now
 
 # Combat & Health
 HEALTH: Health

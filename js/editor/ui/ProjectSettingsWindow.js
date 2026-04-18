@@ -84,6 +84,7 @@ export async function saveProjectConfig(showAlert = true) {
         currentProjectConfig.projectType = document.getElementById('settings-project-type').value;
         currentProjectConfig.rendererMode = dom.settingsRendererMode.value;
         currentProjectConfig.maxFps = parseInt(dom.settingsMaxFps.value) || 0;
+        currentProjectConfig.forceFps = dom.settingsForceFps.checked;
         currentProjectConfig.minFps = parseInt(dom.settingsMinFps.value) || 30;
         currentProjectConfig.ramLimit = parseInt(dom.settingsRamLimit.value) || 2048;
         // Note: The mask type is saved via the AmbienteControlWindow, not here.
@@ -272,6 +273,14 @@ function setupEventListeners() {
         dom.projectSettingsModal.classList.add('is-open');
     });
 
+    if (dom.settingsOptimizeMemBtn) {
+        dom.settingsOptimizeMemBtn.addEventListener('click', () => {
+            import('../../engine/CEEngine.js').then(CEEngine => {
+                CEEngine.optimize();
+            });
+        });
+    }
+
     if (dom.settingsSaveBtn) {
         dom.settingsSaveBtn.addEventListener('click', () => saveProjectConfig(true));
     }
@@ -445,6 +454,7 @@ export function populateUI(config) {
 
     if (dom.settingsRendererMode) dom.settingsRendererMode.value = currentProjectConfig.rendererMode;
     if (dom.settingsMaxFps) dom.settingsMaxFps.value = currentProjectConfig.maxFps !== undefined ? currentProjectConfig.maxFps : 60;
+    if (dom.settingsForceFps) dom.settingsForceFps.checked = !!currentProjectConfig.forceFps;
     if (dom.settingsMinFps) dom.settingsMinFps.value = currentProjectConfig.minFps !== undefined ? currentProjectConfig.minFps : 30;
     if (dom.settingsRamLimit) dom.settingsRamLimit.value = currentProjectConfig.ramLimit || 2048;
     if (dom.settingsShowEngineLogo) dom.settingsShowEngineLogo.checked = currentProjectConfig.showEngineLogo;

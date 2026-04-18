@@ -401,7 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'animation-save-btn', 'current-scene-name', 'animator-controller-panel', 'drawing-canvas-container',
             'anim-onion-skin-canvas', 'anim-grid-canvas', 'anim-bg-toggle-btn', 'anim-grid-toggle-btn',
             'anim-onion-toggle-btn', 'timeline-toggle-btn', 'project-settings-modal', 'settings-app-name',
-            'settings-author-name', 'settings-app-version', 'settings-engine-version', 'settings-renderer-mode', 'settings-max-fps', 'settings-min-fps', 'settings-ram-limit', 'settings-icon-preview',
+            'settings-author-name', 'settings-app-version', 'settings-engine-version', 'settings-renderer-mode', 'settings-max-fps', 'settings-force-fps', 'settings-min-fps', 'settings-ram-limit', 'settings-optimize-mem-btn', 'settings-icon-preview',
             'settings-icon-picker-btn', 'settings-logo-list', 'settings-add-logo-btn', 'settings-show-engine-logo',
             'settings-keystore-path', 'settings-keystore-picker-btn', 'settings-keystore-pass', 'settings-key-alias',
             'settings-key-pass', 'settings-export-project-btn', 'settings-save-btn', 'engine-logo-confirm-modal',
@@ -2178,12 +2178,23 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- FPS Control ---
         const perfMonitor = EngineAPI.getPerformanceMonitor();
         const targetMaxFps = perfMonitor ? perfMonitor.targetMaxFps : 0;
+        const forceFps = perfMonitor ? perfMonitor.forceFps : false;
 
         if (targetMaxFps > 0) {
             const frameTime = 1000 / targetMaxFps;
-            if (timestamp - lastFrameTime < frameTime) {
-                editorLoopId = requestAnimationFrame(editorLoop);
-                return;
+            const elapsed = timestamp - lastFrameTime;
+
+            if (elapsed < frameTime) {
+                // If force FPS is enabled, we stay in a busy-wait loop for the remaining time
+                // to be as precise as possible, though it consumes more CPU.
+                if (forceFps && (frameTime - elapsed) < 5) { // Only busy-wait if we are very close (<5ms)
+                    while (performance.now() - lastFrameTime < frameTime) {
+                        // Busy wait
+                    }
+                } else {
+                    editorLoopId = requestAnimationFrame(editorLoop);
+                    return;
+                }
             }
         }
 
@@ -2521,12 +2532,22 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show Performance Capture Summary
         const totalTime = ((performance.now() - gamePerfStats.startTime) / 1000).toFixed(1);
         if (totalTime > 0.5) {
-            const summary = `
-                <b>Tiempo total:</b> ${totalTime}s<br>
-                <b>FPS:</b> Min: ${gamePerfStats.minFps === Infinity ? 0 : gamePerfStats.minFps.toFixed(1)} | Max: ${gamePerfStats.maxFps.toFixed(1)}<br>
-                <b>RAM Pico:</b> ${gamePerfStats.maxRam.toFixed(1)} MB
-            `;
-            showNotificationDialog('Captura de Rendimiento', summary);
+            const stats = {
+                'Tiempo total (s)': totalTime,
+                'FPS Min': gamePerfStats.minFps === Infinity ? 0 : gamePerfStats.minFps.toFixed(1),
+                'FPS Max': gamePerfStats.maxFps.toFixed(1),
+                'RAM Pico (MB)': gamePerfStats.maxRam.toFixed(1)
+            };
+            console.log("%c CAPTURA DE RENDIMIENTO ", "background: #222; color: #bada55; font-weight: bold; padding: 2px; border-radius: 3px;");
+            console.table(stats);
+
+            // Also log to UI Console for visibility
+            if (window.logToUIConsole) {
+                window.logToUIConsole({
+                    message: `Captura: ${totalTime}s | FPS: ${stats['FPS Min']}-${stats['FPS Max']} | RAM: ${stats['RAM Pico (MB)']} MB`,
+                    isSystemString: true
+                }, 'info');
+            }
         }
         // Restore InputManager out of game mode
         try { InputManager.setGameRunning(false); } catch(e) { /* ignore if not available */ }

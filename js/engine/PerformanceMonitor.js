@@ -13,6 +13,7 @@ export class PerformanceMonitor {
         this.optimizationLevel = 0; // 0: None, 1: Low, 2: High, 3: Extreme
 
         this.targetMaxFps = 60;
+        this.forceFps = false;
         this.targetMinFps = 30;
 
         this.lastOptimizationCheck = 0;
@@ -26,8 +27,9 @@ export class PerformanceMonitor {
 
     updateConfig(config) {
         this.targetMaxFps = config.maxFps || 0; // 0 = no limit
+        this.forceFps = !!config.forceFps;
         this.targetMinFps = config.minFps || 30;
-        console.log(`[PerformanceMonitor] Config updated: MaxFPS=${this.targetMaxFps}, MinFPS=${this.targetMinFps}`);
+        console.log(`[PerformanceMonitor] Config updated: MaxFPS=${this.targetMaxFps}, ForceFPS=${this.forceFps}, MinFPS=${this.targetMinFps}`);
     }
 
     recordFrame(dt) {
@@ -127,7 +129,8 @@ export class PerformanceMonitor {
 
     reportCulprits(culprits) {
         culprits.forEach(c => {
-            const msg = `[Optimizer] CAUSA DETECTADA: ${c.msg}`;
+            const msg = `[PerformanceMonitor] Caída de FPS detectada. Causa: ${c.msg}. Nivel de optimización actual: ${this.optimizationLevel}`;
+            console.warn(msg);
             if (window.logToUIConsole) {
                 window.logToUIConsole({
                     message: msg,
@@ -136,8 +139,6 @@ export class PerformanceMonitor {
                     culpritType: c.type,
                     culpritData: c
                 }, 'warn');
-            } else {
-                console.warn(msg);
             }
         });
     }
@@ -220,11 +221,16 @@ export class PerformanceMonitor {
     }
 
     applyOptimization() {
-        const msg = (Localization.get('OPT_LEVEL_NOTICE') || 'Optimization Level: {level} (FPS: {fps})')
-            .replace('{level}', this.optimizationLevel)
-            .replace('{fps}', Math.round(this.fps));
+        const msg = `[PerformanceMonitor] Ajuste de rendimiento: Nivel ${this.optimizationLevel} (FPS: ${Math.round(this.fps)})`;
 
-        console.warn(`[PerformanceMonitor] ${msg}`);
+        console.warn(msg);
+        if (window.logToUIConsole) {
+            window.logToUIConsole({
+                message: msg,
+                isSystemString: true,
+                isOptimizer: true
+            }, 'info');
+        }
 
         // 1. Notify scripts via event
         if (this.optimizationLevel >= 2) {

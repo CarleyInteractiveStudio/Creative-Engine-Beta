@@ -1159,6 +1159,10 @@ public star() {
                         <label for="settings-max-fps" data-i18n="MAX_FPS">FPS Máximo</label>
                         <input type="number" id="settings-max-fps" min="0" value="60">
                     </div>
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="settings-force-fps">
+                        <label for="settings-force-fps" data-i18n="FORZAR_FPS">Forzar FPS (Consumo alto)</label>
+                    </div>
                     <p class="field-description" data-i18n="HINT_MAX_FPS">Limita los FPS para ahorrar batería y recursos. Usa 0 para sin límite.</p>
 
                     <div class="inspector-row">
@@ -1175,6 +1179,10 @@ public star() {
                         <input type="number" id="settings-ram-limit" min="256" step="128" value="2048">
                     </div>
                     <p class="field-description">Define el límite de memoria para el motor. Si se supera el 80%, el motor intentará liberar recursos no utilizados. <b>Nota:</b> Los navegadores suelen limitar cada pestaña a 4GB (4096MB); si aumentas este valor y la pestaña se cierra, es una restricción del navegador, no un error del motor.</p>
+                    <hr>
+                    <div class="inspector-row">
+                        <button id="settings-optimize-mem-btn" class="secondary-btn" style="width: 100%;" data-i18n="OPTIMIZAR_MEMORIA_AHORA">Optimizar Memoria Ahora</button>
+                    </div>
                 </fieldset>
 
                 <fieldset class="settings-section">
