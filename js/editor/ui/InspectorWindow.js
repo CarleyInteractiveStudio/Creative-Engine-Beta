@@ -4525,7 +4525,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
                             <label for="anim-rows" data-i18n="ROWS">${L.get('ROWS', 'Rows')}</label>
                             <input type="number" id="anim-rows" value="${metaData.animRows || 1}" min="1">
                         </div>
-                         <button id="create-anim-asset-btn" class="primary-btn" style="width: 100%; margin-top: 10px;" data-i18n="CREATE_ANIM_ASSET">${L.get('CREATE_ANIM_ASSET', 'Crear Asset de Animación (.cea)')}</button>
+                         <button id="create-anim-asset-btn" class="primary-btn" style="width: 100%; margin-top: 10px;" data-i18n="CREAR_ANIMACION_SIMPLE">${L.get('CREAR_ANIMACION_SIMPLE', 'Crear Animación')}</button>
                     </fieldset>
                 </div>
 
@@ -4550,7 +4550,11 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 });
             }
 
-            document.getElementById('save-meta-btn').addEventListener('click', async () => {
+            const applySettings = async () => {
+                const btn = document.getElementById('save-meta-btn');
+                if (!btn || btn.disabled) return;
+                btn.disabled = true;
+
                 const L = window.Localization;
                 const maxSize = parseInt(document.getElementById('max-size').value, 10);
                 const compressionQuality = document.getElementById('compression-quality').value;
@@ -4586,7 +4590,8 @@ async function updateInspectorForAsset(assetName, assetPath) {
                     } catch (error) {
                         console.error("Error durante la optimización de la imagen:", error);
                         window.Dialogs.showNotification(L.get('ERROR_OPTIMIZACION', 'Error de Optimización'), `${L.get('ERROR_OPTIMIZAR_IMAGEN', 'No se pudo optimizar la imagen')}: ${error.message}`);
-                        return; // Stop if optimization fails
+                        btn.disabled = false;
+                        return false;
                     }
                 }
 
@@ -4619,11 +4624,20 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 }
 
                 await saveAssetMetaCallback(assetName, currentMetaData, dirHandle);
-                window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), L.get('ASSET_META_APLICADOS', 'Optimización y metadatos del asset aplicados.'));
 
                 // Refresh the asset browser and inspector to show the new file size/preview
                 updateAssetBrowserCallback();
                 updateInspector();
+                btn.disabled = false;
+                return true;
+            };
+
+            document.getElementById('save-meta-btn').addEventListener('click', async () => {
+                const success = await applySettings();
+                if (success) {
+                    const L = window.Localization;
+                    window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), L.get('ASSET_META_APLICADOS', 'Optimización y metadatos del asset aplicados.'));
+                }
             });
 
             // --- Animation Preview Logic ---
@@ -4713,6 +4727,10 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
                 document.getElementById('create-anim-asset-btn').addEventListener('click', async () => {
                     const L = window.Localization;
+
+                    // Automatically trigger the "Apply" logic first to ensure columns/rows are saved
+                    await applySettings();
+
                     if (!createAssetCallback) {
                         console.error("createAssetCallback no está disponible.");
                         return;

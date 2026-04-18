@@ -440,6 +440,7 @@ HINT_MAX_FPS: Limita los FPS para ahorrar batería y recursos. Usa 0 para sin l�
 HINT_MIN_FPS: El motor activará optimizaciones extremas si el rendimiento cae cerca de este valor.
 HINT_MIN_FPS_NOTICE: Nota: Esta cantidad mínima no está garantizada, pero activará una optimización profunda para intentar mantener la fluidez.
 FORZAR_FPS: Forzar FPS (Consumo alto)
+HINT_FORZAR_FPS: Intenta mantener los FPS estables usando un bucle de espera activa. ADVERTENCIA: Aumentará drásticamente el uso de CPU, puede calentar el dispositivo y agotar la batería rápidamente.
 OPTIMIZAR_MEMORIA_AHORA: Optimizar Memoria Ahora
 
 # Performance
@@ -540,6 +541,7 @@ EDIT_PREFAB: Editar Prefab
 ANIMATION_PREVIEW: Previsualización de Animación
 SLICING: Slicing
 CREATE_ANIM_ASSET: Crear Asset de Animación (.cea)
+CREAR_ANIMACION_SIMPLE: Crear Animación
 APPLY: Aplicar
 PRESETS: Presets
 WHITE: Blanco
@@ -1044,6 +1046,7 @@ HINT_MAX_FPS: Limits FPS to save battery and resources. Use 0 for no limit.
 HINT_MIN_FPS: The engine will trigger extreme optimizations if performance drops near this value.
 HINT_MIN_FPS_NOTICE: Note: This minimum amount is not guaranteed, but it will trigger deep optimization to try to maintain fluidity.
 FORZAR_FPS: Force FPS (High consumption)
+HINT_FORZAR_FPS: Tries to maintain stable FPS using a busy-wait loop. WARNING: This will drastically increase CPU usage, may heat up the device, and drain battery quickly.
 OPTIMIZAR_MEMORIA_AHORA: Optimize Memory Now
 
 # Combat & Health
@@ -1136,6 +1139,7 @@ EDIT_PREFAB: Edit Prefab
 ANIMATION_PREVIEW: Animation Preview
 SLICING: Slicing
 CREATE_ANIM_ASSET: Create Animation Asset (.cea)
+CREAR_ANIMACION_SIMPLE: Create Animation
 APPLY: Apply
 PRESETS: Presets
 WHITE: White

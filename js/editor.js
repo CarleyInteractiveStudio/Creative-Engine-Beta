@@ -2529,26 +2529,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.isGameRunning = false;
         document.body.classList.remove('game-mode');
 
-        // Show Performance Capture Summary
-        const totalTime = ((performance.now() - gamePerfStats.startTime) / 1000).toFixed(1);
-        if (totalTime > 0.5) {
-            const stats = {
-                'Tiempo total (s)': totalTime,
-                'FPS Min': gamePerfStats.minFps === Infinity ? 0 : gamePerfStats.minFps.toFixed(1),
-                'FPS Max': gamePerfStats.maxFps.toFixed(1),
-                'RAM Pico (MB)': gamePerfStats.maxRam.toFixed(1)
-            };
-            console.log("%c CAPTURA DE RENDIMIENTO ", "background: #222; color: #bada55; font-weight: bold; padding: 2px; border-radius: 3px;");
-            console.table(stats);
-
-            // Also log to UI Console for visibility
-            if (window.logToUIConsole) {
-                window.logToUIConsole({
-                    message: `Captura: ${totalTime}s | FPS: ${stats['FPS Min']}-${stats['FPS Max']} | RAM: ${stats['RAM Pico (MB)']} MB`,
-                    isSystemString: true
-                }, 'info');
-            }
-        }
         // Restore InputManager out of game mode
         try { InputManager.setGameRunning(false); } catch(e) { /* ignore if not available */ }
         console.log("Game Stopped");
@@ -2592,6 +2572,26 @@ document.addEventListener('DOMContentLoaded', () => {
         physicsSystem = null;
         uiSystem = null;
 
+        // Show Performance Capture Summary (Moved here to show after all restoration logs)
+        const totalTime = ((performance.now() - gamePerfStats.startTime) / 1000).toFixed(1);
+        if (totalTime > 0.5) {
+            const stats = {
+                'Duración': totalTime + 's',
+                'FPS Mínimo': gamePerfStats.minFps === Infinity ? 0 : gamePerfStats.minFps.toFixed(1),
+                'FPS Máximo': gamePerfStats.maxFps.toFixed(1),
+                'RAM Máxima': gamePerfStats.maxRam.toFixed(1) + ' MB'
+            };
+            console.log("%c CAPTURA DE RENDIMIENTO ", "background: #222; color: #bada55; font-weight: bold; padding: 2px; border-radius: 3px;");
+            console.table(stats);
+
+            // Also log to UI Console for visibility
+            if (window.logToUIConsole) {
+                window.logToUIConsole({
+                    message: `Rendimiento: ${totalTime}s | FPS: ${stats['FPS Mínimo']}-${stats['FPS Máximo']} | RAM Pico: ${stats['RAM Máxima']}`,
+                    isSystemString: true
+                }, 'info');
+            }
+        }
 
         updateGameControlsUI();
     };
