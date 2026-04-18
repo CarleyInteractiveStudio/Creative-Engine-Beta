@@ -1449,10 +1449,10 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
     switch (variable.type) {
         case 'number':
         case 'numero':
-            return `<input type="number" ${commonAttrs} value="${currentValue}">`;
+            return `<input type="number" autocomplete="off" ${commonAttrs} value="${currentValue}">`;
         case 'string':
         case 'texto':
-            return `<input type="text" ${commonAttrs} value="${currentValue}">`;
+            return `<input type="text" autocomplete="off" ${commonAttrs} value="${currentValue}">`;
         case 'boolean':
         case 'booleano':
             return `<input type="checkbox" ${commonAttrs} ${currentValue ? 'checked' : ''}>`;
@@ -1461,16 +1461,16 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
         case 'Vector2':
             return `
                 <div class="prop-inputs">
-                    <input type="number" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.x"`)} value="${currentValue?.x || 0}" title="X">
-                    <input type="number" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.y"`)} value="${currentValue?.y || 0}" title="Y">
+                    <input type="number" autocomplete="off" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.x"`)} value="${currentValue?.x || 0}" title="X">
+                    <input type="number" autocomplete="off" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.y"`)} value="${currentValue?.y || 0}" title="Y">
                 </div>
             `;
         case 'Vector3':
             return `
                 <div class="prop-inputs">
-                    <input type="number" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.x"`)} value="${currentValue?.x || 0}" title="X">
-                    <input type="number" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.y"`)} value="${currentValue?.y || 0}" title="Y">
-                    <input type="number" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.z"`)} value="${currentValue?.z || 0}" title="Z">
+                    <input type="number" autocomplete="off" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.x"`)} value="${currentValue?.x || 0}" title="X">
+                    <input type="number" autocomplete="off" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.y"`)} value="${currentValue?.y || 0}" title="Y">
+                    <input type="number" autocomplete="off" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.z"`)} value="${currentValue?.z || 0}" title="Z">
                 </div>
             `;
         case 'Tag':
@@ -1524,7 +1524,7 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
                 return renderPropertyDropper(variable.type, currentValue, commonAttrs);
             }
             // Para 'any' o tipos desconocidos, usar un campo de texto
-            return `<input type="text" ${commonAttrs} value="${currentValue}">`;
+            return `<input type="text" autocomplete="off" ${commonAttrs} value="${currentValue}">`;
     }
 }
 
@@ -1537,7 +1537,7 @@ async function updateInspectorForMateria(selectedMateria) {
     dom.inspectorContent.innerHTML = `
         <div class="inspector-materia-header">
             <input type="checkbox" id="materia-active-toggle" title="${L.get('ACTIVAR_DESACTIVAR_MATERIA', 'Activar/Desactivar Materia')}" ${selectedMateria.isActive ? 'checked' : ''}>
-            <input type="text" id="materia-name-input" value="${selectedMateria.name}">
+            <input type="text" autocomplete="off" id="materia-name-input" value="${selectedMateria.name}">
         </div>
         <div class="tag-layer-container">
             <div class="inspector-row">
@@ -1618,8 +1618,8 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_DIMENSIONS">${L.get('PROP_DIMENSIONS', 'Dimensions')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="width" value="${ley.width}" title="${L.get('PROP_WIDTH', 'Width')}">
-                            <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="height" value="${ley.height}" title="${L.get('PROP_HEIGHT', 'Height')}">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="TextureRender" data-prop="width" value="${ley.width}" title="${L.get('PROP_WIDTH', 'Width')}">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="TextureRender" data-prop="height" value="${ley.height}" title="${L.get('PROP_HEIGHT', 'Height')}">
                         </div>
                     </div>
                 `;
@@ -1628,7 +1628,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_RADIUS">${L.get('PROP_RADIUS', 'Radius')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="radius" value="${ley.radius}" title="${L.get('PROP_RADIUS', 'Radius')}">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="TextureRender" data-prop="radius" value="${ley.radius}" title="${L.get('PROP_RADIUS', 'Radius')}">
                         </div>
                     </div>
                 `;
@@ -1653,7 +1653,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="PROP_COLOR">${L.get('PROP_COLOR', 'Color')}</label>
                         <div class="prop-inputs">
                             <input type="color" class="prop-input" data-component="TextureRender" data-prop="color" value="${ley.color || '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
-                            <input type="text" class="prop-input hex-input" data-component="TextureRender" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
+                            <input type="text" autocomplete="off" class="prop-input hex-input" data-component="TextureRender" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
                         </div>
                     </div>
                     <div class="inspector-row">
@@ -1662,7 +1662,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_ORDER_IN_LAYER">${L.get('PROP_ORDER_IN_LAYER', 'Order in Layer')}</label>
-                        <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="TextureRender" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
                     </div>
                     <hr>
                     <div class="checkbox-field">
@@ -1680,16 +1680,16 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="component-content">
                     <div class="inspector-section-header"><span data-i18n="PADDING">${L.get('PADDING', 'Padding')}</span></div>
                     <div class="prop-row-multi">
-                        <span>L</span><input type="number" class="prop-input" data-component="${compName}" data-prop="padding.left" value="${ley.padding.left}">
-                        <span>R</span><input type="number" class="prop-input" data-component="${compName}" data-prop="padding.right" value="${ley.padding.right}">
+                        <span>L</span><input type="number" autocomplete="off" class="prop-input" data-component="${compName}" data-prop="padding.left" value="${ley.padding.left}">
+                        <span>R</span><input type="number" autocomplete="off" class="prop-input" data-component="${compName}" data-prop="padding.right" value="${ley.padding.right}">
                     </div>
                     <div class="prop-row-multi">
-                        <span>T</span><input type="number" class="prop-input" data-component="${compName}" data-prop="padding.top" value="${ley.padding.top}">
-                        <span>B</span><input type="number" class="prop-input" data-component="${compName}" data-prop="padding.bottom" value="${ley.padding.bottom}">
+                        <span>T</span><input type="number" autocomplete="off" class="prop-input" data-component="${compName}" data-prop="padding.top" value="${ley.padding.top}">
+                        <span>B</span><input type="number" autocomplete="off" class="prop-input" data-component="${compName}" data-prop="padding.bottom" value="${ley.padding.bottom}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="SPACING">${L.get('SPACING', 'Espaciado')}</label>
-                        <input type="number" class="prop-input" data-component="${compName}" data-prop="spacing" value="${ley.spacing}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="${compName}" data-prop="spacing" value="${ley.spacing}">
                     </div>
                 </div>
             `;
@@ -1699,22 +1699,22 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="component-content">
                     <div class="inspector-section-header"><span data-i18n="PADDING">${L.get('PADDING', 'Padding')}</span></div>
                     <div class="prop-row-multi">
-                        <span>L</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="padding.left" value="${ley.padding.left}">
-                        <span>R</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="padding.right" value="${ley.padding.right}">
+                        <span>L</span><input type="number" autocomplete="off" class="prop-input" data-component="GridLayoutGroup" data-prop="padding.left" value="${ley.padding.left}">
+                        <span>R</span><input type="number" autocomplete="off" class="prop-input" data-component="GridLayoutGroup" data-prop="padding.right" value="${ley.padding.right}">
                     </div>
                     <div class="prop-row-multi">
-                        <span>T</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="padding.top" value="${ley.padding.top}">
-                        <span>B</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="padding.bottom" value="${ley.padding.bottom}">
+                        <span>T</span><input type="number" autocomplete="off" class="prop-input" data-component="GridLayoutGroup" data-prop="padding.top" value="${ley.padding.top}">
+                        <span>B</span><input type="number" autocomplete="off" class="prop-input" data-component="GridLayoutGroup" data-prop="padding.bottom" value="${ley.padding.bottom}">
                     </div>
                     <div class="inspector-section-header"><span data-i18n="CELL_SIZE">${L.get('CELL_SIZE', 'Cell Size')}</span></div>
                     <div class="prop-row-multi">
-                        <span>W</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="cellSize.width" value="${ley.cellSize.width}">
-                        <span>H</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="cellSize.height" value="${ley.cellSize.height}">
+                        <span>W</span><input type="number" autocomplete="off" class="prop-input" data-component="GridLayoutGroup" data-prop="cellSize.width" value="${ley.cellSize.width}">
+                        <span>H</span><input type="number" autocomplete="off" class="prop-input" data-component="GridLayoutGroup" data-prop="cellSize.height" value="${ley.cellSize.height}">
                     </div>
                     <div class="inspector-section-header"><span data-i18n="SPACING">${L.get('SPACING', 'Espaciado')}</span></div>
                     <div class="prop-row-multi">
-                        <span>X</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="spacing.x" value="${ley.spacing.x}">
-                        <span>Y</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="spacing.y" value="${ley.spacing.y}">
+                        <span>X</span><input type="number" autocomplete="off" class="prop-input" data-component="GridLayoutGroup" data-prop="spacing.x" value="${ley.spacing.x}">
+                        <span>Y</span><input type="number" autocomplete="off" class="prop-input" data-component="GridLayoutGroup" data-prop="spacing.y" value="${ley.spacing.y}">
                     </div>
                 </div>
             `;
@@ -1755,7 +1755,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                          <label data-i18n="PLAYBACK_RATE">${L.get('PLAYBACK_RATE', 'Velocidad')}</label>
-                         <input type="number" class="prop-input" data-component="VideoPlayer" data-prop="playbackRate" value="${ley.playbackRate}" step="0.1" min="0.1">
+                         <input type="number" autocomplete="off" class="prop-input" data-component="VideoPlayer" data-prop="playbackRate" value="${ley.playbackRate}" step="0.1" min="0.1">
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="VideoPlayer" data-prop="loop" ${ley.loop ? 'checked' : ''}>
@@ -1800,11 +1800,11 @@ async function updateInspectorForMateria(selectedMateria) {
                     ${warningHTML}
                     <div class="prop-row-multi">
                         <label data-i18n="MAX_HEALTH">${L.get('MAX_HEALTH', 'Vida Máxima')}</label>
-                        <input type="number" class="prop-input" step="1" min="1" data-component="Health" data-prop="maxHealth" value="${ley.maxHealth}">
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="1" data-component="Health" data-prop="maxHealth" value="${ley.maxHealth}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="CURRENT_HEALTH">${L.get('CURRENT_HEALTH', 'Vida Actual')}</label>
-                        <input type="number" class="prop-input" step="1" min="0" data-component="Health" data-prop="currentHealth" value="${ley.currentHealth}">
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="0" data-component="Health" data-prop="currentHealth" value="${ley.currentHealth}">
                     </div>
                     <div class="inspector-row">
                         <label data-i18n="DEATH_ANIMATION">${L.get('DEATH_ANIMATION', 'Animación Muerte')}</label>
@@ -1812,11 +1812,11 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="FREEZE_FRAME">${L.get('FREEZE_FRAME', 'Fotograma Congelado')}</label>
-                        <input type="number" class="prop-input" step="1" min="-1" data-component="Health" data-prop="freezeFrame" value="${ley.freezeFrame}">
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="-1" data-component="Health" data-prop="freezeFrame" value="${ley.freezeFrame}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="DESTRUCTION_DELAY">${L.get('DESTRUCTION_DELAY', 'Tiempo Desaparición')}</label>
-                        <input type="number" class="prop-input" step="0.1" min="-1" data-component="Health" data-prop="destructionDelay" value="${ley.destructionDelay}">
+                        <input type="number" autocomplete="off" class="prop-input" step="0.1" min="-1" data-component="Health" data-prop="destructionDelay" value="${ley.destructionDelay}">
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Health" data-prop="disableMovementOnDeath" ${ley.disableMovementOnDeath ? 'checked' : ''}>
@@ -1844,11 +1844,11 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="COOLDOWN">${L.get('COOLDOWN', 'Enfriamiento')}</label>
-                        <input type="number" class="prop-input" step="0.1" min="0" data-component="Attack" data-prop="cooldown" value="${ley.cooldown}">
+                        <input type="number" autocomplete="off" class="prop-input" step="0.1" min="0" data-component="Attack" data-prop="cooldown" value="${ley.cooldown}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="CYCLE_KEY">${L.get('CYCLE_KEY', 'Tecla Ciclo')}</label>
-                        <input type="text" class="prop-input" data-component="Attack" data-prop="cycleKey" value="${ley.cycleKey || ''}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="Attack" data-prop="cycleKey" value="${ley.cycleKey || ''}">
                     </div>
                     <div class="inspector-section-header">
                         <span data-i18n="ATTACKS">${L.get('ATTACKS', 'Ataques')}</span>
@@ -1862,7 +1862,7 @@ async function updateInspectorForMateria(selectedMateria) {
                                 </div>
                                 <div class="prop-row-multi">
                                     <label>Key</label>
-                                    <input type="text" class="prop-input" data-component="Attack" data-prop="attacks.${aIdx}.key" value="${atk.key || ''}">
+                                    <input type="text" autocomplete="off" class="prop-input" data-component="Attack" data-prop="attacks.${aIdx}.key" value="${atk.key || ''}">
                                 </div>
                                 <div class="inspector-row">
                                     <label>Anim</label>
@@ -1874,15 +1874,15 @@ async function updateInspectorForMateria(selectedMateria) {
                                 </div>
                                 <div class="prop-row-multi">
                                     <label>${L.get('DAMAGE', 'Daño')}</label>
-                                    <input type="number" class="prop-input" data-component="Attack" data-prop="attacks.${aIdx}.damage" value="${atk.damage}">
+                                    <input type="number" autocomplete="off" class="prop-input" data-component="Attack" data-prop="attacks.${aIdx}.damage" value="${atk.damage}">
                                 </div>
                                 <div class="prop-row-multi">
                                     <label>${L.get('PUSH_FORCE', 'Empuje')}</label>
-                                    <input type="number" class="prop-input" data-component="Attack" data-prop="attacks.${aIdx}.pushForce" value="${atk.pushForce}">
+                                    <input type="number" autocomplete="off" class="prop-input" data-component="Attack" data-prop="attacks.${aIdx}.pushForce" value="${atk.pushForce}">
                                 </div>
                                 <div class="prop-row-multi">
                                     <label>${L.get('DURATION', 'Duración')}</label>
-                                    <input type="number" class="prop-input" step="0.05" data-component="Attack" data-prop="attacks.${aIdx}.duration" value="${atk.duration}">
+                                    <input type="number" autocomplete="off" class="prop-input" step="0.05" data-component="Attack" data-prop="attacks.${aIdx}.duration" value="${atk.duration}">
                                 </div>
                             </div>
                         `).join('')}
@@ -1904,7 +1904,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="FULL_SIZE">${L.get('FULL_SIZE', 'Tamaño Total')}</label>
-                        <input type="number" class="prop-input" data-component="ProgressBar" data-prop="fullSize" value="${ley.fullSize}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="ProgressBar" data-prop="fullSize" value="${ley.fullSize}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="ORIENTATION">${L.get('ORIENTATION', 'Orientación')}</label>
@@ -1924,11 +1924,11 @@ async function updateInspectorForMateria(selectedMateria) {
                     <hr>
                     <div class="prop-row-multi">
                         <label data-i18n="VALUE">${L.get('VALUE', 'Valor')}</label>
-                        <input type="number" class="prop-input" data-component="ProgressBar" data-prop="value" value="${ley.value}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="ProgressBar" data-prop="value" value="${ley.value}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="MAX_VALUE">${L.get('MAX_VALUE', 'Valor Máximo')}</label>
-                        <input type="number" class="prop-input" data-component="ProgressBar" data-prop="maxValue" value="${ley.maxValue}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="ProgressBar" data-prop="maxValue" value="${ley.maxValue}">
                     </div>
                 </div>
             `;
@@ -1950,11 +1950,11 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="SCROLL_SENSITIVITY">${L.get('SCROLL_SENSITIVITY', 'Sensibilidad')}</label>
-                        <input type="number" class="prop-input" step="0.1" data-component="UIScrollRect" data-prop="scrollSensitivity" value="${ley.scrollSensitivity}">
+                        <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="UIScrollRect" data-prop="scrollSensitivity" value="${ley.scrollSensitivity}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="INERTIA">${L.get('INERTIA', 'Inercia')}</label>
-                        <input type="number" class="prop-input" step="0.01" min="0" max="1" data-component="UIScrollRect" data-prop="inertia" value="${ley.inertia}">
+                        <input type="number" autocomplete="off" class="prop-input" step="0.01" min="0" max="1" data-component="UIScrollRect" data-prop="inertia" value="${ley.inertia}">
                     </div>
                     <div class="inspector-row">
                         <label data-i18n="V_SCROLLBAR">${L.get('V_SCROLLBAR', 'Barra Vertical')}</label>
@@ -1993,15 +1993,15 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="VELOCIDAD">${L.get('VELOCIDAD', 'Velocidad')}</label>
-                        <input type="number" class="prop-input" step="1" data-component="Patrol" data-prop="speed" value="${ley.speed}">
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="Patrol" data-prop="speed" value="${ley.speed}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="DISTANCE">${L.get('DISTANCE', 'Distancia')}</label>
-                        <input type="number" class="prop-input" step="1" data-component="Patrol" data-prop="distance" value="${ley.distance}">
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="Patrol" data-prop="distance" value="${ley.distance}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="PAUSE_TIME">${L.get('PAUSE_TIME', 'Tiempo Pausa (s)')}</label>
-                        <input type="number" class="prop-input" step="0.1" min="0" data-component="Patrol" data-prop="pauseTime" value="${ley.pauseTime}">
+                        <input type="number" autocomplete="off" class="prop-input" step="0.1" min="0" data-component="Patrol" data-prop="pauseTime" value="${ley.pauseTime}">
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Patrol" data-prop="horizontal" ${ley.horizontal ? 'checked' : ''}>
@@ -2011,11 +2011,11 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="inspector-section-header"><span>${L.get('ANIMATIONS', 'Animaciones')}</span></div>
                     <div class="prop-row-multi">
                         <label>Idle</label>
-                        <input type="text" class="prop-input" data-component="Patrol" data-prop="idleAnim" value="${ley.idleAnim || ''}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="Patrol" data-prop="idleAnim" value="${ley.idleAnim || ''}">
                     </div>
                     <div class="prop-row-multi">
                         <label>Move</label>
-                        <input type="text" class="prop-input" data-component="Patrol" data-prop="moveAnim" value="${ley.moveAnim || ''}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="Patrol" data-prop="moveAnim" value="${ley.moveAnim || ''}">
                     </div>
                 </div>
             `;
@@ -2030,25 +2030,25 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_POSITION">${L.get('PROP_POSITION', 'Position')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.x" value="${ley.localPosition.x}" title="X">
-                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.y" value="${ley.localPosition.y}" title="Y">
-                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.z" value="${ley.localPosition.z || 0}" title="Z">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.x" value="${ley.localPosition.x}" title="X">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.y" value="${ley.localPosition.y}" title="Y">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.z" value="${ley.localPosition.z || 0}" title="Z">
                         </div>
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_ROTATION">${L.get('PROP_ROTATION', 'Rotation')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localRotation.x" value="${ley.localRotation?.x || 0}" title="X">
-                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localRotation.y" value="${ley.localRotation?.y || 0}" title="Y">
-                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localRotation.z" value="${(typeof ley.localRotation === 'number' ? ley.localRotation : ley.localRotation?.z) || 0}" title="Z">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="Transform" data-prop="localRotation.x" value="${ley.localRotation?.x || 0}" title="X">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="Transform" data-prop="localRotation.y" value="${ley.localRotation?.y || 0}" title="Y">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="Transform" data-prop="localRotation.z" value="${(typeof ley.localRotation === 'number' ? ley.localRotation : ley.localRotation?.z) || 0}" title="Z">
                         </div>
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_SCALE">${L.get('PROP_SCALE', 'Scale')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.x" value="${ley.localScale.x}" title="X">
-                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.y" value="${ley.localScale.y}" title="Y">
-                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.z" value="${ley.localScale.z || 1}" title="Z">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.x" value="${ley.localScale.x}" title="X">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.y" value="${ley.localScale.y}" title="Y">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.z" value="${ley.localScale.z || 1}" title="Z">
                         </div>
                     </div>
                     <div class="inspector-section-header"><span>${L.get('ORIENTATION', 'Orientación')}</span></div>
@@ -2075,8 +2075,8 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="OFFSET">${L.get('OFFSET', 'Offset')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.1" data-component="PolygonCollider2D" data-prop="offset.x" value="${ley.offset.x}" title="${L.get('OFFSET_X', 'Offset X')}">
-                            <input type="number" class="prop-input" step="0.1" data-component="PolygonCollider2D" data-prop="offset.y" value="${ley.offset.y}" title="${L.get('OFFSET_Y', 'Offset Y')}">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="PolygonCollider2D" data-prop="offset.x" value="${ley.offset.x}" title="${L.get('OFFSET_X', 'Offset X')}">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="PolygonCollider2D" data-prop="offset.y" value="${ley.offset.y}" title="${L.get('OFFSET_Y', 'Offset Y')}">
                         </div>
                     </div>
                     <div class="inspector-field-group">
@@ -2114,22 +2114,22 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="prop-row-multi">
                     <label data-i18n="POSICION">${L.get('POSICION', 'Position')}</label>
                     <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="1" data-component="UITransform" data-prop="position.x" value="${ley.position.x}" title="${L.get('POSITION_X_OFFSET', 'Position X Offset')}">
-                        <input type="number" class="prop-input" step="1" data-component="UITransform" data-prop="position.y" value="${ley.position.y}" title="${L.get('POSITION_Y_OFFSET', 'Position Y Offset')}">
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="UITransform" data-prop="position.x" value="${ley.position.x}" title="${L.get('POSITION_X_OFFSET', 'Position X Offset')}">
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="UITransform" data-prop="position.y" value="${ley.position.y}" title="${L.get('POSITION_Y_OFFSET', 'Position Y Offset')}">
                     </div>
                 </div>
                 <div class="prop-row-multi">
                     <label data-i18n="PROP_DIMENSIONS">${L.get('PROP_DIMENSIONS', 'Size')}</label>
                     <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="1" data-component="UITransform" data-prop="size.width" value="${ley.size.width}" title="${L.get('WIDTH', 'Width')}">
-                        <input type="number" class="prop-input" step="1" data-component="UITransform" data-prop="size.height" value="${ley.size.height}" title="${L.get('HEIGHT', 'Height')}">
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="UITransform" data-prop="size.width" value="${ley.size.width}" title="${L.get('WIDTH', 'Width')}">
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="UITransform" data-prop="size.height" value="${ley.size.height}" title="${L.get('HEIGHT', 'Height')}">
                     </div>
                 </div>
                 <div class="prop-row-multi">
                     <label data-i18n="PROP_PIVOT">${L.get('PROP_PIVOT', 'Pivot')}</label>
                     <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="0.01" data-component="UITransform" data-prop="pivot.x" value="${ley.pivot?.x ?? 0.5}" title="${L.get('PIVOT_X', 'Pivot X')}">
-                        <input type="number" class="prop-input" step="0.01" data-component="UITransform" data-prop="pivot.y" value="${ley.pivot?.y ?? 0.5}" title="${L.get('PIVOT_Y', 'Pivot Y')}">
+                        <input type="number" autocomplete="off" class="prop-input" step="0.01" data-component="UITransform" data-prop="pivot.x" value="${ley.pivot?.x ?? 0.5}" title="${L.get('PIVOT_X', 'Pivot X')}">
+                        <input type="number" autocomplete="off" class="prop-input" step="0.01" data-component="UITransform" data-prop="pivot.y" value="${ley.pivot?.y ?? 0.5}" title="${L.get('PIVOT_Y', 'Pivot Y')}">
                         <button class="small-btn" data-action="auto-pivot-ui" title="${L.get('AUTO_PIVOT_DESC', 'Ajustar al Contenido (Auto-Pivot)')}" style="font-size: 10px; padding: 2px 4px;">AUTO</button>
                     </div>
                 </div>
@@ -2145,7 +2145,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <label data-i18n="COLOR">${L.get('COLOR', 'Color')}</label>
                     <div class="prop-inputs">
                             <input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color && ley.color.startsWith('#') ? ley.color : '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
-                        <input type="text" class="prop-input hex-input" data-component="UIImage" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
+                        <input type="text" autocomplete="off" class="prop-input hex-input" data-component="UIImage" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
                     </div>
                 </div>
                     <div class="prop-row-multi">
@@ -2168,13 +2168,13 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="FONT_SIZE">${L.get('FONT_SIZE', 'Font Size')}</label>
-                        <input type="number" class="prop-input" data-component="UIText" data-prop="fontSize" value="${ley.fontSize}" min="1">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="UIText" data-prop="fontSize" value="${ley.fontSize}" min="1">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_COLOR">${L.get('PROP_COLOR', 'Color')}</label>
                         <div class="prop-inputs">
                             <input type="color" class="prop-input" data-component="UIText" data-prop="color" value="${ley.color || '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
-                            <input type="text" class="prop-input hex-input" data-component="UIText" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
+                            <input type="text" autocomplete="off" class="prop-input hex-input" data-component="UIText" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
                         </div>
                     </div>
                     <div class="prop-row-multi">
@@ -2214,8 +2214,8 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi" data-canvas-props="world" style="display: ${isWorldSpace ? 'flex' : 'none'};">
                         <label data-i18n="PROP_DIMENSIONS">${L.get('PROP_DIMENSIONS', 'Size')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" data-component="Canvas" data-prop="size.x" value="${ley.size.x}">
-                            <input type="number" class="prop-input" data-component="Canvas" data-prop="size.y" value="${ley.size.y}">
+                            <input type="number" autocomplete="off" class="prop-input" data-component="Canvas" data-prop="size.x" value="${ley.size.x}">
+                            <input type="number" autocomplete="off" class="prop-input" data-component="Canvas" data-prop="size.y" value="${ley.size.y}">
                         </div>
                     </div>
 
@@ -2223,8 +2223,8 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi" data-canvas-props="screen" style="display: ${!isWorldSpace ? 'flex' : 'none'};">
                         <label data-i18n="REFERENCE_RES">${L.get('REFERENCE_RES', 'Reference Res')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" data-component="Canvas" data-prop="referenceResolution.width" value="${ssResolution.width}">
-                            <input type="number" class="prop-input" data-component="Canvas" data-prop="referenceResolution.height" value="${ssResolution.height}">
+                            <input type="number" autocomplete="off" class="prop-input" data-component="Canvas" data-prop="referenceResolution.width" value="${ssResolution.width}">
+                            <input type="number" autocomplete="off" class="prop-input" data-component="Canvas" data-prop="referenceResolution.height" value="${ssResolution.height}">
                         </div>
                     </div>
                      <div class="prop-row-multi" data-canvas-props="screen" style="display: ${!isWorldSpace ? 'flex' : 'none'};">
@@ -2294,15 +2294,15 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div id="animation-settings" style="display: ${isAnimation ? 'block' : 'none'};">
                         <div class="prop-row-multi">
                             <label data-i18n="HIGHLIGHTED_TRIGGER">${L.get('HIGHLIGHTED_TRIGGER', 'Highlighted Trigger')}</label>
-                            <input type="text" class="prop-input" data-component="Button" data-prop="animationTriggers.highlightedTrigger" value="${ley.animationTriggers.highlightedTrigger}">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="Button" data-prop="animationTriggers.highlightedTrigger" value="${ley.animationTriggers.highlightedTrigger}">
                         </div>
                         <div class="prop-row-multi">
                             <label data-i18n="PRESSED_TRIGGER">${L.get('PRESSED_TRIGGER', 'Pressed Trigger')}</label>
-                            <input type="text" class="prop-input" data-component="Button" data-prop="animationTriggers.pressedTrigger" value="${ley.animationTriggers.pressedTrigger}">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="Button" data-prop="animationTriggers.pressedTrigger" value="${ley.animationTriggers.pressedTrigger}">
                         </div>
                         <div class="prop-row-multi">
                             <label data-i18n="DISABLED_TRIGGER">${L.get('DISABLED_TRIGGER', 'Disabled Trigger')}</label>
-                            <input type="text" class="prop-input" data-component="Button" data-prop="animationTriggers.disabledTrigger" value="${ley.animationTriggers.disabledTrigger}">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="Button" data-prop="animationTriggers.disabledTrigger" value="${ley.animationTriggers.disabledTrigger}">
                         </div>
                     </div>
                      <div class="inspector-section-header">
@@ -2347,14 +2347,14 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="OFFSET">${L.get('OFFSET', 'Offset')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.1" data-component="CircleCollider2D" data-prop="offset.x" value="${ley.offset.x}" title="${L.get('OFFSET_X', 'Offset X')}">
-                            <input type="number" class="prop-input" step="0.1" data-component="CircleCollider2D" data-prop="offset.y" value="${ley.offset.y}" title="${L.get('OFFSET_Y', 'Offset Y')}">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="CircleCollider2D" data-prop="offset.x" value="${ley.offset.x}" title="${L.get('OFFSET_X', 'Offset X')}">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="CircleCollider2D" data-prop="offset.y" value="${ley.offset.y}" title="${L.get('OFFSET_Y', 'Offset Y')}">
                         </div>
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="RADIUS">${L.get('RADIUS', 'Radius')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.1" data-component="CircleCollider2D" data-prop="radius" value="${ley.radius}" title="${L.get('RADIUS', 'Radius')}">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="CircleCollider2D" data-prop="radius" value="${ley.radius}" title="${L.get('RADIUS', 'Radius')}">
                         </div>
                     </div>
                 </div>
@@ -2389,7 +2389,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="PROP_COLOR">${L.get('PROP_COLOR', 'Color')}</label>
                         <div class="prop-inputs">
                             <input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color || '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
-                            <input type="text" class="prop-input hex-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
+                            <input type="text" autocomplete="off" class="prop-input hex-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
                         </div>
                     </div>
                     <div class="prop-row-multi">
@@ -2402,8 +2402,8 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_PIVOT">${L.get('PROP_PIVOT', 'Pivot')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.01" data-component="SpriteRenderer" data-prop="pivot.x" value="${ley.pivot?.x ?? 0.5}" title="Pivot X">
-                            <input type="number" class="prop-input" step="0.01" data-component="SpriteRenderer" data-prop="pivot.y" value="${ley.pivot?.y ?? 0.5}" title="Pivot Y">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.01" data-component="SpriteRenderer" data-prop="pivot.x" value="${ley.pivot?.x ?? 0.5}" title="Pivot X">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.01" data-component="SpriteRenderer" data-prop="pivot.y" value="${ley.pivot?.y ?? 0.5}" title="Pivot Y">
                             <button class="small-btn" data-action="center-sprite-pivot" title="Centrar Pivot (0.5, 0.5)">${getIconHTML('target')}</button>
                             <button class="small-btn" data-action="auto-pivot-sprite" title="Ajustar al Contenido (Auto-Pivot)" style="font-size: 10px; padding: 2px 4px;">AUTO</button>
                         </div>
@@ -2414,7 +2414,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_ORDER_IN_LAYER">${L.get('PROP_ORDER_IN_LAYER', 'Order in Layer')}</label>
-                        <input type="number" class="prop-input" step="1" data-component="SpriteRenderer" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="SpriteRenderer" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
                     </div>
                     <hr>
                     <div class="checkbox-field">
@@ -2455,7 +2455,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="SPEED">${L.get('SPEED', 'Speed')}</label>
-                        <input type="number" class="prop-input" step="1" min="0" data-component="Animator" data-prop="speed" value="${ley.speed}">
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="0" data-component="Animator" data-prop="speed" value="${ley.speed}">
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Animator" data-prop="loop" ${ley.loop ? 'checked' : ''}>
@@ -2490,23 +2490,23 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="inspector-section-header"><span data-i18n="RESPONSE_CONFIG">${L.get('RESPONSE_CONFIG', 'Configuración de Respuesta')}</span></div>
                     <div class="prop-row-multi">
                         <label title="${L.get('DEADZONE_DESC', 'Movimiento mínimo para activar dirección')}" data-i18n="DEADZONE">${L.get('DEADZONE', 'Sensibilidad (Deadzone)')}</label>
-                        <input type="number" class="prop-input" step="0.01" min="0" max="1" data-component="AnimatorController" data-prop="deadZone" value="${ley.deadZone ?? 0.1}">
+                        <input type="number" autocomplete="off" class="prop-input" step="0.01" min="0" max="1" data-component="AnimatorController" data-prop="deadZone" value="${ley.deadZone ?? 0.1}">
                     </div>
                     <div class="prop-row-multi">
                         <label title="${L.get('START_DELAY_DESC', 'Tiempo de espera para empezar animación')}" data-i18n="START_DELAY">${L.get('START_DELAY', 'Retraso Inicio (s)')}</label>
-                        <input type="number" class="prop-input" step="0.01" min="0" data-component="AnimatorController" data-prop="startDelay" value="${ley.startDelay ?? 0.02}">
+                        <input type="number" autocomplete="off" class="prop-input" step="0.01" min="0" data-component="AnimatorController" data-prop="startDelay" value="${ley.startDelay ?? 0.02}">
                     </div>
                     <div class="prop-row-multi">
                         <label title="${L.get('STOP_DELAY_DESC', 'Tiempo de espera para volver a parado')}" data-i18n="STOP_DELAY">${L.get('STOP_DELAY', 'Retraso Parada (s)')}</label>
-                        <input type="number" class="prop-input" step="0.01" min="0" data-component="AnimatorController" data-prop="stopDelay" value="${ley.stopDelay ?? 0.02}">
+                        <input type="number" autocomplete="off" class="prop-input" step="0.01" min="0" data-component="AnimatorController" data-prop="stopDelay" value="${ley.stopDelay ?? 0.02}">
                     </div>
                     <div class="prop-row-multi">
                         <label title="${L.get('DIRECTION_DELAY_DESC', 'Tiempo de espera para cambiar dirección')}" data-i18n="DIRECTION_DELAY">${L.get('DIRECTION_DELAY', 'Retraso Giro (s)')}</label>
-                        <input type="number" class="prop-input" step="0.01" min="0" data-component="AnimatorController" data-prop="directionDelay" value="${ley.directionDelay ?? 0.05}">
+                        <input type="number" autocomplete="off" class="prop-input" step="0.01" min="0" data-component="AnimatorController" data-prop="directionDelay" value="${ley.directionDelay ?? 0.05}">
                     </div>
                     <div class="prop-row-multi">
                         <label title="${L.get('STOP_BUFFER_DESC', 'Tiempo que la animación sigue activa tras soltar')}" data-i18n="STOP_BUFFER">${L.get('STOP_BUFFER', 'Buffer Inercia (s)')}</label>
-                        <input type="number" class="prop-input" step="0.01" min="0" data-component="AnimatorController" data-prop="stopBuffer" value="${ley.stopBuffer ?? 0.05}">
+                        <input type="number" autocomplete="off" class="prop-input" step="0.01" min="0" data-component="AnimatorController" data-prop="stopBuffer" value="${ley.stopBuffer ?? 0.05}">
                     </div>
 
                     <div class="inspector-field-group">
@@ -2524,7 +2524,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="DEPTH">${L.get('DEPTH', 'Depth')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" data-component="Camera" data-prop="depth" value="${ley.depth || 0}">
+                            <input type="number" autocomplete="off" class="prop-input" data-component="Camera" data-prop="depth" value="${ley.depth || 0}">
                         </div>
                     </div>
                     <div class="prop-row-multi">
@@ -2565,14 +2565,14 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi" style="display: ${projection === 'Perspective' ? 'flex' : 'none'};">
                         <label data-i18n="FOV">Campo de Visión (FOV)</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" data-component="Camera" data-prop="fov" value="${ley.fov || 60}" min="1" max="179">
+                            <input type="number" autocomplete="off" class="prop-input" data-component="Camera" data-prop="fov" value="${ley.fov || 60}" min="1" max="179">
                         </div>
                     </div>
 
                      <div class="prop-row-multi" style="display: ${projection === 'Orthographic' ? 'flex' : 'none'};">
                         <label data-i18n="SIZE_ZOOM">${L.get('SIZE_ZOOM', 'Size (Zoom)')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" data-component="Camera" data-prop="orthographicSize" value="${ley.orthographicSize || 5}" min="0.1">
+                            <input type="number" autocomplete="off" class="prop-input" data-component="Camera" data-prop="orthographicSize" value="${ley.orthographicSize || 5}" min="0.1">
                         </div>
                     </div>
                 </div>
@@ -2586,7 +2586,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="PROP_COLOR">${L.get('PROP_COLOR', 'Color')}</label>
                         <div class="prop-inputs">
                             <input type="color" class="prop-input" data-component="PointLight2D" data-prop="color" value="${ley.color || '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
-                            <input type="text" class="prop-input hex-input" data-component="PointLight2D" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
+                            <input type="text" autocomplete="off" class="prop-input hex-input" data-component="PointLight2D" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
                         </div>
                     </div>
                     ${renderLightColorPresets("PointLight2D")}
@@ -2607,7 +2607,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="RADIUS">${L.get('RADIUS', 'Radius')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="10" min="0" data-component="PointLight2D" data-prop="radius" value="${ley.radius}">
+                            <input type="number" autocomplete="off" class="prop-input" step="10" min="0" data-component="PointLight2D" data-prop="radius" value="${ley.radius}">
                         </div>
                     </div>
                 </div>
@@ -2621,7 +2621,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="PROP_COLOR">${L.get('PROP_COLOR', 'Color')}</label>
                         <div class="prop-inputs">
                             <input type="color" class="prop-input" data-component="SpotLight2D" data-prop="color" value="${ley.color || '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
-                            <input type="text" class="prop-input hex-input" data-component="SpotLight2D" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
+                            <input type="text" autocomplete="off" class="prop-input hex-input" data-component="SpotLight2D" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
                         </div>
                     </div>
                     ${renderLightColorPresets("SpotLight2D")}
@@ -2642,13 +2642,13 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="RADIUS">${L.get('RADIUS', 'Radius')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="10" min="0" data-component="SpotLight2D" data-prop="radius" value="${ley.radius}">
+                            <input type="number" autocomplete="off" class="prop-input" step="10" min="0" data-component="SpotLight2D" data-prop="radius" value="${ley.radius}">
                         </div>
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="ANGLE">${L.get('ANGLE', 'Angle')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" min="1" max="180" data-component="SpotLight2D" data-prop="angle" value="${ley.angle}">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" min="1" max="180" data-component="SpotLight2D" data-prop="angle" value="${ley.angle}">
                         </div>
                     </div>
                 </div>
@@ -2699,8 +2699,8 @@ async function updateInspectorForMateria(selectedMateria) {
                         <div class="prop-row-multi">
                             <label data-i18n="PROP_DIMENSIONS">${L.get('PROP_DIMENSIONS', 'Size')}</label>
                             <div class="prop-inputs">
-                                <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="width" value="${ley.width}" title="Width">
-                                <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="height" value="${ley.height}" title="Height">
+                                <input type="number" autocomplete="off" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="width" value="${ley.width}" title="Width">
+                                <input type="number" autocomplete="off" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="height" value="${ley.height}" title="Height">
                             </div>
                         </div>
                     `;
@@ -2709,8 +2709,8 @@ async function updateInspectorForMateria(selectedMateria) {
                         <div class="prop-row-multi">
                             <label data-i18n="PROP_DIMENSIONS">${L.get('PROP_DIMENSIONS', 'Size')}</label>
                             <div class="prop-inputs">
-                                <input type="number" class="prop-input" value="${ley.width}" readonly title="Width">
-                                <input type="number" class="prop-input" value="${ley.height}" readonly title="Height">
+                                <input type="number" autocomplete="off" class="prop-input" value="${ley.width}" readonly title="Width">
+                                <input type="number" autocomplete="off" class="prop-input" value="${ley.height}" readonly title="Height">
                             </div>
                         </div>
                     `;
@@ -2740,8 +2740,8 @@ async function updateInspectorForMateria(selectedMateria) {
                                             <span>${L.get('LAYER', 'Capa')} ${index}</span>
                                             ${index === ley.activeLayerIndex ? `
                                                 <div class="layer-pos-inputs">
-                                                    <input type="number" class="prop-input small" step="1" data-component="Tilemap" data-prop="layers.${index}.position.x" value="${layer.position.x}" title="${L.get('LAYER_OFFSET_X', 'Layer Offset X')}">
-                                                    <input type="number" class="prop-input small" step="1" data-component="Tilemap" data-prop="layers.${index}.position.y" value="${layer.position.y}" title="${L.get('LAYER_OFFSET_Y', 'Layer Offset Y')}">
+                                                    <input type="number" autocomplete="off" class="prop-input small" step="1" data-component="Tilemap" data-prop="layers.${index}.position.x" value="${layer.position.x}" title="${L.get('LAYER_OFFSET_X', 'Layer Offset X')}">
+                                                    <input type="number" autocomplete="off" class="prop-input small" step="1" data-component="Tilemap" data-prop="layers.${index}.position.y" value="${layer.position.y}" title="${L.get('LAYER_OFFSET_Y', 'Layer Offset Y')}">
                                                 </div>
                                             ` : `
                                                 <span class="layer-info">(X: ${layer.position.x}, Y: ${layer.position.y})</span>
@@ -2760,7 +2760,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_ORDER_IN_LAYER">${L.get('PROP_ORDER_IN_LAYER', 'Order in Layer')}</label>
-                        <input type="number" class="prop-input" step="1" data-component="TilemapRenderer" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="TilemapRenderer" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
                     </div>
                 </div>
             `;
@@ -2806,7 +2806,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="CELL_SIZE">${L.get('CELL_SIZE', 'Cell Size')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" min="1" data-component="Grid" data-prop="simplifiedSize" value="${cellSize.x}">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" min="1" data-component="Grid" data-prop="simplifiedSize" value="${cellSize.x}">
                         </div>
                     </div>
                 `;
@@ -2815,8 +2815,8 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="CELL_SIZE">${L.get('CELL_SIZE', 'Cell Size')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" min="1" data-component="Grid" data-prop="cellSize.x" value="${cellSize.x}" title="X">
-                            <input type="number" class="prop-input" step="1" min="1" data-component="Grid" data-prop="cellSize.y" value="${cellSize.y}" title="Y">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" min="1" data-component="Grid" data-prop="cellSize.x" value="${cellSize.x}" title="X">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" min="1" data-component="Grid" data-prop="cellSize.y" value="${cellSize.y}" title="Y">
                         </div>
                     </div>
                 `;
@@ -2846,15 +2846,15 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="OFFSET">${L.get('OFFSET', 'Offset')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="offset.x" value="${ley.offset.x}" title="${L.get('OFFSET_X', 'Offset X')}">
-                            <input type="number" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="offset.y" value="${ley.offset.y}" title="${L.get('OFFSET_Y', 'Offset Y')}">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="offset.x" value="${ley.offset.x}" title="${L.get('OFFSET_X', 'Offset X')}">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="offset.y" value="${ley.offset.y}" title="${L.get('OFFSET_Y', 'Offset Y')}">
                         </div>
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_DIMENSIONS">${L.get('PROP_DIMENSIONS', 'Size')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="size.x" value="${ley.size.x}" title="${L.get('SIZE_X', 'Size X')}">
-                            <input type="number" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="size.y" value="${ley.size.y}" title="${L.get('SIZE_Y', 'Size Y')}">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="size.x" value="${ley.size.x}" title="${L.get('SIZE_X', 'Size X')}">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="size.y" value="${ley.size.y}" title="${L.get('SIZE_Y', 'Size Y')}">
                         </div>
                     </div>
                     <div class="prop-row-multi">
@@ -2935,19 +2935,19 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="inspector-field-group">
                         <div class="prop-row-multi">
                             <label data-i18n="MASS">${L.get('MASS', 'Mass')}</label>
-                            <input type="number" class="prop-input" step="0.1" data-component="Rigidbody2D" data-prop="mass" value="${rigidbody.mass}">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="Rigidbody2D" data-prop="mass" value="${rigidbody.mass}">
                         </div>
                         <div class="prop-row-multi">
                             <label data-i18n="GRAVITY_SCALE">${L.get('GRAVITY_SCALE', 'Gravity Scale')}</label>
-                            <input type="number" class="prop-input" step="0.1" data-component="Rigidbody2D" data-prop="gravityScale" value="${rigidbody.gravityScale}">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="Rigidbody2D" data-prop="gravityScale" value="${rigidbody.gravityScale}">
                         </div>
                         <div class="prop-row-multi">
                             <label data-i18n="BOUNCINESS">${L.get('BOUNCINESS', 'Rebote (Bounciness)')}</label>
-                            <input type="number" class="prop-input" step="0.1" min="0" max="1" data-component="Rigidbody2D" data-prop="rebote" value="${rigidbody.rebote || 0}">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" min="0" max="1" data-component="Rigidbody2D" data-prop="rebote" value="${rigidbody.rebote || 0}">
                         </div>
                         <div class="prop-row-multi">
                             <label data-i18n="DAMPING">${L.get('DAMPING', 'Angular Drag')}</label>
-                            <input type="number" class="prop-input" step="0.01" min="0" data-component="Rigidbody2D" data-prop="angularDrag" value="${rigidbody.angularDrag || 0}">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.01" min="0" data-component="Rigidbody2D" data-prop="angularDrag" value="${rigidbody.angularDrag || 0}">
                         </div>
                     </div>
                     <div class="inspector-field-group">
@@ -2984,7 +2984,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="ORDER">${L.get('ORDER', 'Orden')}</label>
-                        <input type="number" class="prop-input" step="1" data-component="DrawingOrder" data-prop="order" value="${ley.order || 0}">
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="DrawingOrder" data-prop="order" value="${ley.order || 0}">
                     </div>
                     <p class="field-description" data-i18n="DRAWING_ORDER_DESC">${L.get('DRAWING_ORDER_DESC', 'Valores altos delante, bajos detrás. Sobrescribe el orden por defecto.')}</p>
                 </div>
@@ -3008,15 +3008,15 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="OFFSET">${L.get('OFFSET', 'Offset')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="offset.x" value="${ley.offset.x}" title="${L.get('OFFSET_X', 'Offset X')}">
-                            <input type="number" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="offset.y" value="${ley.offset.y}" title="${L.get('OFFSET_Y', 'Offset Y')}">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="offset.x" value="${ley.offset.x}" title="${L.get('OFFSET_X', 'Offset X')}">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="offset.y" value="${ley.offset.y}" title="${L.get('OFFSET_Y', 'Offset Y')}">
                         </div>
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_DIMENSIONS">${L.get('PROP_DIMENSIONS', 'Size')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="size.x" value="${ley.size.x}" title="${L.get('SIZE_X', 'Size X')}">
-                            <input type="number" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="size.y" value="${ley.size.y}" title="${L.get('SIZE_Y', 'Size Y')}">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="size.x" value="${ley.size.x}" title="${L.get('SIZE_X', 'Size X')}">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="size.y" value="${ley.size.y}" title="${L.get('SIZE_Y', 'Size Y')}">
                         </div>
                     </div>
                 </div>
@@ -3035,30 +3035,30 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="KEYS_UP_DOWN">${L.get('KEYS_UP_DOWN', 'Teclas (Arriba/Abajo)')}</label>
                         <div class="prop-inputs">
-                            <input type="text" class="prop-input" data-component="Movement" data-prop="upKey" value="${ley.upKey}" title="${L.get('UP', 'Arriba')}">
-                            <input type="text" class="prop-input" data-component="Movement" data-prop="downKey" value="${ley.downKey}" title="${L.get('DOWN', 'Abajo')}">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="Movement" data-prop="upKey" value="${ley.upKey}" title="${L.get('UP', 'Arriba')}">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="Movement" data-prop="downKey" value="${ley.downKey}" title="${L.get('DOWN', 'Abajo')}">
                         </div>
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="KEYS_LEFT_RIGHT">${L.get('KEYS_LEFT_RIGHT', 'Teclas (Izq/Der)')}</label>
                         <div class="prop-inputs">
-                            <input type="text" class="prop-input" data-component="Movement" data-prop="leftKey" value="${ley.leftKey}" title="${L.get('LEFT', 'Izquierda')}">
-                            <input type="text" class="prop-input" data-component="Movement" data-prop="rightKey" value="${ley.rightKey}" title="${L.get('RIGHT', 'Derecha')}">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="Movement" data-prop="leftKey" value="${ley.leftKey}" title="${L.get('LEFT', 'Izquierda')}">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="Movement" data-prop="rightKey" value="${ley.rightKey}" title="${L.get('RIGHT', 'Derecha')}">
                         </div>
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="JUMP_KEY">${L.get('JUMP_KEY', 'Tecla Salto')}</label>
-                        <input type="text" class="prop-input" data-component="Movement" data-prop="jumpKey" value="${ley.jumpKey}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="Movement" data-prop="jumpKey" value="${ley.jumpKey}">
                     </div>
                     <hr>
                     <div class="inspector-section-header"><span>${L.get('SETTINGS', 'Configuración')}</span></div>
                     <div class="prop-row-multi">
                         <label data-i18n="SPEED">${L.get('SPEED', 'Velocidad')}</label>
-                        <input type="number" class="prop-input" data-component="Movement" data-prop="speed" value="${ley.speed}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="Movement" data-prop="speed" value="${ley.speed}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="JUMP_FORCE">${L.get('JUMP_FORCE', 'Fuerza Salto')}</label>
-                        <input type="number" class="prop-input" data-component="Movement" data-prop="jumpForce" value="${ley.jumpForce}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="Movement" data-prop="jumpForce" value="${ley.jumpForce}">
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Movement" data-prop="useRigidbody" ${ley.useRigidbody ? 'checked' : ''}>
@@ -3066,7 +3066,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="GROUND_TAG">${L.get('GROUND_TAG', 'Tag del Suelo')}</label>
-                        <input type="text" class="prop-input" data-component="Movement" data-prop="groundTag" value="${ley.groundTag || 'Ground'}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="Movement" data-prop="groundTag" value="${ley.groundTag || 'Ground'}">
                     </div>
                     <hr>
                     <div class="inspector-section-header"><span>${L.get('SOUNDS', 'Sonidos')}</span></div>
@@ -3082,19 +3082,19 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="inspector-section-header"><span>${L.get('ANIMATIONS', 'Animaciones')}</span></div>
                     <div class="prop-row-multi">
                         <label>Idle</label>
-                        <input type="text" class="prop-input" data-component="Movement" data-prop="idleAnim" value="${ley.idleAnim || ''}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="Movement" data-prop="idleAnim" value="${ley.idleAnim || ''}">
                     </div>
                     <div class="prop-row-multi">
                         <label>Run</label>
-                        <input type="text" class="prop-input" data-component="Movement" data-prop="runAnim" value="${ley.runAnim || ''}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="Movement" data-prop="runAnim" value="${ley.runAnim || ''}">
                     </div>
                     <div class="prop-row-multi">
                         <label>Jump</label>
-                        <input type="text" class="prop-input" data-component="Movement" data-prop="jumpAnim" value="${ley.jumpAnim || ''}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="Movement" data-prop="jumpAnim" value="${ley.jumpAnim || ''}">
                     </div>
                     <div class="prop-row-multi">
                         <label>Fall</label>
-                        <input type="text" class="prop-input" data-component="Movement" data-prop="fallAnim" value="${ley.fallAnim || ''}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="Movement" data-prop="fallAnim" value="${ley.fallAnim || ''}">
                     </div>
                 </div>
             `;
@@ -3111,34 +3111,34 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="inspector-row">
                         <label data-i18n="PROJECTILE_PREFAB">${L.get('PROJECTILE_PREFAB', 'Prefab Proyectil')}</label>
                         <div class="file-picker">
-                            <input type="text" class="prop-input" data-component="ProjectileLauncher" data-prop="projectilePrefab" value="${ley.projectilePrefab}" placeholder="${L.get('HINT_ARRIASTRA_PREFAB', 'Arrastra un .ceprefab aquí')}">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="ProjectileLauncher" data-prop="projectilePrefab" value="${ley.projectilePrefab}" placeholder="${L.get('HINT_ARRIASTRA_PREFAB', 'Arrastra un .ceprefab aquí')}">
                             <button class="panel-tool-btn" onclick="window.openAssetSelector((h, p) => { const input = this.previousElementSibling; input.value = p; input.dispatchEvent(new Event('change', { bubbles: true })); }, '.ceprefab')">...</button>
                         </div>
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="FIRE_KEY">${L.get('FIRE_KEY', 'Tecla Disparo')}</label>
-                        <input type="text" class="prop-input" data-component="ProjectileLauncher" data-prop="fireKey" value="${ley.fireKey}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="ProjectileLauncher" data-prop="fireKey" value="${ley.fireKey}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="FIRE_RATE">${L.get('FIRE_RATE', 'Cadencia (segs)')}</label>
-                        <input type="number" class="prop-input" step="0.1" min="0" data-component="ProjectileLauncher" data-prop="fireRate" value="${ley.fireRate}">
+                        <input type="number" autocomplete="off" class="prop-input" step="0.1" min="0" data-component="ProjectileLauncher" data-prop="fireRate" value="${ley.fireRate}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="SPEED">${L.get('SPEED', 'Velocidad')}</label>
-                        <input type="number" class="prop-input" step="1" data-component="ProjectileLauncher" data-prop="projectileSpeed" value="${ley.projectileSpeed}">
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="ProjectileLauncher" data-prop="projectileSpeed" value="${ley.projectileSpeed}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="OFFSET">${L.get('OFFSET', 'Offset')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="ProjectileLauncher" data-prop="offset.x" value="${ley.offset.x}" title="X">
-                            <input type="number" class="prop-input" step="1" data-component="ProjectileLauncher" data-prop="offset.y" value="${ley.offset.y}" title="Y">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="ProjectileLauncher" data-prop="offset.x" value="${ley.offset.x}" title="X">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="ProjectileLauncher" data-prop="offset.y" value="${ley.offset.y}" title="Y">
                         </div>
                     </div>
                      <div class="prop-row-multi">
                         <label data-i18n="DIRECTION">${L.get('DIRECTION', 'Dirección')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.1" data-component="ProjectileLauncher" data-prop="direction.x" value="${ley.direction.x}" title="X">
-                            <input type="number" class="prop-input" step="0.1" data-component="ProjectileLauncher" data-prop="direction.y" value="${ley.direction.y}" title="Y">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="ProjectileLauncher" data-prop="direction.x" value="${ley.direction.x}" title="X">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="ProjectileLauncher" data-prop="direction.y" value="${ley.direction.y}" title="Y">
                         </div>
                     </div>
                     <div class="inspector-row">
@@ -3153,7 +3153,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="DELAY_SECS">${L.get('DELAY_SECS', 'Retraso (segs)')}</label>
-                        <input type="number" class="prop-input" step="0.1" min="0" data-component="AutoDestroy" data-prop="delay" value="${ley.delay}">
+                        <input type="number" autocomplete="off" class="prop-input" step="0.1" min="0" data-component="AutoDestroy" data-prop="delay" value="${ley.delay}">
                     </div>
                 </div>
             `;
@@ -3167,13 +3167,13 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="SMOOTHNESS">${L.get('SMOOTHNESS', 'Suavidad')}</label>
-                        <input type="number" class="prop-input" step="0.01" min="0" max="1" data-component="CameraFollow" data-prop="smoothness" value="${ley.smoothness}">
+                        <input type="number" autocomplete="off" class="prop-input" step="0.01" min="0" max="1" data-component="CameraFollow" data-prop="smoothness" value="${ley.smoothness}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="OFFSET">${L.get('OFFSET', 'Offset')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="CameraFollow" data-prop="offset.x" value="${ley.offset.x}" title="X">
-                            <input type="number" class="prop-input" step="1" data-component="CameraFollow" data-prop="offset.y" value="${ley.offset.y}" title="Y">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="CameraFollow" data-prop="offset.x" value="${ley.offset.x}" title="X">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="CameraFollow" data-prop="offset.y" value="${ley.offset.y}" title="Y">
                         </div>
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
@@ -3196,23 +3196,23 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="MAX_PARTICLES">${L.get('MAX_PARTICLES', 'Max Partículas')}</label>
-                        <input type="number" class="prop-input" step="1" min="1" data-component="ParticleSystem" data-prop="maxParticles" value="${ley.maxParticles}">
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="1" data-component="ParticleSystem" data-prop="maxParticles" value="${ley.maxParticles}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="EMISSION_RATE">${L.get('EMISSION_RATE', 'Emisión (part/seg)')}</label>
-                        <input type="number" class="prop-input" step="1" min="0" data-component="ParticleSystem" data-prop="emissionRate" value="${ley.emissionRate}">
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="0" data-component="ParticleSystem" data-prop="emissionRate" value="${ley.emissionRate}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="LIFETIME">${L.get('LIFETIME', 'Vida (seg)')}</label>
-                        <input type="number" class="prop-input" step="0.1" min="0" data-component="ParticleSystem" data-prop="lifetime" value="${ley.lifetime}">
+                        <input type="number" autocomplete="off" class="prop-input" step="0.1" min="0" data-component="ParticleSystem" data-prop="lifetime" value="${ley.lifetime}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="SPEED">${L.get('SPEED', 'Velocidad')}</label>
-                        <input type="number" class="prop-input" step="1" data-component="ParticleSystem" data-prop="speed" value="${ley.speed}">
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="ParticleSystem" data-prop="speed" value="${ley.speed}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="SPREAD">${L.get('SPREAD', 'Dispersión (spread)')}</label>
-                        <input type="number" class="prop-input" step="1" min="0" max="360" data-component="ParticleSystem" data-prop="spread" value="${ley.spread}">
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="0" max="360" data-component="ParticleSystem" data-prop="spread" value="${ley.spread}">
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="ParticleSystem" data-prop="loop" ${ley.loop ? 'checked' : ''}>
@@ -3231,8 +3231,8 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="SCROLL_FACTOR">${L.get('SCROLL_FACTOR', 'Scroll Factor X/Y')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.01" data-component="Parallax" data-prop="scrollFactor.x" value="${ley.scrollFactor.x}" title="X">
-                            <input type="number" class="prop-input" step="0.01" data-component="Parallax" data-prop="scrollFactor.y" value="${ley.scrollFactor.y}" title="Y">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.01" data-component="Parallax" data-prop="scrollFactor.x" value="${ley.scrollFactor.x}" title="X">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.01" data-component="Parallax" data-prop="scrollFactor.y" value="${ley.scrollFactor.y}" title="Y">
                         </div>
                     </div>
                     <div class="prop-row-multi">
@@ -3251,23 +3251,23 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="MIRRORING_XY">${L.get('MIRRORING_XY', 'Mirroring X/Y')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="Parallax" data-prop="mirroring.x" value="${ley.mirroring.x}" title="X">
-                            <input type="number" class="prop-input" step="1" data-component="Parallax" data-prop="mirroring.y" value="${ley.mirroring.y}" title="Y">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="Parallax" data-prop="mirroring.x" value="${ley.mirroring.x}" title="X">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="Parallax" data-prop="mirroring.y" value="${ley.mirroring.y}" title="Y">
                         </div>
                     </div>
                     <button class="panel-tool-btn" style="width:100%; margin-bottom: 8px;" data-action="parallax-match-sprite" data-ley-index="${index}" data-i18n="MATCH_MIRRORING_SPRITE">${L.get('MATCH_MIRRORING_SPRITE', 'Ajustar Mirroring al Sprite')}</button>
                     <div class="prop-row-multi">
                         <label data-i18n="OFFSET_XY">${L.get('OFFSET_XY', 'Offset X/Y')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="Parallax" data-prop="offset.x" value="${ley.offset.x}" title="X">
-                            <input type="number" class="prop-input" step="1" data-component="Parallax" data-prop="offset.y" value="${ley.offset.y}" title="Y">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="Parallax" data-prop="offset.x" value="${ley.offset.x}" title="X">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="Parallax" data-prop="offset.y" value="${ley.offset.y}" title="Y">
                         </div>
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="AUTOSCROLL_XY">${L.get('AUTOSCROLL_XY', 'Autoscroll X/Y')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="Parallax" data-prop="autoscroll.x" value="${ley.autoscroll.x}" title="X">
-                            <input type="number" class="prop-input" step="1" data-component="Parallax" data-prop="autoscroll.y" value="${ley.autoscroll.y}" title="Y">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="Parallax" data-prop="autoscroll.x" value="${ley.autoscroll.x}" title="X">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="Parallax" data-prop="autoscroll.y" value="${ley.autoscroll.y}" title="Y">
                         </div>
                     </div>
                     <p class="field-description">${L.get('PARALLAX_DESC', 'Scroll Factor: 0 = Pegado a cámara. 1 = Mundo real.<br>Mirroring: Tamaño de repetición (0 = no repite).')}</p>
@@ -3281,8 +3281,8 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="CANVAS_SIZE">${L.get('CANVAS_SIZE', 'Canvas Size')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" data-component="Terreno2D" data-prop="width" value="${ley.width}" title="${L.get('WIDTH', 'Width')}">
-                            <input type="number" class="prop-input" data-component="Terreno2D" data-prop="height" value="${ley.height}" title="${L.get('HEIGHT', 'Height')}">
+                            <input type="number" autocomplete="off" class="prop-input" data-component="Terreno2D" data-prop="width" value="${ley.width}" title="${L.get('WIDTH', 'Width')}">
+                            <input type="number" autocomplete="off" class="prop-input" data-component="Terreno2D" data-prop="height" value="${ley.height}" title="${L.get('HEIGHT', 'Height')}">
                         </div>
                     </div>
                     <div class="prop-row-multi">
@@ -3293,7 +3293,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_ORDER_IN_LAYER">${L.get('PROP_ORDER_IN_LAYER', 'Order in Layer')}</label>
-                        <input type="number" class="prop-input" step="1" data-component="Terreno2D" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="Terreno2D" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
                     </div>
                     <button class="panel-tool-btn" style="width:100%; margin-bottom: 8px;" onclick="const t = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.Terreno2D); t.maskCtx.clearRect(0,0,t.width,t.height); window.updateScene();" data-i18n="BORRAR_TODO">${L.get('BORRAR_TODO', 'Limpiar Todo')}</button>
                     <hr>
@@ -3348,11 +3348,11 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi" style="display: ${isPolygon ? 'none' : 'flex'};">
                         <label data-i18n="RESOLUTION">${L.get('RESOLUTION', 'Resolución')}</label>
-                        <input type="number" class="prop-input" step="1" min="4" max="64" data-component="TerrenoCollider2D" data-prop="resolution" value="${ley.resolution || 16}">
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="4" max="64" data-component="TerrenoCollider2D" data-prop="resolution" value="${ley.resolution || 16}">
                     </div>
                     <div class="prop-row-multi" style="display: ${isPolygon ? 'flex' : 'none'};">
                         <label data-i18n="SIMPLICITY">${L.get('SIMPLICITY', 'Simplicidad')}</label>
-                        <input type="number" class="prop-input" step="0.5" min="0" data-component="TerrenoCollider2D" data-prop="simplifyTolerance" value="${ley.simplifyTolerance || 2.0}">
+                        <input type="number" autocomplete="off" class="prop-input" step="0.5" min="0" data-component="TerrenoCollider2D" data-prop="simplifyTolerance" value="${ley.simplifyTolerance || 2.0}">
                     </div>
                     <p class="field-description" data-i18n="${isPolygon ? 'POLYGON_SIMPLICITY_DESC' : 'GRID_RESOLUTION_DESC'}">${isPolygon ? L.get('POLYGON_SIMPLICITY_DESC', 'Mayor simplicidad = menos puntos en el polígono.') : L.get('GRID_RESOLUTION_DESC', 'Cuanto menor sea la resolución, más precisos serán los rectángulos.')}</p>
                     <hr>
@@ -3372,7 +3372,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_ORDER_IN_LAYER">${L.get('PROP_ORDER_IN_LAYER', 'Order in Layer')}</label>
-                        <input type="number" class="prop-input" step="1" data-component="Gyzmo" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="Gyzmo" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
                     </div>
                     <hr>
                     <div class="layer-manager-ui">
@@ -3384,21 +3384,21 @@ async function updateInspectorForMateria(selectedMateria) {
                             ${ley.layers.map((layer, lIdx) => `
                                 <div class="layer-item" style="flex-direction: column; align-items: stretch; gap: 5px; padding: 10px;">
                                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <input type="text" class="prop-input" data-component="Gyzmo" data-prop="layers.${lIdx}.name" value="${layer.name || ''}" style="flex-grow: 1; margin-right: 5px;" placeholder="${L.get('NAME', 'Nombre')}">
+                                        <input type="text" autocomplete="off" class="prop-input" data-component="Gyzmo" data-prop="layers.${lIdx}.name" value="${layer.name || ''}" style="flex-grow: 1; margin-right: 5px;" placeholder="${L.get('NAME', 'Nombre')}">
                                         <button class="layer-btn remove" data-action="gyzmo-remove-layer" data-index="${lIdx}">-</button>
                                     </div>
                                     <div class="prop-row-multi">
                                         <label data-i18n="POS_XY">${L.get('POS_XY', 'Pos (X/Y)')}</label>
                                         <div class="prop-inputs">
-                                            <input type="number" class="prop-input" data-component="Gyzmo" data-prop="layers.${lIdx}.x" value="${layer.x}" title="X">
-                                            <input type="number" class="prop-input" data-component="Gyzmo" data-prop="layers.${lIdx}.y" value="${layer.y}" title="Y">
+                                            <input type="number" autocomplete="off" class="prop-input" data-component="Gyzmo" data-prop="layers.${lIdx}.x" value="${layer.x}" title="X">
+                                            <input type="number" autocomplete="off" class="prop-input" data-component="Gyzmo" data-prop="layers.${lIdx}.y" value="${layer.y}" title="Y">
                                         </div>
                                     </div>
                                     <div class="prop-row-multi">
                                         <label data-i18n="SIZE_WH">${L.get('SIZE_WH', 'Size (W/H)')}</label>
                                         <div class="prop-inputs">
-                                            <input type="number" class="prop-input" data-component="Gyzmo" data-prop="layers.${lIdx}.width" value="${layer.width}" title="${L.get('WIDTH', 'Width')}">
-                                            <input type="number" class="prop-input" data-component="Gyzmo" data-prop="layers.${lIdx}.height" value="${layer.height}" title="${L.get('HEIGHT', 'Height')}">
+                                            <input type="number" autocomplete="off" class="prop-input" data-component="Gyzmo" data-prop="layers.${lIdx}.width" value="${layer.width}" title="${L.get('WIDTH', 'Width')}">
+                                            <input type="number" autocomplete="off" class="prop-input" data-component="Gyzmo" data-prop="layers.${lIdx}.height" value="${layer.height}" title="${L.get('HEIGHT', 'Height')}">
                                         </div>
                                     </div>
                                     <div class="prop-row-multi">
@@ -3438,11 +3438,11 @@ async function updateInspectorForMateria(selectedMateria) {
                                 </div>
                                 <div class="prop-row-multi">
                                     <label data-i18n="ANGLE">${L.get('ANGLE', 'Ángulo')}</label>
-                                    <input type="number" class="prop-input" data-component="RaycastSource" data-prop="rays.${rIdx}.angle" value="${ray.angle}">
+                                    <input type="number" autocomplete="off" class="prop-input" data-component="RaycastSource" data-prop="rays.${rIdx}.angle" value="${ray.angle}">
                                 </div>
                                 <div class="prop-row-multi">
                                     <label data-i18n="LENGTH">${L.get('LENGTH', 'Longitud')}</label>
-                                    <input type="number" class="prop-input" data-component="RaycastSource" data-prop="rays.${rIdx}.length" value="${ray.length}">
+                                    <input type="number" autocomplete="off" class="prop-input" data-component="RaycastSource" data-prop="rays.${rIdx}.length" value="${ray.length}">
                                 </div>
                             </div>
                         `).join('')}
@@ -3456,8 +3456,8 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_DIMENSIONS">${L.get('PROP_DIMENSIONS', 'Dimensions')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" data-component="Water" data-prop="width" value="${ley.width}" title="${L.get('PROP_WIDTH', 'Width')}">
-                            <input type="number" class="prop-input" data-component="Water" data-prop="height" value="${ley.height}" title="${L.get('PROP_HEIGHT', 'Height')}">
+                            <input type="number" autocomplete="off" class="prop-input" data-component="Water" data-prop="width" value="${ley.width}" title="${L.get('PROP_WIDTH', 'Width')}">
+                            <input type="number" autocomplete="off" class="prop-input" data-component="Water" data-prop="height" value="${ley.height}" title="${L.get('PROP_HEIGHT', 'Height')}">
                         </div>
                     </div>
                     <div class="prop-row-multi">
@@ -3466,7 +3466,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_WATER_DENSITY">${L.get('PROP_WATER_DENSITY', 'Density')}</label>
-                        <input type="number" class="prop-input" data-component="Water" data-prop="density" value="${ley.density}" step="0.1">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="Water" data-prop="density" value="${ley.density}" step="0.1">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_VISCOSITY">${L.get('PROP_VISCOSITY', 'Viscosity')}</label>
@@ -3479,7 +3479,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi" style="display: ${ley.showTides ? 'flex' : 'none'};">
                         <label data-i18n="PROP_TIDE_AMPLITUDE">${L.get('PROP_TIDE_AMPLITUDE', 'Amplitud')}</label>
-                        <input type="number" class="prop-input" data-component="Water" data-prop="tideAmplitude" value="${ley.tideAmplitude}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="Water" data-prop="tideAmplitude" value="${ley.tideAmplitude}">
                     </div>
                     <button class="primary-btn" onclick="const w = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.Water); w.generateParticles(); window.updateScene();" style="width: 100%; margin-top: 10px;" data-i18n="REGENERAR_PARTICULAS">${L.get('REGENERAR_PARTICULAS', 'Regenerar Partículas')}</button>
                 </div>
@@ -3501,8 +3501,8 @@ async function updateInspectorForMateria(selectedMateria) {
                             <div class="layer-item" style="gap: 5px; padding: 5px;">
                                 <span style="min-width: 20px;">${pIdx}:</span>
                                 <div class="prop-inputs">
-                                    <input type="number" class="prop-input" data-component="LineCollider2D" data-prop="points.${pIdx}.x" value="${p.x}" title="X">
-                                    <input type="number" class="prop-input" data-component="LineCollider2D" data-prop="points.${pIdx}.y" value="${p.y}" title="Y">
+                                    <input type="number" autocomplete="off" class="prop-input" data-component="LineCollider2D" data-prop="points.${pIdx}.x" value="${p.x}" title="X">
+                                    <input type="number" autocomplete="off" class="prop-input" data-component="LineCollider2D" data-prop="points.${pIdx}.y" value="${p.y}" title="Y">
                                 </div>
                                 <button class="layer-btn remove" data-action="line-remove-point" data-index="${pIdx}" title="${L.get('BORRAR_PUNTO', 'Borrar punto')}">&times;</button>
                             </div>
@@ -3545,7 +3545,7 @@ async function updateInspectorForMateria(selectedMateria) {
                             </div>
                             <div class="prop-row-multi">
                                 <label data-i18n="SURFACE_ARC">${L.get('SURFACE_ARC', 'Surface Arc')}</label>
-                                <input type="number" class="prop-input" data-component="PlatformEffector2D" data-prop="surfaceArc" value="${ley.surfaceArc}" min="0" max="360">
+                                <input type="number" autocomplete="off" class="prop-input" data-component="PlatformEffector2D" data-prop="surfaceArc" value="${ley.surfaceArc}" min="0" max="360">
                             </div>
                         </div>
                     </div>
@@ -3587,21 +3587,21 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="DISTANCIA_MINIMA">${L.get('DISTANCIA_MINIMA', 'Distancia Mínima')}</label>
-                        <input type="number" class="prop-input" data-component="AudioSource" data-prop="minDistance" value="${ley.minDistance}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="AudioSource" data-prop="minDistance" value="${ley.minDistance}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="DISTANCIA_MAXIMA">${L.get('DISTANCIA_MAXIMA', 'Distancia Máxima')}</label>
-                        <input type="number" class="prop-input" data-component="AudioSource" data-prop="maxDistance" value="${ley.maxDistance}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="AudioSource" data-prop="maxDistance" value="${ley.maxDistance}">
                     </div>
 
                     <div class="inspector-section-header"><span data-i18n="RANGO_REPRODUCCION">${L.get('RANGO_REPRODUCCION', 'Rango de Reproducción')}</span></div>
                     <div class="prop-row-multi">
                         <label data-i18n="INICIO_SEG">${L.get('INICIO_SEG', 'Inicio (seg)')}</label>
-                        <input type="number" class="prop-input" data-component="AudioSource" data-prop="playbackStart" value="${ley.playbackStart}" step="0.1" min="0">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="AudioSource" data-prop="playbackStart" value="${ley.playbackStart}" step="0.1" min="0">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="FIN_SEG">${L.get('FIN_SEG', 'Fin (seg, 0=fin)')}</label>
-                        <input type="number" class="prop-input" data-component="AudioSource" data-prop="playbackEnd" value="${ley.playbackEnd}" step="0.1" min="0">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="AudioSource" data-prop="playbackEnd" value="${ley.playbackEnd}" step="0.1" min="0">
                     </div>
                 </div>
             `;
@@ -3616,21 +3616,21 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="inspector-section-header"><span data-i18n="SPRING_SETTINGS">${L.get('SPRING_SETTINGS', 'Configuración de Muelle')}</span></div>
                     <div class="prop-row-multi">
                         <label title="K" data-i18n="STIFFNESS">${L.get('STIFFNESS', 'Dureza')}</label>
-                        <input type="number" class="prop-input" data-component="Suspension" data-prop="dureza" value="${ley.dureza}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="Suspension" data-prop="dureza" value="${ley.dureza}">
                     </div>
                     <div class="prop-row-multi">
                         <label title="D" data-i18n="DAMPING">${L.get('DAMPING', 'Amortiguación')}</label>
-                        <input type="number" class="prop-input" data-component="Suspension" data-prop="amortiguacion" value="${ley.amortiguacion}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="Suspension" data-prop="amortiguacion" value="${ley.amortiguacion}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="REST_LENGTH">${L.get('REST_LENGTH', 'Largo Reposo')}</label>
-                        <input type="number" class="prop-input" data-component="Suspension" data-prop="longitudReposo" value="${ley.longitudReposo}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="Suspension" data-prop="longitudReposo" value="${ley.longitudReposo}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="CONSTRAINT_AXIS">${L.get('CONSTRAINT_AXIS', 'Eje (Local)')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" data-component="Suspension" data-prop="eje.x" value="${ley.eje.x}" title="X">
-                            <input type="number" class="prop-input" data-component="Suspension" data-prop="eje.y" value="${ley.eje.y}" title="Y">
+                            <input type="number" autocomplete="off" class="prop-input" data-component="Suspension" data-prop="eje.x" value="${ley.eje.x}" title="X">
+                            <input type="number" autocomplete="off" class="prop-input" data-component="Suspension" data-prop="eje.y" value="${ley.eje.y}" title="Y">
                         </div>
                     </div>
                     <div class="inspector-row">
@@ -3650,41 +3650,41 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="inspector-section-header"><span data-i18n="ENGINE_SETTINGS">${L.get('ENGINE_SETTINGS', 'Configuración de Motor')}</span></div>
                     <div class="prop-row-multi">
                         <label data-i18n="POWER">${L.get('POWER', 'Potencia')}</label>
-                        <input type="number" class="prop-input" data-component="VehicleSideView2D" data-prop="potenciaMotor" value="${ley.potenciaMotor}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="VehicleSideView2D" data-prop="potenciaMotor" value="${ley.potenciaMotor}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="MAX_SPEED">${L.get('MAX_SPEED', 'Velocidad Máx')}</label>
-                        <input type="number" class="prop-input" data-component="VehicleSideView2D" data-prop="velocidadMaxima" value="${ley.velocidadMaxima}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="VehicleSideView2D" data-prop="velocidadMaxima" value="${ley.velocidadMaxima}">
                     </div>
                     <div class="prop-row">
                         <label title="Resistencia al rodamiento o freno motor (0-1)" data-i18n="MOTOR_BRAKE">${L.get('MOTOR_BRAKE', 'Freno Motor')}</label>
-                        <input type="number" step="0.01" min="0" max="1" class="prop-input" data-component="VehicleSideView2D" data-prop="frenadoMotor" value="${ley.frenadoMotor}">
+                        <input type="number" autocomplete="off" step="0.01" min="0" max="1" class="prop-input" data-component="VehicleSideView2D" data-prop="frenadoMotor" value="${ley.frenadoMotor}">
                     </div>
                     <div class="prop-row">
                         <label title="Controla cuánto se inclina el chasis al acelerar" data-i18n="PITCH_STRENGTH">${L.get('PITCH_STRENGTH', 'Inclinación')}</label>
-                        <input type="number" step="0.1" class="prop-input" data-component="VehicleSideView2D" data-prop="fuerzaInclinacion" value="${ley.fuerzaInclinacion}">
+                        <input type="number" autocomplete="off" step="0.1" class="prop-input" data-component="VehicleSideView2D" data-prop="fuerzaInclinacion" value="${ley.fuerzaInclinacion}">
                     </div>
                     <div class="prop-row">
                         <label title="Control manual de giro en el aire" data-i18n="AIR_TURN">${L.get('AIR_TURN', 'Giro Aire')}</label>
-                        <input type="number" class="prop-input" data-component="VehicleSideView2D" data-prop="controlAire" value="${ley.controlAire}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="VehicleSideView2D" data-prop="controlAire" value="${ley.controlAire}">
                     </div>
                     <div class="prop-row">
                         <label title="Estabilización automática en el aire (0-1)" data-i18n="AUTO_STABILIZE">${L.get('AUTO_STABILIZE', 'Auto-Estabilizar')}</label>
-                        <input type="number" step="0.1" min="0" max="1" class="prop-input" data-component="VehicleSideView2D" data-prop="estabilidadAire" value="${ley.estabilidadAire}">
+                        <input type="number" autocomplete="off" step="0.1" min="0" max="1" class="prop-input" data-component="VehicleSideView2D" data-prop="estabilidadAire" value="${ley.estabilidadAire}">
                     </div>
                     <div class="prop-row">
                         <label title="Recuperación de posición horizontal en suelo (0-1)" data-i18n="GROUND_CENTERING">${L.get('GROUND_CENTERING', 'Centrado Suelo')}</label>
-                        <input type="number" step="0.1" min="0" max="1" class="prop-input" data-component="VehicleSideView2D" data-prop="recuperacionGiro" value="${ley.recuperacionGiro}">
+                        <input type="number" autocomplete="off" step="0.1" min="0" max="1" class="prop-input" data-component="VehicleSideView2D" data-prop="recuperacionGiro" value="${ley.recuperacionGiro}">
                     </div>
 
                     <div class="inspector-section-header"><span data-i18n="CONTROLS">${L.get('CONTROLS', 'Controles')}</span></div>
                     <div class="prop-row-multi">
                         <label data-i18n="ACCELERATE_KEY">${L.get('ACCELERATE_KEY', 'Tecla Acelerar')}</label>
-                        <input type="text" class="prop-input" data-component="VehicleSideView2D" data-prop="teclaAcelerar" value="${ley.teclaAcelerar}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="VehicleSideView2D" data-prop="teclaAcelerar" value="${ley.teclaAcelerar}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="BRAKE_KEY">${L.get('BRAKE_KEY', 'Tecla Frenar')}</label>
-                        <input type="text" class="prop-input" data-component="VehicleSideView2D" data-prop="teclaFrenar" value="${ley.teclaFrenar}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="VehicleSideView2D" data-prop="teclaFrenar" value="${ley.teclaFrenar}">
                     </div>
                     <div class="inspector-row">
                         <label>Sonido Motor</label>
@@ -3711,15 +3711,15 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="POWER">${L.get('POWER', 'Potencia')}</label>
-                        <input type="number" class="prop-input" data-component="VehicleTopDown" data-prop="potencia" value="${ley.potencia}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="VehicleTopDown" data-prop="potencia" value="${ley.potencia}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="MAX_SPEED">${L.get('MAX_SPEED', 'Velocidad Máx')}</label>
-                        <input type="number" class="prop-input" data-component="VehicleTopDown" data-prop="velocidadMaxima" value="${ley.velocidadMaxima}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="VehicleTopDown" data-prop="velocidadMaxima" value="${ley.velocidadMaxima}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="TURN_SPEED">${L.get('TURN_SPEED', 'Velocidad Giro')}</label>
-                        <input type="number" class="prop-input" data-component="VehicleTopDown" data-prop="velocidadGiro" value="${ley.velocidadGiro}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="VehicleTopDown" data-prop="velocidadGiro" value="${ley.velocidadGiro}">
                     </div>
                     <div class="prop-row-multi">
                         <label title="0: Agarre total, 1: Hielo" data-i18n="DRIFT_INTENSITY">${L.get('DRIFT_INTENSITY', 'Intensidad Derrape')}</label>
@@ -3730,7 +3730,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="MOTOR_BRAKE">${L.get('MOTOR_BRAKE', 'Freno Motor')}</label>
-                        <input type="number" step="0.01" min="0" max="1" class="prop-input" data-component="VehicleTopDown" data-prop="frenadoMotor" value="${ley.frenadoMotor}">
+                        <input type="number" autocomplete="off" step="0.01" min="0" max="1" class="prop-input" data-component="VehicleTopDown" data-prop="frenadoMotor" value="${ley.frenadoMotor}">
                     </div>
                     <div class="inspector-row">
                         <label>Sonido Motor</label>
@@ -3744,30 +3744,30 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="inspector-section-header"><span>${L.get('ANIMATIONS', 'Animaciones')}</span></div>
                     <div class="prop-row-multi">
                         <label>Idle</label>
-                        <input type="text" class="prop-input" data-component="VehicleTopDown" data-prop="idleAnim" value="${ley.idleAnim || ''}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="VehicleTopDown" data-prop="idleAnim" value="${ley.idleAnim || ''}">
                     </div>
                     <div class="prop-row-multi">
                         <label>Drive</label>
-                        <input type="text" class="prop-input" data-component="VehicleTopDown" data-prop="driveAnim" value="${ley.driveAnim || ''}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="VehicleTopDown" data-prop="driveAnim" value="${ley.driveAnim || ''}">
                     </div>
                     <div class="prop-row-multi">
                         <label>Reverse</label>
-                        <input type="text" class="prop-input" data-component="VehicleTopDown" data-prop="reverseAnim" value="${ley.reverseAnim || ''}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="VehicleTopDown" data-prop="reverseAnim" value="${ley.reverseAnim || ''}">
                     </div>
 
                     <div class="inspector-section-header"><span data-i18n="CONTROLS">${L.get('CONTROLS', 'Controles')}</span></div>
                     <div class="prop-row-multi">
                         <label data-i18n="KEYS_LEFT_RIGHT">${L.get('KEYS_LEFT_RIGHT', 'Giro (Izq/Der)')}</label>
                         <div class="prop-inputs">
-                            <input type="text" class="prop-input" data-component="VehicleTopDown" data-prop="teclaIzquierda" value="${ley.teclaIzquierda}" title="Izquierda">
-                            <input type="text" class="prop-input" data-component="VehicleTopDown" data-prop="teclaDerecha" value="${ley.teclaDerecha}" title="Derecha">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="VehicleTopDown" data-prop="teclaIzquierda" value="${ley.teclaIzquierda}" title="Izquierda">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="VehicleTopDown" data-prop="teclaDerecha" value="${ley.teclaDerecha}" title="Derecha">
                         </div>
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="KEYS_ACCEL_BRAKE">${L.get('KEYS_ACCEL_BRAKE', 'Acel/Freno')}</label>
                         <div class="prop-inputs">
-                            <input type="text" class="prop-input" data-component="VehicleTopDown" data-prop="teclaAcelerar" value="${ley.teclaAcelerar}" title="Acelerar">
-                            <input type="text" class="prop-input" data-component="VehicleTopDown" data-prop="teclaFrenar" value="${ley.teclaFrenar}" title="Frenar">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="VehicleTopDown" data-prop="teclaAcelerar" value="${ley.teclaAcelerar}" title="Acelerar">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="VehicleTopDown" data-prop="teclaFrenar" value="${ley.teclaFrenar}" title="Frenar">
                         </div>
                     </div>
                 </div>
@@ -3788,27 +3788,27 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="inspector-section-header"><span data-i18n="FLIGHT_SETTINGS">${L.get('FLIGHT_SETTINGS', 'Configuración de Vuelo')}</span></div>
                     <div class="prop-row-multi">
                         <label data-i18n="THRUST">${L.get('THRUST', 'Potencia Motor')}</label>
-                        <input type="number" class="prop-input" data-component="PlaneController" data-prop="potenciaMotor" value="${ley.potenciaMotor}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="PlaneController" data-prop="potenciaMotor" value="${ley.potenciaMotor}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="MAX_SPEED">${L.get('MAX_SPEED', 'Velocidad Máx')}</label>
-                        <input type="number" class="prop-input" data-component="PlaneController" data-prop="velocidadMaxima" value="${ley.velocidadMaxima}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="PlaneController" data-prop="velocidadMaxima" value="${ley.velocidadMaxima}">
                     </div>
                     <div class="prop-row-multi">
                         <label title="Velocidad necesaria para empezar a subir" data-i18n="TAKEOFF_SPEED">${L.get('TAKEOFF_SPEED', 'Velocidad Despegue')}</label>
-                        <input type="number" class="prop-input" data-component="PlaneController" data-prop="velocidadDespegue" value="${ley.velocidadDespegue}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="PlaneController" data-prop="velocidadDespegue" value="${ley.velocidadDespegue}">
                     </div>
                     <div class="prop-row-multi">
                         <label title="Multiplicador de fuerza ascendente" data-i18n="LIFT_FORCE">${L.get('LIFT_FORCE', 'Sustentación')}</label>
-                        <input type="number" step="0.1" class="prop-input" data-component="PlaneController" data-prop="fuerzaSustentacion" value="${ley.fuerzaSustentacion}">
+                        <input type="number" autocomplete="off" step="0.1" class="prop-input" data-component="PlaneController" data-prop="fuerzaSustentacion" value="${ley.fuerzaSustentacion}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="TURN_AGILITY">${L.get('TURN_AGILITY', 'Agilidad Giro')}</label>
-                        <input type="number" class="prop-input" data-component="PlaneController" data-prop="agilidadGiro" value="${ley.agilidadGiro}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="PlaneController" data-prop="agilidadGiro" value="${ley.agilidadGiro}">
                     </div>
                     <div class="prop-row-multi">
                         <label title="Resistencia al aire (0-1)" data-i18n="AIR_DRAG">${L.get('AIR_DRAG', 'Arrastre Aire')}</label>
-                        <input type="number" step="0.01" min="0" max="1" class="prop-input" data-component="PlaneController" data-prop="arrastreAire" value="${ley.arrastreAire}">
+                        <input type="number" autocomplete="off" step="0.01" min="0" max="1" class="prop-input" data-component="PlaneController" data-prop="arrastreAire" value="${ley.arrastreAire}">
                     </div>
                     <div class="inspector-row">
                         <label>Sonido Motor</label>
@@ -3822,34 +3822,34 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="inspector-section-header"><span>${L.get('ANIMATIONS', 'Animaciones')}</span></div>
                     <div class="prop-row-multi">
                         <label>Idle</label>
-                        <input type="text" class="prop-input" data-component="PlaneController" data-prop="idleAnim" value="${ley.idleAnim || ''}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="PlaneController" data-prop="idleAnim" value="${ley.idleAnim || ''}">
                     </div>
                     <div class="prop-row-multi">
                         <label>Fly</label>
-                        <input type="text" class="prop-input" data-component="PlaneController" data-prop="flyAnim" value="${ley.flyAnim || ''}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="PlaneController" data-prop="flyAnim" value="${ley.flyAnim || ''}">
                     </div>
                     <div class="prop-row-multi">
                         <label>Ground</label>
-                        <input type="text" class="prop-input" data-component="PlaneController" data-prop="groundAnim" value="${ley.groundAnim || ''}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="PlaneController" data-prop="groundAnim" value="${ley.groundAnim || ''}">
                     </div>
 
                     <div class="inspector-section-header"><span data-i18n="CONTROLS">${L.get('CONTROLS', 'Controles')}</span></div>
                     <div class="prop-row-multi">
                         <label data-i18n="KEYS_POWER_BRAKE">${L.get('KEYS_POWER_BRAKE', 'Potencia/Freno')}</label>
                         <div class="prop-inputs">
-                            <input type="text" class="prop-input" data-component="PlaneController" data-prop="teclaPotencia" value="${ley.teclaPotencia}" title="Potencia">
-                            <input type="text" class="prop-input" data-component="PlaneController" data-prop="teclaFreno" value="${ley.teclaFreno}" title="Freno">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="PlaneController" data-prop="teclaPotencia" value="${ley.teclaPotencia}" title="Potencia">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="PlaneController" data-prop="teclaFreno" value="${ley.teclaFreno}" title="Freno">
                         </div>
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="KEY_BRAKE_SPACE">${L.get('KEY_BRAKE_SPACE', 'Freno (Espacio)')}</label>
-                        <input type="text" class="prop-input" data-component="PlaneController" data-prop="teclaBotonFreno" value="${ley.teclaBotonFreno}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="PlaneController" data-prop="teclaBotonFreno" value="${ley.teclaBotonFreno}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="KEYS_PITCH">${L.get('KEYS_PITCH', 'Inclinación (Nariz)')}</label>
                         <div class="prop-inputs">
-                            <input type="text" class="prop-input" data-component="PlaneController" data-prop="teclaNarizArriba" value="${ley.teclaNarizArriba}" title="Arriba">
-                            <input type="text" class="prop-input" data-component="PlaneController" data-prop="teclaNarizAbajo" value="${ley.teclaNarizAbajo}" title="Abajo">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="PlaneController" data-prop="teclaNarizArriba" value="${ley.teclaNarizArriba}" title="Arriba">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="PlaneController" data-prop="teclaNarizAbajo" value="${ley.teclaNarizAbajo}" title="Abajo">
                         </div>
                     </div>
                 </div>
@@ -3870,19 +3870,19 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="inspector-section-header"><span data-i18n="HELICOPTER_SETTINGS">${L.get('HELICOPTER_SETTINGS', 'Configuración de Helicóptero')}</span></div>
                     <div class="prop-row-multi">
                         <label data-i18n="MOTOR_POWER">${L.get('MOTOR_POWER', 'Potencia Motor')}</label>
-                        <input type="number" class="prop-input" data-component="HelicopterController" data-prop="potenciaMotor" value="${ley.potenciaMotor}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="HelicopterController" data-prop="potenciaMotor" value="${ley.potenciaMotor}">
                     </div>
                     <div class="prop-row-multi">
                         <label title="Fuerza base de sustentación" data-i18n="TAKEOFF_POWER">${L.get('TAKEOFF_POWER', 'Potencia Despegue')}</label>
-                        <input type="number" class="prop-input" data-component="HelicopterController" data-prop="potenciaDespegue" value="${ley.potenciaDespegue}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="HelicopterController" data-prop="potenciaDespegue" value="${ley.potenciaDespegue}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="MAX_SPEED">${L.get('MAX_SPEED', 'Velocidad Máx')}</label>
-                        <input type="number" class="prop-input" data-component="HelicopterController" data-prop="velocidadMaxima" value="${ley.velocidadMaxima}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="HelicopterController" data-prop="velocidadMaxima" value="${ley.velocidadMaxima}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="TURN_AGILITY">${L.get('TURN_AGILITY', 'Agilidad Giro')}</label>
-                        <input type="number" class="prop-input" data-component="HelicopterController" data-prop="agilidadGiro" value="${ley.agilidadGiro}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="HelicopterController" data-prop="agilidadGiro" value="${ley.agilidadGiro}">
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input inspector-re-render" data-component="HelicopterController" data-prop="autoEstabilizar" ${ley.autoEstabilizar ? 'checked' : ''}>
@@ -3890,11 +3890,11 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi" style="display: ${ley.autoEstabilizar ? 'flex' : 'none'};">
                         <label title="Fuerza de auto-nivelación" data-i18n="STABILITY">${L.get('STABILITY', 'Estabilidad')}</label>
-                        <input type="number" step="0.1" class="prop-input" data-component="HelicopterController" data-prop="estabilidad" value="${ley.estabilidad}">
+                        <input type="number" autocomplete="off" step="0.1" class="prop-input" data-component="HelicopterController" data-prop="estabilidad" value="${ley.estabilidad}">
                     </div>
                     <div class="prop-row-multi">
                         <label title="Resistencia al aire (0-1)" data-i18n="AIR_DRAG">${L.get('AIR_DRAG', 'Arrastre Aire')}</label>
-                        <input type="number" step="0.01" min="0" max="1" class="prop-input" data-component="HelicopterController" data-prop="arrastreAire" value="${ley.arrastreAire}">
+                        <input type="number" autocomplete="off" step="0.01" min="0" max="1" class="prop-input" data-component="HelicopterController" data-prop="arrastreAire" value="${ley.arrastreAire}">
                     </div>
                     <div class="inspector-row">
                         <label>Sonido Motor</label>
@@ -3904,26 +3904,26 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="inspector-section-header"><span>${L.get('ANIMATIONS', 'Animaciones')}</span></div>
                     <div class="prop-row-multi">
                         <label>Idle</label>
-                        <input type="text" class="prop-input" data-component="HelicopterController" data-prop="idleAnim" value="${ley.idleAnim || ''}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="HelicopterController" data-prop="idleAnim" value="${ley.idleAnim || ''}">
                     </div>
                     <div class="prop-row-multi">
                         <label>Fly</label>
-                        <input type="text" class="prop-input" data-component="HelicopterController" data-prop="flyAnim" value="${ley.flyAnim || ''}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="HelicopterController" data-prop="flyAnim" value="${ley.flyAnim || ''}">
                     </div>
 
                     <div class="inspector-section-header"><span data-i18n="CONTROLS">${L.get('CONTROLS', 'Controles')}</span></div>
                     <div class="prop-row-multi">
                         <label data-i18n="KEYS_THRUST_DESCEND">${L.get('KEYS_THRUST_DESCEND', 'Subir/Bajar')}</label>
                         <div class="prop-inputs">
-                            <input type="text" class="prop-input" data-component="HelicopterController" data-prop="teclaPotencia" value="${ley.teclaPotencia}" title="Subir">
-                            <input type="text" class="prop-input" data-component="HelicopterController" data-prop="teclaDescenso" value="${ley.teclaDescenso}" title="Bajar">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="HelicopterController" data-prop="teclaPotencia" value="${ley.teclaPotencia}" title="Subir">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="HelicopterController" data-prop="teclaDescenso" value="${ley.teclaDescenso}" title="Bajar">
                         </div>
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="KEYS_TURN">${L.get('KEYS_TURN', 'Girar (A/D)')}</label>
                         <div class="prop-inputs">
-                            <input type="text" class="prop-input" data-component="HelicopterController" data-prop="teclaGiroIzquierda" value="${ley.teclaGiroIzquierda}" title="Izquierda">
-                            <input type="text" class="prop-input" data-component="HelicopterController" data-prop="teclaGiroDerecha" value="${ley.teclaGiroDerecha}" title="Derecha">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="HelicopterController" data-prop="teclaGiroIzquierda" value="${ley.teclaGiroIzquierda}" title="Izquierda">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="HelicopterController" data-prop="teclaGiroDerecha" value="${ley.teclaGiroDerecha}" title="Derecha">
                         </div>
                     </div>
                 </div>
@@ -3934,17 +3934,17 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="LONGITUD">${L.get('LONGITUD', 'Longitud')}</label>
-                        <input type="number" class="prop-input" data-component="Bone" data-prop="length" value="${ley.length}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="Bone" data-prop="length" value="${ley.length}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="GROSOR">${L.get('GROSOR', 'Grosor')}</label>
-                        <input type="number" class="prop-input" data-component="Bone" data-prop="thickness" value="${ley.thickness}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="Bone" data-prop="thickness" value="${ley.thickness}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_COLOR">${L.get('PROP_COLOR', 'Color')}</label>
                         <div class="prop-inputs">
                             <input type="color" class="prop-input" data-component="Bone" data-prop="color" value="${ley.color || '#00ff00'}">
-                            <input type="text" class="prop-input hex-input" data-component="Bone" data-prop="color" value="${ley.color || '#00ff00'}" style="flex-grow: 1; font-family: monospace;">
+                            <input type="text" autocomplete="off" class="prop-input hex-input" data-component="Bone" data-prop="color" value="${ley.color || '#00ff00'}" style="flex-grow: 1; font-family: monospace;">
                         </div>
                     </div>
                 </div>
@@ -4015,15 +4015,15 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="LARGO_CADENA">${L.get('LARGO_CADENA', 'Largo Cadena')}</label>
-                        <input type="number" class="prop-input" data-component="IKManager2D" data-prop="chainLength" value="${ley.chainLength}" min="1">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="IKManager2D" data-prop="chainLength" value="${ley.chainLength}" min="1">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="ITERACIONES">${L.get('ITERACIONES', 'Iteraciones')}</label>
-                        <input type="number" class="prop-input" data-component="IKManager2D" data-prop="iterations" value="${ley.iterations}" min="1">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="IKManager2D" data-prop="iterations" value="${ley.iterations}" min="1">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="TOLERANCIA">${L.get('TOLERANCIA', 'Tolerancia')}</label>
-                        <input type="number" class="prop-input" data-component="IKManager2D" data-prop="tolerance" value="${ley.tolerance}" step="0.01" min="0.01">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="IKManager2D" data-prop="tolerance" value="${ley.tolerance}" step="0.01" min="0.01">
                     </div>
                 </div>
             `;
@@ -4037,11 +4037,11 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="TRIGGER_TAG">${L.get('TRIGGER_TAG', 'Tag Activador')}</label>
-                        <input type="text" class="prop-input" data-component="SceneLoader" data-prop="triggerTag" value="${ley.triggerTag || ''}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="SceneLoader" data-prop="triggerTag" value="${ley.triggerTag || ''}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="TRIGGER_KEY">${L.get('TRIGGER_KEY', 'Tecla Activadora')}</label>
-                        <input type="text" class="prop-input" data-component="SceneLoader" data-prop="triggerKey" value="${ley.triggerKey || ''}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="SceneLoader" data-prop="triggerKey" value="${ley.triggerKey || ''}">
                     </div>
                     <div class="inspector-row">
                         <label data-i18n="BUTTON_MATERIA">${L.get('BUTTON_MATERIA', 'Materia Botón')}</label>
@@ -4052,7 +4052,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley instanceof Components.BasicAI) {
             const renderAIFuncInput = (propName, label) => {
-                let inputHTML = `<input type="text" class="prop-input" data-component="BasicAI" data-prop="${propName}" value="${ley[propName] || ''}" placeholder="${L.get('EXAMPLE_AI_FUNC', 'ej: alDetectarEnemigo')}">`;
+                let inputHTML = `<input type="text" autocomplete="off" class="prop-input" data-component="BasicAI" data-prop="${propName}" value="${ley[propName] || ''}" placeholder="${L.get('EXAMPLE_AI_FUNC', 'ej: alDetectarEnemigo')}">`;
 
                 if (ley.scriptTarget) {
                     const targetMateria = window.SceneManager.currentScene.findMateriaById(ley.scriptTarget);
@@ -4109,19 +4109,19 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="VELOCIDAD">${L.get('VELOCIDAD', 'Velocidad')}</label>
-                        <input type="number" class="prop-input" data-component="BasicAI" data-prop="speed" value="${ley.speed}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="BasicAI" data-prop="speed" value="${ley.speed}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="STOP_DISTANCE">${L.get('STOP_DISTANCE', 'Distancia Parada')}</label>
-                        <input type="number" class="prop-input" data-component="BasicAI" data-prop="stopDistance" value="${ley.stopDistance}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="BasicAI" data-prop="stopDistance" value="${ley.stopDistance}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="ATTACK_DISTANCE">${L.get('ATTACK_DISTANCE', 'Distancia Ataque')}</label>
-                        <input type="number" class="prop-input" data-component="BasicAI" data-prop="attackDistance" value="${ley.attackDistance}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="BasicAI" data-prop="attackDistance" value="${ley.attackDistance}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="JUMP_FORCE">${L.get('JUMP_FORCE', 'Fuerza Salto')}</label>
-                        <input type="number" class="prop-input" data-component="BasicAI" data-prop="jumpForce" value="${ley.jumpForce}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="BasicAI" data-prop="jumpForce" value="${ley.jumpForce}">
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="BasicAI" data-prop="autoRotate" ${ley.autoRotate ? 'checked' : ''}>
@@ -4135,21 +4135,21 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="inspector-section-header"><span data-i18n="STEERING_RAYS">${L.get('STEERING_RAYS', 'Steering (Rayos)')}</span></div>
                     <div class="prop-row-multi">
                         <label data-i18n="RAY_COUNT">${L.get('RAY_COUNT', 'Num Rayos')}</label>
-                        <input type="number" class="prop-input" data-component="BasicAI" data-prop="rayCount" value="${ley.rayCount}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="BasicAI" data-prop="rayCount" value="${ley.rayCount}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="RAY_SPREAD">${L.get('RAY_SPREAD', 'Apertura Rayos')}</label>
-                        <input type="number" class="prop-input" data-component="BasicAI" data-prop="raySpread" value="${ley.raySpread}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="BasicAI" data-prop="raySpread" value="${ley.raySpread}">
                     </div>
                     <hr>
                     <div class="inspector-section-header"><span data-i18n="DETECTION_AND_FUNCTIONS">${L.get('DETECTION_AND_FUNCTIONS', 'Detección y Funciones')}</span></div>
                     <div class="prop-row-multi">
                         <label data-i18n="DETECTION_DISTANCE">${L.get('DETECTION_DISTANCE', 'Distancia Detección')}</label>
-                        <input type="number" class="prop-input" data-component="BasicAI" data-prop="detectionDistance" value="${ley.detectionDistance}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="BasicAI" data-prop="detectionDistance" value="${ley.detectionDistance}">
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="DETECTION_TAGS">${L.get('DETECTION_TAGS', 'Tags de Detección')}</label>
-                        <input type="text" class="prop-input" data-component="BasicAI" data-prop="detectionTagsString" value="${(ley.detectionTags || []).join(', ')}" placeholder="${L.get('DETECTION_TAGS_HINT', 'Player, Enemy...')}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="BasicAI" data-prop="detectionTagsString" value="${(ley.detectionTags || []).join(', ')}" placeholder="${L.get('DETECTION_TAGS_HINT', 'Player, Enemy...')}">
                     </div>
                     <div class="inspector-row">
                         <label data-i18n="EXECUTE_ON">${L.get('EXECUTE_ON', 'Ejecutar en')}</label>
@@ -4197,27 +4197,27 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="INTENSITY">Intensidad</label>
-                        <input type="number" class="prop-input" step="0.1" data-component="${type}" data-prop="intensity" value="${ley.intensity}">
+                        <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="${type}" data-prop="intensity" value="${ley.intensity}">
                     </div>
                     ${isDir ? `
                     <div class="prop-row-multi">
                         <label data-i18n="DIRECTION">Dirección</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.1" data-component="${type}" data-prop="direction.x" value="${ley.direction.x}">
-                            <input type="number" class="prop-input" step="0.1" data-component="${type}" data-prop="direction.y" value="${ley.direction.y}">
-                            <input type="number" class="prop-input" step="0.1" data-component="${type}" data-prop="direction.z" value="${ley.direction.z}">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="${type}" data-prop="direction.x" value="${ley.direction.x}">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="${type}" data-prop="direction.y" value="${ley.direction.y}">
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="${type}" data-prop="direction.z" value="${ley.direction.z}">
                         </div>
                     </div>
                     ` : `
                     <div class="prop-row-multi">
                         <label data-i18n="RANGE">Rango</label>
-                        <input type="number" class="prop-input" data-component="${type}" data-prop="range" value="${ley.range}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="${type}" data-prop="range" value="${ley.range}">
                     </div>
                     `}
                     ${isSpot ? `
                     <div class="prop-row-multi">
                         <label data-i18n="ANGLE">Ángulo</label>
-                        <input type="number" class="prop-input" data-component="${type}" data-prop="angle" value="${ley.angle}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="${type}" data-prop="angle" value="${ley.angle}">
                     </div>
                     ` : ''}
                 </div>
@@ -4440,7 +4440,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
                         <div class="inspector-row">
                             <label for="pixels-per-unit" data-i18n="PIXELS_PER_UNIT">${L.get('PIXELS_PER_UNIT', 'Pixels Per Unit')}</label>
-                            <input type="number" id="pixels-per-unit" value="${metaData.pixelsPerUnit}">
+                            <input type="number" autocomplete="off" id="pixels-per-unit" value="${metaData.pixelsPerUnit}">
                         </div>
 
                         <div class="inspector-row">
@@ -4453,7 +4453,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
                         <div class="inspector-row">
                             <label for="texture-tag" data-i18n="TAG">${L.get('TAG', 'Tag')}</label>
-                            <input type="text" id="texture-tag" value="${metaData.tag}" placeholder="${L.get('UNTAGGED', 'Untagged')}">
+                            <input type="text" autocomplete="off" id="texture-tag" value="${metaData.tag}" placeholder="${L.get('UNTAGGED', 'Untagged')}">
                         </div>
 
                         <hr>
@@ -4515,7 +4515,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
                             <div class="anim-preview-controls">
                                 <button id="anim-preview-play">▶️</button>
                                 <button id="anim-preview-stop">⏹️</button>
-                                <input type="number" id="anim-preview-speed" value="${metaData.animSpeed || 10}" min="1" title="FPS">
+                                <input type="number" autocomplete="off" id="anim-preview-speed" value="${metaData.animSpeed || 10}" min="1" title="FPS">
                             </div>
                         </div>
                     </fieldset>
@@ -4523,11 +4523,11 @@ async function updateInspectorForAsset(assetName, assetPath) {
                         <legend data-i18n="SLICING">${L.get('SLICING', 'Slicing')}</legend>
                         <div class="inspector-row">
                             <label for="anim-columns" data-i18n="COLUMNS">${L.get('COLUMNS', 'Columns')}</label>
-                            <input type="number" id="anim-columns" value="${metaData.animColumns || 1}" min="1">
+                            <input type="number" autocomplete="off" id="anim-columns" value="${metaData.animColumns || 1}" min="1">
                         </div>
                         <div class="inspector-row">
                             <label for="anim-rows" data-i18n="ROWS">${L.get('ROWS', 'Rows')}</label>
-                            <input type="number" id="anim-rows" value="${metaData.animRows || 1}" min="1">
+                            <input type="number" autocomplete="off" id="anim-rows" value="${metaData.animRows || 1}" min="1">
                         </div>
                          <button id="create-anim-asset-btn" class="primary-btn" style="width: 100%; margin-top: 10px;" data-i18n="CREAR_ANIMACION_SIMPLE">${L.get('CREAR_ANIMACION_SIMPLE', 'Crear Animación')}</button>
                     </fieldset>
@@ -4860,7 +4860,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
                     packageInfo.className = 'asset-settings';
                     packageInfo.innerHTML = `
                         <label data-i18n="PACKAGE_TYPE">${L.get('PACKAGE_TYPE', 'Tipo de Paquete')}</label>
-                        <input type="text" value="${manifestData.type === 'project' ? 'Proyecto Completo' : 'Asset'}" readonly>
+                        <input type="text" autocomplete="off" value="${manifestData.type === 'project' ? 'Proyecto Completo' : 'Asset'}" readonly>
                         <label data-i18n="DESCRIPTION">${L.get('DESCRIPTION', 'Descripción')}</label>
                         <textarea readonly rows="5">${manifestData.description || L.get('SIN_DESCRIPCION', 'Sin descripción.')}</textarea>
                     `;
@@ -4907,7 +4907,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             settingsContainer.className = 'asset-settings';
             let html = '';
             for (const key in materialData) {
-                html += `<label>${key}</label><input type="text" value="${materialData[key]}" readonly>`;
+                html += `<label>${key}</label><input type="text" autocomplete="off" value="${materialData[key]}" readonly>`;
             }
             settingsContainer.innerHTML = html;
             dom.inspectorContent.appendChild(settingsContainer);

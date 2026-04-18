@@ -132,7 +132,7 @@ export class PerformanceMonitor {
 
     reportCulprits(culprits) {
         culprits.forEach(c => {
-            const msg = `> Optimizador: Ejecutando ajuste por "${c.msg}"...`;
+            const msg = `> Optimizador: Detectada causa "${c.msg}". Ejecutando ajuste de nivel ${this.optimizationLevel}...`;
             console.warn(`[PerformanceMonitor] ${c.msg}`);
             if (window.logToUIConsole) {
                 window.logToUIConsole({
@@ -229,7 +229,7 @@ export class PerformanceMonitor {
         else if (this.optimizationLevel === 2) levelDesc = "Reducción de luces y partículas";
         else if (this.optimizationLevel === 3) levelDesc = "Simplificación de mapa y terreno";
 
-        const msg = `> Optimizador: Se aplicó optimización "${levelDesc}" (Nivel ${this.optimizationLevel}).`;
+        const msg = `> Optimizador: Se ha optimizado el juego aplicando "${levelDesc}" (Nivel ${this.optimizationLevel}).`;
 
         console.warn(`[PerformanceMonitor] Optimization Level ${this.optimizationLevel} applied. FPS: ${Math.round(this.fps)}`);
         if (window.logToUIConsole) {

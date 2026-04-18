@@ -2633,9 +2633,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // Also log to UI Console for visibility
             if (window.logToUIConsole) {
                 const summaryMsg = `El rendimiento del juego fue:
-Máximo FPS: ${maxFps} | Mínimo FPS: ${minFps}
-Uso máximo de RAM: ${ramMax} MB | Uso máximo de CPU: ${cpuMax}%
-Duración de la sesión: ${totalTime}s`;
+- Máximo FPS: ${maxFps}
+- Mínimo FPS: ${minFps}
+- Uso máximo de RAM: ${ramMax} MB
+- Uso máximo de CPU: ${cpuMax}%
+- Duración de la sesión: ${totalTime}s`;
 
                 window.logToUIConsole(summaryMsg, 'info');
             }
