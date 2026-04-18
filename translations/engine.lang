@@ -442,6 +442,7 @@ HINT_MIN_FPS_NOTICE: Nota: Esta cantidad mínima no está garantizada, pero acti
 FORZAR_FPS: Forzar FPS (Consumo alto)
 HINT_FORZAR_FPS: Intenta mantener los FPS estables usando un bucle de espera activa. ADVERTENCIA: Esto aumentará el uso de CPU y el consumo de RAM.
 OPTIMIZAR_MEMORIA_AHORA: Optimizar Memoria Ahora
+LIMITE_CPU: Límite de CPU (%)
 
 # Performance
 RENDIMIENTO: Desempenho
@@ -1048,6 +1049,7 @@ HINT_MIN_FPS_NOTICE: Note: This minimum amount is not guaranteed, but it will tr
 FORZAR_FPS: Force FPS (High consumption)
 HINT_FORZAR_FPS: Tries to maintain stable FPS using a busy-wait loop. WARNING: This will increase CPU and RAM usage.
 OPTIMIZAR_MEMORIA_AHORA: Optimize Memory Now
+LIMITE_CPU: CPU Limit (%)
 
 # Combat & Health
 HEALTH: Health

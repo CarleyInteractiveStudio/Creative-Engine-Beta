@@ -1179,6 +1179,10 @@ public star() {
                         <label for="settings-ram-limit" data-i18n="LIMITE_RAM">Límite de RAM (MB)</label>
                         <input type="number" id="settings-ram-limit" min="256" step="128" value="2048">
                     </div>
+                    <div class="inspector-row">
+                        <label for="settings-cpu-limit" data-i18n="LIMITE_CPU">Límite de CPU (%)</label>
+                        <input type="number" id="settings-cpu-limit" min="10" max="100" value="100">
+                    </div>
                     <p class="field-description">Define el límite de memoria para el motor. Si se supera el 80%, el motor intentará liberar recursos no utilizados. <b>Nota:</b> Los navegadores suelen limitar cada pestaña a 4GB (4096MB); si aumentas este valor y la pestaña se cierra, es una restricción del navegador, no un error del motor.</p>
                     <hr>
                     <div class="inspector-row">

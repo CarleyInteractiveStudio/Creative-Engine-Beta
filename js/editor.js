@@ -155,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 1. Detect and wrap Error objects or structured objects
         if (typeof message === 'object' && message !== null) {
-            if (message.message && (message.line !== undefined || message.scriptName)) {
+            if (message.message && (message.line !== undefined || message.scriptName || message.isOptimizer)) {
                 structuredError = message;
                 fullMessage = message.message;
             } else if (message instanceof Error) {
@@ -318,6 +318,9 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (type === 'warn') {
                 msgEl.style.backgroundColor = "rgba(243, 202, 88, 0.1)";
                 msgEl.style.borderLeft = "3px solid #f3ca58";
+            } else if (type === 'info') {
+                msgEl.style.backgroundColor = "rgba(0, 168, 255, 0.08)";
+                msgEl.style.borderLeft = "3px solid #00a8ff";
             }
         }
 
@@ -406,7 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'animation-save-btn', 'current-scene-name', 'animator-controller-panel', 'drawing-canvas-container',
             'anim-onion-skin-canvas', 'anim-grid-canvas', 'anim-bg-toggle-btn', 'anim-grid-toggle-btn',
             'anim-onion-toggle-btn', 'timeline-toggle-btn', 'project-settings-modal', 'settings-app-name',
-            'settings-author-name', 'settings-app-version', 'settings-engine-version', 'settings-renderer-mode', 'settings-max-fps', 'settings-force-fps', 'settings-min-fps', 'settings-ram-limit', 'settings-optimize-mem-btn', 'settings-icon-preview',
+            'settings-author-name', 'settings-app-version', 'settings-engine-version', 'settings-renderer-mode', 'settings-max-fps', 'settings-force-fps', 'settings-min-fps', 'settings-ram-limit', 'settings-cpu-limit', 'settings-optimize-mem-btn', 'settings-icon-preview',
             'settings-icon-picker-btn', 'settings-logo-list', 'settings-add-logo-btn', 'settings-show-engine-logo',
             'settings-keystore-path', 'settings-keystore-picker-btn', 'settings-keystore-pass', 'settings-key-alias',
             'settings-key-pass', 'settings-export-project-btn', 'settings-save-btn', 'engine-logo-confirm-modal',
@@ -2181,6 +2184,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const editorLoop = (timestamp) => {
         const loopStartTime = performance.now();
+
+        // --- CPU Usage Limiting ---
+        // If we are over our user-defined CPU budget for the last frame,
+        // we voluntarily delay this frame to give the browser air.
+        const cpuLimit = (currentProjectConfig && currentProjectConfig.cpuLimit) || 100;
+        if (cpuLimit < 100 && deltaTime > 0) {
+            const frameBudgetMs = (1 / (EngineAPI.getPerformanceMonitor()?.targetMaxFps || 60)) * 1000;
+            const cpuBudgetMs = frameBudgetMs * (cpuLimit / 100);
+            if (cpuExecutionTime > cpuBudgetMs) {
+                // Yield control back to browser for a bit
+                setTimeout(() => {
+                    editorLoopId = requestAnimationFrame(editorLoop);
+                }, 1);
+                return;
+            }
+        }
+
         // --- FPS Control ---
         const perfMonitor = EngineAPI.getPerformanceMonitor();
         const targetMaxFps = perfMonitor ? perfMonitor.targetMaxFps : 0;
@@ -2294,8 +2314,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (currentFps < gamePerfStats.minFps) gamePerfStats.minFps = currentFps;
                 if (currentFps > gamePerfStats.maxFps) gamePerfStats.maxFps = currentFps;
             }
-            if (window.performance && window.performance.memory) {
-                const currentRam = window.performance.memory.usedJSHeapSize / 1048576;
+            if (SceneManager.currentScene) {
+                let gameBytes = 0;
+                SceneManager.currentScene.getAllMaterias().forEach(m => {
+                    gameBytes += MathUtils.estimateMateriaMemory(m).total;
+                });
+                const currentRam = gameBytes / 1048576;
                 if (currentRam > gamePerfStats.maxRam) gamePerfStats.maxRam = currentRam;
             }
             if (deltaTime > 0) {
@@ -2545,6 +2569,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try { InputManager.setGameRunning(false); } catch(e) { /* ignore if not available */ }
         console.log("Game Stopped");
 
+        if (window.logToUIConsole) {
+            window.logToUIConsole("Inicializando restauración de entorno de edición...", "info");
+        }
+
         // Notify scripts about disable/destroy so they can clean up
         try {
             for (const materia of SceneManager.currentScene.getAllMaterias()) {
@@ -2604,17 +2632,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Also log to UI Console for visibility
             if (window.logToUIConsole) {
-                const summaryMsg = `Análisis de rendimiento de la sesión:
-- Tiempo total de ejecución: ${totalTime}s
-- FPS Máximos alcanzados: ${maxFps}
-- FPS Mínimos detectados: ${minFps}
-- Uso máximo de RAM: ${ramMax} MB
-- Carga máxima de CPU: ${cpuMax}%`;
+                const summaryMsg = `El rendimiento del juego fue:
+Máximo FPS: ${maxFps} | Mínimo FPS: ${minFps}
+Uso máximo de RAM: ${ramMax} MB | Uso máximo de CPU: ${cpuMax}%
+Duración de la sesión: ${totalTime}s`;
 
-                window.logToUIConsole({
-                    message: summaryMsg,
-                    isSystemString: true
-                }, 'info');
+                window.logToUIConsole(summaryMsg, 'info');
             }
         }
 
@@ -4756,6 +4779,11 @@ public start() {
             updateLoadingProgress(90, "Finalizando...");
             setupEventListeners();
             initializeFloatingPanels();
+
+            if (window.logToUIConsole) {
+                window.logToUIConsole("Creative Engine inicializado. Optimizando recursos y preparando caché de shaders...", "info");
+            }
+
             editorLoopId = requestAnimationFrame(editorLoop);
 
             const oldPlayButton = document.getElementById('btn-play');

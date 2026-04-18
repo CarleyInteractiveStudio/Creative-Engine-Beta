@@ -490,6 +490,10 @@ async function handleInspectorChange(e) {
             if (spriteSettings) spriteSettings.classList.toggle('hidden', !isSprite);
             if (animSettings) animSettings.classList.toggle('hidden', !isAnimSheet);
 
+            // Hide Apply button for Animation Sheet as requested (it's handled by Create Animation)
+            const applyBtn = dom.inspectorContent.querySelector('#save-meta-btn');
+            if (applyBtn) applyBtn.classList.toggle('hidden', isAnimSheet);
+
             // Textures reuse some of the advanced settings, so we don't hide the whole container,
             // but we ensure specific parts are correctly shown/hidden.
             if (isTexture) {
@@ -4504,14 +4508,6 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 </div>
 
                 <div id="animation-sheet-settings-container" class="${metaData.textureType !== 'Animation Sheet' ? 'hidden' : ''}">
-                    <style>
-                        #animation-sheet-settings-container ~ #save-meta-btn {
-                            display: none;
-                        }
-                        #animation-sheet-settings-container.hidden ~ #save-meta-btn {
-                            display: block;
-                        }
-                    </style>
                     <fieldset class="inspector-section">
                         <legend data-i18n="ANIMATION_PREVIEW">${L.get('ANIMATION_PREVIEW', 'Animation Preview')}</legend>
                         <div class="anim-preview-bubble">
@@ -4537,7 +4533,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
                     </fieldset>
                 </div>
 
-                <button id="save-meta-btn" class="primary-btn" style="width: 100%; margin-top: 10px;" data-i18n="APPLY">${L.get('APPLY', 'Aplicar')}</button>
+                <button id="save-meta-btn" class="primary-btn ${metaData.textureType === 'Animation Sheet' ? 'hidden' : ''}" style="width: 100%; margin-top: 10px;" data-i18n="APPLY">${L.get('APPLY', 'Aplicar')}</button>
                 <hr>
                 <div class="preview-container"><img id="inspector-preview-img" src="" alt="Preview"></div>
             `;
@@ -4736,9 +4732,13 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 document.getElementById('create-anim-asset-btn').addEventListener('click', async () => {
                     const L = window.Localization;
 
-                    const speed = parseInt(document.getElementById('anim-preview-speed').value, 10) || 10;
-                    const cols = parseInt(document.getElementById('anim-columns').value, 10) || 1;
-                    const rows = parseInt(document.getElementById('anim-rows').value, 10) || 1;
+                    const speedInput = document.getElementById('anim-preview-speed');
+                    const colsInput = document.getElementById('anim-columns');
+                    const rowsInput = document.getElementById('anim-rows');
+
+                    const speed = speedInput ? parseInt(speedInput.value, 10) : 10;
+                    const cols = colsInput ? parseInt(colsInput.value, 10) : 1;
+                    const rows = rowsInput ? parseInt(rowsInput.value, 10) : 1;
 
                     // Automatically trigger the "Apply" logic first to ensure columns/rows are saved
                     await applySettings();
@@ -5257,7 +5257,20 @@ function extractFramesFromImage(imageUrl, cols, rows) {
                     const sx = c * frameWidth;
                     const sy = r * frameHeight;
                     ctx.drawImage(img, sx, sy, frameWidth, frameHeight, 0, 0, frameWidth, frameHeight);
-                    frames.push(canvas.toDataURL('image/png'));
+
+                    // Discard empty frames
+                    const frameData = ctx.getImageData(0, 0, frameWidth, frameHeight).data;
+                    let isEmpty = true;
+                    for (let i = 3; i < frameData.length; i += 4) {
+                        if (frameData[i] > 10) { // Threshold for transparency
+                            isEmpty = false;
+                            break;
+                        }
+                    }
+
+                    if (!isEmpty) {
+                        frames.push(canvas.toDataURL('image/png'));
+                    }
                 }
             }
             resolve(frames);

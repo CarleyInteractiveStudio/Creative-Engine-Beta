@@ -132,8 +132,8 @@ export class PerformanceMonitor {
 
     reportCulprits(culprits) {
         culprits.forEach(c => {
-            const msg = `[PerformanceMonitor] Se ha detectado una caída de FPS. Causa probable: ${c.msg}. Nivel de optimización: ${this.optimizationLevel}`;
-            console.warn(msg);
+            const msg = `> Optimizador: Ejecutando ajuste por "${c.msg}"...`;
+            console.warn(`[PerformanceMonitor] ${c.msg}`);
             if (window.logToUIConsole) {
                 window.logToUIConsole({
                     message: msg,
@@ -225,13 +225,13 @@ export class PerformanceMonitor {
 
     applyOptimization() {
         let levelDesc = "Normal";
-        if (this.optimizationLevel === 1) levelDesc = "Ligera (Ajuste de física)";
-        else if (this.optimizationLevel === 2) levelDesc = "Alta (Reducción de luces y partículas)";
-        else if (this.optimizationLevel === 3) levelDesc = "Extrema (Simplificación de mapa y terreno)";
+        if (this.optimizationLevel === 1) levelDesc = "Ajuste de física";
+        else if (this.optimizationLevel === 2) levelDesc = "Reducción de luces y partículas";
+        else if (this.optimizationLevel === 3) levelDesc = "Simplificación de mapa y terreno";
 
-        const msg = `[PerformanceMonitor] Optimizador Activo: Nivel ${this.optimizationLevel} - ${levelDesc} (FPS: ${Math.round(this.fps)})`;
+        const msg = `> Optimizador: Se aplicó optimización "${levelDesc}" (Nivel ${this.optimizationLevel}).`;
 
-        console.warn(msg);
+        console.warn(`[PerformanceMonitor] Optimization Level ${this.optimizationLevel} applied. FPS: ${Math.round(this.fps)}`);
         if (window.logToUIConsole) {
             window.logToUIConsole({
                 message: msg,
