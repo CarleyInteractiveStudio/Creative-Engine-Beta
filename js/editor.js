@@ -1051,6 +1051,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (!e.ctrlKey && !e.altKey) {
+            // Ignore tool shortcuts if navigating in 3D (RMB held)
+            if (InputManager.getMouseButton(2) && (currentProjectConfig.rendererMode && currentProjectConfig.rendererMode.includes('3d'))) {
+                return;
+            }
+
             switch (e.key.toLowerCase()) {
                 case 'q':
                     setActiveTool('move');
@@ -1153,7 +1158,18 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             // DYNAMIC IMPORT for 3D components and renderers
             if (!window.Components3D) {
-                console.log("[Engine] Loading 3D modules...");
+                console.log("[Engine] Loading 3D modules and math library...");
+
+                // Pre-load gl-matrix for SceneView math
+                if (!window.glMatrix) {
+                    try {
+                        const glm = await import('gl-matrix');
+                        window.glMatrix = glm;
+                    } catch (e) {
+                        console.error("[Engine] Failed to load gl-matrix:", e);
+                    }
+                }
+
                 const comp3DModule = await import('./engine/Components3D.js');
                 window.Components3D = comp3DModule;
             }

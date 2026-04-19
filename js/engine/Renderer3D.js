@@ -6,6 +6,7 @@ const { MeshRenderer3D, DirectionalLight3D, PointLight3D, SpotLight3D } = Compon
 // Import gl-matrix for 3D math via importmap
 import * as glMatrix from 'gl-matrix';
 const { mat4, vec3, quat } = glMatrix;
+window.glMatrix = glMatrix; // Expose to global scope for other 3D modules
 
 export class Renderer3D {
     constructor(canvas) {

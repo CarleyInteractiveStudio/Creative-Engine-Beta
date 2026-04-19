@@ -18,7 +18,7 @@ export class Renderer {
         this.ambientLight = '#1a1a2a'; // A dark blue/purple for ambient light
 
         if (this.isEditor) {
-            this.camera = { x: 0, y: 0, z: 500, rotation: { x: 0, y: 0, z: 0 }, zoom: 1.0, effectiveZoom: 1.0 };
+            this.camera = { x: 0, y: 0, z: 1000, rotation: { x: 0, y: 0, z: 0 }, zoom: 1.0, effectiveZoom: 1.0 };
         } else {
             this.camera = null;
         }

@@ -1608,47 +1608,49 @@ function handle3DCameraNavigation() {
     const dt = getDeltaTime() || 0.016;
     const glm = window.glMatrix;
 
-    // Speed adjustments for larger 3D scenes
-    const baseSpeed = 600;
-    const speed = baseSpeed * (InputManager.getKey('Shift') ? 3.0 : 1.0) * dt;
-    const rotSpeed = 0.2;
+    // Navigation only while Right Mouse Button is held
+    const isFlying = InputManager.getMouseButton(2);
 
-    // Movement logic
-    const moveDir = glm.vec3.create();
-    let hasMove = false;
+    if (isFlying) {
+        // Speed adjustments for larger 3D scenes
+        const baseSpeed = 800; // Slightly faster for more responsive feel
+        const speed = baseSpeed * (InputManager.getKey('Shift') ? 3.0 : 1.0) * dt;
+        const rotSpeed = 0.2;
 
-    // WASD: Local movement (Forward/Back on Z, Strafe on X)
-    if (InputManager.getKey('w')) { moveDir[2] -= 1; hasMove = true; }
-    if (InputManager.getKey('s')) { moveDir[2] += 1; hasMove = true; }
-    if (InputManager.getKey('a')) { moveDir[0] -= 1; hasMove = true; }
-    if (InputManager.getKey('d')) { moveDir[0] += 1; hasMove = true; }
+        // --- 1. Movement logic ---
+        const moveDir = glm.vec3.create();
+        let hasMove = false;
 
-    // Q/E: World-aligned vertical movement (Standard for editors)
-    // In Perspective (3D), Y+ is UP.
-    let verticalMove = 0;
-    if (InputManager.getKey('e')) verticalMove += 1; // Up
-    if (InputManager.getKey('q')) verticalMove -= 1; // Down
+        // WASD & Arrows: Local movement (Forward/Back on Z, Strafe on X)
+        if (InputManager.getKey('w') || InputManager.getKey('ArrowUp')) { moveDir[2] -= 1; hasMove = true; }
+        if (InputManager.getKey('s') || InputManager.getKey('ArrowDown')) { moveDir[2] += 1; hasMove = true; }
+        if (InputManager.getKey('a') || InputManager.getKey('ArrowLeft')) { moveDir[0] -= 1; hasMove = true; }
+        if (InputManager.getKey('d') || InputManager.getKey('ArrowRight')) { moveDir[0] += 1; hasMove = true; }
 
-    if (hasMove) {
-        glm.vec3.normalize(moveDir, moveDir);
+        // Q/E: World-aligned vertical movement
+        let verticalMove = 0;
+        if (InputManager.getKey('e')) verticalMove += 1; // Up
+        if (InputManager.getKey('q')) verticalMove -= 1; // Down
 
-        const rotationQuat = glm.quat.create();
-        // Camera in CE uses X=Pitch, Y=Yaw
-        glm.quat.fromEuler(rotationQuat, cam.rotation.x, cam.rotation.y, 0);
+        if (hasMove) {
+            glm.vec3.normalize(moveDir, moveDir);
 
-        const rotatedDir = glm.vec3.create();
-        glm.vec3.transformQuat(rotatedDir, moveDir, rotationQuat);
+            const rotationQuat = glm.quat.create();
+            // Camera in CE uses X=Pitch, Y=Yaw
+            glm.quat.fromEuler(rotationQuat, cam.rotation.x, cam.rotation.y, 0);
 
-        cam.x += rotatedDir[0] * speed;
-        cam.y += rotatedDir[1] * speed;
-        cam.z += rotatedDir[2] * speed;
-    }
+            const rotatedDir = glm.vec3.create();
+            glm.vec3.transformQuat(rotatedDir, moveDir, rotationQuat);
 
-    // Apply Vertical Movement separately to keep it world-locked
-    cam.y += verticalMove * speed;
+            cam.x += rotatedDir[0] * speed;
+            cam.y += rotatedDir[1] * speed;
+            cam.z += rotatedDir[2] * speed;
+        }
 
-    // Rotation (Mouse look with right click)
-    if (InputManager.getMouseButton(2)) {
+        // Apply Vertical Movement separately to keep it world-locked
+        cam.y += verticalMove * speed;
+
+        // --- 2. Rotation (Mouse look) ---
         const delta = InputManager.getMouseDelta();
 
         if (Math.abs(delta.x) > 0.1 || Math.abs(delta.y) > 0.1) {
@@ -1659,11 +1661,13 @@ function handle3DCameraNavigation() {
             // Constrain pitch to avoid flipping
             cam.rotation.x = Math.max(-89.9, Math.min(89.9, cam.rotation.x));
         }
-        // Change cursor to indicate look mode
+
+        // --- 3. Cursor Feedback ---
         dom.sceneCanvas.style.cursor = 'crosshair';
         if (dom.sceneCanvas3d) dom.sceneCanvas3d.style.cursor = 'crosshair';
+
     } else {
-        // Restore standard cursor
+        // Restore standard cursor when not flying
         if (dom.sceneCanvas.style.cursor === 'crosshair') dom.sceneCanvas.style.cursor = 'default';
         if (dom.sceneCanvas3d && dom.sceneCanvas3d.style.cursor === 'crosshair') dom.sceneCanvas3d.style.cursor = 'default';
     }
