@@ -2034,7 +2034,10 @@ function draw3DGizmos(materia) {
     const GIZMO_SIZE = 50;
 
     // Draw Wireframe helpers for 3D Primitives (in 3D projected space)
-    const meshRenderer = materia.getComponent(Components3D.MeshRenderer3D);
+    const C3D = window.Components3D || Components3D;
+    if (!C3D) return;
+
+    const meshRenderer = materia.getComponent(C3D.MeshRenderer3D);
     if (meshRenderer) {
         if (meshRenderer.meshType === 'Cube') {
             Gizmos.drawWireCube(ctx, center, { x: 100 * transform.scale.x, y: 100 * transform.scale.y, z: 100 * transform.scale.z });
@@ -2161,6 +2164,7 @@ export function drawOverlay() {
 
     // Draw physics colliders for selected object
     drawPhysicsGizmos();
+    draw3DPhysicsGizmos();
 
     // Draw outline for selected Tilemap
     drawTilemapOutline();
@@ -2621,6 +2625,45 @@ function drawCapsulePath(ctx, width, height, direction) {
         ctx.lineTo(-halfStraight, radius);
         ctx.arc(-halfStraight, 0, radius, Math.PI / 2, -Math.PI / 2);
         ctx.closePath();
+    }
+}
+
+function draw3DPhysicsGizmos() {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!transform) return;
+
+    const C3D = window.Components3D || Components3D;
+    if (!C3D) return;
+
+    const { ctx } = renderer;
+    const center = { x: transform.x, y: transform.y, z: transform.z || 0 };
+
+    const box = selectedMateria.getComponent(C3D.BoxCollider3D);
+    if (box) {
+        const worldSize = {
+            x: box.size.x * Math.abs(transform.scale.x),
+            y: box.size.y * Math.abs(transform.scale.y),
+            z: box.size.z * Math.abs(transform.scale.z)
+        };
+        const worldCenter = {
+            x: center.x + box.offset.x,
+            y: center.y + box.offset.y,
+            z: center.z + box.offset.z
+        };
+        Gizmos.drawWireCube(ctx, worldCenter, worldSize, 'rgba(0, 255, 0, 0.8)');
+    }
+
+    const sphere = selectedMateria.getComponent(C3D.SphereCollider3D);
+    if (sphere) {
+        const worldRadius = sphere.radius * Math.max(Math.abs(transform.scale.x), Math.abs(transform.scale.y), Math.abs(transform.scale.z));
+        const worldCenter = {
+            x: center.x + sphere.offset.x,
+            y: center.y + sphere.offset.y,
+            z: center.z + sphere.offset.z
+        };
+        Gizmos.drawWireSphere(ctx, worldCenter, worldRadius, 'rgba(0, 255, 0, 0.8)');
     }
 }
 

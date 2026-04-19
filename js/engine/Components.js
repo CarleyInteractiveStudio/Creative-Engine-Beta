@@ -77,6 +77,10 @@ const componentAliases = {
     'ProgressBar': 'barraDeProgreso',
     'SceneLoader': 'cargarEscena',
     'PlatformEffector2D': 'efectorPlataforma2D',
+    'Rigidbody3D': 'fisica3D',
+    'BoxCollider3D': 'colisionadorCaja3D',
+    'SphereCollider3D': 'colisionadorEsfera3D',
+    'MeshRenderer3D': 'renderizadorDeMalla3D',
 };
 
 
@@ -399,6 +403,9 @@ export class CreativeScriptBehavior {
 
     get fisica() { return this.obtenerComponente('Rigidbody2D') || this._missingComponentProxy('fisica', 'Rigidbody2D'); }
     get rigidbody2D() { return this.fisica; }
+
+    get fisica3D() { return this.obtenerComponente('Rigidbody3D') || this._missingComponentProxy('fisica3D', 'Rigidbody3D'); }
+    get rigidbody3D() { return this.fisica3D; }
 
     get vida() { return this.obtenerComponente('Health') || this._missingComponentProxy('vida', 'Health'); }
     get salud() { return this.vida; }

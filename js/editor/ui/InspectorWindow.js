@@ -37,14 +37,14 @@ const availableComponents = {
     'CAT_AUDIO': [Components.AudioSource],
     'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.PlatformEffector2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
     'CAT_CAMARA': [Components.Camera],
-    'CAT_3D': ['MeshRenderer3D', 'DirectionalLight3D', 'PointLight3D', 'SpotLight3D'],
+    'CAT_3D': ['MeshRenderer3D', 'Rigidbody3D', 'BoxCollider3D', 'SphereCollider3D', 'DirectionalLight3D', 'PointLight3D', 'SpotLight3D'],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
     'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Attack, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.Suspension, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController, Components.SceneLoader],
     'CAT_SCRIPTING': [Components.CreativeScript]
 };
 
 const componentIcons = {
-    MeshRenderer3D: 'box', DirectionalLight3D: 'sun', PointLight3D: 'lightbulb', SpotLight3D: 'flashlight',
+    MeshRenderer3D: 'box', Rigidbody3D: 'weight', BoxCollider3D: 'square', SphereCollider3D: 'disc', DirectionalLight3D: 'sun', PointLight3D: 'lightbulb', SpotLight3D: 'flashlight',
     Transform: 'move', Rigidbody2D: 'weight', BoxCollider2D: 'square', PlatformEffector2D: 'square', CapsuleCollider2D: 'pill', CircleCollider2D: 'disc', PolygonCollider2D: 'hexagon', SpriteRenderer: 'image',
     Animator: 'run', AnimatorController: 'gamepad', AudioSource: 'music', VideoPlayer: 'video', Camera: 'camera', CreativeScript: 'scroll', SceneLoader: 'clapperboard',
     UITransform: 'box', UICanvas: 'image', UIImage: 'image', PointLight2D: 'lightbulb', SpotLight2D: 'flashlight', FreeformLight2D: 'pencil', SpriteLight2D: 'sparkles',
@@ -4190,6 +4190,80 @@ async function updateInspectorForMateria(selectedMateria) {
                         <div class="checkbox-field padded-checkbox-field">
                             <input type="checkbox" class="prop-input" data-component="MeshRenderer3D" data-prop="castShadows" ${ley.castShadows ? 'checked' : ''}>
                             <label data-i18n="CAST_SHADOWS">Generar Sombras</label>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (ley.constructor.name === 'Rigidbody3D') {
+            componentHTML = `
+                ${renderComponentHeader(L.get('RIGIDBODY_3D', "Rigidbody 3D"), icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label data-i18n="MASS">Masa</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="Rigidbody3D" data-prop="mass" value="${ley.mass}">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Rigidbody3D" data-prop="useGravity" ${ley.useGravity ? 'checked' : ''}>
+                        <label data-i18n="USE_GRAVITY">Usar Gravedad</label>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Rigidbody3D" data-prop="isKinematic" ${ley.isKinematic ? 'checked' : ''}>
+                        <label data-i18n="IS_KINEMATIC">Cinemático (Kinematic)</label>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="DRAG">Arrastre (Drag)</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="0.01" data-component="Rigidbody3D" data-prop="drag" value="${ley.drag}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="ANGULAR_DRAG">Arrastre Angular</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="0.01" data-component="Rigidbody3D" data-prop="angularDrag" value="${ley.angularDrag}">
+                    </div>
+                </div>
+            `;
+        } else if (ley.constructor.name === 'BoxCollider3D') {
+            componentHTML = `
+                ${renderComponentHeader(L.get('BOX_COLLIDER_3D', "Box Collider 3D"), icon, index)}
+                <div class="component-content">
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="BoxCollider3D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
+                        <label data-i18n="IS_TRIGGER">Es Gatillo (Trigger)</label>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="SIZE">Tamaño</label>
+                        <div class="prop-inputs">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="BoxCollider3D" data-prop="size.x" value="${ley.size.x}" title="X">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="BoxCollider3D" data-prop="size.y" value="${ley.size.y}" title="Y">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="BoxCollider3D" data-prop="size.z" value="${ley.size.z}" title="Z">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="OFFSET">Desplazamiento</label>
+                        <div class="prop-inputs">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="BoxCollider3D" data-prop="offset.x" value="${ley.offset.x}" title="X">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="BoxCollider3D" data-prop="offset.y" value="${ley.offset.y}" title="Y">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="BoxCollider3D" data-prop="offset.z" value="${ley.offset.z}" title="Z">
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (ley.constructor.name === 'SphereCollider3D') {
+            componentHTML = `
+                ${renderComponentHeader(L.get('SPHERE_COLLIDER_3D', "Sphere Collider 3D"), icon, index)}
+                <div class="component-content">
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="SphereCollider3D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
+                        <label data-i18n="IS_TRIGGER">Es Gatillo (Trigger)</label>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="RADIUS">Radio</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="SphereCollider3D" data-prop="radius" value="${ley.radius}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="OFFSET">Desplazamiento</label>
+                        <div class="prop-inputs">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="SphereCollider3D" data-prop="offset.x" value="${ley.offset.x}" title="X">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="SphereCollider3D" data-prop="offset.y" value="${ley.offset.y}" title="Y">
+                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="SphereCollider3D" data-prop="offset.z" value="${ley.offset.z}" title="Z">
                         </div>
                     </div>
                 </div>
