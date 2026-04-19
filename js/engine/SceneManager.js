@@ -4,6 +4,7 @@
 import { Leyes } from './Leyes.js';
 
 import { Transform, SpriteRenderer, CreativeScript, Camera, Animator, AnimatorController, AudioSource, Tilemap, TilemapRenderer, CustomComponent, Terreno2D, Gyzmo } from './Components.js';
+import * as Components3D from './Components3D.js';
 import { Materia } from './Materia.js';
 
 let customComponentProvider = null;
@@ -659,6 +660,8 @@ export async function instanciarPrefab(prefabData, x, y) {
 
 function createDefaultScene() {
     const scene = new Scene();
+    const config = window.currentProjectConfig || {};
+    const is3D = config.projectType === '3d';
 
     // Create the root node
     const rootNode = new Materia('Scene');
@@ -667,10 +670,29 @@ function createDefaultScene() {
     // Create the camera
     const cameraNode = new Materia('Main Camera');
     const cameraComponent = new Camera(cameraNode);
+
+    if (is3D) {
+        cameraComponent.projection = 'Perspective';
+        const trans = cameraNode.getComponent(Transform);
+        trans.localPosition = { x: 0, y: 2, z: -10 };
+        trans.localRotation = { x: 10, y: 0, z: 0 };
+    }
+
     cameraNode.addComponent(cameraComponent);
 
     rootNode.addChild(cameraNode);
     scene.addMateria(cameraNode);
+
+    if (is3D) {
+        // Create a directional light for 3D projects
+        const lightNode = new Materia('Directional Light');
+        lightNode.addComponent(new Components3D.DirectionalLight3D(lightNode));
+        const lightTrans = lightNode.getComponent(Transform);
+        lightTrans.localRotation = { x: 50, y: -30, z: 0 };
+
+        rootNode.addChild(lightNode);
+        scene.addMateria(lightNode);
+    }
 
     return scene;
 }

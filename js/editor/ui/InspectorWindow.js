@@ -1,4 +1,5 @@
 import * as Components from '../../engine/Components.js';
+import * as Components3D from '../../engine/Components3D.js';
 import * as UITransformUtils from '../../engine/UITransformUtils.js';
 import { getURLForAssetPath } from '../../engine/AssetUtils.js';
 import * as SpriteSlicer from './SpriteSlicerWindow.js';
@@ -36,7 +37,7 @@ const availableComponents = {
     'CAT_AUDIO': [Components.AudioSource],
     'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.PlatformEffector2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
     'CAT_CAMARA': [Components.Camera],
-    'CAT_3D': [Components.MeshRenderer3D, Components.DirectionalLight3D, Components.PointLight3D, Components.SpotLight3D],
+    'CAT_3D': [Components3D.MeshRenderer3D, Components3D.DirectionalLight3D, Components3D.PointLight3D, Components3D.SpotLight3D],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
     'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Attack, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.Suspension, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController, Components.SceneLoader],
     'CAT_SCRIPTING': [Components.CreativeScript]
@@ -4161,65 +4162,79 @@ async function updateInspectorForMateria(selectedMateria) {
                     ${renderAIFuncInput('onAttackRange', L.get('ON_ATTACK_RANGE', 'Rango Ataque'))}
                 </div>
             `;
-        } else if (ley instanceof Components.MeshRenderer3D) {
+        } else if (ley instanceof Components3D.MeshRenderer3D) {
             componentHTML = `
                 ${renderComponentHeader(L.get('MESH_RENDERER_3D', "Mesh Renderer 3D"), icon, index)}
                 <div class="component-content">
-                    <div class="prop-row-multi">
-                        <label data-i18n="MESH_TYPE">Tipo de Malla</label>
-                        <select class="prop-input" data-component="MeshRenderer3D" data-prop="meshType">
-                            <option value="Cube" ${ley.meshType === 'Cube' ? 'selected' : ''}>Cubo</option>
-                            <option value="Sphere" ${ley.meshType === 'Sphere' ? 'selected' : ''}>Esfera</option>
-                            <option value="Plane" ${ley.meshType === 'Plane' ? 'selected' : ''}>Plano</option>
-                        </select>
+                    <div class="inspector-group">
+                        <div class="prop-row-multi">
+                            <label data-i18n="MESH_TYPE">Tipo de Malla</label>
+                            <select class="prop-input" data-component="MeshRenderer3D" data-prop="meshType">
+                                <option value="Cube" ${ley.meshType === 'Cube' ? 'selected' : ''}>Cubo</option>
+                                <option value="Sphere" ${ley.meshType === 'Sphere' ? 'selected' : ''}>Esfera</option>
+                                <option value="Plane" ${ley.meshType === 'Plane' ? 'selected' : ''}>Plano</option>
+                                <option value="Triangle" ${ley.meshType === 'Triangle' ? 'selected' : ''}>Triángulo</option>
+                                <option value="Capsule" ${ley.meshType === 'Capsule' ? 'selected' : ''}>Cápsula</option>
+                            </select>
+                        </div>
+                        <div class="prop-row-multi">
+                            <label data-i18n="COLOR">Color</label>
+                            <input type="color" class="prop-input" data-component="MeshRenderer3D" data-prop="color" value="${ley.color}">
+                        </div>
                     </div>
-                    <div class="prop-row-multi">
-                        <label data-i18n="COLOR">Color</label>
-                        <input type="color" class="prop-input" data-component="MeshRenderer3D" data-prop="color" value="${ley.color}">
-                    </div>
-                    <div class="checkbox-field padded-checkbox-field">
-                        <input type="checkbox" class="prop-input" data-component="MeshRenderer3D" data-prop="isUnlit" ${ley.isUnlit ? 'checked' : ''}>
-                        <label data-i18n="UNLIT">Sin Luces (Unlit)</label>
+                    <div class="inspector-group">
+                        <div class="checkbox-field padded-checkbox-field">
+                            <input type="checkbox" class="prop-input" data-component="MeshRenderer3D" data-prop="isUnlit" ${ley.isUnlit ? 'checked' : ''}>
+                            <label data-i18n="UNLIT">Sin Luces (Unlit)</label>
+                        </div>
+                        <div class="checkbox-field padded-checkbox-field">
+                            <input type="checkbox" class="prop-input" data-component="MeshRenderer3D" data-prop="castShadows" ${ley.castShadows ? 'checked' : ''}>
+                            <label data-i18n="CAST_SHADOWS">Generar Sombras</label>
+                        </div>
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.DirectionalLight3D || ley instanceof Components.PointLight3D || ley instanceof Components.SpotLight3D) {
-            const isDir = ley instanceof Components.DirectionalLight3D;
-            const isSpot = ley instanceof Components.SpotLight3D;
+        } else if (ley instanceof Components3D.DirectionalLight3D || ley instanceof Components3D.PointLight3D || ley instanceof Components3D.SpotLight3D) {
+            const isDir = ley instanceof Components3D.DirectionalLight3D;
+            const isSpot = ley instanceof Components3D.SpotLight3D;
             const type = isDir ? 'DirectionalLight3D' : (isSpot ? 'SpotLight3D' : 'PointLight3D');
 
             componentHTML = `
                 ${renderComponentHeader(L.get(type.toUpperCase(), type), icon, index)}
                 <div class="component-content">
-                    <div class="prop-row-multi">
-                        <label data-i18n="COLOR">Color</label>
-                        <input type="color" class="prop-input" data-component="${type}" data-prop="color" value="${ley.color}">
-                    </div>
-                    <div class="prop-row-multi">
-                        <label data-i18n="INTENSITY">Intensidad</label>
-                        <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="${type}" data-prop="intensity" value="${ley.intensity}">
-                    </div>
-                    ${isDir ? `
-                    <div class="prop-row-multi">
-                        <label data-i18n="DIRECTION">Dirección</label>
-                        <div class="prop-inputs">
-                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="${type}" data-prop="direction.x" value="${ley.direction.x}">
-                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="${type}" data-prop="direction.y" value="${ley.direction.y}">
-                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="${type}" data-prop="direction.z" value="${ley.direction.z}">
+                    <div class="inspector-group">
+                        <div class="prop-row-multi">
+                            <label data-i18n="COLOR">Color</label>
+                            <input type="color" class="prop-input" data-component="${type}" data-prop="color" value="${ley.color}">
+                        </div>
+                        <div class="prop-row-multi">
+                            <label data-i18n="INTENSITY">Intensidad</label>
+                            <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="${type}" data-prop="intensity" value="${ley.intensity}">
                         </div>
                     </div>
-                    ` : `
-                    <div class="prop-row-multi">
-                        <label data-i18n="RANGE">Rango</label>
-                        <input type="number" autocomplete="off" class="prop-input" data-component="${type}" data-prop="range" value="${ley.range}">
+                    <div class="inspector-group">
+                        ${isDir ? `
+                        <div class="prop-row-multi">
+                            <label data-i18n="DIRECTION">Dirección</label>
+                            <div class="prop-inputs">
+                                <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="${type}" data-prop="direction.x" value="${ley.direction.x}" title="X">
+                                <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="${type}" data-prop="direction.y" value="${ley.direction.y}" title="Y">
+                                <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="${type}" data-prop="direction.z" value="${ley.direction.z}" title="Z">
+                            </div>
+                        </div>
+                        ` : `
+                        <div class="prop-row-multi">
+                            <label data-i18n="RANGE">Rango</label>
+                            <input type="number" autocomplete="off" class="prop-input" data-component="${type}" data-prop="range" value="${ley.range}">
+                        </div>
+                        `}
+                        ${isSpot ? `
+                        <div class="prop-row-multi">
+                            <label data-i18n="ANGLE">Ángulo</label>
+                            <input type="number" autocomplete="off" class="prop-input" data-component="${type}" data-prop="angle" value="${ley.angle}">
+                        </div>
+                        ` : ''}
                     </div>
-                    `}
-                    ${isSpot ? `
-                    <div class="prop-row-multi">
-                        <label data-i18n="ANGLE">Ángulo</label>
-                        <input type="number" autocomplete="off" class="prop-input" data-component="${type}" data-prop="angle" value="${ley.angle}">
-                    </div>
-                    ` : ''}
                 </div>
             `;
         }

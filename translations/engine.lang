@@ -312,6 +312,7 @@ MATERIA_2D: Materia 2D
 MATERIA_3D: Materia 3D
 CUBE: Cubo
 SPHERE: Esfera
+PLANE: Plano
 SPRITE: Sprite
 TILEMAP: Tilemap
 TERRENO_2D: Terreno 2D
@@ -319,6 +320,7 @@ PARALLAX: Parallax
 RECTANGULO: Rectángulo
 CIRCULO: Círculo
 TRIANGULO: Triángulo
+TRIANGLE: Triángulo 3D
 CAPSULA: Cápsula
 UI: UI
 BOTON: Botón
@@ -327,9 +329,9 @@ TEXTO: Texto
 LUZ: Luz
 LUZ_PUNTO: Luz Punto
 LUZ_FOCAL: Luz Focal
-DIRECTIONAL_LIGHT: Luz Direccional
-POINT_LIGHT: Luz Punto 3D
-SPOT_LIGHT: Luz Focal 3D
+DIRECTIONALLIGHT3D: Luz Direccional
+POINTLIGHT3D: Luz Punto 3D
+SPOTLIGHT3D: Luz Focal 3D
 LUZ_FORMA_LIBRE: Luz Libre
 LUZ_SPRITE: Luz Sprite
 CAMARA: Cámara
@@ -924,6 +926,7 @@ MATERIA_2D: 2D Matter
 MATERIA_3D: 3D Matter
 CUBE: Cube
 SPHERE: Sphere
+PLANE: Plane
 SPRITE: Sprite
 TILEMAP: Tilemap
 TERRENO_2D: 2D Terrain
@@ -931,6 +934,7 @@ PARALLAX: Parallax
 RECTANGULO: Rectangle
 CIRCULO: Circle
 TRIANGULO: Triangle
+TRIANGLE: 3D Triangle
 CAPSULA: Capsule
 UI: UI
 BOTON: Button
@@ -939,9 +943,9 @@ TEXTO: Text
 LUZ: Light
 LUZ_PUNTO: Point Light
 LUZ_FOCAL: Spot Light
-DIRECTIONAL_LIGHT: Directional Light
-POINT_LIGHT: Point Light 3D
-SPOT_LIGHT: Spot Light 3D
+DIRECTIONALLIGHT3D: Directional Light
+POINTLIGHT3D: Point Light 3D
+SPOTLIGHT3D: Spot Light 3D
 LUZ_FORMA_LIBRE: Freeform Light
 LUZ_SPRITE: Sprite Light
 CAMARA: Camera
@@ -1482,6 +1486,7 @@ PARALLAX: Parallax
 RECTANGULO: Retângulo
 CIRCULO: Círculo
 TRIANGULO: Triângulo
+TRIANGLE: Triângulo 3D
 CAPSULA: Cápsula
 UI: UI
 BOTON: Botão
@@ -1956,6 +1961,7 @@ PARALLAX: Параллакс
 RECTANGULO: Прямоугольник
 CIRCULO: Круг
 TRIANGULO: Треугольник
+TRIANGLE: 3D Треугольник
 CAPSULA: Капсула
 UI: Интерфейс
 BOTON: Кнопка
@@ -2450,6 +2456,7 @@ PARALLAX: 视差
 RECTANGULO: 矩形
 CIRCULO: 圆形
 TRIANGULO: 三角形
+TRIANGLE: 3D 三角形
 CAPSULA: 胶囊体
 UI: 界面
 BOTON: 按钮

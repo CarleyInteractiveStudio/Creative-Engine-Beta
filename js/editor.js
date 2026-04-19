@@ -6,6 +6,7 @@ import { Renderer3D } from './engine/Renderer3D.js';
 import { PhysicsSystem } from './engine/Physics.js';
 import * as UISystem from './engine/ui/UISystem.js';
 import * as Components from './engine/Components.js';
+import * as Components3D from './engine/Components3D.js';
 import { Materia } from './engine/Materia.js';
 import { getURLForAssetPath } from './engine/AssetUtils.js';
 import * as AnimationEditorWindow from './editor/ui/AnimationEditorWindow.js';
@@ -85,6 +86,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let isGamePaused = false;
     let lastFrameTime = 0;
     let cpuExecutionTime = 0; // Time spent in JS execution this frame
+    let lastRamEstimateTime = 0;
+    let cachedRamEstimate = 0;
 
     // Performance tracking state
     let gamePerfStats = {
@@ -1280,6 +1283,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.warn(`[Config] Incompatible rendererMode '${currentProjectConfig.rendererMode}' for 2D project. Resetting to 'canvas2d'.`);
                     currentProjectConfig.rendererMode = 'canvas2d';
                 }
+
+                // RELEASE 3D Resources if in a strict 2D project to save RAM
+                if (renderer3D) renderer3D.dispose();
+                if (gameRenderer3D) gameRenderer3D.dispose();
             }
 
             window.currentProjectConfig = currentProjectConfig;
@@ -1736,7 +1743,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (is3D) {
                     const has3DSupported = m.getComponent(Components.SpriteRenderer) ||
                                           m.getComponent(Components.TextureRender) ||
-                                          m.getComponent(Components.MeshRenderer3D) ||
+                                          m.getComponent(Components3D.MeshRenderer3D) ||
                                           m.getComponent(Components.TilemapRenderer) ||
                                           m.getComponent(Components.Terreno2D) ||
                                           m.getComponent(Components.Water);
@@ -2315,12 +2322,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (currentFps > gamePerfStats.maxFps) gamePerfStats.maxFps = currentFps;
             }
             if (SceneManager.currentScene) {
-                let gameBytes = 0;
-                SceneManager.currentScene.getAllMaterias().forEach(m => {
-                    gameBytes += MathUtils.estimateMateriaMemory(m).total;
-                });
-                const currentRam = gameBytes / 1048576;
-                if (currentRam > gamePerfStats.maxRam) gamePerfStats.maxRam = currentRam;
+                const now = performance.now();
+                if (now - lastRamEstimateTime > 1000) { // Estimate RAM only once per second
+                    let gameBytes = 0;
+                    SceneManager.currentScene.getAllMaterias().forEach(m => {
+                        gameBytes += MathUtils.estimateMateriaMemory(m).total;
+                    });
+                    cachedRamEstimate = gameBytes / 1048576;
+                    lastRamEstimateTime = now;
+                }
+
+                if (cachedRamEstimate > gamePerfStats.maxRam) gamePerfStats.maxRam = cachedRamEstimate;
             }
             if (deltaTime > 0) {
                 const cpuUsage = Math.min(100, (cpuExecutionTime / (deltaTime * 1000)) * 100);
