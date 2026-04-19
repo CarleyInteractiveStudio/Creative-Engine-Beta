@@ -2,6 +2,7 @@
 
 import { Materia } from '../engine/Materia.js';
 import * as Components from '../engine/Components.js';
+import * as Components3D from '../engine/Components3D.js';
 import * as SceneManager from '../engine/SceneManager.js';
 
 export function generateUniqueName(baseName) {
@@ -59,6 +60,64 @@ export function createImageObject(parent) {
     newMateria.addComponent(new Components.UIImage(newMateria));
 
     parent.addChild(newMateria);
+    return newMateria;
+}
+
+// --- 3D Objects ---
+
+export function createCubeObject(parent = null) {
+    const newMateria = createBaseMateria(generateUniqueName('Cubo'), parent);
+    newMateria.addComponent(new Components3D.MeshRenderer3D(newMateria));
+    return newMateria;
+}
+
+export function createSphereObject(parent = null) {
+    const newMateria = createBaseMateria(generateUniqueName('Esfera'), parent);
+    const renderer = new Components3D.MeshRenderer3D(newMateria);
+    renderer.meshType = 'Sphere';
+    newMateria.addComponent(renderer);
+    return newMateria;
+}
+
+export function createTriangle3DObject(parent = null) {
+    const newMateria = createBaseMateria(generateUniqueName('Triángulo'), parent);
+    const renderer = new Components3D.MeshRenderer3D(newMateria);
+    renderer.meshType = 'Triangle';
+    newMateria.addComponent(renderer);
+    return newMateria;
+}
+
+export function createCapsule3DObject(parent = null) {
+    const newMateria = createBaseMateria(generateUniqueName('Cápsula'), parent);
+    const renderer = new Components3D.MeshRenderer3D(newMateria);
+    renderer.meshType = 'Capsule';
+    newMateria.addComponent(renderer);
+    return newMateria;
+}
+
+export function createPlane3DObject(parent = null) {
+    const newMateria = createBaseMateria(generateUniqueName('Plano'), parent);
+    const renderer = new Components3D.MeshRenderer3D(newMateria);
+    renderer.meshType = 'Plane';
+    newMateria.addComponent(renderer);
+    return newMateria;
+}
+
+export function createDirectionalLight3D(parent = null) {
+    const newMateria = createBaseMateria(generateUniqueName('Luz Direccional'), parent);
+    newMateria.addComponent(new Components3D.DirectionalLight3D(newMateria));
+    return newMateria;
+}
+
+export function createPointLight3D(parent = null) {
+    const newMateria = createBaseMateria(generateUniqueName('Luz Punto 3D'), parent);
+    newMateria.addComponent(new Components3D.PointLight3D(newMateria));
+    return newMateria;
+}
+
+export function createSpotLight3D(parent = null) {
+    const newMateria = createBaseMateria(generateUniqueName('Luz Focal 3D'), parent);
+    newMateria.addComponent(new Components3D.SpotLight3D(newMateria));
     return newMateria;
 }
 

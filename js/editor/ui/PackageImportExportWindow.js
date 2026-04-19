@@ -84,8 +84,11 @@ async function exportPackage(filesToExport, manifest) {
 
 async function confirmImport(zip, dirHandle) {
     const L = window.Localization;
-    const checkedItems = dom.packageFileTreeContainer.querySelectorAll('input[type=checkbox]:checked');
+    const checkedItems = Array.from(dom.packageFileTreeContainer.querySelectorAll('input[type=checkbox]:checked'));
     console.log(`Importando ${checkedItems.length} archivos...`);
+
+    const progress = window.Dialogs.showProgressDialog(L.get('IMPORTANDO', 'Importando'), L.get('PREPARANDO_IMPORT', 'Preparando archivos...'));
+    let importedCount = 0;
 
     try {
         for (const item of checkedItems) {
@@ -109,12 +112,18 @@ async function confirmImport(zip, dirHandle) {
                 await writable.write(content);
                 await writable.close();
             }
+
+            importedCount++;
+            const percent = Math.round((importedCount / checkedItems.length) * 100);
+            progress.update(percent, `${L.get('IMPORTANDO', 'Importando')}: ${percent}% (${importedCount}/${checkedItems.length})`);
         }
+        progress.close();
         showNotification(L.get('EXITO', 'Éxito'), L.get('EXITO_IMPORT_COMPLETO', '¡Importación completada con éxito!'));
         dom.packageFileTreeModal.classList.remove('is-open');
         await updateAssetBrowser();
 
     } catch (error) {
+        progress.close();
         console.error("Error durante la importación de archivos:", error);
         showNotification(L.get('ERROR', 'Error'), L.get('ERROR_IMPORT_PAQUETE', 'Ocurrió un error al importar los archivos. Revisa la consola.'));
     }

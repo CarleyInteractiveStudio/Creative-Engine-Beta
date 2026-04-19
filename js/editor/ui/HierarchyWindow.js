@@ -11,8 +11,15 @@
 
 import { Materia } from '../../engine/Materia.js';
 import * as Components from '../../engine/Components.js';
+import * as Components3D from '../../engine/Components3D.js';
 import { showConfirmation } from './DialogWindow.js';
-import { createBaseMateria, generateUniqueName, createPanelObject, createTextObject, createButtonObject, createTerrenoObject, createAudioObject, createVideoObject, createWaterObject, createLineColliderObject, createProgressBarObject, createCombatantObject, createScrollViewObject } from '../MateriaFactory.js';
+import {
+    createBaseMateria, generateUniqueName, createPanelObject, createTextObject, createButtonObject,
+    createTerrenoObject, createAudioObject, createVideoObject, createWaterObject,
+    createLineColliderObject, createProgressBarObject, createCombatantObject, createScrollViewObject,
+    createCubeObject, createSphereObject, createCapsule3DObject, createPlane3DObject, createTriangle3DObject,
+    createDirectionalLight3D, createPointLight3D, createSpotLight3D
+} from '../MateriaFactory.js';
 import { broadcastUpdate } from '../CollaborationSystem.js';
 
 // Module-level state and dependencies
@@ -253,7 +260,7 @@ export function handleContextMenuAction(action) {
             textureRender.shape = 'Circle';
             newMateria.addComponent(textureRender);
             break;
-        case 'create-triangle':
+        case 'create-triangle-2d':
             newMateria = createBaseMateria(generateUniqueName(L.get('TRIANGULO', 'Triangle')), selectedMateria);
             const textureRenderTri = new Components.TextureRender(newMateria);
             textureRenderTri.shape = 'Triangle';
@@ -402,6 +409,32 @@ export function handleContextMenuAction(action) {
                 newMateria = createScrollViewObject(parentCanvas);
             }
             break;
+        // --- 3D Creation Actions ---
+        case 'create-cube':
+            newMateria = createCubeObject(selectedMateria);
+            break;
+        case 'create-sphere':
+            newMateria = createSphereObject(selectedMateria);
+            break;
+        case 'create-capsule-3d':
+            newMateria = createCapsule3DObject(selectedMateria);
+            break;
+        case 'create-plane-3d':
+            newMateria = createPlane3DObject(selectedMateria);
+            break;
+        case 'create-triangle-3d':
+            newMateria = createTriangle3DObject(selectedMateria);
+            break;
+        case 'create-dir-light-3d':
+            newMateria = createDirectionalLight3D(selectedMateria);
+            break;
+        case 'create-point-light-3d':
+            newMateria = createPointLight3D(selectedMateria);
+            break;
+        case 'create-spot-light-3d':
+            newMateria = createSpotLight3D(selectedMateria);
+            break;
+
         case 'create-ui-health-bar':
             {
                 let parentCanvas = selectedMateria;

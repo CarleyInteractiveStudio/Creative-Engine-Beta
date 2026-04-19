@@ -13,10 +13,13 @@ export class PerformanceMonitor {
         this.optimizationLevel = 0; // 0: None, 1: Low, 2: High, 3: Extreme
 
         this.targetMaxFps = 60;
+        this.forceFps = false;
         this.targetMinFps = 30;
 
         this.lastOptimizationCheck = 0;
         this.frameTimeHistory = 30; // Average over 30 frames
+        this.warmupFrames = 100; // Wait 100 frames before first optimization check
+        this.framesTracked = 0;
 
         // Intelligent Frame Analyzer
         this.lastStableSnapshots = [];
@@ -26,12 +29,14 @@ export class PerformanceMonitor {
 
     updateConfig(config) {
         this.targetMaxFps = config.maxFps || 0; // 0 = no limit
+        this.forceFps = !!config.forceFps;
         this.targetMinFps = config.minFps || 30;
-        console.log(`[PerformanceMonitor] Config updated: MaxFPS=${this.targetMaxFps}, MinFPS=${this.targetMinFps}`);
+        console.log(`[PerformanceMonitor] Config updated: MaxFPS=${this.targetMaxFps}, ForceFPS=${this.forceFps}, MinFPS=${this.targetMinFps}`);
     }
 
     recordFrame(dt) {
         const now = performance.now();
+        this.framesTracked++;
         this.lastFrameTimes.push(dt);
         if (this.lastFrameTimes.length > this.frameTimeHistory) {
             this.lastFrameTimes.shift();
@@ -41,7 +46,7 @@ export class PerformanceMonitor {
         this.fps = 1 / avgDt;
 
         // Check for optimization every 500ms
-        if (now - this.lastOptimizationCheck > 500) {
+        if (now - this.lastOptimizationCheck > 500 && this.framesTracked > this.warmupFrames) {
             this.checkPerformance();
             this.lastOptimizationCheck = now;
         }
@@ -127,7 +132,8 @@ export class PerformanceMonitor {
 
     reportCulprits(culprits) {
         culprits.forEach(c => {
-            const msg = `[Optimizer] CAUSA DETECTADA: ${c.msg}`;
+            const msg = `> Optimizador: Detectada causa "${c.msg}". Ejecutando ajuste de nivel ${this.optimizationLevel}...`;
+            console.warn(`[PerformanceMonitor] ${c.msg}`);
             if (window.logToUIConsole) {
                 window.logToUIConsole({
                     message: msg,
@@ -135,9 +141,7 @@ export class PerformanceMonitor {
                     isOptimizer: true,
                     culpritType: c.type,
                     culpritData: c
-                }, 'warn');
-            } else {
-                console.warn(msg);
+                }, 'info');
             }
         });
     }
@@ -220,11 +224,21 @@ export class PerformanceMonitor {
     }
 
     applyOptimization() {
-        const msg = (Localization.get('OPT_LEVEL_NOTICE') || 'Optimization Level: {level} (FPS: {fps})')
-            .replace('{level}', this.optimizationLevel)
-            .replace('{fps}', Math.round(this.fps));
+        let levelDesc = "Normal";
+        if (this.optimizationLevel === 1) levelDesc = "Ajuste de física";
+        else if (this.optimizationLevel === 2) levelDesc = "Reducción de luces y partículas";
+        else if (this.optimizationLevel === 3) levelDesc = "Simplificación de mapa y terreno";
 
-        console.warn(`[PerformanceMonitor] ${msg}`);
+        const msg = `> Optimizador: Se ha optimizado el juego aplicando "${levelDesc}" (Nivel ${this.optimizationLevel}).`;
+
+        console.warn(`[PerformanceMonitor] Optimization Level ${this.optimizationLevel} applied. FPS: ${Math.round(this.fps)}`);
+        if (window.logToUIConsole) {
+            window.logToUIConsole({
+                message: msg,
+                isSystemString: true,
+                isOptimizer: true
+            }, 'info');
+        }
 
         // 1. Notify scripts via event
         if (this.optimizationLevel >= 2) {

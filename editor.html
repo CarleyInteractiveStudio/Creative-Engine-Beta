@@ -910,7 +910,7 @@ public star() {
                             <li data-action="create-parallax" data-i18n="PARALLAX">Parallax</li>
                             <li data-action="create-rectangle" data-i18n="RECTANGULO">Rectángulo</li>
                             <li data-action="create-circle" data-i18n="CIRCULO">Círculo</li>
-                            <li data-action="create-triangle" data-i18n="TRIANGULO">Triángulo</li>
+                            <li data-action="create-triangle-2d" data-i18n="TRIANGULO">Triángulo</li>
                             <li data-action="create-capsule" data-i18n="CAPSULA">Cápsula</li>
                             <li data-action="create-line-collider" data-i18n="LINE_COLLIDER">Colisionador de Líneas</li>
                             <li data-action="create-combatant">Combatiente (Ataque/Vida)</li>
@@ -918,6 +918,16 @@ public star() {
                             <li data-action="create-bone" data-i18n="BONE">Hueso</li>
                             <li data-action="create-skeleton" data-i18n="SKELETON">Esqueleto (Skinning)</li>
                             <li data-action="create-ik-manager" data-i18n="IK_MANAGER">Gestor IK</li>
+                        </ul>
+                    </li>
+                    <li class="has-submenu">
+                        <span data-i18n="MATERIA_3D">Materia 3D</span> <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
+                        <ul class="submenu">
+                            <li data-action="create-cube" data-i18n="CUBE">Cubo</li>
+                            <li data-action="create-sphere" data-i18n="SPHERE">Esfera</li>
+                            <li data-action="create-capsule-3d" data-i18n="CAPSULE">Cápsula</li>
+                            <li data-action="create-triangle-3d" data-i18n="TRIANGLE">Triángulo</li>
+                            <li data-action="create-plane-3d" data-i18n="PLANE">Plano</li>
                         </ul>
                     </li>
                     <li class="has-submenu">
@@ -937,10 +947,16 @@ public star() {
                     <li class="has-submenu">
                         <span data-i18n="LUZ">Luz</span> <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
                         <ul class="submenu">
+                            <li class="menu-divider-label">2D</li>
                             <li data-action="create-point-light" data-i18n="LUZ_PUNTO">Point Light</li>
                             <li data-action="create-spot-light" data-i18n="LUZ_FOCAL">Spot Light</li>
                             <li data-action="create-freeform-light" data-i18n="LUZ_FORMA_LIBRE">Freeform Light</li>
                             <li data-action="create-sprite-light" data-i18n="LUZ_SPRITE">Sprite Light</li>
+                            <hr>
+                            <li class="menu-divider-label">3D</li>
+                            <li data-action="create-dir-light-3d" data-i18n="DIRECTIONALLIGHT3D">Directional Light</li>
+                            <li data-action="create-point-light-3d" data-i18n="POINTLIGHT3D">Point Light</li>
+                            <li data-action="create-spot-light-3d" data-i18n="SPOTLIGHT3D">Spot Light</li>
                         </ul>
                     </li>
                 </ul>
@@ -1159,6 +1175,11 @@ public star() {
                         <label for="settings-max-fps" data-i18n="MAX_FPS">FPS Máximo</label>
                         <input type="number" id="settings-max-fps" min="0" value="60">
                     </div>
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="settings-force-fps">
+                        <label for="settings-force-fps" data-i18n="FORZAR_FPS">Forzar FPS (Consumo alto)</label>
+                    </div>
+                    <p class="field-description" data-i18n="HINT_FORZAR_FPS" style="color: #ff4444; font-size: 0.8em;">Intenta mantener los FPS estables usando un bucle de espera activa. ADVERTENCIA: Esto aumentará el uso de CPU y el consumo de RAM.</p>
                     <p class="field-description" data-i18n="HINT_MAX_FPS">Limita los FPS para ahorrar batería y recursos. Usa 0 para sin límite.</p>
 
                     <div class="inspector-row">
@@ -1174,7 +1195,15 @@ public star() {
                         <label for="settings-ram-limit" data-i18n="LIMITE_RAM">Límite de RAM (MB)</label>
                         <input type="number" id="settings-ram-limit" min="256" step="128" value="2048">
                     </div>
+                    <div class="inspector-row">
+                        <label for="settings-cpu-limit" data-i18n="LIMITE_CPU">Límite de CPU (%)</label>
+                        <input type="number" id="settings-cpu-limit" min="10" max="100" value="100">
+                    </div>
                     <p class="field-description">Define el límite de memoria para el motor. Si se supera el 80%, el motor intentará liberar recursos no utilizados. <b>Nota:</b> Los navegadores suelen limitar cada pestaña a 4GB (4096MB); si aumentas este valor y la pestaña se cierra, es una restricción del navegador, no un error del motor.</p>
+                    <hr>
+                    <div class="inspector-row">
+                        <button id="settings-optimize-mem-btn" class="secondary-btn" style="width: 100%;" data-i18n="OPTIMIZAR_MEMORIA_AHORA">Optimizar Memoria Ahora</button>
+                    </div>
                 </fieldset>
 
                 <fieldset class="settings-section">

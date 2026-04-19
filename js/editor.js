@@ -6,6 +6,7 @@ import { Renderer3D } from './engine/Renderer3D.js';
 import { PhysicsSystem } from './engine/Physics.js';
 import * as UISystem from './engine/ui/UISystem.js';
 import * as Components from './engine/Components.js';
+import * as Components3D from './engine/Components3D.js';
 import { Materia } from './engine/Materia.js';
 import { getURLForAssetPath } from './engine/AssetUtils.js';
 import * as AnimationEditorWindow from './editor/ui/AnimationEditorWindow.js';
@@ -84,12 +85,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let isGameRunning = false;
     let isGamePaused = false;
     let lastFrameTime = 0;
+    let cpuExecutionTime = 0; // Time spent in JS execution this frame
+    let lastRamEstimateTime = 0;
+    let cachedRamEstimate = 0;
 
     // Performance tracking state
     let gamePerfStats = {
         minFps: Infinity,
         maxFps: -Infinity,
         maxRam: 0,
+        maxCpu: 0,
         startTime: 0
     };
     let gameWindow = null;
@@ -153,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 1. Detect and wrap Error objects or structured objects
         if (typeof message === 'object' && message !== null) {
-            if (message.message && (message.line !== undefined || message.scriptName)) {
+            if (message.message && (message.line !== undefined || message.scriptName || message.isOptimizer)) {
                 structuredError = message;
                 fullMessage = message.message;
             } else if (message instanceof Error) {
@@ -281,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <span class="msg-icon">${structuredError.isOptimizer ? '🚀' : icon}</span>
                 <div class="msg-body">
                     <div class="msg-header">
-                        <span class="error-title">${structuredError.isOptimizer ? 'Optimizador Inteligente' : title}</span>
+                        <span class="error-title">${structuredError.isOptimizer ? 'Monitor de Rendimiento' : title}</span>
                         ${structuredError.line ? `<span class="error-line">Linea ${structuredError.line}</span>` : ''}
                     </div>
                     <span class="msg-text">${translateErrorMessage(structuredError.message)}</span>
@@ -296,7 +301,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
 
-            if (isRuntime) {
+            if (structuredError.isOptimizer) {
+                msgEl.style.borderLeft = "4px solid #00a8ff";
+                msgEl.style.backgroundColor = "rgba(0, 168, 255, 0.1)";
+            } else if (isRuntime) {
                 msgEl.style.borderLeft = "4px solid #ff9f43";
                 msgEl.style.backgroundColor = "rgba(255, 159, 67, 0.15)";
             } else {
@@ -313,6 +321,9 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (type === 'warn') {
                 msgEl.style.backgroundColor = "rgba(243, 202, 88, 0.1)";
                 msgEl.style.borderLeft = "3px solid #f3ca58";
+            } else if (type === 'info') {
+                msgEl.style.backgroundColor = "rgba(0, 168, 255, 0.08)";
+                msgEl.style.borderLeft = "3px solid #00a8ff";
             }
         }
 
@@ -401,7 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'animation-save-btn', 'current-scene-name', 'animator-controller-panel', 'drawing-canvas-container',
             'anim-onion-skin-canvas', 'anim-grid-canvas', 'anim-bg-toggle-btn', 'anim-grid-toggle-btn',
             'anim-onion-toggle-btn', 'timeline-toggle-btn', 'project-settings-modal', 'settings-app-name',
-            'settings-author-name', 'settings-app-version', 'settings-engine-version', 'settings-renderer-mode', 'settings-max-fps', 'settings-min-fps', 'settings-ram-limit', 'settings-icon-preview',
+            'settings-author-name', 'settings-app-version', 'settings-engine-version', 'settings-renderer-mode', 'settings-max-fps', 'settings-force-fps', 'settings-min-fps', 'settings-ram-limit', 'settings-cpu-limit', 'settings-optimize-mem-btn', 'settings-icon-preview',
             'settings-icon-picker-btn', 'settings-logo-list', 'settings-add-logo-btn', 'settings-show-engine-logo',
             'settings-keystore-path', 'settings-keystore-picker-btn', 'settings-keystore-pass', 'settings-key-alias',
             'settings-key-pass', 'settings-export-project-btn', 'settings-save-btn', 'engine-logo-confirm-modal',
@@ -1272,6 +1283,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.warn(`[Config] Incompatible rendererMode '${currentProjectConfig.rendererMode}' for 2D project. Resetting to 'canvas2d'.`);
                     currentProjectConfig.rendererMode = 'canvas2d';
                 }
+
+                // RELEASE 3D Resources if in a strict 2D project to save RAM
+                if (renderer3D) renderer3D.dispose();
+                if (gameRenderer3D) gameRenderer3D.dispose();
             }
 
             window.currentProjectConfig = currentProjectConfig;
@@ -1728,7 +1743,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (is3D) {
                     const has3DSupported = m.getComponent(Components.SpriteRenderer) ||
                                           m.getComponent(Components.TextureRender) ||
-                                          m.getComponent(Components.MeshRenderer3D) ||
+                                          m.getComponent(Components3D.MeshRenderer3D) ||
                                           m.getComponent(Components.TilemapRenderer) ||
                                           m.getComponent(Components.Terreno2D) ||
                                           m.getComponent(Components.Water);
@@ -2175,15 +2190,44 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const editorLoop = (timestamp) => {
+        const loopStartTime = performance.now();
+
+        // --- CPU Usage Limiting ---
+        // If we are over our user-defined CPU budget for the last frame,
+        // we voluntarily delay this frame to give the browser air.
+        const cpuLimit = (currentProjectConfig && currentProjectConfig.cpuLimit) || 100;
+        if (cpuLimit < 100 && deltaTime > 0) {
+            const frameBudgetMs = (1 / (EngineAPI.getPerformanceMonitor()?.targetMaxFps || 60)) * 1000;
+            const cpuBudgetMs = frameBudgetMs * (cpuLimit / 100);
+            if (cpuExecutionTime > cpuBudgetMs) {
+                // Yield control back to browser for a bit
+                setTimeout(() => {
+                    editorLoopId = requestAnimationFrame(editorLoop);
+                }, 1);
+                return;
+            }
+        }
+
         // --- FPS Control ---
         const perfMonitor = EngineAPI.getPerformanceMonitor();
         const targetMaxFps = perfMonitor ? perfMonitor.targetMaxFps : 0;
+        const forceFps = perfMonitor ? perfMonitor.forceFps : false;
 
         if (targetMaxFps > 0) {
             const frameTime = 1000 / targetMaxFps;
-            if (timestamp - lastFrameTime < frameTime) {
-                editorLoopId = requestAnimationFrame(editorLoop);
-                return;
+            const elapsed = timestamp - lastFrameTime;
+
+            if (elapsed < frameTime) {
+                // If force FPS is enabled, we stay in a busy-wait loop for the remaining time
+                // to be as precise as possible, though it consumes more CPU.
+                if (forceFps && (frameTime - elapsed) < 5) { // Only busy-wait if we are very close (<5ms)
+                    while (performance.now() - lastFrameTime < frameTime) {
+                        // Busy wait
+                    }
+                } else {
+                    editorLoopId = requestAnimationFrame(editorLoop);
+                    return;
+                }
             }
         }
 
@@ -2277,9 +2321,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (currentFps < gamePerfStats.minFps) gamePerfStats.minFps = currentFps;
                 if (currentFps > gamePerfStats.maxFps) gamePerfStats.maxFps = currentFps;
             }
-            if (window.performance && window.performance.memory) {
-                const currentRam = window.performance.memory.usedJSHeapSize / 1048576;
-                if (currentRam > gamePerfStats.maxRam) gamePerfStats.maxRam = currentRam;
+            if (SceneManager.currentScene) {
+                const now = performance.now();
+                if (now - lastRamEstimateTime > 1000) { // Estimate RAM only once per second
+                    let gameBytes = 0;
+                    SceneManager.currentScene.getAllMaterias().forEach(m => {
+                        gameBytes += MathUtils.estimateMateriaMemory(m).total;
+                    });
+                    cachedRamEstimate = gameBytes / 1048576;
+                    lastRamEstimateTime = now;
+                }
+
+                if (cachedRamEstimate > gamePerfStats.maxRam) gamePerfStats.maxRam = cachedRamEstimate;
+            }
+            if (deltaTime > 0) {
+                const cpuUsage = Math.min(100, (cpuExecutionTime / (deltaTime * 1000)) * 100);
+                if (cpuUsage > gamePerfStats.maxCpu) gamePerfStats.maxCpu = cpuUsage;
             }
 
             if (is3D) {
@@ -2329,6 +2386,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update InputManager at the very end of the frame
         InputManager.update();
 
+        cpuExecutionTime = performance.now() - loopStartTime;
         editorLoopId = requestAnimationFrame(editorLoop);
     };
 
@@ -2431,6 +2489,7 @@ document.addEventListener('DOMContentLoaded', () => {
             minFps: Infinity,
             maxFps: -Infinity,
             maxRam: 0,
+            maxCpu: 0,
             startTime: performance.now()
         };
 
@@ -2518,19 +2577,13 @@ document.addEventListener('DOMContentLoaded', () => {
         window.isGameRunning = false;
         document.body.classList.remove('game-mode');
 
-        // Show Performance Capture Summary
-        const totalTime = ((performance.now() - gamePerfStats.startTime) / 1000).toFixed(1);
-        if (totalTime > 0.5) {
-            const summary = `
-                <b>Tiempo total:</b> ${totalTime}s<br>
-                <b>FPS:</b> Min: ${gamePerfStats.minFps === Infinity ? 0 : gamePerfStats.minFps.toFixed(1)} | Max: ${gamePerfStats.maxFps.toFixed(1)}<br>
-                <b>RAM Pico:</b> ${gamePerfStats.maxRam.toFixed(1)} MB
-            `;
-            showNotificationDialog('Captura de Rendimiento', summary);
-        }
         // Restore InputManager out of game mode
         try { InputManager.setGameRunning(false); } catch(e) { /* ignore if not available */ }
         console.log("Game Stopped");
+
+        if (window.logToUIConsole) {
+            window.logToUIConsole("Inicializando restauración de entorno de edición...", "info");
+        }
 
         // Notify scripts about disable/destroy so they can clean up
         try {
@@ -2571,6 +2624,36 @@ document.addEventListener('DOMContentLoaded', () => {
         physicsSystem = null;
         uiSystem = null;
 
+        // Show Performance Capture Summary (Moved here to show after all restoration logs)
+        const totalTime = ((performance.now() - gamePerfStats.startTime) / 1000).toFixed(1);
+        if (totalTime > 0.5) {
+            const minFps = gamePerfStats.minFps === Infinity ? 0 : gamePerfStats.minFps.toFixed(1);
+            const maxFps = gamePerfStats.maxFps === -Infinity ? 0 : gamePerfStats.maxFps.toFixed(1);
+            const ramMax = gamePerfStats.maxRam.toFixed(1);
+            const cpuMax = gamePerfStats.maxCpu.toFixed(1);
+
+            const stats = {
+                'Duración': totalTime + 's',
+                'FPS Mínimo': minFps,
+                'FPS Máximo': maxFps,
+                'RAM Máxima': ramMax + ' MB',
+                'CPU Máxima': cpuMax + '%'
+            };
+            console.log("%c CAPTURA DE RENDIMIENTO ", "background: #222; color: #bada55; font-weight: bold; padding: 2px; border-radius: 3px;");
+            console.table(stats);
+
+            // Also log to UI Console for visibility
+            if (window.logToUIConsole) {
+                const summaryMsg = `El rendimiento del juego fue:
+- Máximo FPS: ${maxFps}
+- Mínimo FPS: ${minFps}
+- Uso máximo de RAM: ${ramMax} MB
+- Uso máximo de CPU: ${cpuMax}%
+- Duración de la sesión: ${totalTime}s`;
+
+                window.logToUIConsole(summaryMsg, 'info');
+            }
+        }
 
         updateGameControlsUI();
     };
@@ -4581,6 +4664,7 @@ public start() {
             const getSelectedMateria = () => selectedMateria;
             const getIsGameRunning = () => isGameRunning;
             const getDeltaTime = () => deltaTime;
+            const getCpuExecutionTime = () => cpuExecutionTime;
             const getActiveTool = () => SceneView.getActiveTool ? SceneView.getActiveTool() : 'move';
 
             updateLoadingProgress(50, "Configurando modulos del editor...");
@@ -4608,7 +4692,7 @@ public start() {
                     return await projectHandle.getDirectoryHandle('Assets');
                 }
             });
-            DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
+            DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime, getCpuExecutionTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, updateAssetBrowserCallback: updateAssetBrowser, Components, updateScene, getActiveView, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool, getCurrentProjectConfig: () => currentProjectConfig, getDeltaTime: () => deltaTime });
             window._SceneView = SceneView;
             Terminal.initialize(dom, projectsDirHandle);
@@ -4709,6 +4793,11 @@ public start() {
             updateLoadingProgress(90, "Finalizando...");
             setupEventListeners();
             initializeFloatingPanels();
+
+            if (window.logToUIConsole) {
+                window.logToUIConsole("Creative Engine inicializado. Optimizando recursos y preparando caché de shaders...", "info");
+            }
+
             editorLoopId = requestAnimationFrame(editorLoop);
 
             const oldPlayButton = document.getElementById('btn-play');

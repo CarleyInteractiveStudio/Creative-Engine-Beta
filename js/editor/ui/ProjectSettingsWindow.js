@@ -84,8 +84,10 @@ export async function saveProjectConfig(showAlert = true) {
         currentProjectConfig.projectType = document.getElementById('settings-project-type').value;
         currentProjectConfig.rendererMode = dom.settingsRendererMode.value;
         currentProjectConfig.maxFps = parseInt(dom.settingsMaxFps.value) || 0;
+        currentProjectConfig.forceFps = dom.settingsForceFps.checked;
         currentProjectConfig.minFps = parseInt(dom.settingsMinFps.value) || 30;
         currentProjectConfig.ramLimit = parseInt(dom.settingsRamLimit.value) || 2048;
+        currentProjectConfig.cpuLimit = parseInt(dom.settingsCpuLimit.value) || 100;
         // Note: The mask type is saved via the AmbienteControlWindow, not here.
         currentProjectConfig.showEngineLogo = dom.settingsShowEngineLogo.checked;
         currentProjectConfig.keystore.pass = dom.settingsKeystorePass.value;
@@ -272,6 +274,14 @@ function setupEventListeners() {
         dom.projectSettingsModal.classList.add('is-open');
     });
 
+    if (dom.settingsOptimizeMemBtn) {
+        dom.settingsOptimizeMemBtn.addEventListener('click', () => {
+            import('../../engine/CEEngine.js').then(CEEngine => {
+                CEEngine.optimize();
+            });
+        });
+    }
+
     if (dom.settingsSaveBtn) {
         dom.settingsSaveBtn.addEventListener('click', () => saveProjectConfig(true));
     }
@@ -445,8 +455,10 @@ export function populateUI(config) {
 
     if (dom.settingsRendererMode) dom.settingsRendererMode.value = currentProjectConfig.rendererMode;
     if (dom.settingsMaxFps) dom.settingsMaxFps.value = currentProjectConfig.maxFps !== undefined ? currentProjectConfig.maxFps : 60;
+    if (dom.settingsForceFps) dom.settingsForceFps.checked = !!currentProjectConfig.forceFps;
     if (dom.settingsMinFps) dom.settingsMinFps.value = currentProjectConfig.minFps !== undefined ? currentProjectConfig.minFps : 30;
     if (dom.settingsRamLimit) dom.settingsRamLimit.value = currentProjectConfig.ramLimit || 2048;
+    if (dom.settingsCpuLimit) dom.settingsCpuLimit.value = currentProjectConfig.cpuLimit || 100;
     if (dom.settingsShowEngineLogo) dom.settingsShowEngineLogo.checked = currentProjectConfig.showEngineLogo;
     if (dom.settingsKeystorePath) dom.settingsKeystorePath.value = currentProjectConfig.keystore.path;
 

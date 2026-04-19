@@ -6,6 +6,7 @@ import { getCurrentDirectoryHandle, getCurrentDirectoryPath } from './ui/AssetBr
 import * as MateriaFactory from './MateriaFactory.js';
 import { WeightPainter } from './WeightPainter.js';
 import { broadcastUpdate } from './CollaborationSystem.js';
+import { Gizmos } from '../engine/Gizmos.js';
 import * as glMatrix from 'gl-matrix';
 const { vec3, mat4, quat } = glMatrix;
 
@@ -48,7 +49,7 @@ function screenToWorld(screenX, screenY) {
     return { x: worldX, y: worldY };
 }
 
-function world3DToScreen(worldPos) {
+export function world3DToScreen(worldPos) {
     const r3d = window._Renderer3D;
     if (!r3d || !r3d.lastProjectionMatrix || !r3d.lastViewMatrix) return null;
 
@@ -2023,15 +2024,33 @@ function check3DGizmoHit(canvasPos, materia) {
 
 function draw3DGizmos(materia) {
     const transform = materia.getComponent(Components.Transform);
-    const screenPos = world3DToScreen({ x: transform.x, y: transform.y, z: transform.z });
+    const center = { x: transform.x, y: transform.y, z: transform.z };
+    const screenPos = world3DToScreen(center);
     if (!screenPos) return;
 
     const { ctx } = renderer;
     const GIZMO_SIZE = 50;
 
+    // Draw Wireframe helpers for 3D Primitives (in 3D projected space)
+    const meshRenderer = materia.getComponent(Components3D.MeshRenderer3D);
+    if (meshRenderer) {
+        if (meshRenderer.meshType === 'Cube') {
+            Gizmos.drawWireCube(ctx, center, { x: 100 * transform.scale.x, y: 100 * transform.scale.y, z: 100 * transform.scale.z });
+        } else if (meshRenderer.meshType === 'Sphere') {
+            Gizmos.drawWireSphere(ctx, center, 50 * Math.max(transform.scale.x, transform.scale.y, transform.scale.z));
+        } else if (meshRenderer.meshType === 'Plane') {
+            Gizmos.drawWirePlane(ctx, center, { x: 100 * transform.scale.x, z: 100 * transform.scale.z });
+        } else if (meshRenderer.meshType === 'Triangle') {
+            Gizmos.drawWireTriangle(ctx, center, { x: 100 * transform.scale.x, y: 100 * transform.scale.y });
+        } else if (meshRenderer.meshType === 'Capsule') {
+            Gizmos.drawWireCapsule(ctx, center, 50 * Math.max(transform.scale.x, transform.scale.z), 100 * transform.scale.y);
+        }
+    }
+
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0); // Overlay in screen space
     ctx.translate(screenPos.x, screenPos.y);
+
 
     if (activeTool === 'move' || activeTool === 'universal') {
         const ARROW_SIZE = 10;
@@ -2201,6 +2220,12 @@ function drawGizmoIcons() {
             iconPath = 'icons/camera.svg';
         } else if (materia.getComponent(Components.VideoPlayer)) {
             iconPath = 'icons/video.svg';
+        } else if (materia.getComponent(Components3D.DirectionalLight3D)) {
+            iconPath = 'icons/sparkles.svg';
+        } else if (materia.getComponent(Components3D.PointLight3D)) {
+            iconPath = 'icons/lightbulb.svg';
+        } else if (materia.getComponent(Components3D.SpotLight3D)) {
+            iconPath = 'icons/flashlight.svg';
         }
 
         if (iconPath) {

@@ -1,5 +1,7 @@
 import * as Components from './Components.js';
+import * as Components3D from './Components3D.js';
 const { Transform, SpriteRenderer, Camera } = Components;
+const { MeshRenderer3D, DirectionalLight3D, PointLight3D, SpotLight3D } = Components3D;
 
 // Import gl-matrix for 3D math via importmap
 import * as glMatrix from 'gl-matrix';
@@ -452,9 +454,9 @@ export class Renderer3D {
         gl.uniform3fv(this.programInfo.uniformLocations.viewPosition, activeViewPosition);
 
         // Global Lights Setup
-        const dirLight = scene.getAllMaterias().find(m => m.isActive && m.getComponent(Components.DirectionalLight3D));
+        const dirLight = scene.getAllMaterias().find(m => m.isActive && m.getComponent(Components3D.DirectionalLight3D));
         if (dirLight) {
-            const dlComp = dirLight.getComponent(Components.DirectionalLight3D);
+            const dlComp = dirLight.getComponent(Components3D.DirectionalLight3D);
             gl.uniform3fv(this.programInfo.uniformLocations.uDirLightDir, [dlComp.direction.x, dlComp.direction.y, dlComp.direction.z]);
             gl.uniform3fv(this.programInfo.uniformLocations.uDirLightColor, this.hexToRgb(dlComp.color).map(c => c * dlComp.intensity));
         } else {
@@ -464,10 +466,10 @@ export class Renderer3D {
         gl.uniform3fv(this.programInfo.uniformLocations.uAmbientLight, [0.3, 0.3, 0.3]);
 
         // Point Lights Setup
-        const pointLights = scene.getAllMaterias().filter(m => m.isActive && m.getComponent(Components.PointLight3D)).slice(0, 4);
+        const pointLights = scene.getAllMaterias().filter(m => m.isActive && m.getComponent(Components3D.PointLight3D)).slice(0, 4);
         const plPos = [], plColor = [], plRange = [];
         pointLights.forEach(pl => {
-            const comp = pl.getComponent(Components.PointLight3D);
+            const comp = pl.getComponent(Components3D.PointLight3D);
             const trans = pl.getComponent(Transform);
             plPos.push(trans.x, trans.y, trans.z);
             const rgb = this.hexToRgb(comp.color);
@@ -485,7 +487,7 @@ export class Renderer3D {
         // Optimization: Filter out non-renderable materias once per frame
         const renderableMaterias = scene.getAllMaterias().filter(m => {
             if (!m.isActive) return false;
-            return m.getComponent(Components.MeshRenderer3D) ||
+            return m.getComponent(Components3D.MeshRenderer3D) ||
                    m.getComponent(Components.SpriteRenderer) ||
                    m.getComponent(Components.TextureRender) ||
                    m.getComponent(Components.TilemapRenderer) ||
@@ -514,7 +516,7 @@ export class Renderer3D {
     }
 
     renderMateria(materia, projectionMatrix, viewMatrix, options) {
-        const meshRenderer = materia.getComponent(Components.MeshRenderer3D);
+        const meshRenderer = materia.getComponent(Components3D.MeshRenderer3D);
         const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
         const textureRender = materia.getComponent(Components.TextureRender);
         const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);

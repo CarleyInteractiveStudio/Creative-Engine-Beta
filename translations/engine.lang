@@ -309,6 +309,10 @@ CIRCLE_COLLIDER_2D: Círculo 2D
 CREAR_MATERIA: Crear Materia
 MATERIA_VACIA: Materia Vacía
 MATERIA_2D: Materia 2D
+MATERIA_3D: Materia 3D
+CUBE: Cubo
+SPHERE: Esfera
+PLANE: Plano
 SPRITE: Sprite
 TILEMAP: Tilemap
 TERRENO_2D: Terreno 2D
@@ -316,6 +320,7 @@ PARALLAX: Parallax
 RECTANGULO: Rectángulo
 CIRCULO: Círculo
 TRIANGULO: Triángulo
+TRIANGLE: Triángulo 3D
 CAPSULA: Cápsula
 UI: UI
 BOTON: Botón
@@ -324,6 +329,9 @@ TEXTO: Texto
 LUZ: Luz
 LUZ_PUNTO: Luz Punto
 LUZ_FOCAL: Luz Focal
+DIRECTIONALLIGHT3D: Luz Direccional
+POINTLIGHT3D: Luz Punto 3D
+SPOTLIGHT3D: Luz Focal 3D
 LUZ_FORMA_LIBRE: Luz Libre
 LUZ_SPRITE: Luz Sprite
 CAMARA: Cámara
@@ -439,6 +447,10 @@ MIN_FPS: FPS Mínimo
 HINT_MAX_FPS: Limita los FPS para ahorrar batería y recursos. Usa 0 para sin límite.
 HINT_MIN_FPS: El motor activará optimizaciones extremas si el rendimiento cae cerca de este valor.
 HINT_MIN_FPS_NOTICE: Nota: Esta cantidad mínima no está garantizada, pero activará una optimización profunda para intentar mantener la fluidez.
+FORZAR_FPS: Forzar FPS (Consumo alto)
+HINT_FORZAR_FPS: Intenta mantener los FPS estables usando un bucle de espera activa. ADVERTENCIA: Esto aumentará el uso de CPU y el consumo de RAM.
+OPTIMIZAR_MEMORIA_AHORA: Optimizar Memoria Ahora
+LIMITE_CPU: Límite de CPU (%)
 
 # Performance
 RENDIMIENTO: Desempenho
@@ -538,6 +550,7 @@ EDIT_PREFAB: Editar Prefab
 ANIMATION_PREVIEW: Previsualización de Animación
 SLICING: Slicing
 CREATE_ANIM_ASSET: Crear Asset de Animación (.cea)
+CREAR_ANIMACION_SIMPLE: Crear Animación
 APPLY: Aplicar
 PRESETS: Presets
 WHITE: Blanco
@@ -910,6 +923,10 @@ CIRCLE_COLLIDER_2D: Circle Collider 2D
 CREAR_MATERIA: Create Matter
 MATERIA_VACIA: Empty Matter
 MATERIA_2D: 2D Matter
+MATERIA_3D: 3D Matter
+CUBE: Cube
+SPHERE: Sphere
+PLANE: Plane
 SPRITE: Sprite
 TILEMAP: Tilemap
 TERRENO_2D: 2D Terrain
@@ -917,6 +934,7 @@ PARALLAX: Parallax
 RECTANGULO: Rectangle
 CIRCULO: Circle
 TRIANGULO: Triangle
+TRIANGLE: 3D Triangle
 CAPSULA: Capsule
 UI: UI
 BOTON: Button
@@ -925,6 +943,9 @@ TEXTO: Text
 LUZ: Light
 LUZ_PUNTO: Point Light
 LUZ_FOCAL: Spot Light
+DIRECTIONALLIGHT3D: Directional Light
+POINTLIGHT3D: Point Light 3D
+SPOTLIGHT3D: Spot Light 3D
 LUZ_FORMA_LIBRE: Freeform Light
 LUZ_SPRITE: Sprite Light
 CAMARA: Camera
@@ -1041,6 +1062,10 @@ MIN_FPS: Min FPS
 HINT_MAX_FPS: Limits FPS to save battery and resources. Use 0 for no limit.
 HINT_MIN_FPS: The engine will trigger extreme optimizations if performance drops near this value.
 HINT_MIN_FPS_NOTICE: Note: This minimum amount is not guaranteed, but it will trigger deep optimization to try to maintain fluidity.
+FORZAR_FPS: Force FPS (High consumption)
+HINT_FORZAR_FPS: Tries to maintain stable FPS using a busy-wait loop. WARNING: This will increase CPU and RAM usage.
+OPTIMIZAR_MEMORIA_AHORA: Optimize Memory Now
+LIMITE_CPU: CPU Limit (%)
 
 # Combat & Health
 HEALTH: Health
@@ -1132,6 +1157,7 @@ EDIT_PREFAB: Edit Prefab
 ANIMATION_PREVIEW: Animation Preview
 SLICING: Slicing
 CREATE_ANIM_ASSET: Create Animation Asset (.cea)
+CREAR_ANIMACION_SIMPLE: Create Animation
 APPLY: Apply
 PRESETS: Presets
 WHITE: White
@@ -1460,6 +1486,7 @@ PARALLAX: Parallax
 RECTANGULO: Retângulo
 CIRCULO: Círculo
 TRIANGULO: Triângulo
+TRIANGLE: Triângulo 3D
 CAPSULA: Cápsula
 UI: UI
 BOTON: Botão
@@ -1934,6 +1961,7 @@ PARALLAX: Параллакс
 RECTANGULO: Прямоугольник
 CIRCULO: Круг
 TRIANGULO: Треугольник
+TRIANGLE: 3D Треугольник
 CAPSULA: Капсула
 UI: Интерфейс
 BOTON: Кнопка
@@ -2428,6 +2456,7 @@ PARALLAX: 视差
 RECTANGULO: 矩形
 CIRCULO: 圆形
 TRIANGULO: 三角形
+TRIANGLE: 3D 三角形
 CAPSULA: 胶囊体
 UI: 界面
 BOTON: 按钮

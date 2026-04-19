@@ -523,6 +523,15 @@ function findSpriteBounds(startX, startY, width, height, data, visited, alphaThr
     return { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
 }
 
+function isRectEmpty(x, y, w, h) {
+    if (!drawingCtx) return false;
+    const data = drawingCtx.getImageData(x, y, w, h).data;
+    for (let i = 3; i < data.length; i += 4) {
+        if (data[i] > 10) return false;
+    }
+    return true;
+}
+
 function sliceByCellSize(isPreview = false) {
     const slices = [];
     const cellWidth = parseInt(localDom.pixelSizeX.value, 10);
@@ -537,6 +546,10 @@ function sliceByCellSize(isPreview = false) {
     for (let y = offsetY; y < sourceImage.height; y += cellHeight + paddingY) {
         for (let x = offsetX; x < sourceImage.width; x += cellWidth + paddingX) {
             if (x + cellWidth > sourceImage.width || y + cellHeight > sourceImage.height) continue;
+
+            // Discard empty slices if confirmed (not in preview)
+            if (!isPreview && isRectEmpty(x, y, cellWidth, cellHeight)) continue;
+
             slices.push({ x, y, width: cellWidth, height: cellHeight });
         }
     }
@@ -557,6 +570,10 @@ function sliceByCellCount(isPreview = false) {
         for (let c = 0; c < cols; c++) {
             const x = c * cellWidth;
             const y = r * cellHeight;
+
+            // Discard empty slices if confirmed (not in preview)
+            if (!isPreview && isRectEmpty(x, y, cellWidth, cellHeight)) continue;
+
             slices.push({ x, y, width: cellWidth, height: cellHeight });
         }
     }

@@ -10,6 +10,7 @@ let getActiveTool;
 let getSelectedMateria;
 let getIsGameRunning;
 let getDeltaTime;
+let getCpuExecutionTime;
 
 // --- Public API ---
 
@@ -21,6 +22,7 @@ export function initialize(dependencies) {
     getSelectedMateria = dependencies.getSelectedMateria;
     getIsGameRunning = dependencies.getIsGameRunning;
     getDeltaTime = dependencies.getDeltaTime;
+    getCpuExecutionTime = dependencies.getCpuExecutionTime;
 
     if (dom.debugContent) {
         dom.debugContent.addEventListener('click', (e) => {
@@ -61,6 +63,20 @@ export function update() {
     // Performance
     const fps = deltaTime > 0 ? (1.0 / deltaTime).toFixed(1) : '...';
     const dtMs = (deltaTime * 1000).toFixed(2);
+
+    // CPU Tracking
+    let cpuInfo = "---";
+    let cpuStyle = "";
+    if (getCpuExecutionTime && deltaTime > 0) {
+        const cpuTime = getCpuExecutionTime();
+        const frameBudget = deltaTime * 1000;
+        const cpuUsage = Math.min(100, (cpuTime / frameBudget) * 100);
+        cpuInfo = `${cpuUsage.toFixed(1)}% (${cpuTime.toFixed(2)}ms)`;
+
+        if (cpuUsage > 80) cpuStyle = "background-color: #ff4444;";
+        else if (cpuUsage > 50) cpuStyle = "background-color: #ffbb33;";
+        else cpuStyle = "background-color: #00C851;";
+    }
 
     // RAM Monitoring
     let ramInfo = "No soportado";
@@ -138,7 +154,7 @@ export function update() {
         </div>
         <div class="debug-section">
             <h4>Rendimiento</h4>
-            <pre>FPS: ${fps}\nDeltaTime: ${dtMs} ms\nRAM Total: <span>${ramInfo}</span>\n<div class="ram-bar-container"><div class="ram-bar-fill" style="width: ${usagePercent}%; ${ramStyle}"></div></div>\nMotor: ${motorRamInfo} | Juego: ${gameRamInfo}</pre>
+            <pre>FPS: ${fps}\nDeltaTime: ${dtMs} ms\nCPU: <span>${cpuInfo}</span>\n<div class="ram-bar-container"><div class="ram-bar-fill" style="width: ${parseFloat(cpuInfo) || 0}%; ${cpuStyle}"></div></div>\nRAM Total: <span>${ramInfo}</span>\n<div class="ram-bar-container"><div class="ram-bar-fill" style="width: ${usagePercent}%; ${ramStyle}"></div></div>\nMotor: ${motorRamInfo} | Juego: ${gameRamInfo}</pre>
         </div>
         <div class="debug-section">
             <h4>Memoria por Materia</h4>
