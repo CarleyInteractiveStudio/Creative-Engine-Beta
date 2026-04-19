@@ -4,7 +4,6 @@
 import { Leyes } from './Leyes.js';
 
 import { Transform, SpriteRenderer, CreativeScript, Camera, Animator, AnimatorController, AudioSource, Tilemap, TilemapRenderer, CustomComponent, Terreno2D, Gyzmo } from './Components.js';
-import * as Components3D from './Components3D.js';
 import { Materia } from './Materia.js';
 
 let customComponentProvider = null;
@@ -26,6 +25,7 @@ export class Scene {
             cicloAutomatico: false,
             duracionDia: '60'
         };
+        this.layerSettings = {}; // { layerIndex: { opacity: 1, visible: true, pixelated: false } }
     }
 
     addMateria(materia) {
@@ -442,6 +442,12 @@ async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, mate
                 if (newLey instanceof AnimatorController) await newLey.initialize(projectsDirHandle);
                 if (newLey instanceof Terreno2D) await newLey.loadTextures(projectsDirHandle);
                 if (newLey instanceof AudioSource) { /* AudioSource handles its own loading on play or start */ }
+
+                // Dynamic loading of 3D modules for deserialized 3D components
+                const is3DComp = (leyData.type === 'MeshRenderer3D' || leyData.type === 'DirectionalLight3D' || leyData.type === 'PointLight3D' || leyData.type === 'SpotLight3D');
+                if (is3DComp && !window.Components3D) {
+                    window.Components3D = await import('./Components3D.js');
+                }
             }
         }
     }
@@ -686,7 +692,12 @@ function createDefaultScene() {
     if (is3D) {
         // Create a directional light for 3D projects
         const lightNode = new Materia('Directional Light');
-        lightNode.addComponent(new Components3D.DirectionalLight3D(lightNode));
+        (async () => {
+            if (!window.Components3D) {
+                window.Components3D = await import('./Components3D.js');
+            }
+            lightNode.addComponent(new window.Components3D.DirectionalLight3D(lightNode));
+        })();
         const lightTrans = lightNode.getComponent(Transform);
         lightTrans.localRotation = { x: 50, y: -30, z: 0 };
 

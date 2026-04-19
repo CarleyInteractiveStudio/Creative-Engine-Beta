@@ -871,12 +871,18 @@ export class Transform extends Leyes {
     // Note: 2D logic is simplified and assumes Z=0 for rotation.
     // For full 3D, we'll use Matrix4 multiplications in v0.1.3
     get position() {
+        const is3D = window.currentProjectConfig?.projectType === '3d';
+
         if (!this.materia || !this.materia.parent) {
-            return { ...this.localPosition };
+            const pos = { ...this.localPosition };
+            if (!is3D) pos.z = 0;
+            return pos;
         }
         const parentTransform = this.materia.parent.getComponent(Transform);
         if (!parentTransform) {
-            return { ...this.localPosition };
+            const pos = { ...this.localPosition };
+            if (!is3D) pos.z = 0;
+            return pos;
         }
 
         const parentPos = parentTransform.position;
@@ -893,7 +899,7 @@ export class Transform extends Leyes {
         return {
             x: parentPos.x + rotatedX,
             y: parentPos.y + rotatedY,
-            z: parentPos.z + this.localPosition.z
+            z: is3D ? (parentPos.z + this.localPosition.z) : 0
         };
     }
 
@@ -1060,8 +1066,9 @@ export class Transform extends Leyes {
 export class Camera extends Leyes {
     constructor(materia) {
         super(materia);
+        const is3D = window.currentProjectConfig?.projectType === '3d';
         this.depth = 0; // Rendering order. Higher is drawn on top.
-        this.projection = 'Orthographic'; // 'Orthographic' or 'Perspective'
+        this.projection = is3D ? 'Perspective' : 'Orthographic';
         this.orthographicSize = 5; // Size for Orthographic
         this.fov = 60; // Field of view for Perspective
         this.nearClipPlane = 0.1;

@@ -748,10 +748,11 @@ export class Renderer3D {
         const gl = this.gl;
 
         // Setup picking texture
+        const pickingRes = 512; // Lower resolution for optimization
         if (!this.pickingFramebuffer) {
             this.pickingTexture = gl.createTexture();
             gl.bindTexture(gl.TEXTURE_2D, this.pickingTexture);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1024, 1024, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, pickingRes, pickingRes, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
 
             this.pickingFramebuffer = gl.createFramebuffer();
             gl.bindFramebuffer(gl.FRAMEBUFFER, this.pickingFramebuffer);
@@ -759,12 +760,12 @@ export class Renderer3D {
 
             this.pickingDepthBuffer = gl.createRenderbuffer();
             gl.bindRenderbuffer(gl.RENDERBUFFER, this.pickingDepthBuffer);
-            gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, 1024, 1024);
+            gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, pickingRes, pickingRes);
             gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, this.pickingDepthBuffer);
         }
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.pickingFramebuffer);
-        gl.viewport(0, 0, 1024, 1024);
+        gl.viewport(0, 0, pickingRes, pickingRes);
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -778,9 +779,9 @@ export class Renderer3D {
         this.render(scene, cameraMateria, { ...options, picking: true, idMap });
 
         const pixels = new Uint8Array(4);
-        // Map x,y to 1024 viewport
-        const px = Math.floor((x / gl.canvas.width) * 1024);
-        const py = Math.floor((1 - y / gl.canvas.height) * 1024);
+        // Map x,y to picking viewport resolution
+        const px = Math.floor((x / gl.canvas.width) * pickingRes);
+        const py = Math.floor((1 - y / gl.canvas.height) * pickingRes);
 
         gl.readPixels(px, py, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);

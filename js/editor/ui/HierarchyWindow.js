@@ -11,7 +11,6 @@
 
 import { Materia } from '../../engine/Materia.js';
 import * as Components from '../../engine/Components.js';
-import * as Components3D from '../../engine/Components3D.js';
 import { showConfirmation } from './DialogWindow.js';
 import {
     createBaseMateria, generateUniqueName, createPanelObject, createTextObject, createButtonObject,
@@ -516,6 +515,17 @@ export function handleContextMenuAction(action) {
     }
 
     // Centralized update for creation and rename actions
+    if (newMateria instanceof Promise) {
+        newMateria.then(m => {
+            if (m) {
+                 broadcastUpdate({ op: 'CREATE', data: SceneManager.serializeMateria(m, true) });
+                 updateHierarchy();
+                 setTimeout(() => selectMateriaCallback(m.id), 0);
+            }
+        });
+        return;
+    }
+
     if (newMateria) {
         // Broadcast creation
         broadcastUpdate({
@@ -700,6 +710,12 @@ function setupEventListeners() {
         menu.querySelector('[data-action="duplicate"]').classList.toggle('disabled', !hasContext);
         menu.querySelector('[data-action="rename"]').classList.toggle('disabled', !hasContext);
         menu.querySelector('[data-action="delete"]').classList.toggle('disabled', !hasContext);
+
+        // Hide/Show 3D options based on project type
+        const is3DProject = (window.currentProjectConfig?.projectType === '3d');
+        menu.querySelectorAll('.3d-only').forEach(el => {
+            el.style.display = is3DProject ? 'block' : 'none';
+        });
 
         showContextMenuCallback(menu, e);
     });

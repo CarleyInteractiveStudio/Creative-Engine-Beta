@@ -2,11 +2,9 @@
 import { InputManager } from './engine/Input.js';
 import * as SceneManager from './engine/SceneManager.js';
 import { Renderer } from './engine/Renderer.js';
-import { Renderer3D } from './engine/Renderer3D.js';
 import { PhysicsSystem } from './engine/Physics.js';
 import * as UISystem from './engine/ui/UISystem.js';
 import * as Components from './engine/Components.js';
-import * as Components3D from './engine/Components3D.js';
 import { Materia } from './engine/Materia.js';
 import { getURLForAssetPath } from './engine/AssetUtils.js';
 import * as AnimationEditorWindow from './editor/ui/AnimationEditorWindow.js';
@@ -1136,16 +1134,32 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    updateCanvasInteractivity = function() {
+    updateCanvasInteractivity = async function() {
         if (!currentProjectConfig) return;
         const is3D = (currentProjectConfig.projectType !== '2d') && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
 
         // RAM OPTIMIZATION: Completely dispose of 3D engine if we are in strict 2D mode
         if (currentProjectConfig.projectType === '2d') {
             console.log("[Engine] 2D project detected. Disposing of 3D renderers to save RAM.");
-            if (renderer3D) renderer3D.dispose();
-            if (gameRenderer3D) gameRenderer3D.dispose();
+            if (renderer3D) { renderer3D.dispose(); renderer3D = null; }
+            if (gameRenderer3D) { gameRenderer3D.dispose(); gameRenderer3D = null; }
+            window.Components3D = null;
         } else {
+            // DYNAMIC IMPORT for 3D components and renderers
+            if (!window.Components3D) {
+                console.log("[Engine] Loading 3D modules...");
+                const comp3DModule = await import('./engine/Components3D.js');
+                window.Components3D = comp3DModule;
+            }
+
+            // If we are in 3D mode but renderers don't exist, create them lazily
+            if (!renderer3D) {
+                const { Renderer3D } = await import('./engine/Renderer3D.js');
+                renderer3D = new Renderer3D(dom.sceneCanvas3d);
+                gameRenderer3D = new Renderer3D(dom.gameCanvas3d);
+            }
+            window._Renderer3D = renderer3D;
+
             // If we are in 3D mode but canvases were hidden/disposed, we need to show them
             if (dom.sceneCanvas3d) dom.sceneCanvas3d.style.display = 'block';
             if (dom.gameCanvas3d) dom.gameCanvas3d.style.display = 'block';
@@ -1274,7 +1288,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentProjectConfig = JSON.parse(content);
             // Default projectType to 2d if missing in config file
             if (!currentProjectConfig.projectType) {
-                currentProjectConfig.projectType = '2d';
+                currentProjectConfig.projectType = (currentProjectConfig.rendererMode && currentProjectConfig.rendererMode.includes('3d')) ? '3d' : '2d';
             }
 
             // ENFORCEMENT: If project is 2D, rendererMode MUST be 2D-compatible
@@ -1283,10 +1297,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.warn(`[Config] Incompatible rendererMode '${currentProjectConfig.rendererMode}' for 2D project. Resetting to 'canvas2d'.`);
                     currentProjectConfig.rendererMode = 'canvas2d';
                 }
-
-                // RELEASE 3D Resources if in a strict 2D project to save RAM
-                if (renderer3D) renderer3D.dispose();
-                if (gameRenderer3D) gameRenderer3D.dispose();
             }
 
             window.currentProjectConfig = currentProjectConfig;
@@ -1743,7 +1753,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (is3D) {
                     const has3DSupported = m.getComponent(Components.SpriteRenderer) ||
                                           m.getComponent(Components.TextureRender) ||
-                                          m.getComponent(Components3D.MeshRenderer3D) ||
+                                          (window.Components3D && m.getComponent(window.Components3D.MeshRenderer3D)) ||
                                           m.getComponent(Components.TilemapRenderer) ||
                                           m.getComponent(Components.Terreno2D) ||
                                           m.getComponent(Components.Water);
@@ -1821,6 +1831,16 @@ document.addEventListener('DOMContentLoaded', () => {
             for (const materia of allInLayer) {
                 if (!materia.isActive) continue;
 
+                // --- Apply Layer Settings ---
+                const layerSettings = SceneManager.currentScene.layerSettings[materia.layer];
+                if (layerSettings) {
+                    if (layerSettings.visible === false) continue;
+                    if (layerSettings.opacity !== undefined) ctx.globalAlpha *= layerSettings.opacity;
+                    if (layerSettings.pixelated !== undefined) {
+                        ctx.imageSmoothingEnabled = !layerSettings.pixelated;
+                    }
+                }
+
                 const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
                 const textureRender = materia.getComponent(Components.TextureRender);
                 const terreno2D = materia.getComponent(Components.Terreno2D);
@@ -1882,6 +1902,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     rendererInstance.drawVideoPlayer(videoPlayer, -dWidth / 2, -dHeight / 2, dWidth, dHeight);
                     ctx.restore();
                 } else if (spriteRenderer) {
+                    // Reset smoothing per-object if not forced by layer
+                    if (!layerSettings || layerSettings.pixelated === undefined) {
+                        ctx.imageSmoothingEnabled = true;
+                    }
                     // Optimized check: only draw if the image has valid dimensions
                     const img = spriteRenderer.sprite;
                     if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
@@ -2339,18 +2363,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (cpuUsage > gamePerfStats.maxCpu) gamePerfStats.maxCpu = cpuUsage;
             }
 
-            if (is3D) {
+            if (is3D && renderer3D) {
                 // Hybrid/3D: Only render views that are visible
                 if (activeView === 'scene-content') {
-                    if (renderer3D && renderer3D.initialized) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1 });
+                    if (renderer3D.initialized) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1 });
                     if (renderer) updateScene(renderer, false);
-                } else if (activeView === 'game-content') {
-                    if (gameRenderer3D) {
-                        const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth)[0];
-                        if (mainCam) {
-                            if (!gameRenderer3D.initialized) gameRenderer3D.init();
-                            gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1, isGameView: true });
-                        }
+                } else if (activeView === 'game-content' && gameRenderer3D) {
+                    const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth)[0];
+                    if (mainCam) {
+                        if (!gameRenderer3D.initialized) gameRenderer3D.init();
+                        gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1, isGameView: true });
                     }
                     if (gameRenderer) updateScene(gameRenderer, true);
                 }
@@ -2362,21 +2384,17 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             // Editor mode (not running): Only update visible view
             if (activeView === 'scene-content') {
-                if (is3D) {
-                    if (renderer3D) {
-                        if (!renderer3D.initialized) renderer3D.init();
-                        renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1 });
-                    }
+                if (is3D && renderer3D) {
+                    if (!renderer3D.initialized) renderer3D.init();
+                    renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1 });
                 }
                 if (renderer) updateScene(renderer, false);
             } else if (activeView === 'game-content') {
-                if (is3D) {
-                    if (gameRenderer3D) {
-                        const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth)[0];
-                        if (mainCam) {
-                            if (!gameRenderer3D.initialized) gameRenderer3D.init();
-                            gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1, isGameView: true });
-                        }
+                if (is3D && gameRenderer3D) {
+                    const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth)[0];
+                    if (mainCam) {
+                        if (!gameRenderer3D.initialized) gameRenderer3D.init();
+                        gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1, isGameView: true });
                     }
                 }
                 if (gameRenderer) updateScene(gameRenderer, true);
@@ -4191,8 +4209,10 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado
         window.MateriaFactory = { ...MateriaFactory };
         window.Components = Components;
         window.updateHierarchy = updateHierarchy;
+        window.updateCanvasInteractivity = updateCanvasInteractivity;
         window.selectMateria = selectMateria;
         window.updateInspector = updateInspector;
+        window.updateScene = () => updateScene(renderer, false);
         window.openAssetSelector = openAssetSelector;
         window.SceneManager = SceneManager;
         window.openMarkdownViewer = openMarkdownViewerCallback;
@@ -4507,12 +4527,6 @@ public start() {
             updateLoadingProgress(20, "Inicializando renderizadores...");
             renderer = new Renderer(dom.sceneCanvas, true);
             gameRenderer = new Renderer(dom.gameCanvas, false, true); // isGameView = true
-            renderer3D = new Renderer3D(dom.sceneCanvas3d);
-            gameRenderer3D = new Renderer3D(dom.gameCanvas3d);
-
-            // Note: 3D Renderers will only initialize WebGL when needed (lazy)
-
-            window._Renderer3D = renderer3D;
             window.renderer = renderer; // Expose after initialization
 
             updateLoadingProgress(30, "Cargando escena principal...");
@@ -4693,7 +4707,7 @@ public start() {
                 }
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime, getCpuExecutionTime });
-            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, updateAssetBrowserCallback: updateAssetBrowser, Components, updateScene, getActiveView, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool, getCurrentProjectConfig: () => currentProjectConfig, getDeltaTime: () => deltaTime });
+            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, updateAssetBrowserCallback: updateAssetBrowser, Components, Components3D: window.Components3D, updateScene, getActiveView, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool, getCurrentProjectConfig: () => currentProjectConfig, getDeltaTime: () => deltaTime });
             window._SceneView = SceneView;
             Terminal.initialize(dom, projectsDirHandle);
 
@@ -4759,6 +4773,7 @@ public start() {
                     appName: 'TestProject',
                     authorName: 'Test Author',
                     appVersion: '1.0.0',
+                    projectType: '2d',
                     rendererMode: 'canvas2d',
                     showEngineLogo: true,
                     keystore: { path: '', pass: '', alias: '', aliasPass: '' },

@@ -28,14 +28,42 @@ function setTime(time) {
     }
 }
 
+/**
+ * Sets visual properties for a specific layer.
+ * @param {number|string} layer - The layer index or name.
+ * @param {object} settings - { opacity: 0-1, visible: boolean, pixelated: boolean }
+ */
+function setLayerSettings(layer, settings) {
+    if (!SceneManager.currentScene) return;
+
+    let index = -1;
+    if (typeof layer === 'number') {
+        index = layer;
+    } else {
+        const config = window.currentProjectConfig;
+        if (config && config.layers && config.layers.sortingLayers) {
+            index = config.layers.sortingLayers.indexOf(layer);
+        }
+    }
+
+    if (index >= 0) {
+        SceneManager.currentScene.layerSettings[index] = {
+            ... (SceneManager.currentScene.layerSettings[index] || { opacity: 1, visible: true, pixelated: false }),
+            ...settings
+        };
+    }
+}
+
 // --- The Public API Object ---
 const sceneAPI = {
+    setLayerSettings: setLayerSettings,
     setAmbientLight: setAmbientLight,
     setTime: setTime,
     instantiatePrefab: SceneManager.instanciarPrefab,
     loadScene: SceneManager.loadSceneByPath,
 
     // Spanish aliases
+    configurarCapa: setLayerSettings,
     establecerLuzAmbiental: setAmbientLight,
     establecerHora: setTime,
     instanciarPrefab: SceneManager.instanciarPrefab,
