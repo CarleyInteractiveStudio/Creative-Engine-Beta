@@ -94,15 +94,15 @@
                         <a href="#" id="menu-window-assets" data-i18n="NAVEGADOR">Navegador</a>
                         <a href="#" id="menu-window-console" data-i18n="CONSOLA">Consola</a>
                         <hr>
-                        <a href="#" id="menu-window-animation" data-i18n="EDITOR_ANIMACION">Editor de Animación</a>
-                        <a href="#" id="menu-window-animator" data-i18n="CONTROLADOR_ANIMACION">Controlador de Animación</a>
-                        <a href="#" id="menu-window-tile-palette" data-i18n="PALETA_TILES">Editor de Paleta de Tiles</a>
-                        <a href="#" id="menu-window-sprite-editor" data-i18n="EDITOR_SPRITES">Editor de Sprites</a>
+                        <a href="#" id="menu-window-animation" data-i18n="EDITOR_ANIMACION" class="only-2d">Editor de Animación</a>
+                        <a href="#" id="menu-window-animator" data-i18n="CONTROLADOR_ANIMACION" class="only-2d">Controlador de Animación</a>
+                        <a href="#" id="menu-window-tile-palette" data-i18n="PALETA_TILES" class="only-2d">Editor de Paleta de Tiles</a>
+                        <a href="#" id="menu-window-sprite-editor" data-i18n="EDITOR_SPRITES" class="only-2d">Editor de Sprites</a>
                         <a href="#" id="menu-window-ambiente-control" data-i18n="CONTROL_AMBIENTE">Control de Ambiente</a>
                         <hr>
                         <a href="#" id="menu-window-updates" data-i18n="ACTUALIZACIONES">Actualizaciones</a>
                         <hr>
-                        <a href="#" id="menu-window-vid-spri" data-i18n="VID_SPRI">Vid Spri</a>
+                        <a href="#" id="menu-window-vid-spri" data-i18n="VID_SPRI" class="only-2d">Vid Spri</a>
                         <hr>
                         <a href="#" id="menu-window-lib" class="disabled">Lib</a>
                     </div>
@@ -414,7 +414,7 @@ public star() {
                                 <div class="tool-dropdown-content">
                                     <button id="tool-move" class="toolbar-btn active" title="Mover (Q)" data-i18n-title="HERRAMIENTA_MOVER"><img src="icons/move.svg" class="ce-icon"> <span data-i18n="HERRAMIENTA_MOVER">Mover</span></button>
                                     <button id="tool-rotate" class="toolbar-btn" title="Rotar (R)" data-i18n-title="HERRAMIENTA_ROTAR"><img src="icons/rotate.svg" class="ce-icon"> <span data-i18n="HERRAMIENTA_ROTAR">Rotar</span></button>
-                                    <button id="tool-terrain-brush" class="toolbar-btn" title="Terreno (B)" data-i18n-title="HERRAMIENTA_TERRENO"><img src="icons/mountain.svg" class="ce-icon"> <span data-i18n="HERRAMIENTA_TERRENO">Terreno</span></button>
+                                    <button id="tool-terrain-brush" class="toolbar-btn only-2d" title="Terreno (B)" data-i18n-title="HERRAMIENTA_TERRENO"><img src="icons/mountain.svg" class="ce-icon"> <span data-i18n="HERRAMIENTA_TERRENO">Terreno</span></button>
                                     <button id="tool-scale" class="toolbar-btn" title="Escalar (E)" data-i18n-title="HERRAMIENTA_ESCALAR"><img src="icons/scale.svg" class="ce-icon"> <span data-i18n="HERRAMIENTA_ESCALAR">Escalar</span></button>
                                     <button id="tool-scale-axis" class="toolbar-btn" title="Escalar por Ejes" data-i18n-title="HERRAMIENTA_ESCALAR_EJES"><img src="icons/scale.svg" class="ce-icon"> <span data-i18n="HERRAMIENTA_ESCALAR_EJES">Escalar Ejes</span></button>
                                     <button id="tool-universal" class="toolbar-btn" title="Universal (T)" data-i18n-title="HERRAMIENTA_UNIVERSAL"><img src="icons/wrench.svg" class="ce-icon"> <span data-i18n="HERRAMIENTA_UNIVERSAL">Universal</span></button>
@@ -868,9 +868,9 @@ public star() {
                     <li data-action="create-script">Script (.ces)</li>
                     <li data-action="create-chc-script">Script H-Code (.chc)</li>
                     <li data-action="create-readme" data-i18n="ARCHIVO_LEAME">Archivo Léame (.md)</li>
-                    <li data-action="create-animation" data-i18n="ASSET_ANIMACION">Asset de Animación (.cea)</li>
-                    <li data-action="create-animator-controller" data-i18n="CONTROLADOR_ANIMACION">Controlador de Animación (.ceanim)</li>
-                    <li data-action="create-tile-palette" data-i18n="PALETA_TILES">Paleta de Tiles (.cepalette)</li>
+                    <li data-action="create-animation" data-i18n="ASSET_ANIMACION" class="only-2d">Asset de Animación (.cea)</li>
+                    <li data-action="create-animator-controller" data-i18n="CONTROLADOR_ANIMACION" class="only-2d">Controlador de Animación (.ceanim)</li>
+                    <li data-action="create-tile-palette" data-i18n="PALETA_TILES" class="only-2d">Paleta de Tiles (.cepalette)</li>
                     <li data-action="create-scene" data-i18n="ESCENA">Escena (.ceScene)</li>
                     <li data-action="create-prefab">Prefab (.ceprefab)</li>
                 </ul>
@@ -900,7 +900,7 @@ public star() {
                     <li data-action="create-empty" data-i18n="MATERIA_VACIA">Materia Vacía</li>
                     <li data-action="create-camera" data-i18n="CAMARA">Cámara</li>
                     <hr>
-                    <li class="has-submenu">
+                    <li class="has-submenu only-2d">
                         <span data-i18n="MATERIA_2D">Materia 2D</span> <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
                         <ul class="submenu">
                             <li data-action="create-sprite" data-i18n="SPRITE">Sprite</li>
@@ -913,14 +913,14 @@ public star() {
                             <li data-action="create-triangle-2d" data-i18n="TRIANGULO">Triángulo</li>
                             <li data-action="create-capsule" data-i18n="CAPSULA">Cápsula</li>
                             <li data-action="create-line-collider" data-i18n="LINE_COLLIDER">Colisionador de Líneas</li>
-                            <li data-action="create-combatant">Combatiente (Ataque/Vida)</li>
+                            <li data-action="create-combatant" class="only-2d">Combatiente (Ataque/Vida)</li>
                             <hr>
                             <li data-action="create-bone" data-i18n="BONE">Hueso</li>
                             <li data-action="create-skeleton" data-i18n="SKELETON">Esqueleto (Skinning)</li>
                             <li data-action="create-ik-manager" data-i18n="IK_MANAGER">Gestor IK</li>
                         </ul>
                     </li>
-                    <li class="has-submenu 3d-only">
+                    <li class="has-submenu only-3d">
                         <span data-i18n="MATERIA_3D">Materia 3D</span> <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
                         <ul class="submenu">
                             <li data-action="create-cube" data-i18n="CUBE">Cubo</li>
@@ -930,7 +930,7 @@ public star() {
                             <li data-action="create-plane-3d" data-i18n="PLANE">Plano</li>
                         </ul>
                     </li>
-                    <li class="has-submenu">
+                    <li class="has-submenu only-2d">
                         <span data-i18n="UI">UI</span> <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
                         <ul class="submenu">
                             <li data-action="create-canvas" data-i18n="CANVAS">Canvas</li>
@@ -939,7 +939,7 @@ public star() {
                             <li data-action="create-ui-panel" data-i18n="PANEL">Panel</li>
                             <li data-action="create-ui-progress-bar" data-i18n="PROGRESS_BAR">Barra de Progreso</li>
                             <li data-action="create-ui-scroll-view" data-i18n="SCROLL_VIEW">Vista de Desplazamiento</li>
-                            <li data-action="create-ui-health-bar">Barra de Salud (Prefab)</li>
+                            <li data-action="create-ui-health-bar" class="only-2d">Barra de Salud (Prefab)</li>
                             <li data-action="create-ui-text" data-i18n="TEXTO">Texto</li>
                             <li data-action="create-video" data-i18n="VIDEO">Video</li>
                         </ul>
@@ -947,16 +947,16 @@ public star() {
                     <li class="has-submenu">
                         <span data-i18n="LUZ">Luz</span> <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
                         <ul class="submenu">
-                            <li class="menu-divider-label">2D</li>
-                            <li data-action="create-point-light" data-i18n="LUZ_PUNTO">Point Light</li>
-                            <li data-action="create-spot-light" data-i18n="LUZ_FOCAL">Spot Light</li>
-                            <li data-action="create-freeform-light" data-i18n="LUZ_FORMA_LIBRE">Freeform Light</li>
-                            <li data-action="create-sprite-light" data-i18n="LUZ_SPRITE">Sprite Light</li>
-                            <hr class="3d-only">
-                            <li class="menu-divider-label 3d-only">3D</li>
-                            <li data-action="create-dir-light-3d" data-i18n="DIRECTIONALLIGHT3D" class="3d-only">Directional Light</li>
-                            <li data-action="create-point-light-3d" data-i18n="POINTLIGHT3D" class="3d-only">Point Light</li>
-                            <li data-action="create-spot-light-3d" data-i18n="SPOTLIGHT3D" class="3d-only">Spot Light</li>
+                            <li class="menu-divider-label only-2d">2D</li>
+                            <li data-action="create-point-light" data-i18n="LUZ_PUNTO" class="only-2d">Point Light</li>
+                            <li data-action="create-spot-light" data-i18n="LUZ_FOCAL" class="only-2d">Spot Light</li>
+                            <li data-action="create-freeform-light" data-i18n="LUZ_FORMA_LIBRE" class="only-2d">Freeform Light</li>
+                            <li data-action="create-sprite-light" data-i18n="LUZ_SPRITE" class="only-2d">Sprite Light</li>
+                            <hr class="only-3d">
+                            <li class="menu-divider-label only-3d">3D</li>
+                            <li data-action="create-dir-light-3d" data-i18n="DIRECTIONALLIGHT3D" class="only-3d">Directional Light</li>
+                            <li data-action="create-point-light-3d" data-i18n="POINTLIGHT3D" class="only-3d">Point Light</li>
+                            <li data-action="create-spot-light-3d" data-i18n="SPOTLIGHT3D" class="only-3d">Spot Light</li>
                         </ul>
                     </li>
                 </ul>

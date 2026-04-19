@@ -1136,14 +1136,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateCanvasInteractivity = async function() {
         if (!currentProjectConfig) return;
-        const is3D = (currentProjectConfig.projectType !== '2d') && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
+
+        const projectType = currentProjectConfig.projectType || '2d';
+        const is3D = (projectType !== '2d') && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
 
         // RAM OPTIMIZATION: Completely dispose of 3D engine if we are in strict 2D mode
-        if (currentProjectConfig.projectType === '2d') {
+        if (projectType === '2d') {
             console.log("[Engine] 2D project detected. Disposing of 3D renderers to save RAM.");
             if (renderer3D) { renderer3D.dispose(); renderer3D = null; }
             if (gameRenderer3D) { gameRenderer3D.dispose(); gameRenderer3D = null; }
             window.Components3D = null;
+
+            // Also hide 3D canvases
+            if (dom.sceneCanvas3d) dom.sceneCanvas3d.style.display = 'none';
+            if (dom.gameCanvas3d) dom.gameCanvas3d.style.display = 'none';
         } else {
             // DYNAMIC IMPORT for 3D components and renderers
             if (!window.Components3D) {
@@ -1167,12 +1173,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Hide toggle for strict 2D projects
         if (dom.btnToggle2d3d) {
-            dom.btnToggle2d3d.style.display = currentProjectConfig.projectType === '2d' ? 'none' : 'flex';
+            dom.btnToggle2d3d.style.display = (projectType === '2d' || projectType === '3d') ? 'none' : 'flex';
         }
 
         if (dom.sceneCanvas) {
             dom.sceneCanvas.style.pointerEvents = is3D ? 'none' : 'all';
             dom.sceneCanvas.style.zIndex = is3D ? '2' : '1';
+            // Strict 3D: hide 2D canvas entirely
+            if (projectType === '3d') dom.sceneCanvas.style.display = 'none';
+            else dom.sceneCanvas.style.display = 'block';
         }
         if (dom.sceneCanvas3d) {
             dom.sceneCanvas3d.style.pointerEvents = is3D ? 'all' : 'none';
@@ -1183,6 +1192,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // In game, 2D handles UI and 3D handles world.
             dom.gameCanvas.style.pointerEvents = is3D ? 'none' : 'all';
             dom.gameCanvas.style.zIndex = is3D ? '2' : '1';
+            // Strict 3D: hide 2D canvas entirely
+            if (projectType === '3d') dom.gameCanvas.style.display = 'none';
+            else dom.gameCanvas.style.display = 'block';
         }
         if (dom.gameCanvas3d) {
             dom.gameCanvas3d.style.pointerEvents = is3D ? 'all' : 'none';
@@ -1194,6 +1206,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const icon = document.getElementById('icon-2d-3d');
         if (label) label.textContent = is3D ? '3D' : '2D';
         if (icon) icon.src = is3D ? 'icons/box.svg' : 'icons/layers.svg';
+
+        // Strict visibility control for the toggle button itself
+        if (dom.btnToggle2d3d) {
+            dom.btnToggle2d3d.style.display = (currentProjectConfig.projectType === '2d' || currentProjectConfig.projectType === '3d') ? 'none' : 'flex';
+        }
     };
 
     function updateWindowMenuUI() {
@@ -1301,6 +1318,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             window.currentProjectConfig = currentProjectConfig;
             console.log("Configuracion del proyecto cargada:", currentProjectConfig);
+
+            // Apply project type class to body for CSS filtering
+            document.body.classList.remove('project-type-2d', 'project-type-3d');
+            document.body.classList.add(`project-type-${currentProjectConfig.projectType || '2d'}`);
 
             // Sync FPS settings to PerformanceMonitor
             const perfMonitor = EngineAPI.getPerformanceMonitor();

@@ -283,7 +283,16 @@ function setupEventListeners() {
     }
 
     if (dom.settingsSaveBtn) {
-        dom.settingsSaveBtn.addEventListener('click', () => saveProjectConfig(true));
+        dom.settingsSaveBtn.addEventListener('click', async () => {
+            const oldType = currentProjectConfig.projectType;
+            await saveProjectConfig(true);
+            const newType = document.getElementById('settings-project-type').value;
+
+            if (oldType !== newType) {
+                // If project type changed, we might need a reload or a deep UI refresh
+                window.location.reload();
+            }
+        });
     }
 
     if (dom.settingsShowEngineLogo) {

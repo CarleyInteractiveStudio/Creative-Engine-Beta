@@ -5437,6 +5437,20 @@ body.game-mode #loading-overlay {
     white-space: nowrap;
 }
 
+/* --- Strict 2D/3D UI Separation --- */
+body.project-type-2d .only-3d {
+    display: none !important;
+}
+
+body.project-type-3d .only-2d {
+    display: none !important;
+}
+
+/* Ensure context menu items marked with these classes respect the project type */
+.context-menu li.only-2d, .context-menu li.only-3d {
+    display: list-item; /* Override potential display: none from other rules if within correct project type */
+}
+
 /* Ensure scene toolbar doesn't collapse without the name */
 .left-header-controls {
     display: flex;

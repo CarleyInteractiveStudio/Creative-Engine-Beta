@@ -5031,7 +5031,19 @@ export async function showAddComponentModal() {
 
     // --- 1. Render Built-in Components ---
     const L = window.Localization;
+    const projectConfig = getCurrentProjectConfig();
+    const projectType = projectConfig.projectType || '2d';
+
     for (const category in availableComponents) {
+        // --- HARD FILTERING: 2D vs 3D ---
+        if (projectType === '2d') {
+            if (category === 'CAT_3D') continue;
+        } else if (projectType === '3d') {
+            // User requested to hide EVERYTHING 2D in 3D mode because they will build components from scratch.
+            // We only keep 3D and Scripting/Basic categories if they are shared (none are currently shared 2D/3D).
+            if (category !== 'CAT_3D' && category !== 'CAT_SCRIPTING') continue;
+        }
+
         if (category === 'CAT_SCRIPTING') continue;
 
         const categoryWrapper = document.createElement('div');
