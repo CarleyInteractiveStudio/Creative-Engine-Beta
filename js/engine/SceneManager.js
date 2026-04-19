@@ -23,7 +23,12 @@ export class Scene {
             capasExcluidas: [],
             hora: '6',
             cicloAutomatico: false,
-            duracionDia: '60'
+            duracionDia: '60',
+            // 3D Sky system
+            skyMode: 'Gradient',
+            skyColor: '#87ceeb',
+            horizonColor: '#ffffff',
+            groundColor: '#222222'
         };
         this.layerSettings = {}; // { layerIndex: { opacity: 1, visible: true, pixelated: false } }
     }
@@ -338,7 +343,11 @@ export function serializeScene(scene, dom) {
             capasExcluidas: scene.ambiente.capasExcluidas || [],
             hora: scene.ambiente.hora || '6',
             cicloAutomatico: scene.ambiente.cicloAutomatico || false,
-            duracionDia: scene.ambiente.duracionDia || '60'
+            duracionDia: scene.ambiente.duracionDia || '60',
+            skyMode: scene.ambiente.skyMode || 'Gradient',
+            skyColor: scene.ambiente.skyColor || '#87ceeb',
+            horizonColor: scene.ambiente.horizonColor || '#ffffff',
+            groundColor: scene.ambiente.groundColor || '#222222'
         },
         materias: []
     };
@@ -680,8 +689,9 @@ function createDefaultScene() {
     if (is3D) {
         cameraComponent.projection = 'Perspective';
         const trans = cameraNode.getComponent(Transform);
-        trans.localPosition = { x: 0, y: 2, z: -10 };
-        trans.localRotation = { x: 10, y: 0, z: 0 };
+        // Better default view for 3D
+        trans.localPosition = { x: 0, y: 200, z: 800 };
+        trans.localRotation = { x: 15, y: 0, z: 0 };
     }
 
     cameraNode.addComponent(cameraComponent);

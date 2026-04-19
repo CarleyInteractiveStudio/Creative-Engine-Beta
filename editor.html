@@ -795,8 +795,31 @@ public star() {
                     <button class="close-panel-btn" data-panel="ambiente-control-panel">&times;</button>
                 </div>
                 <div class="panel-content">
+                    <fieldset class="inspector-section only-3d">
+                        <legend data-i18n="SKY_SYSTEM">Sistema de Cielo (3D)</legend>
+                        <div class="inspector-row">
+                            <label for="ambiente-sky-mode">Modo de Cielo</label>
+                            <select id="ambiente-sky-mode">
+                                <option value="None">Ninguno (Fondo Sólido)</option>
+                                <option value="Gradient" selected>Degradado (Skybox Procedural)</option>
+                            </select>
+                        </div>
+                        <div class="inspector-row">
+                            <label for="ambiente-sky-color">Color del Cielo</label>
+                            <input type="color" id="ambiente-sky-color" value="#87ceeb">
+                        </div>
+                        <div class="inspector-row">
+                            <label for="ambiente-horizon-color">Color del Horizonte</label>
+                            <input type="color" id="ambiente-horizon-color" value="#ffffff">
+                        </div>
+                        <div class="inspector-row">
+                            <label for="ambiente-ground-color">Color del Suelo</label>
+                            <input type="color" id="ambiente-ground-color" value="#222222">
+                        </div>
+                    </fieldset>
+
                     <fieldset class="inspector-section">
-                        <legend data-i18n="NOCHE_DIA">Noche / Día</legend>
+                        <legend data-i18n="NOCHE_DIA">Noche / Día (2D)</legend>
 
                         <div class="inspector-row">
                             <label data-i18n="PRESETS_RAPIDOS">Presets Rápidos</label>

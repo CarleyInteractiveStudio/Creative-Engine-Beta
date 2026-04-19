@@ -54,10 +54,20 @@ function setLayerSettings(layer, settings) {
     }
 }
 
+/**
+ * Configures the 3D Sky system.
+ * @param {object} settings - { skyMode: 'None'|'Gradient', skyColor: hex, horizonColor: hex, groundColor: hex }
+ */
+function setSkySettings(settings) {
+    if (!SceneManager.currentScene || !SceneManager.currentScene.ambiente) return;
+    Object.assign(SceneManager.currentScene.ambiente, settings);
+}
+
 // --- The Public API Object ---
 const sceneAPI = {
     setLayerSettings: setLayerSettings,
     setAmbientLight: setAmbientLight,
+    setSkySettings: setSkySettings,
     setTime: setTime,
     instantiatePrefab: SceneManager.instanciarPrefab,
     loadScene: SceneManager.loadSceneByPath,
@@ -65,6 +75,7 @@ const sceneAPI = {
     // Spanish aliases
     configurarCapa: setLayerSettings,
     establecerLuzAmbiental: setAmbientLight,
+    configurarCielo: setSkySettings,
     establecerHora: setTime,
     instanciarPrefab: SceneManager.instanciarPrefab,
     cargarEscena: SceneManager.loadSceneByPath,

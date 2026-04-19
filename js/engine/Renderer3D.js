@@ -52,6 +52,54 @@ export class Renderer3D {
     initShaders() {
         const gl = this.gl;
 
+        // --- Sky Shader ---
+        const skyVsSource = `
+            attribute vec4 aVertexPosition;
+            varying vec3 vWorldPos;
+            void main() {
+                vWorldPos = aVertexPosition.xyz;
+                gl_Position = aVertexPosition;
+                gl_Position.z = 1.0; // Stay at far plane
+            }
+        `;
+        const skyFsSource = `
+            precision mediump float;
+            varying vec3 vWorldPos;
+            uniform vec3 uSkyColor;
+            uniform vec3 uHorizonColor;
+            uniform vec3 uGroundColor;
+            uniform mat4 uInvViewProj;
+
+            void main() {
+                // Reconstruct world direction from screen position
+                vec4 clipPos = vec4(vWorldPos.xy, 1.0, 1.0);
+                vec4 worldPos = uInvViewProj * clipPos;
+                vec3 dir = normalize(worldPos.xyz / worldPos.w);
+
+                float height = dir.y;
+                vec3 color;
+                if (height > 0.0) {
+                    color = mix(uHorizonColor, uSkyColor, pow(height, 0.5));
+                } else {
+                    color = mix(uHorizonColor, uGroundColor, pow(-height, 0.5));
+                }
+                gl_FragColor = vec4(color, 1.0);
+            }
+        `;
+        this.skyProgram = this.initShaderProgram(gl, skyVsSource, skyFsSource);
+        this.skyProgramInfo = {
+            program: this.skyProgram,
+            attribLocations: {
+                vertexPosition: gl.getAttribLocation(this.skyProgram, 'aVertexPosition'),
+            },
+            uniformLocations: {
+                uSkyColor: gl.getUniformLocation(this.skyProgram, 'uSkyColor'),
+                uHorizonColor: gl.getUniformLocation(this.skyProgram, 'uHorizonColor'),
+                uGroundColor: gl.getUniformLocation(this.skyProgram, 'uGroundColor'),
+                uInvViewProj: gl.getUniformLocation(this.skyProgram, 'uInvViewProj'),
+            },
+        };
+
         // --- Standard Shader ---
         const vsSource = `
             attribute vec4 aVertexPosition;
@@ -206,6 +254,17 @@ export class Renderer3D {
     initBuffers() {
         const gl = this.gl;
 
+        // Fullscreen Quad for Sky
+        const skyPositions = [
+            -1.0,  1.0,
+             1.0,  1.0,
+            -1.0, -1.0,
+             1.0, -1.0,
+        ];
+        this.skyBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.skyBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(skyPositions), gl.STATIC_DRAW);
+
         // Basic Plane (for 2D sprites in 3D)
         const planePositions = [
             -0.5, -0.5,  0.0,
@@ -302,6 +361,7 @@ export class Renderer3D {
         this.clearCache();
 
         // Delete buffers
+        if (this.skyBuffer) this.gl.deleteBuffer(this.skyBuffer);
         if (this.planeBuffer) this.gl.deleteBuffer(this.planeBuffer);
         if (this.planeTexCoordBuffer) this.gl.deleteBuffer(this.planeTexCoordBuffer);
         if (this.planeIndexBuffer) this.gl.deleteBuffer(this.planeIndexBuffer);
@@ -311,6 +371,7 @@ export class Renderer3D {
         if (this.cubeNormalBuffer) this.gl.deleteBuffer(this.cubeNormalBuffer);
 
         // Delete programs
+        if (this.skyProgram) this.gl.deleteProgram(this.skyProgram);
         if (this.shaderProgram) this.gl.deleteProgram(this.shaderProgram);
         if (this.pickingProgram) this.gl.deleteProgram(this.pickingProgram);
 
@@ -378,6 +439,34 @@ export class Renderer3D {
         return texture;
     }
 
+    renderSky(ambiente, projectionMatrix, viewMatrix) {
+        const gl = this.gl;
+        gl.useProgram(this.skyProgramInfo.program);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.skyBuffer);
+        gl.vertexAttribPointer(this.skyProgramInfo.attribLocations.vertexPosition, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(this.skyProgramInfo.attribLocations.vertexPosition);
+
+        const skyColor = this.hexToRgb(ambiente.skyColor || '#87ceeb');
+        const horizonColor = this.hexToRgb(ambiente.horizonColor || '#ffffff');
+        const groundColor = this.hexToRgb(ambiente.groundColor || '#222222');
+
+        gl.uniform3fv(this.skyProgramInfo.uniformLocations.uSkyColor, skyColor);
+        gl.uniform3fv(this.skyProgramInfo.uniformLocations.uHorizonColor, horizonColor);
+        gl.uniform3fv(this.skyProgramInfo.uniformLocations.uGroundColor, groundColor);
+
+        const invViewProj = mat4.create();
+        const viewNoPos = mat4.clone(viewMatrix);
+        viewNoPos[12] = 0; viewNoPos[13] = 0; viewNoPos[14] = 0; // Remove translation
+        mat4.multiply(invViewProj, projectionMatrix, viewNoPos);
+        mat4.invert(invViewProj, invViewProj);
+        gl.uniformMatrix4fv(this.skyProgramInfo.uniformLocations.uInvViewProj, false, invViewProj);
+
+        gl.disable(gl.DEPTH_TEST);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        gl.enable(gl.DEPTH_TEST);
+    }
+
     render(scene, cameraMateria, options = {}) {
         if (!this.initialized) {
             if (!this.init()) return;
@@ -409,16 +498,14 @@ export class Renderer3D {
         this.lastProjectionMatrix = projectionMatrix;
         this.lastViewMatrix = viewMatrix;
 
-        let is3DView = true;
         let activeViewPosition = [0, 0, 0];
+        const aspect = gl.canvas.width / gl.canvas.height;
 
         if (cameraMateria) {
             const camComp = cameraMateria.getComponent(Camera);
             const camTrans = cameraMateria.getComponent(Transform);
-            const aspect = gl.canvas.width / gl.canvas.height;
 
             if (camComp.projection === 'Orthographic') {
-                is3DView = false;
                 const size = camComp.orthographicSize;
                 const orthoH = size;
                 const orthoW = size * aspect;
@@ -436,8 +523,6 @@ export class Renderer3D {
             mat4.invert(viewMatrix, viewMatrix);
         } else {
             // Editor default camera (Scene View)
-            const aspect = gl.canvas.width / gl.canvas.height;
-
             const editorCam = options.editorCamera || { x: 0, y: 0, z: 500, rotation: { x: 0, y: 0, z: 0 } };
             const q = quat.create();
             quat.fromEuler(q, editorCam.rotation.x, editorCam.rotation.y, editorCam.rotation.z);
@@ -448,6 +533,11 @@ export class Renderer3D {
             activeViewPosition = [editorCam.x, editorCam.y, editorCam.z];
             mat4.fromRotationTranslation(viewMatrix, q, activeViewPosition);
             mat4.invert(viewMatrix, viewMatrix);
+        }
+
+        // --- Render Sky ---
+        if (ambiente.skyMode && ambiente.skyMode !== 'None') {
+            this.renderSky(ambiente, projectionMatrix, viewMatrix);
         }
 
         gl.useProgram(this.programInfo.program);

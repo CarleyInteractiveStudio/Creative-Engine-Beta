@@ -4118,40 +4118,8 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado
     }
 
     function updateAmbientePanelFromScene() {
-        if (!SceneManager.currentScene || !SceneManager.currentScene.ambiente) return;
-
-        const ambiente = SceneManager.currentScene.ambiente;
-
-        if (dom.ambienteFiltroColor) {
-            dom.ambienteFiltroColor.value = ambiente.nocheDiaColor || '#0a0a28';
-        }
-
-        if (dom.ambienteTiempo) {
-            dom.ambienteTiempo.value = ambiente.hora || '6';
-            const val = parseFloat(dom.ambienteTiempo.value);
-            const hour = Math.floor(val);
-            const minutes = Math.floor((val % 1) * 60);
-            if (dom.ambienteTiempoValor) dom.ambienteTiempoValor.textContent = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-        }
-
-        if (dom.ambienteNocheDiaIntensidad) {
-            const intensidad = ambiente.nocheDiaIntensidad !== undefined ? ambiente.nocheDiaIntensidad : 1.0;
-            dom.ambienteNocheDiaIntensidad.value = intensidad;
-            if (dom.ambienteNocheDiaIntensidadValor) dom.ambienteNocheDiaIntensidadValor.textContent = `${Math.round(intensidad * 100)}%`;
-        }
-
-        if (dom.ambienteCicloAutomatico) {
-            dom.ambienteCicloAutomatico.checked = ambiente.cicloAutomatico || false;
-        }
-
-        if (dom.ambienteDuracionDia) {
-            dom.ambienteDuracionDia.value = ambiente.duracionDia || '60';
-        }
-
-        if (dom.ambienteFiltroSwatches && dom.ambienteFiltroColor) {
-            dom.ambienteFiltroSwatches.querySelectorAll('.color-swatch').forEach(s => {
-                s.classList.toggle('active', s.dataset.color === dom.ambienteFiltroColor.value);
-            });
+        if (AmbienteControlWindow && typeof AmbienteControlWindow.updateAmbientePanelFromScene === 'function') {
+            AmbienteControlWindow.updateAmbientePanelFromScene();
         }
     }
 
