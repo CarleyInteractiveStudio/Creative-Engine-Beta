@@ -1,5 +1,5 @@
 import * as Components from '../../engine/Components.js';
-import * as Components3D from '../../engine/Components3D.js';
+import { getComponent } from '../../engine/ComponentRegistry.js';
 import * as UITransformUtils from '../../engine/UITransformUtils.js';
 import { getURLForAssetPath } from '../../engine/AssetUtils.js';
 import * as SpriteSlicer from './SpriteSlicerWindow.js';
@@ -37,7 +37,7 @@ const availableComponents = {
     'CAT_AUDIO': [Components.AudioSource],
     'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.PlatformEffector2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
     'CAT_CAMARA': [Components.Camera],
-    'CAT_3D': [Components3D.MeshRenderer3D, Components3D.DirectionalLight3D, Components3D.PointLight3D, Components3D.SpotLight3D],
+    'CAT_3D': ['MeshRenderer3D', 'DirectionalLight3D', 'PointLight3D', 'SpotLight3D'],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
     'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Attack, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.Suspension, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController, Components.SceneLoader],
     'CAT_SCRIPTING': [Components.CreativeScript]
@@ -582,7 +582,7 @@ async function handleInspectorChange(e) {
         const propPath = e.target.dataset.prop;
         const value = e.target.value;
 
-        const ComponentClass = Components[componentName];
+        const ComponentClass = Components[componentName] || getComponent(componentName);
         if (ComponentClass) {
             const component = selectedMateria.getComponent(ComponentClass);
             if (component) {
@@ -4162,7 +4162,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     ${renderAIFuncInput('onAttackRange', L.get('ON_ATTACK_RANGE', 'Rango Ataque'))}
                 </div>
             `;
-        } else if (ley instanceof Components3D.MeshRenderer3D) {
+        } else if (ley.constructor.name === 'MeshRenderer3D') {
             componentHTML = `
                 ${renderComponentHeader(L.get('MESH_RENDERER_3D', "Mesh Renderer 3D"), icon, index)}
                 <div class="component-content">
@@ -4194,10 +4194,10 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components3D.DirectionalLight3D || ley instanceof Components3D.PointLight3D || ley instanceof Components3D.SpotLight3D) {
-            const isDir = ley instanceof Components3D.DirectionalLight3D;
-            const isSpot = ley instanceof Components3D.SpotLight3D;
-            const type = isDir ? 'DirectionalLight3D' : (isSpot ? 'SpotLight3D' : 'PointLight3D');
+        } else if (ley.constructor.name === 'DirectionalLight3D' || ley.constructor.name === 'PointLight3D' || ley.constructor.name === 'SpotLight3D') {
+            const type = ley.constructor.name;
+            const isDir = type === 'DirectionalLight3D';
+            const isSpot = type === 'SpotLight3D';
 
             componentHTML = `
                 ${renderComponentHeader(L.get(type.toUpperCase(), type), icon, index)}
@@ -5050,12 +5050,16 @@ export async function showAddComponentModal() {
             categoryHeader.querySelector('.category-toggle').classList.toggle('open', !isOpen);
         });
 
-        availableComponents[category].forEach(ComponentClass => {
+        availableComponents[category].forEach(ComponentClassOrName => {
             const L = window.Localization;
-            const isPresent = existingComponents.has(ComponentClass);
+            const is3D = typeof ComponentClassOrName === 'string';
+            const ComponentClass = is3D ? null : ComponentClassOrName;
+            const compName = is3D ? ComponentClassOrName : ComponentClass.name;
+
+            const isPresent = is3D ? selectedMateria.getComponentByName(compName) : existingComponents.has(ComponentClass);
             const componentItem = document.createElement('div');
             componentItem.className = `component-item ${isPresent ? 'already-added' : ''}`;
-            let compTitle = ComponentClass.name;
+            let compTitle = compName;
             if (compTitle === 'Transform') compTitle = L.get('TRANSFORM', 'Posición (Transform)');
             else if (compTitle === 'UITransform') compTitle = L.get('UI_TRANSFORM', 'Transformación UI');
             else if (L.get(compTitle.toUpperCase()) !== compTitle.toUpperCase()) compTitle = L.get(compTitle.toUpperCase());
@@ -5068,12 +5072,23 @@ export async function showAddComponentModal() {
                 ${isPresent ? `<span class="component-item-indicator">${getIconHTML('check')}</span>` : ''}
             `;
 
-            componentItem.addEventListener('click', () => {
+            componentItem.addEventListener('click', async () => {
                 if (isPresent) {
                     window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('COMPONENTE_YA_EXISTE', 'Este componente ya está en el objeto.'));
                     return;
                 }
-                const newComponent = new ComponentClass(selectedMateria);
+
+                let FinalClass = ComponentClass;
+                if (is3D) {
+                    if (!window.Components3D) {
+                        window.Components3D = await import('../../engine/Components3D.js');
+                    }
+                    FinalClass = window.Components3D[compName];
+                }
+
+                if (!FinalClass) return;
+
+                const newComponent = new FinalClass(selectedMateria);
                 selectedMateria.addComponent(newComponent);
 
                 // Initialization for specific components

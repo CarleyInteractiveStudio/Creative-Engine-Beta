@@ -2222,11 +2222,11 @@ function drawGizmoIcons() {
             iconPath = 'icons/camera.svg';
         } else if (materia.getComponent(Components.VideoPlayer)) {
             iconPath = 'icons/video.svg';
-        } else if (materia.getComponent(Components3D.DirectionalLight3D)) {
+        } else if (Components3D && materia.getComponent(Components3D.DirectionalLight3D)) {
             iconPath = 'icons/sparkles.svg';
-        } else if (materia.getComponent(Components3D.PointLight3D)) {
+        } else if (Components3D && materia.getComponent(Components3D.PointLight3D)) {
             iconPath = 'icons/lightbulb.svg';
-        } else if (materia.getComponent(Components3D.SpotLight3D)) {
+        } else if (Components3D && materia.getComponent(Components3D.SpotLight3D)) {
             iconPath = 'icons/flashlight.svg';
         }
 

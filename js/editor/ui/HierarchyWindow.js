@@ -11,7 +11,6 @@
 
 import { Materia } from '../../engine/Materia.js';
 import * as Components from '../../engine/Components.js';
-import * as Components3D from '../../engine/Components3D.js';
 import { showConfirmation } from './DialogWindow.js';
 import {
     createBaseMateria, generateUniqueName, createPanelObject, createTextObject, createButtonObject,
@@ -516,6 +515,17 @@ export function handleContextMenuAction(action) {
     }
 
     // Centralized update for creation and rename actions
+    if (newMateria instanceof Promise) {
+        newMateria.then(m => {
+            if (m) {
+                 broadcastUpdate({ op: 'CREATE', data: SceneManager.serializeMateria(m, true) });
+                 updateHierarchy();
+                 setTimeout(() => selectMateriaCallback(m.id), 0);
+            }
+        });
+        return;
+    }
+
     if (newMateria) {
         // Broadcast creation
         broadcastUpdate({
