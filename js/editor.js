@@ -1143,9 +1143,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // RAM OPTIMIZATION: Completely dispose of 3D engine if we are in strict 2D mode
         if (currentProjectConfig.projectType === '2d') {
             console.log("[Engine] 2D project detected. Disposing of 3D renderers to save RAM.");
-            if (renderer3D) renderer3D.dispose();
-            if (gameRenderer3D) gameRenderer3D.dispose();
+            if (renderer3D) { renderer3D.dispose(); renderer3D = null; }
+            if (gameRenderer3D) { gameRenderer3D.dispose(); gameRenderer3D = null; }
         } else {
+            // If we are in 3D mode but renderers don't exist, create them lazily
+            if (!renderer3D) renderer3D = new Renderer3D(dom.sceneCanvas3d);
+            if (!gameRenderer3D) gameRenderer3D = new Renderer3D(dom.gameCanvas3d);
+            window._Renderer3D = renderer3D;
+
             // If we are in 3D mode but canvases were hidden/disposed, we need to show them
             if (dom.sceneCanvas3d) dom.sceneCanvas3d.style.display = 'block';
             if (dom.gameCanvas3d) dom.gameCanvas3d.style.display = 'block';
@@ -4191,6 +4196,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado
         window.MateriaFactory = { ...MateriaFactory };
         window.Components = Components;
         window.updateHierarchy = updateHierarchy;
+        window.updateCanvasInteractivity = updateCanvasInteractivity;
         window.selectMateria = selectMateria;
         window.updateInspector = updateInspector;
         window.openAssetSelector = openAssetSelector;
@@ -4507,12 +4513,6 @@ public start() {
             updateLoadingProgress(20, "Inicializando renderizadores...");
             renderer = new Renderer(dom.sceneCanvas, true);
             gameRenderer = new Renderer(dom.gameCanvas, false, true); // isGameView = true
-            renderer3D = new Renderer3D(dom.sceneCanvas3d);
-            gameRenderer3D = new Renderer3D(dom.gameCanvas3d);
-
-            // Note: 3D Renderers will only initialize WebGL when needed (lazy)
-
-            window._Renderer3D = renderer3D;
             window.renderer = renderer; // Expose after initialization
 
             updateLoadingProgress(30, "Cargando escena principal...");
@@ -4693,7 +4693,7 @@ public start() {
                 }
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime, getCpuExecutionTime });
-            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, updateAssetBrowserCallback: updateAssetBrowser, Components, updateScene, getActiveView, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool, getCurrentProjectConfig: () => currentProjectConfig, getDeltaTime: () => deltaTime });
+            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, updateAssetBrowserCallback: updateAssetBrowser, Components, Components3D, updateScene, getActiveView, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool, getCurrentProjectConfig: () => currentProjectConfig, getDeltaTime: () => deltaTime });
             window._SceneView = SceneView;
             Terminal.initialize(dom, projectsDirHandle);
 

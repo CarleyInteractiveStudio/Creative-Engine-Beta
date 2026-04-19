@@ -19,6 +19,7 @@ let selectMateria;
 let updateInspector;
 let updateAssetBrowser;
 let Components;
+let Components3D;
 let updateScene;
 let getActiveView;
 let SceneManager;
@@ -762,6 +763,7 @@ export function initialize(dependencies) {
     updateInspector = dependencies.updateInspectorCallback;
     updateAssetBrowser = dependencies.updateAssetBrowserCallback;
     Components = dependencies.Components;
+    Components3D = dependencies.Components3D;
     updateScene = dependencies.updateScene;
     getActiveView = dependencies.getActiveView;
     SceneManager = dependencies.SceneManager;

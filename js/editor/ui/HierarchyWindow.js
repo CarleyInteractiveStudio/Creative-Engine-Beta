@@ -701,6 +701,12 @@ function setupEventListeners() {
         menu.querySelector('[data-action="rename"]').classList.toggle('disabled', !hasContext);
         menu.querySelector('[data-action="delete"]').classList.toggle('disabled', !hasContext);
 
+        // Hide/Show 3D options based on project type
+        const is3DProject = (window.currentProjectConfig?.projectType === '3d');
+        menu.querySelectorAll('.3d-only').forEach(el => {
+            el.style.display = is3DProject ? 'block' : 'none';
+        });
+
         showContextMenuCallback(menu, e);
     });
 
