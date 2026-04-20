@@ -500,6 +500,10 @@ class InputManager {
         this._mouseButtons.clear();
         this._keysDown.clear();
         this._buttonsDown.clear();
+        this._buttonsUp.clear();
+        this._keysUp.clear();
+        this._mouseDelta.x = 0;
+        this._mouseDelta.y = 0;
         console.log('[InputManager] Focus lost: All inputs released.');
     }
 

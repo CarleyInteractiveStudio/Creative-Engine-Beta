@@ -54,25 +54,27 @@ export function world3DToScreen(worldPos) {
     if (!r3d || !r3d.lastProjectionMatrix || !r3d.lastViewMatrix || !glm) return null;
 
     const canvas = r3d.canvas;
-    const worldVec = [worldPos.x, worldPos.y, (worldPos.z || 0), 1.0];
+    // Apply Y-Inversion to match Renderer3D mapping
+    const worldVec = glm.vec4.fromValues(worldPos.x, -worldPos.y, worldPos.z || 0, 1.0);
 
     const mvp = glm.mat4.create();
     glm.mat4.multiply(mvp, r3d.lastProjectionMatrix, r3d.lastViewMatrix);
 
-    const res = [0, 0, 0, 0];
-    // manual multiplication to get W correctly for clipping
-    for(let i=0; i<4; i++) {
-        res[i] = mvp[i]*worldVec[0] + mvp[i+4]*worldVec[1] + mvp[i+8]*worldVec[2] + mvp[i+12]*worldVec[3];
-    }
+    const clipPos = glm.vec4.create();
+    glm.vec4.transformMat4(clipPos, worldVec, mvp);
 
     // Near plane clipping
-    if (res[3] < 0.1) return null;
+    if (clipPos[3] < 0.1) return null;
 
-    const ndc = [res[0] / res[3], res[1] / res[3], res[2] / res[3]];
+    const ndc = [clipPos[0] / clipPos[3], clipPos[1] / clipPos[3], clipPos[2] / clipPos[3]];
+
+    // Ensure we use the correct viewport dimensions which might be different from clientWidth/Height during picking or resizing
+    const width = canvas.width;
+    const height = canvas.height;
 
     return {
-        x: (ndc[0] * 0.5 + 0.5) * canvas.width,
-        y: (1.0 - (ndc[1] * 0.5 + 0.5)) * canvas.height
+        x: (ndc[0] * 0.5 + 0.5) * width,
+        y: (1.0 - (ndc[1] * 0.5 + 0.5)) * height
     };
 }
 
@@ -810,11 +812,15 @@ export function initialize(dependencies) {
             case 'move-z':
                 {
                     if (is3D && glm) {
-                        const axis = dragState.handle === 'move-x' ? [1,0,0] : (dragState.handle === 'move-y' ? [0,1,0] : [0,0,1]);
+                        const isY = dragState.handle === 'move-y';
+                        const axis = dragState.handle === 'move-x' ? [1,0,0] : (isY ? [0,1,0] : [0,0,1]);
                         const q = glm.quat.create();
                         glm.quat.fromEuler(q, dragState.initialTransform.rotationX || 0, dragState.initialTransform.rotationY || 0, dragState.initialTransform.rotationZ || 0);
                         const worldAxis = glm.vec3.create();
                         glm.vec3.transformQuat(worldAxis, axis, q);
+
+                        // Invert world axis Y to match Renderer3D's internal mapping
+                        if (isY) worldAxis[1] *= -1;
 
                         const cam = renderer.camera;
                         const camQ = glm.quat.create();
@@ -827,19 +833,19 @@ export function initialize(dependencies) {
                         const screenDx = moveEvent.clientX - dragState.initialMousePos.x;
                         const screenDy = moveEvent.clientY - dragState.initialMousePos.y;
 
-                        // Project world axis onto camera right and up to see how it looks on screen
+                        // Project world axis onto camera right and up
                         const axisOnScreenX = glm.vec3.dot(worldAxis, camRight);
-                        const axisOnScreenY = -glm.vec3.dot(worldAxis, camUp); // Screen Y is inverted
+                        const axisOnScreenY = -glm.vec3.dot(worldAxis, camUp); // Screen Y is down
 
-                        // Drag strength relative to distance
-                        const dist = glm.vec3.distance([cam.x, cam.y, cam.z], [transform.x, transform.y, transform.z || 0]);
+                        const dist = glm.vec3.distance([cam.x, -cam.y, cam.z], [transform.x, -transform.y, transform.z || 0]);
                         const sensitivity = dist / 1000;
 
                         const moveAmount = (screenDx * axisOnScreenX + screenDy * axisOnScreenY) * sensitivity;
 
                         let nextPos = [dragState.initialTransform.x, dragState.initialTransform.y, dragState.initialTransform.z || 0];
+                        // Apply movement. If it's Y, we use the axis as is because worldAxis[1] is already inverted
                         nextPos[0] += worldAxis[0] * moveAmount;
-                        nextPos[1] += worldAxis[1] * moveAmount;
+                        nextPos[1] += (isY ? -worldAxis[1] : worldAxis[1]) * moveAmount;
                         nextPos[2] += worldAxis[2] * moveAmount;
 
                         if (snapEnabled) {
@@ -1740,11 +1746,18 @@ function handle3DCameraNavigation() {
     const isFlying = InputManager.getMouseButton(2);
 
     if (isFlying) {
-        // Prevent browser context menu during flight
-        window.addEventListener('contextmenu', e => e.preventDefault(), { once: true });
+        // Aggressively prevent browser context menu during flight
+        const preventer = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        };
+        // Use capture phase to catch it before anything else
+        window.addEventListener('contextmenu', preventer, { capture: true, once: true });
+        dom.sceneCanvas.addEventListener('contextmenu', preventer, { capture: true, once: true });
+        if (dom.sceneCanvas3d) dom.sceneCanvas3d.addEventListener('contextmenu', preventer, { capture: true, once: true });
 
         // Speed adjustments for larger 3D scenes
-        const baseSpeed = 800; // Slightly faster for more responsive feel
+        const baseSpeed = 800;
         const speed = baseSpeed * (InputManager.getKey('Shift') ? 3.0 : 1.0) * dt;
         const rotSpeed = 0.2;
 
@@ -1760,26 +1773,27 @@ function handle3DCameraNavigation() {
 
         // Q/E: World-aligned vertical movement
         let verticalMove = 0;
-        if (InputManager.getKey('e')) verticalMove += 1; // Up
-        if (InputManager.getKey('q')) verticalMove -= 1; // Down
+        if (InputManager.getKey('e')) verticalMove += 1; // Up (GL space)
+        if (InputManager.getKey('q')) verticalMove -= 1; // Down (GL space)
 
         if (hasMove) {
             glm.vec3.normalize(moveDir, moveDir);
 
             const rotationQuat = glm.quat.create();
-            // Camera in CE uses X=Pitch, Y=Yaw
+            // Important: Handle Y-inversion in navigation math
             glm.quat.fromEuler(rotationQuat, cam.rotation.x, cam.rotation.y, 0);
 
             const rotatedDir = glm.vec3.create();
             glm.vec3.transformQuat(rotatedDir, moveDir, rotationQuat);
 
             cam.x += rotatedDir[0] * speed;
-            cam.y += rotatedDir[1] * speed;
+            // CE-Y is inverted relative to GL-Y
+            cam.y -= rotatedDir[1] * speed;
             cam.z += rotatedDir[2] * speed;
         }
 
-        // Apply Vertical Movement separately to keep it world-locked
-        cam.y += verticalMove * speed;
+        // Apply Vertical Movement (CE-Y inverted)
+        cam.y -= verticalMove * speed;
 
         // --- 2. Rotation (Mouse look) ---
         const delta = InputManager.getMouseDelta();
@@ -1826,7 +1840,8 @@ export function focusOnSelectedMateria() {
 
     let size = 50;
     if (meshRenderer) {
-        size = Math.max(Math.abs(transform.scale.x), Math.abs(transform.scale.y), Math.abs(transform.scale.z || 1)) * 2;
+        // Now using standardized size 1.0 primitives
+        size = Math.max(Math.abs(transform.scale.x), Math.abs(transform.scale.y), Math.abs(transform.scale.z || 1));
     } else {
         const dims = getMateriaDimensions(materia);
         size = Math.max(dims.width * Math.abs(transform.scale.x), dims.height * Math.abs(transform.scale.y));
@@ -1836,11 +1851,12 @@ export function focusOnSelectedMateria() {
         // Position camera at a distance relative to size
         const distance = Math.max(150, size * 3.0);
         cam.x = transform.x;
-        cam.y = transform.y + (size * 0.4);
+        // CE-Y negative is "above" in 3D pass
+        cam.y = transform.y - (size * 0.4);
         cam.z = (transform.z || 0) + distance;
 
         // Reset rotation to look at the object
-        cam.rotation.x = 10;
+        cam.rotation.x = 15; // Pitch down 15 degrees
         cam.rotation.y = 0;
     } else {
         cam.x = transform.x;
@@ -1863,15 +1879,6 @@ export function update() {
         // F key to focus
         if (InputManager.getKeyDown('f')) {
             focusOnSelectedMateria();
-        }
-
-        // Suppress browser context menu during right-click navigation
-        if (InputManager.getMouseButton(2)) {
-            const preventer = (e) => {
-                e.preventDefault();
-                window.removeEventListener('contextmenu', preventer);
-            };
-            window.addEventListener('contextmenu', preventer);
         }
     } else {
         handleEditorInteractions();
@@ -2364,6 +2371,11 @@ function check3DGizmoHit(canvasPos, materia) {
 function draw3DGizmos(materia) {
     const transform = materia.getComponent(Components.Transform);
     const center = { x: transform.x, y: transform.y, z: transform.z || 0 };
+    const rotation = {
+        x: transform.rotationX || 0,
+        y: transform.rotationY || 0,
+        z: transform.rotationZ || 0
+    };
     const screenPos = world3DToScreen(center);
     if (!screenPos) return;
 
@@ -2376,12 +2388,12 @@ function draw3DGizmos(materia) {
 
     const meshRenderer = materia.getComponent(C3D.MeshRenderer3D);
     if (meshRenderer) {
-        const mult = 2; // Mesh is -1 to 1, so 2 units wide.
-        if (meshRenderer.meshType === 'Cube') Gizmos.drawWireCube(ctx, center, { x: mult * transform.scale.x, y: mult * transform.scale.y, z: mult * transform.scale.z });
-        else if (meshRenderer.meshType === 'Sphere') Gizmos.drawWireSphere(ctx, center, (mult/2) * Math.max(transform.scale.x, transform.scale.y, transform.scale.z));
-        else if (meshRenderer.meshType === 'Plane') Gizmos.drawWirePlane(ctx, center, { x: mult * transform.scale.x, z: mult * transform.scale.z });
-        else if (meshRenderer.meshType === 'Triangle') Gizmos.drawWireTriangle(ctx, center, { x: mult * transform.scale.x, y: mult * transform.scale.y });
-        else if (meshRenderer.meshType === 'Capsule') Gizmos.drawWireCapsule(ctx, center, (mult/2) * Math.max(transform.scale.x, transform.scale.z), mult * transform.scale.y);
+        const scale = { x: transform.scale.x, y: transform.scale.y, z: transform.scale.z || 1 };
+        if (meshRenderer.meshType === 'Cube') Gizmos.drawWireCube(ctx, center, scale, rotation);
+        else if (meshRenderer.meshType === 'Sphere') Gizmos.drawWireSphere(ctx, center, Math.max(scale.x, scale.y, scale.z) * 0.5, rotation);
+        else if (meshRenderer.meshType === 'Plane') Gizmos.drawWirePlane(ctx, center, { x: scale.x, z: scale.z }, rotation);
+        else if (meshRenderer.meshType === 'Triangle') Gizmos.drawWireTriangle(ctx, center, { x: scale.x, y: scale.y }, rotation);
+        else if (meshRenderer.meshType === 'Capsule') Gizmos.drawWireCapsule(ctx, center, Math.max(scale.x, scale.z) * 0.25, scale.y, rotation);
     } else if (materia.getComponent(Components.Camera)) {
         drawCameraGizmos(renderer);
     }
@@ -2656,29 +2668,32 @@ function drawLineClipped(p1, p2, color, width = 1) {
     const mvp = glm.mat4.create();
     glm.mat4.multiply(mvp, r3d.lastProjectionMatrix, r3d.lastViewMatrix);
 
-    const project = (p) => {
-        const v = [p.x, p.y, p.z || 0, 1.0];
-        const res = [0, 0, 0, 0];
-        for(let i=0; i<4; i++) res[i] = mvp[i]*v[0] + mvp[i+4]*v[1] + mvp[i+8]*v[2] + mvp[i+12]*v[3];
-        return res;
-    };
+    // Apply Y-Inversion to match Renderer3D mapping
+    const v1 = glm.vec4.fromValues(p1.x, -p1.y, p1.z || 0, 1.0);
+    const v2 = glm.vec4.fromValues(p2.x, -p2.y, p2.z || 0, 1.0);
 
-    let v1 = project(p1), v2 = project(p2);
+    const c1 = glm.vec4.create();
+    const c2 = glm.vec4.create();
+    glm.vec4.transformMat4(c1, v1, mvp);
+    glm.vec4.transformMat4(c2, v2, mvp);
 
-    // Liang-Barsky-style clipping for W (near plane)
+    // Liang-Barsky-style clipping for Near Plane (W)
     const wNear = 0.1;
-    if (v1[3] < wNear && v2[3] < wNear) return;
+    if (c1[3] < wNear && c2[3] < wNear) return;
 
-    if (v1[3] < wNear) {
-        const t = (wNear - v1[3]) / (v2[3] - v1[3]);
-        for(let i=0; i<4; i++) v1[i] = v1[i] + t * (v2[i] - v1[i]);
-    } else if (v2[3] < wNear) {
-        const t = (wNear - v2[3]) / (v1[3] - v2[3]);
-        for(let i=0; i<4; i++) v2[i] = v2[i] + t * (v1[i] - v2[i]);
+    if (c1[3] < wNear) {
+        const t = (wNear - c1[3]) / (c2[3] - c1[3]);
+        glm.vec4.lerp(c1, c1, c2, t);
+    } else if (c2[3] < wNear) {
+        const t = (wNear - c2[3]) / (c1[3] - c2[3]);
+        glm.vec4.lerp(c2, c2, c1, t);
     }
 
-    const s1 = { x: (v1[0]/v1[3] * 0.5 + 0.5) * r3d.canvas.width, y: (1.0 - (v1[1]/v1[3] * 0.5 + 0.5)) * r3d.canvas.height };
-    const s2 = { x: (v2[0]/v2[3] * 0.5 + 0.5) * r3d.canvas.width, y: (1.0 - (v2[1]/v2[3] * 0.5 + 0.5)) * r3d.canvas.height };
+    const w = r3d.canvas.width;
+    const h = r3d.canvas.height;
+
+    const s1 = { x: (c1[0]/c1[3] * 0.5 + 0.5) * w, y: (1.0 - (c1[1]/c1[3] * 0.5 + 0.5)) * h };
+    const s2 = { x: (c2[0]/c2[3] * 0.5 + 0.5) * w, y: (1.0 - (c2[1]/c2[3] * 0.5 + 0.5)) * h };
 
     const { ctx } = renderer;
     ctx.strokeStyle = color;
@@ -2721,13 +2736,13 @@ function draw3DGrid() {
 
     // Main Axes (Infinite Origin Lines)
     if (prefs.showOriginAxes !== false) {
-        const axisLen = 100000;
+        const axisLen = 1000000;
         // X Axis (Red)
-        drawLineClipped({ x: -axisLen, y: 0, z: 0 }, { x: axisLen, y: 0, z: 0 }, 'rgba(255, 50, 50, 1.0)', 2);
+        drawLineClipped({ x: -axisLen, y: 0, z: 0 }, { x: axisLen, y: 0, z: 0 }, 'rgba(255, 70, 70, 0.8)', 1.5);
         // Y Axis (Green)
-        drawLineClipped({ x: 0, y: -axisLen, z: 0 }, { x: 0, y: axisLen, z: 0 }, 'rgba(50, 255, 50, 1.0)', 2);
+        drawLineClipped({ x: 0, y: -axisLen, z: 0 }, { x: 0, y: axisLen, z: 0 }, 'rgba(70, 255, 70, 0.8)', 1.5);
         // Z Axis (Blue)
-        drawLineClipped({ x: 0, y: 0, z: -axisLen }, { x: 0, y: 0, z: axisLen }, 'rgba(50, 50, 255, 1.0)', 2);
+        drawLineClipped({ x: 0, y: 0, z: -axisLen }, { x: 0, y: 0, z: axisLen }, 'rgba(70, 70, 255, 0.8)', 1.5);
 
         const origin = world3DToScreen({ x: 0, y: 0, z: 0 });
         if (origin) {

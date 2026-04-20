@@ -369,26 +369,31 @@ export class Renderer3D {
 
             vec4 grid(vec3 fragPos3D, float scale) {
                 vec2 coord = fragPos3D.xz * scale;
+                // Offset slightly to center origin lines
+                coord += 0.5 * fwidth(coord);
                 vec2 derivative = fwidth(coord);
                 vec2 grid = abs(fract(coord - 0.5) - 0.5) / derivative;
                 float line = min(grid.x, grid.y);
                 float minimumz = min(derivative.y, 1.0);
                 float minimumx = min(derivative.x, 1.0);
-                vec4 color = vec4(0.2, 0.2, 0.2, 1.0 - min(line, 1.0));
+                vec4 color = vec4(0.15, 0.15, 0.15, 1.0 - min(line, 1.0));
 
-                // Z-Axis (Blue)
-                if (fragPos3D.x > -0.1 * minimumx && fragPos3D.x < 0.1 * minimumx)
-                    color.rgb = vec3(0.0, 0.0, 1.0);
+                // Z-Axis (Blue) - Slightly thicker and brighter for infinite grid
+                if (fragPos3D.x > -0.15 * minimumx && fragPos3D.x < 0.15 * minimumx)
+                    color.rgb = vec3(0.0, 0.3, 1.0);
                 // X-Axis (Red)
-                if (fragPos3D.z > -0.1 * minimumz && fragPos3D.z < 0.1 * minimumz)
-                    color.rgb = vec3(1.0, 0.0, 0.0);
+                if (fragPos3D.z > -0.15 * minimumz && fragPos3D.z < 0.15 * minimumz)
+                    color.rgb = vec3(1.0, 0.2, 0.2);
 
                 return color;
             }
 
             float computeDepth(vec3 pos) {
                 vec4 clipSpacePos = uProj * uView * vec4(pos.xyz, 1.0);
-                return (clipSpacePos.z / clipSpacePos.w);
+                // Map NDC z (-1 to 1) to depth buffer range (0 to 1)
+                float ndcZ = clipSpacePos.z / clipSpacePos.w;
+                // Add a tiny bias to prevent Z-fighting with the ground plane
+                return (ndcZ * 0.5 + 0.5) + 0.00001;
             }
 
             float computeLinearDepth(vec3 pos) {
@@ -399,8 +404,10 @@ export class Renderer3D {
             }
 
             void main() {
+                // Plane intersection with Y=0
+                // Since world Y is inverted, the ground plane is still at world Y=0
                 float t = -vNearPoint.y / (vFarPoint.y - vNearPoint.y);
-                if (t < 0.0) discard;
+                if (t < 0.0 || t > 1.0) discard;
 
                 vec3 fragPos3D = vNearPoint + t * (vFarPoint - vNearPoint);
                 gl_FragDepthEXT = computeDepth(fragPos3D);
@@ -461,12 +468,12 @@ export class Renderer3D {
         gl.bindBuffer(gl.ARRAY_BUFFER, this.skyBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(quadPositions), gl.STATIC_DRAW);
 
-        // Cube Mesh (2x2x2)
+        // Cube Mesh (1x1x1)
         this.meshCube = createMesh(
             [
-                -1,-1,1, 1,-1,1, 1,1,1, -1,1,1, -1,-1,-1, -1,1,-1, 1,1,-1, 1,-1,-1,
-                -1,1,-1, -1,1,1, 1,1,1, 1,1,-1, -1,-1,-1, 1,-1,-1, 1,-1,1, -1,-1,1,
-                1,-1,-1, 1,1,-1, 1,1,1, 1,-1,1, -1,-1,-1, -1,-1,1, -1,1,1, -1,1,-1
+                -0.5,-0.5,0.5, 0.5,-0.5,0.5, 0.5,0.5,0.5, -0.5,0.5,0.5, -0.5,-0.5,-0.5, -0.5,0.5,-0.5, 0.5,0.5,-0.5, 0.5,-0.5,-0.5,
+                -0.5,0.5,-0.5, -0.5,0.5,0.5, 0.5,0.5,0.5, 0.5,0.5,-0.5, -0.5,-0.5,-0.5, 0.5,-0.5,-0.5, 0.5,-0.5,0.5, -0.5,-0.5,0.5,
+                0.5,-0.5,-0.5, 0.5,0.5,-0.5, 0.5,0.5,0.5, 0.5,-0.5,0.5, -0.5,-0.5,-0.5, -0.5,-0.5,0.5, -0.5,0.5,0.5, -0.5,0.5,-0.5
             ],
             [
                 0,0,1, 0,0,1, 0,0,1, 0,0,1, 0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1,
@@ -476,7 +483,7 @@ export class Renderer3D {
             [0,1,2, 0,2,3, 4,5,6, 4,6,7, 8,9,10, 8,10,11, 12,13,14, 12,14,15, 16,17,18, 16,18,19, 20,21,22, 20,22,23]
         );
 
-        // Sphere Mesh (UV Sphere)
+        // Sphere Mesh (UV Sphere, radius 0.5)
         const spPos = [], spNorm = [], spIdx = [];
         const lat = 16, lon = 16;
         for(let j=0; j<=lat; j++) {
@@ -485,11 +492,11 @@ export class Renderer3D {
             let cosTheta = Math.cos(theta);
             for(let i=0; i<=lon; i++) {
                 let phi = i * 2 * Math.PI / lon;
-                let x = Math.cos(phi) * sinTheta;
-                let y = cosTheta;
-                let z = Math.sin(phi) * sinTheta;
+                let x = Math.cos(phi) * sinTheta * 0.5;
+                let y = cosTheta * 0.5;
+                let z = Math.sin(phi) * sinTheta * 0.5;
                 spPos.push(x, y, z);
-                spNorm.push(x, y, z);
+                spNorm.push(x / 0.5, y / 0.5, z / 0.5);
             }
         }
         for(let j=0; j<lat; j++) {
@@ -501,29 +508,29 @@ export class Renderer3D {
         }
         this.meshSphere = createMesh(spPos, spNorm, spIdx);
 
-        // Plane Mesh (Horizontal XZ)
+        // Plane Mesh (Horizontal XZ, 1x1)
         this.meshPlane = createMesh(
-            [-1,0,-1, 1,0,-1, 1,0,1, -1,0,1],
+            [-0.5,0,-0.5, 0.5,0,-0.5, 0.5,0,0.5, -0.5,0,0.5],
             [0,1,0, 0,1,0, 0,1,0, 0,1,0],
             [0,1,2, 0,2,3]
         );
 
-        // Triangle Mesh (Facing Z+)
+        // Triangle Mesh (Facing Z+, height 1, base 1)
         this.meshTriangle = createMesh(
-            [0,1,0, -1,-1,0, 1,-1,0],
+            [0,0.5,0, -0.5,-0.5,0, 0.5,-0.5,0],
             [0,0,1, 0,0,1, 0,0,1],
             [0,1,2]
         );
 
-        // Capsule Mesh (Total height 2, Radius 0.5)
+        // Capsule Mesh (Total height 1, Radius 0.25)
         const capPos = [], capNorm = [], capIdx = [];
         for(let j=0; j<=lat/2; j++) {
             let theta = j * Math.PI / lat;
             let sinTheta = Math.sin(theta), cosTheta = Math.cos(theta);
             for(let i=0; i<=lon; i++) {
                 let phi = i * 2 * Math.PI / lon;
-                let x = Math.cos(phi) * sinTheta * 0.5, y = cosTheta * 0.5 + 0.5, z = Math.sin(phi) * sinTheta * 0.5;
-                capPos.push(x, y, z); capNorm.push(x, cosTheta, z);
+                let x = Math.cos(phi) * sinTheta * 0.25, y = cosTheta * 0.25 + 0.25, z = Math.sin(phi) * sinTheta * 0.25;
+                capPos.push(x, y, z); capNorm.push(x / 0.25, cosTheta, z / 0.25);
             }
         }
         for(let j=lat/2; j<=lat; j++) {
@@ -531,8 +538,8 @@ export class Renderer3D {
             let sinTheta = Math.sin(theta), cosTheta = Math.cos(theta);
             for(let i=0; i<=lon; i++) {
                 let phi = i * 2 * Math.PI / lon;
-                let x = Math.cos(phi) * sinTheta * 0.5, y = cosTheta * 0.5 - 0.5, z = Math.sin(phi) * sinTheta * 0.5;
-                capPos.push(x, y, z); capNorm.push(x, cosTheta, z);
+                let x = Math.cos(phi) * sinTheta * 0.25, y = cosTheta * 0.25 - 0.25, z = Math.sin(phi) * sinTheta * 0.25;
+                capPos.push(x, y, z); capNorm.push(x / 0.25, cosTheta, z / 0.25);
             }
         }
         for(let j=0; j<lat; j++) {
@@ -676,6 +683,7 @@ export class Renderer3D {
 
         const invViewProj = mat4.create();
         const viewNoPos = mat4.clone(viewMatrix);
+        // Important: View matrix already has inverted Y if coming from render()
         viewNoPos[12] = 0; viewNoPos[13] = 0; viewNoPos[14] = 0; // Remove translation
         mat4.multiply(invViewProj, projectionMatrix, viewNoPos);
         mat4.invert(invViewProj, invViewProj);
@@ -754,16 +762,11 @@ export class Renderer3D {
         const projectionMatrix = mat4.create();
         const viewMatrix = mat4.create();
 
-        this.lastProjectionMatrix = projectionMatrix;
-        this.lastViewMatrix = viewMatrix;
+        const near = 0.1;
+        const far = 100000;
 
         let activeViewPosition = [0, 0, 0];
         let aspect = gl.canvas.width / gl.canvas.height;
-        if (options.picking) {
-            // Match the aspect ratio of the picking viewport (square 512x512)
-            // or better, keep the canvas aspect to match what user sees
-            // aspect = 1.0;
-        }
 
         if (cameraMateria) {
             const camComp = cameraMateria.getComponent(Camera);
@@ -773,16 +776,16 @@ export class Renderer3D {
                 const size = camComp.orthographicSize;
                 const orthoH = size;
                 const orthoW = size * aspect;
-                // Reverse Y for orthographic to match 2D Canvas coordinate system (Y-down)
-                mat4.ortho(projectionMatrix, -orthoW, orthoW, orthoH, -orthoH, 0.1, 10000);
+                mat4.ortho(projectionMatrix, -orthoW, orthoW, -orthoH, orthoH, near, far);
             } else {
-                mat4.perspective(projectionMatrix, camComp.fov * Math.PI / 180, aspect, 0.1, 50000);
+                mat4.perspective(projectionMatrix, camComp.fov * Math.PI / 180, aspect, near, far);
             }
 
             const q = quat.create();
-            // Important: Camera in CE uses standard Euler for 3D
+            // Invert Pitch and Roll for Y-inversion?
+            // Actually, keep Euler as is, but we'll negate Y pos
             quat.fromEuler(q, camTrans.localRotation.x, camTrans.localRotation.y, camTrans.localRotation.z);
-            activeViewPosition = [camTrans.x, camTrans.y, camTrans.z];
+            activeViewPosition = [camTrans.x, -camTrans.y, camTrans.z];
             mat4.fromRotationTranslation(viewMatrix, q, activeViewPosition);
             mat4.invert(viewMatrix, viewMatrix);
         } else {
@@ -791,12 +794,17 @@ export class Renderer3D {
             const q = quat.create();
             quat.fromEuler(q, editorCam.rotation.x, editorCam.rotation.y, editorCam.rotation.z);
 
-            // Use Perspective for 3D Scene View
-            mat4.perspective(projectionMatrix, 45 * Math.PI / 180, aspect, 1, 100000);
+            mat4.perspective(projectionMatrix, 45 * Math.PI / 180, aspect, near, far);
 
-            activeViewPosition = [editorCam.x, editorCam.y, editorCam.z];
+            activeViewPosition = [editorCam.x, -editorCam.y, editorCam.z];
             mat4.fromRotationTranslation(viewMatrix, q, activeViewPosition);
             mat4.invert(viewMatrix, viewMatrix);
+        }
+
+        // Only store the "last" matrices if this is the main rendering pass (not picking)
+        if (!options.picking) {
+            this.lastProjectionMatrix = mat4.clone(projectionMatrix);
+            this.lastViewMatrix = mat4.clone(viewMatrix);
         }
 
         // --- Render Sky ---
@@ -824,10 +832,10 @@ export class Renderer3D {
             const dirLight = scene.getAllMaterias().find(m => m.isActive && m.getComponent(Components3D.DirectionalLight3D));
             if (dirLight) {
                 const dlComp = dirLight.getComponent(Components3D.DirectionalLight3D);
-                gl.uniform3fv(this.programInfo.uniformLocations.uDirLightDir, [dlComp.direction.x, dlComp.direction.y, dlComp.direction.z]);
+                gl.uniform3fv(this.programInfo.uniformLocations.uDirLightDir, [dlComp.direction.x, -dlComp.direction.y, dlComp.direction.z]);
                 gl.uniform3fv(this.programInfo.uniformLocations.uDirLightColor, this.hexToRgb(dlComp.color).map(c => c * dlComp.intensity));
             } else {
-                gl.uniform3fv(this.programInfo.uniformLocations.uDirLightDir, [0, -1, 0]);
+                gl.uniform3fv(this.programInfo.uniformLocations.uDirLightDir, [0, -1, 0]); // Default pointing Down
                 gl.uniform3fv(this.programInfo.uniformLocations.uDirLightColor, [1, 1, 1]);
             }
             gl.uniform3fv(this.programInfo.uniformLocations.uAmbientLight, [0.3, 0.3, 0.3]);
@@ -838,7 +846,7 @@ export class Renderer3D {
             pointLights.forEach(pl => {
                 const comp = pl.getComponent(Components3D.PointLight3D);
                 const trans = pl.getComponent(Transform);
-                plPos.push(trans.x, trans.y, trans.z || 0);
+                plPos.push(trans.x, -trans.y, trans.z || 0);
                 const rgb = this.hexToRgb(comp.color);
                 plColor.push(rgb[0] * comp.intensity, rgb[1] * comp.intensity, rgb[2] * comp.intensity);
                 plRange.push(comp.range);
@@ -978,7 +986,7 @@ export class Renderer3D {
         const modelMatrix = mat4.create();
         const worldPos = transform.position;
         const worldScale = transform.scale;
-        const pos = [worldPos.x, worldPos.y, worldPos.z || 0];
+        const pos = [worldPos.x, -worldPos.y, worldPos.z || 0];
         const scale = [Math.abs(worldScale.x), Math.abs(worldScale.y), Math.abs(worldScale.z || 1)];
 
         const q = quat.create();
@@ -1207,8 +1215,11 @@ export class Renderer3D {
         this.render(scene, cameraMateria, { ...options, picking: true, idMap });
 
         const pixels = new Uint8Array(4);
-        // Correct Y for WebGL (bottom-up)
-        gl.readPixels(x, h - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        // Correct Y for WebGL (bottom-up).
+        // Screen Y: 0 (top) to h-1 (bottom).
+        // WebGL Y: 0 (bottom) to h-1 (top).
+        // So screen y -> gl y = (h - 1) - y
+        gl.readPixels(x, (h - 1) - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
         const pickedId = pixels[0] + (pixels[1] << 8) + (pixels[2] << 16);
@@ -1236,7 +1247,7 @@ export class Renderer3D {
         const gl = this.gl;
         const worldPos = transform.position;
         const worldScale = transform.scale;
-        const pos = [worldPos.x, worldPos.y, worldPos.z || 0];
+        const pos = [worldPos.x, -worldPos.y, worldPos.z || 0];
         const scale = [Math.abs(worldScale.x), Math.abs(worldScale.y), 1];
 
         const q = quat.create();
@@ -1329,7 +1340,7 @@ export class Renderer3D {
         const transform = materia.getComponent(Transform);
         const worldPos = transform.position;
         const worldScale = transform.scale;
-        const pos = [worldPos.x, worldPos.y, worldPos.z || 0];
+        const pos = [worldPos.x, -worldPos.y, worldPos.z || 0];
 
         const q = quat.create();
         quat.fromEuler(q, transform.rotationX || 0, transform.rotationY || 0, transform.rotationZ || 0);
@@ -1405,7 +1416,7 @@ export class Renderer3D {
         const h = bounds.maxY - bounds.minY;
         if (w <= 0 || h <= 0) return;
 
-        const pos = [bounds.minX + w/2, bounds.minY + h/2, transform.z || 0];
+        const pos = [bounds.minX + w/2, -(bounds.minY + h/2), transform.z || 0];
         const modelMatrix = mat4.create();
         mat4.fromRotationTranslationScale(modelMatrix, quat.create(), pos, [w, h, 1]);
 

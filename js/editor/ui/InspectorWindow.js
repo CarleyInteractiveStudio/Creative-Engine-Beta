@@ -595,7 +595,10 @@ async function handleInspectorChange(e) {
 
     if (needsUpdate) {
         // Use a slight delay to allow the value to update before re-rendering
-        setTimeout(updateInspector, 0);
+        setTimeout(() => {
+            updateInspector();
+            if (updateSceneCallback) updateSceneCallback();
+        }, 0);
     }
 }
 

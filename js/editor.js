@@ -3693,6 +3693,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Resize canvas in real-time
                     if (renderer) renderer.resize();
                     if (gameRenderer) gameRenderer.resize();
+                    if (renderer3D) renderer3D.resize();
+                    if (gameRenderer3D) gameRenderer3D.resize();
                 };
 
                 const onPointerUp = (upEvent) => {
