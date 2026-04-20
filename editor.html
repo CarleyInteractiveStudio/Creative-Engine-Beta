@@ -800,18 +800,20 @@ public star() {
                         <div class="inspector-row">
                             <label for="ambiente-graphic-mode">Estilo Visual</label>
                             <select id="ambiente-graphic-mode">
-                                <option value="Realistic">Realista (PBR/Realismo)</option>
-                                <option value="Anime">Anime (Toon Shading)</option>
+                                <option value="Realistic">3D Normal (Realista)</option>
+                                <option value="Anime">Anime (Cel-Shaded)</option>
                             </select>
                         </div>
-                        <div class="inspector-row">
-                            <label for="ambiente-realism-slider">Nivel de Realismo</label>
-                            <input type="range" id="ambiente-realism-slider" min="0" max="100" value="50" style="flex-grow: 1;">
-                            <span id="ambiente-realism-value" style="margin-left: 10px; min-width: 40px;">50%</span>
-                        </div>
-                        <div class="checkbox-field">
-                            <input type="checkbox" id="ambiente-realism-filter">
-                            <label for="ambiente-realism-filter">Filtro de Realismo (Cinemático)</label>
+                        <div id="ambiente-realistic-options">
+                            <div class="inspector-row">
+                                <label for="ambiente-realism-slider">Nivel de Realismo</label>
+                                <input type="range" id="ambiente-realism-slider" min="0" max="100" value="50" style="flex-grow: 1;">
+                                <span id="ambiente-realism-value" style="margin-left: 10px; min-width: 40px;">50%</span>
+                            </div>
+                            <div class="checkbox-field">
+                                <input type="checkbox" id="ambiente-realism-filter">
+                                <label for="ambiente-realism-filter">Filtro de Realismo (Cinemático)</label>
+                            </div>
                         </div>
                     </fieldset>
 
@@ -1163,28 +1165,28 @@ public star() {
                         <select id="settings-renderer-mode">
                             <option value="canvas2d" data-i18n="SIMPLE_2D">Simple (2D Estándar)</option>
                             <option value="realista" data-i18n="AVANZADO_LUCES">Avanzado (Iluminación y Noche/Día)</option>
-                            <option value="3d-mode" data-i18n="MODE_3D">3D World (Beta)</option>
-                            <option value="hybrid-3d" data-i18n="MODE_HYBRID">Mixed (2D + 3D)</option>
-                            <option value="anime-3d" data-i18n="MODE_ANIME">2.5D Anime (Cel-Shaded)</option>
+                            <option value="3d-mode" data-i18n="MODE_3D">3D World (WebGL)</option>
                         </select>
                     </div>
                     <p class="field-description" data-i18n="HINT_MODO_AVANZADO">El modo 'Avanzado' permite usar el sistema de Noche/Día y luces dinámicas.</p>
 
-                    <div class="inspector-row">
+                    <div class="inspector-row only-3d">
                         <label for="settings-graphic-mode">Estilo Visual</label>
                         <select id="settings-graphic-mode">
-                            <option value="Realistic">Realista (PBR/Realismo)</option>
-                            <option value="Anime">Anime (Toon Shading)</option>
+                            <option value="Realistic">3D Normal (Realista)</option>
+                            <option value="Anime">Anime (Cel-Shaded)</option>
                         </select>
                     </div>
-                    <div class="inspector-row">
-                        <label for="settings-realism-slider">Nivel de Realismo</label>
-                        <input type="range" id="settings-realism-slider" min="0" max="100" value="50" style="flex-grow: 1;">
-                        <span id="settings-realism-value" style="margin-left: 10px; min-width: 40px;">50%</span>
-                    </div>
-                    <div class="checkbox-field">
-                        <input type="checkbox" id="settings-realism-filter">
-                        <label for="settings-realism-filter">Filtro de Realismo (Cinemático)</label>
+                    <div id="settings-realistic-options" class="only-3d">
+                        <div class="inspector-row">
+                            <label for="settings-realism-slider">Nivel de Realismo</label>
+                            <input type="range" id="settings-realism-slider" min="0" max="100" value="50" style="flex-grow: 1;">
+                            <span id="settings-realism-value" style="margin-left: 10px; min-width: 40px;">50%</span>
+                        </div>
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="settings-realism-filter">
+                            <label for="settings-realism-filter">Filtro de Realismo (Cinemático)</label>
+                        </div>
                     </div>
 
                     <hr>

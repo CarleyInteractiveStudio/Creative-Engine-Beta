@@ -492,6 +492,15 @@ class InputManager {
         this._onPointerUp(event.button);
     }
 
+    static _onBlur() {
+        // Release all keys and buttons when window loses focus to prevent stuck states
+        this._keys.clear();
+        this._mouseButtons.clear();
+        this._keysDown.clear();
+        this._buttonsDown.clear();
+        console.log('[InputManager] Focus lost: All inputs released.');
+    }
+
     static _onWindowMouseDown(event) {
         // Only trigger if not already handled by canvas (optional, but avoids double counts)
         // Actually, _onPointerDown handles double clicks via Map
@@ -584,6 +593,9 @@ class InputManager {
         if (!this._mouseButtons.get(button)) {
             this._buttonsDown.add(button);
             this._buttonsDownTime.set(button, performance.now());
+            // Reset delta on press to avoid jumps from previous frames
+            this._mouseDelta.x = 0;
+            this._mouseDelta.y = 0;
         }
         this._mouseButtons.set(button, true);
     }

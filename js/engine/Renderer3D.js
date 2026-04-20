@@ -36,6 +36,10 @@ export class Renderer3D {
             return false;
         }
 
+        // Enable extensions for high-quality grid
+        this.gl.getExtension('OES_standard_derivatives');
+        this.gl.getExtension('EXT_frag_depth');
+
         // RAM OPTIMIZATION: Clear any existing texture cache before init
         if (this.textureCache) this.textureCache.clear();
 
@@ -327,17 +331,114 @@ export class Renderer3D {
                 uPickingColor: gl.getUniformLocation(this.pickingProgram, 'uPickingColor'),
             },
         };
+
+        // --- Infinite Grid Shader ---
+        const gridVsSource = `
+            attribute vec3 aVertexPosition;
+            varying vec3 vNearPoint;
+            varying vec3 vFarPoint;
+            uniform mat4 uInvView;
+            uniform mat4 uInvProj;
+
+            vec3 unprojectPoint(float x, float y, float z, mat4 invView, mat4 invProj) {
+                vec4 rayNDCPos = vec4(x, y, z, 1.0);
+                vec4 viewPos = invProj * rayNDCPos;
+                viewPos /= viewPos.w;
+                vec4 worldPos = invView * viewPos;
+                return worldPos.xyz;
+            }
+
+            void main() {
+                vNearPoint = unprojectPoint(aVertexPosition.x, aVertexPosition.y, 0.0, uInvView, uInvProj);
+                vFarPoint = unprojectPoint(aVertexPosition.x, aVertexPosition.y, 1.0, uInvView, uInvProj);
+                gl_Position = vec4(aVertexPosition, 1.0);
+            }
+        `;
+
+        const gridFsSource = `
+            #extension GL_OES_standard_derivatives : enable
+            #extension GL_EXT_frag_depth : enable
+            precision mediump float;
+            varying vec3 vNearPoint;
+            varying vec3 vFarPoint;
+            uniform mat4 uView;
+            uniform mat4 uProj;
+            uniform float uNear;
+            uniform float uFar;
+
+            vec4 grid(vec3 fragPos3D, float scale) {
+                vec2 coord = fragPos3D.xz * scale;
+                vec2 derivative = fwidth(coord);
+                vec2 grid = abs(fract(coord - 0.5) - 0.5) / derivative;
+                float line = min(grid.x, grid.y);
+                float minimumz = min(derivative.y, 1.0);
+                float minimumx = min(derivative.x, 1.0);
+                vec4 color = vec4(0.2, 0.2, 0.2, 1.0 - min(line, 1.0));
+
+                // Z-Axis (Blue)
+                if (fragPos3D.x > -0.1 * minimumx && fragPos3D.x < 0.1 * minimumx)
+                    color.rgb = vec3(0.0, 0.0, 1.0);
+                // X-Axis (Red)
+                if (fragPos3D.z > -0.1 * minimumz && fragPos3D.z < 0.1 * minimumz)
+                    color.rgb = vec3(1.0, 0.0, 0.0);
+
+                return color;
+            }
+
+            float computeDepth(vec3 pos) {
+                vec4 clipSpacePos = uProj * uView * vec4(pos.xyz, 1.0);
+                return (clipSpacePos.z / clipSpacePos.w);
+            }
+
+            float computeLinearDepth(vec3 pos) {
+                vec4 clipSpacePos = uProj * uView * vec4(pos.xyz, 1.0);
+                float clipDepth = (clipSpacePos.z / clipSpacePos.w) * 2.0 - 1.0;
+                float linearDepth = (2.0 * uNear * uFar) / (uFar + uNear - clipDepth * (uFar - uNear));
+                return linearDepth / uFar;
+            }
+
+            void main() {
+                float t = -vNearPoint.y / (vFarPoint.y - vNearPoint.y);
+                if (t < 0.0) discard;
+
+                vec3 fragPos3D = vNearPoint + t * (vFarPoint - vNearPoint);
+                gl_FragDepthEXT = computeDepth(fragPos3D);
+
+                float linearDepth = computeLinearDepth(fragPos3D);
+                float fading = max(0.0, (0.5 - linearDepth));
+
+                gl_FragColor = (grid(fragPos3D, 0.01) + grid(fragPos3D, 0.001));
+                gl_FragColor.a *= fading;
+                if (gl_FragColor.a < 0.1) discard;
+            }
+        `;
+
+        this.gridProgram = this.initShaderProgram(gl, gridVsSource, gridFsSource);
+        this.gridProgramInfo = {
+            program: this.gridProgram,
+            attribLocations: {
+                vertexPosition: gl.getAttribLocation(this.gridProgram, 'aVertexPosition'),
+            },
+            uniformLocations: {
+                uView: gl.getUniformLocation(this.gridProgram, 'uView'),
+                uProj: gl.getUniformLocation(this.gridProgram, 'uProj'),
+                uInvView: gl.getUniformLocation(this.gridProgram, 'uInvView'),
+                uInvProj: gl.getUniformLocation(this.gridProgram, 'uInvProj'),
+                uNear: gl.getUniformLocation(this.gridProgram, 'uNear'),
+                uFar: gl.getUniformLocation(this.gridProgram, 'uFar'),
+            },
+        };
     }
 
     initBuffers() {
         const gl = this.gl;
 
-        // Fullscreen Quad for Sky
-        const skyPositions = [
-            -1.0,  1.0,
-             1.0,  1.0,
-            -1.0, -1.0,
-             1.0, -1.0,
+        // Fullscreen Quad for Sky and Grid
+        const quadPositions = [
+            -1.0,  1.0,  0.0,
+             1.0,  1.0,  0.0,
+            -1.0, -1.0,  0.0,
+             1.0, -1.0,  0.0,
         ];
         this.skyBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.skyBuffer);
@@ -522,7 +623,7 @@ export class Renderer3D {
         gl.useProgram(this.skyProgramInfo.program);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.skyBuffer);
-        gl.vertexAttribPointer(this.skyProgramInfo.attribLocations.vertexPosition, 2, gl.FLOAT, false, 0, 0);
+        gl.vertexAttribPointer(this.skyProgramInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(this.skyProgramInfo.attribLocations.vertexPosition);
 
         const skyColor = this.hexToRgb(ambiente.skyColor || '#87ceeb');
@@ -543,6 +644,34 @@ export class Renderer3D {
         gl.disable(gl.DEPTH_TEST);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         gl.enable(gl.DEPTH_TEST);
+    }
+
+    renderGrid(projectionMatrix, viewMatrix) {
+        const gl = this.gl;
+        const ext = gl.getExtension('EXT_frag_depth');
+        if (!ext) return; // Grid requires depth adjustment for realism
+
+        gl.useProgram(this.gridProgramInfo.program);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.skyBuffer); // Re-use fullscreen quad
+        gl.vertexAttribPointer(this.gridProgramInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(this.gridProgramInfo.attribLocations.vertexPosition);
+
+        const invView = mat4.create();
+        mat4.invert(invView, viewMatrix);
+        const invProj = mat4.create();
+        mat4.invert(invProj, projectionMatrix);
+
+        gl.uniformMatrix4fv(this.gridProgramInfo.uniformLocations.uView, false, viewMatrix);
+        gl.uniformMatrix4fv(this.gridProgramInfo.uniformLocations.uProj, false, projectionMatrix);
+        gl.uniformMatrix4fv(this.gridProgramInfo.uniformLocations.uInvView, false, invView);
+        gl.uniformMatrix4fv(this.gridProgramInfo.uniformLocations.uInvProj, false, invProj);
+        gl.uniform1f(this.gridProgramInfo.uniformLocations.uNear, 0.1);
+        gl.uniform1f(this.gridProgramInfo.uniformLocations.uFar, 100000);
+
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     }
 
     render(scene, cameraMateria, options = {}) {
@@ -627,6 +756,11 @@ export class Renderer3D {
         // --- Render Sky ---
         if (ambiente.skyMode && ambiente.skyMode !== 'None') {
             this.renderSky(ambiente, projectionMatrix, viewMatrix);
+        }
+
+        // --- Render 3D Grid (Editor only) ---
+        if (options.showGrid) {
+            this.renderGrid(projectionMatrix, viewMatrix);
         }
 
         gl.useProgram(this.programInfo.program);
