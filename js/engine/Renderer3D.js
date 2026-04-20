@@ -135,6 +135,7 @@ export class Renderer3D {
             uniform vec3 uViewPosition;
             uniform vec4 uColor;
             uniform bool uUseToon;
+            uniform float uRealismLevel; // 0 to 1
             uniform bool uUseTexture;
             uniform sampler2D uSampler;
 
@@ -151,6 +152,7 @@ export class Renderer3D {
 
             void main() {
                 vec3 normal = normalize(vNormal);
+                vec3 viewDir = normalize(uViewPosition - vPosition);
                 vec4 baseColor = uColor;
                 if (uUseTexture) {
                     baseColor *= texture2D(uSampler, vTextureCoord);
@@ -162,15 +164,26 @@ export class Renderer3D {
                 vec3 dirLightDir = normalize(-uDirLightDir);
                 float diff = max(dot(normal, dirLightDir), 0.0);
 
+                // Specular (PBR-lite for realism)
+                vec3 reflectDir = reflect(-dirLightDir, normal);
+                float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+                vec3 specular = uDirLightColor * spec * uRealismLevel;
+
                 // Point Lights
                 vec3 pointDiffuse = vec3(0.0);
+                vec3 pointSpecular = vec3(0.0);
                 for(int i = 0; i < MAX_POINT_LIGHTS; i++) {
                     if (i >= uPointLightCount) break;
                     vec3 lightDir = normalize(uPointLightPos[i] - vPosition);
                     float dist = length(uPointLightPos[i] - vPosition);
                     float atten = max(0.0, 1.0 - (dist / uPointLightRange[i]));
+
                     float pDiff = max(dot(normal, lightDir), 0.0);
                     pointDiffuse += uPointLightColor[i] * pDiff * atten;
+
+                    vec3 pReflectDir = reflect(-lightDir, normal);
+                    float pSpec = pow(max(dot(viewDir, pReflectDir), 0.0), 16.0);
+                    pointSpecular += uPointLightColor[i] * pSpec * atten * uRealismLevel;
                 }
 
                 if (uUseToon) {
@@ -179,12 +192,17 @@ export class Renderer3D {
                     else if (diff > 0.25) diff = 0.4;
                     else diff = 0.2;
 
-                    // Simplify point light for toon
                     pointDiffuse = step(0.1, pointDiffuse) * 0.8;
+                    specular = vec3(0.0);
+                    pointSpecular = vec3(0.0);
                 }
 
                 vec3 diffuse = (diff * uDirLightColor) + pointDiffuse;
-                vec3 finalColor = (uAmbientLight + diffuse) * baseColor.rgb;
+                vec3 finalColor = (uAmbientLight + diffuse) * baseColor.rgb + specular + pointSpecular;
+
+                // Fresnel edge lighting for realism
+                float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 3.0) * 0.5 * uRealismLevel;
+                finalColor += uDirLightColor * fresnel;
 
                 gl_FragColor = vec4(finalColor, baseColor.a);
             }
@@ -206,6 +224,7 @@ export class Renderer3D {
                 viewPosition: gl.getUniformLocation(this.shaderProgram, 'uViewPosition'),
                 uColor: gl.getUniformLocation(this.shaderProgram, 'uColor'),
                 uUseToon: gl.getUniformLocation(this.shaderProgram, 'uUseToon'),
+                uRealismLevel: gl.getUniformLocation(this.shaderProgram, 'uRealismLevel'),
                 uUseTexture: gl.getUniformLocation(this.shaderProgram, 'uUseTexture'),
                 uSampler: gl.getUniformLocation(this.shaderProgram, 'uSampler'),
                 uAmbientLight: gl.getUniformLocation(this.shaderProgram, 'uAmbientLight'),
@@ -218,7 +237,65 @@ export class Renderer3D {
             },
         };
 
+        // --- Post-Processing Shader (Realism Filter) ---
+        const postVsSource = `
+            attribute vec4 aVertexPosition;
+            varying vec2 vTexCoord;
+            void main() {
+                vTexCoord = aVertexPosition.xy * 0.5 + 0.5;
+                gl_Position = aVertexPosition;
+            }
+        `;
+        const postFsSource = `
+            precision mediump float;
+            varying vec2 vTexCoord;
+            uniform sampler2D uSampler;
+            uniform bool uEnableFilter;
+            uniform float uRealismLevel;
+
+            void main() {
+                vec4 color = texture2D(uSampler, vTexCoord);
+                if (!uEnableFilter) {
+                    gl_FragColor = color;
+                    return;
+                }
+
+                // Cinematic adjustments
+                vec3 finalColor = color.rgb;
+
+                // Contrast
+                finalColor = (finalColor - 0.5) * (1.1 + uRealismLevel * 0.2) + 0.5;
+
+                // Saturation
+                float gray = dot(finalColor, vec3(0.299, 0.587, 0.114));
+                finalColor = mix(vec3(gray), finalColor, 1.1 + uRealismLevel * 0.1);
+
+                // Vignette
+                float dist = distance(vTexCoord, vec2(0.5, 0.5));
+                finalColor *= smoothstep(0.8, 0.45, dist * (0.9 + uRealismLevel * 0.1));
+
+                gl_FragColor = vec4(finalColor, color.a);
+            }
+        `;
+        this.postProgram = this.initShaderProgram(gl, postVsSource, postFsSource);
+        this.postProgramInfo = {
+            program: this.postProgram,
+            attribLocations: {
+                vertexPosition: gl.getAttribLocation(this.postProgram, 'aVertexPosition'),
+            },
+            uniformLocations: {
+                uSampler: gl.getUniformLocation(this.postProgram, 'uSampler'),
+                uEnableFilter: gl.getUniformLocation(this.postProgram, 'uEnableFilter'),
+                uRealismLevel: gl.getUniformLocation(this.postProgram, 'uRealismLevel'),
+            },
+        };
+
         this.textureCache = new Map();
+
+        // --- Post-Processing Buffers ---
+        this.postBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.postBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,1, 1,1, -1,-1, 1,-1]), gl.STATIC_DRAW);
 
         // --- Picking Shader ---
         const pickingVsSource = `
@@ -475,6 +552,17 @@ export class Renderer3D {
         if (!this.gl) return;
         const gl = this.gl;
         const ambiente = scene.ambiente || {};
+        const realismLevel = (ambiente.realismLevel !== undefined ? ambiente.realismLevel : 50) / 100;
+        const usePostProcess = !!ambiente.realismFilter && !options.picking;
+
+        // --- Setup Post-Processing Framebuffer if needed ---
+        if (usePostProcess) {
+            this.ensurePostFB(gl.canvas.width, gl.canvas.height);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, this.postFB);
+        } else if (!options.picking) {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        }
+
         const bgColor = this.hexToRgb(ambiente.nocheDiaColor || '#1a1a2a');
 
         // Allow transparency for hybrid modes
@@ -543,6 +631,7 @@ export class Renderer3D {
 
         gl.useProgram(this.programInfo.program);
         gl.uniform3fv(this.programInfo.uniformLocations.viewPosition, activeViewPosition);
+        gl.uniform1f(this.programInfo.uniformLocations.uRealismLevel, realismLevel);
 
         // Global Lights Setup
         const dirLight = scene.getAllMaterias().find(m => m.isActive && m.getComponent(Components3D.DirectionalLight3D));
@@ -602,8 +691,66 @@ export class Renderer3D {
             });
 
         renderableMaterias.forEach(materia => {
+            // Optimization: Frustum/Distance Culling
+            if (ambiente.optiCameraCulling && activeViewPosition) {
+                const trans = materia.getComponent(Transform);
+                if (trans) {
+                    const pos = [trans.x, trans.y, trans.z || 0];
+                    const dist = vec3.distance(pos, activeViewPosition);
+                    // Basic distance culling
+                    if (dist > (ambiente.optiLODDistance || 10000)) return;
+                }
+            }
             this.renderMateria(materia, projectionMatrix, viewMatrix, options);
         });
+
+        // --- Execute Post-Processing ---
+        if (usePostProcess) {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+            gl.useProgram(this.postProgramInfo.program);
+
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, this.postTex);
+            gl.uniform1i(this.postProgramInfo.uniformLocations.uSampler, 0);
+            gl.uniform1i(this.postProgramInfo.uniformLocations.uEnableFilter, 1);
+            gl.uniform1f(this.postProgramInfo.uniformLocations.uRealismLevel, realismLevel);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.postBuffer);
+            gl.vertexAttribPointer(this.postProgramInfo.attribLocations.vertexPosition, 2, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(this.postProgramInfo.attribLocations.vertexPosition);
+
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        }
+    }
+
+    ensurePostFB(w, h) {
+        const gl = this.gl;
+        if (this.postFB && this._postW === w && this._postH === h) return;
+
+        if (this.postFB) gl.deleteFramebuffer(this.postFB);
+        if (this.postTex) gl.deleteTexture(this.postTex);
+        if (this.postDepth) gl.deleteRenderbuffer(this.postDepth);
+
+        this.postFB = gl.createFramebuffer();
+        this.postTex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, this.postTex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        this.postDepth = gl.createRenderbuffer();
+        gl.bindRenderbuffer(gl.RENDERBUFFER, this.postDepth);
+        gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h);
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.postFB);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.postTex, 0);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, this.postDepth);
+
+        this._postW = w;
+        this._postH = h;
     }
 
     renderMateria(materia, projectionMatrix, viewMatrix, options) {
@@ -679,8 +826,9 @@ export class Renderer3D {
             color = [rgb[0], rgb[1], rgb[2], 1.0];
         }
 
+        const isToon = options.isToon || meshRenderer?.isToon || (window.SceneManager.currentScene.ambiente.graphicMode === 'Anime');
         gl.uniform4fv(this.programInfo.uniformLocations.uColor, color);
-        gl.uniform1i(this.programInfo.uniformLocations.uUseToon, (options.isToon || meshRenderer?.isToon) ? 1 : 0);
+        gl.uniform1i(this.programInfo.uniformLocations.uUseToon, isToon ? 1 : 0);
 
         if (meshRenderer) {
             if (options.picking) {

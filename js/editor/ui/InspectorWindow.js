@@ -5106,16 +5106,21 @@ export async function showAddComponentModal() {
     // --- 1. Render Built-in Components ---
     const L = window.Localization;
     const projectConfig = getCurrentProjectConfig();
-    const projectType = projectConfig.projectType || '2d';
+
+    // View Mode determines the filtering (simulated 2D or full 3D)
+    const viewMode = projectConfig.viewMode || '3d';
 
     for (const category in availableComponents) {
-        // --- HARD FILTERING: 2D vs 3D ---
-        if (projectType === '2d') {
+        // --- Filtering based on View Mode ---
+        if (viewMode === '2d') {
+            // In 2D view mode, hide 3D specific primitives
             if (category === 'CAT_3D') continue;
-        } else if (projectType === '3d') {
-            // User requested to hide EVERYTHING 2D in 3D mode because they will build components from scratch.
-            // We only keep 3D and Scripting/Basic categories if they are shared (none are currently shared 2D/3D).
-            if (category !== 'CAT_3D' && category !== 'CAT_SCRIPTING') continue;
+        } else {
+            // In 3D view mode, user wants a "from scratch" experience.
+            // We hide high-level 2D logic but keep low-level primitives if needed?
+            // Actually, per user request: "en el 3d ... que tampoco aparezcan nada del 2d"
+            const categories2D = ['CAT_RENDERIZADO', 'CAT_MAPA', 'CAT_ILUMINACION', 'CAT_FISICAS'];
+            if (categories2D.includes(category)) continue;
         }
 
         if (category === 'CAT_SCRIPTING') continue;

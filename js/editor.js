@@ -1142,90 +1142,68 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCanvasInteractivity = async function() {
         if (!currentProjectConfig) return;
 
-        const projectType = currentProjectConfig.projectType || '2d';
-        const is3D = (projectType !== '2d') && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
+        // Unified Engine: Everything is 3D-capable now.
+        // projectType is kept for metadata but no longer blocks 3D loading.
+        const is3DView = (currentProjectConfig.viewMode === '3d') || (currentProjectConfig.rendererMode && currentProjectConfig.rendererMode.includes('3d'));
 
-        // RAM OPTIMIZATION: Completely dispose of 3D engine if we are in strict 2D mode
-        if (projectType === '2d') {
-            console.log("[Engine] 2D project detected. Disposing of 3D renderers to save RAM.");
-            if (renderer3D) { renderer3D.dispose(); renderer3D = null; }
-            if (gameRenderer3D) { gameRenderer3D.dispose(); gameRenderer3D = null; }
-            window.Components3D = null;
+        // DYNAMIC IMPORT for 3D components and renderers (Always load if not present)
+        if (!window.Components3D) {
+            console.log("[Engine] Loading 3D modules and math library...");
 
-            // Also hide 3D canvases
-            if (dom.sceneCanvas3d) dom.sceneCanvas3d.style.display = 'none';
-            if (dom.gameCanvas3d) dom.gameCanvas3d.style.display = 'none';
-        } else {
-            // DYNAMIC IMPORT for 3D components and renderers
-            if (!window.Components3D) {
-                console.log("[Engine] Loading 3D modules and math library...");
-
-                // Pre-load gl-matrix for SceneView math
-                if (!window.glMatrix) {
-                    try {
-                        const glm = await import('gl-matrix');
-                        window.glMatrix = glm;
-                    } catch (e) {
-                        console.error("[Engine] Failed to load gl-matrix:", e);
-                    }
+            if (!window.glMatrix) {
+                try {
+                    const glm = await import('gl-matrix');
+                    window.glMatrix = glm;
+                } catch (e) {
+                    console.error("[Engine] Failed to load gl-matrix:", e);
                 }
-
-                const comp3DModule = await import('./engine/Components3D.js');
-                window.Components3D = comp3DModule;
             }
 
-            // If we are in 3D mode but renderers don't exist, create them lazily
-            if (!renderer3D) {
-                const { Renderer3D } = await import('./engine/Renderer3D.js');
-                renderer3D = new Renderer3D(dom.sceneCanvas3d);
-                gameRenderer3D = new Renderer3D(dom.gameCanvas3d);
-            }
-            window._Renderer3D = renderer3D;
-
-            // If we are in 3D mode but canvases were hidden/disposed, we need to show them
-            if (dom.sceneCanvas3d) dom.sceneCanvas3d.style.display = 'block';
-            if (dom.gameCanvas3d) dom.gameCanvas3d.style.display = 'block';
+            const comp3DModule = await import('./engine/Components3D.js');
+            window.Components3D = comp3DModule;
         }
 
-        // Hide toggle for strict 2D projects
-        if (dom.btnToggle2d3d) {
-            dom.btnToggle2d3d.style.display = (projectType === '2d' || projectType === '3d') ? 'none' : 'flex';
+        if (!renderer3D) {
+            const { Renderer3D } = await import('./engine/Renderer3D.js');
+            renderer3D = new Renderer3D(dom.sceneCanvas3d);
+            gameRenderer3D = new Renderer3D(dom.gameCanvas3d);
         }
+        window._Renderer3D = renderer3D;
+
+        if (dom.sceneCanvas3d) dom.sceneCanvas3d.style.display = 'block';
+        if (dom.gameCanvas3d) dom.gameCanvas3d.style.display = 'block';
+
+        // View Mode determines interaction, but 3D is always the motor
+        const is2DLocked = currentProjectConfig.viewMode === '2d';
 
         if (dom.sceneCanvas) {
-            dom.sceneCanvas.style.pointerEvents = is3D ? 'none' : 'all';
-            dom.sceneCanvas.style.zIndex = is3D ? '2' : '1';
-            // Strict 3D: hide 2D canvas entirely
-            if (projectType === '3d') dom.sceneCanvas.style.display = 'none';
-            else dom.sceneCanvas.style.display = 'block';
+            dom.sceneCanvas.style.pointerEvents = is2DLocked ? 'all' : 'none';
+            dom.sceneCanvas.style.zIndex = is2DLocked ? '1' : '2';
+            dom.sceneCanvas.style.display = 'block';
         }
         if (dom.sceneCanvas3d) {
-            dom.sceneCanvas3d.style.pointerEvents = is3D ? 'all' : 'none';
-            dom.sceneCanvas3d.style.zIndex = is3D ? '1' : '2';
+            dom.sceneCanvas3d.style.pointerEvents = is2DLocked ? 'none' : 'all';
+            dom.sceneCanvas3d.style.zIndex = is2DLocked ? '2' : '1';
         }
 
         if (dom.gameCanvas) {
-            // In game, 2D handles UI and 3D handles world.
-            dom.gameCanvas.style.pointerEvents = is3D ? 'none' : 'all';
-            dom.gameCanvas.style.zIndex = is3D ? '2' : '1';
-            // Strict 3D: hide 2D canvas entirely
-            if (projectType === '3d') dom.gameCanvas.style.display = 'none';
-            else dom.gameCanvas.style.display = 'block';
+            dom.gameCanvas.style.pointerEvents = 'all'; // Always allow UI interaction
+            dom.gameCanvas.style.zIndex = '2';
+            dom.gameCanvas.style.display = 'block';
         }
         if (dom.gameCanvas3d) {
-            dom.gameCanvas3d.style.pointerEvents = is3D ? 'all' : 'none';
-            dom.gameCanvas3d.style.zIndex = is3D ? '1' : '2';
+            dom.gameCanvas3d.style.pointerEvents = 'all';
+            dom.gameCanvas3d.style.zIndex = '1';
         }
 
         // Sync 2D/3D toggle button UI
         const label = document.getElementById('label-2d-3d');
         const icon = document.getElementById('icon-2d-3d');
-        if (label) label.textContent = is3D ? '3D' : '2D';
-        if (icon) icon.src = is3D ? 'icons/box.svg' : 'icons/layers.svg';
+        if (label) label.textContent = is2DLocked ? '2D (Bloqueado)' : '3D';
+        if (icon) icon.src = is2DLocked ? 'icons/layers.svg' : 'icons/box.svg';
 
-        // Strict visibility control for the toggle button itself
         if (dom.btnToggle2d3d) {
-            dom.btnToggle2d3d.style.display = (currentProjectConfig.projectType === '2d' || currentProjectConfig.projectType === '3d') ? 'none' : 'flex';
+            dom.btnToggle2d3d.style.display = 'flex';
         }
     };
 
@@ -1319,18 +1297,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = await configFileHandle.getFile();
             const content = await file.text();
             currentProjectConfig = JSON.parse(content);
-            // Default projectType to 2d if missing in config file
-            if (!currentProjectConfig.projectType) {
-                currentProjectConfig.projectType = (currentProjectConfig.rendererMode && currentProjectConfig.rendererMode.includes('3d')) ? '3d' : '2d';
-            }
 
-            // ENFORCEMENT: If project is 2D, rendererMode MUST be 2D-compatible
-            if (currentProjectConfig.projectType === '2d') {
-                if (currentProjectConfig.rendererMode !== 'canvas2d' && currentProjectConfig.rendererMode !== 'realista') {
-                    console.warn(`[Config] Incompatible rendererMode '${currentProjectConfig.rendererMode}' for 2D project. Resetting to 'canvas2d'.`);
-                    currentProjectConfig.rendererMode = 'canvas2d';
-                }
-            }
+            // Unified Engine: projectType is no longer a restriction
+            if (!currentProjectConfig.projectType) currentProjectConfig.projectType = '3d';
+            if (!currentProjectConfig.viewMode) currentProjectConfig.viewMode = '3d';
+            if (!currentProjectConfig.graphicMode) currentProjectConfig.graphicMode = 'Realistic';
+            if (currentProjectConfig.realismLevel === undefined) currentProjectConfig.realismLevel = 50;
 
             window.currentProjectConfig = currentProjectConfig;
             console.log("Configuracion del proyecto cargada:", currentProjectConfig);
@@ -3549,20 +3521,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (dom.btnToggle2d3d) {
             dom.btnToggle2d3d.addEventListener('click', async () => {
-                const isCurrent3D = currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d';
+                const currentMode = currentProjectConfig.viewMode || '3d';
+                const newMode = currentMode === '3d' ? '2d' : '3d';
 
-                if (isCurrent3D) {
-                    currentProjectConfig.rendererMode = 'canvas2d';
-                } else {
-                    currentProjectConfig.rendererMode = '3d-mode';
+                currentProjectConfig.viewMode = newMode;
+
+                // Sync 3D Camera for 2D View
+                if (newMode === '2d' && renderer && renderer.camera) {
+                    renderer.camera.rotation.x = 0;
+                    renderer.camera.rotation.y = 0;
+                    renderer.camera.rotation.z = 0;
+                    // Position camera in front of the scene
+                    renderer.camera.z = 1000;
                 }
-
-                // Update UI toggle button state
-                const isNew3D = currentProjectConfig.rendererMode === '3d-mode';
-                const label = document.getElementById('label-2d-3d');
-                const icon = document.getElementById('icon-2d-3d');
-                if (label) label.textContent = isNew3D ? '3D' : '2D';
-                if (icon) icon.src = isNew3D ? 'icons/box.svg' : 'icons/layers.svg';
 
                 updateCanvasInteractivity();
 
@@ -3571,9 +3542,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     await saveProjectConfigFromModule(false);
                 }
 
-                console.log(`Modo de renderizado cambiado a: ${currentProjectConfig.rendererMode}`);
+                console.log(`Vista cambiada a: ${newMode}`);
 
-                // Trigger a scene update to show/hide relevant elements
                 if (updateScene) updateScene(renderer, false);
             });
         }

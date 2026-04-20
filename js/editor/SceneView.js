@@ -1608,6 +1608,24 @@ function handle3DCameraNavigation() {
     const dt = getDeltaTime() || 0.016;
     const glm = window.glMatrix;
 
+    const config = getCurrentProjectConfig();
+    const is2DLocked = config.viewMode === '2d';
+
+    if (is2DLocked) {
+        // --- 2D View Mode: Locked rotation and Z ---
+        cam.rotation.x = 0;
+        cam.rotation.y = 0;
+        cam.rotation.z = 0;
+
+        // Navigation logic for 2D View
+        if (InputManager.getMouseButton(1) || InputManager.getMouseButton(2)) {
+            const delta = InputManager.getMouseDelta();
+            cam.x -= delta.x / (cam.zoom || 1);
+            cam.y -= delta.y / (cam.zoom || 1);
+        }
+        return;
+    }
+
     // Navigation only while Right Mouse Button is held
     const isFlying = InputManager.getMouseButton(2);
 
@@ -1711,6 +1729,55 @@ export function update() {
 
         lastSelectedId = currentSelectedId;
     }
+}
+
+function drawFrustumCullingGizmos() {
+    if (!SceneManager || !renderer) return;
+    const scene = SceneManager.currentScene;
+    if (!scene) return;
+
+    const allMaterias = scene.getAllMaterias();
+    const { ctx } = renderer;
+
+    allMaterias.forEach(materia => {
+        if (!materia.isActive) return;
+        const cameraComponent = materia.getComponent(Components.Camera);
+        if (!cameraComponent) return;
+
+        const transform = materia.getComponent(Components.Transform);
+        if (!transform) return;
+
+        // Draw visual "culling distance" sphere or box
+        const lodDist = scene.ambiente.optiLODDistance || 10000;
+
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.strokeStyle = 'rgba(0, 255, 100, 0.2)';
+        ctx.lineWidth = 1;
+
+        // Draw a simple 3D ring at the LOD distance to visualize the "Optimized Zone"
+        for(let a=0; a<Math.PI*2; a+=0.5) {
+            const p1 = {
+                x: transform.x + Math.cos(a) * lodDist,
+                y: transform.y,
+                z: transform.z + Math.sin(a) * lodDist
+            };
+            const p2 = {
+                x: transform.x + Math.cos(a+0.5) * lodDist,
+                y: transform.y,
+                z: transform.z + Math.sin(a+0.5) * lodDist
+            };
+            const s1 = world3DToScreen(p1);
+            const s2 = world3DToScreen(p2);
+            if (s1 && s2) {
+                ctx.beginPath();
+                ctx.moveTo(s1.x, s1.y);
+                ctx.lineTo(s2.x, s2.y);
+                ctx.stroke();
+            }
+        }
+        ctx.restore();
+    });
 }
 
 function drawCameraGizmos(renderer) {
@@ -2217,6 +2284,11 @@ export function drawOverlay() {
 
     // Draw gizmos for all cameras in the scene
     drawCameraGizmos(renderer);
+
+    // Frustum Visualizer for Optimization Mode
+    if (config.optiCameraCulling) {
+        drawFrustumCullingGizmos();
+    }
 
     // Draw Icons (Audio, Camera, etc)
     if (showGizmoIcons) {

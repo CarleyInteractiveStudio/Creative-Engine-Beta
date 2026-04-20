@@ -130,6 +130,8 @@ HERRAMIENTA_MULTI: Multi
 HERRAMIENTA_GOMA: Borrar
 
 # Launcher
+GRAFICOS_AVANZADOS: Gráficos Avanzados
+OPTIMIZACION_GRAFICA: Optimización y Detalle
 RESOURCE_LOADING_MODE: Modo de Carga de Recursos
 PRELOAD_STABLE: Precarga (Estable - Carga todo antes de iniciar)
 LAZY_LOAD_FAST: Carga Perezosa (Inicio Rápido - Carga mientras se juega)
@@ -743,6 +745,8 @@ HERRAMIENTA_MULTI: Multi
 HERRAMIENTA_GOMA: Erase
 
 # Launcher
+GRAFICOS_AVANZADOS: Advanced Graphics
+OPTIMIZACION_GRAFICA: Optimization & Detail
 RESOURCE_LOADING_MODE: Resource Loading Mode
 PRELOAD_STABLE: Preload (Stable - Loads everything before starting)
 LAZY_LOAD_FAST: Lazy Load (Fast Start - Loads while playing)
@@ -1317,6 +1321,8 @@ AUTH_RESET_SENT: Se existir uma conta com este e-mail, um link de recuperação 
 ENVIANDO: Enviando...
 
 # Launcher
+GRAFICOS_AVANZADOS: Gráficos Avançados
+OPTIMIZACION_GRAFICA: Otimização e Detalhe
 RESOURCE_LOADING_MODE: Modo de Carregamento de Recursos
 PRELOAD_STABLE: Pré-carregar (Estável - Carrega tudo antes de iniciar)
 LAZY_LOAD_FAST: Carregamento Lento (Início Rápido - Carrega enquanto joga)
@@ -1808,6 +1814,8 @@ AUTH_RESET_SENT: Если аккаунт с таким адресом сущес
 ENVIANDO: Отправка...
 
 # Launcher
+GRAFICOS_AVANZADOS: Продвинутая графика
+OPTIMIZACION_GRAFICA: Оптимизация и детализация
 RESOURCE_LOADING_MODE: Режим загрузки ресурсов
 PRELOAD_STABLE: Предзагрузка (Стабильно - Загружает всё перед запуском)
 LAZY_LOAD_FAST: Отложенная загрузка (Быстрый старт - Загрузка во время игры)
@@ -2303,6 +2311,8 @@ AUTH_RESET_SENT: 如果该电子邮件存在帐户，则已发送恢复链接。
 ENVIANDO: 正在发送...
 
 # Launcher
+GRAFICOS_AVANZADOS: 高级图形
+OPTIMIZACION_GRAFICA: 优化与细节
 RESOURCE_LOADING_MODE: 资源加载模式
 PRELOAD_STABLE: 预加载 (稳定 - 启动前加载所有内容)
 LAZY_LOAD_FAST: 懒加载 (快速启动 - 边玩边加载)

@@ -789,13 +789,51 @@ public star() {
                 <div class="resize-handle" data-direction="nw"></div>
             </div>
 
-            <div id="ambiente-control-panel" class="editor-panel floating-panel hidden" style="width: 350px; height: 600px;">
+            <div id="ambiente-control-panel" class="editor-panel floating-panel hidden" style="width: 350px; height: 750px;">
                 <div class="panel-header">
                     <span data-i18n="CONTROL_AMBIENTE">Control de Ambiente</span>
                     <button class="close-panel-btn" data-panel="ambiente-control-panel">&times;</button>
                 </div>
-                <div class="panel-content">
-                    <fieldset class="inspector-section only-3d">
+                <div class="panel-content scroll-no-bar">
+                    <fieldset class="inspector-section">
+                        <legend data-i18n="GRAFICOS_AVANZADOS">Gráficos Avanzados (3D)</legend>
+                        <div class="inspector-row">
+                            <label for="ambiente-graphic-mode">Estilo Visual</label>
+                            <select id="ambiente-graphic-mode">
+                                <option value="Realistic">Realista (PBR/Realismo)</option>
+                                <option value="Anime">Anime (Toon Shading)</option>
+                            </select>
+                        </div>
+                        <div class="inspector-row">
+                            <label for="ambiente-realism-slider">Nivel de Realismo</label>
+                            <input type="range" id="ambiente-realism-slider" min="0" max="100" value="50" style="flex-grow: 1;">
+                            <span id="ambiente-realism-value" style="margin-left: 10px; min-width: 40px;">50%</span>
+                        </div>
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="ambiente-realism-filter">
+                            <label for="ambiente-realism-filter">Filtro de Realismo (Cinemático)</label>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="inspector-section">
+                        <legend data-i18n="OPTIMIZACION_GRAFICA">Optimización y Detalle</legend>
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="ambiente-opti-camera" checked>
+                            <label for="ambiente-opti-camera">Optimización por Cámara (Frustum Culling)</label>
+                        </div>
+                        <p class="field-description">Renderiza solo lo que la cámara ve. Muestra el cono de visión en la escena.</p>
+
+                        <div class="inspector-row">
+                            <label for="ambiente-opti-shadow-dist">Distancia Sombras</label>
+                            <input type="number" id="ambiente-opti-shadow-dist" value="2000" step="100" min="0">
+                        </div>
+                        <div class="inspector-row">
+                            <label for="ambiente-opti-lod-dist">Distancia LOD (Detalle)</label>
+                            <input type="number" id="ambiente-opti-lod-dist" value="3000" step="100" min="0">
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="inspector-section">
                         <legend data-i18n="SKY_SYSTEM">Sistema de Cielo (3D)</legend>
                         <div class="inspector-row">
                             <label for="ambiente-sky-mode">Modo de Cielo</label>
@@ -819,7 +857,7 @@ public star() {
                     </fieldset>
 
                     <fieldset class="inspector-section">
-                        <legend data-i18n="NOCHE_DIA">Noche / Día (2D)</legend>
+                        <legend data-i18n="NOCHE_DIA">Atmosfera (2D/Hybrid)</legend>
 
                         <div class="inspector-row">
                             <label data-i18n="PRESETS_RAPIDOS">Presets Rápidos</label>
@@ -1130,7 +1168,39 @@ public star() {
                             <option value="anime-3d" data-i18n="MODE_ANIME">2.5D Anime (Cel-Shaded)</option>
                         </select>
                     </div>
-                            <p class="field-description" data-i18n="HINT_MODO_AVANZADO">El modo 'Avanzado' permite usar el sistema de Noche/Día y luces dinámicas.</p>
+                    <p class="field-description" data-i18n="HINT_MODO_AVANZADO">El modo 'Avanzado' permite usar el sistema de Noche/Día y luces dinámicas.</p>
+
+                    <div class="inspector-row">
+                        <label for="settings-graphic-mode">Estilo Visual</label>
+                        <select id="settings-graphic-mode">
+                            <option value="Realistic">Realista (PBR/Realismo)</option>
+                            <option value="Anime">Anime (Toon Shading)</option>
+                        </select>
+                    </div>
+                    <div class="inspector-row">
+                        <label for="settings-realism-slider">Nivel de Realismo</label>
+                        <input type="range" id="settings-realism-slider" min="0" max="100" value="50" style="flex-grow: 1;">
+                        <span id="settings-realism-value" style="margin-left: 10px; min-width: 40px;">50%</span>
+                    </div>
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="settings-realism-filter">
+                        <label for="settings-realism-filter">Filtro de Realismo (Cinemático)</label>
+                    </div>
+
+                    <hr>
+                    <h4 data-i18n="OPTIMIZACION_GRAFICA">Optimización y Detalle</h4>
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="settings-opti-camera" checked>
+                        <label for="settings-opti-camera">Optimización por Cámara (Frustum Culling)</label>
+                    </div>
+                    <div class="inspector-row">
+                        <label for="settings-opti-shadow-dist">Distancia Sombras</label>
+                        <input type="number" id="settings-opti-shadow-dist" value="2000" step="100" min="0">
+                    </div>
+                    <div class="inspector-row">
+                        <label for="settings-opti-lod-dist">Distancia LOD (Detalle)</label>
+                        <input type="number" id="settings-opti-lod-dist" value="3000" step="100" min="0">
+                    </div>
                     <hr>
                     <label data-i18n="ICONO_EJECUTABLE">Icono del Ejecutable</label>
                     <div class="image-picker">

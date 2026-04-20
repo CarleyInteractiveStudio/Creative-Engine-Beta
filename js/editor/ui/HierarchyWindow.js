@@ -191,12 +191,12 @@ export function handleContextMenuAction(action) {
             newMateria = createBaseMateria(generateUniqueName(L.get('MATERIA_VACIA', 'Materia Vacía')), selectedMateria);
             break;
         case 'create-audio':
-            if (window.currentProjectConfig?.projectType === '3d') return;
+            if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
             newMateria = createAudioObject(selectedMateria);
             break;
         case 'create-video':
             {
-                if (window.currentProjectConfig?.projectType === '3d') return;
+                if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
                 let parentForNewVideo = selectedMateria;
                 let parentCanvasMateria = null;
 
@@ -224,61 +224,61 @@ export function handleContextMenuAction(action) {
             }
             break;
         case 'create-water':
-            if (window.currentProjectConfig?.projectType === '3d') return;
+            if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
             newMateria = createWaterObject(selectedMateria);
             break;
         case 'create-line-collider':
-            if (window.currentProjectConfig?.projectType === '3d') return;
+            if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
             newMateria = createLineColliderObject(selectedMateria);
             break;
         case 'create-combatant':
-            if (window.currentProjectConfig?.projectType === '3d') return;
+            if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
             newMateria = createCombatantObject(selectedMateria);
             break;
         case 'create-camera':
             newMateria = createCameraObject(selectedMateria);
             break;
         case 'create-bone':
-            if (window.currentProjectConfig?.projectType === '3d') return;
+            if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
             newMateria = createBaseMateria(generateUniqueName(L.get('BONE', 'Hueso')), selectedMateria);
             newMateria.addComponent(new Components.Bone(newMateria));
             break;
         case 'create-skeleton':
-            if (window.currentProjectConfig?.projectType === '3d') return;
+            if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
             newMateria = createBaseMateria(generateUniqueName(L.get('SKELETON', 'Esqueleto')), selectedMateria);
             newMateria.addComponent(new Components.SkeletonRenderer(newMateria));
             break;
         case 'create-ik-manager':
-            if (window.currentProjectConfig?.projectType === '3d') return;
+            if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
             newMateria = createBaseMateria(generateUniqueName(L.get('IK_MANAGER', 'Gestor IK')), selectedMateria);
             newMateria.addComponent(new Components.IKManager2D(newMateria));
             break;
         case 'create-sprite':
-            if (window.currentProjectConfig?.projectType === '3d') return;
+            if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
             newMateria = createBaseMateria(generateUniqueName(L.get('SPRITE', 'Sprite')), selectedMateria);
             newMateria.addComponent(new Components.SpriteRenderer(newMateria));
             break;
         case 'create-rectangle':
-            if (window.currentProjectConfig?.projectType === '3d') return;
+            if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
             newMateria = createBaseMateria(generateUniqueName(L.get('RECTANGULO', 'Rectangle')), selectedMateria);
             newMateria.addComponent(new Components.TextureRender(newMateria));
             break;
         case 'create-circle':
-            if (window.currentProjectConfig?.projectType === '3d') return;
+            if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
             newMateria = createBaseMateria(generateUniqueName(L.get('CIRCULO', 'Circle')), selectedMateria);
             const textureRender = new Components.TextureRender(newMateria);
             textureRender.shape = 'Circle';
             newMateria.addComponent(textureRender);
             break;
         case 'create-triangle-2d':
-            if (window.currentProjectConfig?.projectType === '3d') return;
+            if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
             newMateria = createBaseMateria(generateUniqueName(L.get('TRIANGULO', 'Triangle')), selectedMateria);
             const textureRenderTri = new Components.TextureRender(newMateria);
             textureRenderTri.shape = 'Triangle';
             newMateria.addComponent(textureRenderTri);
             break;
         case 'create-capsule':
-            if (window.currentProjectConfig?.projectType === '3d') return;
+            if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
             newMateria = createBaseMateria(generateUniqueName(L.get('CAPSULA', 'Capsule')), selectedMateria);
             const textureRenderCapsule = new Components.TextureRender(newMateria);
             textureRenderCapsule.shape = 'Capsule';
@@ -286,16 +286,16 @@ export function handleContextMenuAction(action) {
             newMateria.addComponent(new Components.CapsuleCollider2D(newMateria));
             break;
         case 'create-tilemap':
-            if (window.currentProjectConfig?.projectType === '3d') return;
+            if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
             newMateria = createTilemapObject(selectedMateria);
             break;
         case 'create-terrain':
-            if (window.currentProjectConfig?.projectType === '3d') return;
+            if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
             console.log("[Hierarchy] Iniciando creación de terreno...");
             newMateria = createTerrenoObject(selectedMateria);
             break;
         case 'create-parallax':
-            if (window.currentProjectConfig?.projectType === '3d') return;
+            if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
             newMateria = createBaseMateria(generateUniqueName(L.get('PARALLAX', 'Parallax')), selectedMateria);
             newMateria.addComponent(new Components.SpriteRenderer(newMateria));
             newMateria.addComponent(new Components.DrawingOrder(newMateria));
@@ -304,29 +304,29 @@ export function handleContextMenuAction(action) {
             newMateria.addComponent(p);
             break;
         case 'create-point-light':
-            if (window.currentProjectConfig?.projectType === '3d') return;
+            if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
             newMateria = createLightObject('Point Light', Components.PointLight2D, selectedMateria);
             break;
         case 'create-spot-light':
-            if (window.currentProjectConfig?.projectType === '3d') return;
+            if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
             newMateria = createLightObject('Spot Light', Components.SpotLight2D, selectedMateria);
             break;
         case 'create-freeform-light':
-            if (window.currentProjectConfig?.projectType === '3d') return;
+            if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
             newMateria = createLightObject('Freeform Light', Components.FreeformLight2D, selectedMateria);
             break;
         case 'create-sprite-light':
-            if (window.currentProjectConfig?.projectType === '3d') return;
+            if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
             newMateria = createLightObject('Sprite Light', Components.SpriteLight2D, selectedMateria);
             break;
         case 'create-canvas':
-            if (window.currentProjectConfig?.projectType === '3d') return;
+            if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
             newMateria = createBaseMateria(generateUniqueName(L.get('CANVAS', 'Canvas')), selectedMateria);
             newMateria.addComponent(new Components.Canvas(newMateria));
             break;
         case 'create-ui-image':
             {
-                if (window.currentProjectConfig?.projectType === '3d') return;
+                if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
 
                 let parentForNewImage = selectedMateria; // The item we right-clicked on
                 let parentCanvasMateria = null;
@@ -368,7 +368,7 @@ export function handleContextMenuAction(action) {
             break;
         case 'create-ui-panel':
             {
-                if (window.currentProjectConfig?.projectType === '3d') return;
+                if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
                 let parentCanvas = selectedMateria;
                 if (parentCanvas && !parentCanvas.getComponent(Components.Canvas)) {
                     parentCanvas = parentCanvas.findAncestorWithComponent(Components.Canvas);
@@ -382,7 +382,7 @@ export function handleContextMenuAction(action) {
             break;
         case 'create-ui-text':
             {
-                if (window.currentProjectConfig?.projectType === '3d') return;
+                if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
                 let parentCanvas = selectedMateria;
                 if (parentCanvas && !parentCanvas.getComponent(Components.Canvas)) {
                     parentCanvas = parentCanvas.findAncestorWithComponent(Components.Canvas);
@@ -396,7 +396,7 @@ export function handleContextMenuAction(action) {
             break;
         case 'create-ui-button':
             {
-                if (window.currentProjectConfig?.projectType === '3d') return;
+                if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
                 let parentCanvas = selectedMateria;
                 if (parentCanvas && !parentCanvas.getComponent(Components.Canvas)) {
                     parentCanvas = parentCanvas.findAncestorWithComponent(Components.Canvas);
@@ -410,7 +410,7 @@ export function handleContextMenuAction(action) {
             break;
         case 'create-ui-progress-bar':
             {
-                if (window.currentProjectConfig?.projectType === '3d') return;
+                if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
                 let parentCanvas = selectedMateria;
                 if (parentCanvas && !parentCanvas.getComponent(Components.Canvas)) {
                     parentCanvas = parentCanvas.findAncestorWithComponent(Components.Canvas);
@@ -424,7 +424,7 @@ export function handleContextMenuAction(action) {
             break;
         case 'create-ui-scroll-view':
             {
-                if (window.currentProjectConfig?.projectType === '3d') return;
+                if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
                 let parentCanvas = selectedMateria;
                 if (parentCanvas && !parentCanvas.getComponent(Components.Canvas)) {
                     parentCanvas = parentCanvas.findAncestorWithComponent(Components.Canvas);
@@ -464,7 +464,7 @@ export function handleContextMenuAction(action) {
 
         case 'create-ui-health-bar':
             {
-                if (window.currentProjectConfig?.projectType === '3d') return;
+                if ((window.currentProjectConfig?.viewMode || '3d') === '3d') return;
                 let parentCanvas = selectedMateria;
                 if (parentCanvas && !parentCanvas.getComponent(Components.Canvas)) {
                     parentCanvas = parentCanvas.findAncestorWithComponent(Components.Canvas);
@@ -740,16 +740,16 @@ function setupEventListeners() {
         menu.querySelector('[data-action="rename"]').classList.toggle('disabled', !hasContext);
         menu.querySelector('[data-action="delete"]').classList.toggle('disabled', !hasContext);
 
-        // Hide/Show 3D options based on project type
-        const is3DProject = (window.currentProjectConfig?.projectType === '3d');
-        const is2DProject = (window.currentProjectConfig?.projectType === '2d');
+        // Hide/Show 3D options based on View Mode
+        const viewMode = window.currentProjectConfig?.viewMode || '3d';
+        const is3DView = viewMode === '3d';
 
         menu.querySelectorAll('.only-3d').forEach(el => {
-            el.style.display = is3DProject ? 'block' : 'none';
+            el.style.display = is3DView ? 'block' : 'none';
         });
 
         menu.querySelectorAll('.only-2d').forEach(el => {
-            el.style.display = is2DProject ? 'block' : 'none';
+            el.style.display = is3DView ? 'none' : 'block';
         });
 
         showContextMenuCallback(menu, e);
