@@ -188,8 +188,15 @@ class InputManager {
         // Also listen for mouse move on the window to track position even when not over canvas
         targetWindow.addEventListener('mousemove', (e) => {
             // Update delta even when moving outside the canvas while a button is likely pressed
-            this._mouseDelta.x += e.clientX - this._mousePosition.x;
-            this._mouseDelta.y += e.clientY - this._mousePosition.y;
+            const dx = e.clientX - this._mousePosition.x;
+            const dy = e.clientY - this._mousePosition.y;
+
+            // Prevent huge deltas on first move or window focus
+            if (Math.abs(dx) < 2000 && Math.abs(dy) < 2000) {
+                this._mouseDelta.x += dx;
+                this._mouseDelta.y += dy;
+            }
+
             this._mousePosition.x = e.clientX;
             this._mousePosition.y = e.clientY;
         });
@@ -213,6 +220,8 @@ class InputManager {
 
     // Keyboard Methods
     static _onKeyDown(event) {
+        if (event.target.matches('input, textarea, select')) return;
+
         // If the engine is playing, ignore keyboard input unless:
         // 1. It comes from an external game window
         // 2. The active canvas is a game canvas (integrated mode)
@@ -231,6 +240,8 @@ class InputManager {
     }
 
     static _onKeyUp(event) {
+        if (event.target.matches('input, textarea, select')) return;
+
         const isFromGameWindow = this._gameWindows.has(event.view);
         const isGameCanvas = (this._activeCanvas && (this._activeCanvas.id === 'game-canvas' || this._activeCanvas.id === 'game-canvas-3d'));
 

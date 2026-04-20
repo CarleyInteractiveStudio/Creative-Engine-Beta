@@ -7,53 +7,29 @@ let projectsDirHandle = null;
 let currentProjectConfig = {};
 let getPreferences = null;
 
-function updateRendererModeOptions(projectType) {
+function updateRendererModeOptions() {
     const rendererSelect = dom.settingsRendererMode;
     if (!rendererSelect) return;
 
-    // Clear and repopulate
     const currentVal = rendererSelect.value;
     rendererSelect.innerHTML = '';
 
     const L = window.Localization;
 
-    if (projectType === '2d') {
-        const options = [
-            { value: 'canvas2d', text: L?.get('SIMPLE_2D') || 'Simple (2D Estándar)' },
-            { value: 'realista', text: L?.get('AVANZADO_LUCES') || 'Avanzado (Iluminación y Noche/Día)' }
-        ];
-        options.forEach(opt => {
-            const el = document.createElement('option');
-            el.value = opt.value;
-            el.textContent = opt.text;
-            rendererSelect.appendChild(el);
-        });
+    const options = [
+        { value: 'canvas2d', text: L?.get('SIMPLE_2D') || '2D Tradicional (Canvas)' },
+        { value: '3d-mode', text: L?.get('MODE_3D') || '3D Moderno (WebGL)' },
+        { value: 'hybrid-3d', text: L?.get('MODE_HYBRID') || 'Híbrido (2D + 3D)' }
+    ];
 
-        // Force valid value if switching from 3D
-        if (currentVal !== 'canvas2d' && currentVal !== 'realista') {
-            rendererSelect.value = 'canvas2d';
-        } else {
-            rendererSelect.value = currentVal;
-        }
-    } else {
-        const options = [
-            { value: '3d-mode', text: L?.get('MODE_3D') || '3D World (Beta)' },
-            { value: 'hybrid-3d', text: L?.get('MODE_HYBRID') || 'Mixed (2D + 3D)' },
-            { value: 'anime-3d', text: L?.get('MODE_ANIME') || '2.5D Anime (Cel-Shaded)' }
-        ];
-        options.forEach(opt => {
-            const el = document.createElement('option');
-            el.value = opt.value;
-            el.textContent = opt.text;
-            rendererSelect.appendChild(el);
-        });
+    options.forEach(opt => {
+        const el = document.createElement('option');
+        el.value = opt.value;
+        el.textContent = opt.text;
+        rendererSelect.appendChild(el);
+    });
 
-        if (!['3d-mode', 'hybrid-3d', 'anime-3d'].includes(currentVal)) {
-            rendererSelect.value = '3d-mode';
-        } else {
-            rendererSelect.value = currentVal;
-        }
-    }
+    rendererSelect.value = currentVal || '3d-mode';
 }
 
 // This function will be called from the main editor.js to initialize the module
@@ -81,8 +57,20 @@ export async function saveProjectConfig(showAlert = true) {
         currentProjectConfig.appName = dom.settingsAppName.value;
         currentProjectConfig.authorName = dom.settingsAuthorName.value;
         currentProjectConfig.appVersion = dom.settingsAppVersion.value;
-        currentProjectConfig.projectType = document.getElementById('settings-project-type').value;
+
+        // Basic config
         currentProjectConfig.rendererMode = dom.settingsRendererMode.value;
+
+        // Advanced Graphics
+        currentProjectConfig.graphicMode = document.getElementById('settings-graphic-mode')?.value || 'Realistic';
+        currentProjectConfig.realismLevel = parseInt(document.getElementById('settings-realism-slider')?.value) || 50;
+        currentProjectConfig.realismFilter = document.getElementById('settings-realism-filter')?.checked || false;
+
+        // Optimizations
+        currentProjectConfig.optiCameraCulling = document.getElementById('settings-opti-camera')?.checked || false;
+        currentProjectConfig.optiShadowDistance = parseInt(document.getElementById('settings-opti-shadow-dist')?.value) || 2000;
+        currentProjectConfig.optiLODDistance = parseInt(document.getElementById('settings-opti-lod-dist')?.value) || 3000;
+
         currentProjectConfig.maxFps = parseInt(dom.settingsMaxFps.value) || 0;
         currentProjectConfig.forceFps = dom.settingsForceFps.checked;
         currentProjectConfig.minFps = parseInt(dom.settingsMinFps.value) || 30;
@@ -282,8 +270,25 @@ function setupEventListeners() {
         });
     }
 
+    const realismSlider = document.getElementById('settings-realism-slider');
+    if (realismSlider) {
+        realismSlider.addEventListener('input', (e) => {
+            const valDisp = document.getElementById('settings-realism-value');
+            if (valDisp) valDisp.textContent = e.target.value + '%';
+        });
+    }
+
     if (dom.settingsSaveBtn) {
-        dom.settingsSaveBtn.addEventListener('click', () => saveProjectConfig(true));
+        dom.settingsSaveBtn.addEventListener('click', async () => {
+            const oldType = currentProjectConfig.projectType;
+            await saveProjectConfig(true);
+            const newType = document.getElementById('settings-project-type').value;
+
+            if (oldType !== newType) {
+                // If project type changed, we might need a reload or a deep UI refresh
+                window.location.reload();
+            }
+        });
     }
 
     if (dom.settingsShowEngineLogo) {
@@ -454,6 +459,31 @@ export function populateUI(config) {
     }
 
     if (dom.settingsRendererMode) dom.settingsRendererMode.value = currentProjectConfig.rendererMode;
+
+    // Advanced Graphics sync
+    const graphicModeEl = document.getElementById('settings-graphic-mode');
+    if (graphicModeEl) graphicModeEl.value = currentProjectConfig.graphicMode || 'Realistic';
+
+    const realismSlider = document.getElementById('settings-realism-slider');
+    if (realismSlider) {
+        realismSlider.value = currentProjectConfig.realismLevel !== undefined ? currentProjectConfig.realismLevel : 50;
+        const valDisp = document.getElementById('settings-realism-value');
+        if (valDisp) valDisp.textContent = realismSlider.value + '%';
+    }
+
+    const realismFilter = document.getElementById('settings-realism-filter');
+    if (realismFilter) realismFilter.checked = !!currentProjectConfig.realismFilter;
+
+    // Optimizations sync
+    const optiCam = document.getElementById('settings-opti-camera');
+    if (optiCam) optiCam.checked = !!currentProjectConfig.optiCameraCulling;
+
+    const shadowDist = document.getElementById('settings-opti-shadow-dist');
+    if (shadowDist) shadowDist.value = currentProjectConfig.optiShadowDistance || 2000;
+
+    const lodDist = document.getElementById('settings-opti-lod-dist');
+    if (lodDist) lodDist.value = currentProjectConfig.optiLODDistance || 3000;
+
     if (dom.settingsMaxFps) dom.settingsMaxFps.value = currentProjectConfig.maxFps !== undefined ? currentProjectConfig.maxFps : 60;
     if (dom.settingsForceFps) dom.settingsForceFps.checked = !!currentProjectConfig.forceFps;
     if (dom.settingsMinFps) dom.settingsMinFps.value = currentProjectConfig.minFps !== undefined ? currentProjectConfig.minFps : 30;

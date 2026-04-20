@@ -94,15 +94,15 @@
                         <a href="#" id="menu-window-assets" data-i18n="NAVEGADOR">Navegador</a>
                         <a href="#" id="menu-window-console" data-i18n="CONSOLA">Consola</a>
                         <hr>
-                        <a href="#" id="menu-window-animation" data-i18n="EDITOR_ANIMACION">Editor de Animación</a>
-                        <a href="#" id="menu-window-animator" data-i18n="CONTROLADOR_ANIMACION">Controlador de Animación</a>
-                        <a href="#" id="menu-window-tile-palette" data-i18n="PALETA_TILES">Editor de Paleta de Tiles</a>
-                        <a href="#" id="menu-window-sprite-editor" data-i18n="EDITOR_SPRITES">Editor de Sprites</a>
+                        <a href="#" id="menu-window-animation" data-i18n="EDITOR_ANIMACION" class="only-2d">Editor de Animación</a>
+                        <a href="#" id="menu-window-animator" data-i18n="CONTROLADOR_ANIMACION" class="only-2d">Controlador de Animación</a>
+                        <a href="#" id="menu-window-tile-palette" data-i18n="PALETA_TILES" class="only-2d">Editor de Paleta de Tiles</a>
+                        <a href="#" id="menu-window-sprite-editor" data-i18n="EDITOR_SPRITES" class="only-2d">Editor de Sprites</a>
                         <a href="#" id="menu-window-ambiente-control" data-i18n="CONTROL_AMBIENTE">Control de Ambiente</a>
                         <hr>
                         <a href="#" id="menu-window-updates" data-i18n="ACTUALIZACIONES">Actualizaciones</a>
                         <hr>
-                        <a href="#" id="menu-window-vid-spri" data-i18n="VID_SPRI">Vid Spri</a>
+                        <a href="#" id="menu-window-vid-spri" data-i18n="VID_SPRI" class="only-2d">Vid Spri</a>
                         <hr>
                         <a href="#" id="menu-window-lib" class="disabled">Lib</a>
                     </div>
@@ -414,7 +414,7 @@ public star() {
                                 <div class="tool-dropdown-content">
                                     <button id="tool-move" class="toolbar-btn active" title="Mover (Q)" data-i18n-title="HERRAMIENTA_MOVER"><img src="icons/move.svg" class="ce-icon"> <span data-i18n="HERRAMIENTA_MOVER">Mover</span></button>
                                     <button id="tool-rotate" class="toolbar-btn" title="Rotar (R)" data-i18n-title="HERRAMIENTA_ROTAR"><img src="icons/rotate.svg" class="ce-icon"> <span data-i18n="HERRAMIENTA_ROTAR">Rotar</span></button>
-                                    <button id="tool-terrain-brush" class="toolbar-btn" title="Terreno (B)" data-i18n-title="HERRAMIENTA_TERRENO"><img src="icons/mountain.svg" class="ce-icon"> <span data-i18n="HERRAMIENTA_TERRENO">Terreno</span></button>
+                                    <button id="tool-terrain-brush" class="toolbar-btn only-2d" title="Terreno (B)" data-i18n-title="HERRAMIENTA_TERRENO"><img src="icons/mountain.svg" class="ce-icon"> <span data-i18n="HERRAMIENTA_TERRENO">Terreno</span></button>
                                     <button id="tool-scale" class="toolbar-btn" title="Escalar (E)" data-i18n-title="HERRAMIENTA_ESCALAR"><img src="icons/scale.svg" class="ce-icon"> <span data-i18n="HERRAMIENTA_ESCALAR">Escalar</span></button>
                                     <button id="tool-scale-axis" class="toolbar-btn" title="Escalar por Ejes" data-i18n-title="HERRAMIENTA_ESCALAR_EJES"><img src="icons/scale.svg" class="ce-icon"> <span data-i18n="HERRAMIENTA_ESCALAR_EJES">Escalar Ejes</span></button>
                                     <button id="tool-universal" class="toolbar-btn" title="Universal (T)" data-i18n-title="HERRAMIENTA_UNIVERSAL"><img src="icons/wrench.svg" class="ce-icon"> <span data-i18n="HERRAMIENTA_UNIVERSAL">Universal</span></button>
@@ -789,14 +789,75 @@ public star() {
                 <div class="resize-handle" data-direction="nw"></div>
             </div>
 
-            <div id="ambiente-control-panel" class="editor-panel floating-panel hidden" style="width: 350px; height: 600px;">
+            <div id="ambiente-control-panel" class="editor-panel floating-panel hidden" style="width: 350px; height: 750px;">
                 <div class="panel-header">
                     <span data-i18n="CONTROL_AMBIENTE">Control de Ambiente</span>
                     <button class="close-panel-btn" data-panel="ambiente-control-panel">&times;</button>
                 </div>
-                <div class="panel-content">
+                <div class="panel-content scroll-no-bar">
                     <fieldset class="inspector-section">
-                        <legend data-i18n="NOCHE_DIA">Noche / Día</legend>
+                        <legend data-i18n="GRAFICOS_AVANZADOS">Gráficos Avanzados (3D)</legend>
+                        <div class="inspector-row">
+                            <label for="ambiente-graphic-mode">Estilo Visual</label>
+                            <select id="ambiente-graphic-mode">
+                                <option value="Realistic">Realista (PBR/Realismo)</option>
+                                <option value="Anime">Anime (Toon Shading)</option>
+                            </select>
+                        </div>
+                        <div class="inspector-row">
+                            <label for="ambiente-realism-slider">Nivel de Realismo</label>
+                            <input type="range" id="ambiente-realism-slider" min="0" max="100" value="50" style="flex-grow: 1;">
+                            <span id="ambiente-realism-value" style="margin-left: 10px; min-width: 40px;">50%</span>
+                        </div>
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="ambiente-realism-filter">
+                            <label for="ambiente-realism-filter">Filtro de Realismo (Cinemático)</label>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="inspector-section">
+                        <legend data-i18n="OPTIMIZACION_GRAFICA">Optimización y Detalle</legend>
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="ambiente-opti-camera" checked>
+                            <label for="ambiente-opti-camera">Optimización por Cámara (Frustum Culling)</label>
+                        </div>
+                        <p class="field-description">Renderiza solo lo que la cámara ve. Muestra el cono de visión en la escena.</p>
+
+                        <div class="inspector-row">
+                            <label for="ambiente-opti-shadow-dist">Distancia Sombras</label>
+                            <input type="number" id="ambiente-opti-shadow-dist" value="2000" step="100" min="0">
+                        </div>
+                        <div class="inspector-row">
+                            <label for="ambiente-opti-lod-dist">Distancia LOD (Detalle)</label>
+                            <input type="number" id="ambiente-opti-lod-dist" value="3000" step="100" min="0">
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="inspector-section">
+                        <legend data-i18n="SKY_SYSTEM">Sistema de Cielo (3D)</legend>
+                        <div class="inspector-row">
+                            <label for="ambiente-sky-mode">Modo de Cielo</label>
+                            <select id="ambiente-sky-mode">
+                                <option value="None">Ninguno (Fondo Sólido)</option>
+                                <option value="Gradient" selected>Degradado (Skybox Procedural)</option>
+                            </select>
+                        </div>
+                        <div class="inspector-row">
+                            <label for="ambiente-sky-color">Color del Cielo</label>
+                            <input type="color" id="ambiente-sky-color" value="#87ceeb">
+                        </div>
+                        <div class="inspector-row">
+                            <label for="ambiente-horizon-color">Color del Horizonte</label>
+                            <input type="color" id="ambiente-horizon-color" value="#ffffff">
+                        </div>
+                        <div class="inspector-row">
+                            <label for="ambiente-ground-color">Color del Suelo</label>
+                            <input type="color" id="ambiente-ground-color" value="#222222">
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="inspector-section">
+                        <legend data-i18n="NOCHE_DIA">Atmosfera (2D/Hybrid)</legend>
 
                         <div class="inspector-row">
                             <label data-i18n="PRESETS_RAPIDOS">Presets Rápidos</label>
@@ -868,9 +929,9 @@ public star() {
                     <li data-action="create-script">Script (.ces)</li>
                     <li data-action="create-chc-script">Script H-Code (.chc)</li>
                     <li data-action="create-readme" data-i18n="ARCHIVO_LEAME">Archivo Léame (.md)</li>
-                    <li data-action="create-animation" data-i18n="ASSET_ANIMACION">Asset de Animación (.cea)</li>
-                    <li data-action="create-animator-controller" data-i18n="CONTROLADOR_ANIMACION">Controlador de Animación (.ceanim)</li>
-                    <li data-action="create-tile-palette" data-i18n="PALETA_TILES">Paleta de Tiles (.cepalette)</li>
+                    <li data-action="create-animation" data-i18n="ASSET_ANIMACION" class="only-2d">Asset de Animación (.cea)</li>
+                    <li data-action="create-animator-controller" data-i18n="CONTROLADOR_ANIMACION" class="only-2d">Controlador de Animación (.ceanim)</li>
+                    <li data-action="create-tile-palette" data-i18n="PALETA_TILES" class="only-2d">Paleta de Tiles (.cepalette)</li>
                     <li data-action="create-scene" data-i18n="ESCENA">Escena (.ceScene)</li>
                     <li data-action="create-prefab">Prefab (.ceprefab)</li>
                 </ul>
@@ -900,7 +961,7 @@ public star() {
                     <li data-action="create-empty" data-i18n="MATERIA_VACIA">Materia Vacía</li>
                     <li data-action="create-camera" data-i18n="CAMARA">Cámara</li>
                     <hr>
-                    <li class="has-submenu">
+                    <li class="has-submenu only-2d">
                         <span data-i18n="MATERIA_2D">Materia 2D</span> <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
                         <ul class="submenu">
                             <li data-action="create-sprite" data-i18n="SPRITE">Sprite</li>
@@ -913,14 +974,14 @@ public star() {
                             <li data-action="create-triangle-2d" data-i18n="TRIANGULO">Triángulo</li>
                             <li data-action="create-capsule" data-i18n="CAPSULA">Cápsula</li>
                             <li data-action="create-line-collider" data-i18n="LINE_COLLIDER">Colisionador de Líneas</li>
-                            <li data-action="create-combatant">Combatiente (Ataque/Vida)</li>
+                            <li data-action="create-combatant" class="only-2d">Combatiente (Ataque/Vida)</li>
                             <hr>
                             <li data-action="create-bone" data-i18n="BONE">Hueso</li>
                             <li data-action="create-skeleton" data-i18n="SKELETON">Esqueleto (Skinning)</li>
                             <li data-action="create-ik-manager" data-i18n="IK_MANAGER">Gestor IK</li>
                         </ul>
                     </li>
-                    <li class="has-submenu 3d-only">
+                    <li class="has-submenu only-3d">
                         <span data-i18n="MATERIA_3D">Materia 3D</span> <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
                         <ul class="submenu">
                             <li data-action="create-cube" data-i18n="CUBE">Cubo</li>
@@ -930,7 +991,7 @@ public star() {
                             <li data-action="create-plane-3d" data-i18n="PLANE">Plano</li>
                         </ul>
                     </li>
-                    <li class="has-submenu">
+                    <li class="has-submenu only-2d">
                         <span data-i18n="UI">UI</span> <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
                         <ul class="submenu">
                             <li data-action="create-canvas" data-i18n="CANVAS">Canvas</li>
@@ -939,7 +1000,7 @@ public star() {
                             <li data-action="create-ui-panel" data-i18n="PANEL">Panel</li>
                             <li data-action="create-ui-progress-bar" data-i18n="PROGRESS_BAR">Barra de Progreso</li>
                             <li data-action="create-ui-scroll-view" data-i18n="SCROLL_VIEW">Vista de Desplazamiento</li>
-                            <li data-action="create-ui-health-bar">Barra de Salud (Prefab)</li>
+                            <li data-action="create-ui-health-bar" class="only-2d">Barra de Salud (Prefab)</li>
                             <li data-action="create-ui-text" data-i18n="TEXTO">Texto</li>
                             <li data-action="create-video" data-i18n="VIDEO">Video</li>
                         </ul>
@@ -947,16 +1008,16 @@ public star() {
                     <li class="has-submenu">
                         <span data-i18n="LUZ">Luz</span> <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
                         <ul class="submenu">
-                            <li class="menu-divider-label">2D</li>
-                            <li data-action="create-point-light" data-i18n="LUZ_PUNTO">Point Light</li>
-                            <li data-action="create-spot-light" data-i18n="LUZ_FOCAL">Spot Light</li>
-                            <li data-action="create-freeform-light" data-i18n="LUZ_FORMA_LIBRE">Freeform Light</li>
-                            <li data-action="create-sprite-light" data-i18n="LUZ_SPRITE">Sprite Light</li>
-                            <hr class="3d-only">
-                            <li class="menu-divider-label 3d-only">3D</li>
-                            <li data-action="create-dir-light-3d" data-i18n="DIRECTIONALLIGHT3D" class="3d-only">Directional Light</li>
-                            <li data-action="create-point-light-3d" data-i18n="POINTLIGHT3D" class="3d-only">Point Light</li>
-                            <li data-action="create-spot-light-3d" data-i18n="SPOTLIGHT3D" class="3d-only">Spot Light</li>
+                            <li class="menu-divider-label only-2d">2D</li>
+                            <li data-action="create-point-light" data-i18n="LUZ_PUNTO" class="only-2d">Point Light</li>
+                            <li data-action="create-spot-light" data-i18n="LUZ_FOCAL" class="only-2d">Spot Light</li>
+                            <li data-action="create-freeform-light" data-i18n="LUZ_FORMA_LIBRE" class="only-2d">Freeform Light</li>
+                            <li data-action="create-sprite-light" data-i18n="LUZ_SPRITE" class="only-2d">Sprite Light</li>
+                            <hr class="only-3d">
+                            <li class="menu-divider-label only-3d">3D</li>
+                            <li data-action="create-dir-light-3d" data-i18n="DIRECTIONALLIGHT3D" class="only-3d">Directional Light</li>
+                            <li data-action="create-point-light-3d" data-i18n="POINTLIGHT3D" class="only-3d">Point Light</li>
+                            <li data-action="create-spot-light-3d" data-i18n="SPOTLIGHT3D" class="only-3d">Spot Light</li>
                         </ul>
                     </li>
                 </ul>
@@ -1107,7 +1168,39 @@ public star() {
                             <option value="anime-3d" data-i18n="MODE_ANIME">2.5D Anime (Cel-Shaded)</option>
                         </select>
                     </div>
-                            <p class="field-description" data-i18n="HINT_MODO_AVANZADO">El modo 'Avanzado' permite usar el sistema de Noche/Día y luces dinámicas.</p>
+                    <p class="field-description" data-i18n="HINT_MODO_AVANZADO">El modo 'Avanzado' permite usar el sistema de Noche/Día y luces dinámicas.</p>
+
+                    <div class="inspector-row">
+                        <label for="settings-graphic-mode">Estilo Visual</label>
+                        <select id="settings-graphic-mode">
+                            <option value="Realistic">Realista (PBR/Realismo)</option>
+                            <option value="Anime">Anime (Toon Shading)</option>
+                        </select>
+                    </div>
+                    <div class="inspector-row">
+                        <label for="settings-realism-slider">Nivel de Realismo</label>
+                        <input type="range" id="settings-realism-slider" min="0" max="100" value="50" style="flex-grow: 1;">
+                        <span id="settings-realism-value" style="margin-left: 10px; min-width: 40px;">50%</span>
+                    </div>
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="settings-realism-filter">
+                        <label for="settings-realism-filter">Filtro de Realismo (Cinemático)</label>
+                    </div>
+
+                    <hr>
+                    <h4 data-i18n="OPTIMIZACION_GRAFICA">Optimización y Detalle</h4>
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="settings-opti-camera" checked>
+                        <label for="settings-opti-camera">Optimización por Cámara (Frustum Culling)</label>
+                    </div>
+                    <div class="inspector-row">
+                        <label for="settings-opti-shadow-dist">Distancia Sombras</label>
+                        <input type="number" id="settings-opti-shadow-dist" value="2000" step="100" min="0">
+                    </div>
+                    <div class="inspector-row">
+                        <label for="settings-opti-lod-dist">Distancia LOD (Detalle)</label>
+                        <input type="number" id="settings-opti-lod-dist" value="3000" step="100" min="0">
+                    </div>
                     <hr>
                     <label data-i18n="ICONO_EJECUTABLE">Icono del Ejecutable</label>
                     <div class="image-picker">

@@ -23,7 +23,14 @@ const AmbienteControlWindow = (() => {
             ambienteNocheDiaIntensidad: document.getElementById('ambiente-noche-dia-intensidad'),
             ambienteNocheDiaIntensidadValor: document.getElementById('ambiente-noche-dia-intensidad-valor'),
             ambienteCicloAutomatico: document.getElementById('ambiente-ciclo-automatico'),
-            ambienteDuracionDia: document.getElementById('ambiente-duracion-dia')
+            ambienteDuracionDia: document.getElementById('ambiente-duracion-dia'),
+            ambienteGraphicMode: document.getElementById('ambiente-graphic-mode'),
+            ambienteRealismSlider: document.getElementById('ambiente-realism-slider'),
+            ambienteRealismValue: document.getElementById('ambiente-realism-value'),
+            ambienteRealismFilter: document.getElementById('ambiente-realism-filter'),
+            ambienteOptiCamera: document.getElementById('ambiente-opti-camera'),
+            ambienteOptiShadowDist: document.getElementById('ambiente-opti-shadow-dist'),
+            ambienteOptiLODDist: document.getElementById('ambiente-opti-lod-dist')
         };
         editorRenderer = dependencies.editorRenderer;
         gameRenderer = dependencies.gameRenderer;
@@ -41,6 +48,82 @@ const AmbienteControlWindow = (() => {
     }
 
     function setupEventListeners() {
+        // --- 3D Environment (Sky) ---
+        const setupSkyInput = (id, property) => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', (e) => {
+                    if (SceneManager.currentScene) {
+                        SceneManager.currentScene.ambiente[property] = e.target.value;
+                        if (typeof window.setSceneDirty === 'function') window.setSceneDirty(true);
+                    }
+                });
+            }
+        };
+
+        setupSkyInput('ambiente-sky-mode', 'skyMode');
+        setupSkyInput('ambiente-sky-color', 'skyColor');
+        setupSkyInput('ambiente-horizon-color', 'horizonColor');
+        setupSkyInput('ambiente-ground-color', 'groundColor');
+
+        // --- Advanced Graphics ---
+        if (dom.ambienteGraphicMode) {
+            dom.ambienteGraphicMode.addEventListener('change', (e) => {
+                if (SceneManager.currentScene) {
+                    SceneManager.currentScene.ambiente.graphicMode = e.target.value;
+                    if (typeof window.setSceneDirty === 'function') window.setSceneDirty(true);
+                }
+            });
+        }
+
+        if (dom.ambienteRealismSlider) {
+            dom.ambienteRealismSlider.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value);
+                if (dom.ambienteRealismValue) dom.ambienteRealismValue.textContent = `${val}%`;
+                if (SceneManager.currentScene) {
+                    SceneManager.currentScene.ambiente.realismLevel = val;
+                    if (typeof window.setSceneDirty === 'function') window.setSceneDirty(true);
+                }
+            });
+        }
+
+        if (dom.ambienteRealismFilter) {
+            dom.ambienteRealismFilter.addEventListener('change', (e) => {
+                if (SceneManager.currentScene) {
+                    SceneManager.currentScene.ambiente.realismFilter = e.target.checked;
+                    if (typeof window.setSceneDirty === 'function') window.setSceneDirty(true);
+                }
+            });
+        }
+
+        // --- Optimizations ---
+        if (dom.ambienteOptiCamera) {
+            dom.ambienteOptiCamera.addEventListener('change', (e) => {
+                if (SceneManager.currentScene) {
+                    SceneManager.currentScene.ambiente.optiCameraCulling = e.target.checked;
+                    if (typeof window.setSceneDirty === 'function') window.setSceneDirty(true);
+                }
+            });
+        }
+
+        if (dom.ambienteOptiShadowDist) {
+            dom.ambienteOptiShadowDist.addEventListener('input', (e) => {
+                if (SceneManager.currentScene) {
+                    SceneManager.currentScene.ambiente.optiShadowDistance = parseInt(e.target.value) || 2000;
+                    if (typeof window.setSceneDirty === 'function') window.setSceneDirty(true);
+                }
+            });
+        }
+
+        if (dom.ambienteOptiLODDist) {
+            dom.ambienteOptiLODDist.addEventListener('input', (e) => {
+                if (SceneManager.currentScene) {
+                    SceneManager.currentScene.ambiente.optiLODDistance = parseInt(e.target.value) || 3000;
+                    if (typeof window.setSceneDirty === 'function') window.setSceneDirty(true);
+                }
+            });
+        }
+
         if (dom.ambienteFiltroColor) {
             dom.ambienteFiltroColor.addEventListener('input', (e) => {
                 const newColor = e.target.value;
@@ -284,11 +367,74 @@ const AmbienteControlWindow = (() => {
         }
     }
 
+    function updateAmbientePanelFromScene() {
+        if (!SceneManager.currentScene || !SceneManager.currentScene.ambiente) return;
+
+        const ambiente = SceneManager.currentScene.ambiente;
+
+        // --- 3D Environment (Sky) ---
+        const syncSkyInput = (id, property, fallback) => {
+            const el = document.getElementById(id);
+            if (el) el.value = ambiente[property] || fallback;
+        };
+
+        syncSkyInput('ambiente-sky-mode', 'skyMode', 'Gradient');
+        syncSkyInput('ambiente-sky-color', 'skyColor', '#87ceeb');
+        syncSkyInput('ambiente-horizon-color', 'horizonColor', '#ffffff');
+        syncSkyInput('ambiente-ground-color', 'groundColor', '#222222');
+
+        // Advanced Graphics sync
+        if (dom.ambienteGraphicMode) dom.ambienteGraphicMode.value = ambiente.graphicMode || 'Realistic';
+        if (dom.ambienteRealismSlider) {
+            dom.ambienteRealismSlider.value = ambiente.realismLevel !== undefined ? ambiente.realismLevel : 50;
+            if (dom.ambienteRealismValue) dom.ambienteRealismValue.textContent = dom.ambienteRealismSlider.value + '%';
+        }
+        if (dom.ambienteRealismFilter) dom.ambienteRealismFilter.checked = !!ambiente.realismFilter;
+
+        // Optimizations sync
+        if (dom.ambienteOptiCamera) dom.ambienteOptiCamera.checked = !!ambiente.optiCameraCulling;
+        if (dom.ambienteOptiShadowDist) dom.ambienteOptiShadowDist.value = ambiente.optiShadowDistance || 2000;
+        if (dom.ambienteOptiLODDist) dom.ambienteOptiLODDist.value = ambiente.optiLODDistance || 3000;
+
+        if (dom.ambienteFiltroColor) {
+            dom.ambienteFiltroColor.value = ambiente.nocheDiaColor || '#0a0a28';
+        }
+
+        if (dom.ambienteTiempo) {
+            dom.ambienteTiempo.value = ambiente.hora || '6';
+            const val = parseFloat(dom.ambienteTiempo.value);
+            const hour = Math.floor(val);
+            const minutes = Math.floor((val % 1) * 60);
+            if (dom.ambienteTiempoValor) dom.ambienteTiempoValor.textContent = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        }
+
+        if (dom.ambienteNocheDiaIntensidad) {
+            const intensidad = ambiente.nocheDiaIntensidad !== undefined ? ambiente.nocheDiaIntensidad : 1.0;
+            dom.ambienteNocheDiaIntensidad.value = intensidad;
+            if (dom.ambienteNocheDiaIntensidadValor) dom.ambienteNocheDiaIntensidadValor.textContent = `${Math.round(intensidad * 100)}%`;
+        }
+
+        if (dom.ambienteCicloAutomatico) {
+            dom.ambienteCicloAutomatico.checked = ambiente.cicloAutomatico || false;
+        }
+
+        if (dom.ambienteDuracionDia) {
+            dom.ambienteDuracionDia.value = ambiente.duracionDia || '60';
+        }
+
+        if (dom.ambienteFiltroSwatches && dom.ambienteFiltroColor) {
+            dom.ambienteFiltroSwatches.querySelectorAll('.color-swatch').forEach(s => {
+                s.classList.toggle('active', s.dataset.color === dom.ambienteFiltroColor.value);
+            });
+        }
+    }
+
     return {
         initialize,
         update,
         iniciarCiclo,
-        detenerCiclo
+        detenerCiclo,
+        updateAmbientePanelFromScene
     };
 })();
 
