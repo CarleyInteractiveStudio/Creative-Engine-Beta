@@ -442,7 +442,7 @@ export class Renderer3D {
         ];
         this.skyBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.skyBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(skyPositions), gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(quadPositions), gl.STATIC_DRAW);
 
         // Basic Plane (for 2D sprites in 3D)
         const planePositions = [
