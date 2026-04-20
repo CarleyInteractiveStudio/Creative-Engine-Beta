@@ -1144,7 +1144,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Unified Engine: Everything is 3D-capable now.
         // projectType is kept for metadata but no longer blocks 3D loading.
-        const is3DView = (currentProjectConfig.viewMode === '3d') || (currentProjectConfig.rendererMode && currentProjectConfig.rendererMode.includes('3d'));
+        // Mode Simulation: viewMode '2d' vs '3d'
+        const is2DLocked = currentProjectConfig.viewMode === '2d';
 
         // DYNAMIC IMPORT for 3D components and renderers (Always load if not present)
         if (!window.Components3D) {
@@ -1174,7 +1175,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (dom.gameCanvas3d) dom.gameCanvas3d.style.display = 'block';
 
         // View Mode determines interaction, but 3D is always the motor
-        const is2DLocked = currentProjectConfig.viewMode === '2d';
 
         if (dom.sceneCanvas) {
             dom.sceneCanvas.style.pointerEvents = is2DLocked ? 'all' : 'none';
@@ -1199,11 +1199,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Sync 2D/3D toggle button UI
         const label = document.getElementById('label-2d-3d');
         const icon = document.getElementById('icon-2d-3d');
-        if (label) label.textContent = is2DLocked ? '2D (Bloqueado)' : '3D';
+        if (label) label.textContent = is2DLocked ? 'Vista 2D' : 'Vista 3D';
         if (icon) icon.src = is2DLocked ? 'icons/layers.svg' : 'icons/box.svg';
 
         if (dom.btnToggle2d3d) {
-            dom.btnToggle2d3d.style.display = 'flex';
+            // Only show simulation toggle if project is 3D
+            dom.btnToggle2d3d.style.display = (currentProjectConfig.projectType === '3d') ? 'flex' : 'none';
         }
     };
 
@@ -2374,8 +2375,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (is3D && renderer3D) {
                 // Hybrid/3D: Only render views that are visible
+                const showGrid = getPreferences().showSceneGrid && (currentProjectConfig.viewMode !== '2d');
                 if (activeView === 'scene-content') {
-                    if (renderer3D.initialized) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1 });
+                    if (renderer3D.initialized) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1, showGrid });
                     if (renderer) updateScene(renderer, false);
                 } else if (activeView === 'game-content' && gameRenderer3D) {
                     const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth)[0];
@@ -2392,10 +2394,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else {
             // Editor mode (not running): Only update visible view
+            const showGrid = getPreferences().showSceneGrid && (currentProjectConfig.viewMode !== '2d');
             if (activeView === 'scene-content') {
                 if (is3D && renderer3D) {
                     if (!renderer3D.initialized) renderer3D.init();
-                    renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1 });
+                    renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1, showGrid });
                 }
                 if (renderer) updateScene(renderer, false);
             } else if (activeView === 'game-content') {
@@ -3526,23 +3529,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 currentProjectConfig.viewMode = newMode;
 
-                // Sync 3D Camera for 2D View
+                // Simulation: In a 3D project, we just lock camera/change grid
+                // In a 2D project, this button might not even show or be disabled.
+
+                // Sync 3D Camera for 2D Simulation
                 if (newMode === '2d' && renderer && renderer.camera) {
                     renderer.camera.rotation.x = 0;
                     renderer.camera.rotation.y = 0;
                     renderer.camera.rotation.z = 0;
-                    // Position camera in front of the scene
-                    renderer.camera.z = 1000;
+                    // Keep camera centered on current X,Y but set a comfortable Z distance
+                    if (renderer.camera.z === 0) renderer.camera.z = 1000;
                 }
 
                 updateCanvasInteractivity();
 
-                // Save config
+                // Save config (viewMode is persistent)
                 if (typeof saveProjectConfigFromModule === 'function') {
                     await saveProjectConfigFromModule(false);
                 }
 
-                console.log(`Vista cambiada a: ${newMode}`);
+                console.log(`[Editor] Simulación de vista cambiada a: ${newMode}`);
 
                 if (updateScene) updateScene(renderer, false);
             });

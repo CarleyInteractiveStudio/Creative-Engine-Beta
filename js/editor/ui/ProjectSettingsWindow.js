@@ -7,7 +7,7 @@ let projectsDirHandle = null;
 let currentProjectConfig = {};
 let getPreferences = null;
 
-function updateRendererModeOptions() {
+function updateRendererModeOptions(projectType) {
     const rendererSelect = dom.settingsRendererMode;
     if (!rendererSelect) return;
 
@@ -16,11 +16,17 @@ function updateRendererModeOptions() {
 
     const L = window.Localization;
 
-    const options = [
-        { value: 'canvas2d', text: L?.get('SIMPLE_2D') || '2D Tradicional (Canvas)' },
-        { value: '3d-mode', text: L?.get('MODE_3D') || '3D Moderno (WebGL)' },
-        { value: 'hybrid-3d', text: L?.get('MODE_HYBRID') || 'Híbrido (2D + 3D)' }
-    ];
+    let options = [];
+    if (projectType === '2d') {
+        options = [
+            { value: 'canvas2d', text: L?.get('SIMPLE_2D') || '2D Tradicional (Canvas)' },
+            { value: 'realista', text: L?.get('AVANZADO_LUCES') || 'Avanzado (Iluminación y Noche/Día)' }
+        ];
+    } else {
+        options = [
+            { value: '3d-mode', text: L?.get('MODE_3D') || '3D Moderno (WebGL)' }
+        ];
+    }
 
     options.forEach(opt => {
         const el = document.createElement('option');
@@ -29,7 +35,12 @@ function updateRendererModeOptions() {
         rendererSelect.appendChild(el);
     });
 
-    rendererSelect.value = currentVal || '3d-mode';
+    // Ensure value is valid for new options
+    if (options.some(opt => opt.value === currentVal)) {
+        rendererSelect.value = currentVal;
+    } else {
+        rendererSelect.value = options[0]?.value || '';
+    }
 }
 
 // This function will be called from the main editor.js to initialize the module
@@ -58,7 +69,7 @@ export async function saveProjectConfig(showAlert = true) {
         currentProjectConfig.authorName = dom.settingsAuthorName.value;
         currentProjectConfig.appVersion = dom.settingsAppVersion.value;
 
-        // Basic config
+        // Basic config (Locked, but synced for safety)
         currentProjectConfig.rendererMode = dom.settingsRendererMode.value;
 
         // Advanced Graphics
@@ -278,6 +289,16 @@ function setupEventListeners() {
         });
     }
 
+    const graphicModeSelect = document.getElementById('settings-graphic-mode');
+    const realisticOptions = document.getElementById('settings-realistic-options');
+    if (graphicModeSelect) {
+        graphicModeSelect.addEventListener('change', (e) => {
+            if (realisticOptions) {
+                realisticOptions.style.display = (e.target.value === 'Anime') ? 'none' : 'block';
+            }
+        });
+    }
+
     if (dom.settingsSaveBtn) {
         dom.settingsSaveBtn.addEventListener('click', async () => {
             const oldType = currentProjectConfig.projectType;
@@ -455,14 +476,24 @@ export function populateUI(config) {
     const typeSelect = document.getElementById('settings-project-type');
     if (typeSelect) {
         typeSelect.value = currentProjectConfig.projectType || '2d';
+        typeSelect.disabled = true; // Permanent lock
         updateRendererModeOptions(typeSelect.value);
     }
 
-    if (dom.settingsRendererMode) dom.settingsRendererMode.value = currentProjectConfig.rendererMode;
+    if (dom.settingsRendererMode) {
+        dom.settingsRendererMode.value = currentProjectConfig.rendererMode;
+        dom.settingsRendererMode.disabled = true; // Permanent lock
+    }
 
     // Advanced Graphics sync
     const graphicModeEl = document.getElementById('settings-graphic-mode');
-    if (graphicModeEl) graphicModeEl.value = currentProjectConfig.graphicMode || 'Realistic';
+    const settingsRealisticOptions = document.getElementById('settings-realistic-options');
+    if (graphicModeEl) {
+        graphicModeEl.value = currentProjectConfig.graphicMode || 'Realistic';
+        if (settingsRealisticOptions) {
+            settingsRealisticOptions.style.display = (graphicModeEl.value === 'Anime') ? 'none' : 'block';
+        }
+    }
 
     const realismSlider = document.getElementById('settings-realism-slider');
     if (realismSlider) {

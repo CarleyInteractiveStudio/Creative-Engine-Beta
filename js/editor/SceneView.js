@@ -1612,16 +1612,18 @@ function handle3DCameraNavigation() {
     const is2DLocked = config.viewMode === '2d';
 
     if (is2DLocked) {
-        // --- 2D View Mode: Locked rotation and Z ---
+        // --- 2D View Mode (Simulation): Locked rotation and perspective-based panning ---
         cam.rotation.x = 0;
         cam.rotation.y = 0;
         cam.rotation.z = 0;
 
-        // Navigation logic for 2D View
+        // In 3D engine, panning needs to be world-space delta
         if (InputManager.getMouseButton(1) || InputManager.getMouseButton(2)) {
             const delta = InputManager.getMouseDelta();
-            cam.x -= delta.x / (cam.zoom || 1);
-            cam.y -= delta.y / (cam.zoom || 1);
+            // Scale movement by distance to make it feel like 2D panning
+            const moveScale = (cam.z || 500) / 1000;
+            cam.x -= delta.x * moveScale;
+            cam.y += delta.y * moveScale; // Y is inverted in 3D world space
         }
         return;
     }
@@ -1671,10 +1673,15 @@ function handle3DCameraNavigation() {
         // --- 2. Rotation (Mouse look) ---
         const delta = InputManager.getMouseDelta();
 
+        // FIX: Only apply rotation if mouse is moving while button IS HELD
+        // Some browsers report an initial large delta on the first frame of holding RMB.
         if (Math.abs(delta.x) > 0.1 || Math.abs(delta.y) > 0.1) {
-            // Standard FPS Look
-            cam.rotation.y -= delta.x * rotSpeed;
-            cam.rotation.x -= delta.y * rotSpeed;
+            // Sensitivity check to prevent "jump" when right-clicking
+            if (Math.abs(delta.x) < 100 && Math.abs(delta.y) < 100) {
+                // Standard FPS Look
+                cam.rotation.y -= delta.x * rotSpeed;
+                cam.rotation.x -= delta.y * rotSpeed;
+            }
 
             // Constrain pitch to avoid flipping
             cam.rotation.x = Math.max(-89.9, Math.min(89.9, cam.rotation.x));
@@ -2270,7 +2277,9 @@ export function drawOverlay() {
         // Reset 2D transform to Screen Space for 3D-projected gizmos
         renderer.ctx.save();
         renderer.ctx.setTransform(1, 0, 0, 1, 0, 0);
-        draw3DGrid();
+        if (config.viewMode === '2d') {
+            drawEditorGrid();
+        }
     } else {
         drawEditorGrid();
     }

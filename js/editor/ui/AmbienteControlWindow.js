@@ -48,6 +48,13 @@ const AmbienteControlWindow = (() => {
     }
 
     function setupEventListeners() {
+        const realisticOptions = document.getElementById('ambiente-realistic-options');
+        const updateGraphicModeUI = (mode) => {
+            if (realisticOptions) {
+                realisticOptions.style.display = (mode === 'Anime') ? 'none' : 'block';
+            }
+        };
+
         // --- 3D Environment (Sky) ---
         const setupSkyInput = (id, property) => {
             const el = document.getElementById(id);
@@ -69,8 +76,10 @@ const AmbienteControlWindow = (() => {
         // --- Advanced Graphics ---
         if (dom.ambienteGraphicMode) {
             dom.ambienteGraphicMode.addEventListener('change', (e) => {
+                const mode = e.target.value;
+                updateGraphicModeUI(mode);
                 if (SceneManager.currentScene) {
-                    SceneManager.currentScene.ambiente.graphicMode = e.target.value;
+                    SceneManager.currentScene.ambiente.graphicMode = mode;
                     if (typeof window.setSceneDirty === 'function') window.setSceneDirty(true);
                 }
             });
@@ -371,6 +380,10 @@ const AmbienteControlWindow = (() => {
         if (!SceneManager.currentScene || !SceneManager.currentScene.ambiente) return;
 
         const ambiente = SceneManager.currentScene.ambiente;
+        const realisticOptions = document.getElementById('ambiente-realistic-options');
+        if (realisticOptions) {
+            realisticOptions.style.display = (ambiente.graphicMode === 'Anime') ? 'none' : 'block';
+        }
 
         // --- 3D Environment (Sky) ---
         const syncSkyInput = (id, property, fallback) => {
