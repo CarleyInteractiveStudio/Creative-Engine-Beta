@@ -403,7 +403,7 @@ function handleInspectorInput(e) {
         return;
     }
 
-    const ComponentClass = Components[componentName];
+    const ComponentClass = Components[componentName] || (window.Components3D ? window.Components3D[componentName] : null);
     if (!ComponentClass) return;
 
     const component = selectedMateria.getComponent(ComponentClass);

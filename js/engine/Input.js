@@ -180,6 +180,8 @@ class InputManager {
         targetWindow.addEventListener('keydown', this._onKeyDown.bind(this));
         targetWindow.addEventListener('keyup', this._onKeyUp.bind(this));
         targetWindow.addEventListener('wheel', this._onWheel.bind(this), { passive: false });
+        targetWindow.addEventListener('blur', this._onBlur.bind(this));
+        targetWindow.addEventListener('focus', this._onBlur.bind(this));
 
         // Listen for mouse events on the window to ensure we catch releases outside the canvas
         targetWindow.addEventListener('mousedown', this._onWindowMouseDown.bind(this));

@@ -787,6 +787,13 @@ export function initialize(dependencies) {
         const rect = canvas.getBoundingClientRect();
         const currentMouseWorld = screenToWorld(moveEvent.clientX - rect.left, moveEvent.clientY - rect.top);
 
+        const config = getCurrentProjectConfig();
+        const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+
+        // In 3D, screen deltas are often more reliable than 2D-world-projection for 3D axes
+        const screenDx = moveEvent.clientX - lastMousePosition.x;
+        const screenDy = moveEvent.clientY - lastMousePosition.y;
+
         const totalDx = (currentMouseWorld.x - dragState.initialMouseWorld.x);
         const totalDy = (currentMouseWorld.y - dragState.initialMouseWorld.y);
 
@@ -801,14 +808,15 @@ export function initialize(dependencies) {
                 break;
             case 'move-x':
                 {
-                    let nextX = dragState.initialTransform.x + totalDx;
+                    let nextX = is3D ? (dragState.initialTransform.x + (moveEvent.clientX - dragState.initialMousePos.x)) : (dragState.initialTransform.x + totalDx);
                     if (snapEnabled) nextX = Math.round(nextX / snapSize) * snapSize;
                     transform.x = nextX;
                 }
                 break;
             case 'move-y':
                 {
-                    let nextY = dragState.initialTransform.y + totalDy;
+                    // In 3D, Y is up, but screen Y is down.
+                    let nextY = is3D ? (dragState.initialTransform.y - (moveEvent.clientY - dragState.initialMousePos.y)) : (dragState.initialTransform.y + totalDy);
                     if (snapEnabled) nextY = Math.round(nextY / snapSize) * snapSize;
                     transform.y = nextY;
                 }
@@ -827,12 +835,31 @@ export function initialize(dependencies) {
                 break;
             case 'move-z':
                 {
-                    // For Z, we use vertical screen delta as a proxy since we're in 2D overlay
-                    const dyPx = (moveEvent.clientY - lastMousePosition.y) / renderer.camera.effectiveZoom;
+                    // In 3D, for Z movement, we also use the world delta logic but since mouse movement is on screen,
+                    // we can't easily map screen space to world Z in a generic way without raycasting.
+                    // However, for consistency with X/Y, we'll use the vertical screen delta as a world proxy.
+                    const dyPx = (moveEvent.clientY - lastMousePosition.y);
                     let nextZ = (transform.z || 0) + dyPx;
                     if (snapEnabled) nextZ = Math.round(nextZ / snapSize) * snapSize;
                     transform.z = nextZ;
                 }
+                break;
+            case 'scale-x':
+                transform.localScale = { ...transform.localScale, x: dragState.initialTransform.scale.x + totalDx / 50 };
+                break;
+            case 'scale-y':
+                transform.localScale = { ...transform.localScale, y: dragState.initialTransform.scale.y - totalDy / 50 };
+                break;
+            case 'scale-z':
+                transform.localScale = { ...transform.localScale, z: dragState.initialTransform.scale.z + (moveEvent.clientY - lastMousePosition.y) / 50 };
+                break;
+            case 'scale-all':
+                const avgScale = 1 + (totalDx - totalDy) / 100;
+                transform.localScale = {
+                    x: dragState.initialTransform.scale.x * avgScale,
+                    y: dragState.initialTransform.scale.y * avgScale,
+                    z: dragState.initialTransform.scale.z * avgScale
+                };
                 break;
             case 'camera-resize-tl': case 'camera-resize-tr': case 'camera-resize-bl': case 'camera-resize-br': {
                 const cam = dragState.materia.getComponent(Components.Camera);
@@ -1544,6 +1571,20 @@ export function initialize(dependencies) {
             const selectedMateria = getSelectedMateria();
             const canvasPos = InputManager.getMousePositionInCanvas();
 
+            // Click and Hold for Focus logic
+            const clickStartTime = performance.now();
+            const startMousePos = { x: e.clientX, y: e.clientY };
+
+            const onPotentialFocusEnd = () => {
+                const duration = performance.now() - clickStartTime;
+                const dist = Math.hypot(InputManager.getMousePosition().x - startMousePos.x, InputManager.getMousePosition().y - startMousePos.y);
+                if (duration > 500 && dist < 10) {
+                     focusOnSelectedMateria();
+                }
+                window.removeEventListener('mouseup', onPotentialFocusEnd);
+            };
+            window.addEventListener('mouseup', onPotentialFocusEnd);
+
             // 3D Object Picking
             const config = getCurrentProjectConfig();
             const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
@@ -1577,7 +1618,8 @@ export function initialize(dependencies) {
                         rotation: transform.rotation,
                         scale: { x: transform.scale.x, y: transform.scale.y, z: transform.scale.z || 1 }
                     } : null,
-                    initialMouseWorld: screenToWorld(canvasPos.x, canvasPos.y)
+                    initialMouseWorld: screenToWorld(canvasPos.x, canvasPos.y),
+                    initialMousePos: { x: e.clientX, y: e.clientY }
                 };
                 lastMousePosition = { x: e.clientX, y: e.clientY };
 
@@ -1632,6 +1674,9 @@ function handle3DCameraNavigation() {
     const isFlying = InputManager.getMouseButton(2);
 
     if (isFlying) {
+        // Prevent browser context menu during flight
+        window.addEventListener('contextmenu', e => e.preventDefault(), { once: true });
+
         // Speed adjustments for larger 3D scenes
         const baseSpeed = 800; // Slightly faster for more responsive feel
         const speed = baseSpeed * (InputManager.getKey('Shift') ? 3.0 : 1.0) * dt;
@@ -1698,6 +1743,35 @@ function handle3DCameraNavigation() {
     }
 }
 
+export function focusOnSelectedMateria() {
+    const materia = getSelectedMateria();
+    if (!materia || !renderer || !renderer.camera) return;
+
+    const transform = materia.getComponent(Components.Transform);
+    if (!transform) return;
+
+    const cam = renderer.camera;
+    const config = getCurrentProjectConfig();
+    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+
+    if (is3D) {
+        // Position camera at a comfortable distance (e.g., 200 units) from the object
+        // and look at it.
+        const distance = 300;
+        cam.x = transform.x;
+        cam.y = transform.y + 100; // Slightly above
+        cam.z = (transform.z || 0) + distance;
+        // Looking down slightly
+        cam.rotation.x = 15;
+        cam.rotation.y = 0;
+    } else {
+        cam.x = transform.x;
+        cam.y = transform.y;
+        cam.zoom = 1.0;
+    }
+    updateScene();
+}
+
 export function update() {
     // This will be called from the main editorLoop
     const config = getCurrentProjectConfig();
@@ -1705,6 +1779,9 @@ export function update() {
 
     if (is3D && !window.isGameRunning && getActiveView() === 'scene-content') {
         handle3DCameraNavigation();
+        if (InputManager.getKeyDown('f')) {
+            focusOnSelectedMateria();
+        }
     } else {
         handleEditorInteractions();
     }
@@ -2144,123 +2221,99 @@ function drawLayerPlacementPreview() {
 
 function check3DGizmoHit(canvasPos, materia) {
     const transform = materia.getComponent(Components.Transform);
-    const screenPos = world3DToScreen({ x: transform.x, y: transform.y, z: transform.z });
+    const center = { x: transform.x, y: transform.y, z: transform.z || 0 };
+    const screenPos = world3DToScreen(center);
     if (!screenPos) return null;
 
-    const dx = canvasPos.x - screenPos.x;
-    const dy = canvasPos.y - screenPos.y;
-    const hitRadius = 15;
+    const hitRadius = 20;
+    const gizmoLen = 80;
 
-    if (activeTool === 'move' || activeTool === 'universal') {
-        // Simple 2D-on-3D hit detection
-        if (Math.abs(dx) < hitRadius && Math.abs(dy) < hitRadius) return 'move-xy';
-        if (Math.abs(dx - 50) < hitRadius && Math.abs(dy) < hitRadius) return 'move-x';
-        if (Math.abs(dx) < hitRadius && Math.abs(dy + 50) < hitRadius) return 'move-y';
+    const checkHandle = (worldAxis, name) => {
+        const axisEnd = { x: center.x + worldAxis.x * gizmoLen, y: center.y + worldAxis.y * gizmoLen, z: center.z + worldAxis.z * gizmoLen };
+        const screenEnd = world3DToScreen(axisEnd);
+        if (!screenEnd) return false;
+        const dx = canvasPos.x - screenEnd.x;
+        const dy = canvasPos.y - screenEnd.y;
+        return Math.hypot(dx, dy) < hitRadius;
+    };
 
-        // Check Blue Z axis hit
-        const zEnd = world3DToScreen({ x: transform.x, y: transform.y, z: transform.z + 100 });
-        if (zEnd) {
-            const zDx = canvasPos.x - zEnd.x;
-            const zDy = canvasPos.y - zEnd.y;
-            if (Math.abs(zDx) < hitRadius && Math.abs(zDy) < hitRadius) return 'move-z';
-        }
+    if (activeTool === 'move' || activeTool === 'universal' || activeTool === 'scale') {
+        const dx = canvasPos.x - screenPos.x;
+        const dy = canvasPos.y - screenPos.y;
+        if (Math.hypot(dx, dy) < hitRadius) return activeTool === 'scale' ? 'scale-all' : 'move-xy';
+
+        if (checkHandle({x:1, y:0, z:0}, activeTool === 'scale' ? 'scale-x' : 'move-x')) return activeTool === 'scale' ? 'scale-x' : 'move-x';
+        if (checkHandle({x:0, y:1, z:0}, activeTool === 'scale' ? 'scale-y' : 'move-y')) return activeTool === 'scale' ? 'scale-y' : 'move-y';
+        if (checkHandle({x:0, y:0, z:1}, activeTool === 'scale' ? 'scale-z' : 'move-z')) return activeTool === 'scale' ? 'scale-z' : 'move-z';
     }
     return null;
 }
 
 function draw3DGizmos(materia) {
     const transform = materia.getComponent(Components.Transform);
-    const center = { x: transform.x, y: transform.y, z: transform.z };
+    const center = { x: transform.x, y: transform.y, z: transform.z || 0 };
     const screenPos = world3DToScreen(center);
     if (!screenPos) return;
 
     const { ctx } = renderer;
-    const GIZMO_SIZE = 50;
+    const GIZMO_SIZE = 80;
+    const ARROW_SIZE = 12;
 
-    // Draw Wireframe helpers for 3D Primitives (in 3D projected space)
     const C3D = window.Components3D || Components3D;
     if (!C3D) return;
 
     const meshRenderer = materia.getComponent(C3D.MeshRenderer3D);
     if (meshRenderer) {
-        if (meshRenderer.meshType === 'Cube') {
-            Gizmos.drawWireCube(ctx, center, { x: 100 * transform.scale.x, y: 100 * transform.scale.y, z: 100 * transform.scale.z });
-        } else if (meshRenderer.meshType === 'Sphere') {
-            Gizmos.drawWireSphere(ctx, center, 50 * Math.max(transform.scale.x, transform.scale.y, transform.scale.z));
-        } else if (meshRenderer.meshType === 'Plane') {
-            Gizmos.drawWirePlane(ctx, center, { x: 100 * transform.scale.x, z: 100 * transform.scale.z });
-        } else if (meshRenderer.meshType === 'Triangle') {
-            Gizmos.drawWireTriangle(ctx, center, { x: 100 * transform.scale.x, y: 100 * transform.scale.y });
-        } else if (meshRenderer.meshType === 'Capsule') {
-            Gizmos.drawWireCapsule(ctx, center, 50 * Math.max(transform.scale.x, transform.scale.z), 100 * transform.scale.y);
-        }
+        const mult = 2;
+        if (meshRenderer.meshType === 'Cube') Gizmos.drawWireCube(ctx, center, { x: mult * transform.scale.x, y: mult * transform.scale.y, z: mult * transform.scale.z });
+        else if (meshRenderer.meshType === 'Sphere') Gizmos.drawWireSphere(ctx, center, (mult/2) * Math.max(transform.scale.x, transform.scale.y, transform.scale.z));
+        else if (meshRenderer.meshType === 'Plane') Gizmos.drawWirePlane(ctx, center, { x: mult * transform.scale.x, z: mult * transform.scale.z });
+        else if (meshRenderer.meshType === 'Triangle') Gizmos.drawWireTriangle(ctx, center, { x: mult * transform.scale.x, y: mult * transform.scale.y });
+        else if (meshRenderer.meshType === 'Capsule') Gizmos.drawWireCapsule(ctx, center, (mult/2) * Math.max(transform.scale.x, transform.scale.z), mult * transform.scale.y);
     }
 
     ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0); // Overlay in screen space
-    ctx.translate(screenPos.x, screenPos.y);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
 
+    const drawAxis = (axis, color, name) => {
+        const endPos = { x: center.x + axis.x * GIZMO_SIZE, y: center.y + axis.y * GIZMO_SIZE, z: center.z + axis.z * GIZMO_SIZE };
+        const endScreen = world3DToScreen(endPos);
+        if (!endScreen) return;
 
-    if (activeTool === 'move' || activeTool === 'universal') {
-        const ARROW_SIZE = 10;
-
-        // Red X
-        ctx.strokeStyle = '#ff4444';
-        ctx.fillStyle = '#ff4444';
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(GIZMO_SIZE, 0);
+        ctx.moveTo(screenPos.x, screenPos.y);
+        ctx.lineTo(endScreen.x, endScreen.y);
         ctx.stroke();
-        // X Arrow head
-        ctx.beginPath();
-        ctx.moveTo(GIZMO_SIZE + ARROW_SIZE, 0);
-        ctx.lineTo(GIZMO_SIZE, -ARROW_SIZE / 2);
-        ctx.lineTo(GIZMO_SIZE, ARROW_SIZE / 2);
-        ctx.closePath();
-        ctx.fill();
 
-        // Green Y
-        ctx.strokeStyle = '#44ff44';
-        ctx.fillStyle = '#44ff44';
-        ctx.lineWidth = 3;
+        const angle = Math.atan2(endScreen.y - screenPos.y, endScreen.x - screenPos.x);
+        ctx.save();
+        ctx.translate(endScreen.x, endScreen.y);
+        ctx.rotate(angle);
         ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(0, -GIZMO_SIZE);
-        ctx.stroke();
-        // Y Arrow head
-        ctx.beginPath();
-        ctx.moveTo(0, -GIZMO_SIZE - ARROW_SIZE);
-        ctx.lineTo(-ARROW_SIZE / 2, -GIZMO_SIZE);
-        ctx.lineTo(ARROW_SIZE / 2, -GIZMO_SIZE);
-        ctx.closePath();
-        ctx.fill();
-
-        // Blue Z
-        const zEnd = world3DToScreen({ x: transform.x, y: transform.y, z: transform.z + 100 });
-        if (zEnd) {
-            const zDx = zEnd.x - screenPos.x;
-            const zDy = zEnd.y - screenPos.y;
-            ctx.strokeStyle = '#4444ff';
-            ctx.fillStyle = '#4444ff';
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(zDx, zDy);
-            ctx.stroke();
-
-            // Z Arrow head (pointing towards zEnd)
-            const angle = Math.atan2(zDy, zDx);
-            ctx.save();
-            ctx.translate(zDx, zDy);
-            ctx.rotate(angle);
-            ctx.beginPath();
+        if (activeTool === 'scale') {
+            ctx.rect(-ARROW_SIZE/2, -ARROW_SIZE/2, ARROW_SIZE, ARROW_SIZE);
+        } else {
             ctx.moveTo(ARROW_SIZE, 0);
             ctx.lineTo(0, -ARROW_SIZE / 2);
             ctx.lineTo(0, ARROW_SIZE / 2);
             ctx.closePath();
-            ctx.fill();
-            ctx.restore();
         }
+        ctx.fill();
+        ctx.restore();
+    };
+
+    if (activeTool === 'move' || activeTool === 'universal' || activeTool === 'scale') {
+        drawAxis({x:1,y:0,z:0}, '#ff4444', 'X');
+        drawAxis({x:0,y:1,z:0}, '#44ff44', 'Y');
+        drawAxis({x:0,y:0,z:1}, '#4444ff', 'Z');
+
+        // Center handle
+        ctx.fillStyle = activeTool === 'scale' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)';
+        ctx.beginPath(); ctx.arc(screenPos.x, screenPos.y, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
     }
 
     ctx.restore();
@@ -2272,6 +2325,7 @@ export function drawOverlay() {
 
     const config = getCurrentProjectConfig();
     const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3DActive = is3D && config.viewMode !== '2d';
 
     if (is3D) {
         // Reset 2D transform to Screen Space for 3D-projected gizmos
@@ -2283,8 +2337,11 @@ export function drawOverlay() {
     } else {
         drawEditorGrid();
     }
-    drawComponentGrids();
-    drawLayerPlacementPreview();
+
+    if (!is3DActive) {
+        drawComponentGrids();
+        drawLayerPlacementPreview();
+    }
 
     // Draw gizmo for the selected object
     if (getSelectedMateria()) {
@@ -2304,32 +2361,37 @@ export function drawOverlay() {
         drawGizmoIcons();
     }
 
-    // Draw tile painting cursor
-    drawTileCursor();
+    if (!is3DActive) {
+        // Draw tile painting cursor
+        drawTileCursor();
 
-    // Draw tilemap colliders
-    drawTilemapColliders();
+        // Draw tilemap colliders
+        drawTilemapColliders();
 
-    // Draw terrain colliders
-    drawTerrenoColliders();
+        // Draw terrain colliders
+        drawTerrenoColliders();
 
-    // Draw physics colliders for selected object
-    drawPhysicsGizmos();
+        // Draw physics colliders for selected object
+        drawPhysicsGizmos();
+    }
+
     draw3DPhysicsGizmos();
 
-    // Draw outline for selected Tilemap
-    drawTilemapOutline();
+    if (!is3DActive) {
+        // Draw outline for selected Tilemap
+        drawTilemapOutline();
 
-    // Draw Canvas gizmos
-    drawCanvasGizmos();
-    drawUIGizmos(renderer, getSelectedMateria());
+        // Draw Canvas gizmos
+        drawCanvasGizmos();
+        drawUIGizmos(renderer, getSelectedMateria());
 
-    drawRaycastGizmos();
+        drawRaycastGizmos();
 
-    drawTerrainBrushGizmo();
-    drawWeightPainterGizmo();
+        drawTerrainBrushGizmo();
+        drawWeightPainterGizmo();
 
-    drawBasicAIGizmos();
+        drawBasicAIGizmos();
+    }
 
     if (is3D) {
         renderer.ctx.restore();
@@ -2522,30 +2584,32 @@ function draw3DGrid() {
     }
 
     // Main Axes (Infinite Origin Lines)
-    ctx.lineWidth = 2;
-    const axisLen = 1000000; // Large enough to look infinite
+    if (prefs.showOriginAxes !== false) {
+        ctx.lineWidth = 2;
+        const axisLen = 1000000; // Large enough to look infinite
 
-    // X Axis (Red)
-    drawLine3D({ x: -axisLen, y: 0, z: 0 }, { x: axisLen, y: 0, z: 0 }, 'rgba(255, 50, 50, 0.8)');
+        // X Axis (Red)
+        drawLine3D({ x: -axisLen, y: 0, z: 0 }, { x: axisLen, y: 0, z: 0 }, 'rgba(255, 50, 50, 0.8)');
 
-    // Y Axis (Green)
-    drawLine3D({ x: 0, y: -axisLen, z: 0 }, { x: 0, y: axisLen, z: 0 }, 'rgba(50, 255, 50, 0.8)');
+        // Y Axis (Green)
+        drawLine3D({ x: 0, y: -axisLen, z: 0 }, { x: 0, y: axisLen, z: 0 }, 'rgba(50, 255, 50, 0.8)');
 
-    // Z Axis (Blue)
-    drawLine3D({ x: 0, y: 0, z: -axisLen }, { x: 0, y: 0, z: axisLen }, 'rgba(50, 50, 255, 0.8)');
+        // Z Axis (Blue)
+        drawLine3D({ x: 0, y: 0, z: -axisLen }, { x: 0, y: 0, z: axisLen }, 'rgba(50, 50, 255, 0.8)');
 
-    // Center Crosshair (Origin Point)
-    const origin = world3DToScreen({ x: 0, y: 0, z: 0 });
-    if (origin) {
-        ctx.fillStyle = "#ffffff";
-        ctx.beginPath(); ctx.arc(origin.x, origin.y, 6, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = "#000000"; ctx.lineWidth = 2; ctx.stroke();
+        // Center Crosshair (Origin Point)
+        const origin = world3DToScreen({ x: 0, y: 0, z: 0 });
+        if (origin) {
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath(); ctx.arc(origin.x, origin.y, 6, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = "#000000"; ctx.lineWidth = 2; ctx.stroke();
 
-        // Origin labels
-        ctx.fillStyle = "white";
-        ctx.font = "bold 12px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText("(0,0,0)", origin.x, origin.y - 12);
+            // Origin labels
+            ctx.fillStyle = "white";
+            ctx.font = "bold 12px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("(0,0,0)", origin.x, origin.y - 12);
+        }
     }
 
     ctx.restore();
