@@ -790,12 +790,11 @@ export function initialize(dependencies) {
         const config = getCurrentProjectConfig();
         const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
 
-        // In 3D, screen deltas are often more reliable than 2D-world-projection for 3D axes
-        const screenDx = moveEvent.clientX - lastMousePosition.x;
-        const screenDy = moveEvent.clientY - lastMousePosition.y;
-
+        // In 3D, we'll use a better projection for axes
         const totalDx = (currentMouseWorld.x - dragState.initialMouseWorld.x);
         const totalDy = (currentMouseWorld.y - dragState.initialMouseWorld.y);
+
+        const glm = window.glMatrix;
 
         const prefs = getPreferences ? getPreferences() : {};
         const snapEnabled = prefs.snapping;
@@ -807,59 +806,126 @@ export function initialize(dependencies) {
                 transform.y = dragState.initialTransform.y + totalDy;
                 break;
             case 'move-x':
-                {
-                    let nextX = is3D ? (dragState.initialTransform.x + (moveEvent.clientX - dragState.initialMousePos.x)) : (dragState.initialTransform.x + totalDx);
-                    if (snapEnabled) nextX = Math.round(nextX / snapSize) * snapSize;
-                    transform.x = nextX;
-                }
-                break;
             case 'move-y':
+            case 'move-z':
                 {
-                    // In 3D, Y is up, but screen Y is down.
-                    let nextY = is3D ? (dragState.initialTransform.y - (moveEvent.clientY - dragState.initialMousePos.y)) : (dragState.initialTransform.y + totalDy);
-                    if (snapEnabled) nextY = Math.round(nextY / snapSize) * snapSize;
-                    transform.y = nextY;
+                    if (is3D && glm) {
+                        const axis = dragState.handle === 'move-x' ? [1,0,0] : (dragState.handle === 'move-y' ? [0,1,0] : [0,0,1]);
+                        const q = glm.quat.create();
+                        glm.quat.fromEuler(q, dragState.initialTransform.rotationX || 0, dragState.initialTransform.rotationY || 0, dragState.initialTransform.rotationZ || 0);
+                        const worldAxis = glm.vec3.create();
+                        glm.vec3.transformQuat(worldAxis, axis, q);
+
+                        const cam = renderer.camera;
+                        const camQ = glm.quat.create();
+                        glm.quat.fromEuler(camQ, cam.rotation.x, cam.rotation.y, 0);
+                        const camRight = glm.vec3.create();
+                        glm.vec3.transformQuat(camRight, [1,0,0], camQ);
+                        const camUp = glm.vec3.create();
+                        glm.vec3.transformQuat(camUp, [0,1,0], camQ);
+
+                        const screenDx = moveEvent.clientX - dragState.initialMousePos.x;
+                        const screenDy = moveEvent.clientY - dragState.initialMousePos.y;
+
+                        // Project world axis onto camera right and up to see how it looks on screen
+                        const axisOnScreenX = glm.vec3.dot(worldAxis, camRight);
+                        const axisOnScreenY = -glm.vec3.dot(worldAxis, camUp); // Screen Y is inverted
+
+                        // Drag strength relative to distance
+                        const dist = glm.vec3.distance([cam.x, cam.y, cam.z], [transform.x, transform.y, transform.z || 0]);
+                        const sensitivity = dist / 1000;
+
+                        const moveAmount = (screenDx * axisOnScreenX + screenDy * axisOnScreenY) * sensitivity;
+
+                        let nextPos = [dragState.initialTransform.x, dragState.initialTransform.y, dragState.initialTransform.z || 0];
+                        nextPos[0] += worldAxis[0] * moveAmount;
+                        nextPos[1] += worldAxis[1] * moveAmount;
+                        nextPos[2] += worldAxis[2] * moveAmount;
+
+                        if (snapEnabled) {
+                            nextPos[0] = Math.round(nextPos[0] / snapSize) * snapSize;
+                            nextPos[1] = Math.round(nextPos[1] / snapSize) * snapSize;
+                            nextPos[2] = Math.round(nextPos[2] / snapSize) * snapSize;
+                        }
+
+                        transform.x = nextPos[0];
+                        transform.y = nextPos[1];
+                        transform.z = nextPos[2];
+                    } else {
+                        if (dragState.handle === 'move-x') transform.x = dragState.initialTransform.x + (snapEnabled ? Math.round(totalDx / snapSize) * snapSize : totalDx);
+                        if (dragState.handle === 'move-y') transform.y = dragState.initialTransform.y + (snapEnabled ? Math.round(totalDy / snapSize) * snapSize : totalDy);
+                    }
                 }
                 break;
             case 'move-xy':
                 {
-                    let nextX = dragState.initialTransform.x + totalDx;
-                    let nextY = dragState.initialTransform.y + totalDy;
-                    if (snapEnabled) {
-                        nextX = Math.round(nextX / snapSize) * snapSize;
-                        nextY = Math.round(nextY / snapSize) * snapSize;
+                    if (is3D && glm) {
+                        // In 3D, move object on a plane parallel to the camera view
+                        const cam = renderer.camera;
+                        const camQ = glm.quat.create();
+                        glm.quat.fromEuler(camQ, cam.rotation.x, cam.rotation.y, 0);
+                        const camRight = glm.vec3.create();
+                        glm.vec3.transformQuat(camRight, [1,0,0], camQ);
+                        const camUp = glm.vec3.create();
+                        glm.vec3.transformQuat(camUp, [0,1,0], camQ);
+
+                        const screenDxTotal = moveEvent.clientX - dragState.initialMousePos.x;
+                        const screenDyTotal = moveEvent.clientY - dragState.initialMousePos.y;
+
+                        const dist = glm.vec3.distance([cam.x, cam.y, cam.z], [transform.x, transform.y, transform.z || 0]);
+                        const sensitivity = dist / 1000;
+
+                        let nextPos = [dragState.initialTransform.x, dragState.initialTransform.y, dragState.initialTransform.z || 0];
+                        nextPos[0] += (camRight[0] * screenDxTotal - camUp[0] * screenDyTotal) * sensitivity;
+                        nextPos[1] += (camRight[1] * screenDxTotal - camUp[1] * screenDyTotal) * sensitivity;
+                        nextPos[2] += (camRight[2] * screenDxTotal - camUp[2] * screenDyTotal) * sensitivity;
+
+                        if (snapEnabled) {
+                            nextPos[0] = Math.round(nextPos[0] / snapSize) * snapSize;
+                            nextPos[1] = Math.round(nextPos[1] / snapSize) * snapSize;
+                            nextPos[2] = Math.round(nextPos[2] / snapSize) * snapSize;
+                        }
+
+                        transform.x = nextPos[0];
+                        transform.y = nextPos[1];
+                        transform.z = nextPos[2];
+                    } else {
+                        let nextX = dragState.initialTransform.x + totalDx;
+                        let nextY = dragState.initialTransform.y + totalDy;
+                        if (snapEnabled) {
+                            nextX = Math.round(nextX / snapSize) * snapSize;
+                            nextY = Math.round(nextY / snapSize) * snapSize;
+                        }
+                        transform.x = nextX;
+                        transform.y = nextY;
                     }
-                    transform.x = nextX;
-                    transform.y = nextY;
-                }
-                break;
-            case 'move-z':
-                {
-                    // In 3D, for Z movement, we also use the world delta logic but since mouse movement is on screen,
-                    // we can't easily map screen space to world Z in a generic way without raycasting.
-                    // However, for consistency with X/Y, we'll use the vertical screen delta as a world proxy.
-                    const dyPx = (moveEvent.clientY - lastMousePosition.y);
-                    let nextZ = (transform.z || 0) + dyPx;
-                    if (snapEnabled) nextZ = Math.round(nextZ / snapSize) * snapSize;
-                    transform.z = nextZ;
                 }
                 break;
             case 'scale-x':
-                transform.localScale = { ...transform.localScale, x: dragState.initialTransform.scale.x + totalDx / 50 };
-                break;
             case 'scale-y':
-                transform.localScale = { ...transform.localScale, y: dragState.initialTransform.scale.y - totalDy / 50 };
-                break;
             case 'scale-z':
-                transform.localScale = { ...transform.localScale, z: dragState.initialTransform.scale.z + (moveEvent.clientY - lastMousePosition.y) / 50 };
+                {
+                    const screenDx = moveEvent.clientX - dragState.initialMousePos.x;
+                    const screenDy = moveEvent.clientY - dragState.initialMousePos.y;
+                    const amount = (screenDx - screenDy) / 100;
+                    const newScale = { ...transform.localScale };
+                    if (dragState.handle === 'scale-x') newScale.x = Math.max(0.01, dragState.initialTransform.scale.x + amount);
+                    if (dragState.handle === 'scale-y') newScale.y = Math.max(0.01, dragState.initialTransform.scale.y + amount);
+                    if (dragState.handle === 'scale-z') newScale.z = Math.max(0.01, (dragState.initialTransform.scale.z || 1) + amount);
+                    transform.localScale = newScale;
+                }
                 break;
             case 'scale-all':
-                const avgScale = 1 + (totalDx - totalDy) / 100;
-                transform.localScale = {
-                    x: dragState.initialTransform.scale.x * avgScale,
-                    y: dragState.initialTransform.scale.y * avgScale,
-                    z: dragState.initialTransform.scale.z * avgScale
-                };
+                {
+                    const screenDxTotal = moveEvent.clientX - dragState.initialMousePos.x;
+                    const screenDyTotal = moveEvent.clientY - dragState.initialMousePos.y;
+                    const avgScaleFactor = 1 + (screenDxTotal - screenDyTotal) / 200;
+                    transform.localScale = {
+                        x: Math.max(0.01, dragState.initialTransform.scale.x * avgScaleFactor),
+                        y: Math.max(0.01, dragState.initialTransform.scale.y * avgScaleFactor),
+                        z: Math.max(0.01, (dragState.initialTransform.scale.z || 1) * avgScaleFactor)
+                    };
+                }
                 break;
             case 'camera-resize-tl': case 'camera-resize-tr': case 'camera-resize-bl': case 'camera-resize-br': {
                 const cam = dragState.materia.getComponent(Components.Camera);
@@ -1730,6 +1796,7 @@ function handle3DCameraNavigation() {
 
             // Constrain pitch to avoid flipping
             cam.rotation.x = Math.max(-89.9, Math.min(89.9, cam.rotation.x));
+            updateScene();
         }
 
         // --- 3. Cursor Feedback ---
@@ -1754,20 +1821,33 @@ export function focusOnSelectedMateria() {
     const config = getCurrentProjectConfig();
     const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
 
+    const C3D = window.Components3D || Components3D;
+    const meshRenderer = C3D ? materia.getComponent(C3D.MeshRenderer3D) : null;
+
+    let size = 50;
+    if (meshRenderer) {
+        size = Math.max(Math.abs(transform.scale.x), Math.abs(transform.scale.y), Math.abs(transform.scale.z || 1)) * 2;
+    } else {
+        const dims = getMateriaDimensions(materia);
+        size = Math.max(dims.width * Math.abs(transform.scale.x), dims.height * Math.abs(transform.scale.y));
+    }
+
     if (is3D) {
-        // Position camera at a comfortable distance (e.g., 200 units) from the object
-        // and look at it.
-        const distance = 300;
+        // Position camera at a distance relative to size
+        const distance = Math.max(150, size * 3.0);
         cam.x = transform.x;
-        cam.y = transform.y + 100; // Slightly above
+        cam.y = transform.y + (size * 0.4);
         cam.z = (transform.z || 0) + distance;
-        // Looking down slightly
-        cam.rotation.x = 15;
+
+        // Reset rotation to look at the object
+        cam.rotation.x = 10;
         cam.rotation.y = 0;
     } else {
         cam.x = transform.x;
         cam.y = transform.y;
-        cam.zoom = 1.0;
+        // Adjust zoom to fit object
+        const targetZoom = Math.max(0.1, Math.min(2.0, 400 / (size || 1)));
+        cam.zoom = targetZoom;
     }
     updateScene();
 }
@@ -1779,8 +1859,19 @@ export function update() {
 
     if (is3D && !window.isGameRunning && getActiveView() === 'scene-content') {
         handle3DCameraNavigation();
+
+        // F key to focus
         if (InputManager.getKeyDown('f')) {
             focusOnSelectedMateria();
+        }
+
+        // Suppress browser context menu during right-click navigation
+        if (InputManager.getMouseButton(2)) {
+            const preventer = (e) => {
+                e.preventDefault();
+                window.removeEventListener('contextmenu', preventer);
+            };
+            window.addEventListener('contextmenu', preventer);
         }
     } else {
         handleEditorInteractions();
@@ -1885,6 +1976,7 @@ function drawCameraGizmos(renderer) {
         if (!transform) return;
 
         const isSelected = selectedMateria && selectedMateria.id === materia.id;
+        const glm = window.glMatrix;
 
         ctx.save();
         ctx.strokeStyle = isSelected ? 'rgba(255, 255, 0, 0.8)' : 'rgba(255, 255, 255, 0.4)';
@@ -1919,7 +2011,7 @@ function drawCameraGizmos(renderer) {
             }
 
             // --- Draw Interactive Handles (only for selected camera) ---
-            if (isSelected) {
+            if (isSelected && !is3D) {
                 ctx.fillStyle = 'rgba(255, 255, 0, 0.9)';
                 const handleSize = 8 / renderer.camera.effectiveZoom;
                 const halfHandle = handleSize / 2;
@@ -1937,23 +2029,37 @@ function drawCameraGizmos(renderer) {
                 });
             }
 
-        } else { // Perspective logic remains the same
+        } else if (is3D && glm) { // 3D Perspective Frustum
             const fovRad = cameraComponent.fov * Math.PI / 180;
             const near = cameraComponent.nearClipPlane;
-            const far = cameraComponent.farClipPlane;
-            const nearHalfHeight = Math.tan(fovRad / 2) * near;
-            const nearHalfWidth = nearHalfHeight * aspect;
-            const farHalfHeight = Math.tan(fovRad / 2) * far;
-            const farHalfWidth = farHalfHeight * aspect;
+            const far = Math.min(cameraComponent.farClipPlane, 1000); // Limit far for gizmo visibility
+            const nearH = Math.tan(fovRad / 2) * near;
+            const nearW = nearH * aspect;
+            const farH = Math.tan(fovRad / 2) * far;
+            const farW = farH * aspect;
 
-            ctx.beginPath();
-            ctx.moveTo(-nearHalfWidth, -nearHalfHeight); ctx.lineTo(nearHalfWidth, -nearHalfHeight); ctx.lineTo(nearHalfWidth, nearHalfHeight); ctx.lineTo(-nearHalfWidth, nearHalfHeight); ctx.closePath();
-            ctx.moveTo(-farHalfWidth, -farHalfHeight); ctx.lineTo(farHalfWidth, -farHalfHeight); ctx.lineTo(farHalfWidth, farHalfHeight); ctx.lineTo(-farHalfWidth, farHalfHeight); ctx.closePath();
-            ctx.moveTo(-nearHalfWidth, -nearHalfHeight); ctx.lineTo(-farHalfWidth, -farHalfHeight);
-            ctx.moveTo(nearHalfWidth, -nearHalfHeight); ctx.lineTo(farHalfWidth, -farHalfHeight);
-            ctx.moveTo(nearHalfWidth, nearHalfHeight); ctx.lineTo(farHalfWidth, farHalfHeight);
-            ctx.moveTo(-nearHalfWidth, nearHalfHeight); ctx.lineTo(-farHalfWidth, farHalfHeight);
-            ctx.stroke();
+            const q = glm.quat.create();
+            glm.quat.fromEuler(q, transform.rotationX || 0, transform.rotationY || 0, transform.rotationZ || 0);
+
+            const project = (lx, ly, lz) => {
+                const worldPos = glm.vec3.create();
+                glm.vec3.transformQuat(worldPos, [lx, ly, -lz], q); // Cameras look towards -Z in many conventions, check ours
+                return world3DToScreen({ x: transform.x + worldPos[0], y: transform.y + worldPos[1], z: (transform.z || 0) + worldPos[2] });
+            };
+
+            const n1 = project(-nearW, nearH, near), n2 = project(nearW, nearH, near), n3 = project(nearW, -nearH, near), n4 = project(-nearW, -nearH, near);
+            const f1 = project(-farW, farH, far), f2 = project(farW, farH, far), f3 = project(farW, -farH, far), f4 = project(-farW, -farH, far);
+
+            const drawLine = (p1, p2) => {
+                if (p1 && p2) { ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke(); }
+            };
+
+            // Near plane
+            drawLine(n1, n2); drawLine(n2, n3); drawLine(n3, n4); drawLine(n4, n1);
+            // Far plane
+            drawLine(f1, f2); drawLine(f2, f3); drawLine(f3, f4); drawLine(f4, f1);
+            // Connecting lines
+            drawLine(n1, f1); drawLine(n2, f2); drawLine(n3, f3); drawLine(n4, f4);
         }
 
         ctx.restore();
@@ -2228,8 +2334,14 @@ function check3DGizmoHit(canvasPos, materia) {
     const hitRadius = 20;
     const gizmoLen = 80;
 
-    const checkHandle = (worldAxis, name) => {
-        const axisEnd = { x: center.x + worldAxis.x * gizmoLen, y: center.y + worldAxis.y * gizmoLen, z: center.z + worldAxis.z * gizmoLen };
+    const glm = window.glMatrix;
+    const q = glm.quat.create();
+    glm.quat.fromEuler(q, transform.rotationX || 0, transform.rotationY || 0, transform.rotationZ || 0);
+
+    const checkHandle = (localAxis, name) => {
+        const worldAxis = glm.vec3.create();
+        glm.vec3.transformQuat(worldAxis, [localAxis.x, localAxis.y, localAxis.z], q);
+        const axisEnd = { x: center.x + worldAxis[0] * gizmoLen, y: center.y + worldAxis[1] * gizmoLen, z: center.z + worldAxis[2] * gizmoLen };
         const screenEnd = world3DToScreen(axisEnd);
         if (!screenEnd) return false;
         const dx = canvasPos.x - screenEnd.x;
@@ -2240,11 +2352,11 @@ function check3DGizmoHit(canvasPos, materia) {
     if (activeTool === 'move' || activeTool === 'universal' || activeTool === 'scale') {
         const dx = canvasPos.x - screenPos.x;
         const dy = canvasPos.y - screenPos.y;
-        if (Math.hypot(dx, dy) < hitRadius) return activeTool === 'scale' ? 'scale-all' : 'move-xy';
+        if (Math.hypot(dx, dy) < 15) return activeTool === 'scale' ? 'scale-all' : 'move-xy';
 
-        if (checkHandle({x:1, y:0, z:0}, activeTool === 'scale' ? 'scale-x' : 'move-x')) return activeTool === 'scale' ? 'scale-x' : 'move-x';
-        if (checkHandle({x:0, y:1, z:0}, activeTool === 'scale' ? 'scale-y' : 'move-y')) return activeTool === 'scale' ? 'scale-y' : 'move-y';
-        if (checkHandle({x:0, y:0, z:1}, activeTool === 'scale' ? 'scale-z' : 'move-z')) return activeTool === 'scale' ? 'scale-z' : 'move-z';
+        if (checkHandle({x:1, y:0, z:0}, 'X')) return activeTool === 'scale' ? 'scale-x' : 'move-x';
+        if (checkHandle({x:0, y:1, z:0}, 'Y')) return activeTool === 'scale' ? 'scale-y' : 'move-y';
+        if (checkHandle({x:0, y:0, z:1}, 'Z')) return activeTool === 'scale' ? 'scale-z' : 'move-z';
     }
     return null;
 }
@@ -2264,19 +2376,28 @@ function draw3DGizmos(materia) {
 
     const meshRenderer = materia.getComponent(C3D.MeshRenderer3D);
     if (meshRenderer) {
-        const mult = 2;
+        const mult = 2; // Mesh is -1 to 1, so 2 units wide.
         if (meshRenderer.meshType === 'Cube') Gizmos.drawWireCube(ctx, center, { x: mult * transform.scale.x, y: mult * transform.scale.y, z: mult * transform.scale.z });
         else if (meshRenderer.meshType === 'Sphere') Gizmos.drawWireSphere(ctx, center, (mult/2) * Math.max(transform.scale.x, transform.scale.y, transform.scale.z));
         else if (meshRenderer.meshType === 'Plane') Gizmos.drawWirePlane(ctx, center, { x: mult * transform.scale.x, z: mult * transform.scale.z });
         else if (meshRenderer.meshType === 'Triangle') Gizmos.drawWireTriangle(ctx, center, { x: mult * transform.scale.x, y: mult * transform.scale.y });
         else if (meshRenderer.meshType === 'Capsule') Gizmos.drawWireCapsule(ctx, center, (mult/2) * Math.max(transform.scale.x, transform.scale.z), mult * transform.scale.y);
+    } else if (materia.getComponent(Components.Camera)) {
+        drawCameraGizmos(renderer);
     }
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-    const drawAxis = (axis, color, name) => {
-        const endPos = { x: center.x + axis.x * GIZMO_SIZE, y: center.y + axis.y * GIZMO_SIZE, z: center.z + axis.z * GIZMO_SIZE };
+    const glm = window.glMatrix;
+    const q = glm.quat.create();
+    glm.quat.fromEuler(q, transform.rotationX || 0, transform.rotationY || 0, transform.rotationZ || 0);
+
+    const drawAxis = (localAxis, color) => {
+        const worldAxis = glm.vec3.create();
+        glm.vec3.transformQuat(worldAxis, [localAxis.x, localAxis.y, localAxis.z], q);
+
+        const endPos = { x: center.x + worldAxis[0] * GIZMO_SIZE, y: center.y + worldAxis[1] * GIZMO_SIZE, z: center.z + worldAxis[2] * GIZMO_SIZE };
         const endScreen = world3DToScreen(endPos);
         if (!endScreen) return;
 
@@ -2306,13 +2427,13 @@ function draw3DGizmos(materia) {
     };
 
     if (activeTool === 'move' || activeTool === 'universal' || activeTool === 'scale') {
-        drawAxis({x:1,y:0,z:0}, '#ff4444', 'X');
-        drawAxis({x:0,y:1,z:0}, '#44ff44', 'Y');
-        drawAxis({x:0,y:0,z:1}, '#4444ff', 'Z');
+        drawAxis({x:1,y:0,z:0}, '#ff4444'); // X (Red)
+        drawAxis({x:0,y:1,z:0}, '#44ff44'); // Y (Green)
+        drawAxis({x:0,y:0,z:1}, '#4444ff'); // Z (Blue)
 
         // Center handle
         ctx.fillStyle = activeTool === 'scale' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)';
-        ctx.beginPath(); ctx.arc(screenPos.x, screenPos.y, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(screenPos.x, screenPos.y, 8, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
     }
 
@@ -2354,6 +2475,10 @@ export function drawOverlay() {
     // Frustum Visualizer for Optimization Mode
     if (config.optiCameraCulling) {
         drawFrustumCullingGizmos();
+    }
+
+    if (is3D) {
+        draw3DGrid();
     }
 
     // Draw Icons (Audio, Camera, etc)
@@ -2523,91 +2648,93 @@ function drawRaycastGizmos() {
     ctx.restore();
 }
 
+function drawLineClipped(p1, p2, color, width = 1) {
+    const r3d = window._Renderer3D;
+    const glm = window.glMatrix;
+    if (!r3d || !r3d.lastProjectionMatrix || !r3d.lastViewMatrix || !glm) return;
+
+    const mvp = glm.mat4.create();
+    glm.mat4.multiply(mvp, r3d.lastProjectionMatrix, r3d.lastViewMatrix);
+
+    const project = (p) => {
+        const v = [p.x, p.y, p.z || 0, 1.0];
+        const res = [0, 0, 0, 0];
+        for(let i=0; i<4; i++) res[i] = mvp[i]*v[0] + mvp[i+4]*v[1] + mvp[i+8]*v[2] + mvp[i+12]*v[3];
+        return res;
+    };
+
+    let v1 = project(p1), v2 = project(p2);
+
+    // Liang-Barsky-style clipping for W (near plane)
+    const wNear = 0.1;
+    if (v1[3] < wNear && v2[3] < wNear) return;
+
+    if (v1[3] < wNear) {
+        const t = (wNear - v1[3]) / (v2[3] - v1[3]);
+        for(let i=0; i<4; i++) v1[i] = v1[i] + t * (v2[i] - v1[i]);
+    } else if (v2[3] < wNear) {
+        const t = (wNear - v2[3]) / (v1[3] - v2[3]);
+        for(let i=0; i<4; i++) v2[i] = v2[i] + t * (v1[i] - v2[i]);
+    }
+
+    const s1 = { x: (v1[0]/v1[3] * 0.5 + 0.5) * r3d.canvas.width, y: (1.0 - (v1[1]/v1[3] * 0.5 + 0.5)) * r3d.canvas.height };
+    const s2 = { x: (v2[0]/v2[3] * 0.5 + 0.5) * r3d.canvas.width, y: (1.0 - (v2[1]/v2[3] * 0.5 + 0.5)) * r3d.canvas.height };
+
+    const { ctx } = renderer;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(s1.x, s1.y);
+    ctx.lineTo(s2.x, s2.y);
+    ctx.stroke();
+}
+
 function draw3DGrid() {
     const prefs = getPreferences();
     if (!prefs.showSceneGrid) return;
 
-    const { ctx, camera, canvas } = renderer;
+    const { ctx, camera } = renderer;
     if (!camera) return;
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0); // Screen Space
 
-    // --- Adaptive 3D Grid ---
-    // Calculate distance to origin or grid plane to adjust scale
+    // --- Adaptive 3D Grid on XZ plane (Floor) ---
     const dist = Math.abs(camera.y) || 500;
     const magnitude = Math.pow(10, Math.floor(Math.log10(dist / 5)));
     const step = Math.max(1, magnitude);
 
-    const gridRange = 60; // Increased range
+    const gridRange = 50;
     const gridColor = 'rgba(255, 255, 255, 0.1)';
     const majorGridColor = 'rgba(255, 255, 255, 0.3)';
 
-    // Infinite effect: snapped to steps on XY plane
     const snapX = Math.floor(camera.x / step) * step;
-    const snapY = Math.floor(camera.y / step) * step;
+    const snapZ = Math.floor(camera.z / step) * step;
 
     const startX = snapX - (gridRange * step);
     const endX = snapX + (gridRange * step);
-    const startY = snapY - (gridRange * step);
-    const endY = snapY + (gridRange * step);
+    const startZ = snapZ - (gridRange * step);
+    const endZ = snapZ + (gridRange * step);
 
-    ctx.lineWidth = 1;
-
-    // Helper for clipped line drawing
-    const drawLine3D = (p1World, p2World, color) => {
-        const p1 = world3DToScreen(p1World);
-        const p2 = world3DToScreen(p2World);
-        if (p1 && p2) {
-            ctx.strokeStyle = color;
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.stroke();
-        }
-    };
-
-    // Vertical grid lines (varying Y)
-    for (let x = startX; x <= endX; x += step) {
-        const isMajor = Math.round(x / step) % 10 === 0;
-        const isOrigin = Math.abs(x) < 0.01;
-        if (isOrigin) continue;
-        drawLine3D({ x, y: startY, z: 0 }, { x, y: endY, z: 0 }, isMajor ? majorGridColor : gridColor);
-    }
-
-    // Horizontal grid lines (varying X)
-    for (let y = startY; y <= endY; y += step) {
-        const isMajor = Math.round(y / step) % 10 === 0;
-        const isOrigin = Math.abs(y) < 0.01;
-        if (isOrigin) continue;
-        drawLine3D({ x: startX, y, z: 0 }, { x: endX, y, z: 0 }, isMajor ? majorGridColor : gridColor);
-    }
+    // We skip floor grid lines in 2D overlay because Renderer3D already draws an infinite depth-tested grid.
+    // This prevents Z-fighting and ensures objects correctly occlude the grid.
 
     // Main Axes (Infinite Origin Lines)
     if (prefs.showOriginAxes !== false) {
-        ctx.lineWidth = 2;
-        const axisLen = 1000000; // Large enough to look infinite
-
+        const axisLen = 100000;
         // X Axis (Red)
-        drawLine3D({ x: -axisLen, y: 0, z: 0 }, { x: axisLen, y: 0, z: 0 }, 'rgba(255, 50, 50, 0.8)');
-
+        drawLineClipped({ x: -axisLen, y: 0, z: 0 }, { x: axisLen, y: 0, z: 0 }, 'rgba(255, 50, 50, 1.0)', 2);
         // Y Axis (Green)
-        drawLine3D({ x: 0, y: -axisLen, z: 0 }, { x: 0, y: axisLen, z: 0 }, 'rgba(50, 255, 50, 0.8)');
-
+        drawLineClipped({ x: 0, y: -axisLen, z: 0 }, { x: 0, y: axisLen, z: 0 }, 'rgba(50, 255, 50, 1.0)', 2);
         // Z Axis (Blue)
-        drawLine3D({ x: 0, y: 0, z: -axisLen }, { x: 0, y: 0, z: axisLen }, 'rgba(50, 50, 255, 0.8)');
+        drawLineClipped({ x: 0, y: 0, z: -axisLen }, { x: 0, y: 0, z: axisLen }, 'rgba(50, 50, 255, 1.0)', 2);
 
-        // Center Crosshair (Origin Point)
         const origin = world3DToScreen({ x: 0, y: 0, z: 0 });
         if (origin) {
             ctx.fillStyle = "#ffffff";
             ctx.beginPath(); ctx.arc(origin.x, origin.y, 6, 0, Math.PI * 2); ctx.fill();
             ctx.strokeStyle = "#000000"; ctx.lineWidth = 2; ctx.stroke();
-
-            // Origin labels
-            ctx.fillStyle = "white";
-            ctx.font = "bold 12px Arial";
-            ctx.textAlign = "center";
+            ctx.fillStyle = "white"; ctx.font = "bold 12px Arial"; ctx.textAlign = "center";
             ctx.fillText("(0,0,0)", origin.x, origin.y - 12);
         }
     }

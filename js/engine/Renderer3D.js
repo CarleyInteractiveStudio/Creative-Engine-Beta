@@ -1,5 +1,6 @@
 import * as Components from './Components.js';
 import * as Components3D from './Components3D.js';
+window.Components3D = Components3D; // Ensure global access for Inspector and Editor
 const { Transform, SpriteRenderer, Camera } = Components;
 const { MeshRenderer3D, DirectionalLight3D, PointLight3D, SpotLight3D } = Components3D;
 
@@ -514,14 +515,14 @@ export class Renderer3D {
             [0,1,2]
         );
 
-        // Capsule Mesh
+        // Capsule Mesh (Total height 2, Radius 0.5)
         const capPos = [], capNorm = [], capIdx = [];
         for(let j=0; j<=lat/2; j++) {
             let theta = j * Math.PI / lat;
             let sinTheta = Math.sin(theta), cosTheta = Math.cos(theta);
             for(let i=0; i<=lon; i++) {
                 let phi = i * 2 * Math.PI / lon;
-                let x = Math.cos(phi) * sinTheta, y = cosTheta + 0.5, z = Math.sin(phi) * sinTheta;
+                let x = Math.cos(phi) * sinTheta * 0.5, y = cosTheta * 0.5 + 0.5, z = Math.sin(phi) * sinTheta * 0.5;
                 capPos.push(x, y, z); capNorm.push(x, cosTheta, z);
             }
         }
@@ -530,7 +531,7 @@ export class Renderer3D {
             let sinTheta = Math.sin(theta), cosTheta = Math.cos(theta);
             for(let i=0; i<=lon; i++) {
                 let phi = i * 2 * Math.PI / lon;
-                let x = Math.cos(phi) * sinTheta, y = cosTheta - 0.5, z = Math.sin(phi) * sinTheta;
+                let x = Math.cos(phi) * sinTheta * 0.5, y = cosTheta * 0.5 - 0.5, z = Math.sin(phi) * sinTheta * 0.5;
                 capPos.push(x, y, z); capNorm.push(x, cosTheta, z);
             }
         }
@@ -718,6 +719,7 @@ export class Renderer3D {
             if (!this.init()) return;
         }
         if (!this.gl) return;
+        window._Renderer3D = this; // Ensure global reference for SceneView
         const gl = this.gl;
         const ambiente = scene.ambiente || {};
         const realismLevel = (ambiente.realismLevel !== undefined ? ambiente.realismLevel : 50) / 100;
@@ -756,7 +758,12 @@ export class Renderer3D {
         this.lastViewMatrix = viewMatrix;
 
         let activeViewPosition = [0, 0, 0];
-        const aspect = gl.canvas.width / gl.canvas.height;
+        let aspect = gl.canvas.width / gl.canvas.height;
+        if (options.picking) {
+            // Match the aspect ratio of the picking viewport (square 512x512)
+            // or better, keep the canvas aspect to match what user sees
+            // aspect = 1.0;
+        }
 
         if (cameraMateria) {
             const camComp = cameraMateria.getComponent(Camera);
@@ -804,10 +811,12 @@ export class Renderer3D {
 
         if (options.picking) {
             gl.useProgram(this.pickingProgramInfo.program);
-        }
-
-        if (!options.picking) {
+        } else {
             gl.useProgram(this.programInfo.program);
+            // Apply projection/view once for the main pass
+            gl.uniformMatrix4fv(this.programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
+            gl.uniformMatrix4fv(this.programInfo.uniformLocations.viewMatrix, false, viewMatrix);
+
             gl.uniform3fv(this.programInfo.uniformLocations.viewPosition, activeViewPosition);
             gl.uniform1f(this.programInfo.uniformLocations.uRealismLevel, realismLevel);
 
@@ -829,7 +838,7 @@ export class Renderer3D {
             pointLights.forEach(pl => {
                 const comp = pl.getComponent(Components3D.PointLight3D);
                 const trans = pl.getComponent(Transform);
-                plPos.push(trans.x, trans.y, trans.z);
+                plPos.push(trans.x, trans.y, trans.z || 0);
                 const rgb = this.hexToRgb(comp.color);
                 plColor.push(rgb[0] * comp.intensity, rgb[1] * comp.intensity, rgb[2] * comp.intensity);
                 plRange.push(comp.range);
@@ -942,14 +951,12 @@ export class Renderer3D {
 
         if (options.picking && !meshRenderer && !spriteRenderer && !textureRender) return;
 
-        const gl = this.gl;
-        const programInfo = options.picking ? this.pickingProgramInfo : this.programInfo;
         const transform = materia.getComponent(Transform);
         if (!transform || !materia.isActive) return;
 
         if (!meshRenderer && !spriteRenderer && !textureRender && !tilemapRenderer && !terreno2D && !water) return;
 
-        // Specialized Renderers
+        // Specialized Renderers (Always non-picking for these complex ones for now)
         if (tilemapRenderer) {
             this.renderTilemap(materia, projectionMatrix, viewMatrix, options);
             return;
@@ -962,6 +969,11 @@ export class Renderer3D {
             this.renderWater(materia, projectionMatrix, viewMatrix, options);
             return;
         }
+
+        const gl = this.gl;
+        // Ensure the correct program is active for this materia
+        const programInfo = options.picking ? this.pickingProgramInfo : this.programInfo;
+        gl.useProgram(programInfo.program);
 
         const modelMatrix = mat4.create();
         const worldPos = transform.position;
@@ -980,6 +992,7 @@ export class Renderer3D {
 
         mat4.fromRotationTranslationScale(modelMatrix, q, pos, scale);
 
+        // ALWAYS set these because the program might have changed
         gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
         gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
         gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
@@ -1005,7 +1018,7 @@ export class Renderer3D {
             color = [rgb[0], rgb[1], rgb[2], 1.0];
         }
 
-        if (!options.picking) {
+        if (!options.picking && this.programInfo.uniformLocations.uColor) {
             const isToon = options.isToon || meshRenderer?.isToon || (window.SceneManager.currentScene.ambiente.graphicMode === 'Anime');
             gl.uniform4fv(this.programInfo.uniformLocations.uColor, color);
             gl.uniform1i(this.programInfo.uniformLocations.uUseToon, isToon ? 1 : 0);
@@ -1151,12 +1164,20 @@ export class Renderer3D {
         if (!this.gl) return null;
         const gl = this.gl;
 
-        // Setup picking texture
-        const pickingRes = 512; // Lower resolution for optimization
-        if (!this.pickingFramebuffer) {
+        // Setup picking texture at canvas resolution for exact match
+        const w = gl.canvas.width;
+        const h = gl.canvas.height;
+
+        if (!this.pickingFramebuffer || this._pickW !== w || this._pickH !== h) {
+            if (this.pickingFramebuffer) {
+                gl.deleteFramebuffer(this.pickingFramebuffer);
+                gl.deleteTexture(this.pickingTexture);
+                gl.deleteRenderbuffer(this.pickingDepthBuffer);
+            }
+
             this.pickingTexture = gl.createTexture();
             gl.bindTexture(gl.TEXTURE_2D, this.pickingTexture);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, pickingRes, pickingRes, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
 
             this.pickingFramebuffer = gl.createFramebuffer();
             gl.bindFramebuffer(gl.FRAMEBUFFER, this.pickingFramebuffer);
@@ -1164,12 +1185,15 @@ export class Renderer3D {
 
             this.pickingDepthBuffer = gl.createRenderbuffer();
             gl.bindRenderbuffer(gl.RENDERBUFFER, this.pickingDepthBuffer);
-            gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, pickingRes, pickingRes);
+            gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h);
             gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, this.pickingDepthBuffer);
+
+            this._pickW = w;
+            this._pickH = h;
         }
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.pickingFramebuffer);
-        gl.viewport(0, 0, pickingRes, pickingRes);
+        gl.viewport(0, 0, w, h);
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -1183,13 +1207,9 @@ export class Renderer3D {
         this.render(scene, cameraMateria, { ...options, picking: true, idMap });
 
         const pixels = new Uint8Array(4);
-        // Map x,y to picking viewport resolution
-        const px = Math.floor((x / gl.canvas.width) * pickingRes);
-        const py = Math.floor((1 - y / gl.canvas.height) * pickingRes);
-
-        gl.readPixels(px, py, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        // Correct Y for WebGL (bottom-up)
+        gl.readPixels(x, h - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        this.resize(); // Restore viewport
 
         const pickedId = pixels[0] + (pixels[1] << 8) + (pixels[2] << 16);
         return reverseIdMap.get(pickedId) || null;

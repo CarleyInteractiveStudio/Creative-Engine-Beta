@@ -14,12 +14,12 @@ test('Editor should load and start without ReferenceError', async ({ page }) => 
   // Wait for the engine to initialize
   await page.waitForTimeout(3000);
 
-  // Check if CEEngine is defined and running
-  const isEngineRunning = await page.evaluate(() => {
-    return typeof window.CEEngine !== 'undefined';
+  // Check if EngineAPI is defined
+  const isEngineReady = await page.evaluate(() => {
+    return typeof window.EngineAPI !== 'undefined';
   });
 
-  expect(isEngineRunning).toBe(true);
+  expect(isEngineReady).toBe(true);
 
   // Check if there are any ReferenceErrors in the console logs
   // (Manual check of logs if needed, but the test passing CEEngine check is a good sign)
