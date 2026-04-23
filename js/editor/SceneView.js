@@ -78,7 +78,7 @@ export function world3DToScreen(worldPos) {
 
     return {
         x: (ndc[0] * 0.5 + 0.5) * width,
-        y: (1.0 - (ndc[1] * 0.5 + 0.5)) * height
+        y: (ndc[1] * 0.5 + 0.5) * height
     };
 }
 
@@ -823,33 +823,29 @@ export function initialize(dependencies) {
                         const worldAxis = glm.vec3.create();
                         glm.vec3.transformQuat(worldAxis, axis, q);
 
-                        // Invert world axis Y to match Renderer3D's internal mapping
-                        if (isY) worldAxis[1] *= -1;
-
                         const cam = renderer.camera;
                         const camQ = glm.quat.create();
                         glm.quat.fromEuler(camQ, cam.rotation.x, cam.rotation.y, 0);
                         const camRight = glm.vec3.create();
                         glm.vec3.transformQuat(camRight, [1,0,0], camQ);
                         const camUp = glm.vec3.create();
-                        glm.vec3.transformQuat(camUp, [0,1,0], camQ);
+                        glm.vec3.transformQuat(camUp, [0,-1,0], camQ); // Up is negative Y
 
                         const screenDx = moveEvent.clientX - dragState.initialMousePos.x;
                         const screenDy = moveEvent.clientY - dragState.initialMousePos.y;
 
                         // Project world axis onto camera right and up
                         const axisOnScreenX = glm.vec3.dot(worldAxis, camRight);
-                        const axisOnScreenY = -glm.vec3.dot(worldAxis, camUp); // Screen Y is down
+                        const axisOnScreenY = glm.vec3.dot(worldAxis, camUp);
 
-                        const dist = glm.vec3.distance([cam.x, -cam.y, cam.z], [transform.x, -transform.y, transform.z || 0]);
+                        const dist = glm.vec3.distance([cam.x, cam.y, cam.z], [transform.x, transform.y, transform.z || 0]);
                         const sensitivity = dist / 1000;
 
                         const moveAmount = (screenDx * axisOnScreenX + screenDy * axisOnScreenY) * sensitivity;
 
                         let nextPos = [dragState.initialTransform.x, dragState.initialTransform.y, dragState.initialTransform.z || 0];
-                        // Apply movement. If it's Y, we use the axis as is because worldAxis[1] is already inverted
                         nextPos[0] += worldAxis[0] * moveAmount;
-                        nextPos[1] += (isY ? -worldAxis[1] : worldAxis[1]) * moveAmount;
+                        nextPos[1] += worldAxis[1] * moveAmount;
                         nextPos[2] += worldAxis[2] * moveAmount;
 
                         if (snapEnabled) {
@@ -2468,9 +2464,6 @@ export function drawOverlay() {
         // Reset 2D transform to Screen Space for 3D-projected gizmos
         renderer.ctx.save();
         renderer.ctx.setTransform(1, 0, 0, 1, 0, 0);
-        if (config.viewMode === '2d') {
-            drawEditorGrid();
-        }
     } else {
         drawEditorGrid();
     }
@@ -2483,6 +2476,12 @@ export function drawOverlay() {
     // Draw gizmo for the selected object
     if (getSelectedMateria()) {
         drawGizmos(renderer, getSelectedMateria());
+
+        // Project Gyzmo rectangles if in 3D
+        if (is3DActive) {
+            const gyzmo = getSelectedMateria().getComponent(Components.Gyzmo);
+            if (gyzmo) draw3DGyzmoRects(gyzmo);
+        }
     }
 
     // Draw gizmos for all cameras in the scene
@@ -2695,8 +2694,8 @@ function drawLineClipped(p1, p2, color, width = 1) {
     const w = r3d.canvas.width;
     const h = r3d.canvas.height;
 
-    const s1 = { x: (c1[0]/c1[3] * 0.5 + 0.5) * w, y: (1.0 - (c1[1]/c1[3] * 0.5 + 0.5)) * h };
-    const s2 = { x: (c2[0]/c2[3] * 0.5 + 0.5) * w, y: (1.0 - (c2[1]/c2[3] * 0.5 + 0.5)) * h };
+    const s1 = { x: (c1[0]/c1[3] * 0.5 + 0.5) * w, y: (c1[1]/c1[3] * 0.5 + 0.5) * h };
+    const s2 = { x: (c2[0]/c2[3] * 0.5 + 0.5) * w, y: (c2[1]/c2[3] * 0.5 + 0.5) * h };
 
     const { ctx } = renderer;
     ctx.strokeStyle = color;
@@ -2760,6 +2759,55 @@ function draw3DGrid() {
     ctx.restore();
 }
 
+
+function draw3DGyzmoRects(gyzmo) {
+    const transform = gyzmo.materia.getComponent(Components.Transform);
+    if (!transform) return;
+
+    const { ctx } = renderer;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    const rad = transform.rotation * Math.PI / 180;
+    const cos = Math.cos(rad), sin = Math.sin(rad);
+
+    for (const layer of gyzmo.layers) {
+        const { x: lx, y: ly, width, height, color } = layer;
+        const hw = width / 2;
+        const hh = height / 2;
+
+        const getPt = (ox, oy) => {
+            // Local to Materia center (applying layer offset lx, ly)
+            const rx = (lx + ox) * transform.scale.x;
+            const ry = (ly + oy) * transform.scale.y;
+            // Apply Materia rotation
+            const wx = transform.x + (rx * cos - ry * sin);
+            const wy = transform.y + (rx * sin + ry * cos);
+            return { x: wx, y: wy, z: transform.z || 0 };
+        };
+
+        const p1 = world3DToScreen(getPt(-hw, -hh));
+        const p2 = world3DToScreen(getPt(hw, -hh));
+        const p3 = world3DToScreen(getPt(hw, hh));
+        const p4 = world3DToScreen(getPt(-hw, hh));
+
+        if (p1 && p2 && p3 && p4) {
+            ctx.strokeStyle = color || '#00ff00';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+            ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y);
+            ctx.closePath();
+            ctx.stroke();
+
+            ctx.globalAlpha = 0.2;
+            ctx.fillStyle = color || '#00ff00';
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
+    }
+    ctx.restore();
+}
 
 function drawBasicAIGizmos() {
     const selectedMateria = getSelectedMateria();

@@ -8,6 +8,7 @@ import { InputManager } from './Input.js';
 import * as RuntimeAPIManager from './RuntimeAPIManager.js';
 import * as PerformanceAPI from './PerformanceAPI.js';
 import { bus as MessageBus } from './Messaging.js';
+import * as MathUtils from './MathUtils.js';
 
 // Import gl-matrix for 3D transformations
 import * as glMatrix from 'gl-matrix';

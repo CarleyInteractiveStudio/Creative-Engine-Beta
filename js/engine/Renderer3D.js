@@ -1081,16 +1081,23 @@ export class Renderer3D {
                 spriteScaleY = sprite.naturalHeight;
             }
 
-            const spriteModelMatrix = mat4.create();
-            const spriteScale = [scale[0] * spriteScaleX, scale[1] * spriteScaleY, 1];
-            let finalRotation = q;
+            const spriteModelMatrix = mat4.clone(transform.worldMatrix);
+            mat4.scale(spriteModelMatrix, spriteModelMatrix, [spriteScaleX, spriteScaleY, 1]);
+
             if (spriteRenderer.billboard && !options.picking) {
                 const viewRot = quat.create();
                 mat4.getRotation(viewRot, viewMatrix);
                 quat.invert(viewRot, viewRot);
-                quat.multiply(finalRotation, viewRot, q);
+
+                // Extract only rotation from worldMatrix to keep position
+                const pos = vec3.create();
+                mat4.getTranslation(pos, transform.worldMatrix);
+                const scale = vec3.create();
+                mat4.getScaling(scale, transform.worldMatrix);
+                vec3.multiply(scale, scale, [spriteScaleX, spriteScaleY, 1]);
+
+                mat4.fromRotationTranslationScale(spriteModelMatrix, viewRot, pos, scale);
             }
-            mat4.fromRotationTranslationScale(spriteModelMatrix, finalRotation, pos, spriteScale);
             gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, spriteModelMatrix);
 
             const mesh = this.meshSpritePlane;
@@ -1126,16 +1133,22 @@ export class Renderer3D {
                 }
             }
 
-            const modelMatrixTex = mat4.create();
-            const texScale = [scale[0] * textureRender.width, scale[1] * textureRender.height, 1];
-            let finalRotationTex = q;
+            const modelMatrixTex = mat4.clone(transform.worldMatrix);
+            mat4.scale(modelMatrixTex, modelMatrixTex, [textureRender.width, textureRender.height, 1]);
+
             if (textureRender.billboard && !options.picking) {
                 const viewRot = quat.create();
                 mat4.getRotation(viewRot, viewMatrix);
                 quat.invert(viewRot, viewRot);
-                quat.multiply(finalRotationTex, viewRot, q);
+
+                const pos = vec3.create();
+                mat4.getTranslation(pos, transform.worldMatrix);
+                const scale = vec3.create();
+                mat4.getScaling(scale, transform.worldMatrix);
+                vec3.multiply(scale, scale, [textureRender.width, textureRender.height, 1]);
+
+                mat4.fromRotationTranslationScale(modelMatrixTex, viewRot, pos, scale);
             }
-            mat4.fromRotationTranslationScale(modelMatrixTex, finalRotationTex, pos, texScale);
             gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrixTex);
 
             const mesh = this.meshSpritePlane;
@@ -1247,13 +1260,9 @@ export class Renderer3D {
         const pos = [worldPos.x, -worldPos.y, worldPos.z || 0];
         const scale = [Math.abs(worldScale.x), Math.abs(worldScale.y), 1];
 
-        const q = quat.create();
-        quat.fromEuler(q, transform.rotationX || 0, transform.rotationY || 0, transform.rotationZ || 0);
-
-        const modelMatrix = mat4.create();
+        const modelMatrix = mat4.clone(transform.worldMatrix);
         const mapScale = [tilemapRenderer._bakedTexture.width, tilemapRenderer._bakedTexture.height, 1];
-        const finalScale = [scale[0] * mapScale[0], scale[1] * mapScale[1], 1];
-        mat4.fromRotationTranslationScale(modelMatrix, q, pos, finalScale);
+        mat4.scale(modelMatrix, modelMatrix, mapScale);
 
         gl.uniformMatrix4fv(this.programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
         gl.uniformMatrix4fv(this.programInfo.uniformLocations.viewMatrix, false, viewMatrix);
@@ -1339,12 +1348,9 @@ export class Renderer3D {
         const worldScale = transform.scale;
         const pos = [worldPos.x, -worldPos.y, worldPos.z || 0];
 
-        const q = quat.create();
-        quat.fromEuler(q, transform.rotationX || 0, transform.rotationY || 0, transform.rotationZ || 0);
-
-        const modelMatrix = mat4.create();
-        const finalScale = [worldScale.x * terreno.width, worldScale.y * terreno.height, 1];
-        mat4.fromRotationTranslationScale(modelMatrix, q, pos, finalScale);
+        const modelMatrix = mat4.clone(transform.worldMatrix);
+        const finalScale = [terreno.width, terreno.height, 1];
+        mat4.scale(modelMatrix, modelMatrix, finalScale);
 
         gl.uniformMatrix4fv(this.programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
         gl.uniformMatrix4fv(this.programInfo.uniformLocations.viewMatrix, false, viewMatrix);
@@ -1413,9 +1419,10 @@ export class Renderer3D {
         const h = bounds.maxY - bounds.minY;
         if (w <= 0 || h <= 0) return;
 
-        const pos = [bounds.minX + w/2, -(bounds.minY + h/2), transform.z || 0];
+        const pos = [bounds.minX + w/2, bounds.minY + h/2, transform.z || 0];
         const modelMatrix = mat4.create();
-        mat4.fromRotationTranslationScale(modelMatrix, quat.create(), pos, [w, h, 1]);
+        mat4.fromTranslation(modelMatrix, pos);
+        mat4.scale(modelMatrix, modelMatrix, [w, h, 1]);
 
         gl.uniformMatrix4fv(this.programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
         gl.uniformMatrix4fv(this.programInfo.uniformLocations.viewMatrix, false, viewMatrix);

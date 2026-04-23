@@ -26,7 +26,7 @@ export const Gizmos = {
             glm.vec3.transformQuat(rotated, p, q);
             return world3DToScreen({
                 x: center.x + rotated[0],
-                y: center.y - rotated[1], // World Y is handled as inverted in world3DToScreen
+                y: center.y + rotated[1],
                 z: (center.z || 0) + rotated[2]
             });
         });
@@ -87,7 +87,7 @@ export const Gizmos = {
 
                 const screen = world3DToScreen({
                     x: center.x + rotated[0],
-                    y: center.y - rotated[1],
+                    y: center.y + rotated[1],
                     z: (center.z || 0) + rotated[2]
                 });
                 if (screen) {
@@ -127,7 +127,7 @@ export const Gizmos = {
             glm.vec3.transformQuat(rotated, p, q);
             return world3DToScreen({
                 x: center.x + rotated[0],
-                y: center.y - rotated[1],
+                y: center.y + rotated[1],
                 z: (center.z || 0) + rotated[2]
             });
         });
@@ -167,7 +167,7 @@ export const Gizmos = {
             glm.vec3.transformQuat(rotated, p, q);
             return world3DToScreen({
                 x: center.x + rotated[0],
-                y: center.y - rotated[1],
+                y: center.y + rotated[1],
                 z: (center.z || 0) + rotated[2]
             });
         });
@@ -202,8 +202,8 @@ export const Gizmos = {
             glm.vec3.transformQuat(r1, p1, q);
             glm.vec3.transformQuat(r2, p2, q);
 
-            const s1 = world3DToScreen({ x: center.x + r1[0], y: center.y - r1[1], z: (center.z || 0) + r1[2] });
-            const s2 = world3DToScreen({ x: center.x + r2[0], y: center.y - r2[1], z: (center.z || 0) + r2[2] });
+            const s1 = world3DToScreen({ x: center.x + r1[0], y: center.y + r1[1], z: (center.z || 0) + r1[2] });
+            const s2 = world3DToScreen({ x: center.x + r2[0], y: center.y + r2[1], z: (center.z || 0) + r2[2] });
             if (s1 && s2) {
                 ctx.beginPath(); ctx.moveTo(s1.x, s1.y); ctx.lineTo(s2.x, s2.y); ctx.stroke();
             }
