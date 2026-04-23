@@ -54,8 +54,7 @@ export function world3DToScreen(worldPos) {
     if (!r3d || !r3d.lastProjectionMatrix || !r3d.lastViewMatrix || !glm) return null;
 
     const canvas = r3d.canvas;
-    // Apply Y-Inversion to match Renderer3D mapping
-    const worldVec = glm.vec4.fromValues(worldPos.x, -worldPos.y, worldPos.z || 0, 1.0);
+    const worldVec = glm.vec4.fromValues(worldPos.x, worldPos.y, worldPos.z || 0, 1.0);
 
     const mvp = glm.mat4.create();
     glm.mat4.multiply(mvp, r3d.lastProjectionMatrix, r3d.lastViewMatrix);
@@ -63,12 +62,15 @@ export function world3DToScreen(worldPos) {
     const clipPos = glm.vec4.create();
     glm.vec4.transformMat4(clipPos, worldVec, mvp);
 
-    // Near plane clipping
-    if (clipPos[3] < 0.1) return null;
+    // Standard Frustum Culling in clip space
+    if (clipPos[3] < 0.001) return null;
 
+    // NDC conversion
     const ndc = [clipPos[0] / clipPos[3], clipPos[1] / clipPos[3], clipPos[2] / clipPos[3]];
 
-    // Ensure we use the correct viewport dimensions which might be different from clientWidth/Height during picking or resizing
+    // Check if within visible range [-1, 1]
+    if (ndc[0] < -1.1 || ndc[0] > 1.1 || ndc[1] < -1.1 || ndc[1] > 1.1) return null;
+
     const width = canvas.width;
     const height = canvas.height;
 

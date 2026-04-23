@@ -84,10 +84,10 @@ export class Renderer3D {
 
                 float height = dir.y;
                 vec3 color;
-                if (height > 0.0) {
-                    color = mix(uHorizonColor, uSkyColor, pow(height, 0.5));
+            if (height < 0.0) {
+                color = mix(uHorizonColor, uSkyColor, pow(-height, 0.5));
                 } else {
-                    color = mix(uHorizonColor, uGroundColor, pow(-height, 0.5));
+                color = mix(uHorizonColor, uGroundColor, pow(height, 0.5));
                 }
                 gl_FragColor = vec4(color, 1.0);
             }
@@ -781,13 +781,13 @@ export class Renderer3D {
                 mat4.perspective(projectionMatrix, camComp.fov * Math.PI / 180, aspect, near, far);
             }
 
-            const q = quat.create();
-            // Invert Pitch and Roll for Y-inversion?
-            // Actually, keep Euler as is, but we'll negate Y pos
-            quat.fromEuler(q, camTrans.localRotation.x, camTrans.localRotation.y, camTrans.localRotation.z);
-            activeViewPosition = [camTrans.x, -camTrans.y, camTrans.z];
-            mat4.fromRotationTranslation(viewMatrix, q, activeViewPosition);
+            const worldM = camTrans.worldMatrix;
+            activeViewPosition = [worldM[12], worldM[13], worldM[14]];
+
+            mat4.copy(viewMatrix, worldM);
             mat4.invert(viewMatrix, viewMatrix);
+            // Global Y-Flip to match 2D coordinate system (+Y is down)
+            mat4.scale(viewMatrix, viewMatrix, [1, -1, 1]);
         } else {
             // Editor default camera (Scene View)
             const editorCam = options.editorCamera || { x: 0, y: 0, z: 500, rotation: { x: 0, y: 0, z: 0 } };
@@ -796,9 +796,10 @@ export class Renderer3D {
 
             mat4.perspective(projectionMatrix, 45 * Math.PI / 180, aspect, near, far);
 
-            activeViewPosition = [editorCam.x, -editorCam.y, editorCam.z];
+            activeViewPosition = [editorCam.x, editorCam.y, editorCam.z];
             mat4.fromRotationTranslation(viewMatrix, q, activeViewPosition);
             mat4.invert(viewMatrix, viewMatrix);
+            mat4.scale(viewMatrix, viewMatrix, [1, -1, 1]);
         }
 
         // Only store the "last" matrices if this is the main rendering pass (not picking)
@@ -832,10 +833,16 @@ export class Renderer3D {
             const dirLight = scene.getAllMaterias().find(m => m.isActive && m.getComponent(Components3D.DirectionalLight3D));
             if (dirLight) {
                 const dlComp = dirLight.getComponent(Components3D.DirectionalLight3D);
-                gl.uniform3fv(this.programInfo.uniformLocations.uDirLightDir, [dlComp.direction.x, -dlComp.direction.y, dlComp.direction.z]);
+                const dlTrans = dirLight.getComponent(Transform);
+                const rot = quat.create();
+                mat4.getRotation(rot, dlTrans.worldMatrix);
+                const dir = vec3.fromValues(0, 1, 0); // Default up in local
+                vec3.transformQuat(dir, dir, rot);
+                vec3.normalize(dir, dir);
+                gl.uniform3fv(this.programInfo.uniformLocations.uDirLightDir, [dir[0], dir[1], dir[2]]);
                 gl.uniform3fv(this.programInfo.uniformLocations.uDirLightColor, this.hexToRgb(dlComp.color).map(c => c * dlComp.intensity));
             } else {
-                gl.uniform3fv(this.programInfo.uniformLocations.uDirLightDir, [0, -1, 0]); // Default pointing Down
+                gl.uniform3fv(this.programInfo.uniformLocations.uDirLightDir, [0, 1, 0]); // Default pointing Down (flipped Y)
                 gl.uniform3fv(this.programInfo.uniformLocations.uDirLightColor, [1, 1, 1]);
             }
             gl.uniform3fv(this.programInfo.uniformLocations.uAmbientLight, [0.3, 0.3, 0.3]);
@@ -846,7 +853,8 @@ export class Renderer3D {
             pointLights.forEach(pl => {
                 const comp = pl.getComponent(Components3D.PointLight3D);
                 const trans = pl.getComponent(Transform);
-                plPos.push(trans.x, -trans.y, trans.z || 0);
+                const worldPos = trans.position;
+                plPos.push(worldPos.x, worldPos.y, worldPos.z || 0);
                 const rgb = this.hexToRgb(comp.color);
                 plColor.push(rgb[0] * comp.intensity, rgb[1] * comp.intensity, rgb[2] * comp.intensity);
                 plRange.push(comp.range);
@@ -983,22 +991,7 @@ export class Renderer3D {
         const programInfo = options.picking ? this.pickingProgramInfo : this.programInfo;
         gl.useProgram(programInfo.program);
 
-        const modelMatrix = mat4.create();
-        const worldPos = transform.position;
-        const worldScale = transform.scale;
-        const pos = [worldPos.x, -worldPos.y, worldPos.z || 0];
-        const scale = [Math.abs(worldScale.x), Math.abs(worldScale.y), Math.abs(worldScale.z || 1)];
-
-        const q = quat.create();
-        // Use global rotation
-        const rot = {
-            x: transform.rotationX || 0,
-            y: transform.rotationY || 0,
-            z: transform.rotationZ || 0
-        };
-        quat.fromEuler(q, rot.x, rot.y, rot.z);
-
-        mat4.fromRotationTranslationScale(modelMatrix, q, pos, scale);
+        const modelMatrix = mat4.clone(transform.worldMatrix);
 
         // ALWAYS set these because the program might have changed
         gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
