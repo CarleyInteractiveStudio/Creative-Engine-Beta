@@ -54,6 +54,8 @@ export function world3DToScreen(worldPos) {
     if (!r3d || !r3d.lastProjectionMatrix || !r3d.lastViewMatrix || !glm) return null;
 
     const canvas = r3d.canvas;
+    // Renderer3D uses a standard [x, y, z] world space.
+    // The Y-flip is handled by the projection matrix now.
     const worldVec = glm.vec4.fromValues(worldPos.x, worldPos.y, worldPos.z || 0, 1.0);
 
     const mvp = glm.mat4.create();
@@ -2670,9 +2672,8 @@ function drawLineClipped(p1, p2, color, width = 1) {
     const mvp = glm.mat4.create();
     glm.mat4.multiply(mvp, r3d.lastProjectionMatrix, r3d.lastViewMatrix);
 
-    // Apply Y-Inversion to match Renderer3D mapping
-    const v1 = glm.vec4.fromValues(p1.x, -p1.y, p1.z || 0, 1.0);
-    const v2 = glm.vec4.fromValues(p2.x, -p2.y, p2.z || 0, 1.0);
+    const v1 = glm.vec4.fromValues(p1.x, p1.y, p1.z || 0, 1.0);
+    const v2 = glm.vec4.fromValues(p2.x, p2.y, p2.z || 0, 1.0);
 
     const c1 = glm.vec4.create();
     const c2 = glm.vec4.create();
@@ -2738,13 +2739,13 @@ function draw3DGrid() {
 
     // Main Axes (Infinite Origin Lines)
     if (prefs.showOriginAxes !== false) {
-        const axisLen = 1000000;
+        const axisLen = 5000;
         // X Axis (Red)
-        drawLineClipped({ x: -axisLen, y: 0, z: 0 }, { x: axisLen, y: 0, z: 0 }, 'rgba(255, 70, 70, 0.8)', 1.5);
+        drawLineClipped({ x: 0, y: 0, z: 0 }, { x: axisLen, y: 0, z: 0 }, 'rgba(255, 70, 70, 1.0)', 3);
         // Y Axis (Green)
-        drawLineClipped({ x: 0, y: -axisLen, z: 0 }, { x: 0, y: axisLen, z: 0 }, 'rgba(70, 255, 70, 0.8)', 1.5);
+        drawLineClipped({ x: 0, y: 0, z: 0 }, { x: 0, y: axisLen, z: 0 }, 'rgba(70, 255, 70, 1.0)', 3);
         // Z Axis (Blue)
-        drawLineClipped({ x: 0, y: 0, z: -axisLen }, { x: 0, y: 0, z: axisLen }, 'rgba(70, 70, 255, 0.8)', 1.5);
+        drawLineClipped({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: axisLen }, 'rgba(70, 70, 255, 1.0)', 3);
 
         const origin = world3DToScreen({ x: 0, y: 0, z: 0 });
         if (origin) {

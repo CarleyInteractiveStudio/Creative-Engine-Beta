@@ -942,10 +942,17 @@ export class Transform extends Leyes {
         const pos = [this.localPosition.x, this.localPosition.y, this.localPosition.z || 0];
         const scale = [this.localScale.x, this.localScale.y, this.localScale.z || 1];
 
+        // Proper order: Scale -> Rotate -> Translate
         mat4.fromRotationTranslationScale(m, q, pos, scale);
 
         if (this.materia && this.materia.parent) {
-            const parentTransform = this.materia.parent.getComponent(Transform);
+            let parentMateria = this.materia.parent;
+            // Resolve parent if it's an ID
+            if (typeof parentMateria === 'number') {
+                parentMateria = (this.materia.scene || window.SceneManager?.currentScene)?.findMateriaById(parentMateria);
+            }
+
+            const parentTransform = parentMateria ? parentMateria.getComponent(Transform) : null;
             if (parentTransform) {
                 mat4.multiply(m, parentTransform.worldMatrix, m);
             }

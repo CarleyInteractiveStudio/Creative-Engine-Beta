@@ -49,6 +49,9 @@ export class Renderer3D {
         this.gl.enable(this.gl.BLEND);
         this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
 
+        this.gl.enable(this.gl.CULL_FACE);
+        this.gl.frontFace(this.gl.CW); // Flipped Y means triangles wind clockwise
+
         this.initShaders();
         this.initBuffers();
         this.initialized = true;
@@ -786,8 +789,6 @@ export class Renderer3D {
 
             mat4.copy(viewMatrix, worldM);
             mat4.invert(viewMatrix, viewMatrix);
-            // Global Y-Flip to match 2D coordinate system (+Y is down)
-            mat4.scale(viewMatrix, viewMatrix, [1, -1, 1]);
         } else {
             // Editor default camera (Scene View)
             const editorCam = options.editorCamera || { x: 0, y: 0, z: 500, rotation: { x: 0, y: 0, z: 0 } };
@@ -799,8 +800,11 @@ export class Renderer3D {
             activeViewPosition = [editorCam.x, editorCam.y, editorCam.z];
             mat4.fromRotationTranslation(viewMatrix, q, activeViewPosition);
             mat4.invert(viewMatrix, viewMatrix);
-            mat4.scale(viewMatrix, viewMatrix, [1, -1, 1]);
         }
+
+        // Global Y-Flip to match 2D coordinate system (+Y is down)
+        // Applying this to Projection Matrix is cleaner and prevents skewing during camera rotation
+        mat4.scale(projectionMatrix, projectionMatrix, [1, -1, 1]);
 
         // Only store the "last" matrices if this is the main rendering pass (not picking)
         if (!options.picking) {
