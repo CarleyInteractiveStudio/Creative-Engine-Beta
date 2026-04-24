@@ -1766,7 +1766,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                           (window.Components3D && m.getComponent(window.Components3D.MeshRenderer3D)) ||
                                           m.getComponent(Components.TilemapRenderer) ||
                                           m.getComponent(Components.Terreno2D) ||
-                                          m.getComponent(Components.Water);
+                                          m.getComponent(Components.Water) ||
+                                          m.getComponent(Components.Gyzmo);
 
                     // We only exclude it if it DOESN'T have 2D-only components like UI
                     // A Canvas can be world-space, but currently they are mostly 2D overlays or drawn in drawCanvas.

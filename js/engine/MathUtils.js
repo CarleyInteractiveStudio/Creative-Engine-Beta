@@ -261,6 +261,25 @@ export function getBoundsFromCorners(corners) {
 }
 
 /**
+ * Converts a quaternion to Euler angles (in degrees).
+ * @param {Array<number>} out The output array.
+ * @param {Array<number>} q The input quaternion.
+ */
+export function quatToEuler(out, q) {
+    let x = q[0], y = q[1], z = q[2], w = q[3];
+    let x2 = x + x, y2 = y + y, z2 = z + z;
+    let xx = x * x2, xy = x * y2, xz = x * z2;
+    let yy = y * y2, yz = y * z2, zz = z * z2;
+    let wx = w * x2, wy = w * y2, wz = w * z2;
+
+    out[0] = Math.atan2(yz + wx, 1 - (xx + yy)) * 180 / Math.PI;
+    out[1] = Math.asin(Math.max(-1, Math.min(1, wy - xz))) * 180 / Math.PI;
+    out[2] = Math.atan2(xy + wz, 1 - (yy + zz)) * 180 / Math.PI;
+
+    return out;
+}
+
+/**
  * Estimates the memory consumption of a Materia and its components.
  * Returns an object with individual and recursive totals in bytes.
  * @param {Materia} materia

@@ -75,7 +75,7 @@ export async function createCubeObject(parent = null) {
     const C3D = await ensure3D();
     const newMateria = createBaseMateria(generateUniqueName('Cubo'), parent);
     const transform = newMateria.getComponent(Components.Transform);
-    if (transform) transform.localScale = { x: 50, y: 50, z: 50 };
+    if (transform) transform.localScale = { x: 100, y: 100, z: 100 };
     newMateria.addComponent(new C3D.MeshRenderer3D(newMateria));
     return newMateria;
 }
@@ -84,7 +84,7 @@ export async function createSphereObject(parent = null) {
     const C3D = await ensure3D();
     const newMateria = createBaseMateria(generateUniqueName('Esfera'), parent);
     const transform = newMateria.getComponent(Components.Transform);
-    if (transform) transform.localScale = { x: 50, y: 50, z: 50 };
+    if (transform) transform.localScale = { x: 100, y: 100, z: 100 };
     const renderer = new C3D.MeshRenderer3D(newMateria);
     renderer.meshType = 'Sphere';
     newMateria.addComponent(renderer);
@@ -95,7 +95,7 @@ export async function createTriangle3DObject(parent = null) {
     const C3D = await ensure3D();
     const newMateria = createBaseMateria(generateUniqueName('Triángulo'), parent);
     const transform = newMateria.getComponent(Components.Transform);
-    if (transform) transform.localScale = { x: 50, y: 50, z: 50 };
+    if (transform) transform.localScale = { x: 100, y: 100, z: 100 };
     const renderer = new C3D.MeshRenderer3D(newMateria);
     renderer.meshType = 'Triangle';
     newMateria.addComponent(renderer);
@@ -106,7 +106,7 @@ export async function createCapsule3DObject(parent = null) {
     const C3D = await ensure3D();
     const newMateria = createBaseMateria(generateUniqueName('Cápsula'), parent);
     const transform = newMateria.getComponent(Components.Transform);
-    if (transform) transform.localScale = { x: 50, y: 50, z: 50 };
+    if (transform) transform.localScale = { x: 100, y: 100, z: 100 };
     const renderer = new C3D.MeshRenderer3D(newMateria);
     renderer.meshType = 'Capsule';
     newMateria.addComponent(renderer);
@@ -117,7 +117,7 @@ export async function createPlane3DObject(parent = null) {
     const C3D = await ensure3D();
     const newMateria = createBaseMateria(generateUniqueName('Plano'), parent);
     const transform = newMateria.getComponent(Components.Transform);
-    if (transform) transform.localScale = { x: 50, y: 1, z: 50 };
+    if (transform) transform.localScale = { x: 100, y: 1, z: 100 };
     const renderer = new C3D.MeshRenderer3D(newMateria);
     renderer.meshType = 'Plane';
     newMateria.addComponent(renderer);

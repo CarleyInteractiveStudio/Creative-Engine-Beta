@@ -8,6 +8,11 @@ import { InputManager } from './Input.js';
 import * as RuntimeAPIManager from './RuntimeAPIManager.js';
 import * as PerformanceAPI from './PerformanceAPI.js';
 import { bus as MessageBus } from './Messaging.js';
+import * as MathUtils from './MathUtils.js';
+
+// Import gl-matrix for 3D transformations
+import * as glMatrix from 'gl-matrix';
+const { mat4, vec3, quat, vec4 } = glMatrix;
 
 let editorLogic = null;
 
@@ -875,8 +880,6 @@ export class Transform extends Leyes {
     }
 
     // --- Posición Global (World Position) ---
-    // Note: 2D logic is simplified and assumes Z=0 for rotation.
-    // For full 3D, we'll use Matrix4 multiplications in v0.1.3
     get position() {
         const is3D = window.currentProjectConfig?.projectType === '3d';
 
@@ -885,6 +888,7 @@ export class Transform extends Leyes {
             if (!is3D) pos.z = 0;
             return pos;
         }
+
         const parentTransform = this.materia.parent.getComponent(Transform);
         if (!parentTransform) {
             const pos = { ...this.localPosition };
@@ -892,21 +896,15 @@ export class Transform extends Leyes {
             return pos;
         }
 
-        const parentPos = parentTransform.position;
-        const parentScale = parentTransform.scale;
-
-        // Simplified 2D nested rotation (around Z)
-        const parentRotRad = parentTransform.rotationZ * (Math.PI / 180);
-        const cos = Math.cos(parentRotRad);
-        const sin = Math.sin(parentRotRad);
-
-        const rotatedX = (this.localPosition.x * parentScale.x * cos) - (this.localPosition.y * parentScale.y * sin);
-        const rotatedY = (this.localPosition.x * parentScale.x * sin) + (this.localPosition.y * parentScale.y * cos);
+        const parentMatrix = parentTransform.worldMatrix;
+        const localVec = vec4.fromValues(this.localPosition.x, this.localPosition.y, this.localPosition.z || 0, 1.0);
+        const worldVec = vec4.create();
+        vec4.transformMat4(worldVec, localVec, parentMatrix);
 
         return {
-            x: parentPos.x + rotatedX,
-            y: parentPos.y + rotatedY,
-            z: is3D ? (parentPos.z + this.localPosition.z) : 0
+            x: worldVec[0],
+            y: worldVec[1],
+            z: is3D ? worldVec[2] : 0
         };
     }
 
@@ -923,23 +921,44 @@ export class Transform extends Leyes {
             return;
         }
 
-        const parentPos = parentTransform.position;
-        const parentScale = parentTransform.scale;
-        const parentRotRad = -parentTransform.rotationZ * (Math.PI / 180);
-        const cos = Math.cos(parentRotRad);
-        const sin = Math.sin(parentRotRad);
+        const invParentMatrix = mat4.create();
+        mat4.invert(invParentMatrix, parentTransform.worldMatrix);
 
-        const relativeX = worldPosition.x - parentPos.x;
-        const relativeY = worldPosition.y - parentPos.y;
-
-        const unrotatedX = (relativeX * cos) - (relativeY * sin);
-        const unrotatedY = (relativeX * sin) + (relativeY * cos);
+        const worldVec = vec4.fromValues(worldPosition.x, worldPosition.y, worldPosition.z || 0, 1.0);
+        const localVec = vec4.create();
+        vec4.transformMat4(localVec, worldVec, invParentMatrix);
 
         this.localPosition = {
-            x: parentScale.x !== 0 ? unrotatedX / parentScale.x : 0,
-            y: parentScale.y !== 0 ? unrotatedY / parentScale.y : 0,
-            z: worldPosition.z !== undefined ? worldPosition.z - parentPos.z : this.localPosition.z
+            x: localVec[0],
+            y: localVec[1],
+            z: localVec[2]
         };
+    }
+
+    get worldMatrix() {
+        const m = mat4.create();
+        const q = quat.create();
+        quat.fromEuler(q, this.localRotation.x || 0, this.localRotation.y || 0, this.localRotation.z || 0);
+
+        const pos = [this.localPosition.x, this.localPosition.y, this.localPosition.z || 0];
+        const scale = [this.localScale.x, this.localScale.y, this.localScale.z || 1];
+
+        // Proper order: Scale -> Rotate -> Translate
+        mat4.fromRotationTranslationScale(m, q, pos, scale);
+
+        if (this.materia && this.materia.parent) {
+            let parentMateria = this.materia.parent;
+            // Resolve parent if it's an ID
+            if (typeof parentMateria === 'number') {
+                parentMateria = (this.materia.scene || window.SceneManager?.currentScene)?.findMateriaById(parentMateria);
+            }
+
+            const parentTransform = parentMateria ? parentMateria.getComponent(Transform) : null;
+            if (parentTransform) {
+                mat4.multiply(m, parentTransform.worldMatrix, m);
+            }
+        }
+        return m;
     }
 
     // --- Rotación Global (World Rotation - Z axis only for legacy compatibility) ---
@@ -947,38 +966,93 @@ export class Transform extends Leyes {
     set rotation(v) { this.rotationZ = v; }
 
     get rotationX() {
-        if (!this.materia || !this.materia.parent) return this.localRotation.x;
-        const pt = this.materia.parent.getComponent(Transform);
-        return pt ? pt.rotationX + this.localRotation.x : this.localRotation.x;
+        const q = quat.create();
+        mat4.getRotation(q, this.worldMatrix);
+        const euler = vec3.create();
+        MathUtils.quatToEuler(euler, q);
+        return euler[0];
     }
     set rotationX(v) {
         if (!this.materia || !this.materia.parent) { this.localRotation.x = v; return; }
-        const pt = this.materia.parent.getComponent(Transform);
-        this.localRotation.x = v - (pt ? pt.rotationX : 0);
+        const parentTransform = this.materia.parent.getComponent(Transform);
+        if (!parentTransform) { this.localRotation.x = v; return; }
+
+        const invParentMatrix = mat4.create();
+        mat4.invert(invParentMatrix, parentTransform.worldMatrix);
+
+        const worldQ = quat.create();
+        quat.fromEuler(worldQ, v, this.rotationY, this.rotationZ);
+
+        const parentQ = quat.create();
+        mat4.getRotation(parentQ, parentTransform.worldMatrix);
+        quat.invert(parentQ, parentQ);
+
+        const localQ = quat.create();
+        quat.multiply(localQ, parentQ, worldQ);
+
+        const localEuler = vec3.create();
+        MathUtils.quatToEuler(localEuler, localQ);
+        this.localRotation.x = localEuler[0];
     }
 
     get rotationY() {
-        if (!this.materia || !this.materia.parent) return this.localRotation.y;
-        const pt = this.materia.parent.getComponent(Transform);
-        return pt ? pt.rotationY + this.localRotation.y : this.localRotation.y;
+        const q = quat.create();
+        mat4.getRotation(q, this.worldMatrix);
+        const euler = vec3.create();
+        MathUtils.quatToEuler(euler, q);
+        return euler[1];
     }
     set rotationY(v) {
         if (!this.materia || !this.materia.parent) { this.localRotation.y = v; return; }
-        const pt = this.materia.parent.getComponent(Transform);
-        this.localRotation.y = v - (pt ? pt.rotationY : 0);
+        const parentTransform = this.materia.parent.getComponent(Transform);
+        if (!parentTransform) { this.localRotation.y = v; return; }
+
+        const invParentMatrix = mat4.create();
+        mat4.invert(invParentMatrix, parentTransform.worldMatrix);
+
+        const worldQ = quat.create();
+        quat.fromEuler(worldQ, this.rotationX, v, this.rotationZ);
+
+        const parentQ = quat.create();
+        mat4.getRotation(parentQ, parentTransform.worldMatrix);
+        quat.invert(parentQ, parentQ);
+
+        const localQ = quat.create();
+        quat.multiply(localQ, parentQ, worldQ);
+
+        const localEuler = vec3.create();
+        MathUtils.quatToEuler(localEuler, localQ);
+        this.localRotation.y = localEuler[1];
     }
 
     get rotationZ() {
-        if (!this.materia || !this.materia.parent) return (typeof this.localRotation === 'number' ? this.localRotation : this.localRotation.z);
-        const pt = this.materia.parent.getComponent(Transform);
-        const localZ = (typeof this.localRotation === 'number' ? this.localRotation : this.localRotation.z);
-        return pt ? pt.rotationZ + localZ : localZ;
+        const q = quat.create();
+        mat4.getRotation(q, this.worldMatrix);
+        const euler = vec3.create();
+        MathUtils.quatToEuler(euler, q);
+        return euler[2];
     }
     set rotationZ(v) {
-        if (typeof this.localRotation === 'number') this.localRotation = { x: 0, y: 0, z: this.localRotation };
         if (!this.materia || !this.materia.parent) { this.localRotation.z = v; return; }
-        const pt = this.materia.parent.getComponent(Transform);
-        this.localRotation.z = v - (pt ? pt.rotationZ : 0);
+        const parentTransform = this.materia.parent.getComponent(Transform);
+        if (!parentTransform) { this.localRotation.z = v; return; }
+
+        const invParentMatrix = mat4.create();
+        mat4.invert(invParentMatrix, parentTransform.worldMatrix);
+
+        const worldQ = quat.create();
+        quat.fromEuler(worldQ, this.rotationX, this.rotationY, v);
+
+        const parentQ = quat.create();
+        mat4.getRotation(parentQ, parentTransform.worldMatrix);
+        quat.invert(parentQ, parentQ);
+
+        const localQ = quat.create();
+        quat.multiply(localQ, parentQ, worldQ);
+
+        const localEuler = vec3.create();
+        MathUtils.quatToEuler(localEuler, localQ);
+        this.localRotation.z = localEuler[2];
     }
 
     // --- Escala Global (World Scale) ---
