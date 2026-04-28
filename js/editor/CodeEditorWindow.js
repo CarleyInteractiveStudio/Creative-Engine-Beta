@@ -388,9 +388,26 @@ ENTRADA DEL USUARIO:
 
         while (attempts < maxAttempts) {
             attempts++;
-            const result = await AIHandler.callGenerativeAI(provider, modelToUse, apiKey, currentPrompt);
 
-            if (!result.success) throw new Error(result.error);
+            let result;
+            const maxRetries = 20;
+            let retryCount = 0;
+
+            while (retryCount < maxRetries) {
+                result = await AIHandler.callGenerativeAI(provider, modelToUse, apiKey, currentPrompt);
+                if (result.success) break;
+                if (result.code === 'BUSY') {
+                    if (dom.chcLoadingText) dom.chcLoadingText.textContent = result.error;
+                    await new Promise(r => setTimeout(r, 3000));
+                    retryCount++;
+                } else {
+                    throw new Error(result.error);
+                }
+            }
+
+            if (!result || !result.success) {
+                throw new Error(L.get('ERROR_CARL_FAILED', "Carl IA no pudo generar un código libre de errores tras varios intentos."));
+            }
 
             let generatedCode = result.text.trim();
 

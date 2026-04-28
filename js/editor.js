@@ -3086,17 +3086,40 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
                 const executeApiCall = async (model, prompt) => {
                     addMessage("...", 'ia');
                     const thinkingMessage = messagesDiv.lastElementChild;
-                    const result = await AIHandler.callGenerativeAI(provider, model, apiKey, prompt, CARL_SYSTEM_PROMPT);
-                    if (thinkingMessage) thinkingMessage.remove();
+                    const thinkingBubble = thinkingMessage.querySelector('.carl-message-bubble');
 
-                    if (result.success) {
-                        addMessage(result.text, 'ia', false);
-                        knownWorkingModel[provider] = model;
-                        return { status: 'success', error: null, code: 200 };
+                    const maxRetries = 20; // Hasta 20 reintentos si está ocupado
+                    let retryCount = 0;
+                    let result;
+
+                    while (retryCount < maxRetries) {
+                        result = await AIHandler.callGenerativeAI(provider, model, apiKey, prompt, CARL_SYSTEM_PROMPT);
+
+                        if (result.success) {
+                            if (thinkingMessage) thinkingMessage.remove();
+                            addMessage(result.text, 'ia', false);
+                            knownWorkingModel[provider] = model;
+                            return { status: 'success', error: null, code: 200 };
+                        } else if (result.code === 'BUSY') {
+                            // Cambiar el texto de la burbuja actual para indicar espera
+                            if (thinkingBubble) {
+                                thinkingBubble.textContent = result.error; // "espera Carl te atendera en seguida..."
+                                thinkingBubble.style.fontStyle = 'italic';
+                            }
+                            // Esperar antes de reintentar
+                            await new Promise(resolve => setTimeout(resolve, 3000));
+                            retryCount++;
+                        } else {
+                            // Error real
+                            if (thinkingMessage) thinkingMessage.remove();
+                            addMessage(result.error, 'ia', true);
+                            return { status: 'failed', code: result.code, error: result.error };
+                        }
                     }
 
-                    addMessage(result.error, 'ia', true);
-                    return { status: 'failed', code: result.code, error: result.error };
+                    if (thinkingMessage) thinkingMessage.remove();
+                    addMessage("Parece que Carl está muy ocupado hoy. Por favor, inténtalo de nuevo en un momento.", 'ia', true);
+                    return { status: 'failed', code: 'TIMEOUT', error: 'Max retries reached' };
                 };
 
                 // Determine best model to use
