@@ -86,8 +86,20 @@ export async function callGenerativeAI(provider, modelName, apiKey, prompt, syst
     let body = {};
 
     if (provider === 'huggingface') {
+        // Normalizar URL de Hugging Face Space si es necesario
+        // De: https://huggingface.co/spaces/user/name -> https://user-name.hf.space
+        let normalizedUrl = modelName;
+        if (normalizedUrl.includes('huggingface.co/spaces/')) {
+            const parts = normalizedUrl.split('huggingface.co/spaces/')[1].split('/');
+            if (parts.length >= 2) {
+                const user = parts[0].toLowerCase();
+                const name = parts[1].toLowerCase();
+                normalizedUrl = `https://${user}-${name}.hf.space`;
+            }
+        }
+
         // El modelName en este caso será la URL del Space de Hugging Face
-        endpoint = modelName.endsWith('/generate') ? modelName : `${modelName}/generate`;
+        endpoint = normalizedUrl.endsWith('/generate') ? normalizedUrl : `${normalizedUrl}/generate`;
         body = {
             prompt: prompt,
             system_prompt: systemPrompt,

@@ -2969,7 +2969,9 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
                     e.preventDefault();
                     const modelType = e.target.dataset.model;
                     const modelName = e.target.textContent;
-                    selectedProvider = { type: modelType, name: modelName };
+                    const modelUrl = e.target.dataset.url; // Nueva propiedad para Hugging Face
+
+                    selectedProvider = { type: modelType, name: modelName, url: modelUrl };
                     brainButton.textContent = `Cerebro: ${modelName}`;
                     messagesDiv.innerHTML = `<div style="font-style: italic; color: rgba(255,255,255,0.6); text-align: center; padding: 20px;">Cerebro '${modelName}' activado. <br><br><b>¡Hola! Soy Carl</b>, tu asistente. ¿En qué puedo ayudarte hoy?</div>`;
                     brainSelectorMenu.classList.remove('visible');
@@ -3125,8 +3127,11 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
                 // Determine best model to use
                 let modelToUse = knownWorkingModel[provider];
                 if (!modelToUse) {
-                    // Try Preferences first
-                    if (prefs.ai?.provider === provider && prefs.ai?.model) {
+                    // If we have an explicit URL (from the UI selection), use it
+                    if (selectedProvider.url) {
+                        modelToUse = selectedProvider.url;
+                    } else if (prefs.ai?.provider === provider && prefs.ai?.model) {
+                        // Try Preferences
                         modelToUse = prefs.ai.model;
                     } else {
                         // Fallback defaults
