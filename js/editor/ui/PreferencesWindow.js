@@ -27,7 +27,9 @@ const defaultPrefs = {
     gridSize: 25,
     zoomSpeed: 1.1,
     ai: {
-        provider: 'none'
+        provider: 'none',
+        hfChatUrl: '',
+        hfCodeUrl: ''
     },
     carlPermissions: {
         canUseConsole: true,
@@ -81,7 +83,15 @@ function updateAiProviderUi() {
     if (!_dom.prefsAiProvider) return;
     const provider = _dom.prefsAiProvider.value;
 
+    // Toggle Hugging Face URLs group
+    if (_dom.prefsHfUrlsGroup) {
+        _dom.prefsHfUrlsGroup.classList.toggle('hidden', provider !== 'huggingface');
+    }
+
     if (provider === 'none') {
+        _dom.prefsAiApiKeyGroup.classList.add('hidden');
+        if (_dom.prefsAiModelSelectionGroup) _dom.prefsAiModelSelectionGroup.classList.add('hidden');
+    } else if (provider === 'huggingface') {
         _dom.prefsAiApiKeyGroup.classList.add('hidden');
         if (_dom.prefsAiModelSelectionGroup) _dom.prefsAiModelSelectionGroup.classList.add('hidden');
     } else {
@@ -160,6 +170,8 @@ async function savePreferences() {
     currentPreferences.zoomSpeed = parseFloat(_dom.prefsZoomSpeed.value) || 1.1;
     currentPreferences.ai.provider = _dom.prefsAiProvider.value;
     currentPreferences.ai.model = _dom.prefsAiModelSelector ? _dom.prefsAiModelSelector.value : null;
+    currentPreferences.ai.hfChatUrl = _dom.prefsHfChatUrl ? _dom.prefsHfChatUrl.value : '';
+    currentPreferences.ai.hfCodeUrl = _dom.prefsHfCodeUrl ? _dom.prefsHfCodeUrl.value : '';
 
     currentPreferences.carlPermissions = {
         canUseConsole: _dom.prefsCarlCanUseConsole.checked,
@@ -234,6 +246,8 @@ function loadPreferences() {
     if (_dom.prefsSnappingGridSize) _dom.prefsSnappingGridSize.value = currentPreferences.gridSize;
     if (_dom.prefsZoomSpeed) _dom.prefsZoomSpeed.value = currentPreferences.zoomSpeed;
     if (_dom.prefsAiProvider) _dom.prefsAiProvider.value = currentPreferences.ai.provider;
+    if (_dom.prefsHfChatUrl) _dom.prefsHfChatUrl.value = currentPreferences.ai.hfChatUrl || '';
+    if (_dom.prefsHfCodeUrl) _dom.prefsHfCodeUrl.value = currentPreferences.ai.hfCodeUrl || '';
 
     if (_dom.prefsCarlCanUseConsole) _dom.prefsCarlCanUseConsole.checked = currentPreferences.carlPermissions.canUseConsole;
     if (_dom.prefsCarlCanManageFiles) _dom.prefsCarlCanManageFiles.checked = currentPreferences.carlPermissions.canManageFiles;
