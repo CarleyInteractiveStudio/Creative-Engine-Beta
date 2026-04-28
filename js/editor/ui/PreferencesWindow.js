@@ -28,8 +28,8 @@ const defaultPrefs = {
     zoomSpeed: 1.1,
     ai: {
         provider: 'none',
-        hfChatUrl: '',
-        hfCodeUrl: ''
+        hfChatUrl: 'https://carley1234-carl-ia.hf.space/chat',
+        hfCodeUrl: 'https://carley1234-chc.hf.space/code'
     },
     carlPermissions: {
         canUseConsole: true,
