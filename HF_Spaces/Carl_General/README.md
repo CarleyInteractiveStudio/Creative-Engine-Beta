@@ -1,3 +1,12 @@
+---
+title: Carl General Assistant
+emoji: 🤖
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+---
+
 # Carl General - Hugging Face Space
 
 Este es el servidor para el asistente general **Carl** de Creative Engine.
