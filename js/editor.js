@@ -3982,10 +3982,6 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado
                     return;
                 }
 
-                if (provider === 'huggingface' && !prefs.ai?.hfChatUrl) {
-                    addMessage("Por favor, configura la URL del Space de Hugging Face en Preferencias.", 'ia', true);
-                    return;
-                }
 
                 const executeApiCall = async (model, prompt) => {
                     addMessage("...", 'ia');
@@ -4056,13 +4052,13 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado
                 if (!modelToUse) {
                     // Try Preferences first
                     if (prefs.ai?.provider === provider && (prefs.ai?.model || provider === 'huggingface')) {
-                        modelToUse = provider === 'huggingface' ? prefs.ai.hfChatUrl : prefs.ai.model;
+                        modelToUse = provider === 'huggingface' ? 'carl' : prefs.ai.model;
                     } else {
                         // Fallback defaults
                         if (provider === 'gemini') modelToUse = 'models/gemini-1.5-flash';
                         else if (provider === 'openai') modelToUse = 'gpt-3.5-turbo';
                         else if (provider === 'anthropic') modelToUse = 'claude-3-haiku-20240307';
-                        else if (provider === 'huggingface') modelToUse = prefs.ai?.hfChatUrl;
+                        else if (provider === 'huggingface') modelToUse = 'carl';
                     }
                 }
 

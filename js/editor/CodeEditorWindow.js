@@ -528,10 +528,6 @@ async function runChc() {
         return;
     }
 
-    if (provider === 'huggingface' && !prefs.ai?.hfCodeUrl) {
-        window.Dialogs.showNotification(L.get('TITULO_CONFIG_REQUERIDA', 'Configuración Requerida'), "Por favor, configura la URL de Código de Hugging Face en Preferencias.");
-        return;
-    }
 
     if (AIHandler.state.isProcessing) {
         window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), window.Localization?.get('CARL_BUSY_MSG') || "espera Carl te atendera en seguida no pierdas la paciencia");
@@ -624,11 +620,11 @@ ENTRADA DEL USUARIO:
             if (provider === 'gemini') modelToUse = 'models/gemini-1.5-flash';
             else if (provider === 'openai' ) modelToUse = 'gpt-3.5-turbo';
             else if (provider === 'anthropic') modelToUse = 'claude-3-haiku-20240307';
-            else if (provider === 'huggingface') modelToUse = prefs.ai?.hfCodeUrl;
+            else if (provider === 'huggingface') modelToUse = 'carl';
         }
 
-        if (provider === 'huggingface' && prefs.ai?.hfCodeUrl) {
-            modelToUse = prefs.ai.hfCodeUrl;
+        if (provider === 'huggingface') {
+            modelToUse = 'carl';
         }
 
         let currentPrompt = prompt;

@@ -8,6 +8,8 @@ export const state = {
     isProcessing: false
 };
 
+const CARL_ENDPOINT = "https://carley1234-carl-ia.hf.space/chat";
+
 /**
  * Obtiene la lista de modelos de IA disponibles para una API key y proveedor.
  * @param {string} provider - El proveedor ('gemini', 'openai', 'anthropic').
@@ -140,8 +142,7 @@ export async function callGenerativeAI(provider, modelName, apiKey, prompt, syst
         if (systemPrompt) body.system = systemPrompt;
 
     } else if (provider === 'huggingface') {
-        // En Hugging Face, modelName se usa como la URL del endpoint (Space)
-        endpoint = modelName;
+        endpoint = CARL_ENDPOINT;
         body = {
             prompt: prompt,
             system_prompt: systemPrompt,
