@@ -374,6 +374,12 @@ ENTRADA DEL USUARIO:
     try {
         // Find a working model
         let modelToUse = prefs.ai?.model;
+
+        // Si el proveedor es Hugging Face y no hay modelo/URL específica, usamos la oficial por defecto
+        if (provider === 'huggingface' && !modelToUse) {
+            modelToUse = 'https://carley1234-chc.hf.space';
+        }
+
         if (!modelToUse) {
             // Fallback defaults if no model selected
             if (provider === 'gemini') modelToUse = 'models/gemini-1.5-flash';
