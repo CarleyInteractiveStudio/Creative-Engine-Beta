@@ -30,7 +30,7 @@ export async function listModels(provider, apiKey) {
             'anthropic-version': '2023-06-01'
         };
     } else if (provider === 'huggingface') {
-        return { success: true, models: [{ id: 'custom-hf', name: 'Hugging Face (Custom Space)' }] };
+        return { success: true, models: [{ id: 'custom-hf', name: 'Carl' }] };
     } else {
         return { success: false, error: 'Proveedor no soportado.' };
     }

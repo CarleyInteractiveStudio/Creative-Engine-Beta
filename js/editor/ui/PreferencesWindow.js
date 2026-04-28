@@ -27,9 +27,9 @@ const defaultPrefs = {
     gridSize: 25,
     zoomSpeed: 1.1,
     ai: {
-        provider: 'none',
+        provider: 'huggingface',
         hfChatUrl: 'https://carley1234-carl-ia.hf.space/chat',
-        hfCodeUrl: 'https://carley1234-chc.hf.space/code'
+        hfCodeUrl: 'https://carley1234-carl-ia.hf.space/chat'
     },
     carlPermissions: {
         canUseConsole: true,
@@ -171,7 +171,7 @@ async function savePreferences() {
     currentPreferences.ai.provider = _dom.prefsAiProvider.value;
     currentPreferences.ai.model = _dom.prefsAiModelSelector ? _dom.prefsAiModelSelector.value : null;
     currentPreferences.ai.hfChatUrl = _dom.prefsHfChatUrl ? _dom.prefsHfChatUrl.value : '';
-    currentPreferences.ai.hfCodeUrl = _dom.prefsHfCodeUrl ? _dom.prefsHfCodeUrl.value : '';
+    currentPreferences.ai.hfCodeUrl = currentPreferences.ai.hfChatUrl; // CHC uses the same URL now
 
     currentPreferences.carlPermissions = {
         canUseConsole: _dom.prefsCarlCanUseConsole.checked,
@@ -247,7 +247,6 @@ function loadPreferences() {
     if (_dom.prefsZoomSpeed) _dom.prefsZoomSpeed.value = currentPreferences.zoomSpeed;
     if (_dom.prefsAiProvider) _dom.prefsAiProvider.value = currentPreferences.ai.provider;
     if (_dom.prefsHfChatUrl) _dom.prefsHfChatUrl.value = currentPreferences.ai.hfChatUrl || '';
-    if (_dom.prefsHfCodeUrl) _dom.prefsHfCodeUrl.value = currentPreferences.ai.hfCodeUrl || '';
 
     if (_dom.prefsCarlCanUseConsole) _dom.prefsCarlCanUseConsole.checked = currentPreferences.carlPermissions.canUseConsole;
     if (_dom.prefsCarlCanManageFiles) _dom.prefsCarlCanManageFiles.checked = currentPreferences.carlPermissions.canManageFiles;
