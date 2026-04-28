@@ -523,8 +523,14 @@ async function runChc() {
     const provider = prefs.ai?.provider;
     const apiKey = localStorage.getItem(`creativeEngine_${provider}_apiKey`);
 
-    if (!provider || provider === 'none' || !apiKey) {
+    if (!provider || provider === 'none' || (provider !== 'huggingface' && !apiKey)) {
         window.Dialogs.showNotification(L.get('TITULO_CONFIG_REQUERIDA', 'Configuración Requerida'), L.get('ERROR_CONFIG_CARL', 'Para usar CHC, debes configurar Carl IA en las Preferencias del motor.'));
+        return;
+    }
+
+
+    if (AIHandler.state.isProcessing) {
+        window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), window.Localization?.get('CARL_BUSY_MSG') || "espera Carl te atendera en seguida no pierdas la paciencia");
         return;
     }
 
@@ -612,8 +618,13 @@ ENTRADA DEL USUARIO:
         if (!modelToUse) {
             // Fallback defaults if no model selected
             if (provider === 'gemini') modelToUse = 'models/gemini-1.5-flash';
-            else if (provider === 'openai') modelToUse = 'gpt-3.5-turbo';
+            else if (provider === 'openai' ) modelToUse = 'gpt-3.5-turbo';
             else if (provider === 'anthropic') modelToUse = 'claude-3-haiku-20240307';
+            else if (provider === 'huggingface') modelToUse = 'carl';
+        }
+
+        if (provider === 'huggingface') {
+            modelToUse = 'carl';
         }
 
         let currentPrompt = prompt;

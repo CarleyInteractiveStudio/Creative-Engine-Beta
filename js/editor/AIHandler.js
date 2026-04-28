@@ -4,6 +4,12 @@
  * Este módulo centraliza la comunicación con las APIs de IA externas (Gemini, OpenAI, etc.).
  */
 
+export const state = {
+    isProcessing: false
+};
+
+const CARL_ENDPOINT = "https://carley1234-carl-ia.hf.space/chat";
+
 /**
  * Obtiene la lista de modelos de IA disponibles para una API key y proveedor.
  * @param {string} provider - El proveedor ('gemini', 'openai', 'anthropic').
@@ -25,6 +31,8 @@ export async function listModels(provider, apiKey) {
             'x-api-key': apiKey,
             'anthropic-version': '2023-06-01'
         };
+    } else if (provider === 'huggingface') {
+        return { success: true, models: [{ id: 'custom-hf', name: 'Carl' }] };
     } else {
         return { success: false, error: 'Proveedor no soportado.' };
     }
@@ -133,10 +141,18 @@ export async function callGenerativeAI(provider, modelName, apiKey, prompt, syst
         };
         if (systemPrompt) body.system = systemPrompt;
 
+    } else if (provider === 'huggingface') {
+        endpoint = CARL_ENDPOINT;
+        body = {
+            prompt: prompt,
+            system_prompt: systemPrompt,
+            history: history
+        };
     } else {
         return { success: false, error: 'Proveedor no soportado.' };
     }
 
+    state.isProcessing = true;
     try {
         const response = await fetch(endpoint, {
             method: 'POST',
@@ -168,6 +184,9 @@ export async function callGenerativeAI(provider, modelName, apiKey, prompt, syst
 
         if (textResponse) {
             return { success: true, text: textResponse };
+        } else if (provider === 'huggingface') {
+            // El backend del Space devuelve directamente el texto o un objeto con 'text'
+            return { success: true, text: data.text || data };
         } else {
             return { success: false, error: "No se pudo extraer una respuesta válida de la API." };
         }
@@ -175,5 +194,7 @@ export async function callGenerativeAI(provider, modelName, apiKey, prompt, syst
     } catch (error) {
         console.error('Fallo en la llamada a la API de IA:', error);
         return { success: false, error: `No se pudo conectar con el servicio de IA. (${error.message})` };
+    } finally {
+        state.isProcessing = false;
     }
 }

@@ -27,7 +27,7 @@ const defaultPrefs = {
     gridSize: 25,
     zoomSpeed: 1.1,
     ai: {
-        provider: 'none'
+        provider: 'huggingface'
     },
     carlPermissions: {
         canUseConsole: true,
@@ -81,7 +81,15 @@ function updateAiProviderUi() {
     if (!_dom.prefsAiProvider) return;
     const provider = _dom.prefsAiProvider.value;
 
+    // Toggle Hugging Face URLs group
+    if (_dom.prefsHfUrlsGroup) {
+        _dom.prefsHfUrlsGroup.classList.toggle('hidden', provider !== 'huggingface');
+    }
+
     if (provider === 'none') {
+        _dom.prefsAiApiKeyGroup.classList.add('hidden');
+        if (_dom.prefsAiModelSelectionGroup) _dom.prefsAiModelSelectionGroup.classList.add('hidden');
+    } else if (provider === 'huggingface') {
         _dom.prefsAiApiKeyGroup.classList.add('hidden');
         if (_dom.prefsAiModelSelectionGroup) _dom.prefsAiModelSelectionGroup.classList.add('hidden');
     } else {

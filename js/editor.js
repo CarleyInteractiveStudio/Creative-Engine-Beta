@@ -448,6 +448,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'vid-spri-panel', 'btn-open-vid-spri-ext',
             // Carl IA Panel Elements
             'carl-ia-panel', 'carl-ia-view-selector-btn', 'carl-ia-messages', 'carl-ia-input', 'carl-ia-send-btn', 'menubar-carl-ia-btn',
+            'prefs-hf-urls-group', 'prefs-hf-chat-url', 'prefs-hf-code-url',
             // Terminal Elements
             'view-toggle-terminal', 'terminal-content', 'terminal-output', 'terminal-input',
             // Tile Palette Elements
@@ -3937,6 +3938,13 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado
                 const userPrompt = input.value.trim();
                 if (!userPrompt) return;
 
+                // Check if Carl is already busy processing a request
+                if (AIHandler.state.isProcessing) {
+                    const busyMsg = window.Localization?.get('CARL_BUSY_MSG') || "espera Carl te atendera en seguida no pierdas la paciencia";
+                    addMessage(busyMsg, 'ia');
+                    return;
+                }
+
                 const prefs = getPreferences();
 
                 // If nothing selected but prefs have AI, auto-sync
@@ -3967,12 +3975,13 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado
                 const provider = selectedProvider.type;
                 const apiKey = localStorage.getItem(`creativeEngine_${provider}_apiKey`);
 
-                if (!apiKey) {
+                if (provider !== 'huggingface' && !apiKey) {
                     const connError = (window.Localization?.get('CARL_ERROR_CONEXION') || "No puedo conectar con {provider}. Por favor, asegurate de haber configurado tu API Key correctamente en el panel de Preferencias.")
                         .replace('{provider}', selectedProvider.name);
                     addMessage(connError, 'ia', true);
                     return;
                 }
+
 
                 const executeApiCall = async (model, prompt) => {
                     addMessage("...", 'ia');
@@ -4042,13 +4051,14 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado
                 let modelToUse = knownWorkingModel[provider];
                 if (!modelToUse) {
                     // Try Preferences first
-                    if (prefs.ai?.provider === provider && prefs.ai?.model) {
-                        modelToUse = prefs.ai.model;
+                    if (prefs.ai?.provider === provider && (prefs.ai?.model || provider === 'huggingface')) {
+                        modelToUse = provider === 'huggingface' ? 'carl' : prefs.ai.model;
                     } else {
                         // Fallback defaults
                         if (provider === 'gemini') modelToUse = 'models/gemini-1.5-flash';
                         else if (provider === 'openai') modelToUse = 'gpt-3.5-turbo';
                         else if (provider === 'anthropic') modelToUse = 'claude-3-haiku-20240307';
+                        else if (provider === 'huggingface') modelToUse = 'carl';
                     }
                 }
 

@@ -56,6 +56,7 @@ CARL_BUSCANDO_MODELO: El modelo por defecto no funcionó. Buscando uno compatibl
 CARL_MODELO_ENCONTRADO: ¡Encontré un modelo compatible! Usando '{model}'. Reintentando...
 CARL_ERROR_SIN_MODELO: No pude encontrar un modelo de chat compatible en la lista de tu API key.
 CARL_ERROR_LISTAR_MODELOS: No pude listar los modelos disponibles para tu API key. Revisa la consola.
+CARL_BUSY_MSG: espera Carl te atendera en seguida no pierdas la paciencia
 
 # Welcome Section
 WELCOME_TITLE: Creative Engine
@@ -671,6 +672,7 @@ CARL_BUSCANDO_MODELO: The default model did not work. Looking for a compatible o
 CARL_MODELO_ENCONTRADO: I found a compatible model! Using '{model}'. Retrying...
 CARL_ERROR_SIN_MODELO: I could not find a compatible chat model in your API key list.
 CARL_ERROR_LISTAR_MODELOS: I could not list the available models for your API key. Check the console.
+CARL_BUSY_MSG: wait Carl will attend to you shortly don't lose patience
 
 # Welcome Section
 WELCOME_TITLE: Creative Engine
@@ -1287,7 +1289,8 @@ CARL_ERROR_CONEXION: Não consigo me conectar ao {provider}. Certifique-se de te
 CARL_BUSCANDO_MODELO: O modelo padrão não funcionou. Procurando um compatível para você...
 CARL_MODELO_ENCONTRADO: Encontrei um modelo compatível! Usando '{model}'. Tentando novamente...
 CARL_ERROR_SIN_MODELO: Não foi possível encontrar um modelo de chat compatível na sua lista de chaves de API.
-CARL_ERROR_LISTAR_MODELOS: Não foi possível listar os modelos disponíveis para sua chave de API. Verifique o console.
+CARL_ERROR_LISTAR_MODELOS: Não foi possível listar los modelos disponíveis para sua chave de API. Verifique o console.
+CARL_BUSY_MSG: espere que o Carl irá atendê-lo em breve não perca a paciência
 
 # Welcome Section
 WELCOME_TITLE: Creative Engine
@@ -1781,6 +1784,7 @@ CARL_BUSCANDO_MODELO: Модель по умолчанию не сработал
 CARL_MODELO_ENCONTRADO: Я нашел совместимую модель! Использую '{model}'. Повторная попытка...
 CARL_ERROR_SIN_MODELO: Не удалось найти совместимую модель чата в вашем списке API-ключей.
 CARL_ERROR_LISTAR_MODELOS: Не удалось получить список доступных моделей для вашего API-ключа. Проверьте консоль.
+CARL_BUSY_MSG: подождите Карл скоро вам ответит не теряйте терпения
 
 # Welcome Section
 WELCOME_TITLE: Creative Engine
@@ -2278,6 +2282,7 @@ CARL_BUSCANDO_MODELO: 默认模型不起作用。正在为您寻找兼容的模�
 CARL_MODELO_ENCONTRADO: 我找到了一个兼容的模型！正在使用“{model}”。正在重试...
 CARL_ERROR_SIN_MODELO: 我无法在您的 API key 列表中找到兼容的聊天模型。
 CARL_ERROR_LISTAR_MODELOS: 我无法列出您的 API key 的可用模型。请检查控制台。
+CARL_BUSY_MSG: 等一下 卡尔马上就会为您服务 请耐心等待
 
 # Welcome Section
 WELCOME_TITLE: Creative Engine
