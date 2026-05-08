@@ -437,7 +437,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'lib-create-author-icon-preview', 'lib-create-author-icon-picker-btn', 'lib-create-author-icon-input',
             'lib-create-drop-zone', 'lib-create-file-input', 'lib-create-file-list', 'lib-create-confirm-btn', 'lib-create-cancel-btn',
             'prefs-show-terminal',
-            'toolbar-music-btn', 'music-player-panel',
+            'toolbar-music-btn', 'toolbar-share-btn', 'music-player-panel',
             'now-playing-bar', 'now-playing-title', 'playlist-container', 'music-controls', 'music-add-btn',
             'music-prev-btn', 'music-play-pause-btn', 'music-next-btn', 'music-volume-slider', 'export-description-modal',
             'export-description-text', 'export-description-next-btn', 'package-file-tree-modal', 'package-modal-title',
@@ -472,7 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'btn-play', 'btn-pause', 'btn-stop', 'btn-exit-prefab', 'btn-save-prefab', 'btn-toggle-2d-3d',
             'tool-tile-brush', 'tool-tile-bucket', 'tool-tile-rectangle-fill', 'tool-tile-eraser',
             // Menubar scene options
-            'menu-new-scene', 'menu-open-scene', 'menu-save-scene', 'menu-build', 'menu-import-asset', 'menu-import-skeleton',
+            'menu-new-scene', 'menu-open-scene', 'menu-save-scene', 'menu-share-engine', 'menu-build', 'menu-import-asset', 'menu-import-skeleton',
             // Asset Selector Bubble Elements
             'asset-selector-bubble', 'asset-selector-title', 'asset-selector-breadcrumbs', 'asset-selector-grid-view',
             'asset-selector-toolbar', 'asset-selector-view-modes', 'asset-selector-search',
@@ -3218,6 +3218,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // --- Menubar Scene Actions ---
+        dom.menuShareEngine.addEventListener('click', (e) => {
+            e.preventDefault();
+            dom.toolbarShareBtn.click();
+        });
+
         dom.menuSaveScene.addEventListener('click', (e) => {
             e.preventDefault();
             saveScene();
@@ -3609,6 +3614,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 dom.ksCommandOutput.classList.remove('hidden');
 
                 showNotificationDialog('Comando Generado', 'Comando generado. Copialo y ejecutalo en una terminal con JDK instalado para crear tu archivo keystore.');
+            });
+        }
+
+        if (dom.toolbarShareBtn) {
+            dom.toolbarShareBtn.addEventListener('click', async () => {
+                if (navigator.share) {
+                    try {
+                        await navigator.share({
+                            title: 'Creative Engine',
+                            text: '¡Mira lo que estoy creando en Creative Engine! El motor de videojuegos 2D/3D para el navegador.',
+                            url: window.location.origin + window.location.pathname.replace('editor.html', 'index.html')
+                        });
+                    } catch (error) {
+                        if (error.name !== 'AbortError') console.error('Error sharing:', error);
+                    }
+                } else {
+                    // Fallback to clipboard
+                    try {
+                        await navigator.clipboard.writeText(window.location.origin + window.location.pathname.replace('editor.html', 'index.html'));
+                        showNotificationDialog('Enlace Copiado', 'El enlace al motor ha sido copiado al portapapeles.');
+                    } catch (err) {
+                        console.error('Could not copy text: ', err);
+                    }
+                }
             });
         }
 

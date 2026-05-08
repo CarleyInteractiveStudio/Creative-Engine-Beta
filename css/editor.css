@@ -3050,6 +3050,29 @@ body.mobile-mode .component-item:active {
 .component-header-controls {
     display: flex;
     align-items: center;
+    gap: 5px;
+}
+
+.help-component-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text-secondary);
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    font-size: 11px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-weight: bold;
+}
+
+.help-component-btn:hover {
+    background: var(--accent-color);
+    color: white;
+    border-color: transparent;
 }
 
 .inspector-row {

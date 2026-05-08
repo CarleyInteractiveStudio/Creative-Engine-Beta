@@ -155,11 +155,18 @@ export function showBuildSuccessDialog(projectName, zipBlob) {
             <p>Se ha generado el archivo <strong>${projectName}_Build.zip</strong>.</p>
 
             <div class="sharing-options" style="margin-top: 20px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
-                <h4 style="margin-top: 0;">¿Cómo comparto mi juego?</h4>
+                <h4 style="margin-top: 0;">¡Presume tu creación! 🚀</h4>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; justify-content: center;">
+                    <button class="share-social-btn" data-platform="whatsapp" style="background: #25D366; border: none; padding: 8px 12px; border-radius: 5px; color: white; cursor: pointer; font-weight: bold;">WhatsApp</button>
+                    <button class="share-social-btn" data-platform="facebook" style="background: #1877F2; border: none; padding: 8px 12px; border-radius: 5px; color: white; cursor: pointer; font-weight: bold;">Facebook</button>
+                    <button class="share-social-btn" data-platform="twitter" style="background: #1DA1F2; border: none; padding: 8px 12px; border-radius: 5px; color: white; cursor: pointer; font-weight: bold;">Twitter / X</button>
+                </div>
+
+                <h4 style="margin-top: 0;">¿Cómo publico mi juego?</h4>
                 <ul style="padding-left: 20px; font-size: 0.9em; line-height: 1.4;">
                     <li><strong>itch.io:</strong> Sube el archivo ZIP y selecciona "This file will be played in the browser".</li>
                     <li><strong>GitHub Pages:</strong> Descomprime el ZIP en un repositorio y activa las Pages.</li>
-                    <li><strong>Hosting Estático:</strong> Puedes usar Netlify, Vercel o Firebase Hosting simplemente arrastrando la carpeta.</li>
+                    <li><strong>Hosting Estático:</strong> Puedes usar Netlify, Vercel o Firebase Hosting.</li>
                 </ul>
             </div>
 
@@ -186,6 +193,27 @@ export function showBuildSuccessDialog(projectName, zipBlob) {
     ]);
 
     dialog.show();
+
+    // Setup social sharing listeners
+    const text = `¡Acabo de crear un juego llamado "${projectName}" usando Creative Engine! 🎮🔥\nPrueba el motor tú también aquí: ${window.location.origin}${window.location.pathname.replace('editor.html', 'index.html')}`;
+    const url = window.location.origin + window.location.pathname.replace('editor.html', 'index.html');
+
+    dialog.dialogElement.querySelectorAll('.share-social-btn').forEach(btn => {
+        btn.onclick = () => {
+            const platform = btn.dataset.platform;
+            let shareUrl = '';
+
+            if (platform === 'whatsapp') {
+                shareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+            } else if (platform === 'facebook') {
+                shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(text)}`;
+            } else if (platform === 'twitter') {
+                shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+            }
+
+            if (shareUrl) window.open(shareUrl, '_blank');
+        };
+    });
 }
 
 /**

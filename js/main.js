@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const startButton = document.getElementById('btn-start');
     const shareButton = document.getElementById('btn-share');
     const shareButtonMain = document.getElementById('btn-share-main');
+    const shareButtonLauncher = document.getElementById('btn-share-launcher');
     const createProjectBtn = document.getElementById('btn-add-project-top');
     const selectFolderBtn = document.getElementById('btn-select-folder');
     const joinCollabBtn = document.getElementById('btn-join-collab');
@@ -358,6 +359,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (shareButton) shareButton.addEventListener('click', handleShare);
     if (shareButtonMain) shareButtonMain.addEventListener('click', handleShare);
+    if (shareButtonLauncher) shareButtonLauncher.addEventListener('click', handleShare);
 
     if(closeCreateProject) closeCreateProject.addEventListener('click', closeModal);
 

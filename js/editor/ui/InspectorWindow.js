@@ -1232,6 +1232,7 @@ export async function updateInspector() {
 
 function renderComponentHeader(title, icon, leyIndex, canRemove = true) {
     const iconHTML = getIconHTML(icon);
+    const L = window.Localization;
     return `
         <div class="component-header" data-ley-index="${leyIndex}">
             <div class="component-header-main">
@@ -1239,6 +1240,7 @@ function renderComponentHeader(title, icon, leyIndex, canRemove = true) {
                 <h4>${title}</h4>
             </div>
             <div class="component-header-controls">
+                <button class="help-component-btn" title="${L?.get('VER_AYUDA', 'Ver Ayuda')}" onclick="window.open('https://carleystudio.com/documentacion.html#componentes', '_blank')">?</button>
                 ${canRemove ? `<button class="remove-component-btn" title="Eliminar Componente" data-ley-index="${leyIndex}">&times;</button>` : ''}
             </div>
         </div>
