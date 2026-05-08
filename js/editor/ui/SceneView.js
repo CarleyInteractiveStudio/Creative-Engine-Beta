@@ -19,6 +19,13 @@ let rectStartGridPos = { x: 0, y: 0 }; // Store the start grid cell
 let currentMousePosition = { x: 0, y: 0 }; // For overlay drawing
 let lastMousePosition = { x: 0, y: 0 };
 
+// --- Mobile Gestures State ---
+let activePointers = new Map();
+let initialPinchDistance = null;
+let initialPinchZoom = null;
+let initialPinchMidpoint = null;
+let initialCameraPos = null;
+
 // --- Initialization ---
 export function initialize(dependencies) {
     dom = dependencies.dom;
@@ -29,9 +36,10 @@ export function initialize(dependencies) {
     updateInspectorCallback = dependencies.updateInspectorCallback;
 
     dom.sceneCanvas.style.touchAction = 'none';
-    dom.sceneCanvas.addEventListener('pointerdown', handleMouseDown);
-    dom.sceneCanvas.addEventListener('pointermove', handleMouseMove);
-    window.addEventListener('pointerup', handleMouseUp);
+    dom.sceneCanvas.addEventListener('pointerdown', handlePointerDown);
+    dom.sceneCanvas.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
     dom.sceneCanvas.addEventListener('wheel', handleMouseWheel, { passive: false });
     dom.sceneCanvas.addEventListener('mouseleave', handleMouseLeave); // Stop painting if mouse leaves
 }
@@ -53,6 +61,22 @@ export function update(deltaTime) {
 }
 
 // --- Event Handlers & Internal Logic ---
+
+function handlePointerDown(e) {
+    activePointers.set(e.pointerId, e);
+
+    if (activePointers.size === 1) {
+        handleMouseDown(e);
+    } else if (activePointers.size === 2) {
+        // Start pinching/two-finger panning
+        isPanning = false; // Stop normal panning
+        const pointers = Array.from(activePointers.values());
+        initialPinchDistance = getPointersDistance(pointers[0], pointers[1]);
+        initialPinchZoom = renderer.camera.zoom;
+        initialPinchMidpoint = getPointersMidpoint(pointers[0], pointers[1]);
+        initialCameraPos = { x: renderer.camera.x, y: renderer.camera.y };
+    }
+}
 
 function handleMouseDown(e) {
     lastMousePosition = { x: e.clientX, y: e.clientY };
@@ -100,6 +124,17 @@ function handleMouseDown(e) {
 }
 
 
+function handlePointerMove(e) {
+    if (!activePointers.has(e.pointerId)) return;
+    activePointers.set(e.pointerId, e);
+
+    if (activePointers.size === 1) {
+        handleMouseMove(e);
+    } else if (activePointers.size === 2) {
+        handlePinchAndPan();
+    }
+}
+
 function handleMouseMove(e) {
     currentMousePosition = { x: e.clientX, y: e.clientY };
 
@@ -146,6 +181,19 @@ function handleMouseMove(e) {
             renderer.camera.x -= dx / renderer.camera.effectiveZoom;
             renderer.camera.y += dy / renderer.camera.effectiveZoom;
         }
+    }
+}
+
+function handlePointerUp(e) {
+    activePointers.delete(e.pointerId);
+
+    if (activePointers.size < 2) {
+        initialPinchDistance = null;
+        initialPinchMidpoint = null;
+    }
+
+    if (activePointers.size === 0) {
+        handleMouseUp(e);
     }
 }
 
@@ -499,6 +547,42 @@ function getAnchorPointWorld(preset, canvasWorldPos, canvasSize) {
     };
 }
 
+
+function handlePinchAndPan() {
+    if (!renderer || !renderer.camera) return;
+
+    const pointers = Array.from(activePointers.values());
+    const currentDistance = getPointersDistance(pointers[0], pointers[1]);
+    const currentMidpoint = getPointersMidpoint(pointers[0], pointers[1]);
+
+    // Handle Zoom (Pinch)
+    if (initialPinchDistance > 0) {
+        const ratio = currentDistance / initialPinchDistance;
+        renderer.camera.zoom = initialPinchZoom * ratio;
+    }
+
+    // Handle Pan (Two fingers)
+    if (initialPinchMidpoint && initialCameraPos) {
+        const dx = currentMidpoint.x - initialPinchMidpoint.x;
+        const dy = currentMidpoint.y - initialPinchMidpoint.y;
+
+        renderer.camera.x = initialCameraPos.x - (dx / renderer.camera.effectiveZoom);
+        renderer.camera.y = initialCameraPos.y + (dy / renderer.camera.effectiveZoom);
+    }
+}
+
+function getPointersDistance(p1, p2) {
+    const dx = p1.clientX - p2.clientX;
+    const dy = p1.clientY - p2.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+function getPointersMidpoint(p1, p2) {
+    return {
+        x: (p1.clientX + p2.clientX) / 2,
+        y: (p1.clientY + p2.clientY) / 2
+    };
+}
 
 function isPointInMateria(worldPoint, materia) {
     const uiTransform = materia.getComponent(Components.UITransform);

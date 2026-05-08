@@ -1015,6 +1015,26 @@ export function initialize(domCache, showConsole, hotReload) {
         dom.chcRunBtn.addEventListener('click', () => runChc());
     }
 
+    // --- Mobile Code Toolbar Logic ---
+    const mobileTools = document.getElementById('mobile-code-tools');
+    if (mobileTools) {
+        mobileTools.addEventListener('mousedown', (e) => {
+            const btn = e.target.closest('.mobile-code-btn');
+            if (!btn || !codeEditor) return;
+
+            e.preventDefault(); // Prevent focus loss from editor
+            const textToInsert = btn.getAttribute('data-insert');
+
+            if (textToInsert === 'Tab') {
+                indentWithTab.run(codeEditor);
+            } else {
+                codeEditor.dispatch(codeEditor.state.replaceSelection(textToInsert));
+            }
+
+            codeEditor.focus();
+        });
+    }
+
     // Shortcut "F" to trigger Auto Reparator
     window.addEventListener('keydown', (e) => {
         // Only if the editor container is visible and we're not typing in an input

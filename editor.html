@@ -167,6 +167,24 @@
                 <button id="toolbar-music-btn" class="toolbar-btn" title="Reproductor de Música" data-i18n-title="REPRODUCTOR_MUSICA"><img src="icons/music.svg" class="ce-icon"></button>
             </div>
         </div>
+        <nav id="mobile-nav-bar" class="hidden">
+            <button class="mobile-nav-btn active" data-target="scene-panel">
+                <img src="icons/image.svg" class="ce-icon">
+                <span data-i18n="ESCENA">Escena</span>
+            </button>
+            <button class="mobile-nav-btn" data-target="hierarchy-panel">
+                <img src="icons/layers.svg" class="ce-icon">
+                <span data-i18n="JERARQUIA">Jerarquía</span>
+            </button>
+            <button class="mobile-nav-btn" data-target="inspector-panel">
+                <img src="icons/settings.svg" class="ce-icon">
+                <span data-i18n="INSPECTOR">Inspector</span>
+            </button>
+            <button class="mobile-nav-btn" data-target="assets-panel">
+                <img src="icons/folder.svg" class="ce-icon">
+                <span data-i18n="NAVEGADOR">Assets</span>
+            </button>
+        </nav>
         <main id="editor-main-content">
             <div id="library-panel" class="editor-panel floating-panel hidden" style="width: 700px; height: 500px;">
                 <div class="panel-header">
@@ -473,6 +491,23 @@ public star() {
                             <button id="code-history-btn" title="Ver Historial (Versiones)"><img src="icons/history.svg" class="ce-icon"></button>
                         </div>
                         <div id="codemirror-container"></div>
+                        <div id="mobile-code-tools">
+                            <button class="mobile-code-btn" data-insert=";">;</button>
+                            <button class="mobile-code-btn" data-insert="{">{</button>
+                            <button class="mobile-code-btn" data-insert="}">}</button>
+                            <button class="mobile-code-btn" data-insert="(">(</button>
+                            <button class="mobile-code-btn" data-insert=")">)</button>
+                            <button class="mobile-code-btn" data-insert="=">=</button>
+                            <button class="mobile-code-btn" data-insert="[">[</button>
+                            <button class="mobile-code-btn" data-insert="]">]</button>
+                            <button class="mobile-code-btn" data-insert="&quot;">"</button>
+                            <button class="mobile-code-btn" data-insert="'">'</button>
+                            <button class="mobile-code-btn" data-insert="+">+</button>
+                            <button class="mobile-code-btn" data-insert="-">-</button>
+                            <button class="mobile-code-btn" data-insert="*">*</button>
+                            <button class="mobile-code-btn" data-insert="/">/</button>
+                            <button class="mobile-code-btn" data-insert="Tab">Tab</button>
+                        </div>
                         <!-- CHC Editor Integrated -->
                         <div id="chc-integrated-editor" class="chc-editor-container hidden">
                             <textarea id="chc-human-text" placeholder="Escribe aquí lo que quieres que haga tu script... Carl IA se encargará del resto."></textarea>

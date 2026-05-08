@@ -31,6 +31,10 @@ class InputManager {
     static get gameCanvas() { return this._gameCanvas; }
     static get activeCanvas() { return this._activeCanvas; }
 
+    // Mobile Virtual Controls
+    static _virtualKeys = new Map();
+    static _hasVirtualControls = false;
+
     // Long Press State
     static _longPressTimeoutId = null;
     static _longPressStartPosition = { x: 0, y: 0 };
@@ -262,10 +266,11 @@ class InputManager {
     static getKey(key) {
         const normalized = this.normalizeKeyName(key);
         // Direct match
-        if (this._keys.get(normalized)) return true;
+        if (this._keys.get(normalized) || this._virtualKeys.get(normalized)) return true;
         // Case-insensitive match for single characters (A-Z)
         if (normalized.length === 1) {
-            return !!this._keys.get(normalized.toLowerCase()) || !!this._keys.get(normalized.toUpperCase());
+            return !!this._keys.get(normalized.toLowerCase()) || !!this._keys.get(normalized.toUpperCase()) ||
+                   !!this._virtualKeys.get(normalized.toLowerCase()) || !!this._virtualKeys.get(normalized.toUpperCase());
         }
         return false;
     }
@@ -495,6 +500,8 @@ class InputManager {
     }
 
     static _onBlur() {
+        // Release virtual keys as well
+        this._virtualKeys.clear();
         // Release all keys and buttons when window loses focus to prevent stuck states
         this._keys.clear();
         this._mouseButtons.clear();
@@ -723,6 +730,110 @@ class InputManager {
         const worldY = (canvasPos.y - canvas.height / 2) / camera.effectiveZoom + camera.y;
 
         return { x: worldX, y: worldY };
+    }
+
+    // --- Virtual Controls Support ---
+
+    static setupDefaultVirtualControls() {
+        if (this._hasVirtualControls) return;
+
+        // Detect mobile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (!isMobile) return;
+
+        console.log("[InputManager] Injecting default virtual controls for mobile...");
+
+        const container = document.createElement('div');
+        container.id = 'ce-virtual-controls';
+        container.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            height: 180px;
+            pointer-events: none;
+            z-index: 10000;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        `;
+
+        // Left Side: D-Pad
+        const dpad = document.createElement('div');
+        dpad.style.cssText = `
+            position: relative;
+            width: 150px;
+            height: 150px;
+            pointer-events: auto;
+        `;
+
+        const createKeyBtn = (label, key, top, left, width, height) => {
+            const btn = document.createElement('div');
+            btn.textContent = label;
+            btn.style.cssText = `
+                position: absolute;
+                top: ${top};
+                left: ${left};
+                width: ${width};
+                height: ${height};
+                background: rgba(255, 255, 255, 0.2);
+                border: 2px solid rgba(255, 255, 255, 0.4);
+                border-radius: 12px;
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                font-size: 20px;
+                backdrop-filter: blur(5px);
+            `;
+
+            const press = () => {
+                if (!this._virtualKeys.get(key)) {
+                    this._keysDown.add(key);
+                }
+                this._virtualKeys.set(key, true);
+                btn.style.background = 'rgba(255, 255, 255, 0.5)';
+            };
+
+            const release = () => {
+                this._virtualKeys.set(key, false);
+                this._keysUp.add(key);
+                btn.style.background = 'rgba(255, 255, 255, 0.2)';
+            };
+
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); press(); });
+            btn.addEventListener('touchend', (e) => { e.preventDefault(); release(); });
+            btn.addEventListener('touchcancel', (e) => { e.preventDefault(); release(); });
+
+            return btn;
+        };
+
+        dpad.appendChild(createKeyBtn('↑', 'ArrowUp', '0', '50px', '50px', '50px'));
+        dpad.appendChild(createKeyBtn('↓', 'ArrowDown', '100px', '50px', '50px', '50px'));
+        dpad.appendChild(createKeyBtn('←', 'ArrowLeft', '50px', '0', '50px', '50px'));
+        dpad.appendChild(createKeyBtn('→', 'ArrowRight', '50px', '100px', '50px', '50px'));
+
+        // Right Side: Action Buttons
+        const actions = document.createElement('div');
+        actions.style.cssText = `
+            position: relative;
+            width: 150px;
+            height: 150px;
+            pointer-events: auto;
+        `;
+
+        actions.appendChild(createKeyBtn('A', ' ', '50px', '80px', '60px', '60px')); // Jump/Space
+        actions.appendChild(createKeyBtn('B', 'Control', '80px', '10px', '60px', '60px')); // Action
+
+        container.appendChild(dpad);
+        container.appendChild(actions);
+        document.body.appendChild(container);
+
+        this._hasVirtualControls = true;
     }
 }
 

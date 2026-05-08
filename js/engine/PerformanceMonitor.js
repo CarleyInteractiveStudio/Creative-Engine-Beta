@@ -31,6 +31,16 @@ export class PerformanceMonitor {
         this.targetMaxFps = config.maxFps || 0; // 0 = no limit
         this.forceFps = !!config.forceFps;
         this.targetMinFps = config.minFps || 30;
+
+        // Auto-Mobile Optimization Profile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (isMobile) {
+            console.log(`[PerformanceMonitor] Mobile detected. Applying performance profile...`);
+            if (this.targetMaxFps === 0 || this.targetMaxFps > 60) this.targetMaxFps = 60;
+            this.targetMinFps = Math.max(this.targetMinFps, 30);
+            this.forceFps = false; // Disable busy-wait loops on mobile to save battery
+        }
+
         console.log(`[PerformanceMonitor] Config updated: MaxFPS=${this.targetMaxFps}, ForceFPS=${this.forceFps}, MinFPS=${this.targetMinFps}`);
     }
 

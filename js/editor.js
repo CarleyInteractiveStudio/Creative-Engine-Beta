@@ -4273,6 +4273,42 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         if (isMobile) {
             document.body.classList.add('mobile-mode');
+            initializeMobileUI();
+        }
+
+        function initializeMobileUI() {
+            const navBar = document.getElementById('mobile-nav-bar');
+            if (!navBar) return;
+
+            navBar.classList.remove('hidden');
+            const navButtons = navBar.querySelectorAll('.mobile-nav-btn');
+
+            // Default active panel for mobile: Scene
+            dom.scenePanel.classList.add('mobile-active');
+
+            navButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const targetId = btn.getAttribute('data-target');
+                    const targetPanel = document.getElementById(targetId);
+
+                    if (targetPanel) {
+                        // Deactivate current active panels and buttons
+                        document.querySelectorAll('.editor-panel.mobile-active').forEach(p => p.classList.remove('mobile-active'));
+                        navButtons.forEach(b => b.classList.remove('active'));
+
+                        // Activate target
+                        targetPanel.classList.add('mobile-active');
+                        btn.classList.add('active');
+
+                        // Special triggers when switching panels
+                        if (targetId === 'scene-panel') {
+                            updateCanvasInteractivity();
+                        } else if (targetId === 'inspector-panel') {
+                            updateInspector();
+                        }
+                    }
+                });
+            });
         }
 
         // --- Prevent accidental navigation ---
