@@ -231,6 +231,31 @@
                     </label>
                 </div>
 
+                <div id="template-selection-container">
+                    <label data-i18n="PLANTILLA">Plantilla:</label>
+                    <div class="template-selector">
+                        <label class="template-card active">
+                            <input type="radio" name="projectTemplate" value="empty" checked>
+                            <div class="card-content">
+                                <span data-i18n="PLANTILLA_VACIA">Vacío</span>
+                            </div>
+                        </label>
+                        <label class="template-card">
+                            <input type="radio" name="projectTemplate" value="platformer">
+                            <div class="card-content">
+                                <span data-i18n="PLANTILLA_PLATAFORMAS">Plataformas</span>
+                            </div>
+                        </label>
+                        <label class="template-card">
+                            <input type="radio" name="projectTemplate" value="topdown">
+                            <div class="card-content">
+                                <span data-i18n="PLANTILLA_TOPDOWN">Top-down</span>
+                            </div>
+                        </label>
+                    </div>
+                    <p class="modal-hint" data-i18n="HINT_PLANTILLA" style="margin-top: 5px;">Empieza con un proyecto pre-configurado y código comentado.</p>
+                </div>
+
                 <div class="novice-checkbox-container" style="margin-top: 20px; display: flex; align-items: center; gap: 10px; background: rgba(0,255,100,0.1); padding: 10px; border-radius: 8px; border: 1px solid rgba(0,255,100,0.2);">
                     <input type="checkbox" id="is-new-user" name="isNewUser" style="width: 20px; height: 20px; cursor: pointer;">
                     <div style="display: flex; flex-direction: column;">
