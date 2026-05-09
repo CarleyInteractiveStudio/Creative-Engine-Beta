@@ -304,6 +304,24 @@ CONTROLADOR_ANIMACION: Controlador de Animación
 PALETA_TILES: Tiles
 EDITOR_SPRITES: Sprites
 CONTROL_AMBIENTE: Ambiente
+EDITOR_PARTICULAS: Editor de Partículas
+SCRIPTING_VISUAL: Scripting Visual
+PS_SELECT_HINT: Selecciona una Materia con Sistema de Partículas para empezar.
+FUEGO: Fuego
+HUMO: Humo
+EXPLOSION: Explosión
+MAGIA: Magia
+EMISION: Emisión
+MAX_PARTICULAS: Máx Partículas
+TASA_EMISION: Tasa Emisión
+FISICA_TIEMPO: Física y Tiempo
+VIDA_SEG: Vida (seg)
+DISPERSION: Dispersión (º)
+COLOR_INICIO: Color Inicio
+COLOR_FIN: Color Fin
+TAMANO_INICIO: Tamaño Inicio
+TAMANO_FIN: Tamaño Fin
+DESVANECER_ALPHA: Desvanecer Alpha
 SISTEMA_VERIFICACION: Verificación
 ACTUALIZACIONES: Actualizaciones
 ACTIVIDAD_COLABORATIVA: Actividad Colaborativa
@@ -926,6 +944,24 @@ CONTROLADOR_ANIMACION: Animation Controller
 PALETA_TILES: Tiles
 EDITOR_SPRITES: Sprites
 CONTROL_AMBIENTE: Environment
+EDITOR_PARTICULAS: Particle Editor
+SCRIPTING_VISUAL: Visual Scripting
+PS_SELECT_HINT: Select a Matter with a Particle System to start.
+FUEGO: Fire
+HUMO: Smoke
+EXPLOSION: Explosion
+MAGIA: Magic
+EMISION: Emission
+MAX_PARTICULAS: Max Particles
+TASA_EMISION: Emission Rate
+FISICA_TIEMPO: Physics & Time
+VIDA_SEG: Lifetime (sec)
+DISPERSION: Spread (º)
+COLOR_INICIO: Start Color
+COLOR_FIN: End Color
+TAMANO_INICIO: Start Size
+TAMANO_FIN: End Size
+DESVANECER_ALPHA: Fade Alpha
 SISTEMA_VERIFICACION: Verification
 ACTUALIZACIONES: Updates
 ACTIVIDAD_COLABORATIVA: Collaborative Activity
@@ -1490,6 +1526,24 @@ CONTROLADOR_ANIMACION: Controlador de Animação
 PALETA_TILES: Editor de Paleta de Tiles
 EDITOR_SPRITES: Editor de Sprites
 CONTROL_AMBIENTE: Control de Ambiente
+EDITOR_PARTICULAS: Editor de Partículas
+SCRIPTING_VISUAL: Scripting Visual
+PS_SELECT_HINT: Selecione una Matéria com Sistema de Partículas para começar.
+FUEGO: Fogo
+HUMO: Fumaça
+EXPLOSION: Explosão
+MAGIA: Magia
+EMISION: Emissão
+MAX_PARTICULAS: Máx Partículas
+TASA_EMISION: Taxa de Emissão
+FISICA_TIEMPO: Física e Tempo
+VIDA_SEG: Vida (seg)
+DISPERSION: Dispersão (º)
+COLOR_INICIO: Cor Inicial
+COLOR_FIN: Cor Final
+TAMANO_INICIO: Tamanho Inicial
+TAMANO_FIN: Tamanho Final
+DESVANECER_ALPHA: Desvanecer Alpha
 SISTEMA_VERIFICACION: Sistema de Verificação
 ACTUALIZACIONES: Atualizações
 ACTIVIDAD_COLABORATIVA: Atividade Colaborativa

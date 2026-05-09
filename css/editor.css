@@ -5387,6 +5387,122 @@ body.game-mode #loading-overlay {
 }
 
 
+/* --- Visual Scripting Editor --- */
+.vs-layout {
+    display: flex;
+    height: 100%;
+}
+
+#vs-toolbox {
+    width: 200px;
+    background-color: var(--bg-tertiary);
+    border-right: 1px solid var(--border-color);
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.vs-toolbox-section h4 {
+    margin: 0 0 10px 0;
+    font-size: 0.8em;
+    text-transform: uppercase;
+    color: var(--accent-color);
+}
+
+.vs-draggable-item {
+    padding: 8px;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    margin-bottom: 5px;
+    cursor: grab;
+    font-size: 0.9em;
+}
+
+#vs-workspace {
+    flex: 1;
+    background-color: #1e1e1e;
+    position: relative;
+    overflow: hidden;
+    background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+#vs-connections-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.vs-block {
+    position: absolute;
+    width: 180px;
+    background-color: var(--bg-secondary);
+    border-radius: 6px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    border-left: 5px solid #888;
+    z-index: 10;
+}
+
+.vs-block-header {
+    padding: 6px 10px;
+    font-weight: bold;
+    font-size: 0.85em;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.vs-block-body {
+    padding: 10px;
+    font-size: 0.8em;
+}
+
+.vs-block-body input {
+    background: #000;
+    border: 1px solid #444;
+    color: white;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+.event-block { border-left-color: #f39c12; }
+.action-block { border-left-color: #3498db; }
+
+.vs-block-connector-out, .vs-block-connector-in {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background-color: #0e639c;
+    border-radius: 50%;
+    right: -6px;
+    top: 24px;
+    cursor: crosshair;
+}
+
+.vs-block-connector-in {
+    left: -6px;
+    background-color: #27ae60;
+}
+
+.vs-block-delete {
+    position: absolute;
+    top: 2px;
+    right: 5px;
+    cursor: pointer;
+    opacity: 0.5;
+}
+
+#vs-workspace-hint {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0.3;
+}
+
 /* --- Improved Window Styles for Libraries --- */
 
 /* Style: Carl (Glassmorphism) */

@@ -33,6 +33,8 @@ import * as RuntimeAPIManager from './engine/RuntimeAPIManager.js';
 import * as CES_Transpiler from './editor/CES_Transpiler.js';
 import { initialize as initializeLibraryWindow } from './editor/ui/LibraryWindow.js';
 import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
+import * as ParticleEditorWindow from './editor/ui/ParticleEditorWindow.js';
+import * as VisualScriptingWindow from './editor/ui/VisualScriptingWindow.js';
 import { TerrenoEditorWindow } from './editor/ui/TerrenoEditorWindow.js';
 import * as EngineAPI from './engine/EngineAPI.js';
 import { getCustomComponentDefinitions } from './editor/EngineAPIExtension.js';
@@ -1038,6 +1040,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update UI that depends on selection
         updateHierarchy();
         updateInspector();
+        ParticleEditorWindow.refresh();
     };
 
     function handleKeyboardShortcuts(e) {
@@ -1290,6 +1293,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'sprite-slicer-panel': 'menu-window-sprite-editor',
             'vid-spri-panel': 'menu-window-vid-spri',
             'ambiente-control-panel': 'menu-window-ambiente-control',
+            'particle-editor-panel': 'menu-window-particle-editor',
+            'visual-scripting-panel': 'menu-window-visual-scripting',
             'scene-panel': 'menu-window-scene',
             'updates-panel': 'menu-window-updates'
         };
@@ -4347,6 +4352,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado
         window.setActiveTool = SceneView.setActiveTool;
         window.CES_Transpiler = CES_Transpiler;
         window.getSelectedMateria = () => selectedMateria;
+        window.ParticleEditorWindow = ParticleEditorWindow;
         window.TerrenoEditorWindow = TerrenoEditorWindow;
         window.AnimationEditorWindow = AnimationEditorWindow;
         window.TilePalette = TilePalette;
@@ -4873,6 +4879,8 @@ public start() {
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
             TilePalette.initialize({ dom, projectsDirHandle, openAssetSelectorCallback: openAssetSelector, setActiveToolCallback: SceneView.setActiveTool });
             TerrenoEditorWindow.initialize({ dom, updateInspector });
+            ParticleEditorWindow.initialize({ dom, getSelectedMateria });
+            VisualScriptingWindow.initialize({ dom });
             AmbienteControlWindow.initialize({
                 dom,
                 editorRenderer: renderer,

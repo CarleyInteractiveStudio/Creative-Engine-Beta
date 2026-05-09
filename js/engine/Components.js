@@ -6098,6 +6098,14 @@ export class ParticleSystem extends Leyes {
         this.loop = true;
         this.playOnAwake = true;
 
+        // Advanced Visuals
+        this.startColor = "#ffffff";
+        this.endColor = "#ffffff";
+        this.startSize = 1.0;
+        this.endSize = 1.0;
+        this.gravityScale = 0.0;
+        this.fadeAlpha = true;
+
         this._pool = [];
         this._active = false;
         this._emissionAccumulator = 0;
@@ -6138,6 +6146,9 @@ export class ParticleSystem extends Leyes {
                 p._remainingLifetime -= deltaTime;
                 if (p._remainingLifetime <= 0) {
                     p.isActive = false;
+                } else {
+                    // Actualizar visuales de la partícula basados en el tiempo de vida
+                    this._updateParticleVisuals(p);
                 }
             }
         }
@@ -6151,6 +6162,54 @@ export class ParticleSystem extends Leyes {
             this.emit();
             this._emissionAccumulator -= interval;
         }
+    }
+
+    _updateParticleVisuals(p) {
+        const lifePercent = 1 - (p._remainingLifetime / this.lifetime);
+        const transform = p.getComponent(Transform);
+        const renderer = p.getComponent(SpriteRenderer);
+
+        // Actualizar Escala
+        if (transform) {
+            const scale = this.startSize + (this.endSize - this.startSize) * lifePercent;
+            transform.scale = { x: scale, y: scale };
+        }
+
+        // Actualizar Color y Alpha
+        if (renderer) {
+            if (this.startColor !== this.endColor) {
+                renderer.color = this._interpolateColors(this.startColor, this.endColor, lifePercent);
+            }
+            if (this.fadeAlpha) {
+                renderer.opacity = 1 - lifePercent;
+            }
+        }
+
+        // Aplicar Gravedad (Movimiento manual si no hay Rigidbody)
+        const rb = p.getComponent(Rigidbody2D);
+        if (!rb && this.gravityScale !== 0) {
+            const trans = p.getComponent(Transform);
+            if (trans) {
+                p._gravityVelocity = (p._gravityVelocity || 0) + (9.8 * this.gravityScale);
+                trans.y += p._gravityVelocity;
+            }
+        }
+    }
+
+    _interpolateColors(hex1, hex2, factor) {
+        const r1 = parseInt(hex1.substring(1, 3), 16);
+        const g1 = parseInt(hex1.substring(3, 5), 16);
+        const b1 = parseInt(hex1.substring(5, 7), 16);
+
+        const r2 = parseInt(hex2.substring(1, 3), 16);
+        const g2 = parseInt(hex2.substring(3, 5), 16);
+        const b2 = parseInt(hex2.substring(5, 7), 16);
+
+        const r = Math.round(r1 + (r2 - r1) * factor);
+        const g = Math.round(g1 + (g2 - g1) * factor);
+        const b = Math.round(b1 + (b2 - b1) * factor);
+
+        return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     }
 
     async emit() {
@@ -6195,7 +6254,11 @@ export class ParticleSystem extends Leyes {
                 }
 
                 p._remainingLifetime = this.lifetime;
+                p._gravityVelocity = 0;
                 p.isActive = true;
+
+                // Initial state
+                this._updateParticleVisuals(p);
             }
         }
     }
@@ -6291,6 +6354,13 @@ export class ParticleSystem extends Leyes {
         newPs.spread = this.spread;
         newPs.loop = this.loop;
         newPs.playOnAwake = this.playOnAwake;
+
+        newPs.startColor = this.startColor;
+        newPs.endColor = this.endColor;
+        newPs.startSize = this.startSize;
+        newPs.endSize = this.endSize;
+        newPs.gravityScale = this.gravityScale;
+        newPs.fadeAlpha = this.fadeAlpha;
         return newPs;
     }
 }
