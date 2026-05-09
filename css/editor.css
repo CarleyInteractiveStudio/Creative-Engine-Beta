@@ -94,10 +94,12 @@ body.mobile-mode .menu-btn {
     padding: 8px 12px;
     cursor: pointer;
     font-size: 0.9em;
+    border-radius: 6px;
+    transition: all 0.2s ease;
 }
 
 .menu-btn:hover {
-    background-color: var(--accent-color);
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
 .carl-menubar-btn {
@@ -123,12 +125,22 @@ body.mobile-mode .menu-btn {
 .menu-content {
     display: none;
     position: absolute;
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 0 0 4px 4px;
-    min-width: 200px;
-    z-index: 3000;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    background: rgba(20, 20, 25, 0.7);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    min-width: 220px;
+    z-index: 60000;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+    margin-top: 8px;
+    overflow: hidden;
+    animation: menu-fade-in 0.2s ease-out;
+}
+
+@keyframes menu-fade-in {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .menu-content.visible {
@@ -142,7 +154,7 @@ body.mobile-mode .menu-btn {
     text-decoration: none;
 }
 .menu-content a:hover {
-    background-color: var(--accent-color);
+    background: rgba(255, 255, 255, 0.1);
 }
 .menu-content a.disabled {
     color: var(--text-secondary);
@@ -2662,16 +2674,28 @@ body.mobile-mode #editor-main-content.no-inspector {
 /* --- Debug Display --- */
 #debug-display {
     position: fixed;
-    bottom: 10px;
-    right: 10px;
-    background: rgba(0,0,0,0.75);
-    color: #0f0;
-    padding: 8px;
-    border-radius: 5px;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 14px;
+    bottom: 15px;
+    right: 15px;
+    background: rgba(20, 20, 25, 0.8);
+    backdrop-filter: blur(10px);
+    color: #50fa7b;
+    padding: 10px 15px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 13px;
     z-index: 10000;
-    pointer-events: none; /* So it doesn't block mouse events */
+    pointer-events: none;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+#debug-display:empty {
+    display: none;
+}
+
+/* Fix for scrollbar corner being black/white in some browsers */
+::-webkit-scrollbar-corner {
+    background: transparent;
 }
 
 .context-menu .has-submenu {
@@ -2683,14 +2707,17 @@ body.mobile-mode #editor-main-content.no-inspector {
     position: absolute;
     left: 100%;
     top: -5px; /* Adjust to align with parent */
-    background-color: var(--bg-tertiary);
+    background: rgba(25, 25, 30, 0.8);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
     /* Common styles for all submenus */
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    padding: 5px 0;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 8px 0;
     list-style: none;
-    min-width: 150px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    min-width: 200px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+    z-index: 60001;
     max-height: 90vh;
     overflow-y: auto;
     overflow-x: hidden;
@@ -4075,15 +4102,23 @@ body.mobile-mode #mobile-code-tools {
 /* --- Context Menu --- */
 .context-menu {
     position: absolute;
-    background-color: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    padding: 5px 0;
-    z-index: 2000;
+    background: rgba(20, 20, 25, 0.75);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 12px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+    padding: 8px 0;
+    z-index: 60000;
     max-height: 90vh;
     overflow-y: auto;
     overflow-x: hidden;
+    animation: context-menu-fade-in 0.15s ease-out;
+}
+
+@keyframes context-menu-fade-in {
+    from { opacity: 0; scale: 0.95; }
+    to { opacity: 1; scale: 1; }
 }
 
 .context-menu ul {
@@ -4098,8 +4133,7 @@ body.mobile-mode #mobile-code-tools {
 }
 
 .context-menu li:hover {
-    background-color: var(--accent-color);
-    color: white;
+    background: rgba(255, 255, 255, 0.1);
 }
 
 /* --- Custom Dialog Windows --- */
