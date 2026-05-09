@@ -50,21 +50,39 @@ function createWindow() {
                     <div class="vs-draggable-item" data-type="action" data-name="Crear Objeto">✨ Crear Objeto</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Destruir">🗑️ Destruir</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Reproducir Sonido">🎵 Reprod. Sonido</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Establecer Volumen">🔊 Establ. Volumen</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Imprimir">💬 Imprimir</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Esperar">⏳ Esperar</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Cargar Escena">🗺️ Cargar Escena</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Siguiente Escena">🔜 Sig. Escena</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Reiniciar Escena">🔄 Reiniciar Escena</div>
+                </div>
+                <div class="vs-toolbox-section">
+                    <h4>Física</h4>
+                    <div class="vs-draggable-item" data-type="action" data-name="Aplicar Fuerza">💥 Aplicar Fuerza</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Establecer Velocidad">🚀 Establ. Velocidad</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Raycast">📡 Raycast</div>
                 </div>
                 <div class="vs-toolbox-section">
                     <h4>Variables</h4>
                     <div class="vs-draggable-item" data-type="variable-decl" data-name="Crear Variable">📦 Crear Variable</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Asignar Variable">📝 Asignar Variable</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Operación Matemática">🧮 Operación Mat.</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Sumar a Variable">➕ Sumar a Var</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Establecer Global">🌎 Establecer Global</div>
                 </div>
                 <div class="vs-toolbox-section">
+                    <h4>Interfaz (UI)</h4>
+                    <div class="vs-draggable-item" data-type="action" data-name="Cambiar Texto">🔤 Cambiar Texto</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Cambiar Imagen">🖼️ Cambiar Imagen</div>
+                </div>
+                <div class="vs-toolbox-section">
                     <h4>Lógica</h4>
                     <div class="vs-draggable-item" data-type="action" data-name="Si">⚖️ Si (Condición)</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Repetir">🔁 Repetir (For)</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Mientras">♾️ Mientras (While)</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Si Tecla">⌨️ Si Tecla</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Número al Azar">🎲 Número al Azar</div>
                 </div>
                 <div class="vs-toolbox-section">
                     <h4>Funciones</h4>
@@ -124,10 +142,12 @@ function addBlock(type, name, x, y) {
         block.inputs.name = 'miVar';
         block.inputs.value = 0;
         block.inputs.scope = (name === 'Establecer Global') ? 'global' : 'local';
-    } else if (name === 'Si') {
+    } else if (name === 'Si' || name === 'Mientras') {
         block.inputs.var1 = 'miVar';
         block.inputs.op = '==';
         block.inputs.var2 = 10;
+    } else if (name === 'Repetir') {
+        block.inputs.times = 10;
     } else if (name === 'Si Tecla') {
         block.inputs.key = 'Space';
     } else if (name === 'Nueva Función' || name === 'Llamar Función') {
@@ -145,6 +165,27 @@ function addBlock(type, name, x, y) {
         block.inputs.y = 0;
     } else if (name === 'Reproducir Sonido') {
         block.inputs.sound = 'Assets/fx.wav';
+    } else if (name === 'Establecer Volumen') {
+        block.inputs.volume = 0.5;
+    } else if (name === 'Aplicar Fuerza' || name === 'Establecer Velocidad') {
+        block.inputs.x = 0;
+        block.inputs.y = -500;
+    } else if (name === 'Raycast') {
+        block.inputs.dirX = 1;
+        block.inputs.dirY = 0;
+        block.inputs.dist = 100;
+        block.inputs.resultVar = 'hit';
+    } else if (name === 'Número al Azar') {
+        block.inputs.name = 'miVar';
+        block.inputs.min = 1;
+        block.inputs.max = 10;
+    } else if (name === 'Operación Matemática') {
+        block.inputs.name = 'miVar';
+        block.inputs.op = '+';
+        block.inputs.value = 1;
+    } else if (name === 'Cambiar Texto') {
+        block.inputs.target = 'TextoPuntaje';
+        block.inputs.text = 'Score: 0';
     }
 
     blocks.push(block);
@@ -188,7 +229,49 @@ function renderBlock(block) {
     } else if (block.name === 'Reproducir Sonido') {
         inputsHtml = `<input type="text" value="${block.inputs.sound || ''}" placeholder="Ruta..." onchange="window.vs_updateInput('${block.id}', 'sound', this.value)">`;
     } else if (block.name === 'Cargar Escena') {
-        inputsHtml = `<input type="text" value="${block.inputs.scene || ''}" placeholder="nombre.ceScene" onchange="window.vs_updateInput('${block.id}', 'scene', this.value)">`;
+        inputsHtml = `<input type="text" value="${block.inputs.scene || ''}" placeholder="nombre o index" onchange="window.vs_updateInput('${block.id}', 'scene', this.value)">`;
+    } else if (block.name === 'Establecer Volumen') {
+        inputsHtml = `<input type="range" min="0" max="1" step="0.1" value="${block.inputs.volume}" onchange="window.vs_updateInput('${block.id}', 'volume', this.value)">`;
+    } else if (block.name === 'Aplicar Fuerza' || block.name === 'Establecer Velocidad') {
+        inputsHtml = `
+            X: <input type="number" value="${block.inputs.x}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'x', this.value)">
+            Y: <input type="number" value="${block.inputs.y}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'y', this.value)">
+        `;
+    } else if (block.name === 'Número al Azar') {
+        inputsHtml = `
+            Var: <input type="text" value="${block.inputs.name}" style="width:50px" onchange="window.vs_updateInput('${block.id}', 'name', this.value)">
+            Min: <input type="number" value="${block.inputs.min}" style="width:30px" onchange="window.vs_updateInput('${block.id}', 'min', this.value)">
+            Max: <input type="number" value="${block.inputs.max}" style="width:30px" onchange="window.vs_updateInput('${block.id}', 'max', this.value)">
+        `;
+    } else if (block.name === 'Raycast') {
+        inputsHtml = `
+            Dist: <input type="number" value="${block.inputs.dist}" style="width:35px" onchange="window.vs_updateInput('${block.id}', 'dist', this.value)">
+            Var: <input type="text" value="${block.inputs.resultVar}" style="width:45px" onchange="window.vs_updateInput('${block.id}', 'resultVar', this.value)">
+        `;
+    } else if (block.name === 'Operación Matemática') {
+        inputsHtml = `
+            <input type="text" value="${block.inputs.name}" style="width:50px" onchange="window.vs_updateInput('${block.id}', 'name', this.value)">
+            <select onchange="window.vs_updateInput('${block.id}', 'op', this.value)">
+                <option value="+" ${block.inputs.op === '+' ? 'selected' : ''}>+</option>
+                <option value="-" ${block.inputs.op === '-' ? 'selected' : ''}>-</option>
+                <option value="*" ${block.inputs.op === '*' ? 'selected' : ''}>*</option>
+                <option value="/" ${block.inputs.op === '/' ? 'selected' : ''}>/</option>
+                <option value="Seno" ${block.inputs.op === 'Seno' ? 'selected' : ''}>Seno</option>
+                <option value="Coseno" ${block.inputs.op === 'Coseno' ? 'selected' : ''}>Coseno</option>
+                <option value="Distancia" ${block.inputs.op === 'Distancia' ? 'selected' : ''}>Distancia</option>
+            </select>
+            <input type="text" value="${block.inputs.value}" style="width:30px" onchange="window.vs_updateInput('${block.id}', 'value', this.value)">
+        `;
+    } else if (block.name === 'Cambiar Texto') {
+        inputsHtml = `
+            Obj: <input type="text" value="${block.inputs.target}" style="width:60px" onchange="window.vs_updateInput('${block.id}', 'target', this.value)">
+            Txt: <input type="text" value="${block.inputs.text}" style="width:60px" onchange="window.vs_updateInput('${block.id}', 'text', this.value)">
+        `;
+    } else if (block.name === 'Cambiar Imagen') {
+        inputsHtml = `
+            Obj: <input type="text" value="${block.inputs.target}" style="width:60px" onchange="window.vs_updateInput('${block.id}', 'target', this.value)">
+            Img: <input type="text" value="${block.inputs.image}" style="width:60px" onchange="window.vs_updateInput('${block.id}', 'image', this.value)">
+        `;
     } else if (block.name === 'Crear Variable' || block.name === 'Asignar Variable' || block.name === 'Sumar a Variable' || block.name === 'Establecer Global') {
         const scopeOptions = block.name === 'Crear Variable' ? '' : `
             <select onchange="window.vs_updateInput('${block.id}', 'scope', this.value)">
@@ -203,7 +286,7 @@ function renderBlock(block) {
         `;
     } else if (block.name === 'Nueva Función' || block.name === 'Llamar Función') {
         inputsHtml = `Nombre: <input type="text" value="${block.inputs.name}" style="width:80px" onchange="window.vs_updateInput('${block.id}', 'name', this.value)">`;
-    } else if (block.name === 'Si') {
+    } else if (block.name === 'Si' || block.name === 'Mientras') {
         inputsHtml = `
             <input type="text" value="${block.inputs.var1}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'var1', this.value)">
             <select onchange="window.vs_updateInput('${block.id}', 'op', this.value)">
@@ -214,13 +297,15 @@ function renderBlock(block) {
             </select>
             <input type="text" value="${block.inputs.var2}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'var2', this.value)">
         `;
+    } else if (block.name === 'Repetir') {
+        inputsHtml = `Veces: <input type="number" value="${block.inputs.times}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'times', this.value)">`;
     } else if (block.name === 'Si Tecla') {
         inputsHtml = `<input type="text" value="${block.inputs.key}" style="width:60px" onchange="window.vs_updateInput('${block.id}', 'key', this.value)">`;
     }
 
     let branchHtml = '';
-    if (block.name === 'Si' || block.name === 'Si Tecla') {
-        branchHtml = `<div class="vs-block-connector-branch" title="Si se cumple" onclick="window.vs_startConnection('${block.id}', 'branch')">🌿</div>`;
+    if (block.name === 'Si' || block.name === 'Si Tecla' || block.name === 'Mientras' || block.name === 'Repetir') {
+        branchHtml = `<div class="vs-block-connector-branch" title="Cuerpo del bucle/condición" onclick="window.vs_startConnection('${block.id}', 'branch')">🌿</div>`;
     }
 
     el.innerHTML = `

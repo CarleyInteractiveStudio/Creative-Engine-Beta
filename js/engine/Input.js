@@ -543,7 +543,13 @@ class InputManager {
     }
 
     static _onTouchMove(event) {
-        event.preventDefault();
+        // Only prevent default if we are NOT scrolling a UI panel
+        if (event.target.closest('.panel-content')) {
+            // Let the UI scroll naturally
+        } else {
+            event.preventDefault();
+        }
+
         if (event.touches.length > 0) {
             const touch = event.touches[0];
             const canvas = event.currentTarget;

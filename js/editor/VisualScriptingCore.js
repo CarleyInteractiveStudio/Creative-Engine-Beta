@@ -115,8 +115,17 @@ export class VisualScriptingCore {
                 }
                 return `variable _snd = obtenerComponente("AudioSource"); si (_snd) { _snd.reproducir(); }`;
 
+            case 'Establecer Volumen':
+                return `variable _snd = obtenerComponente("AudioSource"); si (_snd) { _snd.volume = ${inputs.volume || 1}; }`;
+
             case 'Cargar Escena':
                 return `cargarEscena("${inputs.scene || ''}");`;
+
+            case 'Siguiente Escena':
+                return `cargarSiguienteEscena();`;
+
+            case 'Reiniciar Escena':
+                return `reiniciarEscena();`;
 
             case 'Asignar Variable':
                 if (inputs.scope === 'global') {
@@ -133,11 +142,47 @@ export class VisualScriptingCore {
             case 'Llamar Función':
                 return `${inputs.name}();`;
 
+            case 'Aplicar Fuerza':
+                return `si (obtenerComponente("Rigidbody2D")) { obtenerComponente("Rigidbody2D").aplicarFuerza(${inputs.x || 0}, ${inputs.y || 0}); }`;
+
+            case 'Establecer Velocidad':
+                return `si (obtenerComponente("Rigidbody2D")) { obtenerComponente("Rigidbody2D").establecerVelocidad(${inputs.x || 0}, ${inputs.y || 0}); }`;
+
+            case 'Número al Azar':
+                return `${inputs.name} = azar(${inputs.min || 0}, ${inputs.max || 100});`;
+
+            case 'Operación Matemática':
+                if (inputs.op === 'Seno') return `${inputs.name} = seno(${this.formatValue(inputs.value)});`;
+                if (inputs.op === 'Coseno') return `${inputs.name} = coseno(${this.formatValue(inputs.value)});`;
+                if (inputs.op === 'Distancia') return `${inputs.name} = distancia(posicion.x, posicion.y, ${this.formatValue(inputs.value)}.x, ${this.formatValue(inputs.value)}.y);`;
+                return `${inputs.name} ${inputs.op || '+='} ${this.formatValue(inputs.value)};`;
+
+            case 'Raycast':
+                return `variable ${inputs.resultVar || 'hit'} = raycast(posicion.x, posicion.y, ${inputs.dirX || 1}, ${inputs.dirY || 0}, ${inputs.dist || 100});`;
+
+            case 'Cambiar Texto':
+                return `variable _txtObj = buscarMateria("${inputs.target}"); si (_txtObj) { variable _txtComp = _txtObj.obtenerComponente("UIText"); si (_txtComp) { _txtComp.text = "${inputs.text}"; } }`;
+
+            case 'Cambiar Imagen':
+                return `variable _imgObj = buscarMateria("${inputs.target}"); si (_imgObj) { variable _imgComp = _imgObj.obtenerComponente("UIImage"); si (_imgComp) { await _imgComp.setImagePath("${inputs.image}"); } }`;
+
             case 'Si':
                 let ifCode = `si (${inputs.var1} ${inputs.op || '=='} ${this.formatValue(inputs.var2)}) {\n`;
                 ifCode += this.generateBlockChain(action.branchId, data, indent + "    ");
                 ifCode += `${indent}}`;
                 return ifCode;
+
+            case 'Repetir':
+                let forCode = `para (variable i = 0; i < ${inputs.times || 10}; i += 1) {\n`;
+                forCode += this.generateBlockChain(action.branchId, data, indent + "    ");
+                forCode += `${indent}}`;
+                return forCode;
+
+            case 'Mientras':
+                let whileCode = `mientras (${inputs.var1} ${inputs.op || '=='} ${this.formatValue(inputs.var2)}) {\n`;
+                whileCode += this.generateBlockChain(action.branchId, data, indent + "    ");
+                whileCode += `${indent}}`;
+                return whileCode;
 
             case 'Si Tecla':
                 let ifKey = `si (tecla("${inputs.key || 'Space'}")) {\n`;

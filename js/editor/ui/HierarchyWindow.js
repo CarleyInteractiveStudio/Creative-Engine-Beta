@@ -17,7 +17,8 @@ import {
     createTerrenoObject, createAudioObject, createVideoObject, createWaterObject,
     createLineColliderObject, createProgressBarObject, createCombatantObject, createScrollViewObject,
     createCubeObject, createSphereObject, createCapsule3DObject, createPlane3DObject, createTriangle3DObject,
-    createDirectionalLight3D, createPointLight3D, createSpotLight3D
+    createDirectionalLight3D, createPointLight3D, createSpotLight3D,
+    createMovementUITemplate, createMainMenuTemplate, createLevelManagerTemplate
 } from '../MateriaFactory.js';
 import { broadcastUpdate } from '../CollaborationSystem.js';
 
@@ -460,6 +461,17 @@ export function handleContextMenuAction(action) {
             break;
         case 'create-spot-light-3d':
             newMateria = createSpotLight3D(selectedMateria);
+            break;
+
+        // --- Templates ---
+        case 'template-ui-movement':
+            newMateria = createMovementUITemplate();
+            break;
+        case 'template-main-menu':
+            newMateria = createMainMenuTemplate();
+            break;
+        case 'template-level-manager':
+            newMateria = createLevelManagerTemplate();
             break;
 
         case 'create-ui-health-bar':

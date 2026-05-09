@@ -109,3 +109,33 @@ const sceneAPI = {
 export function getAPIs() {
     return sceneAPI;
 }
+
+/**
+ * Carga la escena siguiente en la lista de escenas del proyecto.
+ */
+async function loadNextScene() {
+    const config = window.currentProjectConfig;
+    if (!config || !config.scenes) return;
+
+    const currentPath = SceneManager.currentScenePath;
+    const currentIndex = config.scenes.indexOf(currentPath);
+
+    if (currentIndex !== -1 && currentIndex < config.scenes.length - 1) {
+        return SceneManager.loadSceneByPath(config.scenes[currentIndex + 1]);
+    }
+}
+
+/**
+ * Reinicia la escena actual.
+ */
+async function restartScene() {
+    return SceneManager.loadSceneByPath(SceneManager.currentScenePath);
+}
+
+// Actualizar el objeto API (se exporta como referencia, así que mutamos la const si es posible o añadimos al objeto exportado)
+Object.assign(sceneAPI, {
+    loadNextScene,
+    restartScene,
+    cargarSiguienteEscena: loadNextScene,
+    reiniciarEscena: restartScene
+});

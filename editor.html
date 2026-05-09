@@ -1048,6 +1048,14 @@ public star() {
                         </ul>
                     </li>
                     <li class="has-submenu">
+                        <span data-i18n="SISTEMAS">Sistemas Inteligentes</span> <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
+                        <ul class="submenu">
+                            <li data-action="template-ui-movement" data-i18n="UI_MOVIMIENTO">UI de Movimiento (Joystick/Botones)</li>
+                            <li data-action="template-main-menu" data-i18n="MENU_PRINCIPAL">Menú Principal (Auto-configurado)</li>
+                            <li data-action="template-level-manager" data-i18n="GESTOR_NIVELES">Gestor de Niveles (Carga Auto)</li>
+                        </ul>
+                    </li>
+                    <li class="has-submenu">
                         <span data-i18n="LUZ">Luz</span> <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
                         <ul class="submenu">
                             <li class="menu-divider-label only-2d">2D</li>
@@ -1334,11 +1342,21 @@ public star() {
                         <label for="settings-cpu-limit" data-i18n="LIMITE_CPU">Límite de CPU (%)</label>
                         <input type="number" id="settings-cpu-limit" min="10" max="100" value="100">
                     </div>
-                    <p class="field-description">Define el límite de memoria para el motor. Si se supera el 80%, el motor intentará liberar recursos no utilizados. <b>Nota:</b> Los navegadores suelen limitar cada pestaña a 4GB (4096MB); si aumentas este valor y la pestaña se cierra, es una restricción del navegador, no un error del motor.</p>
-                    <hr>
                     <div class="inspector-row">
-                        <button id="settings-optimize-mem-btn" class="secondary-btn" style="width: 100%;" data-i18n="OPTIMIZAR_MEMORIA_AHORA">Optimizar Memoria Ahora</button>
+                        <label for="settings-net-limit" data-i18n="LIMITE_RED">Límite de Red (MB)</label>
+                        <input type="number" id="settings-net-limit" min="0" value="0" placeholder="0 = Sin límite">
                     </div>
+                    <div class="inspector-row">
+                        <label for="settings-slow-net" data-i18n="MODO_RED_LENTA">Optimizar para Red Lenta</label>
+                        <input type="checkbox" id="settings-slow-net">
+                    </div>
+                    <p class="field-description">Define el límite de memoria y red para el motor. Si se supera el 80% de RAM, el motor intentará liberar recursos. El límite de red avisará cuando se consuma más internet de lo permitido.</p>
+                    <hr>
+                    <div class="inspector-row" style="gap: 5px;">
+                        <button id="settings-optimize-mem-btn" class="secondary-btn" style="flex: 1;" data-i18n="OPTIMIZAR_MEMORIA_AHORA">Optimizar Memoria</button>
+                        <button id="settings-clear-cache-btn" class="danger-btn" style="flex: 1;" data-i18n="LIMPIAR_CACHE">Limpiar Caché</button>
+                    </div>
+                    <p id="settings-cache-status" class="field-description" style="text-align: center; margin-top: 5px;">Caché: Calculando...</p>
                 </fieldset>
 
                 <fieldset class="settings-section">

@@ -3,7 +3,7 @@
 
 import { Leyes } from './Leyes.js';
 import { registerComponent } from './ComponentRegistry.js';
-import { getURLForAssetPath, getFileHandleForPath } from './AssetUtils.js';
+import { getURLForAssetPath, getFileHandleForPath, recordFetch } from './AssetUtils.js';
 import { InputManager } from './Input.js';
 import * as RuntimeAPIManager from './RuntimeAPIManager.js';
 import * as PerformanceAPI from './PerformanceAPI.js';
@@ -1804,6 +1804,7 @@ export class SpriteRenderer extends Leyes {
             if (!url) throw new Error('Could not get URL for .ceSprite asset');
 
             const response = await fetch(url);
+            if (typeof recordFetch === 'function') await recordFetch(response);
             this.spriteSheet = await response.json();
 
             // Set source from the sheet and load the actual image
@@ -1985,6 +1986,7 @@ export class Animator extends Leyes {
             if (!url) throw new Error(`Could not get URL for animation clip: ${this.animationClipPath}`);
 
             const response = await fetch(url);
+            if (typeof recordFetch === 'function') await recordFetch(response);
             const data = await response.json();
 
             // Handle both .cea and .ceanimclip formats
@@ -2032,6 +2034,7 @@ export class Animator extends Leyes {
                                     try {
                                         const sheetUrl = await getURLForAssetPath(assetPath, projectsDirHandle);
                                         const sheetRes = await fetch(sheetUrl);
+                                        if (typeof recordFetch === 'function') await recordFetch(sheetRes);
                                         sheet = await sheetRes.json();
                                         spritesheetCache.set(assetPath, sheet);
                                     } catch (e) {

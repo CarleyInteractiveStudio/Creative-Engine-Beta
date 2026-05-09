@@ -42,6 +42,12 @@ export class PerformanceMonitor {
         }
 
         console.log(`[PerformanceMonitor] Config updated: MaxFPS=${this.targetMaxFps}, ForceFPS=${this.forceFps}, MinFPS=${this.targetMinFps}`);
+
+        if (config.slowNetMode) {
+            console.log(`[PerformanceMonitor] Slow connection mode active. Increasing default optimization.`);
+            this.optimizationLevel = Math.max(this.optimizationLevel, 1);
+            this.applyOptimization();
+        }
     }
 
     recordFrame(dt) {
