@@ -306,6 +306,17 @@ EDITOR_SPRITES: Sprites
 CONTROL_AMBIENTE: Ambiente
 EDITOR_PARTICULAS: Editor de Partículas
 SCRIPTING_VISUAL: Scripting Visual
+VARIABLES: Variables
+LOGICA: Lógica
+FUNCIONES: Funciones
+CREAR_VARIABLE: Crear Variable
+ASIGNAR_VARIABLE: Asignar Variable
+SUMAR_VARIABLE: Sumar a Var
+ESTABLECER_GLOBAL: Establecer Global
+SI_CONDICION: Si (Condición)
+NUEVA_FUNCION: Nueva Función
+LLAMAR_FUNCION: Llamar Función
+VARIABLES_ACTIVAS: Variables Activas
 PS_SELECT_HINT: Selecciona una Materia con Sistema de Partículas para empezar.
 FUEGO: Fuego
 HUMO: Humo
@@ -946,6 +957,17 @@ EDITOR_SPRITES: Sprites
 CONTROL_AMBIENTE: Environment
 EDITOR_PARTICULAS: Particle Editor
 SCRIPTING_VISUAL: Visual Scripting
+VARIABLES: Variables
+LOGICA: Logic
+FUNCIONES: Functions
+CREAR_VARIABLE: Create Variable
+ASIGNAR_VARIABLE: Assign Variable
+SUMAR_VARIABLE: Add to Var
+ESTABLECER_GLOBAL: Set Global
+SI_CONDICION: If (Condition)
+NUEVA_FUNCION: New Function
+LLAMAR_FUNCION: Call Function
+VARIABLES_ACTIVAS: Active Variables
 PS_SELECT_HINT: Select a Matter with a Particle System to start.
 FUEGO: Fire
 HUMO: Smoke
@@ -1528,7 +1550,18 @@ EDITOR_SPRITES: Editor de Sprites
 CONTROL_AMBIENTE: Control de Ambiente
 EDITOR_PARTICULAS: Editor de Partículas
 SCRIPTING_VISUAL: Scripting Visual
-PS_SELECT_HINT: Selecione una Matéria com Sistema de Partículas para começar.
+VARIABLES: Variáveis
+LOGICA: Lógica
+FUNCIONES: Funções
+CREAR_VARIABLE: Criar Variável
+ASIGNAR_VARIABLE: Atribuir Variável
+SUMAR_VARIABLE: Somar à Var
+ESTABLECER_GLOBAL: Definir Global
+SI_CONDICION: Se (Condição)
+NUEVA_FUNCION: Nova Função
+LLAMAR_FUNCION: Chamar Função
+VARIABLES_ACTIVAS: Variáveis Ativas
+PS_SELECT_HINT: Selecione uma Matéria com Sistema de Partículas para começar.
 FUEGO: Fogo
 HUMO: Fumaça
 EXPLOSION: Explosão

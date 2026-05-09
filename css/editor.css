@@ -5471,7 +5471,7 @@ body.game-mode #loading-overlay {
 .event-block { border-left-color: #f39c12; }
 .action-block { border-left-color: #3498db; }
 
-.vs-block-connector-out, .vs-block-connector-in {
+.vs-block-connector-out, .vs-block-connector-in, .vs-block-connector-branch {
     position: absolute;
     width: 12px;
     height: 12px;
@@ -5485,6 +5485,35 @@ body.game-mode #loading-overlay {
 .vs-block-connector-in {
     left: -6px;
     background-color: #27ae60;
+}
+
+.vs-block-connector-branch {
+    background-color: #4caf50;
+    top: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    color: white;
+}
+
+.variable-decl-block { border-left-color: #f3ca58; }
+.function-decl-block { border-left-color: #9c27b0; }
+
+.vs-var-chip {
+    background: #f3ca58;
+    color: #000;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin: 2px;
+    display: inline-block;
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.vs-block-connector-branch:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 5px #4caf50;
 }
 
 .vs-block-delete {

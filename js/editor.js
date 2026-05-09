@@ -35,6 +35,7 @@ import { initialize as initializeLibraryWindow } from './editor/ui/LibraryWindow
 import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
 import * as ParticleEditorWindow from './editor/ui/ParticleEditorWindow.js';
 import * as VisualScriptingWindow from './editor/ui/VisualScriptingWindow.js';
+import { VisualScriptingCore } from './editor/VisualScriptingCore.js';
 import { TerrenoEditorWindow } from './editor/ui/TerrenoEditorWindow.js';
 import * as EngineAPI from './engine/EngineAPI.js';
 import { getCustomComponentDefinitions } from './editor/EngineAPIExtension.js';
@@ -4353,6 +4354,8 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado
         window.CES_Transpiler = CES_Transpiler;
         window.getSelectedMateria = () => selectedMateria;
         window.ParticleEditorWindow = ParticleEditorWindow;
+        window.VisualScriptingCore = VisualScriptingCore;
+        window.RuntimeAPIManager = RuntimeAPIManager;
         window.TerrenoEditorWindow = TerrenoEditorWindow;
         window.AnimationEditorWindow = AnimationEditorWindow;
         window.TilePalette = TilePalette;

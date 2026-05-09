@@ -45,8 +45,29 @@ function createWindow() {
                     <div class="vs-draggable-item" data-type="action" data-name="Destruir">🗑️ Destruir</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Imprimir">💬 Imprimir</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Esperar">⏳ Esperar</div>
-                    <div class="vs-draggable-item" data-type="action" data-name="Reproducir Sonido">🎵 Reproducir Sonido</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Cargar Escena">🗺️ Cargar Escena</div>
+                </div>
+                <div class="vs-toolbox-section">
+                    <h4>Variables</h4>
+                    <div class="vs-draggable-item" data-type="variable-decl" data-name="Crear Variable">📦 Crear Variable</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Asignar Variable">📝 Asignar Variable</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Sumar a Variable">➕ Sumar a Var</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Establecer Global">🌎 Establecer Global</div>
+                </div>
+                <div class="vs-toolbox-section">
+                    <h4>Lógica</h4>
+                    <div class="vs-draggable-item" data-type="action" data-name="Si">⚖️ Si (Condición)</div>
+                </div>
+                <div class="vs-toolbox-section">
+                    <h4>Funciones</h4>
+                    <div class="vs-draggable-item" data-type="function-decl" data-name="Nueva Función">🛠️ Nueva Función</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Llamar Función">📞 Llamar Función</div>
+                </div>
+                <div class="vs-toolbox-section">
+                    <h4>Variables Activas</h4>
+                    <div id="vs-active-vars-list" style="font-size: 0.85em; opacity: 0.8; padding: 5px;">
+                        Ninguna
+                    </div>
                 </div>
             </div>
             <div id="vs-workspace">
@@ -88,7 +109,21 @@ function setupWorkspace() {
 
 function addBlock(type, name, x, y) {
     const id = 'block-' + Date.now();
-    const block = { id, type, name, x, y, inputs: {}, nextBlockId: null };
+    const block = { id, type, name, x, y, inputs: {}, nextBlockId: null, branchId: null };
+
+    // Default inputs for new blocks
+    if (name === 'Crear Variable' || name === 'Asignar Variable' || name === 'Sumar a Variable' || name === 'Establecer Global') {
+        block.inputs.name = 'miVar';
+        block.inputs.value = 0;
+        block.inputs.scope = (name === 'Establecer Global') ? 'global' : 'local';
+    } else if (name === 'Si') {
+        block.inputs.var1 = 'miVar';
+        block.inputs.op = '==';
+        block.inputs.var2 = 10;
+    } else if (name === 'Nueva Función' || name === 'Llamar Función') {
+        block.inputs.name = 'miFuncion';
+    }
+
     blocks.push(block);
     renderBlock(block);
     document.getElementById('vs-workspace-hint').style.display = 'none';
@@ -114,13 +149,44 @@ function renderBlock(block) {
         `;
     } else if (block.name === 'Cargar Escena') {
         inputsHtml = `<input type="text" placeholder="nombre.ceScene" onchange="window.vs_updateInput('${block.id}', 'scene', this.value)">`;
+    } else if (block.name === 'Crear Variable' || block.name === 'Asignar Variable' || block.name === 'Sumar a Variable' || block.name === 'Establecer Global') {
+        const scopeOptions = block.name === 'Crear Variable' ? '' : `
+            <select onchange="window.vs_updateInput('${block.id}', 'scope', this.value)">
+                <option value="local" ${block.inputs.scope === 'local' ? 'selected' : ''}>Local</option>
+                <option value="global" ${block.inputs.scope === 'global' ? 'selected' : ''}>Global</option>
+            </select>
+        `;
+        inputsHtml = `
+            ${scopeOptions}
+            N: <input type="text" value="${block.inputs.name}" style="width:50px" onchange="window.vs_updateInput('${block.id}', 'name', this.value)">
+            V: <input type="text" value="${block.inputs.value}" style="width:30px" onchange="window.vs_updateInput('${block.id}', 'value', this.value)">
+        `;
+    } else if (block.name === 'Nueva Función' || block.name === 'Llamar Función') {
+        inputsHtml = `Nombre: <input type="text" value="${block.inputs.name}" style="width:80px" onchange="window.vs_updateInput('${block.id}', 'name', this.value)">`;
+    } else if (block.name === 'Si') {
+        inputsHtml = `
+            <input type="text" value="${block.inputs.var1}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'var1', this.value)">
+            <select onchange="window.vs_updateInput('${block.id}', 'op', this.value)">
+                <option value="==">==</option>
+                <option value=">">&gt;</option>
+                <option value="<">&lt;</option>
+                <option value="!=">!=</option>
+            </select>
+            <input type="text" value="${block.inputs.var2}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'var2', this.value)">
+        `;
+    }
+
+    let branchHtml = '';
+    if (block.name === 'Si') {
+        branchHtml = `<div class="vs-block-connector-branch" title="Si se cumple" onclick="window.vs_startConnection('${block.id}', 'branch')">🌿</div>`;
     }
 
     el.innerHTML = `
         <div class="vs-block-header">${block.name}</div>
         <div class="vs-block-body">${inputsHtml}</div>
-        <div class="vs-block-connector-out" onclick="window.vs_startConnection('${block.id}')"></div>
-        <div class="vs-block-connector-in" onclick="window.vs_endConnection('${block.id}')"></div>
+        <div class="vs-block-connector-out" title="Siguiente" onclick="window.vs_startConnection('${block.id}', 'next')"></div>
+        ${branchHtml}
+        <div class="vs-block-connector-in" title="Anterior" onclick="window.vs_endConnection('${block.id}')"></div>
         <div class="vs-block-delete" onclick="window.vs_deleteBlock('${block.id}')">&times;</div>
     `;
 
@@ -153,14 +219,33 @@ function renderBlock(block) {
 }
 
 let connectionSourceId = null;
+let connectionType = 'next'; // 'next' or 'branch'
 
 window.vs_updateInput = (blockId, key, value) => {
     const block = blocks.find(b => b.id === blockId);
-    if (block) block.inputs[key] = value;
+    if (block) {
+        block.inputs[key] = value;
+        if (key === 'name' && (block.type === 'variable-decl' || block.type === 'action')) {
+            updateActiveVarsList();
+        }
+    }
 };
 
-window.vs_startConnection = (id) => {
+function updateActiveVarsList() {
+    const list = document.getElementById('vs-active-vars-list');
+    if (!list) return;
+
+    const vars = blocks.filter(b => b.type === 'variable-decl').map(b => b.inputs.name);
+    if (vars.length === 0) {
+        list.innerHTML = 'Ninguna';
+    } else {
+        list.innerHTML = [...new Set(vars)].map(v => `<div class="vs-var-chip">${v}</div>`).join('');
+    }
+}
+
+window.vs_startConnection = (id, type = 'next') => {
     connectionSourceId = id;
+    connectionType = type;
     document.getElementById('vs-workspace').classList.add('connecting');
 };
 
@@ -169,7 +254,11 @@ window.vs_endConnection = (id) => {
 
     const source = blocks.find(b => b.id === connectionSourceId);
     if (source) {
-        source.nextBlockId = id;
+        if (connectionType === 'branch') {
+            source.branchId = id;
+        } else {
+            source.nextBlockId = id;
+        }
         updateConnections();
     }
 
@@ -179,10 +268,14 @@ window.vs_endConnection = (id) => {
 
 window.vs_deleteBlock = (id) => {
     blocks = blocks.filter(b => b.id !== id);
-    blocks.forEach(b => { if (b.nextBlockId === id) b.nextBlockId = null; });
+    blocks.forEach(b => {
+        if (b.nextBlockId === id) b.nextBlockId = null;
+        if (b.branchId === id) b.branchId = null;
+    });
     const el = document.getElementById(id);
     if (el) el.remove();
     updateConnections();
+    updateActiveVarsList();
 };
 
 function updateConnections() {
@@ -191,20 +284,26 @@ function updateConnections() {
 
     blocks.forEach(block => {
         if (block.nextBlockId) {
-            const target = blocks.find(b => b.id === block.nextBlockId);
-            if (target) {
-                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                // Estimating connector positions
-                line.setAttribute('x1', block.x + 180);
-                line.setAttribute('y1', block.y + 30);
-                line.setAttribute('x2', target.x);
-                line.setAttribute('y2', target.y + 30);
-                line.setAttribute('stroke', '#0e639c');
-                line.setAttribute('stroke-width', '3');
-                svg.appendChild(line);
-            }
+            drawConnection(block.x + 180, block.y + 30, block.nextBlockId, '#0e639c');
+        }
+        if (block.branchId) {
+            drawConnection(block.x + 180, block.y + 60, block.branchId, '#4caf50');
         }
     });
+
+    function drawConnection(x1, y1, targetId, color) {
+        const target = blocks.find(b => b.id === targetId);
+        if (target) {
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', x1);
+            line.setAttribute('y1', y1);
+            line.setAttribute('x2', target.x);
+            line.setAttribute('y2', target.y + 30);
+            line.setAttribute('stroke', color);
+            line.setAttribute('stroke-width', '3');
+            svg.appendChild(line);
+        }
+    }
 }
 
 async function applyLogic() {
