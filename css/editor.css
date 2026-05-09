@@ -136,8 +136,8 @@ body.mobile-mode .menu-btn {
     z-index: 60000;
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
     margin-top: 8px;
-    overflow-y: auto;
-    max-height: 80vh;
+    overflow: visible !important; /* Force submenu visibility */
+    max-height: none !important; /* Prevent scrollbar clipping */
     animation: menu-fade-in 0.2s ease-out;
 }
 
@@ -2756,9 +2756,8 @@ body.mobile-mode #editor-main-content.no-inspector {
     min-width: 200px;
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
     z-index: 60001;
-    max-height: 90vh;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: visible !important; /* Force visibility for nested submenus */
+    max-height: none !important;
 }
 
 .context-menu .submenu.submenu-up {
@@ -4148,9 +4147,8 @@ body.mobile-mode #mobile-code-tools {
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
     padding: 8px 0;
     z-index: 60000;
-    max-height: 90vh;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: visible !important; /* Prevent submenu clipping */
+    max-height: none !important;
     animation: context-menu-fade-in 0.15s ease-out;
 }
 

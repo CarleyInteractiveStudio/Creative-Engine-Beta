@@ -2792,14 +2792,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Final safety check: ensure top is not negative (menu taller than window)
-        if (top < 5 || menuHeight > windowHeight - 10) {
-            if (top < 5) top = 5;
-            menu.style.maxHeight = `${windowHeight - (top + 10)}px`;
-            menu.style.overflowY = 'auto';
-        } else {
-            menu.style.maxHeight = ''; // Reset if it fits
-            menu.style.overflowY = '';
-        }
+        // Removed maxHeight and overflow auto to prevent submenu clipping.
+        // The menu will now be allowed to extend, and CSS handles core visibility.
+        if (top < 5) top = 5;
+        menu.style.maxHeight = '';
+        menu.style.overflowY = 'visible';
+        menu.style.overflowX = 'visible';
 
         menu.style.left = `${left}px`;
         menu.style.top = `${top}px`;
@@ -3086,12 +3084,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Set initial fixed style
                 submenu.style.position = 'fixed';
-                submenu.style.maxHeight = ''; // Reset to calculate scrollHeight
-                submenu.style.overflowY = '';
+                submenu.style.display = 'block'; // Temporarily show to measure
 
                 const parentRect = e.currentTarget.getBoundingClientRect();
-                const submenuHeight = submenu.scrollHeight;
-                const submenuWidth = submenu.offsetWidth || 180;
+                const submenuHeight = submenu.offsetHeight; // offsetHeight is more reliable for display:block
+                const submenuWidth = submenu.offsetWidth || 200;
                 const windowWidth = window.innerWidth;
                 const windowHeight = window.innerHeight;
 
@@ -3106,22 +3103,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // 2. Vertical Positioning (Adjust if it exceeds bottom)
+                // If it still doesn't fit, we allow it to be at most as tall as the window
+                // but we must NOT use overflow auto/hidden because it clips nested submenus.
                 if (top + submenuHeight > windowHeight - 10) {
                     top = windowHeight - submenuHeight - 10;
-
-                    // If still too tall, use scrolling
-                    if (top < 5) {
-                        top = 5;
-                        submenu.style.maxHeight = `${windowHeight - 20}px`;
-                        submenu.style.overflowY = 'auto';
-                        submenu.style.overflowX = 'hidden';
-                    }
-                } else if (top < 5) {
-                    top = 5;
                 }
 
+                if (top < 5) top = 5;
+
+                // Clean up styles and ensure visibility
+                submenu.style.maxHeight = 'none';
+                submenu.style.overflow = 'visible';
                 submenu.style.left = `${left}px`;
                 submenu.style.top = `${top}px`;
+                submenu.style.display = ''; // Let CSS :hover take over
             });
         });
 
