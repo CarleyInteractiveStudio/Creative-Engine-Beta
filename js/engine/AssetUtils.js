@@ -113,7 +113,7 @@ export async function getURLForAssetPath(path, projectsDirHandle) {
 
                 if (!criticalExts.includes(ext)) {
                     // Si no es crítico, añadimos una pequeña espera para no saturar la red
-                    await new Promise(r => setTimeout(resolve, 100));
+                    await new Promise(r => setTimeout(r, 100));
                 }
             }
 

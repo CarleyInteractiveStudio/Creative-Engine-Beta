@@ -39,7 +39,7 @@ const availableComponents = {
     'CAT_CAMARA': [Components.Camera],
     'CAT_3D': ['MeshRenderer3D', 'Rigidbody3D', 'BoxCollider3D', 'SphereCollider3D', 'DirectionalLight3D', 'PointLight3D', 'SpotLight3D'],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
-    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Attack, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.Suspension, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController, Components.SceneLoader],
+    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Attack, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.Suspension, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController, Components.SceneLoader, Components.Inventario, Components.SistemaDialogos, Components.GestorMisiones],
     'CAT_SCRIPTING': [Components.CreativeScript]
 };
 
@@ -55,6 +55,9 @@ const componentIcons = {
     Movement: 'run', CameraFollow: 'video', Parallax: 'mountain-snow', DrawingOrder: 'layers', ProjectileLauncher: 'rocket', AutoDestroy: 'timer', Health: 'heart', Attack: 'target', Patrol: 'route',
     Water: 'bucket', LineCollider2D: 'route', ProgressBar: 'maximize',
     'ParticleSystem': 'sparkles',
+    'Inventario': 'briefcase',
+    'SistemaDialogos': 'message-circle',
+    'GestorMisiones': 'scroll',
     'Gyzmo': 'target',
     'RaycastSource': 'route',
     'BasicAI': 'bot',

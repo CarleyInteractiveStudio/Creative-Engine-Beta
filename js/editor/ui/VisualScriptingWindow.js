@@ -77,6 +77,13 @@ function createWindow() {
                     <div class="vs-draggable-item" data-type="action" data-name="Cambiar Imagen">🖼️ Cambiar Imagen</div>
                 </div>
                 <div class="vs-toolbox-section">
+                    <h4>Sistemas de Juego</h4>
+                    <div class="vs-draggable-item" data-type="action" data-name="Añadir a Inventario">🎒 Añadir a Inv.</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Quitar de Inventario">🗑️ Quitar de Inv.</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Mostrar Diálogo">💬 Mostrar Diálogo</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Empezar Misión">📜 Empezar Misión</div>
+                </div>
+                <div class="vs-toolbox-section">
                     <h4>Lógica</h4>
                     <div class="vs-draggable-item" data-type="action" data-name="Si">⚖️ Si (Condición)</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Repetir">🔁 Repetir (For)</div>
@@ -186,6 +193,15 @@ function addBlock(type, name, x, y) {
     } else if (name === 'Cambiar Texto') {
         block.inputs.target = 'TextoPuntaje';
         block.inputs.text = 'Score: 0';
+    } else if (name === 'Añadir a Inventario' || name === 'Quitar de Inventario') {
+        block.inputs.item = 'Poción';
+        block.inputs.count = 1;
+    } else if (name === 'Mostrar Diálogo') {
+        block.inputs.speaker = 'Carl';
+        block.inputs.text = '¡Hola aventurero!';
+    } else if (name === 'Empezar Misión') {
+        block.inputs.id = 'mision_1';
+        block.inputs.title = 'El Rescate';
     }
 
     blocks.push(block);
@@ -271,6 +287,21 @@ function renderBlock(block) {
         inputsHtml = `
             Obj: <input type="text" value="${block.inputs.target}" style="width:60px" onchange="window.vs_updateInput('${block.id}', 'target', this.value)">
             Img: <input type="text" value="${block.inputs.image}" style="width:60px" onchange="window.vs_updateInput('${block.id}', 'image', this.value)">
+        `;
+    } else if (block.name === 'Añadir a Inventario' || block.name === 'Quitar de Inventario') {
+        inputsHtml = `
+            Item: <input type="text" value="${block.inputs.item}" style="width:50px" onchange="window.vs_updateInput('${block.id}', 'item', this.value)">
+            Cant: <input type="number" value="${block.inputs.count}" style="width:30px" onchange="window.vs_updateInput('${block.id}', 'count', this.value)">
+        `;
+    } else if (block.name === 'Mostrar Diálogo') {
+        inputsHtml = `
+            Nom: <input type="text" value="${block.inputs.speaker}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'speaker', this.value)">
+            Txt: <input type="text" value="${block.inputs.text}" style="width:60px" onchange="window.vs_updateInput('${block.id}', 'text', this.value)">
+        `;
+    } else if (block.name === 'Empezar Misión') {
+        inputsHtml = `
+            ID: <input type="text" value="${block.inputs.id}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'id', this.value)">
+            Tít: <input type="text" value="${block.inputs.title}" style="width:60px" onchange="window.vs_updateInput('${block.id}', 'title', this.value)">
         `;
     } else if (block.name === 'Crear Variable' || block.name === 'Asignar Variable' || block.name === 'Sumar a Variable' || block.name === 'Establecer Global') {
         const scopeOptions = block.name === 'Crear Variable' ? '' : `

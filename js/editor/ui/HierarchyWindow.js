@@ -18,7 +18,8 @@ import {
     createLineColliderObject, createProgressBarObject, createCombatantObject, createScrollViewObject,
     createCubeObject, createSphereObject, createCapsule3DObject, createPlane3DObject, createTriangle3DObject,
     createDirectionalLight3D, createPointLight3D, createSpotLight3D,
-    createMovementUITemplate, createMainMenuTemplate, createLevelManagerTemplate
+    createMovementUITemplate, createMainMenuTemplate, createLevelManagerTemplate,
+    createInventoryUITemplate
 } from '../MateriaFactory.js';
 import { broadcastUpdate } from '../CollaborationSystem.js';
 
@@ -472,6 +473,9 @@ export function handleContextMenuAction(action) {
             break;
         case 'template-level-manager':
             newMateria = createLevelManagerTemplate();
+            break;
+        case 'template-inventory':
+            newMateria = createInventoryUITemplate();
             break;
 
         case 'create-ui-health-bar':

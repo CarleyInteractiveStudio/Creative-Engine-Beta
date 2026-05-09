@@ -502,3 +502,41 @@ export function createLevelManagerTemplate() {
 
     return manager;
 }
+
+/**
+ * Plantilla: Sistema de Inventario UI
+ */
+export function createInventoryUITemplate() {
+    const canvas = getOrCreateCanvas();
+    const L = window.Localization;
+
+    const invPanel = createPanelObject(canvas);
+    invPanel.name = "PanelInventario";
+    const trans = invPanel.getComponent(Components.UITransform);
+    trans.anchorPreset = 'center-middle';
+    trans.size = { width: 400, height: 300 };
+
+    const titulo = createTextObject(invPanel);
+    titulo.name = "TituloInventario";
+    const titComp = titulo.getComponent(Components.UIText);
+    titComp.text = "INVENTARIO";
+    titComp.horizontalAlign = 'center';
+    const titTrans = titulo.getComponent(Components.UITransform);
+    titTrans.position = { x: 0, y: 120 };
+
+    const grid = createBaseMateria("GridItems", invPanel, true);
+    const gridTrans = grid.getComponent(Components.UITransform);
+    gridTrans.size = { width: 350, height: 200 };
+    grid.addComponent(new Components.GridLayoutGroup(grid));
+
+    // Crear 8 espacios de ejemplo
+    for(let i=0; i<8; i++) {
+        const slot = createPanelObject(grid);
+        slot.name = "Slot_" + i;
+        const slotImg = slot.getComponent(Components.UIImage);
+        slotImg.opacity = 0.3;
+    }
+
+    console.log("[SmartTemplate] Sistema de Inventario UI creado.");
+    return invPanel;
+}

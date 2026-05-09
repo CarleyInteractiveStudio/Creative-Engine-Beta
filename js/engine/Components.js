@@ -8756,3 +8756,144 @@ export class IKManager2D extends Leyes {
 }
 registerComponent('IKManager2D', IKManager2D);
 
+
+/**
+ * Componente Inventario: Gestiona una lista de objetos recolectables.
+ */
+export class Inventario extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.items = [];
+        this.maxEspacios = 20;
+    }
+
+    agregarItem(nombre, cantidad = 1, datos = {}) {
+        const itemExistente = this.items.find(i => i.nombre === nombre);
+        if (itemExistente) {
+            itemExistente.cantidad += cantidad;
+        } else if (this.items.length < this.maxEspacios) {
+            this.items.push({ nombre, cantidad, datos });
+        }
+        this._notificarCambio();
+    }
+
+    quitarItem(nombre, cantidad = 1) {
+        const index = this.items.findIndex(i => i.nombre === nombre);
+        if (index !== -1) {
+            this.items[index].cantidad -= cantidad;
+            if (this.items[index].cantidad <= 0) {
+                this.items.splice(index, 1);
+            }
+        }
+        this._notificarCambio();
+    }
+
+    tieneItem(nombre, cantidad = 1) {
+        const item = this.items.find(i => i.nombre === nombre);
+        return item && item.cantidad >= cantidad;
+    }
+
+    _notificarCambio() {
+        if (this.materia) {
+            this.materia.emitir('cambio-inventario', this.items);
+        }
+    }
+
+    clone() {
+        const copy = new Inventario(null);
+        copy.items = JSON.parse(JSON.stringify(this.items));
+        copy.maxEspacios = this.maxEspacios;
+        return copy;
+    }
+}
+registerComponent('Inventario', Inventario);
+
+/**
+ * Componente SistemaDialogos: Gestiona el flujo de texto y nodos de conversación.
+ */
+export class SistemaDialogos extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.nodos = [];
+        this.indiceActual = -1;
+        this.estaActivo = false;
+        this.nombreHablante = "";
+        this.textoActual = "";
+    }
+
+    iniciarDialogo(nodos) {
+        this.nodos = nodos;
+        this.indiceActual = 0;
+        this.estaActivo = true;
+        this._mostrarNodoActual();
+    }
+
+    siguiente() {
+        if (!this.estaActivo) return;
+        this.indiceActual++;
+        if (this.indiceActual < this.nodos.length) {
+            this._mostrarNodoActual();
+        } else {
+            this.finalizar();
+        }
+    }
+
+    _mostrarNodoActual() {
+        const nodo = this.nodos[this.indiceActual];
+        this.nombreHablante = nodo.hablante || "???";
+        this.textoActual = nodo.texto || "";
+        this.materia.emitir('cambio-dialogo', { hablante: this.nombreHablante, texto: this.textoActual });
+    }
+
+    finalizar() {
+        this.estaActivo = false;
+        this.materia.emitir('finalizar-dialogo');
+    }
+
+    clone() {
+        return new SistemaDialogos(null);
+    }
+}
+registerComponent('SistemaDialogos', SistemaDialogos);
+
+/**
+ * Componente GestorMisiones: Rastrea objetivos globales o de nivel.
+ */
+export class GestorMisiones extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.misiones = {}; // { id: { completada: bool, objetivos: [] } }
+    }
+
+    iniciarMision(id, titulo, objetivos = []) {
+        this.misiones[id] = { titulo, completada: false, objetivos: objetivos.map(o => ({ desc: o, completado: false })) };
+        this._notificarMisiones();
+    }
+
+    completarObjetivo(misionId, index) {
+        if (this.misiones[misionId] && this.misiones[misionId].objetivos[index]) {
+            this.misiones[misionId].objetivos[index].completado = true;
+            this._verificarMision(misionId);
+        }
+    }
+
+    _verificarMision(id) {
+        const m = this.misiones[id];
+        if (m && m.objetivos.every(o => o.completado)) {
+            m.completada = true;
+            console.log(`[Quest] Misión completada: ${m.titulo}`);
+        }
+        this._notificarMisiones();
+    }
+
+    _notificarMisiones() {
+        this.materia.emitir('cambio-misiones', this.misiones);
+    }
+
+    clone() {
+        const copy = new GestorMisiones(null);
+        copy.misiones = JSON.parse(JSON.stringify(this.misiones));
+        return copy;
+    }
+}
+registerComponent('GestorMisiones', GestorMisiones);

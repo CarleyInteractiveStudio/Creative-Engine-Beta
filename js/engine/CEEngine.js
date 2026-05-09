@@ -6,6 +6,7 @@ import * as PerformanceAPI from './PerformanceAPI.js';
 import * as AssetUtils from './AssetUtils.js';
 import * as Components from './Components.js';
 import * as MathUtils from './MathUtils.js';
+import * as RuntimeAPIManager from './RuntimeAPIManager.js';
 
 let physicsSystem = null;
 let currentDeltaTime = 0;

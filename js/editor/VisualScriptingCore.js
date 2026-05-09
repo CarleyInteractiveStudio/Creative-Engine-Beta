@@ -166,6 +166,18 @@ export class VisualScriptingCore {
             case 'Cambiar Imagen':
                 return `variable _imgObj = buscarMateria("${inputs.target}"); si (_imgObj) { variable _imgComp = _imgObj.obtenerComponente("UIImage"); si (_imgComp) { await _imgComp.setImagePath("${inputs.image}"); } }`;
 
+            case 'Añadir a Inventario':
+                return `variable _inv = obtenerComponente("Inventario"); si (_inv) { _inv.agregarItem("${inputs.item}", ${inputs.count || 1}); }`;
+
+            case 'Quitar de Inventario':
+                return `variable _inv = obtenerComponente("Inventario"); si (_inv) { _inv.quitarItem("${inputs.item}", ${inputs.count || 1}); }`;
+
+            case 'Mostrar Diálogo':
+                return `variable _dial = obtenerComponente("SistemaDialogos"); si (_dial) { _dial.iniciarDialogo([{hablante: "${inputs.speaker}", texto: "${inputs.text}"}]); }`;
+
+            case 'Empezar Misión':
+                return `variable _quest = obtenerComponente("GestorMisiones"); si (_quest) { _quest.iniciarMision("${inputs.id}", "${inputs.title}", []); }`;
+
             case 'Si':
                 let ifCode = `si (${inputs.var1} ${inputs.op || '=='} ${this.formatValue(inputs.var2)}) {\n`;
                 ifCode += this.generateBlockChain(action.branchId, data, indent + "    ");
