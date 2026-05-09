@@ -91,8 +91,29 @@ export class VisualScriptingCore {
                 const y = inputs.y || 0;
                 return `posicion.x += ${x}; posicion.y += ${y};`;
 
+            case 'Rotar':
+                return `rotar(${inputs.angle || 0});`;
+
+            case 'Escalar':
+                return `escala.x = ${inputs.x || 1}; escala.y = ${inputs.y || 1};`;
+
+            case 'Cambiar Color':
+                return `variable _rend = obtenerComponente("SpriteRenderer"); si (_rend) { _rend.color = "${inputs.color || '#ffffff'}"; }`;
+
+            case 'Activar':
+                return `activo = verdadero;`;
+
+            case 'Desactivar':
+                return `activo = falso;`;
+
+            case 'Crear Objeto':
+                return `await crear("${inputs.prefab || ''}", ${inputs.x || 0}, ${inputs.y || 0});`;
+
             case 'Reproducir Sonido':
-                return `fuenteDeAudio.reproducir();`;
+                if (inputs.sound) {
+                    return `variable _snd = obtenerComponente("AudioSource"); si (_snd) { await _snd.setSourcePath("${inputs.sound}"); _snd.reproducir(); }`;
+                }
+                return `variable _snd = obtenerComponente("AudioSource"); si (_snd) { _snd.reproducir(); }`;
 
             case 'Cargar Escena':
                 return `cargarEscena("${inputs.scene || ''}");`;
@@ -117,6 +138,12 @@ export class VisualScriptingCore {
                 ifCode += this.generateBlockChain(action.branchId, data, indent + "    ");
                 ifCode += `${indent}}`;
                 return ifCode;
+
+            case 'Si Tecla':
+                let ifKey = `si (tecla("${inputs.key || 'Space'}")) {\n`;
+                ifKey += this.generateBlockChain(action.branchId, data, indent + "    ");
+                ifKey += `${indent}}`;
+                return ifKey;
 
             default:
                 return `// Acción desconocida: ${action.name}`;

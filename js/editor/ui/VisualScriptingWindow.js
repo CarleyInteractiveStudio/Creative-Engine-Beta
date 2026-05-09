@@ -42,7 +42,14 @@ function createWindow() {
                 <div class="vs-toolbox-section">
                     <h4>Acciones</h4>
                     <div class="vs-draggable-item" data-type="action" data-name="Mover">🏃 Mover</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Rotar">🔄 Rotar</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Escalar">📐 Escalar</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Cambiar Color">🎨 Cambiar Color</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Activar">✅ Activar</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Desactivar">❌ Desactivar</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Crear Objeto">✨ Crear Objeto</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Destruir">🗑️ Destruir</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Reproducir Sonido">🎵 Reprod. Sonido</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Imprimir">💬 Imprimir</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Esperar">⏳ Esperar</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Cargar Escena">🗺️ Cargar Escena</div>
@@ -57,6 +64,7 @@ function createWindow() {
                 <div class="vs-toolbox-section">
                     <h4>Lógica</h4>
                     <div class="vs-draggable-item" data-type="action" data-name="Si">⚖️ Si (Condición)</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Si Tecla">⌨️ Si Tecla</div>
                 </div>
                 <div class="vs-toolbox-section">
                     <h4>Funciones</h4>
@@ -120,8 +128,23 @@ function addBlock(type, name, x, y) {
         block.inputs.var1 = 'miVar';
         block.inputs.op = '==';
         block.inputs.var2 = 10;
+    } else if (name === 'Si Tecla') {
+        block.inputs.key = 'Space';
     } else if (name === 'Nueva Función' || name === 'Llamar Función') {
         block.inputs.name = 'miFuncion';
+    } else if (name === 'Rotar') {
+        block.inputs.angle = 10;
+    } else if (name === 'Escalar') {
+        block.inputs.x = 1.1;
+        block.inputs.y = 1.1;
+    } else if (name === 'Cambiar Color') {
+        block.inputs.color = '#ff0000';
+    } else if (name === 'Crear Objeto') {
+        block.inputs.prefab = 'Assets/Player.ceprefab';
+        block.inputs.x = 0;
+        block.inputs.y = 0;
+    } else if (name === 'Reproducir Sonido') {
+        block.inputs.sound = 'Assets/fx.wav';
     }
 
     blocks.push(block);
@@ -147,8 +170,25 @@ function renderBlock(block) {
             X: <input type="number" value="5" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'x', this.value)">
             Y: <input type="number" value="0" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'y', this.value)">
         `;
+    } else if (block.name === 'Rotar') {
+        inputsHtml = `Ang: <input type="number" value="${block.inputs.angle}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'angle', this.value)">`;
+    } else if (block.name === 'Escalar') {
+        inputsHtml = `
+            X: <input type="number" value="${block.inputs.x}" step="0.1" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'x', this.value)">
+            Y: <input type="number" value="${block.inputs.y}" step="0.1" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'y', this.value)">
+        `;
+    } else if (block.name === 'Cambiar Color') {
+        inputsHtml = `<input type="color" value="${block.inputs.color}" onchange="window.vs_updateInput('${block.id}', 'color', this.value)">`;
+    } else if (block.name === 'Crear Objeto') {
+        inputsHtml = `
+            <input type="text" value="${block.inputs.prefab || ''}" placeholder="Ruta..." style="width:70px" onchange="window.vs_updateInput('${block.id}', 'prefab', this.value)">
+            X: <input type="number" value="${block.inputs.x}" style="width:35px" onchange="window.vs_updateInput('${block.id}', 'x', this.value)">
+            Y: <input type="number" value="${block.inputs.y}" style="width:35px" onchange="window.vs_updateInput('${block.id}', 'y', this.value)">
+        `;
+    } else if (block.name === 'Reproducir Sonido') {
+        inputsHtml = `<input type="text" value="${block.inputs.sound || ''}" placeholder="Ruta..." onchange="window.vs_updateInput('${block.id}', 'sound', this.value)">`;
     } else if (block.name === 'Cargar Escena') {
-        inputsHtml = `<input type="text" placeholder="nombre.ceScene" onchange="window.vs_updateInput('${block.id}', 'scene', this.value)">`;
+        inputsHtml = `<input type="text" value="${block.inputs.scene || ''}" placeholder="nombre.ceScene" onchange="window.vs_updateInput('${block.id}', 'scene', this.value)">`;
     } else if (block.name === 'Crear Variable' || block.name === 'Asignar Variable' || block.name === 'Sumar a Variable' || block.name === 'Establecer Global') {
         const scopeOptions = block.name === 'Crear Variable' ? '' : `
             <select onchange="window.vs_updateInput('${block.id}', 'scope', this.value)">
@@ -167,17 +207,19 @@ function renderBlock(block) {
         inputsHtml = `
             <input type="text" value="${block.inputs.var1}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'var1', this.value)">
             <select onchange="window.vs_updateInput('${block.id}', 'op', this.value)">
-                <option value="==">==</option>
-                <option value=">">&gt;</option>
-                <option value="<">&lt;</option>
-                <option value="!=">!=</option>
+                <option value="==" ${block.inputs.op === '==' ? 'selected' : ''}>==</option>
+                <option value=">" ${block.inputs.op === '>' ? 'selected' : ''}>&gt;</option>
+                <option value="<" ${block.inputs.op === '<' ? 'selected' : ''}>&lt;</option>
+                <option value="!=" ${block.inputs.op === '!=' ? 'selected' : ''}>!=</option>
             </select>
             <input type="text" value="${block.inputs.var2}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'var2', this.value)">
         `;
+    } else if (block.name === 'Si Tecla') {
+        inputsHtml = `<input type="text" value="${block.inputs.key}" style="width:60px" onchange="window.vs_updateInput('${block.id}', 'key', this.value)">`;
     }
 
     let branchHtml = '';
-    if (block.name === 'Si') {
+    if (block.name === 'Si' || block.name === 'Si Tecla') {
         branchHtml = `<div class="vs-block-connector-branch" title="Si se cumple" onclick="window.vs_startConnection('${block.id}', 'branch')">🌿</div>`;
     }
 
