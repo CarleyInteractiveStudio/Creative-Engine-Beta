@@ -127,7 +127,7 @@ body.mobile-mode .menu-btn {
 .menu-content {
     display: none;
     position: absolute;
-    background: rgba(20, 20, 25, 0.7);
+    background: rgba(10, 10, 12, 0.92); /* Darker and more opaque */
     backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
     border: 1px solid rgba(255, 255, 255, 0.15);
@@ -2747,7 +2747,7 @@ body.mobile-mode #editor-main-content.no-inspector {
     left: calc(100% - 8px); /* 8px overlap for ultra-stable contact */
     top: -5px; /* Alignment */
     margin: 0; /* Clear any margin */
-    background: rgba(25, 25, 30, 0.8);
+    background: rgba(10, 10, 12, 0.98);
     backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
     /* Common styles for all submenus */
@@ -4146,7 +4146,7 @@ body.mobile-mode #mobile-code-tools {
 /* --- Context Menu --- */
 .context-menu {
     position: absolute;
-    background: rgba(20, 20, 25, 0.75);
+    background: rgba(10, 10, 12, 0.95); /* Darker and more opaque for context menus */
     backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
     border: 1px solid rgba(255, 255, 255, 0.18);
