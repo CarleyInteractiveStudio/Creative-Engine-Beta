@@ -3042,6 +3042,19 @@ document.addEventListener('DOMContentLoaded', () => {
     let createNewScript; // To be defined
 
     function setupEventListeners() {
+        // --- Global Context Menu Prevention ---
+        document.addEventListener('contextmenu', (e) => {
+            // Only prevent default if we're not inside an input or textarea that might need it
+            const target = e.target;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+                return;
+            }
+
+            // If it's the general editor background or a panel, prevent the native menu
+            // Specific components like CodeMirror handle their own contextmenu
+            e.preventDefault();
+        });
+
         // --- Global Dropdown (menu-item) Logic ---
         document.addEventListener('click', (e) => {
             const menuItem = e.target.closest('.menu-item');

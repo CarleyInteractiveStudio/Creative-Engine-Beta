@@ -17,6 +17,8 @@ body.is-dragging-panel {
     flex-shrink: 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     gap: 15px;
+    position: relative;
+    z-index: 10000;
 }
 
 .menubar-left, .menubar-right {
@@ -63,7 +65,7 @@ body.is-dragging-panel {
     display: flex;
     align-items: center;
     overflow-x: auto;
-    overflow-y: hidden;
+    overflow-y: visible; /* Important: allow dropdowns to be seen */
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
@@ -134,8 +136,44 @@ body.mobile-mode .menu-btn {
     z-index: 60000;
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
     margin-top: 8px;
-    overflow: hidden;
+    overflow-y: auto;
+    max-height: 80vh;
     animation: menu-fade-in 0.2s ease-out;
+}
+
+/* Custom scrollbar for menus and scrollable lists */
+.menu-content::-webkit-scrollbar,
+.context-menu::-webkit-scrollbar,
+.submenu::-webkit-scrollbar,
+.dialog-selection-list::-webkit-scrollbar,
+.layer-list::-webkit-scrollbar,
+.component-list::-webkit-scrollbar {
+    width: 6px;
+}
+.menu-content::-webkit-scrollbar-track,
+.context-menu::-webkit-scrollbar-track,
+.submenu::-webkit-scrollbar-track,
+.dialog-selection-list::-webkit-scrollbar-track,
+.layer-list::-webkit-scrollbar-track,
+.component-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.menu-content::-webkit-scrollbar-thumb,
+.context-menu::-webkit-scrollbar-thumb,
+.submenu::-webkit-scrollbar-thumb,
+.dialog-selection-list::-webkit-scrollbar-thumb,
+.layer-list::-webkit-scrollbar-thumb,
+.component-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+}
+.menu-content::-webkit-scrollbar-thumb:hover,
+.context-menu::-webkit-scrollbar-thumb:hover,
+.submenu::-webkit-scrollbar-thumb:hover,
+.dialog-selection-list::-webkit-scrollbar-thumb:hover,
+.layer-list::-webkit-scrollbar-thumb:hover,
+.component-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
 }
 
 @keyframes menu-fade-in {
