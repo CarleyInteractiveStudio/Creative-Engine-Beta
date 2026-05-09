@@ -3076,47 +3076,44 @@ document.addEventListener('DOMContentLoaded', () => {
             allMenuContents.forEach(mc => mc.classList.remove('visible'));
         });
 
-        // --- Submenu dynamic positioning (using fixed to prevent clipping) ---
+        // --- Submenu dynamic positioning ---
         document.querySelectorAll('.context-menu .has-submenu').forEach(item => {
             item.addEventListener('mouseenter', e => {
                 const submenu = e.currentTarget.querySelector('.submenu');
                 if (!submenu) return;
 
-                // Set initial fixed style
-                submenu.style.position = 'fixed';
-                submenu.style.display = 'block'; // Temporarily show to measure
+                // FULL CLEANUP of any previous positioning
+                submenu.classList.remove('submenu-left', 'submenu-up');
+                submenu.style.top = '';
+                submenu.style.left = '';
+                submenu.style.right = '';
+                submenu.style.bottom = '';
+                submenu.style.position = 'absolute'; // Force absolute for relative tracking
 
-                const parentRect = e.currentTarget.getBoundingClientRect();
-                const submenuHeight = submenu.offsetHeight; // offsetHeight is more reliable for display:block
-                const submenuWidth = submenu.offsetWidth || 200;
-                const windowWidth = window.innerWidth;
-                const windowHeight = window.innerHeight;
+                // Measure accurately without gaps
+                submenu.style.display = 'block';
+                submenu.style.visibility = 'hidden';
+                const submenuWidth = submenu.offsetWidth;
+                const submenuHeight = submenu.offsetHeight;
+                submenu.style.display = '';
+                submenu.style.visibility = '';
 
-                let left = parentRect.right;
-                let top = parentRect.top;
+                const rect = e.currentTarget.getBoundingClientRect();
 
-                // 1. Horizontal Positioning (Flip left if no space on right)
-                if (left + submenuWidth > windowWidth) {
-                    left = parentRect.left - submenuWidth;
-                    // Ensure it doesn't go off-screen to the left
-                    if (left < 5) left = 5;
+                // Check horizontal space (using absolute relative to parent, so we check rect.right)
+                if (rect.right + submenuWidth > window.innerWidth - 10) {
+                    submenu.classList.add('submenu-left');
                 }
 
-                // 2. Vertical Positioning (Adjust if it exceeds bottom)
-                // If it still doesn't fit, we allow it to be at most as tall as the window
-                // but we must NOT use overflow auto/hidden because it clips nested submenus.
-                if (top + submenuHeight > windowHeight - 10) {
-                    top = windowHeight - submenuHeight - 10;
+                // Check vertical space
+                if (rect.top + submenuHeight > window.innerHeight - 10) {
+                    submenu.classList.add('submenu-up');
+                    // Ensure it doesn't bleed off the top
+                    const subRect = submenu.getBoundingClientRect();
+                    if (rect.bottom - submenuHeight < 10) {
+                        submenu.style.top = `-${rect.top - 10}px`;
+                    }
                 }
-
-                if (top < 5) top = 5;
-
-                // Clean up styles and ensure visibility
-                submenu.style.maxHeight = 'none';
-                submenu.style.overflow = 'visible';
-                submenu.style.left = `${left}px`;
-                submenu.style.top = `${top}px`;
-                submenu.style.display = ''; // Let CSS :hover take over
             });
         });
 

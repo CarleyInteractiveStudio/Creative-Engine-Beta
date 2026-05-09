@@ -135,7 +135,8 @@ body.mobile-mode .menu-btn {
     min-width: 220px;
     z-index: 60000;
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
-    margin-top: 8px;
+    margin: 0; /* Zero gap between menubar and dropdown */
+    padding-top: 5px;
     overflow: visible !important; /* Force submenu visibility */
     max-height: none !important; /* Prevent scrollbar clipping */
     animation: menu-fade-in 0.2s ease-out;
@@ -2743,8 +2744,9 @@ body.mobile-mode #editor-main-content.no-inspector {
 .context-menu .submenu {
     display: none;
     position: absolute;
-    left: 100%;
-    top: -5px; /* Adjust to align with parent */
+    left: calc(100% - 8px); /* 8px overlap for ultra-stable contact */
+    top: -5px; /* Alignment */
+    margin: 0; /* Clear any margin */
     background: rgba(25, 25, 30, 0.8);
     backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
@@ -2762,7 +2764,12 @@ body.mobile-mode #editor-main-content.no-inspector {
 
 .context-menu .submenu.submenu-up {
     top: auto;
-    bottom: 0;
+    bottom: -5px;
+}
+
+.context-menu .submenu.submenu-left {
+    left: auto;
+    right: calc(100% - 8px); /* 8px overlap for stability */
 }
 
 .context-menu .has-submenu:hover > .submenu {
@@ -2771,8 +2778,8 @@ body.mobile-mode #editor-main-content.no-inspector {
 
 .context-menu .submenu .submenu {
     display: none;
-    top: -5px; /* Alineación inicial */
-    left: 100%; /* Posición a la derecha del padre */
+    top: -5px;
+    left: calc(100% - 5px); /* Ensure overlap in nested submenus */
 }
 
 .context-menu .arrow {
