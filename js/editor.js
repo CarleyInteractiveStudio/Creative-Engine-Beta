@@ -3107,11 +3107,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Check vertical space
                 if (rect.top + submenuHeight > window.innerHeight - 10) {
+                    // Try going UP
                     submenu.classList.add('submenu-up');
-                    // Ensure it doesn't bleed off the top
-                    const subRect = submenu.getBoundingClientRect();
-                    if (rect.bottom - submenuHeight < 10) {
-                        submenu.style.top = `-${rect.top - 10}px`;
+
+                    // Measure new position
+                    const estimatedTop = rect.bottom - submenuHeight;
+                    if (estimatedTop < 10) {
+                        // If it doesn't fit UP either, force it to be inside the window
+                        // by overriding the relative top with a negative offset from parent's top
+                        const overflowBottom = (rect.top + submenuHeight) - (window.innerHeight - 10);
+                        submenu.style.top = `-${overflowBottom}px`;
                     }
                 }
             });

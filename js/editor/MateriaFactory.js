@@ -418,30 +418,46 @@ export function createMovementUITemplate() {
     transform.anchorPreset = 'stretch-stretch';
     transform.size = { width: 0, height: 0 };
 
-    // Joystick Izquierdo (Simulado con botones o panel)
-    const joystick = createPanelObject(group);
-    joystick.name = "Joystick";
-    const joyTrans = joystick.getComponent(Components.UITransform);
-    joyTrans.anchorPreset = 'bottom-left';
-    joyTrans.position = { x: 100, y: 100 };
-    joyTrans.size = { width: 150, height: 150 };
+    // 1. Contenedor del Joystick (Área de Arrastre)
+    const joyArea = createPanelObject(group);
+    joyArea.name = "JoystickArea";
+    const areaTrans = joyArea.getComponent(Components.UITransform);
+    areaTrans.anchorPreset = 'bottom-left';
+    areaTrans.position = { x: 150, y: 150 };
+    areaTrans.size = { width: 250, height: 250 };
+    joyArea.getComponent(Components.UIImage).opacity = 0.05; // Almost invisible
 
-    // Botón de Acción
+    // 2. Fondo del Joystick
+    const joyBg = createPanelObject(joyArea);
+    joyBg.name = "JoystickBg";
+    const bgTrans = joyBg.getComponent(Components.UITransform);
+    bgTrans.size = { width: 150, height: 150 };
+    const bgImg = joyBg.getComponent(Components.UIImage);
+    bgImg.color = '#ffffff';
+    bgImg.opacity = 0.2;
+
+    // 3. El Punto (Handle)
+    const handle = createPanelObject(joyBg);
+    handle.name = "JoystickHandle";
+    const hTrans = handle.getComponent(Components.UITransform);
+    hTrans.size = { width: 70, height: 70 };
+    const hImg = handle.getComponent(Components.UIImage);
+    hImg.color = '#0e639c';
+    hImg.opacity = 0.8;
+
+    // Añadir el Controlador
+    const controller = new Components.UIController(joyArea);
+    controller.type = 'Joystick';
+    controller.joystickRadius = 75;
+    joyArea.addComponent(controller);
+
+    // 4. Botón de Acción a la Derecha
     const btnJump = createButtonObject(group);
     btnJump.name = "BotonSalto";
     const jumpTrans = btnJump.getComponent(Components.UITransform);
     jumpTrans.anchorPreset = 'bottom-right';
-    jumpTrans.position = { x: -100, y: 100 };
-    jumpTrans.size = { width: 80, height: 80 };
-
-    // Auto-configuración: Intentar encontrar al Jugador para asignar el script
-    const player = SceneManager.currentScene.getAllMaterias().find(m => m.tag === 'Player' || m.name.toLowerCase().includes('jugador'));
-
-    // Añadimos un script básico de control si no existe
-    if (player) {
-        console.log("[SmartTemplate] Jugador detectado, vinculando controles UI...");
-        // Aquí se podría añadir un componente 'MobileController' al jugador
-    }
+    jumpTrans.position = { x: -100, y: 150 };
+    jumpTrans.size = { width: 100, height: 100 };
 
     return group;
 }

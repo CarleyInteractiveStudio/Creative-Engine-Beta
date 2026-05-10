@@ -505,7 +505,7 @@ export function populateUI(config) {
 
     if (dom.settingsRendererMode) {
         dom.settingsRendererMode.value = currentProjectConfig.rendererMode;
-        dom.settingsRendererMode.disabled = true; // Permanent lock
+        dom.settingsRendererMode.disabled = false; // Unlocked for flexible 2D modes
     }
 
     // Advanced Graphics sync

@@ -24,7 +24,7 @@ const defaultPrefs = {
     showSceneGrid: true,
     showOriginAxes: true,
     snapping: false,
-    gridSize: 25,
+    gridSize: 1,
     zoomSpeed: 1.1,
     ai: {
         provider: 'huggingface'

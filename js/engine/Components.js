@@ -258,14 +258,14 @@ export class CreativeScriptBehavior {
 
     danar(materia, cantidad) {
         if (!materia) return;
-        const health = materia.getComponent(Health);
+        const health = materia.getComponent(window.Components.Health);
         if (health) health.damage(cantidad);
     }
     damage(materia, cantidad) { this.danar(materia, cantidad); }
 
     curar(materia, cantidad) {
         if (!materia) return;
-        const health = materia.getComponent(Health);
+        const health = materia.getComponent(window.Components.Health);
         if (health) health.heal(cantidad);
     }
     heal(materia, cantidad) { this.curar(materia, cantidad); }
@@ -2941,7 +2941,7 @@ export class VideoPlayer extends Leyes {
     }
 
     syncSizeToUITransform() {
-        const uiTransform = this.materia.getComponent(UITransform);
+        const uiTransform = this.materia.getComponent(window.Components.UITransform);
         if (uiTransform && this.videoWidth > 0 && this.videoHeight > 0) {
             uiTransform.size.width = this.videoWidth;
             uiTransform.size.height = this.videoHeight;
@@ -3985,8 +3985,8 @@ export class UIScrollRect extends Leyes {
         else if (typeof content === 'string') content = this.materia.findChildByName(content, true);
 
         if (content) {
-            const ui = content.getComponent(UITransform);
-            const myUI = this.materia.getComponent(UITransform);
+            const ui = content.getComponent(window.Components.UITransform);
+            const myUI = this.materia.getComponent(window.Components.UITransform);
             if (ui && myUI) {
                 // Limitar scroll según el tamaño del contenido
                 const maxScrollX = Math.max(0, ui.size.width - myUI.size.width);
@@ -5771,7 +5771,7 @@ export class Attack extends Leyes {
         for (const other of overlaps) {
             if (other === this.materia || this._hitObjects.has(other.id)) continue;
 
-            const health = other.getComponent(Health);
+            const health = other.getComponent(window.Components.Health);
             if (health) {
                 health.damage(this._currentAttack.damage);
                 this._hitObjects.add(other.id);
@@ -5873,7 +5873,7 @@ export class ProgressBar extends Leyes {
             else if (typeof target === 'string') target = scene.findMateriaByName(target);
 
             if (target) {
-                const health = target.getComponent(Health);
+                const health = target.getComponent(window.Components.Health);
                 if (health) {
                     this.value = health.currentHealth;
                     this.maxValue = health.maxHealth;
@@ -5886,7 +5886,7 @@ export class ProgressBar extends Leyes {
         else if (typeof fill === 'string' && scene) fill = this.materia.findChildByName(fill, true);
 
         if (fill) {
-            const ui = fill.getComponent(UITransform);
+            const ui = fill.getComponent(window.Components.UITransform);
             if (ui) {
                 const ratio = Math.max(0, Math.min(1, this.value / (this.maxValue || 1)));
                 if (this.orientation === 'Horizontal') {
@@ -8263,14 +8263,14 @@ export class VerticalLayoutGroup extends Leyes {
 
     update() {
         if (!this.isActive) return;
-        const uiTransform = this.materia.getComponent(UITransform);
+        const uiTransform = this.materia.getComponent(window.Components.UITransform);
         const canvas = this.materia.getComponent(Canvas);
         if (!uiTransform && !canvas) return;
 
         let nextY = this.padding.top;
         for (const child of this.materia.children) {
             if (!child.isActive) continue;
-            const childUI = child.getComponent(UITransform);
+            const childUI = child.getComponent(window.Components.UITransform);
             if (childUI) {
                 childUI.anchorPoint = 1; // Top Center
                 childUI.position.x = 0;
@@ -8297,14 +8297,14 @@ export class HorizontalLayoutGroup extends Leyes {
 
     update() {
         if (!this.isActive) return;
-        const uiTransform = this.materia.getComponent(UITransform);
+        const uiTransform = this.materia.getComponent(window.Components.UITransform);
         const canvas = this.materia.getComponent(Canvas);
         if (!uiTransform && !canvas) return;
 
         let nextX = this.padding.left;
         for (const child of this.materia.children) {
             if (!child.isActive) continue;
-            const childUI = child.getComponent(UITransform);
+            const childUI = child.getComponent(window.Components.UITransform);
             if (childUI) {
                 childUI.anchorPoint = 3; // Middle Left
                 childUI.position.x = nextX + (childUI.size.width / 2);
@@ -8332,7 +8332,7 @@ export class GridLayoutGroup extends Leyes {
 
     update() {
         if (!this.isActive) return;
-        const uiTransform = this.materia.getComponent(UITransform);
+        const uiTransform = this.materia.getComponent(window.Components.UITransform);
         const canvas = this.materia.getComponent(Canvas);
         if (!uiTransform && !canvas) return;
 
@@ -8342,7 +8342,7 @@ export class GridLayoutGroup extends Leyes {
         let nextY = this.padding.top;
         for (const child of this.materia.children) {
             if (!child.isActive) continue;
-            const childUI = child.getComponent(UITransform);
+            const childUI = child.getComponent(window.Components.UITransform);
             if (childUI) {
                 childUI.anchorPoint = 0; // Top Left
                 childUI.size = { ...this.cellSize };
@@ -8376,7 +8376,7 @@ export class ContentSizeFitter extends Leyes {
 
     update() {
         if (!this.isActive) return;
-        const uiTransform = this.materia.getComponent(UITransform);
+        const uiTransform = this.materia.getComponent(window.Components.UITransform);
         if (!uiTransform) return;
 
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
@@ -8384,7 +8384,7 @@ export class ContentSizeFitter extends Leyes {
 
         for (const child of this.materia.children) {
             if (!child.isActive) continue;
-            const childUI = child.getComponent(UITransform);
+            const childUI = child.getComponent(window.Components.UITransform);
             if (childUI) {
                 const halfW = childUI.size.width / 2;
                 const halfH = childUI.size.height / 2;
@@ -8897,3 +8897,107 @@ export class GestorMisiones extends Leyes {
     }
 }
 registerComponent('GestorMisiones', GestorMisiones);
+
+/**
+ * Componente UIController: Administra prefabs de UI (Joysticks, Inventarios) y los auto-configura.
+ */
+export class UIController extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.type = 'General'; // 'Joystick', 'Inventory', 'HealthBar'
+        this.targetMateriaName = ''; // Materia a la que afecta
+        this.isDragging = false;
+        this.dragData = { startX: 0, startY: 0, currentX: 0, currentY: 0 };
+        this.joystickRadius = 75;
+    }
+
+    onEnable() {
+        if (!this.targetMateriaName) {
+            // Intento de auto-detección de Jugador
+            const scene = this.materia.scene;
+            if (scene) {
+                const player = scene.getAllMaterias().find(m => m.tag === 'Player' || m.name.toLowerCase().includes('jugador'));
+                if (player) {
+                    this.targetMateriaName = player.name;
+                    console.log(`[UIController] Auto-configurado: Objetivo detectado -> ${player.name}`);
+                }
+            }
+        }
+    }
+
+    update(dt) {
+        if (this.type === 'Joystick' && this.isDragging) {
+            this._handleJoystickLogic();
+        }
+    }
+
+    startDrag(x, y) {
+        this.isDragging = true;
+        this.dragData.startX = x;
+        this.dragData.startY = y;
+    }
+
+    updateDrag(x, y) {
+        if (!this.isDragging) return;
+
+        let dx = x - this.dragData.startX;
+        let dy = y - this.dragData.startY;
+
+        // Limitar circularmente para Joysticks
+        if (this.type === 'Joystick') {
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist > this.joystickRadius) {
+                const ratio = this.joystickRadius / dist;
+                dx *= ratio;
+                dy *= ratio;
+            }
+        }
+
+        this.dragData.currentX = dx;
+        this.dragData.currentY = dy;
+
+        // Actualizar visual si hay un hijo llamado 'Handle'
+        const handle = this.materia.children.find(c => c.name.includes('Handle') || c.name.includes('Punto'));
+        if (handle) {
+            const uiTrans = handle.getComponent(window.Components.UITransform);
+            if (uiTrans) {
+                uiTrans.position = { x: dx, y: dy };
+            }
+        }
+    }
+
+    endDrag() {
+        this.isDragging = false;
+        this.dragData = { startX: 0, startY: 0, currentX: 0, currentY: 0 };
+
+        const handle = this.materia.children.find(c => c.name.includes('Handle') || c.name.includes('Punto'));
+        if (handle) {
+            const uiTrans = handle.getComponent(window.Components.UITransform);
+            if (uiTrans) uiTrans.position = { x: 0, y: 0 };
+        }
+    }
+
+    _handleJoystickLogic() {
+        const scene = this.materia.scene;
+        if (!scene || !this.targetMateriaName) return;
+
+        const target = scene.findMateriaByName(this.targetMateriaName);
+        if (!target) return;
+
+        // Normalizar valores -1 a 1
+        const inputX = this.dragData.currentX / this.joystickRadius;
+        const inputY = this.dragData.currentY / this.joystickRadius;
+
+        // Emitir evento de movimiento para que el controlador del jugador lo escuche
+        target.emitir('ui-move', { x: inputX, y: inputY });
+    }
+
+    clone() {
+        const copy = new UIController(null);
+        copy.type = this.type;
+        copy.targetMateriaName = this.targetMateriaName;
+        copy.joystickRadius = this.joystickRadius;
+        return copy;
+    }
+}
+registerComponent('UIController', UIController);

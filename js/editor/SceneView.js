@@ -803,8 +803,8 @@ export function initialize(dependencies) {
         const glm = window.glMatrix;
 
         const prefs = getPreferences ? getPreferences() : {};
-        const snapEnabled = prefs.snapping;
-        const snapSize = prefs.snappingGridSize || 50;
+        const snapEnabled = prefs.snapping === true;
+        const snapSize = parseFloat(prefs.gridSize) || 1;
 
         switch (dragState.handle) {
             case 'camera-move':
