@@ -278,6 +278,7 @@ ARCHIVO: Archivo
 EDITAR: Editar
 VENTANA: Ventana
 AYUDA: Ayuda
+CURSO_SCRIPTING: Curso de Scripting
 TUTORIALES: Tutoriales
 REPORTAR_FALLOS: Reportar Bugs/Errores/Fallos
 DOCUMENTACION: Documentación
@@ -388,7 +389,7 @@ WEIGHT_PAINTER: Pintor de Pesos
 ESCENA_VACIA: La escena está vacía.<br>Click derecho para crear un objeto.
 RENOMBRAR: Renombrar
 DUPLICAR: Duplicar
-ELIMINAR: Eliminar
+ELIMINAR: Borrar
 
 # Inspector
 ADD_LEY: Añadir Ley
@@ -929,6 +930,7 @@ ARCHIVO: File
 EDITAR: Edit
 VENTANA: Window
 AYUDA: Help
+CURSO_SCRIPTING: Scripting Course
 TUTORIALES: Tutorials
 REPORTAR_FALLOS: Report Bugs/Errors/Failures
 DOCUMENTACION: Documentation

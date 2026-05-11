@@ -146,6 +146,7 @@
                     <div class="menu-content">
                         <a href="https://carleystudio.com/documentacion.html#editores" target="_blank" id="menu-help" data-i18n="AYUDA">Ayuda</a>
                         <a href="https://carleystudio.com/documentacion.html#editores" target="_blank" id="menu-docs" data-i18n="DOCUMENTACION">Documentación</a>
+                        <a href="https://carleystudio.com/curso-scripting.html" target="_blank" data-i18n="CURSO_SCRIPTING">Curso de Scripting</a>
                         <a href="https://www.youtube.com/@CarleyInteractiveStudioOficial" target="_blank" data-i18n="TUTORIALES">Tutoriales</a>
                         <a href="https://carleystudio.com/creative-engine.html#join" target="_blank" data-i18n="CANALES">Canales</a>
                         <a href="https://carleystudio.com/soluciones-rapidas.html" target="_blank" data-i18n="SOLUCION_RAPIDA">Soluciones Rápidas</a>
@@ -997,6 +998,10 @@ public star() {
     </div>
     <div id="hierarchy-context-menu" class="context-menu" style="display: none;">
         <ul>
+            <li data-action="rename" data-i18n="RENOMBRAR">Renombrar</li>
+            <li data-action="delete" class="danger" data-i18n="ELIMINAR">Borrar</li>
+            <li data-action="duplicate" data-i18n="DUPLICAR">Duplicar</li>
+            <hr>
             <li class="has-submenu">
                 <span data-i18n="CREAR">Crear</span> <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
                 <ul class="submenu">
@@ -1083,10 +1088,6 @@ public star() {
                     </li>
                 </ul>
             </li>
-            <hr>
-            <li data-action="rename" data-i18n="RENOMBRAR">Renombrar</li>
-            <li data-action="duplicate" data-i18n="DUPLICAR">Duplicar</li>
-            <li data-action="delete" class="danger" data-i18n="ELIMINAR">Eliminar</li>
         </ul>
     </div>
     <div id="library-context-menu" class="context-menu" style="display: none;">

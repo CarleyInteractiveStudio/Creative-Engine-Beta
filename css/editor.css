@@ -451,8 +451,8 @@ body.mobile-mode .logo-area span {
 }
 
 .toolbar-btn {
-    background-color: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+    background: none;
+    border: none;
     color: var(--text-primary);
     min-width: 32px;
     height: 32px;
@@ -467,7 +467,7 @@ body.mobile-mode .logo-area span {
 }
 
 .toolbar-btn:hover {
-    background-color: var(--bg-tertiary);
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
 .toolbar-btn.active {
