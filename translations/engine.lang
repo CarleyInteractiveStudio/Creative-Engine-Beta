@@ -347,9 +347,9 @@ VISTA_TERMINAL: Terminal
 # Hierarchy Context
 CIRCLE_COLLIDER_2D: Círculo 2D
 CREAR_MATERIA: Crear Materia
-MATERIA_VACIA: Materia Vacía
-MATERIA_2D: Materia 2D
-MATERIA_3D: Materia 3D
+MATERIA_VACIA: Vacía
+MATERIA_2D: 2D
+MATERIA_3D: 3D
 CUBE: Cubo
 SPHERE: Esfera
 PLANE: Plano
@@ -999,9 +999,9 @@ VISTA_TERMINAL: Terminal
 # Hierarchy Context
 CIRCLE_COLLIDER_2D: Circle Collider 2D
 CREAR_MATERIA: Create Matter
-MATERIA_VACIA: Empty Matter
-MATERIA_2D: 2D Matter
-MATERIA_3D: 3D Matter
+MATERIA_VACIA: Empty
+MATERIA_2D: 2D
+MATERIA_3D: 3D
 CUBE: Cube
 SPHERE: Sphere
 PLANE: Plane
@@ -1592,8 +1592,8 @@ VISTA_TERMINAL: Terminal
 # Hierarchy Context
 CIRCLE_COLLIDER_2D: Colisor de Círculo 2D
 CREAR_MATERIA: Criar Matéria
-MATERIA_VACIA: Matéria Vazia
-MATERIA_2D: Matéria 2D
+MATERIA_VACIA: Vazia
+MATERIA_2D: 2D
 SPRITE: Sprite
 TILEMAP: Tilemap
 TERRENO_2D: Terreno 2D
@@ -2070,8 +2070,8 @@ VISTA_TERMINAL: Терм.
 # Hierarchy Context
 CIRCLE_COLLIDER_2D: 2D Круговой коллайдер
 CREAR_MATERIA: Создать материю
-MATERIA_VACIA: Пустая материя
-MATERIA_2D: 2D Материя
+MATERIA_VACIA: Пустая
+MATERIA_2D: 2D
 SPRITE: Спрайт
 TILEMAP: Тайлмап
 TERRENO_2D: 2D Террейн
@@ -2568,8 +2568,8 @@ VISTA_TERMINAL: 终端
 # Hierarchy Context
 CIRCLE_COLLIDER_2D: 2D 圆形碰撞体
 CREAR_MATERIA: 创建物质
-MATERIA_VACIA: 空物质
-MATERIA_2D: 2D 物质
+MATERIA_VACIA: 空
+MATERIA_2D: 2D
 SPRITE: 精灵
 TILEMAP: 瓦片图
 TERRENO_2D: 2D 地形
