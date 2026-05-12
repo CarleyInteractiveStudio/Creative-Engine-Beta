@@ -146,6 +146,7 @@
                     <div class="menu-content">
                         <a href="https://carleystudio.com/documentacion.html#editores" target="_blank" id="menu-help" data-i18n="AYUDA">Ayuda</a>
                         <a href="https://carleystudio.com/documentacion.html#editores" target="_blank" id="menu-docs" data-i18n="DOCUMENTACION">Documentación</a>
+                        <a href="https://carleystudio.com/curso-scripting.html" target="_blank" data-i18n="CURSO_SCRIPTING">Curso de Scripting</a>
                         <a href="https://www.youtube.com/@CarleyInteractiveStudioOficial" target="_blank" data-i18n="TUTORIALES">Tutoriales</a>
                         <a href="https://carleystudio.com/creative-engine.html#join" target="_blank" data-i18n="CANALES">Canales</a>
                         <a href="https://carleystudio.com/soluciones-rapidas.html" target="_blank" data-i18n="SOLUCION_RAPIDA">Soluciones Rápidas</a>
@@ -966,7 +967,7 @@ public star() {
         <ul>
             <li class="has-submenu">
                 <span data-i18n="CREAR">Crear</span> <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
-                <ul class="submenu">
+                <ul class="submenu can-scroll">
                     <li data-action="create-folder" data-i18n="CARPETA">Carpeta</li>
                     <li data-action="create-script">Script (.ces)</li>
                     <li data-action="create-chc-script">Script H-Code (.chc)</li>
@@ -997,39 +998,40 @@ public star() {
     </div>
     <div id="hierarchy-context-menu" class="context-menu" style="display: none;">
         <ul>
+            <li data-action="rename" data-i18n="RENOMBRAR">Renombrar</li>
+            <li data-action="delete" class="danger" data-i18n="ELIMINAR">Borrar</li>
+            <li data-action="duplicate" data-i18n="DUPLICAR">Duplicar</li>
+            <hr>
             <li class="has-submenu">
                 <span data-i18n="CREAR">Crear</span> <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
                 <ul class="submenu">
+                    <li data-action="create-empty" data-i18n="MATERIA_VACIA">Vacía</li>
+                    <li data-action="create-camera" data-i18n="CAMARA">Cámara</li>
+                    <hr>
                     <li class="has-submenu">
-                        <span data-i18n="MATERIA">Materia</span> <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
-                        <ul class="submenu">
-                            <li data-action="create-empty" data-i18n="MATERIA_VACIA">Materia Vacía</li>
-                            <li data-action="create-camera" data-i18n="CAMARA">Cámara</li>
+                        <span data-i18n="MATERIA_2D">2D</span> <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
+                        <ul class="submenu can-scroll">
+                            <li data-action="create-sprite" data-i18n="SPRITE">Sprite</li>
+                            <li data-action="create-parallax" data-i18n="PARALLAX">Parallax</li>
+                            <li data-action="create-sprite" data-i18n="TEXTURE">Textura (Sprite)</li>
+                            <li data-action="create-audio" data-i18n="AUDIO">Audio</li>
+                            <li data-action="create-tilemap" data-i18n="TILEMAP">Tilemap</li>
+                            <li data-action="create-terrain" data-i18n="TERRENO_2D">Terreno 2D</li>
+                            <li data-action="create-rectangle" data-i18n="RECTANGULO">Rectángulo</li>
+                            <li data-action="create-circle" data-i18n="CIRCULO">Círculo</li>
+                            <li data-action="create-triangle-2d" data-i18n="TRIANGULO">Triángulo</li>
+                            <li data-action="create-capsule" data-i18n="CAPSULA">Cápsula</li>
+                            <li data-action="create-line-collider" data-i18n="LINE_COLLIDER">Colisionador de Líneas</li>
+                            <li data-action="create-combatant" data-i18n="COMBATANT">Combatiente (Ataque/Vida)</li>
                             <hr>
-                            <li class="has-submenu">
-                                <span data-i18n="MATERIA_2D">Materia 2D</span> <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
-                                <ul class="submenu">
-                                    <li data-action="create-sprite" data-i18n="SPRITE">Sprite</li>
-                                    <li data-action="create-parallax" data-i18n="PARALLAX">Parallax</li>
-                                    <li data-action="create-sprite" data-i18n="TEXTURE">Textura (Sprite)</li>
-                                    <li data-action="create-audio" data-i18n="AUDIO">Audio</li>
-                                    <li data-action="create-tilemap" data-i18n="TILEMAP">Tilemap</li>
-                                    <li data-action="create-terrain" data-i18n="TERRENO_2D">Terreno 2D</li>
-                                    <li data-action="create-rectangle" data-i18n="RECTANGULO">Rectángulo</li>
-                                    <li data-action="create-circle" data-i18n="CIRCULO">Círculo</li>
-                                    <li data-action="create-triangle-2d" data-i18n="TRIANGULO">Triángulo</li>
-                                    <li data-action="create-capsule" data-i18n="CAPSULA">Cápsula</li>
-                                    <li data-action="create-line-collider" data-i18n="LINE_COLLIDER">Colisionador de Líneas</li>
-                                    <li data-action="create-combatant">Combatiente (Ataque/Vida)</li>
-                                    <hr>
-                                    <li data-action="create-bone" data-i18n="BONE">Hueso</li>
-                                    <li data-action="create-skeleton" data-i18n="SKELETON">Esqueleto (Skinning)</li>
-                                    <li data-action="create-ik-manager" data-i18n="IK_MANAGER">Gestor IK</li>
-                                </ul>
-                            </li>
-                            <li class="has-submenu only-3d">
-                        <span data-i18n="MATERIA_3D">Materia 3D</span> <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
-                        <ul class="submenu">
+                            <li data-action="create-bone" data-i18n="BONE">Hueso</li>
+                            <li data-action="create-skeleton" data-i18n="SKELETON">Esqueleto (Skinning)</li>
+                            <li data-action="create-ik-manager" data-i18n="IK_MANAGER">Gestor IK</li>
+                        </ul>
+                    </li>
+                    <li class="has-submenu only-3d">
+                        <span data-i18n="MATERIA_3D">3D</span> <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
+                        <ul class="submenu can-scroll">
                             <li data-action="create-cube" data-i18n="CUBE">Cubo</li>
                             <li data-action="create-sphere" data-i18n="SPHERE">Esfera</li>
                             <li data-action="create-capsule-3d" data-i18n="CAPSULE">Cápsula</li>
@@ -1042,7 +1044,7 @@ public star() {
                         <ul class="submenu">
                             <li class="has-submenu">
                                 <span>Crear UI</span> <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
-                                <ul class="submenu">
+                                <ul class="submenu can-scroll">
                                     <li data-action="create-canvas" data-i18n="CANVAS">Canvas</li>
                                     <li data-action="create-ui-image" data-i18n="IMAGE">Imagen</li>
                                     <li data-action="create-ui-button" data-i18n="BOTON">Botón</li>
@@ -1083,10 +1085,6 @@ public star() {
                     </li>
                 </ul>
             </li>
-            <hr>
-            <li data-action="rename" data-i18n="RENOMBRAR">Renombrar</li>
-            <li data-action="duplicate" data-i18n="DUPLICAR">Duplicar</li>
-            <li data-action="delete" class="danger" data-i18n="ELIMINAR">Eliminar</li>
         </ul>
     </div>
     <div id="library-context-menu" class="context-menu" style="display: none;">

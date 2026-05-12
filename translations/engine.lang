@@ -278,6 +278,7 @@ ARCHIVO: Archivo
 EDITAR: Editar
 VENTANA: Ventana
 AYUDA: Ayuda
+CURSO_SCRIPTING: Curso de Scripting
 TUTORIALES: Tutoriales
 REPORTAR_FALLOS: Reportar Bugs/Errores/Fallos
 DOCUMENTACION: Documentación
@@ -346,9 +347,9 @@ VISTA_TERMINAL: Terminal
 # Hierarchy Context
 CIRCLE_COLLIDER_2D: Círculo 2D
 CREAR_MATERIA: Crear Materia
-MATERIA_VACIA: Materia Vacía
-MATERIA_2D: Materia 2D
-MATERIA_3D: Materia 3D
+MATERIA_VACIA: Vacía
+MATERIA_2D: 2D
+MATERIA_3D: 3D
 CUBE: Cubo
 SPHERE: Esfera
 PLANE: Plano
@@ -388,7 +389,7 @@ WEIGHT_PAINTER: Pintor de Pesos
 ESCENA_VACIA: La escena está vacía.<br>Click derecho para crear un objeto.
 RENOMBRAR: Renombrar
 DUPLICAR: Duplicar
-ELIMINAR: Eliminar
+ELIMINAR: Borrar
 
 # Inspector
 ADD_LEY: Añadir Ley
@@ -929,6 +930,7 @@ ARCHIVO: File
 EDITAR: Edit
 VENTANA: Window
 AYUDA: Help
+CURSO_SCRIPTING: Scripting Course
 TUTORIALES: Tutorials
 REPORTAR_FALLOS: Report Bugs/Errors/Failures
 DOCUMENTACION: Documentation
@@ -997,9 +999,9 @@ VISTA_TERMINAL: Terminal
 # Hierarchy Context
 CIRCLE_COLLIDER_2D: Circle Collider 2D
 CREAR_MATERIA: Create Matter
-MATERIA_VACIA: Empty Matter
-MATERIA_2D: 2D Matter
-MATERIA_3D: 3D Matter
+MATERIA_VACIA: Empty
+MATERIA_2D: 2D
+MATERIA_3D: 3D
 CUBE: Cube
 SPHERE: Sphere
 PLANE: Plane
@@ -1508,6 +1510,7 @@ ARCHIVO: Arquivo
 EDITAR: Editar
 VENTANA: Janela
 AYUDA: Ajuda
+CURSO_SCRIPTING: Curso de Scripting
 DOCUMENTACION: Documentação
 NUEVA_ESCENA: Nova Cena
 ABRIR_ESCENA: Abrir Cena...
@@ -1590,8 +1593,8 @@ VISTA_TERMINAL: Terminal
 # Hierarchy Context
 CIRCLE_COLLIDER_2D: Colisor de Círculo 2D
 CREAR_MATERIA: Criar Matéria
-MATERIA_VACIA: Matéria Vazia
-MATERIA_2D: Matéria 2D
+MATERIA_VACIA: Vazia
+MATERIA_2D: 2D
 SPRITE: Sprite
 TILEMAP: Tilemap
 TERRENO_2D: Terreno 2D
@@ -2031,6 +2034,8 @@ ARCHIVO: Файл
 EDITAR: Правка
 VENTANA: Окно
 AYUDA: Справка
+CURSO_SCRIPTING: Курс по скриптингу
+COMBATANT: Боец
 DOCUMENTACION: Документация
 NUEVA_ESCENA: Новая сцена
 ABRIR_ESCENA: Открыть сцену...
@@ -2068,8 +2073,8 @@ VISTA_TERMINAL: Терм.
 # Hierarchy Context
 CIRCLE_COLLIDER_2D: 2D Круговой коллайдер
 CREAR_MATERIA: Создать материю
-MATERIA_VACIA: Пустая материя
-MATERIA_2D: 2D Материя
+MATERIA_VACIA: Пустая
+MATERIA_2D: 2D
 SPRITE: Спрайт
 TILEMAP: Тайлмап
 TERRENO_2D: 2D Террейн
@@ -2529,6 +2534,8 @@ ARCHIVO: 文件
 EDITAR: 编辑
 VENTANA: 窗口
 AYUDA: 帮助
+CURSO_SCRIPTING: 脚本课程
+COMBATANT: 战斗员
 DOCUMENTACION: 文档
 NUEVA_ESCENA: 新场景
 ABRIR_ESCENA: 打开场景...
@@ -2566,8 +2573,8 @@ VISTA_TERMINAL: 终端
 # Hierarchy Context
 CIRCLE_COLLIDER_2D: 2D 圆形碰撞体
 CREAR_MATERIA: 创建物质
-MATERIA_VACIA: 空物质
-MATERIA_2D: 2D 物质
+MATERIA_VACIA: 空
+MATERIA_2D: 2D
 SPRITE: 精灵
 TILEMAP: 瓦片图
 TERRENO_2D: 2D 地形
