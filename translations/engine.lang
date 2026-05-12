@@ -923,6 +923,7 @@ TERRENO: Terrain
 CANVAS: Canvas
 PANEL: Panel
 COMBATANT: Combatant
+COMBATANT: Combatente
 HEALTH_BAR: Health Bar
 
 # Editor Menubar
@@ -1510,6 +1511,7 @@ ARCHIVO: Arquivo
 EDITAR: Editar
 VENTANA: Janela
 AYUDA: Ajuda
+CURSO_SCRIPTING: Curso de Scripting
 DOCUMENTACION: Documentação
 NUEVA_ESCENA: Nova Cena
 ABRIR_ESCENA: Abrir Cena...
@@ -2033,6 +2035,8 @@ ARCHIVO: Файл
 EDITAR: Правка
 VENTANA: Окно
 AYUDA: Справка
+CURSO_SCRIPTING: Курс по скриптингу
+COMBATANT: Боец
 DOCUMENTACION: Документация
 NUEVA_ESCENA: Новая сцена
 ABRIR_ESCENA: Открыть сцену...
@@ -2531,6 +2535,8 @@ ARCHIVO: 文件
 EDITAR: 编辑
 VENTANA: 窗口
 AYUDA: 帮助
+CURSO_SCRIPTING: 脚本课程
+COMBATANT: 战斗员
 DOCUMENTACION: 文档
 NUEVA_ESCENA: 新场景
 ABRIR_ESCENA: 打开场景...

@@ -2792,12 +2792,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Final safety check: ensure top is not negative (menu taller than window)
-        // Removed maxHeight and overflow auto to prevent submenu clipping.
-        // The menu will now be allowed to extend, and CSS handles core visibility.
         if (top < 5) top = 5;
-        menu.style.maxHeight = '';
-        menu.style.overflowY = 'visible';
-        menu.style.overflowX = 'visible';
 
         menu.style.left = `${left}px`;
         menu.style.top = `${top}px`;
@@ -3082,15 +3077,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const submenu = e.currentTarget.querySelector('.submenu');
                 if (!submenu) return;
 
-                // FULL CLEANUP of any previous positioning
-                submenu.classList.remove('submenu-left', 'submenu-up');
+                // FULL CLEANUP
                 submenu.style.top = '';
                 submenu.style.left = '';
-                submenu.style.right = '';
-                submenu.style.bottom = '';
-                submenu.style.position = 'absolute'; // Force absolute for relative tracking
 
-                // Measure accurately without gaps
+                // Measure
                 submenu.style.display = 'block';
                 submenu.style.visibility = 'hidden';
                 const submenuWidth = submenu.offsetWidth;
@@ -3100,25 +3091,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const rect = e.currentTarget.getBoundingClientRect();
 
-                // Check horizontal space (using absolute relative to parent, so we check rect.right)
-                if (rect.right + submenuWidth > window.innerWidth - 10) {
-                    submenu.classList.add('submenu-left');
+                let left = rect.right - 8;
+                let top = rect.top;
+
+                // Check horizontal space
+                if (left + submenuWidth > window.innerWidth - 10) {
+                    left = rect.left - submenuWidth + 8;
                 }
 
                 // Check vertical space
-                if (rect.top + submenuHeight > window.innerHeight - 10) {
-                    // Try going UP
-                    submenu.classList.add('submenu-up');
-
-                    // Measure new position
-                    const estimatedTop = rect.bottom - submenuHeight;
-                    if (estimatedTop < 10) {
-                        // If it doesn't fit UP either, force it to be inside the window
-                        // by overriding the relative top with a negative offset from parent's top
-                        const overflowBottom = (rect.top + submenuHeight) - (window.innerHeight - 10);
-                        submenu.style.top = `-${overflowBottom}px`;
-                    }
+                if (top + submenuHeight > window.innerHeight - 10) {
+                    top = window.innerHeight - submenuHeight - 10;
+                    if (top < 10) top = 10;
                 }
+
+                submenu.style.left = `${left}px`;
+                submenu.style.top = `${top}px`;
             });
         });
 

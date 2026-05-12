@@ -127,7 +127,7 @@ body.mobile-mode .menu-btn {
 .menu-content {
     display: none;
     position: absolute;
-    background: rgba(10, 10, 12, 0.92); /* Darker and more opaque */
+    background: rgba(10, 10, 12, 0.92);
     backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
     border: 1px solid rgba(255, 255, 255, 0.15);
@@ -135,10 +135,10 @@ body.mobile-mode .menu-btn {
     min-width: 220px;
     z-index: 60000;
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
-    margin: 0; /* Zero gap between menubar and dropdown */
+    margin: 0;
     padding-top: 5px;
-    overflow: visible !important; /* Force submenu visibility */
-    max-height: none !important; /* Prevent scrollbar clipping */
+    overflow-y: auto;
+    max-height: calc(100vh - 60px); /* Prevent scrollbar clipping */
     animation: menu-fade-in 0.2s ease-out;
 }
 
@@ -2743,14 +2743,11 @@ body.mobile-mode #editor-main-content.no-inspector {
 
 .context-menu .submenu {
     display: none;
-    position: absolute;
-    left: calc(100% - 8px); /* 8px overlap for ultra-stable contact */
-    top: -5px; /* Alignment */
-    margin: 0; /* Clear any margin */
+    position: fixed;
+    margin: 0;
     background: rgba(10, 10, 12, 0.98);
     backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
-    /* Common styles for all submenus */
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 12px;
     padding: 8px 0;
@@ -2758,28 +2755,13 @@ body.mobile-mode #editor-main-content.no-inspector {
     min-width: 200px;
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
     z-index: 60001;
-    overflow: visible !important; /* Force visibility for nested submenus */
-    max-height: none !important;
+    overflow-y: auto;
+    max-height: calc(100vh - 40px);
 }
 
-.context-menu .submenu.submenu-up {
-    top: auto;
-    bottom: -5px;
-}
-
-.context-menu .submenu.submenu-left {
-    left: auto;
-    right: calc(100% - 8px); /* 8px overlap for stability */
-}
 
 .context-menu .has-submenu:hover > .submenu {
     display: block;
-}
-
-.context-menu .submenu .submenu {
-    display: none;
-    top: -5px;
-    left: calc(100% - 5px); /* Ensure overlap in nested submenus */
 }
 
 .context-menu .arrow {
@@ -4146,7 +4128,7 @@ body.mobile-mode #mobile-code-tools {
 /* --- Context Menu --- */
 .context-menu {
     position: absolute;
-    background: rgba(10, 10, 12, 0.95); /* Darker and more opaque for context menus */
+    background: rgba(10, 10, 12, 0.95);
     backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
     border: 1px solid rgba(255, 255, 255, 0.18);
@@ -4154,8 +4136,8 @@ body.mobile-mode #mobile-code-tools {
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
     padding: 8px 0;
     z-index: 60000;
-    overflow: visible !important; /* Prevent submenu clipping */
-    max-height: none !important;
+    overflow-y: auto;
+    max-height: calc(100vh - 40px);
     animation: context-menu-fade-in 0.15s ease-out;
 }
 
