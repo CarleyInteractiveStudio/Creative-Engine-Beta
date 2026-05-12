@@ -2767,11 +2767,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     function showContextMenu(menu, event) {
-        hideContextMenus(); // Hide any other open menus
-        if (!menu) {
-            return;
-        }
+        hideContextMenus();
+        if (!menu) return;
+
         menu.style.display = 'block';
+        menu.style.maxHeight = '';
+        menu.style.overflowY = 'visible';
 
         const menuWidth = menu.offsetWidth;
         const menuHeight = menu.offsetHeight;
@@ -2781,21 +2782,19 @@ document.addEventListener('DOMContentLoaded', () => {
         let left = event.clientX;
         let top = event.clientY;
 
-        // Adjust horizontal position
-        if (left + menuWidth > windowWidth) {
-            left = windowWidth - menuWidth - 5;
+        if (left + menuWidth > windowWidth - 10) left = windowWidth - menuWidth - 10;
+        if (top + menuHeight > windowHeight - 10) top = windowHeight - menuHeight - 10;
+        if (top < 10) {
+            top = 10;
+            // Only scroll if it STILL doesn't fit after shifting to top
+            if (menuHeight > windowHeight - 20) {
+                menu.style.maxHeight = (windowHeight - 20) + 'px';
+                menu.style.overflowY = 'auto';
+            }
         }
 
-        // Adjust vertical position
-        if (top + menuHeight > windowHeight) {
-            top = windowHeight - menuHeight - 5;
-        }
-
-        // Final safety check: ensure top is not negative (menu taller than window)
-        if (top < 5) top = 5;
-
-        menu.style.left = `${left}px`;
-        menu.style.top = `${top}px`;
+        menu.style.left = left + 'px';
+        menu.style.top = top + 'px';
     }
 
     function hideContextMenus() {
@@ -3042,9 +3041,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
                 return;
             }
-
-            // If it's the general editor background or a panel, prevent the native menu
-            // Specific components like CodeMirror handle their own contextmenu
             e.preventDefault();
         });
 
@@ -3077,36 +3073,52 @@ document.addEventListener('DOMContentLoaded', () => {
                 const submenu = e.currentTarget.querySelector('.submenu');
                 if (!submenu) return;
 
-                // FULL CLEANUP
-                submenu.style.top = '';
-                submenu.style.left = '';
+                // Detect if it should scroll (no sub-sub-menus)
+                const hasNested = submenu.querySelector('.has-submenu');
+                if (!hasNested) {
+                    submenu.classList.add('can-scroll');
+                } else {
+                    submenu.classList.remove('can-scroll');
+                }
 
-                // Measure
                 submenu.style.display = 'block';
                 submenu.style.visibility = 'hidden';
+                submenu.style.maxHeight = '';
+                submenu.style.overflowY = hasNested ? 'visible' : 'auto';
+
                 const submenuWidth = submenu.offsetWidth;
                 const submenuHeight = submenu.offsetHeight;
                 submenu.style.display = '';
                 submenu.style.visibility = '';
 
                 const rect = e.currentTarget.getBoundingClientRect();
+                const windowWidth = window.innerWidth;
+                const windowHeight = window.innerHeight;
 
                 let left = rect.right - 8;
                 let top = rect.top;
 
-                // Check horizontal space
-                if (left + submenuWidth > window.innerWidth - 10) {
+                // Horizontal flip
+                if (left + submenuWidth > windowWidth - 10) {
                     left = rect.left - submenuWidth + 8;
                 }
 
-                // Check vertical space
-                if (top + submenuHeight > window.innerHeight - 10) {
-                    top = window.innerHeight - submenuHeight - 10;
-                    if (top < 10) top = 10;
+                // Vertical shift
+                if (top + submenuHeight > windowHeight - 10) {
+                    top = windowHeight - submenuHeight - 10;
                 }
 
-                submenu.style.left = `${left}px`;
-                submenu.style.top = `${top}px`;
+                // Safety: if it's too tall even after shift
+                if (top < 10) {
+                    top = 10;
+                    if (!hasNested) {
+                        submenu.style.maxHeight = (windowHeight - 20) + 'px';
+                        submenu.style.overflowY = 'auto';
+                    }
+                }
+
+                submenu.style.left = left + 'px';
+                submenu.style.top = top + 'px';
             });
         });
 

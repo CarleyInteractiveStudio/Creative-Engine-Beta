@@ -127,19 +127,17 @@ body.mobile-mode .menu-btn {
 .menu-content {
     display: none;
     position: absolute;
-    background: rgba(10, 10, 12, 0.92);
-    backdrop-filter: blur(25px);
-    -webkit-backdrop-filter: blur(25px);
+    background: rgba(10, 10, 12, 0.98);
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 12px;
     min-width: 220px;
     z-index: 60000;
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
     margin: 0;
-    padding-top: 5px;
-    overflow-y: auto;
-    max-height: calc(100vh - 60px); /* Prevent scrollbar clipping */
+    padding: 8px 0;
     animation: menu-fade-in 0.2s ease-out;
+    overflow-y: auto;
+    max-height: calc(100vh - 60px);
 }
 
 /* Custom scrollbar for menus and scrollable lists */
@@ -2746,8 +2744,6 @@ body.mobile-mode #editor-main-content.no-inspector {
     position: fixed;
     margin: 0;
     background: rgba(10, 10, 12, 0.98);
-    backdrop-filter: blur(25px);
-    -webkit-backdrop-filter: blur(25px);
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 12px;
     padding: 8px 0;
@@ -2755,6 +2751,11 @@ body.mobile-mode #editor-main-content.no-inspector {
     min-width: 200px;
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
     z-index: 60001;
+    overflow: visible;
+}
+
+/* Leaf submenus or those that we know are long and have no children can scroll */
+.context-menu .submenu.can-scroll {
     overflow-y: auto;
     max-height: calc(100vh - 40px);
 }
@@ -4128,16 +4129,13 @@ body.mobile-mode #mobile-code-tools {
 /* --- Context Menu --- */
 .context-menu {
     position: absolute;
-    background: rgba(10, 10, 12, 0.95);
-    backdrop-filter: blur(25px);
-    -webkit-backdrop-filter: blur(25px);
+    background: rgba(10, 10, 12, 0.98);
     border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 12px;
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
     padding: 8px 0;
     z-index: 60000;
-    overflow-y: auto;
-    max-height: calc(100vh - 40px);
+    overflow: visible;
     animation: context-menu-fade-in 0.15s ease-out;
 }
 
@@ -5125,14 +5123,19 @@ body.game-mode #loading-overlay {
 }
 
 #carl-ia-panel .menu-content {
-    background: rgba(30, 30, 30, 0.9);
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: none;
+    position: absolute;
+    background: rgba(10, 10, 12, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 12px;
-    margin-top: 5px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-    min-width: 150px;
-    overflow: hidden;
+    min-width: 220px;
+    z-index: 60000;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+    margin: 0;
+    padding: 8px 0;
+    animation: menu-fade-in 0.2s ease-out;
+    overflow-y: auto;
+    max-height: calc(100vh - 60px);
 }
 
 #carl-ia-panel .menu-content a {
@@ -5858,4 +5861,11 @@ body.project-type-3d .only-2d {
     align-items: center;
     gap: 10px;
     min-height: 32px;
+}
+
+body.mobile-mode .context-menu li,
+body.mobile-mode .menu-content a,
+body.mobile-mode .submenu li {
+    padding: 10px 15px !important;
+    font-size: 14px !important;
 }

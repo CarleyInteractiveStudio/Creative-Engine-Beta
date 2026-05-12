@@ -923,7 +923,6 @@ TERRENO: Terrain
 CANVAS: Canvas
 PANEL: Panel
 COMBATANT: Combatant
-COMBATANT: Combatente
 HEALTH_BAR: Health Bar
 
 # Editor Menubar
