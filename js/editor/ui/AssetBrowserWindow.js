@@ -471,6 +471,16 @@ export async function handleContextMenuAction(action) {
             }
             break;
         }
+        case 'create-css-script': {
+            const name = await window.Dialogs.showPrompt('Nuevo Script Creative Scratch', 'Introduce el nombre del script:', 'VisualLogic');
+            if (name) {
+                // Initialize with empty blocks JSON
+                const initialContent = JSON.stringify({ blocks: [] });
+                await createAsset(`${name}.css`, initialContent, currentDirHandle);
+                updateAssetBrowser();
+            }
+            break;
+        }
         case 'rename': {
             if (selectedAsset) {
                 const oldName = selectedAsset.name;

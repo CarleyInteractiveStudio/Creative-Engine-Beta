@@ -20,6 +20,7 @@ import { intentWeights, blockTemplates } from './AutoReparatorData.js';
 import * as AIHandler from './AIHandler.js';
 import { getPreferences } from './ui/PreferencesWindow.js';
 import { broadcastUpdate } from './CollaborationSystem.js';
+import { VisualScriptingCore } from './VisualScriptingCore.js';
 
 // --- Module State ---
 let dom;
@@ -321,8 +322,17 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
             return;
         }
 
+        if (fileName.endsWith('.css')) {
+            console.log(`[CSS] Abriendo scripting visual para ${fileName}`);
+            openVsEditor(content);
+            const toggleBtn = scenePanel.querySelector('.view-toggle-btn[data-view="code-editor-content"]');
+            if (toggleBtn) toggleBtn.click();
+            return;
+        }
+
         // Switch to Code Editor View
         if (dom.chcIntegratedEditor) dom.chcIntegratedEditor.classList.add('hidden');
+        if (dom.vsIntegratedEditor) dom.vsIntegratedEditor.classList.add('hidden');
         dom.codeEditorToolbar.classList.remove('hidden');
         dom.codemirrorContainer.style.display = 'block';
 
@@ -405,13 +415,29 @@ export async function saveCurrentScript() {
     }
 
     const isChc = currentlyOpenFileHandle.name.endsWith('.chc');
-    if (!isChc && !codeEditor) {
+    const isCss = currentlyOpenFileHandle.name.endsWith('.css');
+    if (!isChc && !isCss && !codeEditor) {
         window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('ERROR_SIN_SCRIPT_ABIERTO', 'No hay ningún script abierto para guardar.'));
         return;
     }
 
     try {
-        const scriptContent = isChc ? dom.chcHumanText.value : codeEditor.state.doc.toString();
+        let scriptContent;
+        let generatedCode = null;
+
+        if (isChc) {
+            scriptContent = dom.chcHumanText.value;
+        } else if (isCss) {
+            if (window.VisualScriptingWindow && window.VisualScriptingWindow.getBlocksData) {
+                const blocks = window.VisualScriptingWindow.getBlocksData();
+                scriptContent = JSON.stringify({ blocks });
+                generatedCode = VisualScriptingCore.translateToCES({ blocks });
+            } else {
+                throw new Error("VisualScriptingWindow not available");
+            }
+        } else {
+            scriptContent = codeEditor.state.doc.toString();
+        }
 
         // --- Backup Logic ---
         try {
@@ -460,11 +486,30 @@ export async function saveCurrentScript() {
         await writable.write(scriptContent);
         await writable.close();
 
+        // If it's CSS, we also need to save the generated code to meta
+        if (isCss && generatedCode) {
+            const metaFileName = `${currentlyOpenFileHandle.name}.meta`;
+            const metaHandle = await currentlyOpenDirHandle.getFileHandle(metaFileName, { create: true });
+            const metaWritable = await metaHandle.createWritable();
+            const metaData = {
+                generatedCode: generatedCode,
+                lastGenerated: Date.now()
+            };
+            await metaWritable.write(JSON.stringify(metaData, null, 2));
+            await metaWritable.close();
+
+            // Sync transpilation for engine
+            transpile(generatedCode, currentlyOpenFileHandle.name);
+        }
+
         // window.Dialogs.showNotification removed here, will show specialized one below
 
         // Ahora, transpila y comprueba si hay errores
         console.clear(); // Limpia la consola antes de mostrar nuevos errores
-        const result = transpile(scriptContent, currentlyOpenFileHandle.name);
+        const contentToTranspile = isCss ? generatedCode : scriptContent;
+        if (!contentToTranspile && isCss) return; // Skip if no code generated yet
+
+        const result = transpile(contentToTranspile, currentlyOpenFileHandle.name);
         if (result.errors && result.errors.length > 0) {
             console.error(`${L.get('ERROR_COMPILACION', 'Errores de compilación en')} ${currentlyOpenFileHandle.name}:`);
             result.errors.forEach(error => window.logToUIConsole(error, 'error', false));
@@ -504,9 +549,29 @@ export function openChcEditor(content) {
     if (!dom.chcIntegratedEditor) return;
 
     dom.codemirrorContainer.style.display = 'none';
+    if (dom.vsIntegratedEditor) dom.vsIntegratedEditor.classList.add('hidden');
     dom.codeEditorToolbar.classList.add('hidden');
     dom.chcIntegratedEditor.classList.remove('hidden');
     dom.chcHumanText.value = content;
+}
+
+export function openVsEditor(content) {
+    if (!dom.vsIntegratedEditor) return;
+
+    dom.codemirrorContainer.style.display = 'none';
+    if (dom.chcIntegratedEditor) dom.chcIntegratedEditor.classList.add('hidden');
+    dom.codeEditorToolbar.classList.add('hidden');
+    dom.vsIntegratedEditor.classList.remove('hidden');
+
+    // Initialize/Update VS logic with content
+    try {
+        const data = JSON.parse(content);
+        if (window.VisualScriptingWindow && window.VisualScriptingWindow.loadBlocks) {
+            window.VisualScriptingWindow.loadBlocks(data.blocks || [], true);
+        }
+    } catch (e) {
+        console.error("Error al cargar bloques CSS:", e);
+    }
 }
 
 async function runChc() {

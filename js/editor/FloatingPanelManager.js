@@ -58,8 +58,32 @@ function initializePanel(panel) {
     const maximizeBtn = panel.querySelector('.maximize-btn');
     if (maximizeBtn) {
         maximizeBtn.addEventListener('click', () => {
+            panel.classList.remove('fullscreen');
+            panel.classList.remove('minimized');
             panel.classList.toggle('maximized');
             // Optional: a function to notify other parts of the app a resize happened
+            window.dispatchEvent(new Event('resize'));
+        });
+    }
+
+    // Fullscreen button logic
+    const fullscreenBtn = panel.querySelector('.fullscreen-btn');
+    if (fullscreenBtn) {
+        fullscreenBtn.addEventListener('click', () => {
+            panel.classList.remove('maximized');
+            panel.classList.remove('minimized');
+            panel.classList.toggle('fullscreen');
+            window.dispatchEvent(new Event('resize'));
+        });
+    }
+
+    // Minimize button logic
+    const minimizeBtn = panel.querySelector('.minimize-btn');
+    if (minimizeBtn) {
+        minimizeBtn.addEventListener('click', () => {
+            panel.classList.remove('maximized');
+            panel.classList.remove('fullscreen');
+            panel.classList.toggle('minimized');
             window.dispatchEvent(new Event('resize'));
         });
     }
@@ -142,7 +166,9 @@ export function createFloatingPanel(id, options = {}) {
         <div class="panel-header">
             <span>${title}</span>
             <div class="panel-header-controls">
+                <button class="panel-tool-btn minimize-btn" title="Minimizar"><img src="icons/minus.svg" class="ce-icon"></button>
                 <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar"><img src="icons/maximize-2.svg" class="ce-icon"></button>
+                <button class="panel-tool-btn fullscreen-btn" title="Pantalla Completa"><img src="icons/maximize.svg" class="ce-icon"></button>
                 <button class="close-panel-btn" data-panel="${id}">&times;</button>
             </div>
         </div>

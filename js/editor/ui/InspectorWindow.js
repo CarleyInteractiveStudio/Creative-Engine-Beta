@@ -5309,7 +5309,7 @@ export async function showAddComponentModal() {
         const scriptFiles = [];
         async function findScriptFiles(dirHandle) {
             for await (const entry of dirHandle.values()) {
-                if (entry.kind === 'file' && (entry.name.endsWith('.ces') || entry.name.endsWith('.chc'))) {
+                if (entry.kind === 'file' && (entry.name.endsWith('.ces') || entry.name.endsWith('.chc') || entry.name.endsWith('.css'))) {
                     scriptFiles.push(entry);
                 } else if (entry.kind === 'directory') {
                     try {

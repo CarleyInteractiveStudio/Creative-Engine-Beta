@@ -197,8 +197,19 @@
                         <button id="library-panel-import-btn" class="panel-tool-btn" data-i18n="IMPORTAR">Importar</button>
                         <button id="library-panel-export-btn" class="panel-tool-btn" data-i18n="EXPORTAR">Exportar</button>
                         <button id="library-api-docs-btn" class="panel-tool-btn" data-i18n="DOCS_API">Documentación API</button>
+                        <button class="panel-tool-btn minimize-btn" title="Minimizar"><img src="icons/minus.svg" class="ce-icon"></button>
+                        <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar"><img src="icons/maximize-2.svg" class="ce-icon"></button>
+                        <button class="panel-tool-btn fullscreen-btn" title="Pantalla Completa"><img src="icons/maximize.svg" class="ce-icon"></button>
                         <button class="close-panel-btn" data-panel="library-panel">&times;</button>
                     </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
                 </div>
                 <div class="panel-content" id="library-list-container">
                     <!-- Library cards will be populated by JS -->
@@ -520,6 +531,17 @@ public star() {
                                 <p id="chc-loading-text">Carl IA está traduciendo tu lógica...</p>
                             </div>
                         </div>
+                        <!-- Visual Scripting Integrated (Creative Scratch Scripting) -->
+                        <div id="vs-integrated-editor" class="vs-layout hidden">
+                            <div id="vs-integrated-toolbox" class="vs-toolbox" style="width: 220px; overflow-y: auto; background: rgba(0,0,0,0.2); border-right: 1px solid rgba(255,255,255,0.1);">
+                                <!-- Reusing toolbox from VisualScriptingWindow but styled for integration -->
+                            </div>
+                            <div id="vs-integrated-workspace-inner" style="flex: 1; position: relative; overflow: hidden; background-color: #1e1e1e; background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 20px 20px;">
+                                <svg id="vs-integrated-connections-layer" style="position: absolute; width: 100%; height: 100%; pointer-events: none;"></svg>
+                                <div id="vs-integrated-blocks-container"></div>
+                                <div id="vs-integrated-hint" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.3; pointer-events: none;">Arrastra bloques aquí para programar (.css)</div>
+                            </div>
+                        </div>
                     </div>
                     <div id="terminal-content" class="panel-content view-content no-padding">
                         <div id="terminal-output">
@@ -587,9 +609,19 @@ public star() {
                 <div class="panel-header">
                     <span data-i18n="EDITOR_ANIMACION">Editor de Animación</span>
                     <div class="panel-header-controls">
+                        <button class="panel-tool-btn minimize-btn" title="Minimizar"><img src="icons/minus.svg" class="ce-icon"></button>
                         <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar" data-i18n-title="MAXIMIZAR"><img src="icons/maximize-2.svg" class="ce-icon"></button>
+                        <button class="panel-tool-btn fullscreen-btn" title="Pantalla Completa"><img src="icons/maximize.svg" class="ce-icon"></button>
                         <button class="close-panel-btn" data-panel="animation-panel">&times;</button>
                     </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
                 </div>
                 <div class="panel-content">
                     <div id="animation-toolbar">
@@ -677,7 +709,20 @@ public star() {
                         <button id="anim-ctrl-save-btn" data-i18n="GUARDAR">Guardar</button>
                         <span id="current-anim-ctrl-name" data-i18n="NINGUNO">Ninguno</span>
                     </div>
-                    <button class="close-panel-btn" data-panel="animator-controller-panel">&times;</button>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
+                    <div class="panel-header-controls">
+                        <button class="panel-tool-btn minimize-btn" title="Minimizar"><img src="icons/minus.svg" class="ce-icon"></button>
+                        <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar"><img src="icons/maximize-2.svg" class="ce-icon"></button>
+                        <button class="panel-tool-btn fullscreen-btn" title="Pantalla Completa"><img src="icons/maximize.svg" class="ce-icon"></button>
+                        <button class="close-panel-btn" data-panel="animator-controller-panel">&times;</button>
+                    </div>
                 </div>
                 <div class="panel-content no-padding animator-controller-layout">
                     <div id="animator-controller-overlay">
@@ -723,9 +768,14 @@ public star() {
                         </div>
                     </div>
                 </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
                 <div class="resize-handle" data-direction="e"></div>
-                <div class="resize-handle" data-direction="s"></div>
                 <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
             </div>
             <div id="ui-editor-panel" class="editor-panel floating-panel hidden">
                 <div class="panel-header">
@@ -734,7 +784,20 @@ public star() {
                         <button id="ui-editor-save-btn" title="Guardar Asset UI" data-i18n-title="GUARDAR"><img src="icons/save.svg" class="ce-icon"> <span data-i18n="GUARDAR">Guardar</span></button>
                         <button id="ui-canvas-maximize-btn" title="Maximizar Canvas" data-i18n-title="MAXIMIZAR"><img src="icons/maximize-2.svg" class="ce-icon"></button>
                     </div>
-                    <button class="close-panel-btn" data-panel="ui-editor-panel">&times;</button>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
+                    <div class="panel-header-controls">
+                        <button class="panel-tool-btn minimize-btn" title="Minimizar"><img src="icons/minus.svg" class="ce-icon"></button>
+                        <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar"><img src="icons/maximize-2.svg" class="ce-icon"></button>
+                        <button class="panel-tool-btn fullscreen-btn" title="Pantalla Completa"><img src="icons/maximize.svg" class="ce-icon"></button>
+                        <button class="close-panel-btn" data-panel="ui-editor-panel">&times;</button>
+                    </div>
                 </div>
                 <div id="ui-editor-main-content">
                     <div id="ui-editor-hierarchy" class="editor-panel">
@@ -768,8 +831,19 @@ public star() {
                     <span data-i18n="VID_SPRI">Vid Spri</span>
                     <div class="panel-header-controls">
                         <button id="btn-open-vid-spri-ext" class="panel-tool-btn" title="Abrir en nueva pestaña"><img src="icons/external-link.svg" class="ce-icon"></button>
+                        <button class="panel-tool-btn minimize-btn" title="Minimizar"><img src="icons/minus.svg" class="ce-icon"></button>
+                        <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar"><img src="icons/maximize-2.svg" class="ce-icon"></button>
+                        <button class="panel-tool-btn fullscreen-btn" title="Pantalla Completa"><img src="icons/maximize.svg" class="ce-icon"></button>
                         <button class="close-panel-btn" data-panel="vid-spri-panel">&times;</button>
                     </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
                 </div>
                 <div class="panel-content no-padding">
                     <iframe src="https://carleyinteractivestudio.github.io/VidSpri/" style="width: 100%; height: 100%; border: none;"></iframe>
@@ -789,14 +863,22 @@ public star() {
                         <img src="image/Carl.jpeg" alt="Carl" class="carl-menubar-icon">
                         <span>Carl</span>
                     </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
                     <div class="panel-header-controls">
-                        <div class="menu-item">
-                            <button id="carl-ia-view-selector-btn" class="panel-tool-btn" data-i18n="CARL_CHAT">Chat</button>
-                            <div class="menu-content">
-                                <a href="#" class="carl-view-option active" data-view="chat" data-i18n="CARL_CHAT">Chat</a>
-                                <a href="#" class="carl-view-option" data-view="activity" data-i18n="CARL_ACTIVIDAD">Actividad</a>
-                            </div>
+                        <div class="tab-buttons" style="margin-right: 10px;">
+                            <button class="tab-btn carl-view-option active" data-view="chat" data-i18n="CARL_CHAT">Chat</button>
+                            <button class="tab-btn carl-view-option" data-view="activity" data-i18n="CARL_ACTIVIDAD">Actividad</button>
                         </div>
+                        <button class="panel-tool-btn minimize-btn" title="Minimizar"><img src="icons/minus.svg" class="ce-icon"></button>
+                        <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar"><img src="icons/maximize-2.svg" class="ce-icon"></button>
+                        <button class="panel-tool-btn fullscreen-btn" title="Pantalla Completa"><img src="icons/maximize.svg" class="ce-icon"></button>
                         <button class="close-panel-btn" data-panel="carl-ia-panel">&times;</button>
                     </div>
                 </div>
@@ -833,7 +915,20 @@ public star() {
             <div id="ambiente-control-panel" class="editor-panel floating-panel hidden" style="width: 350px; height: 750px;">
                 <div class="panel-header">
                     <span data-i18n="CONTROL_AMBIENTE">Control de Ambiente</span>
-                    <button class="close-panel-btn" data-panel="ambiente-control-panel">&times;</button>
+                    <div class="panel-header-controls">
+                        <button class="panel-tool-btn minimize-btn" title="Minimizar"><img src="icons/minus.svg" class="ce-icon"></button>
+                        <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar"><img src="icons/maximize-2.svg" class="ce-icon"></button>
+                        <button class="panel-tool-btn fullscreen-btn" title="Pantalla Completa"><img src="icons/maximize.svg" class="ce-icon"></button>
+                        <button class="close-panel-btn" data-panel="ambiente-control-panel">&times;</button>
+                    </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
                 </div>
                 <div class="panel-content scroll-no-bar">
                     <fieldset class="inspector-section">
@@ -971,6 +1066,7 @@ public star() {
                     <li data-action="create-folder" data-i18n="CARPETA">Carpeta</li>
                     <li data-action="create-script">Script (.ces)</li>
                     <li data-action="create-chc-script">Script H-Code (.chc)</li>
+                    <li data-action="create-css-script">Creative Scratch (.css)</li>
                     <li data-action="create-readme" data-i18n="ARCHIVO_LEAME">Archivo Léame (.md)</li>
                     <li data-action="create-animation" data-i18n="ASSET_ANIMACION" class="only-2d">Asset de Animación (.cea)</li>
                     <li data-action="create-animator-controller" data-i18n="CONTROLADOR_ANIMACION" class="only-2d">Controlador de Animación (.ceanim)</li>
@@ -1167,7 +1263,20 @@ public star() {
     <div id="script-history-modal" class="editor-panel floating-panel hidden bubble-style" style="width: 500px; height: 400px; z-index: 3000;">
         <div class="panel-header">
             <span data-i18n="HISTORIAL_SCRIPT">Historial de Versiones</span>
-            <button class="close-panel-btn" data-panel="script-history-modal">&times;</button>
+            <div class="panel-header-controls">
+                <button class="panel-tool-btn minimize-btn" title="Minimizar"><img src="icons/minus.svg" class="ce-icon"></button>
+                <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar"><img src="icons/maximize-2.svg" class="ce-icon"></button>
+                <button class="panel-tool-btn fullscreen-btn" title="Pantalla Completa"><img src="icons/maximize.svg" class="ce-icon"></button>
+                <button class="close-panel-btn" data-panel="script-history-modal">&times;</button>
+            </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
         </div>
         <div class="panel-content">
             <p data-i18n="SELECCIONAR_VERSION_HINT">Selecciona una versión para restaurarla. Se conservan las últimas 10.</p>
@@ -1422,7 +1531,7 @@ public star() {
                 </fieldset>
             </div>
             <div class="modal-footer">
-                <button id="settings-save-btn" class="primary-btn" data-i18n="GUARDAR_CAMBIOS">Guardar Cambios</button>
+                <button id="settings-save-btn" class="primary-btn" data-i18n="GUARDAR_CAMBIOS"><img src="icons/save.svg" class="ce-icon" style="margin-right: 8px;"> Guardar Proyecto</button>
             </div>
         </div>
     </div>
@@ -1682,7 +1791,7 @@ public star() {
                 </fieldset>
             </div>
             <div class="modal-footer">
-                <button id="prefs-save-btn" class="primary-btn" data-i18n="GUARDAR_PREFERENCIAS">Guardar Preferencias</button>
+                <button id="prefs-save-btn" class="primary-btn" data-i18n="GUARDAR_PREFERENCIAS"><img src="icons/save.svg" class="ce-icon" style="margin-right: 8px;"> Guardar Preferencias</button>
             </div>
         </div>
     </div>
@@ -1726,7 +1835,20 @@ public star() {
     <div id="music-player-panel" class="editor-panel floating-panel hidden">
         <div class="panel-header">
             <span data-i18n="REPRODUCTOR_MUSICA">Reproductor de Música</span>
-            <button class="close-panel-btn" data-panel="music-player-panel">&times;</button>
+            <div class="panel-header-controls">
+                <button class="panel-tool-btn minimize-btn" title="Minimizar"><img src="icons/minus.svg" class="ce-icon"></button>
+                <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar"><img src="icons/maximize-2.svg" class="ce-icon"></button>
+                <button class="panel-tool-btn fullscreen-btn" title="Pantalla Completa"><img src="icons/maximize.svg" class="ce-icon"></button>
+                <button class="close-panel-btn" data-panel="music-player-panel">&times;</button>
+            </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
         </div>
 
         <div class="panel-content no-padding">
@@ -1759,8 +1881,19 @@ public star() {
             <span id="palette-asset-name" data-i18n="PALETA_TILES">Paleta de Tiles</span>
             <div class="panel-header-controls">
                  <button id="palette-save-btn" title="Guardar Paleta" data-i18n-title="GUARDAR"><img src="icons/save.svg" class="ce-icon"></button>
+                 <button class="panel-tool-btn minimize-btn" title="Minimizar"><img src="icons/minus.svg" class="ce-icon"></button>
+                 <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar"><img src="icons/maximize-2.svg" class="ce-icon"></button>
+                 <button class="panel-tool-btn fullscreen-btn" title="Pantalla Completa"><img src="icons/maximize.svg" class="ce-icon"></button>
                  <button class="close-panel-btn" data-panel="tile-palette-panel">&times;</button>
             </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
         </div>
         <div class="panel-content no-padding" style="display: flex; flex-direction: column;">
             <div id="palette-toolbar">
@@ -1815,7 +1948,20 @@ public star() {
     <div id="asset-selector-bubble" class="editor-panel floating-panel bubble-style hidden">
         <div class="panel-header">
             <span id="asset-selector-title" data-i18n="SELECCIONAR_ASSET">Seleccionar Asset</span>
-            <button class="close-panel-btn" data-panel="asset-selector-bubble">&times;</button>
+            <div class="panel-header-controls">
+                <button class="panel-tool-btn minimize-btn" title="Minimizar"><img src="icons/minus.svg" class="ce-icon"></button>
+                <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar"><img src="icons/maximize-2.svg" class="ce-icon"></button>
+                <button class="panel-tool-btn fullscreen-btn" title="Pantalla Completa"><img src="icons/maximize.svg" class="ce-icon"></button>
+                <button class="close-panel-btn" data-panel="asset-selector-bubble">&times;</button>
+            </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
         </div>
         <div class="panel-content">
             <div id="asset-selector-toolbar">
@@ -1857,6 +2003,14 @@ public star() {
             <span id="markdown-viewer-title" data-i18n="VISOR_MARKDOWN">Visor de Markdown</span>
             <button class="close-panel-btn" data-panel="markdown-viewer-panel">X</button>
         </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
         <div class="panel-toolbar" style="display: flex; justify-content: space-between; padding: 4px; border-bottom: 1px solid var(--color-border);">
             <div class="tab-buttons">
                 <button id="md-preview-btn" class="tab-btn active" data-i18n="VISTA_PREVIA">Vista Previa</button>
@@ -1877,6 +2031,14 @@ public star() {
             <span data-i18n="CREAR_ANIM_DESDE_SPRITES">Crear Animación desde Sprites</span>
             <button class="close-panel-btn">&times;</button>
         </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
         <div class="panel-content" style="display: flex; flex-direction: column; gap: 10px;">
             <fieldset class="inspector-section">
                 <legend data-i18n="SPRITES_DISPONIBLES">Sprites Disponibles</legend>
@@ -1905,8 +2067,19 @@ public star() {
                 <button id="slicer-load-image-btn" class="panel-tool-btn" data-i18n="CARGAR_IMAGEN">Cargar Imagen</button>
                 <button id="slicer-delete-sprite-btn" class="panel-tool-btn danger-btn" data-i18n="ELIMINAR_SPRITE">Eliminar Sprite</button>
                 <button id="slicer-create-asset-btn" class="panel-tool-btn primary-btn" data-i18n="CREAR_ASSET_SPRITE">Crear Asset de Sprite</button>
+                <button class="panel-tool-btn minimize-btn" title="Minimizar"><img src="icons/minus.svg" class="ce-icon"></button>
+                <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar"><img src="icons/maximize-2.svg" class="ce-icon"></button>
+                <button class="panel-tool-btn fullscreen-btn" title="Pantalla Completa"><img src="icons/maximize.svg" class="ce-icon"></button>
                 <button class="close-panel-btn" data-panel="sprite-slicer-panel">&times;</button>
             </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
         </div>
         <div class="panel-content no-padding" style="display: flex; flex-direction: column;">
             <div id="slicer-toolbar" class="hidden">
@@ -2029,6 +2202,14 @@ public star() {
             <span data-i18n="DESASOCIAR_PAQUETE">Desasociar Paquete de Sprites</span>
             <button class="close-panel-btn" data-panel="disassociate-sprite-modal">&times;</button>
         </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
         <div class="panel-content">
             <p data-i18n="SELECCIONAR_PAQUETE_HINT">Selecciona el paquete que quieres desasociar:</p>
             <div id="disassociate-sprite-list" class="dialog-selection-list" style="border-top: none; margin-top: 10px;">
