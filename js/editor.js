@@ -558,7 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'ambiente-filtro-color', 'ambiente-filtro-swatches', 'ambiente-capas-excluidas',
             'menu-docs',
             // Integrated Visual Scripting
-            'vs-integrated-editor', 'vs-integrated-toolbox', 'vs-integrated-workspace', 'vs-integrated-connections', 'vs-integrated-blocks', 'vs-integrated-hint',
+            'vs-integrated-editor', 'vs-integrated-toolbox', 'vs-integrated-workspace-inner', 'vs-integrated-connections-layer', 'vs-integrated-blocks-container', 'vs-integrated-hint',
             // Markdown Viewer Panel
             'markdown-viewer-panel', 'markdown-viewer-title', 'md-preview-btn', 'md-edit-btn', 'md-save-btn',
             'md-preview-content', 'md-edit-content',

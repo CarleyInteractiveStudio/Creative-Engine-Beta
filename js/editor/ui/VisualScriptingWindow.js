@@ -174,7 +174,7 @@ function setupWorkspace() {
         const originalToolbox = document.getElementById('vs-toolbox');
         integratedToolbox.innerHTML = originalToolbox.innerHTML;
 
-        const workspace = document.getElementById('vs-integrated-workspace');
+        const workspace = document.getElementById('vs-integrated-workspace-inner');
         workspace.addEventListener('dragover', (e) => e.preventDefault());
         workspace.addEventListener('drop', (e) => {
             e.preventDefault();
@@ -417,7 +417,7 @@ function renderBlock(block, container, svg) {
         const offsetY = e.clientY - rect.top;
 
         const move = (moveE) => {
-            const workspace = el.closest('#vs-workspace, #vs-integrated-workspace');
+            const workspace = el.closest('#vs-workspace, #vs-integrated-workspace-inner');
             const wsRect = workspace.getBoundingClientRect();
             block.x = moveE.clientX - wsRect.left - offsetX;
             block.y = moveE.clientY - wsRect.top - offsetY;
@@ -467,7 +467,7 @@ window.vs_startConnection = (id, type = 'next') => {
     connectionSourceId = id;
     connectionType = type;
     const block = document.getElementById(id);
-    const workspace = block.closest('#vs-workspace, #vs-integrated-workspace');
+    const workspace = block.closest('#vs-workspace, #vs-integrated-workspace-inner');
     workspace.classList.add('connecting');
 };
 
@@ -475,7 +475,7 @@ window.vs_endConnection = (id) => {
     if (!connectionSourceId || connectionSourceId === id) return;
 
     const block = document.getElementById(id);
-    const workspace = block.closest('#vs-workspace, #vs-integrated-workspace');
+    const workspace = block.closest('#vs-workspace, #vs-integrated-workspace-inner');
 
     const source = blocks.find(b => b.id === connectionSourceId);
     if (source) {
@@ -493,7 +493,7 @@ window.vs_endConnection = (id) => {
 
 window.vs_deleteBlock = (id) => {
     const el = document.getElementById(id);
-    const workspace = el.closest('#vs-workspace, #vs-integrated-workspace');
+    const workspace = el.closest('#vs-workspace, #vs-integrated-workspace-inner');
     const svg = workspace.querySelector('svg');
 
     blocks = blocks.filter(b => b.id !== id);
