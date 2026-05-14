@@ -1,7 +1,6 @@
 // js/editor/ui/VisualScriptingWindow.js
 
 import { VisualScriptingCore } from '../VisualScriptingCore.js';
-import * as CodeEditor from '../CodeEditorWindow.js';
 
 let dom;
 let blocks = [];
@@ -148,6 +147,18 @@ function setupWorkspace() {
     const workspace = document.getElementById('vs-workspace');
     const toolboxItems = document.querySelectorAll('.vs-draggable-item');
 
+    if (workspace) {
+        workspace.addEventListener('dragover', (e) => e.preventDefault());
+        workspace.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const type = e.dataTransfer.getData('block-type');
+            const name = e.dataTransfer.getData('block-name');
+
+            const rect = workspace.getBoundingClientRect();
+            addBlock(type, name, e.clientX - rect.left, e.clientY - rect.top);
+        });
+    }
+
     toolboxItems.forEach(item => {
         item.draggable = true;
         item.addEventListener('dragstart', (e) => {
@@ -156,33 +167,26 @@ function setupWorkspace() {
         });
     });
 
-    workspace.addEventListener('dragover', (e) => e.preventDefault());
-    workspace.addEventListener('drop', (e) => {
-        e.preventDefault();
-        const type = e.dataTransfer.getData('block-type');
-        const name = e.dataTransfer.getData('block-name');
-
-        const rect = workspace.getBoundingClientRect();
-        addBlock(type, name, e.clientX - rect.left, e.clientY - rect.top);
-    });
-
-    document.getElementById('vs-save-btn').onclick = applyLogic;
+    const saveBtn = document.getElementById('vs-save-btn');
+    if (saveBtn) saveBtn.onclick = applyLogic;
 
     // Setup integrated toolbox if exists
     const integratedToolbox = document.getElementById('vs-integrated-toolbox');
     if (integratedToolbox) {
         const originalToolbox = document.getElementById('vs-toolbox');
-        integratedToolbox.innerHTML = originalToolbox.innerHTML;
+        if (originalToolbox) integratedToolbox.innerHTML = originalToolbox.innerHTML;
 
-        const workspace = document.getElementById('vs-integrated-workspace-inner');
-        workspace.addEventListener('dragover', (e) => e.preventDefault());
-        workspace.addEventListener('drop', (e) => {
-            e.preventDefault();
-            const type = e.dataTransfer.getData('block-type');
-            const name = e.dataTransfer.getData('block-name');
-            const rect = workspace.getBoundingClientRect();
-            addBlock(type, name, e.clientX - rect.left, e.clientY - rect.top, true);
-        });
+        const intWorkspace = document.getElementById('vs-integrated-workspace-inner');
+        if (intWorkspace) {
+            intWorkspace.addEventListener('dragover', (e) => e.preventDefault());
+            intWorkspace.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const type = e.dataTransfer.getData('block-type');
+                const name = e.dataTransfer.getData('block-name');
+                const rect = intWorkspace.getBoundingClientRect();
+                addBlock(type, name, e.clientX - rect.left, e.clientY - rect.top, true);
+            });
+        }
 
         // Re-attach dragstart to new toolbox items
         integratedToolbox.querySelectorAll('.vs-draggable-item').forEach(item => {
