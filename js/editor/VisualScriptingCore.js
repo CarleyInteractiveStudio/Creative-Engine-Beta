@@ -86,18 +86,24 @@ export class VisualScriptingCore {
 
             // Movimiento
             case 'Fijar X': return `posicion.x = ${val(inputs.value)};`;
-            case 'Cambiar X': return `posicion.x += ${val(inputs.value)};`;
             case 'Fijar Y': return `posicion.y = ${val(inputs.value)};`;
-            case 'Cambiar Y': return `posicion.y += ${val(inputs.value)};`;
+            case 'Fijar Z': return `posicion.z = ${val(inputs.value)};`;
             case 'Fijar Rotación': return `rotacion = ${val(inputs.value)};`;
-            case 'Cambiar Rotación': return `rotacion += ${val(inputs.value)};`;
             case 'Mirar Hacia': return `variable _tgt = buscarMateria(${val(inputs.target)}); si (_tgt) { mirarHacia(_tgt.posicion.x, _tgt.posicion.y); }`;
+
+            // Física
+            case 'Fijar Velocidad X': return `variable _body = obtenerComponente("RigidBody2D"); si (_body) { _body.velocity.x = ${val(inputs.value)}; }`;
+            case 'Fijar Velocidad Y': return `variable _body = obtenerComponente("RigidBody2D"); si (_body) { _body.velocity.y = ${val(inputs.value)}; }`;
+            case 'Aplicar Fuerza': return `variable _body = obtenerComponente("RigidBody2D"); si (_body) { _body.applyForce(${val(inputs.x)}, ${val(inputs.y)}); }`;
+            case 'Aplicar Impulso': return `variable _body = obtenerComponente("RigidBody2D"); si (_body) { _body.applyLinearImpulse(${val(inputs.x)}, ${val(inputs.y)}); }`;
+            case 'Fijar Gravedad': return `variable _body = obtenerComponente("RigidBody2D"); si (_body) { _body.gravityScale = ${val(inputs.value)}; }`;
+            case 'Fijar Rebote': return `variable _body = obtenerComponente("RigidBody2D"); si (_body) { _body.restitution = ${val(inputs.value)}; }`;
 
             // Apariencia
             case 'Mostrar': return `activo = verdadero;`;
             case 'Ocultar': return `activo = falso;`;
-            case 'Fijar Escala': return `escala.x = ${val(inputs.value)}; escala.y = ${val(inputs.value)};`;
-            case 'Cambiar Escala': return `escala.x += ${val(inputs.value)}; escala.y += ${val(inputs.value)};`;
+            case 'Fijar Escala X': return `escala.x = ${val(inputs.value)};`;
+            case 'Fijar Escala Y': return `escala.y = ${val(inputs.value)};`;
             case 'Fijar Opacidad': return `variable _rend = obtenerComponente("SpriteRenderer"); si (_rend) { _rend.alpha = ${val(inputs.value)}; }`;
             case 'Cambiar Color': return `variable _rend = obtenerComponente("SpriteRenderer"); si (_rend) { _rend.color = ${val(inputs.color)}; }`;
             case 'Voltear': return `variable _rend = obtenerComponente("SpriteRenderer"); si (_rend) { _rend.flip${(inputs.axis || 'x').toUpperCase()} = ${inputs.state || 'true'}; }`;
@@ -134,6 +140,13 @@ export class VisualScriptingCore {
             case 'Cronometro': return `${inputs.result} = tiempo();`;
             case 'Raycast': return `variable ${inputs.resultVar || 'hit'} = raycast(posicion.x, posicion.y, ${inputs.dirX || 1}, ${inputs.dirY || 0}, ${val(inputs.dist)});`;
 
+            // Vectores
+            case 'Crear Vector': return `${inputs.result} = { x: ${val(inputs.x)}, y: ${val(inputs.y)} };`;
+            case 'Vector Sumar': return `${inputs.result} = { x: ${val(inputs.vec1)}.x + ${val(inputs.vec2)}.x, y: ${val(inputs.vec1)}.y + ${val(inputs.vec2)}.y };`;
+            case 'Vector Distancia': return `${inputs.result} = distancia(${val(inputs.x1)}, ${val(inputs.y1)}, ${val(inputs.x2)}, ${val(inputs.y2)});`;
+            case 'Vector Normalizar': return `${inputs.result} = normalizar(${val(inputs.vec)});`;
+            case 'Vector Magnitud': return `${inputs.result} = magnitud(${val(inputs.vec)});`;
+
             // Operadores
             case 'Operación Matemática': return `${inputs.name} = ${val(inputs.name)} ${inputs.op || '+'} ${val(inputs.value)};`;
             case 'Número al Azar': return `${inputs.name} = azar(${val(inputs.min)}, ${val(inputs.max)});`;
@@ -150,10 +163,14 @@ export class VisualScriptingCore {
             // Variables
             case 'Asignar Variable':
                 return `${inputs.name} = ${val(inputs.value)};`;
-            case 'Cambiar Variable':
-                return `${inputs.name} += ${val(inputs.value)};`;
             case 'Establecer Global':
                 return `establecerGlobal(${val(inputs.name)}, ${val(inputs.value)});`;
+
+            // RPG
+            case 'Mostrar Diálogo': return `mostrarDialogo(${val(inputs.speaker)}, ${val(inputs.text)});`;
+            case 'Añadir Misión': return `misiones.agregar(${val(inputs.id)});`;
+            case 'Completar Misión': return `misiones.completar(${val(inputs.id)});`;
+            case 'Dar Item': return `inventario.agregar(${val(inputs.item)}, ${val(inputs.qty)});`;
 
             // Listas
             case 'Lista Añadir': return `variable _lst = obtenerGlobal(${val(inputs.list)}); si (_lst && _lst.push) { _lst.push(${val(inputs.value)}); }`;
