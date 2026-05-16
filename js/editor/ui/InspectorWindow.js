@@ -403,7 +403,7 @@ function handleInspectorInput(e) {
         return;
     }
 
-    const ComponentClass = Components[componentName];
+    const ComponentClass = Components[componentName] || (window.Components3D ? window.Components3D[componentName] : null);
     if (!ComponentClass) return;
 
     const component = selectedMateria.getComponent(ComponentClass);
@@ -582,7 +582,7 @@ async function handleInspectorChange(e) {
         const propPath = e.target.dataset.prop;
         const value = e.target.value;
 
-        const ComponentClass = Components[componentName] || getComponent(componentName);
+        const ComponentClass = Components[componentName] || (window.Components3D ? window.Components3D[componentName] : null) || getComponent(componentName);
         if (ComponentClass) {
             const component = selectedMateria.getComponent(ComponentClass);
             if (component) {
@@ -595,7 +595,10 @@ async function handleInspectorChange(e) {
 
     if (needsUpdate) {
         // Use a slight delay to allow the value to update before re-rendering
-        setTimeout(updateInspector, 0);
+        setTimeout(() => {
+            updateInspector();
+            if (updateSceneCallback) updateSceneCallback();
+        }, 0);
     }
 }
 
@@ -4169,7 +4172,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="inspector-group">
                         <div class="prop-row-multi">
                             <label data-i18n="MESH_TYPE">Tipo de Malla</label>
-                            <select class="prop-input" data-component="MeshRenderer3D" data-prop="meshType">
+                            <select class="prop-input inspector-re-render" data-component="MeshRenderer3D" data-prop="meshType">
                                 <option value="Cube" ${ley.meshType === 'Cube' ? 'selected' : ''}>Cubo</option>
                                 <option value="Sphere" ${ley.meshType === 'Sphere' ? 'selected' : ''}>Esfera</option>
                                 <option value="Plane" ${ley.meshType === 'Plane' ? 'selected' : ''}>Plano</option>

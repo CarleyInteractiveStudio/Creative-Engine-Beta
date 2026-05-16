@@ -1,5 +1,6 @@
 import * as Components from './Components.js';
 import * as Components3D from './Components3D.js';
+window.Components3D = Components3D; // Ensure global access for Inspector and Editor
 const { Transform, SpriteRenderer, Camera } = Components;
 const { MeshRenderer3D, DirectionalLight3D, PointLight3D, SpotLight3D } = Components3D;
 
@@ -368,26 +369,31 @@ export class Renderer3D {
 
             vec4 grid(vec3 fragPos3D, float scale) {
                 vec2 coord = fragPos3D.xz * scale;
+                // Offset slightly to center origin lines
+                coord += 0.5 * fwidth(coord);
                 vec2 derivative = fwidth(coord);
                 vec2 grid = abs(fract(coord - 0.5) - 0.5) / derivative;
                 float line = min(grid.x, grid.y);
                 float minimumz = min(derivative.y, 1.0);
                 float minimumx = min(derivative.x, 1.0);
-                vec4 color = vec4(0.2, 0.2, 0.2, 1.0 - min(line, 1.0));
+                vec4 color = vec4(0.15, 0.15, 0.15, 1.0 - min(line, 1.0));
 
-                // Z-Axis (Blue)
-                if (fragPos3D.x > -0.1 * minimumx && fragPos3D.x < 0.1 * minimumx)
-                    color.rgb = vec3(0.0, 0.0, 1.0);
+                // Z-Axis (Blue) - Slightly thicker and brighter for infinite grid
+                if (fragPos3D.x > -0.15 * minimumx && fragPos3D.x < 0.15 * minimumx)
+                    color.rgb = vec3(0.0, 0.3, 1.0);
                 // X-Axis (Red)
-                if (fragPos3D.z > -0.1 * minimumz && fragPos3D.z < 0.1 * minimumz)
-                    color.rgb = vec3(1.0, 0.0, 0.0);
+                if (fragPos3D.z > -0.15 * minimumz && fragPos3D.z < 0.15 * minimumz)
+                    color.rgb = vec3(1.0, 0.2, 0.2);
 
                 return color;
             }
 
             float computeDepth(vec3 pos) {
                 vec4 clipSpacePos = uProj * uView * vec4(pos.xyz, 1.0);
-                return (clipSpacePos.z / clipSpacePos.w);
+                // Map NDC z (-1 to 1) to depth buffer range (0 to 1)
+                float ndcZ = clipSpacePos.z / clipSpacePos.w;
+                // Add a tiny bias to prevent Z-fighting with the ground plane
+                return (ndcZ * 0.5 + 0.5) + 0.00001;
             }
 
             float computeLinearDepth(vec3 pos) {
@@ -398,8 +404,10 @@ export class Renderer3D {
             }
 
             void main() {
+                // Plane intersection with Y=0
+                // Since world Y is inverted, the ground plane is still at world Y=0
                 float t = -vNearPoint.y / (vFarPoint.y - vNearPoint.y);
-                if (t < 0.0) discard;
+                if (t < 0.0 || t > 1.0) discard;
 
                 vec3 fragPos3D = vNearPoint + t * (vFarPoint - vNearPoint);
                 gl_FragDepthEXT = computeDepth(fragPos3D);
@@ -433,90 +441,122 @@ export class Renderer3D {
     initBuffers() {
         const gl = this.gl;
 
+        const createMesh = (pos, norm, idx, uv) => {
+            const mesh = {
+                pos: gl.createBuffer(),
+                norm: gl.createBuffer(),
+                idx: gl.createBuffer(),
+                uv: uv ? gl.createBuffer() : null,
+                count: idx.length
+            };
+            gl.bindBuffer(gl.ARRAY_BUFFER, mesh.pos);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(pos), gl.STATIC_DRAW);
+            gl.bindBuffer(gl.ARRAY_BUFFER, mesh.norm);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(norm), gl.STATIC_DRAW);
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.idx);
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
+            if (uv) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, mesh.uv);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uv), gl.STATIC_DRAW);
+            }
+            return mesh;
+        };
+
         // Fullscreen Quad for Sky and Grid
-        const quadPositions = [
-            -1.0,  1.0,  0.0,
-             1.0,  1.0,  0.0,
-            -1.0, -1.0,  0.0,
-             1.0, -1.0,  0.0,
-        ];
+        const quadPositions = [-1,1,0, 1,1,0, -1,-1,0, 1,-1,0];
         this.skyBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.skyBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(quadPositions), gl.STATIC_DRAW);
 
-        // Basic Plane (for 2D sprites in 3D)
-        const planePositions = [
-            -0.5, -0.5,  0.0,
-             0.5, -0.5,  0.0,
-             0.5,  0.5,  0.0,
-            -0.5,  0.5,  0.0,
-        ];
-        this.planeBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.planeBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(planePositions), gl.STATIC_DRAW);
+        // Cube Mesh (1x1x1)
+        this.meshCube = createMesh(
+            [
+                -0.5,-0.5,0.5, 0.5,-0.5,0.5, 0.5,0.5,0.5, -0.5,0.5,0.5, -0.5,-0.5,-0.5, -0.5,0.5,-0.5, 0.5,0.5,-0.5, 0.5,-0.5,-0.5,
+                -0.5,0.5,-0.5, -0.5,0.5,0.5, 0.5,0.5,0.5, 0.5,0.5,-0.5, -0.5,-0.5,-0.5, 0.5,-0.5,-0.5, 0.5,-0.5,0.5, -0.5,-0.5,0.5,
+                0.5,-0.5,-0.5, 0.5,0.5,-0.5, 0.5,0.5,0.5, 0.5,-0.5,0.5, -0.5,-0.5,-0.5, -0.5,-0.5,0.5, -0.5,0.5,0.5, -0.5,0.5,-0.5
+            ],
+            [
+                0,0,1, 0,0,1, 0,0,1, 0,0,1, 0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1,
+                0,1,0, 0,1,0, 0,1,0, 0,1,0, 0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0,
+                1,0,0, 1,0,0, 1,0,0, 1,0,0, -1,0,0, -1,0,0, -1,0,0, -1,0,0
+            ],
+            [0,1,2, 0,2,3, 4,5,6, 4,6,7, 8,9,10, 8,10,11, 12,13,14, 12,14,15, 16,17,18, 16,18,19, 20,21,22, 20,22,23]
+        );
 
-        const planeTexCoords = [
-            0.0,  1.0,
-            1.0,  1.0,
-            1.0,  0.0,
-            0.0,  0.0,
-        ];
-        this.planeTexCoordBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.planeTexCoordBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(planeTexCoords), gl.STATIC_DRAW);
+        // Sphere Mesh (UV Sphere, radius 0.5)
+        const spPos = [], spNorm = [], spIdx = [];
+        const lat = 16, lon = 16;
+        for(let j=0; j<=lat; j++) {
+            let theta = j * Math.PI / lat;
+            let sinTheta = Math.sin(theta);
+            let cosTheta = Math.cos(theta);
+            for(let i=0; i<=lon; i++) {
+                let phi = i * 2 * Math.PI / lon;
+                let x = Math.cos(phi) * sinTheta * 0.5;
+                let y = cosTheta * 0.5;
+                let z = Math.sin(phi) * sinTheta * 0.5;
+                spPos.push(x, y, z);
+                spNorm.push(x / 0.5, y / 0.5, z / 0.5);
+            }
+        }
+        for(let j=0; j<lat; j++) {
+            for(let i=0; i<lon; i++) {
+                let first = (j * (lon + 1)) + i;
+                let second = first + lon + 1;
+                spIdx.push(first, second, first + 1, second, second + 1, first + 1);
+            }
+        }
+        this.meshSphere = createMesh(spPos, spNorm, spIdx);
 
-        const planeIndices = [0, 1, 2, 0, 2, 3];
-        this.planeIndexBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.planeIndexBuffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(planeIndices), gl.STATIC_DRAW);
+        // Plane Mesh (Horizontal XZ, 1x1)
+        this.meshPlane = createMesh(
+            [-0.5,0,-0.5, 0.5,0,-0.5, 0.5,0,0.5, -0.5,0,0.5],
+            [0,1,0, 0,1,0, 0,1,0, 0,1,0],
+            [0,1,2, 0,2,3]
+        );
 
-        const planeNormals = [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1];
-        this.planeNormalBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.planeNormalBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(planeNormals), gl.STATIC_DRAW);
+        // Triangle Mesh (Facing Z+, height 1, base 1)
+        this.meshTriangle = createMesh(
+            [0,0.5,0, -0.5,-0.5,0, 0.5,-0.5,0],
+            [0,0,1, 0,0,1, 0,0,1],
+            [0,1,2]
+        );
 
-        // Basic Cube
-        const positions = [
-            // Front face
-            -1.0, -1.0,  1.0,  1.0, -1.0,  1.0,  1.0,  1.0,  1.0, -1.0,  1.0,  1.0,
-            // Back face
-            -1.0, -1.0, -1.0, -1.0,  1.0, -1.0,  1.0,  1.0, -1.0,  1.0, -1.0, -1.0,
-            // Top face
-            -1.0,  1.0, -1.0, -1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0, -1.0,
-            // Bottom face
-            -1.0, -1.0, -1.0,  1.0, -1.0, -1.0,  1.0, -1.0,  1.0, -1.0, -1.0,  1.0,
-            // Right face
-             1.0, -1.0, -1.0,  1.0,  1.0, -1.0,  1.0,  1.0,  1.0,  1.0, -1.0,  1.0,
-            // Left face
-            -1.0, -1.0, -1.0, -1.0, -1.0,  1.0, -1.0,  1.0,  1.0, -1.0,  1.0, -1.0,
-        ];
-        this.cubeBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.cubeBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+        // Capsule Mesh (Total height 1, Radius 0.25)
+        const capPos = [], capNorm = [], capIdx = [];
+        for(let j=0; j<=lat/2; j++) {
+            let theta = j * Math.PI / lat;
+            let sinTheta = Math.sin(theta), cosTheta = Math.cos(theta);
+            for(let i=0; i<=lon; i++) {
+                let phi = i * 2 * Math.PI / lon;
+                let x = Math.cos(phi) * sinTheta * 0.25, y = cosTheta * 0.25 + 0.25, z = Math.sin(phi) * sinTheta * 0.25;
+                capPos.push(x, y, z); capNorm.push(x / 0.25, cosTheta, z / 0.25);
+            }
+        }
+        for(let j=lat/2; j<=lat; j++) {
+            let theta = j * Math.PI / lat;
+            let sinTheta = Math.sin(theta), cosTheta = Math.cos(theta);
+            for(let i=0; i<=lon; i++) {
+                let phi = i * 2 * Math.PI / lon;
+                let x = Math.cos(phi) * sinTheta * 0.25, y = cosTheta * 0.25 - 0.25, z = Math.sin(phi) * sinTheta * 0.25;
+                capPos.push(x, y, z); capNorm.push(x / 0.25, cosTheta, z / 0.25);
+            }
+        }
+        for(let j=0; j<lat; j++) {
+            for(let i=0; i<lon; i++) {
+                let first = (j * (lon + 1)) + i, second = first + lon + 1;
+                capIdx.push(first, second, first + 1, second, second + 1, first + 1);
+            }
+        }
+        this.meshCapsule = createMesh(capPos, capNorm, capIdx);
 
-        const indices = [
-            0,  1,  2,      0,  2,  3,    // front
-            4,  5,  6,      4,  6,  7,    // back
-            8,  9,  10,     8,  10, 11,   // top
-            12, 13, 14,     12, 14, 15,   // bottom
-            16, 17, 18,     16, 18, 19,   // right
-            20, 21, 22,     20, 22, 23,   // left
-        ];
-        this.cubeIndexBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.cubeIndexBuffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
-
-        const normals = [
-            0,0,1, 0,0,1, 0,0,1, 0,0,1,
-            0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1,
-            0,1,0, 0,1,0, 0,1,0, 0,1,0,
-            0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0,
-            1,0,0, 1,0,0, 1,0,0, 1,0,0,
-            -1,0,0, -1,0,0, -1,0,0, -1,0,0
-        ];
-        this.cubeNormalBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.cubeNormalBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
+        // Sprite Plane
+        this.meshSpritePlane = createMesh(
+            [-0.5,-0.5,0, 0.5,-0.5,0, 0.5,0.5,0, -0.5,0.5,0],
+            [0,0,1, 0,0,1, 0,0,1, 0,0,1],
+            [0,1,2, 0,2,3],
+            [0,1, 1,1, 1,0, 0,0]
+        );
     }
 
     resize() {
@@ -540,14 +580,21 @@ export class Renderer3D {
         this.clearCache();
 
         // Delete buffers
+        const deleteMesh = (m) => {
+            if (!m) return;
+            if (m.pos) this.gl.deleteBuffer(m.pos);
+            if (m.norm) this.gl.deleteBuffer(m.norm);
+            if (m.idx) this.gl.deleteBuffer(m.idx);
+            if (m.uv) this.gl.deleteBuffer(m.uv);
+        };
+
         if (this.skyBuffer) this.gl.deleteBuffer(this.skyBuffer);
-        if (this.planeBuffer) this.gl.deleteBuffer(this.planeBuffer);
-        if (this.planeTexCoordBuffer) this.gl.deleteBuffer(this.planeTexCoordBuffer);
-        if (this.planeIndexBuffer) this.gl.deleteBuffer(this.planeIndexBuffer);
-        if (this.planeNormalBuffer) this.gl.deleteBuffer(this.planeNormalBuffer);
-        if (this.cubeBuffer) this.gl.deleteBuffer(this.cubeBuffer);
-        if (this.cubeIndexBuffer) this.gl.deleteBuffer(this.cubeIndexBuffer);
-        if (this.cubeNormalBuffer) this.gl.deleteBuffer(this.cubeNormalBuffer);
+        deleteMesh(this.meshCube);
+        deleteMesh(this.meshSphere);
+        deleteMesh(this.meshPlane);
+        deleteMesh(this.meshTriangle);
+        deleteMesh(this.meshCapsule);
+        deleteMesh(this.meshSpritePlane);
 
         // Delete programs
         if (this.skyProgram) this.gl.deleteProgram(this.skyProgram);
@@ -636,6 +683,7 @@ export class Renderer3D {
 
         const invViewProj = mat4.create();
         const viewNoPos = mat4.clone(viewMatrix);
+        // Important: View matrix already has inverted Y if coming from render()
         viewNoPos[12] = 0; viewNoPos[13] = 0; viewNoPos[14] = 0; // Remove translation
         mat4.multiply(invViewProj, projectionMatrix, viewNoPos);
         mat4.invert(invViewProj, invViewProj);
@@ -679,6 +727,7 @@ export class Renderer3D {
             if (!this.init()) return;
         }
         if (!this.gl) return;
+        window._Renderer3D = this; // Ensure global reference for SceneView
         const gl = this.gl;
         const ambiente = scene.ambiente || {};
         const realismLevel = (ambiente.realismLevel !== undefined ? ambiente.realismLevel : 50) / 100;
@@ -713,11 +762,11 @@ export class Renderer3D {
         const projectionMatrix = mat4.create();
         const viewMatrix = mat4.create();
 
-        this.lastProjectionMatrix = projectionMatrix;
-        this.lastViewMatrix = viewMatrix;
+        const near = 0.1;
+        const far = 100000;
 
         let activeViewPosition = [0, 0, 0];
-        const aspect = gl.canvas.width / gl.canvas.height;
+        let aspect = gl.canvas.width / gl.canvas.height;
 
         if (cameraMateria) {
             const camComp = cameraMateria.getComponent(Camera);
@@ -727,16 +776,16 @@ export class Renderer3D {
                 const size = camComp.orthographicSize;
                 const orthoH = size;
                 const orthoW = size * aspect;
-                // Reverse Y for orthographic to match 2D Canvas coordinate system (Y-down)
-                mat4.ortho(projectionMatrix, -orthoW, orthoW, orthoH, -orthoH, 0.1, 10000);
+                mat4.ortho(projectionMatrix, -orthoW, orthoW, -orthoH, orthoH, near, far);
             } else {
-                mat4.perspective(projectionMatrix, camComp.fov * Math.PI / 180, aspect, 0.1, 50000);
+                mat4.perspective(projectionMatrix, camComp.fov * Math.PI / 180, aspect, near, far);
             }
 
             const q = quat.create();
-            // Important: Camera in CE uses standard Euler for 3D
+            // Invert Pitch and Roll for Y-inversion?
+            // Actually, keep Euler as is, but we'll negate Y pos
             quat.fromEuler(q, camTrans.localRotation.x, camTrans.localRotation.y, camTrans.localRotation.z);
-            activeViewPosition = [camTrans.x, camTrans.y, camTrans.z];
+            activeViewPosition = [camTrans.x, -camTrans.y, camTrans.z];
             mat4.fromRotationTranslation(viewMatrix, q, activeViewPosition);
             mat4.invert(viewMatrix, viewMatrix);
         } else {
@@ -745,58 +794,71 @@ export class Renderer3D {
             const q = quat.create();
             quat.fromEuler(q, editorCam.rotation.x, editorCam.rotation.y, editorCam.rotation.z);
 
-            // Use Perspective for 3D Scene View
-            mat4.perspective(projectionMatrix, 45 * Math.PI / 180, aspect, 1, 100000);
+            mat4.perspective(projectionMatrix, 45 * Math.PI / 180, aspect, near, far);
 
-            activeViewPosition = [editorCam.x, editorCam.y, editorCam.z];
+            activeViewPosition = [editorCam.x, -editorCam.y, editorCam.z];
             mat4.fromRotationTranslation(viewMatrix, q, activeViewPosition);
             mat4.invert(viewMatrix, viewMatrix);
         }
 
+        // Only store the "last" matrices if this is the main rendering pass (not picking)
+        if (!options.picking) {
+            this.lastProjectionMatrix = mat4.clone(projectionMatrix);
+            this.lastViewMatrix = mat4.clone(viewMatrix);
+        }
+
         // --- Render Sky ---
-        if (ambiente.skyMode && ambiente.skyMode !== 'None') {
+        if (ambiente.skyMode && ambiente.skyMode !== 'None' && !options.picking) {
             this.renderSky(ambiente, projectionMatrix, viewMatrix);
         }
 
         // --- Render 3D Grid (Editor only) ---
-        if (options.showGrid) {
+        if (options.showGrid && !options.picking) {
             this.renderGrid(projectionMatrix, viewMatrix);
         }
 
-        gl.useProgram(this.programInfo.program);
-        gl.uniform3fv(this.programInfo.uniformLocations.viewPosition, activeViewPosition);
-        gl.uniform1f(this.programInfo.uniformLocations.uRealismLevel, realismLevel);
-
-        // Global Lights Setup
-        const dirLight = scene.getAllMaterias().find(m => m.isActive && m.getComponent(Components3D.DirectionalLight3D));
-        if (dirLight) {
-            const dlComp = dirLight.getComponent(Components3D.DirectionalLight3D);
-            gl.uniform3fv(this.programInfo.uniformLocations.uDirLightDir, [dlComp.direction.x, dlComp.direction.y, dlComp.direction.z]);
-            gl.uniform3fv(this.programInfo.uniformLocations.uDirLightColor, this.hexToRgb(dlComp.color).map(c => c * dlComp.intensity));
+        if (options.picking) {
+            gl.useProgram(this.pickingProgramInfo.program);
         } else {
-            gl.uniform3fv(this.programInfo.uniformLocations.uDirLightDir, [0, -1, 0]);
-            gl.uniform3fv(this.programInfo.uniformLocations.uDirLightColor, [1, 1, 1]);
-        }
-        gl.uniform3fv(this.programInfo.uniformLocations.uAmbientLight, [0.3, 0.3, 0.3]);
+            gl.useProgram(this.programInfo.program);
+            // Apply projection/view once for the main pass
+            gl.uniformMatrix4fv(this.programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
+            gl.uniformMatrix4fv(this.programInfo.uniformLocations.viewMatrix, false, viewMatrix);
 
-        // Point Lights Setup
-        const pointLights = scene.getAllMaterias().filter(m => m.isActive && m.getComponent(Components3D.PointLight3D)).slice(0, 4);
-        const plPos = [], plColor = [], plRange = [];
-        pointLights.forEach(pl => {
-            const comp = pl.getComponent(Components3D.PointLight3D);
-            const trans = pl.getComponent(Transform);
-            plPos.push(trans.x, trans.y, trans.z);
-            const rgb = this.hexToRgb(comp.color);
-            plColor.push(rgb[0] * comp.intensity, rgb[1] * comp.intensity, rgb[2] * comp.intensity);
-            plRange.push(comp.range);
-        });
+            gl.uniform3fv(this.programInfo.uniformLocations.viewPosition, activeViewPosition);
+            gl.uniform1f(this.programInfo.uniformLocations.uRealismLevel, realismLevel);
 
-        if (pointLights.length > 0) {
-            gl.uniform3fv(this.programInfo.uniformLocations.uPointLightPos, new Float32Array(plPos));
-            gl.uniform3fv(this.programInfo.uniformLocations.uPointLightColor, new Float32Array(plColor));
-            gl.uniform1fv(this.programInfo.uniformLocations.uPointLightRange, new Float32Array(plRange));
+            // Global Lights Setup
+            const dirLight = scene.getAllMaterias().find(m => m.isActive && m.getComponent(Components3D.DirectionalLight3D));
+            if (dirLight) {
+                const dlComp = dirLight.getComponent(Components3D.DirectionalLight3D);
+                gl.uniform3fv(this.programInfo.uniformLocations.uDirLightDir, [dlComp.direction.x, -dlComp.direction.y, dlComp.direction.z]);
+                gl.uniform3fv(this.programInfo.uniformLocations.uDirLightColor, this.hexToRgb(dlComp.color).map(c => c * dlComp.intensity));
+            } else {
+                gl.uniform3fv(this.programInfo.uniformLocations.uDirLightDir, [0, -1, 0]); // Default pointing Down
+                gl.uniform3fv(this.programInfo.uniformLocations.uDirLightColor, [1, 1, 1]);
+            }
+            gl.uniform3fv(this.programInfo.uniformLocations.uAmbientLight, [0.3, 0.3, 0.3]);
+
+            // Point Lights Setup
+            const pointLights = scene.getAllMaterias().filter(m => m.isActive && m.getComponent(Components3D.PointLight3D)).slice(0, 4);
+            const plPos = [], plColor = [], plRange = [];
+            pointLights.forEach(pl => {
+                const comp = pl.getComponent(Components3D.PointLight3D);
+                const trans = pl.getComponent(Transform);
+                plPos.push(trans.x, -trans.y, trans.z || 0);
+                const rgb = this.hexToRgb(comp.color);
+                plColor.push(rgb[0] * comp.intensity, rgb[1] * comp.intensity, rgb[2] * comp.intensity);
+                plRange.push(comp.range);
+            });
+
+            if (pointLights.length > 0) {
+                gl.uniform3fv(this.programInfo.uniformLocations.uPointLightPos, new Float32Array(plPos));
+                gl.uniform3fv(this.programInfo.uniformLocations.uPointLightColor, new Float32Array(plColor));
+                gl.uniform1fv(this.programInfo.uniformLocations.uPointLightRange, new Float32Array(plRange));
+            }
+            gl.uniform1i(this.programInfo.uniformLocations.uPointLightCount, pointLights.length);
         }
-        gl.uniform1i(this.programInfo.uniformLocations.uPointLightCount, pointLights.length);
 
         // Optimization: Filter out non-renderable materias once per frame
         const renderableMaterias = scene.getAllMaterias().filter(m => {
@@ -897,14 +959,12 @@ export class Renderer3D {
 
         if (options.picking && !meshRenderer && !spriteRenderer && !textureRender) return;
 
-        const gl = this.gl;
-        const programInfo = options.picking ? this.pickingProgramInfo : this.programInfo;
         const transform = materia.getComponent(Transform);
         if (!transform || !materia.isActive) return;
 
         if (!meshRenderer && !spriteRenderer && !textureRender && !tilemapRenderer && !terreno2D && !water) return;
 
-        // Specialized Renderers
+        // Specialized Renderers (Always non-picking for these complex ones for now)
         if (tilemapRenderer) {
             this.renderTilemap(materia, projectionMatrix, viewMatrix, options);
             return;
@@ -918,10 +978,15 @@ export class Renderer3D {
             return;
         }
 
+        const gl = this.gl;
+        // Ensure the correct program is active for this materia
+        const programInfo = options.picking ? this.pickingProgramInfo : this.programInfo;
+        gl.useProgram(programInfo.program);
+
         const modelMatrix = mat4.create();
         const worldPos = transform.position;
         const worldScale = transform.scale;
-        const pos = [worldPos.x, worldPos.y, worldPos.z || 0];
+        const pos = [worldPos.x, -worldPos.y, worldPos.z || 0];
         const scale = [Math.abs(worldScale.x), Math.abs(worldScale.y), Math.abs(worldScale.z || 1)];
 
         const q = quat.create();
@@ -935,6 +1000,7 @@ export class Renderer3D {
 
         mat4.fromRotationTranslationScale(modelMatrix, q, pos, scale);
 
+        // ALWAYS set these because the program might have changed
         gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
         gl.uniformMatrix4fv(programInfo.uniformLocations.viewMatrix, false, viewMatrix);
         gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrix);
@@ -960,46 +1026,45 @@ export class Renderer3D {
             color = [rgb[0], rgb[1], rgb[2], 1.0];
         }
 
-        const isToon = options.isToon || meshRenderer?.isToon || (window.SceneManager.currentScene.ambiente.graphicMode === 'Anime');
-        gl.uniform4fv(this.programInfo.uniformLocations.uColor, color);
-        gl.uniform1i(this.programInfo.uniformLocations.uUseToon, isToon ? 1 : 0);
+        if (!options.picking && this.programInfo.uniformLocations.uColor) {
+            const isToon = options.isToon || meshRenderer?.isToon || (window.SceneManager.currentScene.ambiente.graphicMode === 'Anime');
+            gl.uniform4fv(this.programInfo.uniformLocations.uColor, color);
+            gl.uniform1i(this.programInfo.uniformLocations.uUseToon, isToon ? 1 : 0);
+        }
 
         if (meshRenderer) {
             if (options.picking) {
                 const id = options.idMap.get(materia.id);
-                const pickingColor = [
-                    ((id >>  0) & 0xFF) / 255,
-                    ((id >>  8) & 0xFF) / 255,
-                    ((id >> 16) & 0xFF) / 255,
-                    1.0
-                ];
+                const pickingColor = [((id >> 0) & 0xFF) / 255, ((id >> 8) & 0xFF) / 255, ((id >> 16) & 0xFF) / 255, 1.0];
                 gl.uniform4fv(programInfo.uniformLocations.uPickingColor, pickingColor);
             } else {
                 gl.uniform1i(this.programInfo.uniformLocations.uUseTexture, 0);
             }
-            // TODO: Support Sphere/Plane
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.cubeBuffer);
-            gl.vertexAttribPointer(this.programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexPosition);
 
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.cubeNormalBuffer);
-            gl.vertexAttribPointer(this.programInfo.attribLocations.vertexNormal, 3, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexNormal);
+            let mesh = this.meshCube;
+            if (meshRenderer.meshType === 'Sphere') mesh = this.meshSphere;
+            else if (meshRenderer.meshType === 'Plane') mesh = this.meshPlane;
+            else if (meshRenderer.meshType === 'Triangle') mesh = this.meshTriangle;
+            else if (meshRenderer.meshType === 'Capsule') mesh = this.meshCapsule;
 
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.cubeIndexBuffer);
-            gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+            gl.bindBuffer(gl.ARRAY_BUFFER, mesh.pos);
+            gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+
+            if (!options.picking) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, mesh.norm);
+                gl.vertexAttribPointer(this.programInfo.attribLocations.vertexNormal, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexNormal);
+            }
+
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.idx);
+            gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, 0);
         } else if (spriteRenderer) {
             if (options.picking) {
                 const id = options.idMap.get(materia.id);
-                const pickingColor = [
-                    ((id >>  0) & 0xFF) / 255,
-                    ((id >>  8) & 0xFF) / 255,
-                    ((id >> 16) & 0xFF) / 255,
-                    1.0
-                ];
+                const pickingColor = [((id >> 0) & 0xFF) / 255, ((id >> 8) & 0xFF) / 255, ((id >> 16) & 0xFF) / 255, 1.0];
                 gl.uniform4fv(programInfo.uniformLocations.uPickingColor, pickingColor);
             }
-            // Draw sprite as plane
             if (!options.picking) {
                 const tex = this.getGLTexture(spriteRenderer.sprite);
                 if (tex) {
@@ -1012,10 +1077,8 @@ export class Renderer3D {
                 }
             }
 
-            // Adjust model matrix for sprite dimensions (2D to 3D mapping)
             const sprite = spriteRenderer.sprite;
-            let spriteScaleX = 1;
-            let spriteScaleY = 1;
+            let spriteScaleX = 1, spriteScaleY = 1;
             if (sprite && sprite.complete && sprite.naturalWidth > 0) {
                 spriteScaleX = sprite.naturalWidth;
                 spriteScaleY = sprite.naturalHeight;
@@ -1023,46 +1086,37 @@ export class Renderer3D {
 
             const spriteModelMatrix = mat4.create();
             const spriteScale = [scale[0] * spriteScaleX, scale[1] * spriteScaleY, 1];
-
             let finalRotation = q;
             if (spriteRenderer.billboard && !options.picking) {
-                // Spherical Billboarding: face the camera position
                 const viewRot = quat.create();
                 mat4.getRotation(viewRot, viewMatrix);
                 quat.invert(viewRot, viewRot);
-                // Combine billboard rotation with local rotation for flexibility
                 quat.multiply(finalRotation, viewRot, q);
             }
-
             mat4.fromRotationTranslationScale(spriteModelMatrix, finalRotation, pos, spriteScale);
             gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, spriteModelMatrix);
 
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.planeBuffer);
-            gl.vertexAttribPointer(this.programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexPosition);
+            const mesh = this.meshSpritePlane;
+            gl.bindBuffer(gl.ARRAY_BUFFER, mesh.pos);
+            gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
 
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.planeTexCoordBuffer);
-            gl.vertexAttribPointer(this.programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(this.programInfo.attribLocations.textureCoord);
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.planeNormalBuffer);
-            gl.vertexAttribPointer(this.programInfo.attribLocations.vertexNormal, 3, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexNormal);
-
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.planeIndexBuffer);
-            gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+            if (!options.picking) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, mesh.uv);
+                gl.vertexAttribPointer(this.programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(this.programInfo.attribLocations.textureCoord);
+                gl.bindBuffer(gl.ARRAY_BUFFER, mesh.norm);
+                gl.vertexAttribPointer(this.programInfo.attribLocations.vertexNormal, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexNormal);
+            }
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.idx);
+            gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, 0);
         } else if (textureRender) {
             if (options.picking) {
                 const id = options.idMap.get(materia.id);
-                const pickingColor = [
-                    ((id >>  0) & 0xFF) / 255,
-                    ((id >>  8) & 0xFF) / 255,
-                    ((id >> 16) & 0xFF) / 255,
-                    1.0
-                ];
+                const pickingColor = [((id >> 0) & 0xFF) / 255, ((id >> 8) & 0xFF) / 255, ((id >> 16) & 0xFF) / 255, 1.0];
                 gl.uniform4fv(programInfo.uniformLocations.uPickingColor, pickingColor);
             }
-
             if (!options.picking) {
                 const tex = this.getGLTexture(textureRender.texture);
                 if (tex) {
@@ -1077,33 +1131,31 @@ export class Renderer3D {
 
             const modelMatrixTex = mat4.create();
             const texScale = [scale[0] * textureRender.width, scale[1] * textureRender.height, 1];
-
             let finalRotationTex = q;
             if (textureRender.billboard && !options.picking) {
                 const viewRot = quat.create();
                 mat4.getRotation(viewRot, viewMatrix);
                 quat.invert(viewRot, viewRot);
-                // Combine billboard rotation with local rotation
                 quat.multiply(finalRotationTex, viewRot, q);
             }
-
             mat4.fromRotationTranslationScale(modelMatrixTex, finalRotationTex, pos, texScale);
             gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrixTex);
 
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.planeBuffer);
-            gl.vertexAttribPointer(this.programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexPosition);
+            const mesh = this.meshSpritePlane;
+            gl.bindBuffer(gl.ARRAY_BUFFER, mesh.pos);
+            gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
 
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.planeTexCoordBuffer);
-            gl.vertexAttribPointer(this.programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(this.programInfo.attribLocations.textureCoord);
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.planeNormalBuffer);
-            gl.vertexAttribPointer(this.programInfo.attribLocations.vertexNormal, 3, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexNormal);
-
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.planeIndexBuffer);
-            gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+            if (!options.picking) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, mesh.uv);
+                gl.vertexAttribPointer(this.programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(this.programInfo.attribLocations.textureCoord);
+                gl.bindBuffer(gl.ARRAY_BUFFER, mesh.norm);
+                gl.vertexAttribPointer(this.programInfo.attribLocations.vertexNormal, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexNormal);
+            }
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.idx);
+            gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, 0);
         }
     }
 
@@ -1120,12 +1172,20 @@ export class Renderer3D {
         if (!this.gl) return null;
         const gl = this.gl;
 
-        // Setup picking texture
-        const pickingRes = 512; // Lower resolution for optimization
-        if (!this.pickingFramebuffer) {
+        // Setup picking texture at canvas resolution for exact match
+        const w = gl.canvas.width;
+        const h = gl.canvas.height;
+
+        if (!this.pickingFramebuffer || this._pickW !== w || this._pickH !== h) {
+            if (this.pickingFramebuffer) {
+                gl.deleteFramebuffer(this.pickingFramebuffer);
+                gl.deleteTexture(this.pickingTexture);
+                gl.deleteRenderbuffer(this.pickingDepthBuffer);
+            }
+
             this.pickingTexture = gl.createTexture();
             gl.bindTexture(gl.TEXTURE_2D, this.pickingTexture);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, pickingRes, pickingRes, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
 
             this.pickingFramebuffer = gl.createFramebuffer();
             gl.bindFramebuffer(gl.FRAMEBUFFER, this.pickingFramebuffer);
@@ -1133,12 +1193,15 @@ export class Renderer3D {
 
             this.pickingDepthBuffer = gl.createRenderbuffer();
             gl.bindRenderbuffer(gl.RENDERBUFFER, this.pickingDepthBuffer);
-            gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, pickingRes, pickingRes);
+            gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h);
             gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, this.pickingDepthBuffer);
+
+            this._pickW = w;
+            this._pickH = h;
         }
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.pickingFramebuffer);
-        gl.viewport(0, 0, pickingRes, pickingRes);
+        gl.viewport(0, 0, w, h);
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -1152,13 +1215,12 @@ export class Renderer3D {
         this.render(scene, cameraMateria, { ...options, picking: true, idMap });
 
         const pixels = new Uint8Array(4);
-        // Map x,y to picking viewport resolution
-        const px = Math.floor((x / gl.canvas.width) * pickingRes);
-        const py = Math.floor((1 - y / gl.canvas.height) * pickingRes);
-
-        gl.readPixels(px, py, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        // Correct Y for WebGL (bottom-up).
+        // Screen Y: 0 (top) to h-1 (bottom).
+        // WebGL Y: 0 (bottom) to h-1 (top).
+        // So screen y -> gl y = (h - 1) - y
+        gl.readPixels(x, (h - 1) - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        this.resize(); // Restore viewport
 
         const pickedId = pixels[0] + (pixels[1] << 8) + (pixels[2] << 16);
         return reverseIdMap.get(pickedId) || null;
@@ -1169,14 +1231,12 @@ export class Renderer3D {
      * This avoids the "flat background" look by placing it correctly in 3D space.
      */
     renderTilemap(materia, projectionMatrix, viewMatrix, options) {
-        if (options.picking) return; // Skip picking for tilemaps for now
+        if (options.picking) return;
 
         const tilemap = materia.getComponent(Components.Tilemap);
         const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
         const transform = materia.getComponent(Transform);
 
-        // We use the 2D renderer to bake the tilemap into a texture
-        // This is a shortcut to avoid implementing the whole tilemap logic in GL
         if (!tilemapRenderer._bakedTexture || tilemapRenderer.isDirty) {
             this.bakeTilemap(materia);
         }
@@ -1187,42 +1247,33 @@ export class Renderer3D {
         const gl = this.gl;
         const worldPos = transform.position;
         const worldScale = transform.scale;
-        const pos = [worldPos.x, worldPos.y, worldPos.z || 0];
+        const pos = [worldPos.x, -worldPos.y, worldPos.z || 0];
         const scale = [Math.abs(worldScale.x), Math.abs(worldScale.y), 1];
 
         const q = quat.create();
-        const rot = {
-            x: transform.rotationX || 0,
-            y: transform.rotationY || 0,
-            z: transform.rotationZ || 0
-        };
-        quat.fromEuler(q, rot.x, rot.y, rot.z);
+        quat.fromEuler(q, transform.rotationX || 0, transform.rotationY || 0, transform.rotationZ || 0);
 
         const modelMatrix = mat4.create();
         const mapScale = [tilemapRenderer._bakedTexture.width, tilemapRenderer._bakedTexture.height, 1];
         const finalScale = [scale[0] * mapScale[0], scale[1] * mapScale[1], 1];
-
         mat4.fromRotationTranslationScale(modelMatrix, q, pos, finalScale);
 
         gl.uniformMatrix4fv(this.programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
         gl.uniformMatrix4fv(this.programInfo.uniformLocations.viewMatrix, false, viewMatrix);
         gl.uniformMatrix4fv(this.programInfo.uniformLocations.modelMatrix, false, modelMatrix);
-
         gl.uniform1i(this.programInfo.uniformLocations.uUseTexture, 1);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.uniform1i(this.programInfo.uniformLocations.uSampler, 0);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.planeBuffer);
+        const mesh = this.meshSpritePlane;
+        gl.bindBuffer(gl.ARRAY_BUFFER, mesh.pos);
         gl.vertexAttribPointer(this.programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexPosition);
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.planeTexCoordBuffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, mesh.uv);
         gl.vertexAttribPointer(this.programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(this.programInfo.attribLocations.textureCoord);
-
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.planeIndexBuffer);
-        gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.idx);
+        gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, 0);
     }
 
     bakeTilemap(materia) {
@@ -1278,7 +1329,6 @@ export class Renderer3D {
         const terreno = materia.getComponent(Components.Terreno2D);
         if (!terreno || options.picking) return;
 
-        // Use the 2D logic to bake terrain into a texture
         if (!terreno._bakedTexture || terreno.isDirty) {
             this.bakeTerreno2D(materia);
         }
@@ -1290,7 +1340,7 @@ export class Renderer3D {
         const transform = materia.getComponent(Transform);
         const worldPos = transform.position;
         const worldScale = transform.scale;
-        const pos = [worldPos.x, worldPos.y, worldPos.z || 0];
+        const pos = [worldPos.x, -worldPos.y, worldPos.z || 0];
 
         const q = quat.create();
         quat.fromEuler(q, transform.rotationX || 0, transform.rotationY || 0, transform.rotationZ || 0);
@@ -1303,20 +1353,19 @@ export class Renderer3D {
         gl.uniformMatrix4fv(this.programInfo.uniformLocations.viewMatrix, false, viewMatrix);
         gl.uniformMatrix4fv(this.programInfo.uniformLocations.modelMatrix, false, modelMatrix);
         gl.uniform4fv(this.programInfo.uniformLocations.uColor, [1, 1, 1, 1]);
-
         gl.uniform1i(this.programInfo.uniformLocations.uUseTexture, 1);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.uniform1i(this.programInfo.uniformLocations.uSampler, 0);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.planeBuffer);
+        const mesh = this.meshSpritePlane;
+        gl.bindBuffer(gl.ARRAY_BUFFER, mesh.pos);
         gl.vertexAttribPointer(this.programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexPosition);
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.planeTexCoordBuffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, mesh.uv);
         gl.vertexAttribPointer(this.programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(this.programInfo.attribLocations.textureCoord);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.planeIndexBuffer);
-        gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.idx);
+        gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, 0);
     }
 
     bakeTerreno2D(materia) {
@@ -1349,10 +1398,8 @@ export class Renderer3D {
         const water = materia.getComponent(Components.Water);
         if (!water || options.picking) return;
 
-        // Render water particles as additive/blended spheres or a baked mesh
-        // For simplicity in v0.1.2 hybrid, we bake it to a texture based on its bounds
         const now = performance.now();
-        const shouldUpdate = !water._bakedTexture || (now - (water._lastBakeTime || 0) > 33); // ~30fps update
+        const shouldUpdate = !water._bakedTexture || (now - (water._lastBakeTime || 0) > 33);
 
         if (shouldUpdate) {
             this.bakeWater(materia);
@@ -1369,7 +1416,7 @@ export class Renderer3D {
         const h = bounds.maxY - bounds.minY;
         if (w <= 0 || h <= 0) return;
 
-        const pos = [bounds.minX + w/2, bounds.minY + h/2, transform.z || 0];
+        const pos = [bounds.minX + w/2, -(bounds.minY + h/2), transform.z || 0];
         const modelMatrix = mat4.create();
         mat4.fromRotationTranslationScale(modelMatrix, quat.create(), pos, [w, h, 1]);
 
@@ -1380,14 +1427,16 @@ export class Renderer3D {
         gl.uniform1i(this.programInfo.uniformLocations.uUseTexture, 1);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.planeBuffer);
+
+        const mesh = this.meshSpritePlane;
+        gl.bindBuffer(gl.ARRAY_BUFFER, mesh.pos);
         gl.vertexAttribPointer(this.programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexPosition);
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.planeTexCoordBuffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, mesh.uv);
         gl.vertexAttribPointer(this.programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(this.programInfo.attribLocations.textureCoord);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.planeIndexBuffer);
-        gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.idx);
+        gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, 0);
     }
 
     bakeWater(materia) {

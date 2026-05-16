@@ -180,6 +180,8 @@ class InputManager {
         targetWindow.addEventListener('keydown', this._onKeyDown.bind(this));
         targetWindow.addEventListener('keyup', this._onKeyUp.bind(this));
         targetWindow.addEventListener('wheel', this._onWheel.bind(this), { passive: false });
+        targetWindow.addEventListener('blur', this._onBlur.bind(this));
+        targetWindow.addEventListener('focus', this._onBlur.bind(this));
 
         // Listen for mouse events on the window to ensure we catch releases outside the canvas
         targetWindow.addEventListener('mousedown', this._onWindowMouseDown.bind(this));
@@ -498,6 +500,10 @@ class InputManager {
         this._mouseButtons.clear();
         this._keysDown.clear();
         this._buttonsDown.clear();
+        this._buttonsUp.clear();
+        this._keysUp.clear();
+        this._mouseDelta.x = 0;
+        this._mouseDelta.y = 0;
         console.log('[InputManager] Focus lost: All inputs released.');
     }
 

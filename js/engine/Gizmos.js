@@ -7,21 +7,29 @@ export const Gizmos = {
     /**
      * Draws a wireframe cube in 3D space.
      */
-    drawWireCube(ctx, center, size, color = 'rgba(0, 255, 255, 0.8)') {
+    drawWireCube(ctx, center, size, rotation = {x:0, y:0, z:0}, color = 'rgba(0, 255, 255, 0.8)') {
+        const glm = window.glMatrix;
         const hw = size.x / 2;
         const hh = size.y / 2;
         const hd = size.z / 2;
 
         const points = [
-            { x: -hw, y: -hh, z: -hd }, { x: hw, y: -hh, z: -hd }, { x: hw, y: hh, z: -hd }, { x: -hw, y: hh, z: -hd },
-            { x: -hw, y: -hh, z: hd }, { x: hw, y: -hh, z: hd }, { x: hw, y: hh, z: hd }, { x: -hw, y: hh, z: hd }
+            [ -hw, -hh, -hd ], [ hw, -hh, -hd ], [ hw, hh, -hd ], [ -hw, hh, -hd ],
+            [ -hw, -hh, hd ], [ hw, -hh, hd ], [ hw, hh, hd ], [ -hw, hh, hd ]
         ];
 
-        const screenPoints = points.map(p => world3DToScreen({
-            x: center.x + p.x,
-            y: center.y + p.y,
-            z: (center.z || 0) + p.z
-        }));
+        const q = glm.quat.create();
+        glm.quat.fromEuler(q, rotation.x, rotation.y, rotation.z);
+
+        const screenPoints = points.map(p => {
+            const rotated = glm.vec3.create();
+            glm.vec3.transformQuat(rotated, p, q);
+            return world3DToScreen({
+                x: center.x + rotated[0],
+                y: center.y - rotated[1], // World Y is handled as inverted in world3DToScreen
+                z: (center.z || 0) + rotated[2]
+            });
+        });
 
         if (screenPoints.some(p => p === null)) return;
 
@@ -52,29 +60,35 @@ export const Gizmos = {
     /**
      * Draws a wireframe sphere in 3D space using 3 rings.
      */
-    drawWireSphere(ctx, center, radius, color = 'rgba(0, 255, 255, 0.8)') {
+    drawWireSphere(ctx, center, radius, rotation = {x:0, y:0, z:0}, color = 'rgba(0, 255, 255, 0.8)') {
+        const glm = window.glMatrix;
         const segments = 16;
+        const q = glm.quat.create();
+        glm.quat.fromEuler(q, rotation.x, rotation.y, rotation.z);
 
         const drawRing = (axis) => {
             ctx.beginPath();
             for (let i = 0; i <= segments; i++) {
                 const angle = (i / segments) * Math.PI * 2;
-                let pt = { x: 0, y: 0, z: 0 };
+                let pt = [0, 0, 0];
                 if (axis === 'xy') {
-                    pt.x = Math.cos(angle) * radius;
-                    pt.y = Math.sin(angle) * radius;
+                    pt[0] = Math.cos(angle) * radius;
+                    pt[1] = Math.sin(angle) * radius;
                 } else if (axis === 'xz') {
-                    pt.x = Math.cos(angle) * radius;
-                    pt.z = Math.sin(angle) * radius;
+                    pt[0] = Math.cos(angle) * radius;
+                    pt[2] = Math.sin(angle) * radius;
                 } else {
-                    pt.y = Math.cos(angle) * radius;
-                    pt.z = Math.sin(angle) * radius;
+                    pt[1] = Math.cos(angle) * radius;
+                    pt[2] = Math.sin(angle) * radius;
                 }
 
+                const rotated = glm.vec3.create();
+                glm.vec3.transformQuat(rotated, pt, q);
+
                 const screen = world3DToScreen({
-                    x: center.x + pt.x,
-                    y: center.y + pt.y,
-                    z: (center.z || 0) + pt.z
+                    x: center.x + rotated[0],
+                    y: center.y - rotated[1],
+                    z: (center.z || 0) + rotated[2]
                 });
                 if (screen) {
                     if (i === 0) ctx.moveTo(screen.x, screen.y);
@@ -94,21 +108,29 @@ export const Gizmos = {
     /**
      * Draws a wireframe triangle in 3D.
      */
-    drawWireTriangle(ctx, center, size, color = 'rgba(0, 255, 255, 0.8)') {
+    drawWireTriangle(ctx, center, size, rotation = {x:0, y:0, z:0}, color = 'rgba(0, 255, 255, 0.8)') {
+        const glm = window.glMatrix;
         const hw = size.x / 2;
         const hh = size.y / 2;
 
         const points = [
-            { x: 0, y: hh, z: 0 },
-            { x: -hw, y: -hh, z: 0 },
-            { x: hw, y: -hh, z: 0 }
+            [ 0, hh, 0 ],
+            [ -hw, -hh, 0 ],
+            [ hw, -hh, 0 ]
         ];
 
-        const screenPoints = points.map(p => world3DToScreen({
-            x: center.x + p.x,
-            y: center.y + p.y,
-            z: (center.z || 0) + p.z
-        }));
+        const q = glm.quat.create();
+        glm.quat.fromEuler(q, rotation.x, rotation.y, rotation.z);
+
+        const screenPoints = points.map(p => {
+            const rotated = glm.vec3.create();
+            glm.vec3.transformQuat(rotated, p, q);
+            return world3DToScreen({
+                x: center.x + rotated[0],
+                y: center.y - rotated[1],
+                z: (center.z || 0) + rotated[2]
+            });
+        });
 
         if (screenPoints.some(p => p === null)) return;
 
@@ -125,22 +147,30 @@ export const Gizmos = {
     /**
      * Draws a wireframe plane in 3D.
      */
-    drawWirePlane(ctx, center, size, color = 'rgba(255, 255, 255, 0.5)') {
+    drawWirePlane(ctx, center, size, rotation = {x:0, y:0, z:0}, color = 'rgba(255, 255, 255, 0.5)') {
+        const glm = window.glMatrix;
         const hw = size.x / 2;
         const hd = size.z / 2;
 
         const points = [
-            { x: -hw, y: 0, z: -hd },
-            { x: hw, y: 0, z: -hd },
-            { x: hw, y: 0, z: hd },
-            { x: -hw, y: 0, z: hd }
+            [ -hw, 0, -hd ],
+            [ hw, 0, -hd ],
+            [ hw, 0, hd ],
+            [ -hw, 0, hd ]
         ];
 
-        const screenPoints = points.map(p => world3DToScreen({
-            x: center.x + p.x,
-            y: center.y,
-            z: (center.z || 0) + p.z
-        }));
+        const q = glm.quat.create();
+        glm.quat.fromEuler(q, rotation.x, rotation.y, rotation.z);
+
+        const screenPoints = points.map(p => {
+            const rotated = glm.vec3.create();
+            glm.vec3.transformQuat(rotated, p, q);
+            return world3DToScreen({
+                x: center.x + rotated[0],
+                y: center.y - rotated[1],
+                z: (center.z || 0) + rotated[2]
+            });
+        });
 
         if (screenPoints.some(p => p === null)) return;
 
@@ -158,15 +188,24 @@ export const Gizmos = {
     /**
      * Draws a wireframe capsule in 3D.
      */
-    drawWireCapsule(ctx, center, radius, height, color = 'rgba(0, 255, 255, 0.8)') {
+    drawWireCapsule(ctx, center, radius, height, rotation = {x:0, y:0, z:0}, color = 'rgba(0, 255, 255, 0.8)') {
+        const glm = window.glMatrix;
         const hh = height / 2;
+        const q = glm.quat.create();
+        glm.quat.fromEuler(q, rotation.x, rotation.y, rotation.z);
 
         // Draw vertical lines
         const drawLine = (lx, lz) => {
-            const p1 = world3DToScreen({ x: center.x + lx, y: center.y + hh, z: (center.z || 0) + lz });
-            const p2 = world3DToScreen({ x: center.x + lx, y: center.y - hh, z: (center.z || 0) + lz });
-            if (p1 && p2) {
-                ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+            const p1 = [lx, hh, lz];
+            const p2 = [lx, -hh, lz];
+            const r1 = glm.vec3.create(), r2 = glm.vec3.create();
+            glm.vec3.transformQuat(r1, p1, q);
+            glm.vec3.transformQuat(r2, p2, q);
+
+            const s1 = world3DToScreen({ x: center.x + r1[0], y: center.y - r1[1], z: (center.z || 0) + r1[2] });
+            const s2 = world3DToScreen({ x: center.x + r2[0], y: center.y - r2[1], z: (center.z || 0) + r2[2] });
+            if (s1 && s2) {
+                ctx.beginPath(); ctx.moveTo(s1.x, s1.y); ctx.lineTo(s2.x, s2.y); ctx.stroke();
             }
         };
 
@@ -174,9 +213,14 @@ export const Gizmos = {
         ctx.lineWidth = 1;
         drawLine(radius, 0); drawLine(-radius, 0); drawLine(0, radius); drawLine(0, -radius);
 
-        // Draw top and bottom spheres (half)
-        this.drawWireSphere(ctx, { x: center.x, y: center.y + hh, z: center.z }, radius, color);
-        this.drawWireSphere(ctx, { x: center.x, y: center.y - hh, z: center.z }, radius, color);
+        // Draw top and bottom spheres (half) - these should ideally be hemi-spheres
+        const topCenter = glm.vec3.create();
+        glm.vec3.transformQuat(topCenter, [0, hh, 0], q);
+        this.drawWireSphere(ctx, { x: center.x + topCenter[0], y: center.y + topCenter[1], z: (center.z || 0) + topCenter[2] }, radius, rotation, color);
+
+        const bottomCenter = glm.vec3.create();
+        glm.vec3.transformQuat(bottomCenter, [0, -hh, 0], q);
+        this.drawWireSphere(ctx, { x: center.x + bottomCenter[0], y: center.y + bottomCenter[1], z: (center.z || 0) + bottomCenter[2] }, radius, rotation, color);
     },
 
     /**
