@@ -59,7 +59,11 @@ function createWindow() {
             </div>
         </div>
         <div class="panel-content no-padding vs-layout">
-            <div id="vs-toolbox">
+            <div id="vs-toolbox-container" style="display: flex; flex-direction: column; width: 220px; background: rgba(10,10,12,0.6); border-right: 1px solid rgba(255,255,255,0.1);">
+                <div style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <input type="text" id="vs-search-blocks" placeholder="🔍 Buscar bloque..." style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 6px 10px; border-radius: 20px; font-size: 0.85em; outline: none;">
+                </div>
+                <div id="vs-toolbox">
                 <div class="vs-toolbox-section">
                     <h4 style="color: #4c97ff;">🔵 Movimiento</h4>
                     <div class="vs-draggable-item" data-type="action" data-name="Fijar X">Fijar X a</div>
@@ -102,6 +106,12 @@ function createWindow() {
                     <div class="vs-draggable-item" data-type="event" data-name="Al Chocar">💥 Al Colisionar</div>
                     <div class="vs-draggable-item" data-type="event" data-name="Al Salir Colision">🔙 Al Salir Colisión</div>
                     <div class="vs-draggable-item" data-type="event" data-name="Al Gatillar">⚡ Al Entrar Gatillo</div>
+                    <div class="vs-draggable-item" data-type="event" data-name="Al Recibir Mensaje">📩 Al Recibir Mensaje</div>
+                </div>
+                <div class="vs-toolbox-section">
+                    <h4 style="color: #ffab19;">🟠 Mensajería</h4>
+                    <div class="vs-draggable-item" data-type="action" data-name="Enviar Mensaje">📢 Enviar Mensaje</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Enviar a Objeto">📧 Enviar a Objeto</div>
                 </div>
                 <div class="vs-toolbox-section">
                     <h4 style="color: #ffab19;">🟠 Control</h4>
@@ -109,16 +119,19 @@ function createWindow() {
                     <div class="vs-draggable-item" data-type="action" data-name="Repetir">🔁 Repetir (Para)</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Mientras">♾️ Mientras</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Si">⚖️ Si (Condición)</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Esperar Hasta">⏳ Esperar Hasta Que...</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Detener Todo">🛑 Detener Todo</div>
                 </div>
                 <div class="vs-toolbox-section">
                     <h4 style="color: #4cbfe6;">🐳 Sensores</h4>
                     <div class="vs-draggable-item" data-type="action" data-name="Distancia">Distancia a</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Estado Tecla">⌨️ Tecla Presionada?</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Eje Entrada">🎮 Eje de Entrada (-1 a 1)</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Boton Raton">🖱️ Ratón Presionado?</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Posicion Raton">📍 Posición Ratón</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Cronometro">⏱️ Cronómetro</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Raycast">📡 Raycast</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Obtener Propiedad">🔍 Obtener Propiedad de...</div>
                 </div>
                 <div class="vs-toolbox-section">
                     <h4 style="color: #00ced1;">📏 Vectores</h4>
@@ -136,6 +149,8 @@ function createWindow() {
                     <div class="vs-draggable-item" data-type="action" data-name="Logica">🧠 Y / O / NO</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Mate Avanzada">📐 Mate (Sen/Cos/Abs...)</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Limitar (Clamp)">📏 Limitar (Clamp)</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Unir Texto">🔗 Unir Texto</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Propiedad Sistema">⚙️ Propiedad Sistema (FPS/Delta)</div>
                 </div>
                 <div class="vs-toolbox-section">
                     <h4 style="color: #ff8c1a;">📦 Variables</h4>
@@ -170,12 +185,17 @@ function createWindow() {
                     <div class="vs-draggable-item" data-type="function-decl" data-name="Nueva Función">🛠️ Nueva Función</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Llamar Función">📞 Llamar Función</div>
                 </div>
+                <div class="vs-toolbox-section" id="vs-favorites-section" style="display: none;">
+                    <h4 style="color: #f1c40f;">⭐ Favoritos</h4>
+                    <div id="vs-favorites-list"></div>
+                </div>
                 <div class="vs-toolbox-section">
                     <h4>Variables Activas</h4>
                     <div id="vs-active-vars-list" style="font-size: 0.85em; opacity: 0.8; padding: 5px;">
                         Ninguna
                     </div>
                 </div>
+            </div>
             </div>
             <div id="vs-workspace">
                 <svg id="vs-connections-layer"></svg>
@@ -187,6 +207,7 @@ function createWindow() {
 
     document.getElementById('editor-main-content').appendChild(panel);
     setupWorkspace();
+    updateFavoritesList();
 }
 
 function setupWorkspace() {
@@ -211,10 +232,38 @@ function setupWorkspace() {
             e.dataTransfer.setData('block-type', item.dataset.type);
             e.dataTransfer.setData('block-name', item.dataset.name);
         });
+        item.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            window.vs_toggleFavorite(item.dataset.name);
+        });
     });
 
     const saveBtn = document.getElementById('vs-save-btn');
     if (saveBtn) saveBtn.onclick = applyLogic;
+
+    const searchInput = document.getElementById('vs-search-blocks');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            document.querySelectorAll('.vs-draggable-item').forEach(item => {
+                const text = item.textContent.toLowerCase();
+                const section = item.closest('.vs-toolbox-section');
+                if (text.includes(query)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            // Hide sections with no visible items
+            document.querySelectorAll('.vs-toolbox-section').forEach(section => {
+                if (section.id === 'vs-favorites-section') return;
+                const visibleItems = section.querySelectorAll('.vs-draggable-item[style="display: block;"]').length;
+                const totalItems = section.querySelectorAll('.vs-draggable-item').length;
+                section.style.display = (visibleItems === 0 && query !== '') ? 'none' : 'block';
+            });
+        });
+    }
 
     // Setup integrated toolbox if exists
     const integratedToolbox = document.getElementById('vs-integrated-toolbox');
@@ -240,6 +289,10 @@ function setupWorkspace() {
             item.addEventListener('dragstart', (e) => {
                 e.dataTransfer.setData('block-type', item.dataset.type);
                 e.dataTransfer.setData('block-name', item.dataset.name);
+            });
+            item.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                window.vs_toggleFavorite(item.dataset.name);
             });
         });
     }
@@ -354,6 +407,25 @@ function addBlock(type, name, x, y, integrated = false) {
     } else if (name === 'Lista Borrar') {
         block.inputs.list = 'miLista';
         block.inputs.index = 0;
+    } else if (name === 'Al Recibir Mensaje' || name === 'Enviar Mensaje') {
+        block.inputs.message = 'miMensaje';
+    } else if (name === 'Enviar a Objeto') {
+        block.inputs.target = 'Player';
+        block.inputs.message = 'danio';
+    } else if (name === 'Eje Entrada') {
+        block.inputs.axis = 'Horizontal';
+        block.inputs.result = 'movX';
+    } else if (name === 'Obtener Propiedad') {
+        block.inputs.target = 'Materia';
+        block.inputs.prop = 'posicion.x';
+        block.inputs.result = 'val';
+    } else if (name === 'Unir Texto') {
+        block.inputs.text1 = 'Hola ';
+        block.inputs.text2 = 'Mundo';
+        block.inputs.result = 'saludo';
+    } else if (name === 'Propiedad Sistema') {
+        block.inputs.prop = 'fps';
+        block.inputs.result = 'miFPS';
     } else if (name === 'Cámara Pos') {
         block.inputs.x = 0;
         block.inputs.y = 0;
@@ -409,9 +481,9 @@ function renderBlock(block, container, svg) {
     let typeClass = `${block.type}-block`;
     if (block.name === 'Si' || block.name === 'Mientras' || block.name === 'Repetir' || block.name === 'Esperar Hasta') {
         typeClass = 'control-block';
-    } else if (['Distancia', 'Estado Tecla', 'Boton Raton', 'Posicion Raton', 'Cronometro', 'Raycast'].includes(block.name)) {
+    } else if (['Distancia', 'Estado Tecla', 'Boton Raton', 'Posicion Raton', 'Cronometro', 'Raycast', 'Eje Entrada', 'Obtener Propiedad'].includes(block.name)) {
         typeClass = 'sensor-block';
-    } else if (['Operación Matemática', 'Número al Azar', 'Comparar', 'Logica', 'Mate Avanzada', 'Limitar (Clamp)'].includes(block.name)) {
+    } else if (['Operación Matemática', 'Número al Azar', 'Comparar', 'Logica', 'Mate Avanzada', 'Limitar (Clamp)', 'Unir Texto', 'Propiedad Sistema'].includes(block.name)) {
         typeClass = 'operator-block';
     } else if (['Asignar Variable', 'Establecer Global'].includes(block.name)) {
         typeClass = 'variable-block';
@@ -453,6 +525,21 @@ function renderBlock(block, container, svg) {
         inputsHtml = `ID: <input type="text" value="${block.inputs.id}" style="width:50px" onchange="window.vs_updateInput('${block.id}', 'id', this.value)">`;
     } else if (block.name === 'Dar Item') {
         inputsHtml = `Item: <input type="text" value="${block.inputs.item}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'item', this.value)"> x<input type="number" value="${block.inputs.qty}" style="width:30px" onchange="window.vs_updateInput('${block.id}', 'qty', this.value)">`;
+    } else if (block.name === 'Al Recibir Mensaje' || block.name === 'Enviar Mensaje') {
+        inputsHtml = `Msg: <input type="text" value="${block.inputs.message}" style="width:60px" onchange="window.vs_updateInput('${block.id}', 'message', this.value)">`;
+    } else if (block.name === 'Enviar a Objeto') {
+        inputsHtml = `Obj: <input type="text" value="${block.inputs.target}" style="width:50px" onchange="window.vs_updateInput('${block.id}', 'target', this.value)"> Msg: <input type="text" value="${block.inputs.message}" style="width:50px" onchange="window.vs_updateInput('${block.id}', 'message', this.value)">`;
+    } else if (block.name === 'Eje Entrada') {
+        inputsHtml = `Eje: <input type="text" value="${block.inputs.axis}" style="width:60px" onchange="window.vs_updateInput('${block.id}', 'axis', this.value)"> -> <input type="text" value="${block.inputs.result}" style="width:50px" onchange="window.vs_updateInput('${block.id}', 'result', this.value)">`;
+    } else if (block.name === 'Obtener Propiedad') {
+        inputsHtml = `Obj: <input type="text" value="${block.inputs.target}" style="width:50px" onchange="window.vs_updateInput('${block.id}', 'target', this.value)"> P: <input type="text" value="${block.inputs.prop}" style="width:50px" onchange="window.vs_updateInput('${block.id}', 'prop', this.value)"> -> <input type="text" value="${block.inputs.result}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'result', this.value)">`;
+    } else if (block.name === 'Unir Texto') {
+        inputsHtml = `T1: <input type="text" value="${block.inputs.text1}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'text1', this.value)"> T2: <input type="text" value="${block.inputs.text2}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'text2', this.value)"> -> <input type="text" value="${block.inputs.result}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'result', this.value)">`;
+    } else if (block.name === 'Propiedad Sistema') {
+        inputsHtml = `P: <select onchange="window.vs_updateInput('${block.id}', 'prop', this.value)">
+            <option value="fps" ${block.inputs.prop === 'fps' ? 'selected' : ''}>FPS</option>
+            <option value="delta" ${block.inputs.prop === 'delta' ? 'selected' : ''}>Delta Time</option>
+        </select> -> <input type="text" value="${block.inputs.result}" style="width:50px" onchange="window.vs_updateInput('${block.id}', 'result', this.value)">`;
     } else if (block.name === 'Cambiar Color') {
         inputsHtml = `<input type="color" value="${block.inputs.color}" onchange="window.vs_updateInput('${block.id}', 'color', this.value)">`;
     } else if (block.name === 'Crear Objeto') {
@@ -648,6 +735,9 @@ function renderBlock(block, container, svg) {
     let branchHtml = '';
     if (block.name === 'Si' || block.name === 'Mientras' || block.name === 'Repetir' || block.name === 'Esperar Hasta') {
         branchHtml = `<div class="vs-block-connector-branch" title="Cuerpo del bucle/condición" onclick="window.vs_startConnection('${block.id}', 'branch')">🌿</div>`;
+        if (block.name === 'Si') {
+            branchHtml += `<div class="vs-block-connector-branch else-branch" title="Si no (Else)" onclick="window.vs_startConnection('${block.id}', 'else')">🟠</div>`;
+        }
     }
 
     el.innerHTML = `
@@ -732,6 +822,48 @@ document.addEventListener('focusin', (e) => {
     }
 });
 
+window.vs_toggleFavorite = (blockName) => {
+    const favorites = JSON.parse(localStorage.getItem('vs-favorites') || '[]');
+    const index = favorites.indexOf(blockName);
+    if (index === -1) {
+        favorites.push(blockName);
+    } else {
+        favorites.splice(index, 1);
+    }
+    localStorage.setItem('vs-favorites', JSON.stringify(favorites));
+    updateFavoritesList();
+};
+
+function updateFavoritesList() {
+    const favorites = JSON.parse(localStorage.getItem('vs-favorites') || '[]');
+    const container = document.getElementById('vs-favorites-section');
+    const list = document.getElementById('vs-favorites-list');
+
+    if (favorites.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'block';
+    list.innerHTML = '';
+
+    favorites.forEach(name => {
+        // Find original toolbox item to clone its data
+        const original = document.querySelector(`.vs-draggable-item[data-name="${name}"]`);
+        if (original) {
+            const clone = original.cloneNode(true);
+            clone.classList.add('is-favorite');
+            clone.innerHTML = '⭐ ' + clone.innerHTML;
+            list.appendChild(clone);
+
+            clone.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('block-type', clone.dataset.type);
+                e.dataTransfer.setData('block-name', clone.dataset.name);
+            });
+        }
+    });
+}
+
 window.vs_startConnection = (id, type = 'next') => {
     connectionSourceId = id;
     connectionType = type;
@@ -750,6 +882,8 @@ window.vs_endConnection = (id) => {
     if (source) {
         if (connectionType === 'branch') {
             source.branchId = id;
+        } else if (connectionType === 'else') {
+            source.elseId = id;
         } else {
             source.nextBlockId = id;
         }
@@ -769,6 +903,7 @@ window.vs_deleteBlock = (id) => {
     blocks.forEach(b => {
         if (b.nextBlockId === id) b.nextBlockId = null;
         if (b.branchId === id) b.branchId = null;
+        if (b.elseId === id) b.elseId = null;
     });
     if (el) el.remove();
     updateConnections(svg);
@@ -785,6 +920,9 @@ function updateConnections(svg) {
         }
         if (block.branchId) {
             drawConnection(block.x + 180, block.y + 60, block.branchId, '#4caf50', svg);
+        }
+        if (block.elseId) {
+            drawConnection(block.x + 20, block.y + 105, block.elseId, '#ff5722', svg);
         }
     });
 

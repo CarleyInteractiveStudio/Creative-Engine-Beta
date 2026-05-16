@@ -35,7 +35,10 @@ export class VisualScriptingCore {
         // 3. Eventos Principales
         const events = data.blocks.filter(b => b.type === 'event');
         events.forEach(event => {
-            const eventName = this.mapEventName(event.name);
+            let eventName = this.mapEventName(event.name);
+            if (event.name === 'Al Recibir Mensaje') {
+                eventName = `alRecibirMensaje("${event.inputs.message || 'miMensaje'}")`;
+            }
             code += `${eventName} {\n`;
             code += this.generateBlockChain(event.nextBlockId, data, "    ");
             code += "}\n\n";
@@ -128,17 +131,29 @@ export class VisualScriptingCore {
             case 'Si':
                 let ifCode = `si (${val(inputs.var1)} ${inputs.op || '=='} ${val(inputs.var2)}) {\n`;
                 ifCode += this.generateBlockChain(action.branchId, data, indent + "    ");
+                if (action.elseId) {
+                    ifCode += `\n${indent}} si no {\n`;
+                    ifCode += this.generateBlockChain(action.elseId, data, indent + "    ");
+                }
                 ifCode += `${indent}}`;
                 return ifCode;
+            case 'Esperar Hasta':
+                return `mientras (!(${val(inputs.var1)} ${inputs.op || '=='} ${val(inputs.var2)})) { esperar(0.01); }`;
             case 'Detener Todo': return `detenerTodo();`;
+
+            // Mensajería
+            case 'Enviar Mensaje': return `enviarMensaje(${val(inputs.message)});`;
+            case 'Enviar a Objeto': return `variable _tgt = buscarMateria(${val(inputs.target)}); si (_tgt) { _tgt.enviarMensaje(${val(inputs.message)}); }`;
 
             // Sensores
             case 'Distancia': return `${inputs.result} = distancia(posicion.x, posicion.y, buscarMateria(${val(inputs.target)}).posicion.x, buscarMateria(${val(inputs.target)}).posicion.y);`;
             case 'Estado Tecla': return `variable ${inputs.result || 'presionada'} = tecla(${val(inputs.key)});`;
+            case 'Eje Entrada': return `${inputs.result} = obtenerEje(${val(inputs.axis)});`;
             case 'Boton Raton': return `variable ${inputs.result || 'click'} = raton(${inputs.button});`;
             case 'Posicion Raton': return `${inputs.varX} = ratonX(); ${inputs.varY} = ratonY();`;
             case 'Cronometro': return `${inputs.result} = tiempo();`;
             case 'Raycast': return `variable ${inputs.resultVar || 'hit'} = raycast(posicion.x, posicion.y, ${inputs.dirX || 1}, ${inputs.dirY || 0}, ${val(inputs.dist)});`;
+            case 'Obtener Propiedad': return `${inputs.result} = buscarMateria(${val(inputs.target)}).${inputs.prop};`;
 
             // Vectores
             case 'Crear Vector': return `${inputs.result} = { x: ${val(inputs.x)}, y: ${val(inputs.y)} };`;
@@ -159,6 +174,8 @@ export class VisualScriptingCore {
                 let mOp = inputs.op === 'seno' ? 'seno' : (inputs.op === 'coseno' ? 'coseno' : (inputs.op === 'abs' ? 'abs' : 'raiz'));
                 return `${inputs.name} = ${mOp}(${val(inputs.value)});`;
             case 'Limitar (Clamp)': return `${inputs.name} = limitar(${val(inputs.name)}, ${val(inputs.min)}, ${val(inputs.max)});`;
+            case 'Unir Texto': return `${inputs.result} = ${val(inputs.text1)} + ${val(inputs.text2)};`;
+            case 'Propiedad Sistema': return `${inputs.result} = motor.${inputs.prop};`;
 
             // Variables
             case 'Asignar Variable':

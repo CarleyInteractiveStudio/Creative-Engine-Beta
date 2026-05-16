@@ -4812,6 +4812,7 @@ body.game-mode #loading-overlay {
     display: flex;
     flex-direction: column;
     gap: 15px;
+    overflow-y: auto;
 }
 
 #carl-ia-messages::-webkit-scrollbar {
@@ -5536,6 +5537,7 @@ body.game-mode #loading-overlay {
     display: flex;
     flex-direction: column;
     gap: 15px;
+    overflow-y: auto;
 }
 
 .vs-toolbox-section h4 {
@@ -5585,6 +5587,15 @@ body.game-mode #loading-overlay {
     border-color: rgba(255, 255, 255, 0.2);
     color: #fff;
     transform: translateX(4px);
+}
+
+#vs-toolbox::-webkit-scrollbar {
+    width: 4px;
+}
+
+#vs-toolbox::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
 }
 
 #vs-workspace {
@@ -5848,6 +5859,16 @@ body.game-mode #loading-overlay {
 .vs-block-connector-branch:hover {
     transform: scale(1.2);
     box-shadow: 0 0 5px #4caf50;
+}
+
+.else-branch {
+    background-color: #ff5722 !important;
+    border-color: #bf360c !important;
+    top: 100px !important;
+}
+
+.else-branch:hover {
+    box-shadow: 0 0 5px #ff5722 !important;
 }
 
 .vs-block-delete {
