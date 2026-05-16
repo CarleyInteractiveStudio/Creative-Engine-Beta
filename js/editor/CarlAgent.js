@@ -92,17 +92,14 @@ export function switchView(view) {
     if (!editorDom) return;
 
     const panel = editorDom.carlIaPanel;
-    const viewSelectorMenu = panel.querySelector('#carl-ia-view-selector-btn + .menu-content');
-    const viewButton = editorDom.carlIaViewSelectorBtn;
+    const tabs = panel.querySelectorAll('.carl-view-option');
+    const targetTab = Array.from(tabs).find(t => t.dataset.view === view);
 
-    const link = viewSelectorMenu.querySelector(`.carl-view-option[data-view="${view}"]`);
-    if (!link) return;
+    if (!targetTab) return;
 
-    viewButton.textContent = link.textContent;
-
-    // Switch active state in menu
-    viewSelectorMenu.querySelectorAll('.carl-view-option').forEach(a => a.classList.remove('active'));
-    link.classList.add('active');
+    // Switch active state in tabs
+    tabs.forEach(t => t.classList.remove('active'));
+    targetTab.classList.add('active');
 
     // Switch visible view
     const views = panel.querySelectorAll('.carl-view');
@@ -113,10 +110,8 @@ export function switchView(view) {
 
     // Clear notification if switching to activity
     if (view === 'activity') {
-        link.classList.remove('has-notification');
+        targetTab.classList.remove('has-notification');
     }
-
-    viewSelectorMenu.classList.remove('visible');
 }
 
 /**

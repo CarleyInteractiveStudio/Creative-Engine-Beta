@@ -201,7 +201,7 @@ async function savePreferences() {
         window.Localization?.get('EXITO') || 'Éxito',
         window.Localization?.get('PREFERENCIAS_GUARDADAS') || 'Preferencias guardadas.'
     );
-    _dom.preferencesModal.classList.remove('is-open');
+    _dom.preferencesModal.classList.add('hidden');
     } catch (e) {
         console.error("Error in savePreferences:", e);
         showNotification(
@@ -286,7 +286,7 @@ function loadPreferences() {
 function setupEventListeners() {
     document.getElementById('menu-preferences').addEventListener('click', () => {
         loadPreferences(); // Recargar las preferencias cada vez que se abre
-        _dom.preferencesModal.classList.add('is-open');
+        _dom.preferencesModal.classList.remove('hidden'); window.bringToFront(_dom.preferencesModal);
     });
 
     if (_dom.prefsTheme) {

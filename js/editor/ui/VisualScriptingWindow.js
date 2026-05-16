@@ -1,7 +1,6 @@
 // js/editor/ui/VisualScriptingWindow.js
 
 import { VisualScriptingCore } from '../VisualScriptingCore.js';
-import * as CodeEditor from '../CodeEditorWindow.js';
 
 let dom;
 let blocks = [];
@@ -11,6 +10,35 @@ let currentMateria = null;
 export function initialize(dependencies) {
     dom = dependencies.dom;
     createWindow();
+
+    // Expose for integration
+    window.VisualScriptingWindow = {
+        loadBlocks: (blocksData, integrated = false) => {
+            if (integrated) {
+                // Redirect to integrated workspace
+                const container = document.getElementById('vs-integrated-blocks-container');
+                const connections = document.getElementById('vs-integrated-connections-layer');
+                if (!container || !connections) return;
+
+                blocks = blocksData;
+                renderAllBlocks(container, connections);
+                updateActiveVarsList();
+                document.getElementById('vs-integrated-hint').style.display = blocks.length > 0 ? 'none' : 'block';
+            } else {
+                blocks = blocksData;
+                renderAllBlocks(document.getElementById('vs-blocks-container'), document.getElementById('vs-connections-layer'));
+                updateActiveVarsList();
+            }
+        },
+        getBlocksData: () => blocks
+    };
+}
+
+function renderAllBlocks(container, svg) {
+    container.innerHTML = '';
+    svg.innerHTML = '';
+    blocks.forEach(b => renderBlock(b, container, svg));
+    updateConnections(svg);
 }
 
 function createWindow() {
@@ -119,6 +147,18 @@ function setupWorkspace() {
     const workspace = document.getElementById('vs-workspace');
     const toolboxItems = document.querySelectorAll('.vs-draggable-item');
 
+    if (workspace) {
+        workspace.addEventListener('dragover', (e) => e.preventDefault());
+        workspace.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const type = e.dataTransfer.getData('block-type');
+            const name = e.dataTransfer.getData('block-name');
+
+            const rect = workspace.getBoundingClientRect();
+            addBlock(type, name, e.clientX - rect.left, e.clientY - rect.top);
+        });
+    }
+
     toolboxItems.forEach(item => {
         item.draggable = true;
         item.addEventListener('dragstart', (e) => {
@@ -127,20 +167,39 @@ function setupWorkspace() {
         });
     });
 
-    workspace.addEventListener('dragover', (e) => e.preventDefault());
-    workspace.addEventListener('drop', (e) => {
-        e.preventDefault();
-        const type = e.dataTransfer.getData('block-type');
-        const name = e.dataTransfer.getData('block-name');
+    const saveBtn = document.getElementById('vs-save-btn');
+    if (saveBtn) saveBtn.onclick = applyLogic;
 
-        const rect = workspace.getBoundingClientRect();
-        addBlock(type, name, e.clientX - rect.left, e.clientY - rect.top);
-    });
+    // Setup integrated toolbox if exists
+    const integratedToolbox = document.getElementById('vs-integrated-toolbox');
+    if (integratedToolbox) {
+        const originalToolbox = document.getElementById('vs-toolbox');
+        if (originalToolbox) integratedToolbox.innerHTML = originalToolbox.innerHTML;
 
-    document.getElementById('vs-save-btn').onclick = applyLogic;
+        const intWorkspace = document.getElementById('vs-integrated-workspace-inner');
+        if (intWorkspace) {
+            intWorkspace.addEventListener('dragover', (e) => e.preventDefault());
+            intWorkspace.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const type = e.dataTransfer.getData('block-type');
+                const name = e.dataTransfer.getData('block-name');
+                const rect = intWorkspace.getBoundingClientRect();
+                addBlock(type, name, e.clientX - rect.left, e.clientY - rect.top, true);
+            });
+        }
+
+        // Re-attach dragstart to new toolbox items
+        integratedToolbox.querySelectorAll('.vs-draggable-item').forEach(item => {
+            item.draggable = true;
+            item.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('block-type', item.dataset.type);
+                e.dataTransfer.setData('block-name', item.dataset.name);
+            });
+        });
+    }
 }
 
-function addBlock(type, name, x, y) {
+function addBlock(type, name, x, y, integrated = false) {
     const id = 'block-' + Date.now();
     const block = { id, type, name, x, y, inputs: {}, nextBlockId: null, branchId: null };
 
@@ -205,12 +264,18 @@ function addBlock(type, name, x, y) {
     }
 
     blocks.push(block);
-    renderBlock(block);
-    document.getElementById('vs-workspace-hint').style.display = 'none';
+    const container = integrated ? document.getElementById('vs-integrated-blocks-container') : document.getElementById('vs-blocks-container');
+    const svg = integrated ? document.getElementById('vs-integrated-connections-layer') : document.getElementById('vs-connections-layer');
+
+    renderBlock(block, container, svg);
+    const hint = integrated ? document.getElementById('vs-integrated-hint') : document.getElementById('vs-workspace-hint');
+    if (hint) hint.style.display = 'none';
 }
 
-function renderBlock(block) {
-    const container = document.getElementById('vs-blocks-container');
+function renderBlock(block, container, svg) {
+    if (!container) container = document.getElementById('vs-blocks-container');
+    if (!svg) svg = document.getElementById('vs-connections-layer');
+
     const el = document.createElement('div');
     el.className = `vs-block ${block.type}-block`;
     el.id = block.id;
@@ -356,12 +421,13 @@ function renderBlock(block) {
         const offsetY = e.clientY - rect.top;
 
         const move = (moveE) => {
-            const wsRect = document.getElementById('vs-workspace').getBoundingClientRect();
+            const workspace = el.closest('#vs-workspace, #vs-integrated-workspace-inner');
+            const wsRect = workspace.getBoundingClientRect();
             block.x = moveE.clientX - wsRect.left - offsetX;
             block.y = moveE.clientY - wsRect.top - offsetY;
             el.style.left = block.x + 'px';
             el.style.top = block.y + 'px';
-            updateConnections();
+            updateConnections(workspace.querySelector('svg'));
         };
 
         const up = () => {
@@ -404,11 +470,16 @@ function updateActiveVarsList() {
 window.vs_startConnection = (id, type = 'next') => {
     connectionSourceId = id;
     connectionType = type;
-    document.getElementById('vs-workspace').classList.add('connecting');
+    const block = document.getElementById(id);
+    const workspace = block.closest('#vs-workspace, #vs-integrated-workspace-inner');
+    workspace.classList.add('connecting');
 };
 
 window.vs_endConnection = (id) => {
     if (!connectionSourceId || connectionSourceId === id) return;
+
+    const block = document.getElementById(id);
+    const workspace = block.closest('#vs-workspace, #vs-integrated-workspace-inner');
 
     const source = blocks.find(b => b.id === connectionSourceId);
     if (source) {
@@ -417,39 +488,42 @@ window.vs_endConnection = (id) => {
         } else {
             source.nextBlockId = id;
         }
-        updateConnections();
+        updateConnections(workspace.querySelector('svg'));
     }
 
     connectionSourceId = null;
-    document.getElementById('vs-workspace').classList.remove('connecting');
+    workspace.classList.remove('connecting');
 };
 
 window.vs_deleteBlock = (id) => {
+    const el = document.getElementById(id);
+    const workspace = el.closest('#vs-workspace, #vs-integrated-workspace-inner');
+    const svg = workspace.querySelector('svg');
+
     blocks = blocks.filter(b => b.id !== id);
     blocks.forEach(b => {
         if (b.nextBlockId === id) b.nextBlockId = null;
         if (b.branchId === id) b.branchId = null;
     });
-    const el = document.getElementById(id);
     if (el) el.remove();
-    updateConnections();
+    updateConnections(svg);
     updateActiveVarsList();
 };
 
-function updateConnections() {
-    const svg = document.getElementById('vs-connections-layer');
+function updateConnections(svg) {
+    if (!svg) svg = document.getElementById('vs-connections-layer');
     svg.innerHTML = '';
 
     blocks.forEach(block => {
         if (block.nextBlockId) {
-            drawConnection(block.x + 180, block.y + 30, block.nextBlockId, '#0e639c');
+            drawConnection(block.x + 180, block.y + 30, block.nextBlockId, '#0e639c', svg);
         }
         if (block.branchId) {
-            drawConnection(block.x + 180, block.y + 60, block.branchId, '#4caf50');
+            drawConnection(block.x + 180, block.y + 60, block.branchId, '#4caf50', svg);
         }
     });
 
-    function drawConnection(x1, y1, targetId, color) {
+    function drawConnection(x1, y1, targetId, color, targetSvg) {
         const target = blocks.find(b => b.id === targetId);
         if (target) {
             const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -459,7 +533,7 @@ function updateConnections() {
             line.setAttribute('y2', target.y + 30);
             line.setAttribute('stroke', color);
             line.setAttribute('stroke-width', '3');
-            svg.appendChild(line);
+            targetSvg.appendChild(line);
         }
     }
 }

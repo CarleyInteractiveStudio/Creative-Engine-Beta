@@ -22,7 +22,7 @@ import * as SceneView from './editor/SceneView.js';
 import * as MathUtils from './engine/MathUtils.js';
 import { setActiveTool, getActiveTool } from './editor/SceneView.js';
 import * as CodeEditor from './editor/CodeEditorWindow.js';
-import { initializeFloatingPanels, bringToFront } from './editor/FloatingPanelManager.js';
+import { initializeFloatingPanels, bringToFront, resetWindows } from './editor/FloatingPanelManager.js';
 import * as DebugPanel from './editor/ui/DebugPanel.js';
 import * as AIHandler from './editor/AIHandler.js';
 import * as Terminal from './editor/Terminal.js';
@@ -557,6 +557,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'ambiente-ciclo-automatico', 'ambiente-duracion-dia',
             'ambiente-filtro-color', 'ambiente-filtro-swatches', 'ambiente-capas-excluidas',
             'menu-docs',
+            // Integrated Visual Scripting
+            'vs-integrated-editor', 'vs-integrated-toolbox', 'vs-integrated-workspace-inner', 'vs-integrated-connections-layer', 'vs-integrated-blocks-container', 'vs-integrated-hint',
             // Markdown Viewer Panel
             'markdown-viewer-panel', 'markdown-viewer-title', 'md-preview-btn', 'md-edit-btn', 'md-save-btn',
             'md-preview-content', 'md-edit-content',
@@ -1343,9 +1345,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     } catch (e) {
                         console.error(`[ScriptScanner] Error al transpilar CES ${entry.name}:`, e);
                     }
-                } else if (entry.name.endsWith('.chc')) {
+                    } else if (entry.name.endsWith('.chc') || entry.name.endsWith('.css')) {
                     try {
-                        // Look for .chc.meta
+                            // Look for .chc.meta or .css.meta
                         const metaName = `${entry.name}.meta`;
                         const metaHandle = await dirHandle.getFileHandle(metaName, { create: false });
                         const metaFile = await metaHandle.getFile();
@@ -1353,11 +1355,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         const metaData = JSON.parse(metaContent);
                         if (metaData && metaData.generatedCode) {
                             CES_Transpiler.transpile(metaData.generatedCode, entry.name);
-                            console.log(`[ScriptScanner] CHC Transpilado (desde meta): ${entry.name}`);
+                                console.log(`[ScriptScanner] ${entry.name.endsWith('.chc') ? 'CHC' : 'CSS'} Transpilado (desde meta): ${entry.name}`);
                         }
                     } catch (e) {
                         // Meta might not exist or other error
-                        console.warn(`[ScriptScanner] No se pudo cargar meta para CHC ${entry.name}:`, e.message);
+                            console.warn(`[ScriptScanner] No se pudo cargar meta para ${entry.name}:`, e.message);
                     }
                 }
             } else if (entry.kind === 'directory') {
@@ -1597,13 +1599,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const allErrors = [];
         let mainGameJsCode = null;
 
-        // 1. Encontrar todos los archivos .ces y .chc
+        // 1. Encontrar todos los archivos .ces, .chc y .css
         const cesFiles = [];
         async function findCesFiles(dirHandle, currentPath = '') {
             console.log(`Buscando en: ${currentPath || 'Assets'}`);
             for await (const entry of dirHandle.values()) {
                 console.log(`  - Encontrado: ${entry.name} (Tipo: ${entry.kind})`);
-                if (entry.kind === 'file' && (entry.name.endsWith('.ces') || entry.name.endsWith('.chc'))) {
+                if (entry.kind === 'file' && (entry.name.endsWith('.ces') || entry.name.endsWith('.chc') || entry.name.endsWith('.css'))) {
                     console.log(`    -> Script encontrado! Anadiendo a la lista.`);
                     cesFiles.push({ handle: entry, dir: dirHandle });
                 } else if (entry.kind === 'directory') {
@@ -1629,15 +1631,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const file = await handle.getFile();
                 let code = await file.text();
 
-                // Si es CHC, cargar el codigo generado de la meta
-                if (handle.name.endsWith('.chc')) {
+                // Si es CHC o CSS, cargar el codigo generado de la meta
+                if (handle.name.endsWith('.chc') || handle.name.endsWith('.css')) {
                     try {
                         const metaHandle = await dir.getFileHandle(`${handle.name}.meta`);
                         const metaFile = await metaHandle.getFile();
                         const metaData = JSON.parse(await metaFile.text());
                         code = metaData.generatedCode;
                     } catch (e) {
-                        console.warn(`CHC script ${handle.name} no ha sido traducido aun. Omitiendo.`);
+                        console.warn(`${handle.name.endsWith('.chc') ? 'CHC' : 'CSS'} script ${handle.name} no ha sido traducido aun. Omitiendo.`);
                         return;
                     }
                 }
@@ -3583,6 +3585,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Handle exceptions where panel ID doesn't match menu ID perfectly
+            if (panelName === "reset") {
+                resetWindows();
+                return;
+            }
             if (panelName === 'sprite-editor') panelId = 'sprite-slicer-panel';
             else if (panelName === 'tile-palette') panelId = 'tile-palette-panel';
             else if (panelName === 'vid-spri') panelId = 'vid-spri-panel';
@@ -3972,17 +3978,14 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado
             // Initial auto-detection of brain keys
             updateCarlIaBrainMenu();
 
-            const viewSelectorMenu = dom.carlIaPanel.querySelector('#carl-ia-view-selector-btn + .menu-content');
-            const viewButton = dom.carlIaViewSelectorBtn;
-
-            if (viewSelectorMenu) {
-                // Use a more direct delegation on the menu content itself
-                viewSelectorMenu.addEventListener('click', (e) => {
-                    const link = e.target.closest('a');
-                    if (link) {
+            const carlTabButtons = dom.carlIaPanel.querySelector('.tab-buttons');
+            if (carlTabButtons) {
+                carlTabButtons.addEventListener('click', (e) => {
+                    const btn = e.target.closest('.carl-view-option');
+                    if (btn) {
                         e.preventDefault();
                         e.stopPropagation();
-                        CarlAgent.switchView(link.dataset.view);
+                        CarlAgent.switchView(btn.dataset.view);
                     }
                 });
             }
@@ -4765,8 +4768,8 @@ public start() {
                 }
 
                 // Handle other text-based files with the code editor
-                const textExtensions = ['ces', 'chc', 'js', 'json', 'txt', 'html', 'css'];
-                if (textExtensions.includes(extension) || lowerName === 'license') {
+                const textExtensions = ['ces', 'chc', 'css', 'js', 'json', 'txt', 'html'];
+                if ((textExtensions.includes(extension) || lowerName === 'license') && extension !== 'css') {
                     console.log(`Opening text-based asset: ${name}`);
                     await CodeEditor.openScriptInEditor(name, dirHandle, dom.scenePanel);
                     return;
@@ -4792,6 +4795,10 @@ public start() {
                         break;
                     case 'ceprefab':
                         enterPrefabMode(fileHandle);
+                        break;
+                    case 'css':
+                        console.log(`Opening visual script: ${name}`);
+                        await CodeEditor.openScriptInEditor(name, dirHandle, dom.scenePanel);
                         break;
                     case 'cescene':
                         (async () => {

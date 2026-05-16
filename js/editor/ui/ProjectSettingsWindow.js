@@ -64,7 +64,7 @@ export async function saveProjectConfig(showAlert = true) {
     }
 
     // Gather data from UI if the modal is open
-    if (dom.projectSettingsModal.classList.contains('is-open')) {
+    if (!dom.projectSettingsModal.classList.contains('hidden')) {
         currentProjectConfig.appName = dom.settingsAppName.value;
         currentProjectConfig.authorName = dom.settingsAuthorName.value;
         currentProjectConfig.appVersion = dom.settingsAppVersion.value;
@@ -278,7 +278,7 @@ function addLogoToList(fileOrPath, duration = 5) {
 function setupEventListeners() {
     document.getElementById('menu-project-settings').addEventListener('click', () => {
         populateCameraList();
-        dom.projectSettingsModal.classList.add('is-open');
+        dom.projectSettingsModal.classList.remove('hidden'); window.bringToFront(dom.projectSettingsModal);
     });
 
     if (dom.settingsOptimizeMemBtn) {
@@ -446,7 +446,7 @@ function setupEventListeners() {
 
     if (p2pBtn) {
         p2pBtn.addEventListener('click', () => {
-            dom.projectSettingsModal.classList.remove('is-open');
+            dom.projectSettingsModal.classList.add('hidden');
             // Trigger local hosting in CollaborationSystem
             const hostMenuBtn = document.getElementById('menu-collab-host');
             // CollaborationSystem.js startHosting is private, but we can trigger the menu click
@@ -459,7 +459,7 @@ function setupEventListeners() {
 
     if (proBtn) {
         proBtn.addEventListener('click', () => {
-            dom.projectSettingsModal.classList.remove('is-open');
+            dom.projectSettingsModal.classList.add('hidden');
             if (window._CollabSystem && window._CollabSystem.startHFHosting) {
                 window._CollabSystem.startHFHosting();
             }

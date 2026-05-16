@@ -2356,8 +2356,30 @@ body.mobile-mode #editor-main-content.no-inspector {
     transform: none !important;
 }
 
-.floating-panel.maximized .resize-handle {
+.floating-panel.maximized .resize-handle,
+.floating-panel.fullscreen .resize-handle {
     display: none;
+}
+
+.floating-panel.fullscreen {
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 99999 !important;
+    border-radius: 0 !important;
+    transform: none !important;
+}
+
+.floating-panel.minimized {
+    height: 42px !important;
+    min-height: 42px !important;
+    overflow: hidden !important;
+}
+
+.floating-panel.minimized .panel-content,
+.floating-panel.minimized .resize-handle {
+    display: none !important;
 }
 
 .floating-panel .panel-header {
