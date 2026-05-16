@@ -195,3 +195,28 @@ export function createFloatingPanel(id, options = {}) {
 
     return panel;
 }
+
+/**
+ * Resets all floating panels to their default positions (centered).
+ */
+export function resetWindows() {
+    const panels = document.querySelectorAll('.floating-panel');
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    panels.forEach(panel => {
+        // Reset state
+        panel.classList.remove('maximized', 'fullscreen', 'minimized');
+
+        // Use initial or default dimensions
+        const width = parseInt(panel.style.width) || 400;
+        const height = parseInt(panel.style.height) || 300;
+
+        // Center
+        panel.style.left = `${(viewportWidth - width) / 2}px`;
+        panel.style.top = `${(viewportHeight - height) / 2}px`;
+
+        // Ensure it's not out of bounds
+        if (parseInt(panel.style.top) < 40) panel.style.top = '50px';
+    });
+}

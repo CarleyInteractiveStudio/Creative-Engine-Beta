@@ -22,7 +22,7 @@ import * as SceneView from './editor/SceneView.js';
 import * as MathUtils from './engine/MathUtils.js';
 import { setActiveTool, getActiveTool } from './editor/SceneView.js';
 import * as CodeEditor from './editor/CodeEditorWindow.js';
-import { initializeFloatingPanels, bringToFront } from './editor/FloatingPanelManager.js';
+import { initializeFloatingPanels, bringToFront, resetWindows } from './editor/FloatingPanelManager.js';
 import * as DebugPanel from './editor/ui/DebugPanel.js';
 import * as AIHandler from './editor/AIHandler.js';
 import * as Terminal from './editor/Terminal.js';
@@ -3585,6 +3585,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Handle exceptions where panel ID doesn't match menu ID perfectly
+            if (panelName === "reset") {
+                resetWindows();
+                return;
+            }
             if (panelName === 'sprite-editor') panelId = 'sprite-slicer-panel';
             else if (panelName === 'tile-palette') panelId = 'tile-palette-panel';
             else if (panelName === 'vid-spri') panelId = 'vid-spri-panel';

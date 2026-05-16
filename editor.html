@@ -109,6 +109,8 @@
                         <a href="#" id="menu-window-vid-spri" data-i18n="VID_SPRI" class="only-2d">Vid Spri</a>
                         <hr>
                         <a href="#" id="menu-window-lib" class="disabled">Lib</a>
+                        <hr>
+                        <a href="#" id="menu-window-reset" data-i18n="REINICIAR_VENTANAS">Reiniciar Ventanas</a>
                     </div>
                 </div>
                 <div class="menu-item">
@@ -1245,10 +1247,17 @@ public star() {
     <div id="culling-mask-dropdown" class="context-menu" style="display: none;">
         <!-- Layer checkboxes will be populated by JS -->
     </div>
-    <div id="project-settings-modal" class="modal">
-        <div class="modal-content large">
-            <span class="close-button">&times;</span>
-            <h2 data-i18n="CONFIG_PROYECTO">Configuración del Proyecto</h2>
+        <div id="project-settings-modal" class="editor-panel floating-panel hidden" style="width: 800px; height: 600px;">
+        <div class="panel-header">
+            <span data-i18n="CONFIG_PROYECTO">Configuración del Proyecto</span>
+            <div class="panel-header-controls">
+                <button class="panel-tool-btn minimize-btn" title="Minimizar"><img src="icons/minus.svg" class="ce-icon"></button>
+                <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar"><img src="icons/maximize-2.svg" class="ce-icon"></button>
+                <button class="panel-tool-btn fullscreen-btn" title="Pantalla Completa"><img src="icons/maximize.svg" class="ce-icon"></button>
+                <button class="close-panel-btn" data-panel="project-settings-modal">&times;</button>
+            </div>
+        </div>
+        <div class="panel-content">
             <div class="settings-form">
                 <fieldset class="settings-section">
                     <legend data-i18n="GENERAL">General</legend>
@@ -1477,6 +1486,14 @@ public star() {
                 <button id="settings-save-btn" class="primary-btn" data-i18n="GUARDAR_CAMBIOS"><img src="icons/save.svg" class="ce-icon" style="margin-right: 8px;"> Guardar Proyecto</button>
             </div>
         </div>
+        <div class="resize-handle" data-direction="n"></div>
+        <div class="resize-handle" data-direction="ne"></div>
+        <div class="resize-handle" data-direction="e"></div>
+        <div class="resize-handle" data-direction="se"></div>
+        <div class="resize-handle" data-direction="s"></div>
+        <div class="resize-handle" data-direction="sw"></div>
+        <div class="resize-handle" data-direction="w"></div>
+        <div class="resize-handle" data-direction="nw"></div>
     </div>
     <div id="keystore-create-modal" class="modal">
         <div class="modal-content large">
@@ -1538,10 +1555,17 @@ public star() {
             </div>
         </div>
     </div>
-    <div id="preferences-modal" class="modal">
-        <div class="modal-content large">
-            <span class="close-button">&times;</span>
-            <h2 data-i18n="TITULO_PREFERENCIAS">Preferencias del Editor</h2>
+        <div id="preferences-modal" class="editor-panel floating-panel hidden" style="width: 600px; height: 500px;">
+        <div class="panel-header">
+            <span data-i18n="TITULO_PREFERENCIAS">Preferencias del Editor</span>
+            <div class="panel-header-controls">
+                <button class="panel-tool-btn minimize-btn" title="Minimizar"><img src="icons/minus.svg" class="ce-icon"></button>
+                <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar"><img src="icons/maximize-2.svg" class="ce-icon"></button>
+                <button class="panel-tool-btn fullscreen-btn" title="Pantalla Completa"><img src="icons/maximize.svg" class="ce-icon"></button>
+                <button class="close-panel-btn" data-panel="preferences-modal">&times;</button>
+            </div>
+        </div>
+        <div class="panel-content">
             <div class="settings-form">
                 <fieldset class="settings-section">
                     <legend data-i18n="APARIENCIA">Apariencia</legend>
@@ -1737,6 +1761,14 @@ public star() {
                 <button id="prefs-save-btn" class="primary-btn" data-i18n="GUARDAR_PREFERENCIAS"><img src="icons/save.svg" class="ce-icon" style="margin-right: 8px;"> Guardar Preferencias</button>
             </div>
         </div>
+        <div class="resize-handle" data-direction="n"></div>
+        <div class="resize-handle" data-direction="ne"></div>
+        <div class="resize-handle" data-direction="e"></div>
+        <div class="resize-handle" data-direction="se"></div>
+        <div class="resize-handle" data-direction="s"></div>
+        <div class="resize-handle" data-direction="sw"></div>
+        <div class="resize-handle" data-direction="w"></div>
+        <div class="resize-handle" data-direction="nw"></div>
     </div>
     <div id="debug-display"></div>
 

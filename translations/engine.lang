@@ -336,6 +336,7 @@ TAMANO_FIN: Tamaño Fin
 DESVANECER_ALPHA: Desvanecer Alpha
 SISTEMA_VERIFICACION: Verificación
 ACTUALIZACIONES: Actualizaciones
+REINICIAR_VENTANAS: Reiniciar Ventanas
 ACTIVIDAD_COLABORATIVA: Actividad Colaborativa
 TIENDA_ASSETS: Tienda
 VID_SPRI: Vid Spri
@@ -561,6 +562,7 @@ AUTOSAVE: Guardado automático de scripts
 RESETEAR_DISENO: Restablecer Diseño de Paneles
 TITULO_PREFERENCIAS: Preferencias del Editor
 GUARDAR_PREFERENCIAS: Guardar Preferencias
+GUARDAR_CAMBIOS: Guardar Cambios
 KEY: Tecla
 ANIM: Anim
 NINGUNA: Ninguna
@@ -988,6 +990,7 @@ TAMANO_FIN: End Size
 DESVANECER_ALPHA: Fade Alpha
 SISTEMA_VERIFICACION: Verification
 ACTUALIZACIONES: Updates
+REINICIAR_VENTANAS: Reset Windows
 ACTIVIDAD_COLABORATIVA: Collaborative Activity
 TIENDA_ASSETS: Store
 VID_SPRI: Vid Spri
@@ -1206,6 +1209,7 @@ AUTOSAVE: Auto-save scripts
 RESETEAR_DISENO: Reset Panel Layout
 TITULO_PREFERENCIAS: Editor Preferences
 GUARDAR_PREFERENCIAS: Save Preferences
+GUARDAR_CAMBIOS: Save Changes
 KEY: Key
 ANIM: Anim
 NINGUNA: None
@@ -1582,6 +1586,7 @@ TAMANO_FIN: Tamanho Final
 DESVANECER_ALPHA: Desvanecer Alpha
 SISTEMA_VERIFICACION: Sistema de Verificação
 ACTUALIZACIONES: Atualizações
+REINICIAR_VENTANAS: Reiniciar Janelas
 ACTIVIDAD_COLABORATIVA: Atividade Colaborativa
 TIENDA_ASSETS: Loja de Assets
 VID_SPRI: Vid Spri
@@ -1758,6 +1763,7 @@ AUTOSAVE: Salvamento automático de scripts
 RESETEAR_DISENO: Redefinir Layout de Painéis
 TITULO_PREFERENCIAS: Preferências do Editor
 GUARDAR_PREFERENCIAS: Salvar Preferências
+GUARDAR_CAMBIOS: Salvar Alterações
 KEY: Tecla
 ANIM: Anim
 NINGUNA: Nenhuma
@@ -2062,6 +2068,7 @@ EDITOR_SPRITES: Редактор спрайтов
 CONTROL_AMBIENTE: Управление окружением
 SISTEMA_VERIFICACION: Система проверки
 ACTUALIZACIONES: Обновления
+REINICIAR_VENTANAS: Сброс окон
 ACTIVIDAD_COLABORATIVA: Совместная активность
 TIENDA_ASSETS: Магазин ассетов
 VID_SPRI: Vid Spri
@@ -2257,6 +2264,7 @@ AUTOSAVE: Автосохранение скриптов
 RESETEAR_DISENO: Сброс макета панелей
 TITULO_PREFERENCIAS: Настройки редактора
 GUARDAR_PREFERENCIAS: Сохранить настройки
+GUARDAR_CAMBIOS: Сохранить изменения
 KEY: Клавиша
 ANIM: Аним
 NINGUNA: Нет
@@ -2562,6 +2570,7 @@ EDITOR_SPRITES: 精灵编辑器
 CONTROL_AMBIENTE: 环境控制
 SISTEMA_VERIFICACION: 验证系统
 ACTUALIZACIONES: 更新
+REINICIAR_VENTANAS: 重置窗口
 ACTIVIDAD_COLABORATIVA: 协作活动
 TIENDA_ASSETS: 资源商店
 VID_SPRI: Vid Spri
@@ -2822,6 +2831,7 @@ AUTOSAVE: 脚本自动保存
 RESETEAR_DISENO: 重置面板布局
 TITULO_PREFERENCIAS: 编辑器偏好设置
 GUARDAR_PREFERENCIAS: 保存偏好设置
+GUARDAR_CAMBIOS: 保存更改
 KEY: 按键
 ANIM: 动画
 NINGUNA: 无
