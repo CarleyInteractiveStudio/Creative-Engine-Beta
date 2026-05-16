@@ -2792,14 +2792,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Final safety check: ensure top is not negative (menu taller than window)
-        if (top < 5 || menuHeight > windowHeight - 10) {
-            if (top < 5) top = 5;
-            menu.style.maxHeight = `${windowHeight - (top + 10)}px`;
-            menu.style.overflowY = 'auto';
-        } else {
-            menu.style.maxHeight = ''; // Reset if it fits
-            menu.style.overflowY = '';
-        }
+        // Removed maxHeight and overflow auto to prevent submenu clipping.
+        // The menu will now be allowed to extend, and CSS handles core visibility.
+        if (top < 5) top = 5;
+        menu.style.maxHeight = '';
+        menu.style.overflowY = 'visible';
+        menu.style.overflowX = 'visible';
 
         menu.style.left = `${left}px`;
         menu.style.top = `${top}px`;
@@ -3042,6 +3040,19 @@ document.addEventListener('DOMContentLoaded', () => {
     let createNewScript; // To be defined
 
     function setupEventListeners() {
+        // --- Global Context Menu Prevention ---
+        document.addEventListener('contextmenu', (e) => {
+            // Only prevent default if we're not inside an input or textarea that might need it
+            const target = e.target;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+                return;
+            }
+
+            // If it's the general editor background or a panel, prevent the native menu
+            // Specific components like CodeMirror handle their own contextmenu
+            e.preventDefault();
+        });
+
         // --- Global Dropdown (menu-item) Logic ---
         document.addEventListener('click', (e) => {
             const menuItem = e.target.closest('.menu-item');
@@ -3065,50 +3076,49 @@ document.addEventListener('DOMContentLoaded', () => {
             allMenuContents.forEach(mc => mc.classList.remove('visible'));
         });
 
-        // --- Submenu dynamic positioning (using fixed to prevent clipping) ---
+        // --- Submenu dynamic positioning ---
         document.querySelectorAll('.context-menu .has-submenu').forEach(item => {
             item.addEventListener('mouseenter', e => {
                 const submenu = e.currentTarget.querySelector('.submenu');
                 if (!submenu) return;
 
-                // Set initial fixed style
-                submenu.style.position = 'fixed';
-                submenu.style.maxHeight = ''; // Reset to calculate scrollHeight
-                submenu.style.overflowY = '';
+                // FULL CLEANUP of any previous positioning
+                submenu.classList.remove('submenu-left', 'submenu-up');
+                submenu.style.top = '';
+                submenu.style.left = '';
+                submenu.style.right = '';
+                submenu.style.bottom = '';
+                submenu.style.position = 'absolute'; // Force absolute for relative tracking
 
-                const parentRect = e.currentTarget.getBoundingClientRect();
-                const submenuHeight = submenu.scrollHeight;
-                const submenuWidth = submenu.offsetWidth || 180;
-                const windowWidth = window.innerWidth;
-                const windowHeight = window.innerHeight;
+                // Measure accurately without gaps
+                submenu.style.display = 'block';
+                submenu.style.visibility = 'hidden';
+                const submenuWidth = submenu.offsetWidth;
+                const submenuHeight = submenu.offsetHeight;
+                submenu.style.display = '';
+                submenu.style.visibility = '';
 
-                let left = parentRect.right;
-                let top = parentRect.top;
+                const rect = e.currentTarget.getBoundingClientRect();
 
-                // 1. Horizontal Positioning (Flip left if no space on right)
-                if (left + submenuWidth > windowWidth) {
-                    left = parentRect.left - submenuWidth;
-                    // Ensure it doesn't go off-screen to the left
-                    if (left < 5) left = 5;
+                // Check horizontal space (using absolute relative to parent, so we check rect.right)
+                if (rect.right + submenuWidth > window.innerWidth - 10) {
+                    submenu.classList.add('submenu-left');
                 }
 
-                // 2. Vertical Positioning (Adjust if it exceeds bottom)
-                if (top + submenuHeight > windowHeight - 10) {
-                    top = windowHeight - submenuHeight - 10;
+                // Check vertical space
+                if (rect.top + submenuHeight > window.innerHeight - 10) {
+                    // Try going UP
+                    submenu.classList.add('submenu-up');
 
-                    // If still too tall, use scrolling
-                    if (top < 5) {
-                        top = 5;
-                        submenu.style.maxHeight = `${windowHeight - 20}px`;
-                        submenu.style.overflowY = 'auto';
-                        submenu.style.overflowX = 'hidden';
+                    // Measure new position
+                    const estimatedTop = rect.bottom - submenuHeight;
+                    if (estimatedTop < 10) {
+                        // If it doesn't fit UP either, force it to be inside the window
+                        // by overriding the relative top with a negative offset from parent's top
+                        const overflowBottom = (rect.top + submenuHeight) - (window.innerHeight - 10);
+                        submenu.style.top = `-${overflowBottom}px`;
                     }
-                } else if (top < 5) {
-                    top = 5;
                 }
-
-                submenu.style.left = `${left}px`;
-                submenu.style.top = `${top}px`;
             });
         });
 
