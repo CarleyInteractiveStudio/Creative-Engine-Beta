@@ -50,7 +50,6 @@ export function initialize(editorDom, editorProjectsDirHandle, config, getPrefsF
     currentProjectConfig = config;
     getPreferences = getPrefsFunc;
 
-    console.log("Initializing Project Settings Window...");
     setupEventListeners();
 }
 
@@ -133,7 +132,6 @@ export async function saveProjectConfig(showAlert = true) {
         const writable = await configFileHandle.createWritable();
         await writable.write(JSON.stringify(currentProjectConfig, null, 2));
         await writable.close();
-        console.log("Configuración del proyecto guardada.");
         if(showAlert) showNotification(
             window.Localization?.get('EXITO') || 'Éxito',
             window.Localization?.get('CONFIG_GUARDADA') || '¡Configuración guardada!'
@@ -369,7 +367,7 @@ function setupEventListeners() {
                 dom.settingsIconPreview.src = URL.createObjectURL(file);
                 dom.settingsIconPreview.style.display = 'block';
             } catch (err) {
-                console.log("User cancelled file picker.", err);
+                // User cancelled file picker
             }
         });
     }
@@ -381,7 +379,7 @@ function setupEventListeners() {
                 currentProjectConfig.keystore.path = fileHandle.name;
                 dom.settingsKeystorePath.value = fileHandle.name;
             } catch (err) {
-                console.log("User cancelled file picker.", err);
+                // User cancelled file picker
             }
         });
     }
@@ -395,7 +393,7 @@ function setupEventListeners() {
                 });
                 addLogoToList(fileHandle);
             } catch (err) {
-                console.log("User cancelled file picker.", err);
+                // User cancelled file picker
             }
         });
     }
