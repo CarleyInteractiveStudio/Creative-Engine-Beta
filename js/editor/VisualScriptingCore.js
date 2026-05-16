@@ -62,7 +62,10 @@ export class VisualScriptingCore {
             'Al Empezar': 'alEmpezar()',
             'Al Actualizar': 'alActualizar(delta)',
             'Al Hacer Click': 'alHacerClick()',
-            'Al Chocar': 'alEntrarEnColision(otro)'
+            'Al Chocar': 'alEntrarEnColision(otro)',
+            'Al Salir Colision': 'alSalirDeColision(otro)',
+            'Al Gatillar': 'alEntrarEnGatillo(otro)',
+            'Al Salir Gatillar': 'alSalirDeGatillo(otro)'
         };
         return map[visualName] || visualName;
     }
@@ -89,16 +92,43 @@ export class VisualScriptingCore {
             case 'Mover':
                 const x = inputs.x || 0;
                 const y = inputs.y || 0;
+                if (inputs.relative === 'false') {
+                    return `posicion.x = ${x}; posicion.y = ${y};`;
+                }
                 return `posicion.x += ${x}; posicion.y += ${y};`;
 
             case 'Rotar':
+                if (inputs.relative === 'false') {
+                    return `rotacion = ${inputs.angle || 0};`;
+                }
                 return `rotar(${inputs.angle || 0});`;
 
             case 'Escalar':
                 return `escala.x = ${inputs.x || 1}; escala.y = ${inputs.y || 1};`;
 
+            case 'Mirar Hacia':
+                return `variable _tgt = buscarMateria("${inputs.target}"); si (_tgt) { mirarHacia(_tgt.posicion.x, _tgt.posicion.y); }`;
+
+            case 'Seguir Objetivo':
+                return `variable _tgt = buscarMateria("${inputs.target}"); si (_tgt) { posicion.x = interpolar(posicion.x, _tgt.posicion.x, ${inputs.smooth || 0.1}); posicion.y = interpolar(posicion.y, _tgt.posicion.y, ${inputs.smooth || 0.1}); }`;
+
+            case 'Obtener Propiedad':
+                return `${inputs.varName || 'v'} = ${inputs.property || 'posicion.x'};`;
+
             case 'Cambiar Color':
                 return `variable _rend = obtenerComponente("SpriteRenderer"); si (_rend) { _rend.color = "${inputs.color || '#ffffff'}"; }`;
+
+            case 'Opacidad':
+                return `variable _rend = obtenerComponente("SpriteRenderer"); si (_rend) { _rend.alpha = ${inputs.alpha || 1}; }`;
+
+            case 'Voltear':
+                return `variable _rend = obtenerComponente("SpriteRenderer"); si (_rend) { _rend.flip${(inputs.axis || 'x').toUpperCase()} = ${inputs.state || 'true'}; }`;
+
+            case 'Animacion':
+                return `variable _anim = obtenerComponente("Animator"); si (_anim) { _anim.${inputs.action || 'play'}("${inputs.name}"); }`;
+
+            case 'Audio':
+                return `variable _snd = obtenerComponente("AudioSource"); si (_snd) { ${inputs.action === 'stop' ? '_snd.detener();' : `await _snd.setSourcePath("${inputs.sound}"); _snd.reproducir(); _snd.loop = ${inputs.action === 'loop'};`} }`;
 
             case 'Activar':
                 return `activo = verdadero;`;
@@ -136,8 +166,8 @@ export class VisualScriptingCore {
             case 'Establecer Global':
                 return `establecerGlobal("${inputs.name}", ${this.formatValue(inputs.value)});`;
 
-            case 'Sumar a Variable':
-                return `${inputs.name} += ${this.formatValue(inputs.value)};`;
+            case 'Limitar (Clamp)':
+                return `${inputs.name} = limitar(${inputs.name}, ${inputs.min || 0}, ${inputs.max || 100});`;
 
             case 'Llamar Función':
                 return `${inputs.name}();`;
@@ -147,6 +177,12 @@ export class VisualScriptingCore {
 
             case 'Establecer Velocidad':
                 return `si (obtenerComponente("Rigidbody2D")) { obtenerComponente("Rigidbody2D").establecerVelocidad(${inputs.x || 0}, ${inputs.y || 0}); }`;
+
+            case 'Torque':
+                return `si (obtenerComponente("Rigidbody2D")) { obtenerComponente("Rigidbody2D").aplicarTorque(${inputs.force || 0}); }`;
+
+            case 'Gravedad':
+                return `si (obtenerComponente("Rigidbody2D")) { obtenerComponente("Rigidbody2D").gravityScale = ${inputs.scale || 1}; }`;
 
             case 'Número al Azar':
                 return `${inputs.name} = azar(${inputs.min || 0}, ${inputs.max || 100});`;
@@ -184,6 +220,11 @@ export class VisualScriptingCore {
                 ifCode += `${indent}}`;
                 return ifCode;
 
+            case 'Logica':
+                let logOp = inputs.op === 'Y' ? '&&' : (inputs.op === 'O' ? '||' : '!');
+                if (logOp === '!') return `${inputs.result} = !${inputs.var1};`;
+                return `${inputs.result} = ${inputs.var1} ${logOp} ${inputs.var2};`;
+
             case 'Repetir':
                 let forCode = `para (variable i = 0; i < ${inputs.times || 10}; i += 1) {\n`;
                 forCode += this.generateBlockChain(action.branchId, data, indent + "    ");
@@ -196,11 +237,34 @@ export class VisualScriptingCore {
                 whileCode += `${indent}}`;
                 return whileCode;
 
-            case 'Si Tecla':
-                let ifKey = `si (tecla("${inputs.key || 'Space'}")) {\n`;
+            case 'Esperar Hasta':
+                let waitUntil = `mientras (!(${inputs.var1} ${inputs.op || '=='} ${this.formatValue(inputs.var2)})) {\n    esperar(0.1);\n}\n`;
+                waitUntil += this.generateBlockChain(action.branchId, data, indent);
+                return waitUntil;
+
+            case 'Estado Tecla':
+                let keyFn = inputs.state === 'pulsada' ? 'tecla' : (inputs.state === 'bajada' ? 'teclaBajada' : 'teclaSoltada');
+                let ifKey = `si (${keyFn}("${inputs.key || 'Space'}")) {\n`;
                 ifKey += this.generateBlockChain(action.branchId, data, indent + "    ");
                 ifKey += `${indent}}`;
                 return ifKey;
+
+            case 'Boton Raton':
+                let mouseFn = inputs.state === 'pulsada' ? 'raton' : (inputs.state === 'bajada' ? 'ratonBajado' : 'ratonSoltado');
+                let ifMouse = `si (${mouseFn}(${inputs.button || 0})) {\n`;
+                ifMouse += this.generateBlockChain(action.branchId, data, indent + "    ");
+                ifMouse += `${indent}}`;
+                return ifMouse;
+
+            case 'Posicion Raton':
+                return `${inputs.varX} = ratonX(); ${inputs.varY} = ratonY();`;
+
+            case 'Buscar Objeto':
+                let findFn = inputs.by === 'nombre' ? 'buscarMateria' : 'buscarMateriaPorTag';
+                return `variable ${inputs.result} = ${findFn}("${inputs.value}");`;
+
+            case 'Vibrar':
+                return `vibrar(${inputs.intensity || 1}, ${inputs.duration || 0.2});`;
 
             default:
                 return `// Acción desconocida: ${action.name}`;

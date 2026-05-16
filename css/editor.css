@@ -1868,7 +1868,7 @@ body.mobile-mode #editor-main-content.no-inspector {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    max-height: 60vh;
+    flex-grow: 1;
     overflow-y: auto;
     padding-right: 15px; /* For scrollbar */
 }
@@ -3458,6 +3458,28 @@ body.mobile-mode .component-item:active {
     padding: 15px;
     flex-grow: 1;
     overflow-y: auto;
+}
+
+#project-settings-modal .panel-content,
+#preferences-modal .panel-content {
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+#project-settings-modal .settings-form,
+#preferences-modal .settings-form {
+    flex-grow: 1;
+    overflow-y: auto !important;
+    min-height: 0;
+}
+
+#project-settings-modal .modal-footer,
+#preferences-modal .modal-footer {
+    margin-top: 0;
+    padding-top: 15px;
 }
 
 #inspector-panel label {

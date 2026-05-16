@@ -65,59 +65,81 @@ function createWindow() {
                     <div class="vs-draggable-item" data-type="event" data-name="Al Empezar">🚀 Al Empezar</div>
                     <div class="vs-draggable-item" data-type="event" data-name="Al Actualizar">🔄 Al Actualizar</div>
                     <div class="vs-draggable-item" data-type="event" data-name="Al Hacer Click">🖱️ Al Hacer Click</div>
-                    <div class="vs-draggable-item" data-type="event" data-name="Al Chocar">💥 Al Chocar</div>
+                    <div class="vs-draggable-item" data-type="event" data-name="Al Chocar">💥 Al Colisionar</div>
+                    <div class="vs-draggable-item" data-type="event" data-name="Al Salir Colision">🔙 Al Salir Colisión</div>
+                    <div class="vs-draggable-item" data-type="event" data-name="Al Gatillar">⚡ Al Entrar Gatillo</div>
+                    <div class="vs-draggable-item" data-type="event" data-name="Al Salir Gatillar">💨 Al Salir Gatillo</div>
                 </div>
                 <div class="vs-toolbox-section">
-                    <h4>Acciones</h4>
+                    <h4>Transformación</h4>
                     <div class="vs-draggable-item" data-type="action" data-name="Mover">🏃 Mover</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Rotar">🔄 Rotar</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Escalar">📐 Escalar</div>
-                    <div class="vs-draggable-item" data-type="action" data-name="Cambiar Color">🎨 Cambiar Color</div>
-                    <div class="vs-draggable-item" data-type="action" data-name="Activar">✅ Activar</div>
-                    <div class="vs-draggable-item" data-type="action" data-name="Desactivar">❌ Desactivar</div>
-                    <div class="vs-draggable-item" data-type="action" data-name="Crear Objeto">✨ Crear Objeto</div>
-                    <div class="vs-draggable-item" data-type="action" data-name="Destruir">🗑️ Destruir</div>
-                    <div class="vs-draggable-item" data-type="action" data-name="Reproducir Sonido">🎵 Reprod. Sonido</div>
-                    <div class="vs-draggable-item" data-type="action" data-name="Establecer Volumen">🔊 Establ. Volumen</div>
-                    <div class="vs-draggable-item" data-type="action" data-name="Imprimir">💬 Imprimir</div>
-                    <div class="vs-draggable-item" data-type="action" data-name="Esperar">⏳ Esperar</div>
-                    <div class="vs-draggable-item" data-type="action" data-name="Cargar Escena">🗺️ Cargar Escena</div>
-                    <div class="vs-draggable-item" data-type="action" data-name="Siguiente Escena">🔜 Sig. Escena</div>
-                    <div class="vs-draggable-item" data-type="action" data-name="Reiniciar Escena">🔄 Reiniciar Escena</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Mirar Hacia">👀 Mirar Hacia</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Seguir Objetivo">🛰️ Seguir Objetivo</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Obtener Propiedad">📋 Obtener Propiedad</div>
                 </div>
                 <div class="vs-toolbox-section">
                     <h4>Física</h4>
                     <div class="vs-draggable-item" data-type="action" data-name="Aplicar Fuerza">💥 Aplicar Fuerza</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Establecer Velocidad">🚀 Establ. Velocidad</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Torque">🌀 Aplicar Torque</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Gravedad">🌎 Gravedad</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Raycast">📡 Raycast</div>
                 </div>
                 <div class="vs-toolbox-section">
-                    <h4>Variables</h4>
+                    <h4>Visual & Audio</h4>
+                    <div class="vs-draggable-item" data-type="action" data-name="Cambiar Color">🎨 Cambiar Color</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Opacidad">👻 Opacidad</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Voltear">↔️ Espejo (Flip)</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Animacion">🎬 Animación</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Audio">🎵 Audio (Play/Stop)</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Establecer Volumen">🔊 Establ. Volumen</div>
+                </div>
+                <div class="vs-toolbox-section">
+                    <h4>Variables & Math</h4>
                     <div class="vs-draggable-item" data-type="variable-decl" data-name="Crear Variable">📦 Crear Variable</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Asignar Variable">📝 Asignar Variable</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Operación Matemática">🧮 Operación Mat.</div>
-                    <div class="vs-draggable-item" data-type="action" data-name="Sumar a Variable">➕ Sumar a Var</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Limitar (Clamp)">📏 Limitar (Clamp)</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Número al Azar">🎲 Número al Azar</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Establecer Global">🌎 Establecer Global</div>
                 </div>
                 <div class="vs-toolbox-section">
-                    <h4>Interfaz (UI)</h4>
-                    <div class="vs-draggable-item" data-type="action" data-name="Cambiar Texto">🔤 Cambiar Texto</div>
-                    <div class="vs-draggable-item" data-type="action" data-name="Cambiar Imagen">🖼️ Cambiar Imagen</div>
+                    <h4>Lógica & Flujo</h4>
+                    <div class="vs-draggable-item" data-type="action" data-name="Si">⚖️ Si (Condición)</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Logica">🧠 Y / O / NO</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Repetir">🔁 Repetir (Para)</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Mientras">♾️ Mientras</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Esperar">⏳ Esperar</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Esperar Hasta">🛑 Esperar Hasta</div>
                 </div>
                 <div class="vs-toolbox-section">
-                    <h4>Sistemas de Juego</h4>
+                    <h4>Materia & Escena</h4>
+                    <div class="vs-draggable-item" data-type="action" data-name="Crear Objeto">✨ Crear Objeto</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Destruir">🗑️ Destruir</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Buscar Objeto">🔍 Buscar Objeto</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Activar">✅ Activar</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Desactivar">❌ Desactivar</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Cargar Escena">🗺️ Cargar Escena</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Siguiente Escena">🔜 Sig. Escena</div>
+                </div>
+                <div class="vs-toolbox-section">
+                    <h4>Input & UI</h4>
+                    <div class="vs-draggable-item" data-type="action" data-name="Estado Tecla">⌨️ Estado Tecla</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Boton Raton">🖱️ Botón Ratón</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Posicion Raton">📍 Posición Ratón</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Cambiar Texto">🔤 Cambiar Texto</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Cambiar Imagen">🖼️ Cambiar Imagen</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Imprimir">💬 Imprimir</div>
+                </div>
+                <div class="vs-toolbox-section">
+                    <h4>RPG & Sistemas</h4>
                     <div class="vs-draggable-item" data-type="action" data-name="Añadir a Inventario">🎒 Añadir a Inv.</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Quitar de Inventario">🗑️ Quitar de Inv.</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Mostrar Diálogo">💬 Mostrar Diálogo</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Empezar Misión">📜 Empezar Misión</div>
-                </div>
-                <div class="vs-toolbox-section">
-                    <h4>Lógica</h4>
-                    <div class="vs-draggable-item" data-type="action" data-name="Si">⚖️ Si (Condición)</div>
-                    <div class="vs-draggable-item" data-type="action" data-name="Repetir">🔁 Repetir (For)</div>
-                    <div class="vs-draggable-item" data-type="action" data-name="Mientras">♾️ Mientras (While)</div>
-                    <div class="vs-draggable-item" data-type="action" data-name="Si Tecla">⌨️ Si Tecla</div>
-                    <div class="vs-draggable-item" data-type="action" data-name="Número al Azar">🎲 Número al Azar</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Vibrar">📳 Vibrar</div>
                 </div>
                 <div class="vs-toolbox-section">
                     <h4>Funciones</h4>
@@ -214,12 +236,24 @@ function addBlock(type, name, x, y, integrated = false) {
         block.inputs.var2 = 10;
     } else if (name === 'Repetir') {
         block.inputs.times = 10;
-    } else if (name === 'Si Tecla') {
+    } else if (block.name === 'Estado Tecla') {
         block.inputs.key = 'Space';
+        block.inputs.state = 'pulsada';
+    } else if (block.name === 'Boton Raton') {
+        block.inputs.button = '0';
+        block.inputs.state = 'pulsada';
+    } else if (block.name === 'Posicion Raton') {
+        block.inputs.varX = 'mouseX';
+        block.inputs.varY = 'mouseY';
     } else if (name === 'Nueva Función' || name === 'Llamar Función') {
         block.inputs.name = 'miFuncion';
+    } else if (block.name === 'Mover') {
+        block.inputs.x = 5;
+        block.inputs.y = 0;
+        block.inputs.relative = 'true';
     } else if (name === 'Rotar') {
         block.inputs.angle = 10;
+        block.inputs.relative = 'true';
     } else if (name === 'Escalar') {
         block.inputs.x = 1.1;
         block.inputs.y = 1.1;
@@ -236,6 +270,49 @@ function addBlock(type, name, x, y, integrated = false) {
     } else if (name === 'Aplicar Fuerza' || name === 'Establecer Velocidad') {
         block.inputs.x = 0;
         block.inputs.y = -500;
+    } else if (block.name === 'Torque') {
+        block.inputs.force = 10;
+    } else if (block.name === 'Gravedad') {
+        block.inputs.scale = 1;
+    } else if (block.name === 'Mirar Hacia') {
+        block.inputs.target = 'miObjetivo';
+    } else if (block.name === 'Seguir Objetivo') {
+        block.inputs.target = 'Player';
+        block.inputs.smooth = 0.1;
+    } else if (block.name === 'Obtener Propiedad') {
+        block.inputs.property = 'posicion.x';
+        block.inputs.varName = 'miVar';
+    } else if (block.name === 'Opacidad') {
+        block.inputs.alpha = 0.5;
+    } else if (block.name === 'Voltear') {
+        block.inputs.axis = 'x';
+        block.inputs.state = 'true';
+    } else if (block.name === 'Animacion') {
+        block.inputs.name = 'Caminar';
+        block.inputs.action = 'play';
+    } else if (block.name === 'Audio') {
+        block.inputs.sound = 'Assets/fx.wav';
+        block.inputs.action = 'play';
+    } else if (block.name === 'Limitar (Clamp)') {
+        block.inputs.name = 'miVar';
+        block.inputs.min = 0;
+        block.inputs.max = 100;
+    } else if (block.name === 'Logica') {
+        block.inputs.var1 = 'miVar';
+        block.inputs.op = 'Y';
+        block.inputs.var2 = 'otraVar';
+        block.inputs.result = 'resultado';
+    } else if (block.name === 'Esperar Hasta') {
+        block.inputs.var1 = 'miVar';
+        block.inputs.op = '==';
+        block.inputs.var2 = '10';
+    } else if (block.name === 'Buscar Objeto') {
+        block.inputs.by = 'nombre';
+        block.inputs.value = 'Player';
+        block.inputs.result = 'objEncontrado';
+    } else if (block.name === 'Vibrar') {
+        block.inputs.intensity = 1;
+        block.inputs.duration = 0.2;
     } else if (name === 'Raycast') {
         block.inputs.dirX = 1;
         block.inputs.dirY = 0;
@@ -289,11 +366,21 @@ function renderBlock(block, container, svg) {
         inputsHtml = `<input type="number" value="1" step="0.1" onchange="window.vs_updateInput('${block.id}', 'seconds', this.value)"> seg`;
     } else if (block.name === 'Mover') {
         inputsHtml = `
-            X: <input type="number" value="5" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'x', this.value)">
-            Y: <input type="number" value="0" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'y', this.value)">
+            X: <input type="number" value="${block.inputs.x}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'x', this.value)">
+            Y: <input type="number" value="${block.inputs.y}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'y', this.value)">
+            <select onchange="window.vs_updateInput('${block.id}', 'relative', this.value)">
+                <option value="true" ${block.inputs.relative === 'true' ? 'selected' : ''}>Rel</option>
+                <option value="false" ${block.inputs.relative === 'false' ? 'selected' : ''}>Abs</option>
+            </select>
         `;
     } else if (block.name === 'Rotar') {
-        inputsHtml = `Ang: <input type="number" value="${block.inputs.angle}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'angle', this.value)">`;
+        inputsHtml = `
+            Ang: <input type="number" value="${block.inputs.angle}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'angle', this.value)">
+            <select onchange="window.vs_updateInput('${block.id}', 'relative', this.value)">
+                <option value="true" ${block.inputs.relative === 'true' ? 'selected' : ''}>Rel</option>
+                <option value="false" ${block.inputs.relative === 'false' ? 'selected' : ''}>Abs</option>
+            </select>
+        `;
     } else if (block.name === 'Escalar') {
         inputsHtml = `
             X: <input type="number" value="${block.inputs.x}" step="0.1" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'x', this.value)">
@@ -395,12 +482,125 @@ function renderBlock(block, container, svg) {
         `;
     } else if (block.name === 'Repetir') {
         inputsHtml = `Veces: <input type="number" value="${block.inputs.times}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'times', this.value)">`;
-    } else if (block.name === 'Si Tecla') {
-        inputsHtml = `<input type="text" value="${block.inputs.key}" style="width:60px" onchange="window.vs_updateInput('${block.id}', 'key', this.value)">`;
+    } else if (block.name === 'Mirar Hacia') {
+        inputsHtml = `Obj: <input type="text" value="${block.inputs.target}" style="width:80px" onchange="window.vs_updateInput('${block.id}', 'target', this.value)">`;
+    } else if (block.name === 'Seguir Objetivo') {
+        inputsHtml = `
+            Obj: <input type="text" value="${block.inputs.target}" style="width:50px" onchange="window.vs_updateInput('${block.id}', 'target', this.value)">
+            Sm: <input type="number" value="${block.inputs.smooth}" step="0.01" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'smooth', this.value)">
+        `;
+    } else if (block.name === 'Obtener Propiedad') {
+        inputsHtml = `
+            P: <input type="text" value="${block.inputs.property}" style="width:50px" onchange="window.vs_updateInput('${block.id}', 'property', this.value)">
+            -> <input type="text" value="${block.inputs.varName}" style="width:50px" onchange="window.vs_updateInput('${block.id}', 'varName', this.value)">
+        `;
+    } else if (block.name === 'Torque') {
+        inputsHtml = `F: <input type="number" value="${block.inputs.force}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'force', this.value)">`;
+    } else if (block.name === 'Gravedad') {
+        inputsHtml = `Escala: <input type="number" value="${block.inputs.scale}" step="0.1" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'scale', this.value)">`;
+    } else if (block.name === 'Opacidad') {
+        inputsHtml = `<input type="range" min="0" max="1" step="0.1" value="${block.inputs.alpha}" onchange="window.vs_updateInput('${block.id}', 'alpha', this.value)">`;
+    } else if (block.name === 'Voltear') {
+        inputsHtml = `
+            Eje: <select onchange="window.vs_updateInput('${block.id}', 'axis', this.value)">
+                <option value="x" ${block.inputs.axis === 'x' ? 'selected' : ''}>X</option>
+                <option value="y" ${block.inputs.axis === 'y' ? 'selected' : ''}>Y</option>
+            </select>
+            Val: <select onchange="window.vs_updateInput('${block.id}', 'state', this.value)">
+                <option value="true" ${block.inputs.state === 'true' ? 'selected' : ''}>Si</option>
+                <option value="false" ${block.inputs.state === 'false' ? 'selected' : ''}>No</option>
+            </select>
+        `;
+    } else if (block.name === 'Animacion') {
+        inputsHtml = `
+            <input type="text" value="${block.inputs.name}" style="width:60px" onchange="window.vs_updateInput('${block.id}', 'name', this.value)">
+            <select onchange="window.vs_updateInput('${block.id}', 'action', this.value)">
+                <option value="play" ${block.inputs.action === 'play' ? 'selected' : ''}>Reproducir</option>
+                <option value="stop" ${block.inputs.action === 'stop' ? 'selected' : ''}>Detener</option>
+            </select>
+        `;
+    } else if (block.name === 'Audio') {
+        inputsHtml = `
+            <input type="text" value="${block.inputs.sound}" style="width:60px" onchange="window.vs_updateInput('${block.id}', 'sound', this.value)">
+            <select onchange="window.vs_updateInput('${block.id}', 'action', this.value)">
+                <option value="play" ${block.inputs.action === 'play' ? 'selected' : ''}>Play</option>
+                <option value="stop" ${block.inputs.action === 'stop' ? 'selected' : ''}>Stop</option>
+                <option value="loop" ${block.inputs.action === 'loop' ? 'selected' : ''}>Loop</option>
+            </select>
+        `;
+    } else if (block.name === 'Limitar (Clamp)') {
+        inputsHtml = `
+            V: <input type="text" value="${block.inputs.name}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'name', this.value)">
+            [<input type="number" value="${block.inputs.min}" style="width:30px" onchange="window.vs_updateInput('${block.id}', 'min', this.value)">
+            ,<input type="number" value="${block.inputs.max}" style="width:30px" onchange="window.vs_updateInput('${block.id}', 'max', this.value)">]
+        `;
+    } else if (block.name === 'Logica') {
+        inputsHtml = `
+            <input type="text" value="${block.inputs.var1}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'var1', this.value)">
+            <select onchange="window.vs_updateInput('${block.id}', 'op', this.value)">
+                <option value="Y" ${block.inputs.op === 'Y' ? 'selected' : ''}>Y</option>
+                <option value="O" ${block.inputs.op === 'O' ? 'selected' : ''}>O</option>
+                <option value="NO" ${block.inputs.op === 'NO' ? 'selected' : ''}>NO</option>
+            </select>
+            <input type="text" value="${block.inputs.var2}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'var2', this.value)">
+            -> <input type="text" value="${block.inputs.result}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'result', this.value)">
+        `;
+    } else if (block.name === 'Esperar Hasta') {
+        inputsHtml = `
+            <input type="text" value="${block.inputs.var1}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'var1', this.value)">
+            <select onchange="window.vs_updateInput('${block.id}', 'op', this.value)">
+                <option value="==" ${block.inputs.op === '==' ? 'selected' : ''}>==</option>
+                <option value=">" ${block.inputs.op === '>' ? 'selected' : ''}>&gt;</option>
+                <option value="<" ${block.inputs.op === '<' ? 'selected' : ''}>&lt;</option>
+                <option value="!=" ${block.inputs.op === '!=' ? 'selected' : ''}>!=</option>
+            </select>
+            <input type="text" value="${block.inputs.var2}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'var2', this.value)">
+        `;
+    } else if (block.name === 'Buscar Objeto') {
+        inputsHtml = `
+            Por: <select onchange="window.vs_updateInput('${block.id}', 'by', this.value)">
+                <option value="nombre" ${block.inputs.by === 'nombre' ? 'selected' : ''}>Nombre</option>
+                <option value="etiqueta" ${block.inputs.by === 'etiqueta' ? 'selected' : ''}>Tag</option>
+            </select>
+            <input type="text" value="${block.inputs.value}" style="width:50px" onchange="window.vs_updateInput('${block.id}', 'value', this.value)">
+            -> <input type="text" value="${block.inputs.result}" style="width:50px" onchange="window.vs_updateInput('${block.id}', 'result', this.value)">
+        `;
+    } else if (block.name === 'Vibrar') {
+        inputsHtml = `
+            I: <input type="number" value="${block.inputs.intensity}" step="0.1" style="width:35px" onchange="window.vs_updateInput('${block.id}', 'intensity', this.value)">
+            D: <input type="number" value="${block.inputs.duration}" step="0.1" style="width:35px" onchange="window.vs_updateInput('${block.id}', 'duration', this.value)">
+        `;
+    } else if (block.name === 'Estado Tecla') {
+        inputsHtml = `
+            <input type="text" value="${block.inputs.key}" style="width:50px" onchange="window.vs_updateInput('${block.id}', 'key', this.value)">
+            <select onchange="window.vs_updateInput('${block.id}', 'state', this.value)">
+                <option value="pulsada" ${block.inputs.state === 'pulsada' ? 'selected' : ''}>Pulsada</option>
+                <option value="bajada" ${block.inputs.state === 'bajada' ? 'selected' : ''}>Bajada</option>
+                <option value="soltada" ${block.inputs.state === 'soltada' ? 'selected' : ''}>Soltada</option>
+            </select>
+        `;
+    } else if (block.name === 'Boton Raton') {
+        inputsHtml = `
+            <select onchange="window.vs_updateInput('${block.id}', 'button', this.value)">
+                <option value="0" ${block.inputs.button === '0' ? 'selected' : ''}>Izq</option>
+                <option value="1" ${block.inputs.button === '1' ? 'selected' : ''}>Der</option>
+                <option value="2" ${block.inputs.button === '2' ? 'selected' : ''}>Mid</option>
+            </select>
+            <select onchange="window.vs_updateInput('${block.id}', 'state', this.value)">
+                <option value="pulsada" ${block.inputs.state === 'pulsada' ? 'selected' : ''}>Pulsada</option>
+                <option value="bajada" ${block.inputs.state === 'bajada' ? 'selected' : ''}>Bajada</option>
+                <option value="soltada" ${block.inputs.state === 'soltada' ? 'selected' : ''}>Soltada</option>
+            </select>
+        `;
+    } else if (block.name === 'Posicion Raton') {
+        inputsHtml = `
+            X-> <input type="text" value="${block.inputs.varX}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'varX', this.value)">
+            Y-> <input type="text" value="${block.inputs.varY}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'varY', this.value)">
+        `;
     }
 
     let branchHtml = '';
-    if (block.name === 'Si' || block.name === 'Si Tecla' || block.name === 'Mientras' || block.name === 'Repetir') {
+    if (block.name === 'Si' || block.name === 'Estado Tecla' || block.name === 'Boton Raton' || block.name === 'Mientras' || block.name === 'Repetir' || block.name === 'Esperar Hasta') {
         branchHtml = `<div class="vs-block-connector-branch" title="Cuerpo del bucle/condición" onclick="window.vs_startConnection('${block.id}', 'branch')">🌿</div>`;
     }
 
