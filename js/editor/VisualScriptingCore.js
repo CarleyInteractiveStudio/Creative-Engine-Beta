@@ -35,7 +35,10 @@ export class VisualScriptingCore {
         // 3. Eventos Principales
         const events = data.blocks.filter(b => b.type === 'event');
         events.forEach(event => {
-            const eventName = this.mapEventName(event.name);
+            let eventName = this.mapEventName(event.name);
+            if (event.name === 'Al Recibir Mensaje') {
+                eventName = `alRecibirMensaje("${event.inputs.message || 'miMensaje'}")`;
+            }
             code += `${eventName} {\n`;
             code += this.generateBlockChain(event.nextBlockId, data, "    ");
             code += "}\n\n";
@@ -62,7 +65,10 @@ export class VisualScriptingCore {
             'Al Empezar': 'alEmpezar()',
             'Al Actualizar': 'alActualizar(delta)',
             'Al Hacer Click': 'alHacerClick()',
-            'Al Chocar': 'alEntrarEnColision(otro)'
+            'Al Chocar': 'alEntrarEnColision(otro)',
+            'Al Salir Colision': 'alSalirDeColision(otro)',
+            'Al Gatillar': 'alEntrarEnGatillo(otro)',
+            'Al Salir Gatillar': 'alSalirDeGatillo(otro)'
         };
         return map[visualName] || visualName;
     }
@@ -74,133 +80,128 @@ export class VisualScriptingCore {
 
     static generateActionCode(action, data, indent = "") {
         const inputs = action.inputs || {};
+        const val = (v) => this.formatValue(v);
 
         switch (action.name) {
-            case 'Destruir':
-                const target = inputs.target || 'materia';
-                return `destruir(${target});`;
+            case 'Destruir': return `destruir(materia);`;
+            case 'Imprimir': return `imprimir(${val(inputs.message)});`;
+            case 'Esperar': return `esperar(${val(inputs.seconds)});`;
 
-            case 'Imprimir':
-                return `imprimir("${inputs.message || ''}");`;
+            // Movimiento
+            case 'Fijar X': return `posicion.x = ${val(inputs.value)};`;
+            case 'Fijar Y': return `posicion.y = ${val(inputs.value)};`;
+            case 'Fijar Z': return `posicion.z = ${val(inputs.value)};`;
+            case 'Fijar Rotación': return `rotacion = ${val(inputs.value)};`;
+            case 'Mirar Hacia': return `variable _tgt = buscarMateria(${val(inputs.target)}); si (_tgt) { mirarHacia(_tgt.posicion.x, _tgt.posicion.y); }`;
 
-            case 'Esperar':
-                return `esperar(${inputs.seconds || 1});`;
+            // Física
+            case 'Fijar Velocidad X': return `variable _body = obtenerComponente("RigidBody2D"); si (_body) { _body.velocity.x = ${val(inputs.value)}; }`;
+            case 'Fijar Velocidad Y': return `variable _body = obtenerComponente("RigidBody2D"); si (_body) { _body.velocity.y = ${val(inputs.value)}; }`;
+            case 'Aplicar Fuerza': return `variable _body = obtenerComponente("RigidBody2D"); si (_body) { _body.applyForce(${val(inputs.x)}, ${val(inputs.y)}); }`;
+            case 'Aplicar Impulso': return `variable _body = obtenerComponente("RigidBody2D"); si (_body) { _body.applyLinearImpulse(${val(inputs.x)}, ${val(inputs.y)}); }`;
+            case 'Fijar Gravedad': return `variable _body = obtenerComponente("RigidBody2D"); si (_body) { _body.gravityScale = ${val(inputs.value)}; }`;
+            case 'Fijar Rebote': return `variable _body = obtenerComponente("RigidBody2D"); si (_body) { _body.restitution = ${val(inputs.value)}; }`;
 
-            case 'Mover':
-                const x = inputs.x || 0;
-                const y = inputs.y || 0;
-                return `posicion.x += ${x}; posicion.y += ${y};`;
+            // Apariencia
+            case 'Mostrar': return `activo = verdadero;`;
+            case 'Ocultar': return `activo = falso;`;
+            case 'Fijar Escala X': return `escala.x = ${val(inputs.value)};`;
+            case 'Fijar Escala Y': return `escala.y = ${val(inputs.value)};`;
+            case 'Fijar Opacidad': return `variable _rend = obtenerComponente("SpriteRenderer"); si (_rend) { _rend.alpha = ${val(inputs.value)}; }`;
+            case 'Cambiar Color': return `variable _rend = obtenerComponente("SpriteRenderer"); si (_rend) { _rend.color = ${val(inputs.color)}; }`;
+            case 'Voltear': return `variable _rend = obtenerComponente("SpriteRenderer"); si (_rend) { _rend.flip${(inputs.axis || 'x').toUpperCase()} = ${inputs.state || 'true'}; }`;
+            case 'Animacion': return `variable _anim = obtenerComponente("Animator"); si (_anim) { _anim.play(${val(inputs.name)}); }`;
 
-            case 'Rotar':
-                return `rotar(${inputs.angle || 0});`;
+            // Sonido
+            case 'Audio': return `variable _snd = obtenerComponente("AudioSource"); si (_snd) { await _snd.setSourcePath(${val(inputs.sound)}); _snd.reproducir(); _snd.loop = ${inputs.action === 'loop'}; }`;
+            case 'Detener Sonidos': return `variable _snd = obtenerComponente("AudioSource"); si (_snd) { _snd.detener(); }`;
+            case 'Establecer Volumen': return `variable _snd = obtenerComponente("AudioSource"); si (_snd) { _snd.volume = ${val(inputs.volume)}; }`;
 
-            case 'Escalar':
-                return `escala.x = ${inputs.x || 1}; escala.y = ${inputs.y || 1};`;
-
-            case 'Cambiar Color':
-                return `variable _rend = obtenerComponente("SpriteRenderer"); si (_rend) { _rend.color = "${inputs.color || '#ffffff'}"; }`;
-
-            case 'Activar':
-                return `activo = verdadero;`;
-
-            case 'Desactivar':
-                return `activo = falso;`;
-
-            case 'Crear Objeto':
-                return `await crear("${inputs.prefab || ''}", ${inputs.x || 0}, ${inputs.y || 0});`;
-
-            case 'Reproducir Sonido':
-                if (inputs.sound) {
-                    return `variable _snd = obtenerComponente("AudioSource"); si (_snd) { await _snd.setSourcePath("${inputs.sound}"); _snd.reproducir(); }`;
-                }
-                return `variable _snd = obtenerComponente("AudioSource"); si (_snd) { _snd.reproducir(); }`;
-
-            case 'Establecer Volumen':
-                return `variable _snd = obtenerComponente("AudioSource"); si (_snd) { _snd.volume = ${inputs.volume || 1}; }`;
-
-            case 'Cargar Escena':
-                return `cargarEscena("${inputs.scene || ''}");`;
-
-            case 'Siguiente Escena':
-                return `cargarSiguienteEscena();`;
-
-            case 'Reiniciar Escena':
-                return `reiniciarEscena();`;
-
-            case 'Asignar Variable':
-                if (inputs.scope === 'global') {
-                    return `establecerGlobal("${inputs.name}", ${this.formatValue(inputs.value)});`;
-                }
-                return `${inputs.name} = ${this.formatValue(inputs.value)};`;
-
-            case 'Establecer Global':
-                return `establecerGlobal("${inputs.name}", ${this.formatValue(inputs.value)});`;
-
-            case 'Sumar a Variable':
-                return `${inputs.name} += ${this.formatValue(inputs.value)};`;
-
-            case 'Llamar Función':
-                return `${inputs.name}();`;
-
-            case 'Aplicar Fuerza':
-                return `si (obtenerComponente("Rigidbody2D")) { obtenerComponente("Rigidbody2D").aplicarFuerza(${inputs.x || 0}, ${inputs.y || 0}); }`;
-
-            case 'Establecer Velocidad':
-                return `si (obtenerComponente("Rigidbody2D")) { obtenerComponente("Rigidbody2D").establecerVelocidad(${inputs.x || 0}, ${inputs.y || 0}); }`;
-
-            case 'Número al Azar':
-                return `${inputs.name} = azar(${inputs.min || 0}, ${inputs.max || 100});`;
-
-            case 'Operación Matemática':
-                if (inputs.op === 'Seno') return `${inputs.name} = seno(${this.formatValue(inputs.value)});`;
-                if (inputs.op === 'Coseno') return `${inputs.name} = coseno(${this.formatValue(inputs.value)});`;
-                if (inputs.op === 'Distancia') return `${inputs.name} = distancia(posicion.x, posicion.y, ${this.formatValue(inputs.value)}.x, ${this.formatValue(inputs.value)}.y);`;
-                return `${inputs.name} ${inputs.op || '+='} ${this.formatValue(inputs.value)};`;
-
-            case 'Raycast':
-                return `variable ${inputs.resultVar || 'hit'} = raycast(posicion.x, posicion.y, ${inputs.dirX || 1}, ${inputs.dirY || 0}, ${inputs.dist || 100});`;
-
-            case 'Cambiar Texto':
-                return `variable _txtObj = buscarMateria("${inputs.target}"); si (_txtObj) { variable _txtComp = _txtObj.obtenerComponente("UIText"); si (_txtComp) { _txtComp.text = "${inputs.text}"; } }`;
-
-            case 'Cambiar Imagen':
-                return `variable _imgObj = buscarMateria("${inputs.target}"); si (_imgObj) { variable _imgComp = _imgObj.obtenerComponente("UIImage"); si (_imgComp) { await _imgComp.setImagePath("${inputs.image}"); } }`;
-
-            case 'Añadir a Inventario':
-                return `variable _inv = obtenerComponente("Inventario"); si (_inv) { _inv.agregarItem("${inputs.item}", ${inputs.count || 1}); }`;
-
-            case 'Quitar de Inventario':
-                return `variable _inv = obtenerComponente("Inventario"); si (_inv) { _inv.quitarItem("${inputs.item}", ${inputs.count || 1}); }`;
-
-            case 'Mostrar Diálogo':
-                return `variable _dial = obtenerComponente("SistemaDialogos"); si (_dial) { _dial.iniciarDialogo([{hablante: "${inputs.speaker}", texto: "${inputs.text}"}]); }`;
-
-            case 'Empezar Misión':
-                return `variable _quest = obtenerComponente("GestorMisiones"); si (_quest) { _quest.iniciarMision("${inputs.id}", "${inputs.title}", []); }`;
-
-            case 'Si':
-                let ifCode = `si (${inputs.var1} ${inputs.op || '=='} ${this.formatValue(inputs.var2)}) {\n`;
-                ifCode += this.generateBlockChain(action.branchId, data, indent + "    ");
-                ifCode += `${indent}}`;
-                return ifCode;
-
+            // Control
             case 'Repetir':
-                let forCode = `para (variable i = 0; i < ${inputs.times || 10}; i += 1) {\n`;
+                let forCode = `para (variable i = 0; i < ${val(inputs.times)}; i += 1) {\n`;
                 forCode += this.generateBlockChain(action.branchId, data, indent + "    ");
                 forCode += `${indent}}`;
                 return forCode;
-
             case 'Mientras':
-                let whileCode = `mientras (${inputs.var1} ${inputs.op || '=='} ${this.formatValue(inputs.var2)}) {\n`;
+                let whileCode = `mientras (${val(inputs.var1)} ${inputs.op || '=='} ${val(inputs.var2)}) {\n`;
                 whileCode += this.generateBlockChain(action.branchId, data, indent + "    ");
                 whileCode += `${indent}}`;
                 return whileCode;
+            case 'Si':
+                let ifCode = `si (${val(inputs.var1)} ${inputs.op || '=='} ${val(inputs.var2)}) {\n`;
+                ifCode += this.generateBlockChain(action.branchId, data, indent + "    ");
+                if (action.elseId) {
+                    ifCode += `\n${indent}} si no {\n`;
+                    ifCode += this.generateBlockChain(action.elseId, data, indent + "    ");
+                }
+                ifCode += `${indent}}`;
+                return ifCode;
+            case 'Esperar Hasta':
+                return `mientras (!(${val(inputs.var1)} ${inputs.op || '=='} ${val(inputs.var2)})) { esperar(0.01); }`;
+            case 'Detener Todo': return `detenerTodo();`;
 
-            case 'Si Tecla':
-                let ifKey = `si (tecla("${inputs.key || 'Space'}")) {\n`;
-                ifKey += this.generateBlockChain(action.branchId, data, indent + "    ");
-                ifKey += `${indent}}`;
-                return ifKey;
+            // Mensajería
+            case 'Enviar Mensaje': return `enviarMensaje(${val(inputs.message)});`;
+            case 'Enviar a Objeto': return `variable _tgt = buscarMateria(${val(inputs.target)}); si (_tgt) { _tgt.enviarMensaje(${val(inputs.message)}); }`;
+
+            // Sensores
+            case 'Distancia': return `${inputs.result} = distancia(posicion.x, posicion.y, buscarMateria(${val(inputs.target)}).posicion.x, buscarMateria(${val(inputs.target)}).posicion.y);`;
+            case 'Estado Tecla': return `variable ${inputs.result || 'presionada'} = tecla(${val(inputs.key)});`;
+            case 'Eje Entrada': return `${inputs.result} = obtenerEje(${val(inputs.axis)});`;
+            case 'Boton Raton': return `variable ${inputs.result || 'click'} = raton(${inputs.button});`;
+            case 'Posicion Raton': return `${inputs.varX} = ratonX(); ${inputs.varY} = ratonY();`;
+            case 'Cronometro': return `${inputs.result} = tiempo();`;
+            case 'Raycast': return `variable ${inputs.resultVar || 'hit'} = raycast(posicion.x, posicion.y, ${inputs.dirX || 1}, ${inputs.dirY || 0}, ${val(inputs.dist)});`;
+            case 'Obtener Propiedad': return `${inputs.result} = buscarMateria(${val(inputs.target)}).${inputs.prop};`;
+
+            // Vectores
+            case 'Crear Vector': return `${inputs.result} = { x: ${val(inputs.x)}, y: ${val(inputs.y)} };`;
+            case 'Vector Sumar': return `${inputs.result} = { x: ${val(inputs.vec1)}.x + ${val(inputs.vec2)}.x, y: ${val(inputs.vec1)}.y + ${val(inputs.vec2)}.y };`;
+            case 'Vector Distancia': return `${inputs.result} = distancia(${val(inputs.x1)}, ${val(inputs.y1)}, ${val(inputs.x2)}, ${val(inputs.y2)});`;
+            case 'Vector Normalizar': return `${inputs.result} = normalizar(${val(inputs.vec)});`;
+            case 'Vector Magnitud': return `${inputs.result} = magnitud(${val(inputs.vec)});`;
+
+            // Operadores
+            case 'Operación Matemática': return `${inputs.name} = ${val(inputs.name)} ${inputs.op || '+'} ${val(inputs.value)};`;
+            case 'Número al Azar': return `${inputs.name} = azar(${val(inputs.min)}, ${val(inputs.max)});`;
+            case 'Comparar': return `${inputs.result} = (${val(inputs.var1)} ${inputs.op} ${val(inputs.var2)});`;
+            case 'Logica':
+                let logOp = inputs.op === 'Y' ? '&&' : (inputs.op === 'O' ? '||' : '!');
+                if (logOp === '!') return `${inputs.result} = !${val(inputs.var1)};`;
+                return `${inputs.result} = (${val(inputs.var1)} ${logOp} ${val(inputs.var2)});`;
+            case 'Mate Avanzada':
+                let mOp = inputs.op === 'seno' ? 'seno' : (inputs.op === 'coseno' ? 'coseno' : (inputs.op === 'abs' ? 'abs' : 'raiz'));
+                return `${inputs.name} = ${mOp}(${val(inputs.value)});`;
+            case 'Limitar (Clamp)': return `${inputs.name} = limitar(${val(inputs.name)}, ${val(inputs.min)}, ${val(inputs.max)});`;
+            case 'Unir Texto': return `${inputs.result} = ${val(inputs.text1)} + ${val(inputs.text2)};`;
+            case 'Propiedad Sistema': return `${inputs.result} = motor.${inputs.prop};`;
+
+            // Variables
+            case 'Asignar Variable':
+                return `${inputs.name} = ${val(inputs.value)};`;
+            case 'Establecer Global':
+                return `establecerGlobal(${val(inputs.name)}, ${val(inputs.value)});`;
+
+            // RPG
+            case 'Mostrar Diálogo': return `mostrarDialogo(${val(inputs.speaker)}, ${val(inputs.text)});`;
+            case 'Añadir Misión': return `misiones.agregar(${val(inputs.id)});`;
+            case 'Completar Misión': return `misiones.completar(${val(inputs.id)});`;
+            case 'Dar Item': return `inventario.agregar(${val(inputs.item)}, ${val(inputs.qty)});`;
+
+            // Listas
+            case 'Lista Añadir': return `variable _lst = obtenerGlobal(${val(inputs.list)}); si (_lst && _lst.push) { _lst.push(${val(inputs.value)}); }`;
+            case 'Lista Obtener': return `${inputs.result} = obtenerGlobal(${val(inputs.list)})[${val(inputs.index)}];`;
+            case 'Lista Longitud': return `${inputs.result} = obtenerGlobal(${val(inputs.list)}).length;`;
+            case 'Lista Borrar': return `obtenerGlobal(${val(inputs.list)}).splice(${val(inputs.index)}, 1);`;
+
+            // Escena & Cámara
+            case 'Crear Objeto': return `await crear(${val(inputs.prefab)}, ${val(inputs.x)}, ${val(inputs.y)});`;
+            case 'Cargar Escena': return `cargarEscena(${val(inputs.scene)});`;
+            case 'Cámara Pos': return `camara.posicion.x = ${val(inputs.x)}; camara.posicion.y = ${val(inputs.y)};`;
+            case 'Cámara Zoom': return `camara.zoom = ${val(inputs.zoom)};`;
+
+            case 'Llamar Función': return `${inputs.name}();`;
 
             default:
                 return `// Acción desconocida: ${action.name}`;
