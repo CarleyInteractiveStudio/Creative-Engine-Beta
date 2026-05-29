@@ -1717,110 +1717,83 @@ function exitAddLayerMode() {
 }
 
 function handle3DCameraNavigation() {
-    if (!renderer || !renderer.camera || !window.glMatrix) return;
-    const cam = renderer.camera;
-    const dt = getDeltaTime() || 0.016;
+    if (!renderer || !renderer.camera) return;
     const glm = window.glMatrix;
+    if (!glm) return;
+
+    const cam = renderer.camera;
+    const dt = (typeof getDeltaTime === 'function' ? getDeltaTime() : 0.016) || 0.016;
 
     const config = getCurrentProjectConfig();
     const is2DLocked = config.viewMode === '2d';
 
     if (is2DLocked) {
-        // --- 2D View Mode (Simulation): Locked rotation and perspective-based panning ---
         cam.rotation.x = 0;
         cam.rotation.y = 0;
         cam.rotation.z = 0;
 
-        // In 3D engine, panning needs to be world-space delta
         if (InputManager.getMouseButton(1) || InputManager.getMouseButton(2)) {
             const delta = InputManager.getMouseDelta();
-            // Scale movement by distance to make it feel like 2D panning
-            const moveScale = (cam.z || 500) / 1000;
+            const moveScale = (cam.z || 500) / 800;
             cam.x -= delta.x * moveScale;
-            cam.y += delta.y * moveScale; // Y is inverted in 3D world space
+            cam.y += delta.y * moveScale;
         }
         return;
     }
 
-    // Navigation only while Right Mouse Button is held
+    // Fly Mode active when Right Click is held
     const isFlying = InputManager.getMouseButton(2);
 
     if (isFlying) {
-        // Aggressively prevent browser context menu during flight
-        const preventer = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-        };
-        // Use capture phase to catch it before anything else
+        // Prevent browser menu during navigation
+        const preventer = (e) => { e.preventDefault(); e.stopPropagation(); };
         window.addEventListener('contextmenu', preventer, { capture: true, once: true });
-        dom.sceneCanvas.addEventListener('contextmenu', preventer, { capture: true, once: true });
-        if (dom.sceneCanvas3d) dom.sceneCanvas3d.addEventListener('contextmenu', preventer, { capture: true, once: true });
 
-        // Speed adjustments for larger 3D scenes
-        const baseSpeed = 800;
-        const speed = baseSpeed * (InputManager.getKey('Shift') ? 3.0 : 1.0) * dt;
-        const rotSpeed = 0.2;
+        // Smooth Fly Navigation Speed
+        const baseSpeed = 400;
+        const speedMultiplier = InputManager.getKey('Shift') ? 4.0 : 1.0;
+        const speed = baseSpeed * speedMultiplier * dt;
+        const rotSpeed = 0.15;
 
-        // --- 1. Movement logic ---
+        // --- 1. Rotation (Mouse Look) ---
+        const delta = InputManager.getMouseDelta();
+        if (Math.abs(delta.x) < 200 && Math.abs(delta.y) < 200) {
+            cam.rotation.y -= delta.x * rotSpeed;
+            cam.rotation.x -= delta.y * rotSpeed;
+            cam.rotation.x = Math.max(-89.9, Math.min(89.9, cam.rotation.x));
+        }
+
+        // --- 2. Movement (WASD + Arrows) ---
         const moveDir = glm.vec3.create();
         let hasMove = false;
 
-        // WASD & Arrows: Local movement (Forward/Back on Z, Strafe on X)
         if (InputManager.getKey('w') || InputManager.getKey('ArrowUp')) { moveDir[2] -= 1; hasMove = true; }
         if (InputManager.getKey('s') || InputManager.getKey('ArrowDown')) { moveDir[2] += 1; hasMove = true; }
         if (InputManager.getKey('a') || InputManager.getKey('ArrowLeft')) { moveDir[0] -= 1; hasMove = true; }
         if (InputManager.getKey('d') || InputManager.getKey('ArrowRight')) { moveDir[0] += 1; hasMove = true; }
 
-        // Q/E: World-aligned vertical movement
-        let verticalMove = 0;
-        if (InputManager.getKey('e')) verticalMove += 1; // Up (GL space)
-        if (InputManager.getKey('q')) verticalMove -= 1; // Down (GL space)
+        // Q/E: World Vertical Movement
+        if (InputManager.getKey('e')) cam.y -= speed;
+        if (InputManager.getKey('q')) cam.y += speed;
 
         if (hasMove) {
             glm.vec3.normalize(moveDir, moveDir);
-
             const rotationQuat = glm.quat.create();
-            // Important: Handle Y-inversion in navigation math
+            // Rotation for direction calculation
             glm.quat.fromEuler(rotationQuat, cam.rotation.x, cam.rotation.y, 0);
 
             const rotatedDir = glm.vec3.create();
             glm.vec3.transformQuat(rotatedDir, moveDir, rotationQuat);
 
             cam.x += rotatedDir[0] * speed;
-            // CE-Y is inverted relative to GL-Y
             cam.y -= rotatedDir[1] * speed;
             cam.z += rotatedDir[2] * speed;
         }
 
-        // Apply Vertical Movement (CE-Y inverted)
-        cam.y -= verticalMove * speed;
-
-        // --- 2. Rotation (Mouse look) ---
-        const delta = InputManager.getMouseDelta();
-
-        // FIX: Only apply rotation if mouse is moving while button IS HELD
-        // Some browsers report an initial large delta on the first frame of holding RMB.
-        if (Math.abs(delta.x) > 0.1 || Math.abs(delta.y) > 0.1) {
-            // Sensitivity check to prevent "jump" when right-clicking
-            if (Math.abs(delta.x) < 100 && Math.abs(delta.y) < 100) {
-                // Standard FPS Look
-                cam.rotation.y -= delta.x * rotSpeed;
-                cam.rotation.x -= delta.y * rotSpeed;
-            }
-
-            // Constrain pitch to avoid flipping
-            cam.rotation.x = Math.max(-89.9, Math.min(89.9, cam.rotation.x));
-            updateScene();
-        }
-
-        // --- 3. Cursor Feedback ---
         dom.sceneCanvas.style.cursor = 'crosshair';
-        if (dom.sceneCanvas3d) dom.sceneCanvas3d.style.cursor = 'crosshair';
-
+        updateScene();
     } else {
-        // Restore standard cursor when not flying
         if (dom.sceneCanvas.style.cursor === 'crosshair') dom.sceneCanvas.style.cursor = 'default';
-        if (dom.sceneCanvas3d && dom.sceneCanvas3d.style.cursor === 'crosshair') dom.sceneCanvas3d.style.cursor = 'default';
     }
 }
 

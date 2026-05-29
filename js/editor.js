@@ -1242,6 +1242,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!renderer3D) {
             const { Renderer3D } = await import('./engine/Renderer3D.js');
+            console.log("[Creative 3D Render] Instantiating Creative 3D core...");
             renderer3D = new Renderer3D(dom.sceneCanvas3d);
             gameRenderer3D = new Renderer3D(dom.gameCanvas3d);
         }
