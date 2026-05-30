@@ -1755,7 +1755,7 @@ function handle3DCameraNavigation() {
         const delta = InputManager.getMouseDelta();
         if (Math.abs(delta.x) < 200 && Math.abs(delta.y) < 200) {
             cam.rotation.y -= delta.x * rotSpeed;
-            cam.rotation.x -= delta.y * rotSpeed;
+            cam.rotation.x += delta.y * rotSpeed;
             cam.rotation.x = Math.max(-89.9, Math.min(89.9, cam.rotation.x));
         }
 
@@ -1784,7 +1784,7 @@ function handle3DCameraNavigation() {
             glm.vec3.transformQuat(rotatedDir, moveDir, rotationQuat);
 
             cam.x += rotatedDir[0] * speed;
-            cam.y -= rotatedDir[1] * speed;
+            cam.y += rotatedDir[1] * speed;
             cam.z += rotatedDir[2] * speed;
         }
 
@@ -2465,6 +2465,7 @@ export function drawOverlay() {
 
     if (is3D) {
         draw3DGrid();
+        drawOrientationGizmo();
     }
 
     // Draw Icons (Audio, Camera, etc)
@@ -2507,6 +2508,67 @@ export function drawOverlay() {
     if (is3D) {
         renderer.ctx.restore();
     }
+}
+
+function drawOrientationGizmo() {
+    const prefs = getPreferences();
+    if (prefs.showOrientationGizmo === false) return;
+
+    const { ctx, camera, canvas } = renderer;
+    if (!camera || !window.glMatrix) return;
+
+    const glm = window.glMatrix;
+    const padding = 60;
+    const size = 40;
+    const centerX = canvas.width - padding;
+    const centerY = padding;
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    const q = glm.quat.create();
+    // Use negative rotation because we are rotating the "world" axes relative to the camera
+    glm.quat.fromEuler(q, -camera.rotation.x, -camera.rotation.y, 0);
+
+    const drawAxis = (axisVec, color, label) => {
+        const rotated = glm.vec3.create();
+        glm.vec3.transformQuat(rotated, axisVec, q);
+
+        // Standard 3D to 2D projection: X stays X, Y is inverted (up is -y)
+        const endX = centerX + rotated[0] * size;
+        const endY = centerY + rotated[1] * size;
+
+        // Draw line
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+
+        // Draw label
+        ctx.fillStyle = color;
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, endX + (rotated[0] * 10), endY + (rotated[1] * 10));
+    };
+
+    // Sort axes by Z (depth) to draw further ones first?
+    // For a simple gizmo, we can just draw them.
+    // CE Coordinate system: X (Red, right), Y (Green, down), Z (Blue, forward)
+    // Wait, in handle3DCameraNavigation, moveDir[2] -= 1 is forward.
+    // And cam.y -= speed is UP.
+    // So Y is UP in world, but +Y is DOWN in 2D.
+    // Let's stick to standard colors: X:Red, Y:Green, Z:Blue
+
+    // We draw them in an order that roughly handles overlap for this specific view
+    drawAxis([0, 0, 1], '#4444ff', 'Z');
+    drawAxis([1, 0, 0], '#ff4444', 'X');
+    drawAxis([0, 1, 0], '#44ff44', 'Y');
+
+    ctx.restore();
 }
 
 function drawWeightPainterGizmo() {
@@ -2709,22 +2771,13 @@ function draw3DGrid() {
 
     // Main Axes (Infinite Origin Lines)
     if (prefs.showOriginAxes !== false) {
-        const axisLen = 5000;
+        const axisLen = 100000;
         // X Axis (Red)
-        drawLineClipped({ x: 0, y: 0, z: 0 }, { x: axisLen, y: 0, z: 0 }, 'rgba(255, 70, 70, 1.0)', 3);
+        drawLineClipped({ x: -axisLen, y: 0, z: 0 }, { x: axisLen, y: 0, z: 0 }, 'rgba(255, 70, 70, 1.0)', 2);
         // Y Axis (Green)
-        drawLineClipped({ x: 0, y: 0, z: 0 }, { x: 0, y: axisLen, z: 0 }, 'rgba(70, 255, 70, 1.0)', 3);
+        drawLineClipped({ x: 0, y: -axisLen, z: 0 }, { x: 0, y: axisLen, z: 0 }, 'rgba(70, 255, 70, 1.0)', 2);
         // Z Axis (Blue)
-        drawLineClipped({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: axisLen }, 'rgba(70, 70, 255, 1.0)', 3);
-
-        const origin = world3DToScreen({ x: 0, y: 0, z: 0 });
-        if (origin) {
-            ctx.fillStyle = "#ffffff";
-            ctx.beginPath(); ctx.arc(origin.x, origin.y, 6, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = "#000000"; ctx.lineWidth = 2; ctx.stroke();
-            ctx.fillStyle = "white"; ctx.font = "bold 12px Arial"; ctx.textAlign = "center";
-            ctx.fillText("(0,0,0)", origin.x, origin.y - 12);
-        }
+        drawLineClipped({ x: 0, y: 0, z: -axisLen }, { x: 0, y: 0, z: axisLen }, 'rgba(70, 70, 255, 1.0)', 2);
     }
 
     ctx.restore();
