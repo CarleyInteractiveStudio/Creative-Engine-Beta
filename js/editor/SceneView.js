@@ -2514,32 +2514,48 @@ function drawOrientationGizmo() {
     const prefs = getPreferences();
     if (prefs.showOrientationGizmo === false) return;
 
-    const { ctx, camera, canvas } = renderer;
+    const { ctx, camera } = renderer;
     if (!camera || !window.glMatrix) return;
 
     const glm = window.glMatrix;
-    const padding = 60;
-    const size = 40;
-    const centerX = canvas.width - padding;
+    const padding = 65;
+    const size = 35;
+    const centerX = padding; // Moved to TOP LEFT as requested
     const centerY = padding;
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     const q = glm.quat.create();
-    // Use negative rotation because we are rotating the "world" axes relative to the camera
-    glm.quat.fromEuler(q, -camera.rotation.x, -camera.rotation.y, 0);
+    // We want to transform world axes into camera-relative screen space.
+    // Invert the camera's world rotation to get the view rotation.
+    glm.quat.fromEuler(q, camera.rotation.x, camera.rotation.y, 0);
+    glm.quat.invert(q, q);
 
-    const drawAxis = (axisVec, color, label) => {
+    // Standard Orientation: X (Right), Y (Up), Z (Forward)
+    // Note: In CE, Y- is UP in world space.
+    const axes = [
+        { vec: [1, 0, 0], color: '#ff4444', label: 'X' },
+        { vec: [0, -1, 0], color: '#44ff44', label: 'Y' },
+        { vec: [0, 0, 1], color: '#4444ff', label: 'Z' }
+    ];
+
+    // Project and calculate depth
+    const projected = axes.map(a => {
         const rotated = glm.vec3.create();
-        glm.vec3.transformQuat(rotated, axisVec, q);
+        glm.vec3.transformQuat(rotated, a.vec, q);
+        return { ...a, px: rotated[0], py: rotated[1], pz: rotated[2] };
+    });
 
-        // Standard 3D to 2D projection: X stays X, Y is inverted (up is -y)
-        const endX = centerX + rotated[0] * size;
-        const endY = centerY + rotated[1] * size;
+    // Sort by depth (Z) so closer axes draw over further ones
+    projected.sort((a, b) => a.pz - b.pz);
 
-        // Draw line
-        ctx.strokeStyle = color;
+    projected.forEach(a => {
+        const endX = centerX + a.px * size;
+        const endY = centerY + a.py * size;
+
+        // Draw line with rounded ends for a polished look
+        ctx.strokeStyle = a.color;
         ctx.lineWidth = 3;
         ctx.lineCap = 'round';
         ctx.beginPath();
@@ -2547,26 +2563,23 @@ function drawOrientationGizmo() {
         ctx.lineTo(endX, endY);
         ctx.stroke();
 
-        // Draw label
-        ctx.fillStyle = color;
-        ctx.font = 'bold 12px Arial';
+        // Draw small circle at the end (Unity style)
+        ctx.fillStyle = a.color;
+        ctx.beginPath();
+        ctx.arc(endX, endY, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw label with a small background for better readability
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(label, endX + (rotated[0] * 10), endY + (rotated[1] * 10));
-    };
 
-    // Sort axes by Z (depth) to draw further ones first?
-    // For a simple gizmo, we can just draw them.
-    // CE Coordinate system: X (Red, right), Y (Green, down), Z (Blue, forward)
-    // Wait, in handle3DCameraNavigation, moveDir[2] -= 1 is forward.
-    // And cam.y -= speed is UP.
-    // So Y is UP in world, but +Y is DOWN in 2D.
-    // Let's stick to standard colors: X:Red, Y:Green, Z:Blue
-
-    // We draw them in an order that roughly handles overlap for this specific view
-    drawAxis([0, 0, 1], '#4444ff', 'Z');
-    drawAxis([1, 0, 0], '#ff4444', 'X');
-    drawAxis([0, 1, 0], '#44ff44', 'Y');
+        // Push label slightly beyond the axis end
+        const labelX = endX + a.px * 12;
+        const labelY = endY + a.py * 12;
+        ctx.fillText(a.label, labelX, labelY);
+    });
 
     ctx.restore();
 }
@@ -2769,16 +2782,8 @@ function draw3DGrid() {
     // We skip floor grid lines in 2D overlay because Renderer3D already draws an infinite depth-tested grid.
     // This prevents Z-fighting and ensures objects correctly occlude the grid.
 
-    // Main Axes (Infinite Origin Lines)
-    if (prefs.showOriginAxes !== false) {
-        const axisLen = 100000;
-        // X Axis (Red)
-        drawLineClipped({ x: -axisLen, y: 0, z: 0 }, { x: axisLen, y: 0, z: 0 }, 'rgba(255, 70, 70, 1.0)', 2);
-        // Y Axis (Green)
-        drawLineClipped({ x: 0, y: -axisLen, z: 0 }, { x: 0, y: axisLen, z: 0 }, 'rgba(70, 255, 70, 1.0)', 2);
-        // Z Axis (Blue)
-        drawLineClipped({ x: 0, y: 0, z: -axisLen }, { x: 0, y: 0, z: axisLen }, 'rgba(70, 70, 255, 1.0)', 2);
-    }
+    // Main Axes (Infinite Origin Lines) - Removed redundant 2D overlay axes.
+    // They are now handled directly by the 3D grid shader for better performance and visual stability.
 
     ctx.restore();
 }
