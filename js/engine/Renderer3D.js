@@ -352,7 +352,9 @@ export class Renderer3D {
 
         // Y-Axis (Green) - X and Z axes are handled with higher precision in the grid shader
         const yModel = mat4.create();
-        mat4.fromScaling(yModel, [thickness, length, thickness]);
+        // Centering the axis line so it goes in both directions
+        mat4.fromTranslation(yModel, [0, 0, 0]);
+        mat4.scale(yModel, yModel, [thickness, length, thickness]);
         gl.uniformMatrix4fv(modelLoc, false, yModel);
         gl.uniform4f(colorLoc, 0.0, 1.0, 0.0, 1.0);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.cubeIdx);

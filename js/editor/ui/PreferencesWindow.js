@@ -23,6 +23,7 @@ const defaultPrefs = {
     scriptLang: 'ces',
     showSceneGrid: true,
     showOriginAxes: true,
+    showOrientationGizmo: true,
     snapping: false,
     gridSize: 1,
     zoomSpeed: 1.1,
@@ -163,6 +164,7 @@ async function savePreferences() {
     currentPreferences.scriptLang = _dom.prefsScriptLang.value;
     currentPreferences.showSceneGrid = _dom.prefsShowSceneGrid.checked;
     currentPreferences.showOriginAxes = _dom.prefsShowOriginAxes.checked;
+    currentPreferences.showOrientationGizmo = _dom.prefsShowOrientationGizmo.checked;
     currentPreferences.snapping = _dom.prefsSnappingToggle.checked;
     currentPreferences.gridSize = _dom.prefsSnappingGridSize.value;
     currentPreferences.zoomSpeed = parseFloat(_dom.prefsZoomSpeed.value) || 1.1;
@@ -238,6 +240,7 @@ function loadPreferences() {
     if (_dom.prefsScriptLang) _dom.prefsScriptLang.value = currentPreferences.scriptLang;
     if (_dom.prefsShowSceneGrid) _dom.prefsShowSceneGrid.checked = currentPreferences.showSceneGrid;
     if (_dom.prefsShowOriginAxes) _dom.prefsShowOriginAxes.checked = currentPreferences.showOriginAxes;
+    if (_dom.prefsShowOrientationGizmo) _dom.prefsShowOrientationGizmo.checked = currentPreferences.showOrientationGizmo !== false;
     if (_dom.prefsSnappingToggle) _dom.prefsSnappingToggle.checked = currentPreferences.snapping;
     if (_dom.prefsSnappingGridSize) _dom.prefsSnappingGridSize.value = currentPreferences.gridSize;
     if (_dom.prefsZoomSpeed) _dom.prefsZoomSpeed.value = currentPreferences.zoomSpeed;
