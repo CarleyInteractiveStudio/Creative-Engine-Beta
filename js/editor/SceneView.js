@@ -1745,10 +1745,6 @@ function handle3DCameraNavigation() {
     const isFlying = InputManager.getMouseButton(2);
 
     if (isFlying) {
-        // Prevent browser menu during navigation
-        const preventer = (e) => { e.preventDefault(); e.stopPropagation(); };
-        window.addEventListener('contextmenu', preventer, { capture: true, once: true });
-
         // Smooth Fly Navigation Speed
         const baseSpeed = 400;
         const speedMultiplier = InputManager.getKey('Shift') ? 4.0 : 1.0;
@@ -1779,7 +1775,9 @@ function handle3DCameraNavigation() {
         if (hasMove) {
             glm.vec3.normalize(moveDir, moveDir);
             const rotationQuat = glm.quat.create();
-            // Rotation for direction calculation
+
+            // FPS Movement: Use the full camera rotation (including pitch) for W/S
+            // so you move towards where you are looking.
             glm.quat.fromEuler(rotationQuat, cam.rotation.x, cam.rotation.y, 0);
 
             const rotatedDir = glm.vec3.create();

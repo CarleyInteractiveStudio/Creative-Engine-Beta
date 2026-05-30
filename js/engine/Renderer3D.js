@@ -63,7 +63,8 @@ export class Renderer3D {
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         gl.enable(gl.CULL_FACE);
-        gl.frontFace(gl.CCW);
+        // CW is required because the Y-flip in projection matrix inverts triangle winding
+        gl.frontFace(gl.CW);
 
         this.initShaders();
         this.initBasicGeometry();
@@ -120,15 +121,16 @@ export class Renderer3D {
                 float minimumz = min(derivative.y, 1.0);
                 float minimumx = min(derivative.x, 1.0);
 
-                vec4 color = vec4(0.2, 0.2, 0.2, 1.0 - min(line, 1.0));
+                vec4 color = vec4(0.4, 0.4, 0.45, 1.0 - min(line, 1.0));
 
                 if (drawAxes) {
+                    float axisThickness = 2.0;
                     // X Axis (Red)
-                    if (fragPos3D.z > -0.1 * minimumz && fragPos3D.z < 0.1 * minimumz)
-                        color = vec4(1.0, 0.2, 0.2, 1.0);
+                    if (abs(fragPos3D.z) < axisThickness * minimumz)
+                        color = vec4(1.0, 0.1, 0.1, 1.0);
                     // Z Axis (Blue)
-                    if (fragPos3D.x > -0.1 * minimumx && fragPos3D.x < 0.1 * minimumx)
-                        color = vec4(0.2, 0.4, 1.0, 1.0);
+                    if (abs(fragPos3D.x) < axisThickness * minimumx)
+                        color = vec4(0.1, 0.4, 1.0, 1.0);
                 }
 
                 return color;
@@ -141,27 +143,25 @@ export class Renderer3D {
 
             void main() {
                 float t = -vNearPoint.y / (vFarPoint.y - vNearPoint.y);
-                if (t < 0.0) discard;
+                if (t <= 0.0) discard;
 
                 vec3 fragPos3D = vNearPoint + t * (vFarPoint - vNearPoint);
-
                 gl_FragDepthEXT = computeDepth(fragPos3D);
 
-                float linearDepth = (2.0 * uNear * uFar) / (uFar + uNear - (gl_FragDepthEXT * 2.0 - 1.0) * (uFar - uNear));
-                float fading = max(0.0, (0.5 - linearDepth / uFar));
+                float linearDepth = (2.0 * uNear * uFar) / (uFar + uNear - ((gl_FragDepthEXT * 2.0 - 1.0) * (uFar - uNear)));
+                float fading = max(0.0, (1.0 - (linearDepth / 4000.0)));
 
-                // Combine major and minor grids
                 vec4 color = (grid(fragPos3D, 0.1, true) + grid(fragPos3D, 0.01, false) * 0.5);
                 color.a *= fading;
 
-                if (color.a < 0.05) discard;
+                if (color.a < 0.02) discard;
                 gl_FragColor = color;
             }
         `;
 
         this.programs.grid = this.createProgram(gridVs, gridFs);
 
-        // 2. Simple Standard Shader (Unlit/Vertex Color for now, expandable)
+        // 2. Simple Standard Shader (Lambert Shading)
         const stdVs = `
             attribute vec4 aVertexPosition;
             attribute vec3 aVertexNormal;
@@ -180,11 +180,49 @@ export class Renderer3D {
             uniform vec4 uColor;
             void main() {
                 vec3 lightDir = normalize(vec3(0.5, 1.0, 0.3));
-                float diff = max(dot(normalize(vNormal), lightDir), 0.3);
+                float diff = max(dot(normalize(vNormal), lightDir), 0.4);
                 gl_FragColor = vec4(uColor.rgb * diff, uColor.a);
             }
         `;
         this.programs.standard = this.createProgram(stdVs, stdFs);
+
+        // 3. Unlit Shader (for Axes)
+        const unlitVs = `
+            attribute vec4 aVertexPosition;
+            uniform mat4 uModelMatrix;
+            uniform mat4 uViewMatrix;
+            uniform mat4 uProjectionMatrix;
+            void main() {
+                gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrix * aVertexPosition;
+            }
+        `;
+        const unlitFs = `
+            precision mediump float;
+            uniform vec4 uColor;
+            void main() {
+                gl_FragColor = uColor;
+            }
+        `;
+        this.programs.unlit = this.createProgram(unlitVs, unlitFs);
+
+        // 4. Picking Shader
+        const pickVs = `
+            attribute vec4 aVertexPosition;
+            uniform mat4 uModelMatrix;
+            uniform mat4 uViewMatrix;
+            uniform mat4 uProjectionMatrix;
+            void main() {
+                gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrix * aVertexPosition;
+            }
+        `;
+        const pickFs = `
+            precision mediump float;
+            uniform vec4 uPickColor;
+            void main() {
+                gl_FragColor = uPickColor;
+            }
+        `;
+        this.programs.picking = this.createProgram(pickVs, pickFs);
     }
 
     initBasicGeometry() {
@@ -205,6 +243,15 @@ export class Renderer3D {
         this.buffers.cube = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cube);
         gl.bufferData(gl.ARRAY_BUFFER, cubePos, gl.STATIC_DRAW);
+
+        const cubeNormals = new Float32Array([
+            0,0,1, 0,0,1, 0,0,1, 0,0,1, 0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1,
+            0,1,0, 0,1,0, 0,1,0, 0,1,0, 0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0,
+            1,0,0, 1,0,0, 1,0,0, 1,0,0, -1,0,0, -1,0,0, -1,0,0, -1,0,0
+        ]);
+        this.buffers.cubeNorm = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cubeNorm);
+        gl.bufferData(gl.ARRAY_BUFFER, cubeNormals, gl.STATIC_DRAW);
 
         const cubeIndices = new Uint16Array([0,1,2, 0,2,3, 4,5,6, 4,6,7, 8,9,10, 8,10,11, 12,13,14, 12,14,15, 16,17,18, 16,18,19, 20,21,22, 20,22,23]);
         this.buffers.cubeIdx = gl.createBuffer();
@@ -233,7 +280,8 @@ export class Renderer3D {
             mat4.copy(this.viewMatrix, transform.worldMatrix);
             mat4.invert(this.viewMatrix, this.viewMatrix);
         } else {
-            const cam = options.editorCamera || { x: 0, y: 150, z: 500, rotation: { x: -20, y: 0, z: 0 } };
+            // Default Editor Camera: Positioned "above" ground (-Y) looking slightly down
+            const cam = options.editorCamera || { x: 0, y: -200, z: 600, rotation: { x: 15, y: 0, z: 0 } };
             const q = quat.create();
             quat.fromEuler(q, cam.rotation.x, cam.rotation.y, cam.rotation.z);
             mat4.fromRotationTranslation(this.viewMatrix, q, [cam.x, cam.y, cam.z]);
@@ -254,7 +302,7 @@ export class Renderer3D {
         // 2. Draw Scene Objects
         this.drawScene(scene);
 
-        // 3. Draw Origin Axis Lines (Y-axis vertical line)
+        // 3. Draw Origin Axis Lines (X, Y, Z crossing at center)
         this.drawOriginAxes();
     }
 
@@ -285,7 +333,7 @@ export class Renderer3D {
 
     drawOriginAxes() {
         const gl = this.gl;
-        const program = this.programs.standard;
+        const program = this.programs.unlit;
         gl.useProgram(program);
 
         const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
@@ -295,15 +343,18 @@ export class Renderer3D {
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
 
-        // Y-Axis Line (Green) - Using a very thin long cube as a "line"
-        const yModel = mat4.create();
-        mat4.fromScaling(yModel, [0.05, 10000, 0.05]);
-        gl.uniformMatrix4fv(modelLoc, false, yModel);
-        gl.uniform4f(colorLoc, 0.2, 1.0, 0.2, 1.0);
+        const thickness = 0.4;
+        const length = 100000;
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cube);
         gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(posLoc);
+
+        // Y-Axis (Green) - X and Z axes are handled with higher precision in the grid shader
+        const yModel = mat4.create();
+        mat4.fromScaling(yModel, [thickness, length, thickness]);
+        gl.uniformMatrix4fv(modelLoc, false, yModel);
+        gl.uniform4f(colorLoc, 0.0, 1.0, 0.0, 1.0);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.cubeIdx);
         gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
     }
@@ -318,6 +369,7 @@ export class Renderer3D {
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
 
         const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
+        const normLoc = gl.getAttribLocation(program, 'aVertexNormal');
         const colorLoc = gl.getUniformLocation(program, 'uColor');
         const modelLoc = gl.getUniformLocation(program, 'uModelMatrix');
 
@@ -332,10 +384,14 @@ export class Renderer3D {
             const color = this.hexToRgb(mesh.color);
             gl.uniform4f(colorLoc, color[0], color[1], color[2], 1.0);
 
-            // For now, everything is a cube in this simple optimized version
             gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cube);
             gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
             gl.enableVertexAttribArray(posLoc);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cubeNorm);
+            gl.vertexAttribPointer(normLoc, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(normLoc);
+
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.cubeIdx);
             gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
         });
@@ -379,6 +435,74 @@ export class Renderer3D {
             return null;
         }
         return shader;
+    }
+
+    pick(scene, cameraMateria, x, y, options = {}) {
+        if (!this.initialized || !this.gl) return null;
+        const gl = this.gl;
+
+        const w = gl.canvas.width;
+        const h = gl.canvas.height;
+
+        // Setup Picking Framebuffer
+        if (!this.pickFB || this._pickW !== w || this._pickH !== h) {
+            if (this.pickFB) {
+                gl.deleteFramebuffer(this.pickFB);
+                gl.deleteTexture(this.pickTex);
+                gl.deleteRenderbuffer(this.pickDepth);
+            }
+            this.pickFB = gl.createFramebuffer();
+            this.pickTex = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, this.pickTex);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+            this.pickDepth = gl.createRenderbuffer();
+            gl.bindRenderbuffer(gl.RENDERBUFFER, this.pickDepth);
+            gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, this.pickFB);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.pickTex, 0);
+            gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, this.pickDepth);
+            this._pickW = w; this._pickH = h;
+        }
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.pickFB);
+        gl.viewport(0, 0, w, h);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        const program = this.programs.picking;
+        gl.useProgram(program);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.lastViewMatrix);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.lastProjectionMatrix);
+
+        const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
+        const colorLoc = gl.getUniformLocation(program, 'uPickColor');
+        const modelLoc = gl.getUniformLocation(program, 'uModelMatrix');
+
+        const idMap = new Map();
+        scene.getAllMaterias().forEach((m, index) => {
+            if (!m.isActive || !m.getComponent(Components3D.MeshRenderer3D)) return;
+            const id = index + 1;
+            idMap.set(id, m.id);
+            const r = (id & 0xFF) / 255;
+            const g = ((id >> 8) & 0xFF) / 255;
+            const b = ((id >> 16) & 0xFF) / 255;
+
+            gl.uniform4f(colorLoc, r, g, b, 1.0);
+            gl.uniformMatrix4fv(modelLoc, false, m.getComponent(Components.Transform).worldMatrix);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cube);
+            gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(posLoc);
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.cubeIdx);
+            gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+        });
+
+        const pixels = new Uint8Array(4);
+        gl.readPixels(x, (h - 1) - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+        const pickedId = pixels[0] + (pixels[1] << 8) + (pixels[2] << 16);
+        return idMap.get(pickedId) || null;
     }
 
     hexToRgb(hex) {
