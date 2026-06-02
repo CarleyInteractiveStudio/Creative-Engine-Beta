@@ -261,6 +261,7 @@ export class Renderer3D {
 
     render(scene, cameraMateria, options = {}) {
         if (!this.initialized && !this.init()) return;
+        window._Renderer3D = this; // Sync global reference for 3D projection
         const gl = this.gl;
 
         // Setup Viewport
@@ -441,6 +442,7 @@ export class Renderer3D {
 
     pick(scene, cameraMateria, x, y, options = {}) {
         if (!this.initialized || !this.gl) return null;
+        window._Renderer3D = this; // Sync global reference for 3D projection
         const gl = this.gl;
 
         const w = gl.canvas.width;

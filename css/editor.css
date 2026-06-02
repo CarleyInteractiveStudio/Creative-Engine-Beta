@@ -1405,9 +1405,17 @@ body.mobile-mode #editor-main-content.no-inspector {
     outline: none;
 }
 
-.context-menu li.disabled {
-    color: #888;
+.context-menu li.disabled,
+.context-menu li.disabled span,
+.context-menu li.disabled img {
+    color: #555 !important;
+    opacity: 0.6;
     pointer-events: none;
+    background-color: transparent !important;
+    filter: grayscale(1) brightness(0.5);
+}
+
+.context-menu li.disabled:hover {
     background-color: transparent !important;
 }
 

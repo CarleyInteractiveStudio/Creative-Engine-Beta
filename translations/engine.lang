@@ -368,6 +368,8 @@ BOTON: Botón
 PANEL: Panel
 TEXTO: Texto
 LUZ: Luz
+LUZ_2D: Luz 2D
+LUZ_3D: Luz 3D
 LUZ_PUNTO: Luz Punto
 LUZ_FOCAL: Luz Focal
 DIRECTIONALLIGHT3D: Luz Direccional
@@ -1022,6 +1024,8 @@ BOTON: Button
 PANEL: Panel
 TEXTO: Text
 LUZ: Light
+LUZ_2D: 2D Light
+LUZ_3D: 3D Light
 LUZ_PUNTO: Point Light
 LUZ_FOCAL: Spot Light
 DIRECTIONALLIGHT3D: Directional Light
@@ -1614,6 +1618,8 @@ BOTON: Botão
 PANEL: Painel
 TEXTO: Texto
 LUZ: Luz
+LUZ_2D: Luz 2D
+LUZ_3D: Luz 3D
 LUZ_PUNTO: Point Light
 LUZ_FOCAL: Spot Light
 LUZ_FORMA_LIBRE: Freeform Light
@@ -2096,6 +2102,8 @@ BOTON: Кнопка
 PANEL: Панель
 TEXTO: Текст
 LUZ: Свет
+LUZ_2D: 2D Свет
+LUZ_3D: 3D Свет
 LUZ_PUNTO: Точечный свет
 LUZ_FOCAL: Прожектор
 LUZ_FORMA_LIBRE: Произвольный свет
@@ -2598,6 +2606,8 @@ BOTON: 按钮
 PANEL: 面板
 TEXTO: 文本
 LUZ: 光源
+LUZ_2D: 2D 光源
+LUZ_3D: 3D 光源
 LUZ_PUNTO: 点光源
 LUZ_FOCAL: 聚光灯
 LUZ_FORMA_LIBRE: 自由形状光源

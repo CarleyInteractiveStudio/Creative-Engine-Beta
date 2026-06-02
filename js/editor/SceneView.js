@@ -78,7 +78,7 @@ export function world3DToScreen(worldPos) {
 
     return {
         x: (ndc[0] * 0.5 + 0.5) * width,
-        y: (ndc[1] * 0.5 + 0.5) * height
+        y: (0.5 - ndc[1] * 0.5) * height
     };
 }
 
@@ -2797,8 +2797,14 @@ function draw3DGyzmoRects(gyzmo) {
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-    const rad = transform.rotation * Math.PI / 180;
-    const cos = Math.cos(rad), sin = Math.sin(rad);
+    const rotation = {
+        x: transform.rotationX || 0,
+        y: transform.rotationY || 0,
+        z: transform.rotationZ || 0
+    };
+    const glm = window.glMatrix;
+    const q = glm.quat.create();
+    glm.quat.fromEuler(q, rotation.x, rotation.y, rotation.z);
 
     for (const layer of gyzmo.layers) {
         const { x: lx, y: ly, width, height, color } = layer;
@@ -2807,12 +2813,20 @@ function draw3DGyzmoRects(gyzmo) {
 
         const getPt = (ox, oy) => {
             // Local to Materia center (applying layer offset lx, ly)
-            const rx = (lx + ox) * transform.scale.x;
-            const ry = (ly + oy) * transform.scale.y;
-            // Apply Materia rotation
-            const wx = transform.x + (rx * cos - ry * sin);
-            const wy = transform.y + (rx * sin + ry * cos);
-            return { x: wx, y: wy, z: transform.z || 0 };
+            const localPos = [
+                (lx + ox) * transform.scale.x,
+                (ly + oy) * transform.scale.y,
+                0
+            ];
+            // Apply 3D Rotation
+            const rotated = glm.vec3.create();
+            glm.vec3.transformQuat(rotated, localPos, q);
+
+            return {
+                x: transform.x + rotated[0],
+                y: transform.y + rotated[1],
+                z: (transform.z || 0) + rotated[2]
+            };
         };
 
         const p1 = world3DToScreen(getPt(-hw, -hh));

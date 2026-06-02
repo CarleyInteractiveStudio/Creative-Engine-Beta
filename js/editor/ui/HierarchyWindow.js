@@ -756,16 +756,26 @@ function setupEventListeners() {
         menu.querySelector('[data-action="rename"]').classList.toggle('disabled', !hasContext);
         menu.querySelector('[data-action="delete"]').classList.toggle('disabled', !hasContext);
 
-        // Hide/Show 3D options based on View Mode
-        const viewMode = window.currentProjectConfig?.viewMode || '3d';
-        const is3DView = viewMode === '3d';
+        // Enable/Disable options based on Project Type
+        const projectType = window.currentProjectConfig?.projectType || '2d';
+        const is3DProject = projectType === '3d';
+
+        const updateDisabledState = (el, disabled) => {
+            el.classList.toggle('disabled', disabled);
+            el.style.display = 'block';
+            // Recursively update children to ensure full grey-out and interaction prevention
+            const children = el.querySelectorAll('li, span, ul');
+            children.forEach(child => {
+                child.classList.toggle('disabled', disabled);
+            });
+        };
 
         menu.querySelectorAll('.only-3d').forEach(el => {
-            el.style.display = is3DView ? 'block' : 'none';
+            updateDisabledState(el, !is3DProject);
         });
 
         menu.querySelectorAll('.only-2d').forEach(el => {
-            el.style.display = is3DView ? 'none' : 'block';
+            updateDisabledState(el, is3DProject);
         });
 
         showContextMenuCallback(menu, e);
