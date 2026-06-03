@@ -817,7 +817,7 @@ export function initialize(dependencies) {
                 {
                     if (is3D && glm) {
                         const isY = dragState.handle === 'move-y';
-                        const axis = dragState.handle === 'move-x' ? [1,0,0] : (isY ? [0,1,0] : [0,0,1]);
+                        const axis = dragState.handle === 'move-x' ? [1,0,0] : (isY ? [0,-1,0] : [0,0,1]);
                         const q = glm.quat.create();
                         glm.quat.fromEuler(q, dragState.initialTransform.rotationX || 0, dragState.initialTransform.rotationY || 0, dragState.initialTransform.rotationZ || 0);
                         const worldAxis = glm.vec3.create();
@@ -829,10 +829,10 @@ export function initialize(dependencies) {
                         const camRight = glm.vec3.create();
                         glm.vec3.transformQuat(camRight, [1,0,0], camQ);
                         const camUp = glm.vec3.create();
-                        glm.vec3.transformQuat(camUp, [0,-1,0], camQ); // Up is negative Y
+                        glm.vec3.transformQuat(camUp, [0,-1,0], camQ); // In CE, -Y is UP visually/internally for editor navigation
 
                         const screenDx = moveEvent.clientX - dragState.initialMousePos.x;
-                        const screenDy = moveEvent.clientY - dragState.initialMousePos.y;
+                        const screenDy = -(moveEvent.clientY - dragState.initialMousePos.y);
 
                         // Project world axis onto camera right and up
                         const axisOnScreenX = glm.vec3.dot(worldAxis, camRight);
@@ -873,18 +873,18 @@ export function initialize(dependencies) {
                         const camRight = glm.vec3.create();
                         glm.vec3.transformQuat(camRight, [1,0,0], camQ);
                         const camUp = glm.vec3.create();
-                        glm.vec3.transformQuat(camUp, [0,1,0], camQ);
+                        glm.vec3.transformQuat(camUp, [0,-1,0], camQ);
 
                         const screenDxTotal = moveEvent.clientX - dragState.initialMousePos.x;
-                        const screenDyTotal = moveEvent.clientY - dragState.initialMousePos.y;
+                        const screenDyTotal = -(moveEvent.clientY - dragState.initialMousePos.y);
 
                         const dist = glm.vec3.distance([cam.x, cam.y, cam.z], [transform.x, transform.y, transform.z || 0]);
                         const sensitivity = dist / 1000;
 
                         let nextPos = [dragState.initialTransform.x, dragState.initialTransform.y, dragState.initialTransform.z || 0];
-                        nextPos[0] += (camRight[0] * screenDxTotal - camUp[0] * screenDyTotal) * sensitivity;
-                        nextPos[1] += (camRight[1] * screenDxTotal - camUp[1] * screenDyTotal) * sensitivity;
-                        nextPos[2] += (camRight[2] * screenDxTotal - camUp[2] * screenDyTotal) * sensitivity;
+                        nextPos[0] += (camRight[0] * screenDxTotal + camUp[0] * screenDyTotal) * sensitivity;
+                        nextPos[1] += (camRight[1] * screenDxTotal + camUp[1] * screenDyTotal) * sensitivity;
+                        nextPos[2] += (camRight[2] * screenDxTotal + camUp[2] * screenDyTotal) * sensitivity;
 
                         if (snapEnabled) {
                             nextPos[0] = Math.round(nextPos[0] / snapSize) * snapSize;
@@ -2333,7 +2333,7 @@ function check3DGizmoHit(canvasPos, materia) {
         if (Math.hypot(dx, dy) < 15) return activeTool === 'scale' ? 'scale-all' : 'move-xy';
 
         if (checkHandle({x:1, y:0, z:0}, 'X')) return activeTool === 'scale' ? 'scale-x' : 'move-x';
-        if (checkHandle({x:0, y:1, z:0}, 'Y')) return activeTool === 'scale' ? 'scale-y' : 'move-y';
+        if (checkHandle({x:0, y:-1, z:0}, 'Y')) return activeTool === 'scale' ? 'scale-y' : 'move-y';
         if (checkHandle({x:0, y:0, z:1}, 'Z')) return activeTool === 'scale' ? 'scale-z' : 'move-z';
     }
     return null;
@@ -2411,7 +2411,7 @@ function draw3DGizmos(materia) {
 
     if (activeTool === 'move' || activeTool === 'universal' || activeTool === 'scale') {
         drawAxis({x:1,y:0,z:0}, '#ff4444'); // X (Red)
-        drawAxis({x:0,y:1,z:0}, '#44ff44'); // Y (Green)
+        drawAxis({x:0,y:-1,z:0}, '#44ff44'); // Y (Green) - Pointing UP in World
         drawAxis({x:0,y:0,z:1}, '#4444ff'); // Z (Blue)
 
         // Center handle
