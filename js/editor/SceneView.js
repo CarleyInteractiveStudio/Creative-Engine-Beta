@@ -82,6 +82,46 @@ export function world3DToScreen(worldPos) {
     };
 }
 
+/**
+ * Returns a 3D ray {origin, direction} from screen coordinates.
+ */
+export function getMouseRay3D(screenX, screenY) {
+    const r3d = window._Renderer3D;
+    const glm = window.glMatrix;
+    if (!r3d || !r3d.lastProjectionMatrix || !r3d.lastViewMatrix || !glm) return null;
+
+    const canvas = r3d.canvas;
+    const rect = canvas.getBoundingClientRect();
+
+    // Normalize coordinates to NDC
+    const x = ((screenX - rect.left) / rect.width) * 2 - 1;
+    const y = 1 - ((screenY - rect.top) / rect.height) * 2;
+
+    const invProj = glm.mat4.create();
+    glm.mat4.invert(invProj, r3d.lastProjectionMatrix);
+    const invView = glm.mat4.create();
+    glm.mat4.invert(invView, r3d.lastViewMatrix);
+
+    const unproject = (nx, ny, nz) => {
+        const clipPos = glm.vec4.fromValues(nx, ny, nz, 1.0);
+        const viewPos = glm.vec4.create();
+        glm.vec4.transformMat4(viewPos, clipPos, invProj);
+        glm.vec4.scale(viewPos, viewPos, 1.0 / viewPos[3]);
+        const worldPos = glm.vec4.create();
+        glm.vec4.transformMat4(worldPos, viewPos, invView);
+        return glm.vec3.fromValues(worldPos[0], worldPos[1], worldPos[2]);
+    };
+
+    const nearPt = unproject(x, y, -1.0);
+    const farPt = unproject(x, y, 1.0);
+
+    const dir = glm.vec3.create();
+    glm.vec3.subtract(dir, farPt, nearPt);
+    glm.vec3.normalize(dir, dir);
+
+    return { origin: nearPt, direction: dir };
+}
+
 function getRotateRadius(materia, transform, zoom) {
     const dims = getMateriaDimensions(materia);
     const w = dims.width * Math.abs(transform.scale.x);
@@ -816,47 +856,51 @@ export function initialize(dependencies) {
             case 'move-z':
                 {
                     if (is3D && glm) {
+                        const ray = getMouseRay3D(moveEvent.clientX, moveEvent.clientY);
+                        if (!ray) break;
+
+                        // 1. Determine world axis vector
                         const isY = dragState.handle === 'move-y';
-                        const axis = dragState.handle === 'move-x' ? [1,0,0] : (isY ? [0,-1,0] : [0,0,1]);
+                        const localAxis = dragState.handle === 'move-x' ? [1,0,0] : (isY ? [0,-1,0] : [0,0,1]);
                         const q = glm.quat.create();
                         glm.quat.fromEuler(q, dragState.initialTransform.rotationX || 0, dragState.initialTransform.rotationY || 0, dragState.initialTransform.rotationZ || 0);
                         const worldAxis = glm.vec3.create();
-                        glm.vec3.transformQuat(worldAxis, axis, q);
+                        glm.vec3.transformQuat(worldAxis, localAxis, q);
 
-                        const cam = renderer.camera;
-                        const camQ = glm.quat.create();
-                        glm.quat.fromEuler(camQ, cam.rotation.x, cam.rotation.y, 0);
-                        const camRight = glm.vec3.create();
-                        glm.vec3.transformQuat(camRight, [1,0,0], camQ);
-                        const camUp = glm.vec3.create();
-                        glm.vec3.transformQuat(camUp, [0,-1,0], camQ); // In CE, -Y is UP visually/internally for editor navigation
+                        // 2. Find closest points between the world axis line and the mouse ray
+                        // Line 1 (Axis): P = P0 + u * v  (v is worldAxis)
+                        // Line 2 (Ray): Q = Q0 + v * w   (w is ray direction)
+                        const p0 = glm.vec3.fromValues(dragState.initialTransform.x, dragState.initialTransform.y, dragState.initialTransform.z || 0);
+                        const v = worldAxis;
+                        const q0 = ray.origin;
+                        const w = ray.direction;
 
-                        const screenDx = moveEvent.clientX - dragState.initialMousePos.x;
-                        const screenDy = -(moveEvent.clientY - dragState.initialMousePos.y);
+                        // Solving for u (distance along axis)
+                        const w1 = glm.vec3.create();
+                        glm.vec3.subtract(w1, p0, q0);
+                        const a = glm.vec3.dot(v, v);
+                        const b = glm.vec3.dot(v, w);
+                        const c = glm.vec3.dot(w, w);
+                        const d = glm.vec3.dot(v, w1);
+                        const e = glm.vec3.dot(w, w1);
+                        const denom = a * c - b * b;
 
-                        // Project world axis onto camera right and up
-                        const axisOnScreenX = glm.vec3.dot(worldAxis, camRight);
-                        const axisOnScreenY = glm.vec3.dot(worldAxis, camUp);
+                        if (Math.abs(denom) > 1e-6) {
+                            const u = (b * e - c * d) / denom;
+                            const deltaU = u - (dragState.initialU || 0);
 
-                        const dist = glm.vec3.distance([cam.x, cam.y, cam.z], [transform.x, transform.y, transform.z || 0]);
-                        const sensitivity = dist / 1000;
+                            let nextPos = [p0[0] + v[0] * deltaU, p0[1] + v[1] * deltaU, p0[2] + v[2] * deltaU];
 
-                        const moveAmount = (screenDx * axisOnScreenX + screenDy * axisOnScreenY) * sensitivity;
+                            if (snapEnabled) {
+                                nextPos[0] = Math.round(nextPos[0] / snapSize) * snapSize;
+                                nextPos[1] = Math.round(nextPos[1] / snapSize) * snapSize;
+                                nextPos[2] = Math.round(nextPos[2] / snapSize) * snapSize;
+                            }
 
-                        let nextPos = [dragState.initialTransform.x, dragState.initialTransform.y, dragState.initialTransform.z || 0];
-                        nextPos[0] += worldAxis[0] * moveAmount;
-                        nextPos[1] += worldAxis[1] * moveAmount;
-                        nextPos[2] += worldAxis[2] * moveAmount;
-
-                        if (snapEnabled) {
-                            nextPos[0] = Math.round(nextPos[0] / snapSize) * snapSize;
-                            nextPos[1] = Math.round(nextPos[1] / snapSize) * snapSize;
-                            nextPos[2] = Math.round(nextPos[2] / snapSize) * snapSize;
+                            transform.x = nextPos[0];
+                            transform.y = nextPos[1];
+                            transform.z = nextPos[2];
                         }
-
-                        transform.x = nextPos[0];
-                        transform.y = nextPos[1];
-                        transform.z = nextPos[2];
                     } else {
                         if (dragState.handle === 'move-x') transform.x = dragState.initialTransform.x + (snapEnabled ? Math.round(totalDx / snapSize) * snapSize : totalDx);
                         if (dragState.handle === 'move-y') transform.y = dragState.initialTransform.y + (snapEnabled ? Math.round(totalDy / snapSize) * snapSize : totalDy);
@@ -866,35 +910,49 @@ export function initialize(dependencies) {
             case 'move-xy':
                 {
                     if (is3D && glm) {
-                        // In 3D, move object on a plane parallel to the camera view
+                        const ray = getMouseRay3D(moveEvent.clientX, moveEvent.clientY);
+                        if (!ray) break;
+
+                        // Create a plane parallel to camera view passing through initial transform
                         const cam = renderer.camera;
                         const camQ = glm.quat.create();
                         glm.quat.fromEuler(camQ, cam.rotation.x, cam.rotation.y, 0);
-                        const camRight = glm.vec3.create();
-                        glm.vec3.transformQuat(camRight, [1,0,0], camQ);
-                        const camUp = glm.vec3.create();
-                        glm.vec3.transformQuat(camUp, [0,-1,0], camQ);
+                        const planeNormal = glm.vec3.fromValues(0, 0, 1);
+                        glm.vec3.transformQuat(planeNormal, planeNormal, camQ);
 
-                        const screenDxTotal = moveEvent.clientX - dragState.initialMousePos.x;
-                        const screenDyTotal = -(moveEvent.clientY - dragState.initialMousePos.y);
+                        const planePoint = glm.vec3.fromValues(dragState.initialTransform.x, dragState.initialTransform.y, dragState.initialTransform.z || 0);
 
-                        const dist = glm.vec3.distance([cam.x, cam.y, cam.z], [transform.x, transform.y, transform.z || 0]);
-                        const sensitivity = dist / 1000;
+                        // Ray-Plane intersection: t = (p0 - l0) . n / (l . n)
+                        const l0 = ray.origin;
+                        const l = ray.direction;
+                        const p0 = planePoint;
+                        const n = planeNormal;
 
-                        let nextPos = [dragState.initialTransform.x, dragState.initialTransform.y, dragState.initialTransform.z || 0];
-                        nextPos[0] += (camRight[0] * screenDxTotal + camUp[0] * screenDyTotal) * sensitivity;
-                        nextPos[1] += (camRight[1] * screenDxTotal + camUp[1] * screenDyTotal) * sensitivity;
-                        nextPos[2] += (camRight[2] * screenDxTotal + camUp[2] * screenDyTotal) * sensitivity;
+                        const denom = glm.vec3.dot(l, n);
+                        if (Math.abs(denom) > 1e-6) {
+                            const p0_l0 = glm.vec3.create();
+                            glm.vec3.subtract(p0_l0, p0, l0);
+                            const t = glm.vec3.dot(p0_l0, n) / denom;
 
-                        if (snapEnabled) {
-                            nextPos[0] = Math.round(nextPos[0] / snapSize) * snapSize;
-                            nextPos[1] = Math.round(nextPos[1] / snapSize) * snapSize;
-                            nextPos[2] = Math.round(nextPos[2] / snapSize) * snapSize;
+                            const intersection = glm.vec3.create();
+                            glm.vec3.scaleAndAdd(intersection, l0, l, t);
+
+                            let nextPos = [
+                                intersection[0] + (dragState.offsetFromRay ? dragState.offsetFromRay[0] : 0),
+                                intersection[1] + (dragState.offsetFromRay ? dragState.offsetFromRay[1] : 0),
+                                intersection[2] + (dragState.offsetFromRay ? dragState.offsetFromRay[2] : 0)
+                            ];
+
+                            if (snapEnabled) {
+                                nextPos[0] = Math.round(nextPos[0] / snapSize) * snapSize;
+                                nextPos[1] = Math.round(nextPos[1] / snapSize) * snapSize;
+                                nextPos[2] = Math.round(nextPos[2] / snapSize) * snapSize;
+                            }
+
+                            transform.x = nextPos[0];
+                            transform.y = nextPos[1];
+                            transform.z = nextPos[2];
                         }
-
-                        transform.x = nextPos[0];
-                        transform.y = nextPos[1];
-                        transform.z = nextPos[2];
                     } else {
                         let nextX = dragState.initialTransform.x + totalDx;
                         let nextY = dragState.initialTransform.y + totalDy;
@@ -1680,18 +1738,75 @@ export function initialize(dependencies) {
                 e.stopPropagation();
                 isDragging = true;
                 const transform = selectedMateria.getComponent(Components.Transform);
+                const initialX = transform ? transform.x : 0;
+                const initialY = transform ? transform.y : 0;
+                const initialZ = transform ? (transform.z || 0) : 0;
+
+                let offsetFromRay = [0, 0, 0];
+                let initialU = 0; // Initial distance along axis
+                if (is3D && window.glMatrix) {
+                    const ray = getMouseRay3D(e.clientX, e.clientY);
+                    if (ray) {
+                        const glm = window.glMatrix;
+                        const p0 = [initialX, initialY, initialZ];
+
+                        if (hitHandle === 'move-xy') {
+                            // Calculate offset from ray intersection with move plane
+                            const camQ = glm.quat.create();
+                            glm.quat.fromEuler(camQ, renderer.camera.rotation.x, renderer.camera.rotation.y, 0);
+                            const planeNormal = glm.vec3.fromValues(0, 0, 1);
+                            glm.vec3.transformQuat(planeNormal, planeNormal, camQ);
+
+                            const denom = glm.vec3.dot(ray.direction, planeNormal);
+                            if (Math.abs(denom) > 1e-6) {
+                                const p0_l0 = glm.vec3.create();
+                                glm.vec3.subtract(p0_l0, p0, ray.origin);
+                                const t = glm.vec3.dot(p0_l0, planeNormal) / denom;
+                                const intersection = glm.vec3.create();
+                                glm.vec3.scaleAndAdd(intersection, ray.origin, ray.direction, t);
+                                glm.vec3.subtract(offsetFromRay, p0, intersection);
+                            }
+                        } else if (hitHandle.startsWith('move-')) {
+                            // Calculate initial 'u' for axis handles
+                            const isY = hitHandle === 'move-y';
+                            const localAxis = hitHandle === 'move-x' ? [1,0,0] : (isY ? [0,-1,0] : [0,0,1]);
+                            const q = glm.quat.create();
+                            glm.quat.fromEuler(q, transform.rotationX || 0, transform.rotationY || 0, transform.rotationZ || 0);
+                            const worldAxis = glm.vec3.create();
+                            glm.vec3.transformQuat(worldAxis, localAxis, q);
+
+                            const v = worldAxis;
+                            const q0 = ray.origin;
+                            const w = ray.direction;
+                            const w1 = glm.vec3.create();
+                            glm.vec3.subtract(w1, p0, q0);
+                            const a = glm.vec3.dot(v, v);
+                            const b = glm.vec3.dot(v, w);
+                            const c = glm.vec3.dot(w, w);
+                            const d = glm.vec3.dot(v, w1);
+                            const e = glm.vec3.dot(w, w1);
+                            const denom = a * c - b * b;
+                            if (Math.abs(denom) > 1e-6) {
+                                initialU = (b * e - c * d) / denom;
+                            }
+                        }
+                    }
+                }
+
                 dragState = {
                     handle: hitHandle,
                     materia: selectedMateria,
                     initialTransform: transform ? {
-                        x: transform.x,
-                        y: transform.y,
-                        z: transform.z || 0,
+                        x: initialX,
+                        y: initialY,
+                        z: initialZ,
                         rotation: transform.rotation,
                         scale: { x: transform.scale.x, y: transform.scale.y, z: transform.scale.z || 1 }
                     } : null,
                     initialMouseWorld: screenToWorld(canvasPos.x, canvasPos.y),
-                    initialMousePos: { x: e.clientX, y: e.clientY }
+                    initialMousePos: { x: e.clientX, y: e.clientY },
+                    offsetFromRay: offsetFromRay,
+                    initialU: initialU
                 };
                 lastMousePosition = { x: e.clientX, y: e.clientY };
 
