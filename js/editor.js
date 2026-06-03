@@ -11,7 +11,7 @@ import * as AnimationEditorWindow from './editor/ui/AnimationEditorWindow.js';
 import { initialize as initializePreferences, getPreferences, loadExternalPreferences } from './editor/ui/PreferencesWindow.js';
 import { initialize as initializeProjectSettings, populateUI as populateProjectSettingsUI, saveProjectConfig as saveProjectConfigFromModule } from './editor/ui/ProjectSettingsWindow.js';
 import { initialize as initializeAnimatorController, openAnimatorController } from './editor/ui/AnimatorControllerWindow.js';
-import { initialize as initializeHierarchy, updateHierarchy, duplicateSelectedMateria, handleContextMenuAction as handleHierarchyContextMenuAction } from './editor/ui/HierarchyWindow.js';
+import { initialize as initializeHierarchy, updateHierarchy, duplicateSelectedMateria, handleContextMenuAction as handleHierarchyContextMenuAction, setContextMateria as setHierarchyContextMateria } from './editor/ui/HierarchyWindow.js';
 import { initialize as initializeInspector, updateInspector, refreshInspectorValues } from './editor/ui/InspectorWindow.js';
 import { initialize as initializeAssetBrowser, updateAssetBrowser, getCurrentDirectoryHandle, handleContextMenuAction as handleAssetContextMenuAction } from './editor/ui/AssetBrowserWindow.js';
 import { initialize as initializeUIEditor, openUiAsset, openUiEditor as openUiEditorFromModule, createUiSystemFile } from './editor/ui/UIEditorWindow.js';
@@ -4862,7 +4862,11 @@ public start() {
                 }
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime, getCpuExecutionTime });
-            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, updateAssetBrowserCallback: updateAssetBrowser, Components, Components3D: window.Components3D, updateScene, getActiveView, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool, getCurrentProjectConfig: () => currentProjectConfig, getDeltaTime: () => deltaTime });
+            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, showContextMenuCallback: (menu, e) => {
+                const selected = getSelectedMateria();
+                setHierarchyContextMateria(selected);
+                showContextMenu(menu, e);
+            }, updateInspectorCallback: updateInspector, updateAssetBrowserCallback: updateAssetBrowser, Components, Components3D: window.Components3D, updateScene, getActiveView, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool, getCurrentProjectConfig: () => currentProjectConfig, getDeltaTime: () => deltaTime });
             window._SceneView = SceneView;
             Terminal.initialize(dom, projectsDirHandle);
 

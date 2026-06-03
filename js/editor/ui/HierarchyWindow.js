@@ -178,6 +178,10 @@ export function initialize(dependencies) {
     setupEventListeners();
 }
 
+export function setContextMateria(materia) {
+    contextMateria = materia;
+}
+
 export function handleContextMenuAction(action) {
     const selectedMateria = getSelectedMateria();
     const L = window.Localization;

@@ -36,6 +36,7 @@ let lastSelectedId = -1;
 let lastPaintedCoords = { col: -1, row: -1 };
 // isPanning is no longer needed as a module-level state
 let lastMousePosition = { x: 0, y: 0 };
+let showContextMenuCallback = () => {};
 let dragState = {}; // To hold info about the current drag operation
 // debugDeltas is no longer needed
 
@@ -805,6 +806,7 @@ export function initialize(dependencies) {
     InputManager = dependencies.InputManager;
     getSelectedMateria = dependencies.getSelectedMateria;
     selectMateria = dependencies.selectMateria;
+    showContextMenuCallback = dependencies.showContextMenuCallback;
     updateInspector = dependencies.updateInspectorCallback;
     updateAssetBrowser = dependencies.updateAssetBrowserCallback;
     Components = dependencies.Components;
@@ -1262,9 +1264,53 @@ export function initialize(dependencies) {
 
     sceneCanvases.forEach(canvas => {
         canvas.addEventListener('contextmenu', e => {
-            // ALWAYS prevent context menu on scene canvases to avoid browser interference
             e.preventDefault();
             e.stopPropagation();
+
+            const rect = canvas.getBoundingClientRect();
+            const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
+            const config = getCurrentProjectConfig();
+            const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+
+            let targetId = null;
+            if (is3D) {
+                const renderer3D = window._Renderer3D;
+                if (renderer3D) {
+                    targetId = renderer3D.pick(SceneManager.currentScene, null, canvasPos.x, canvasPos.y, { editorCamera: renderer.camera });
+                }
+            } else {
+                targetId = pick2D(canvasPos);
+            }
+
+            if (targetId !== null) {
+                selectMateria(targetId);
+            } else {
+                selectMateria(null);
+            }
+
+            const menu = document.getElementById('hierarchy-context-menu');
+            if (menu && showContextMenuCallback) {
+                // We need to set the global project type state for the menu
+                const projectType = window.currentProjectConfig?.projectType || '2d';
+                const is3DProject = projectType === '3d';
+
+                const updateDisabledState = (el, disabled) => {
+                    el.classList.toggle('disabled', disabled);
+                    el.style.display = 'block';
+                    const children = el.querySelectorAll('li, span, ul');
+                    children.forEach(child => child.classList.toggle('disabled', disabled));
+                };
+
+                menu.querySelectorAll('.only-3d').forEach(el => updateDisabledState(el, !is3DProject));
+                menu.querySelectorAll('.only-2d').forEach(el => updateDisabledState(el, is3DProject));
+
+                // Set context materia for HierarchyWindow actions
+                // We rely on editor.js or HierarchyWindow.js to handle the actual context reference if needed,
+                // but since we just selected the object, context actions will naturally apply to it.
+
+                showContextMenuCallback(menu, e);
+            }
         });
     });
 
@@ -1719,18 +1765,27 @@ export function initialize(dependencies) {
             const config = getCurrentProjectConfig();
             const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
 
-            if (is3D && !isAddingLayer && activeTool !== 'pan') {
-                const renderer3D = window._Renderer3D; // Assumed exposed or accessible
-                if (renderer3D) {
-                    const pickedId = renderer3D.pick(SceneManager.currentScene, null, canvasPos.x, canvasPos.y, { editorCamera: renderer.camera });
-                    if (pickedId !== null) {
-                        selectMateria(pickedId);
-                        return;
+            if (!isAddingLayer && activeTool !== 'pan') {
+                let pickedId = null;
+                if (is3D) {
+                    const renderer3D = window._Renderer3D;
+                    if (renderer3D) {
+                        pickedId = renderer3D.pick(SceneManager.currentScene, null, canvasPos.x, canvasPos.y, { editorCamera: renderer.camera });
                     }
+                } else {
+                    pickedId = pick2D(canvasPos);
+                }
+
+                if (pickedId !== null) {
+                    selectMateria(pickedId);
+                    // Don't return yet, we might want to drag it immediately if it was already selected
+                } else {
+                    selectMateria(null);
+                    return;
                 }
             }
 
-            if (!selectedMateria || activeTool === 'pan') return;
+            if (!getSelectedMateria() || activeTool === 'pan') return;
 
             const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCircleColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos) || checkUIGizmoHit(canvasPos);
 
@@ -1819,6 +1874,35 @@ export function initialize(dependencies) {
     });
     });
 
+function pick2D(canvasPos) {
+    if (!renderer || !SceneManager.currentScene) return null;
+    const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
+
+    // Iterate in reverse to pick the topmost object
+    const allMaterias = SceneManager.currentScene.getAllMaterias().reverse();
+
+    for (const materia of allMaterias) {
+        if (!materia.isActive) continue;
+
+        const transform = materia.getComponent(Components.Transform);
+        if (!transform) continue;
+
+        const dims = getMateriaDimensions(materia);
+        const w = dims.width * Math.abs(transform.scale.x);
+        const h = dims.height * Math.abs(transform.scale.y);
+
+        // Simple AABB hit detection for 2D
+        const rad = -transform.rotation * Math.PI / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+        const lx = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
+        const ly = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
+
+        if (lx >= -w/2 && lx <= w/2 && ly >= -h/2 && ly <= h/2) {
+            return materia.id;
+        }
+    }
+    return null;
 }
 
 export function enterAddLayerMode() {
