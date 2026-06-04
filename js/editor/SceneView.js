@@ -1874,6 +1874,8 @@ export function initialize(dependencies) {
     });
     });
 
+}
+
 function pick2D(canvasPos) {
     if (!renderer || !SceneManager.currentScene) return null;
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);

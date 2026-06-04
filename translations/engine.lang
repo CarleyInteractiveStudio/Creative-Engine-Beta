@@ -279,7 +279,6 @@ EDITAR: Editar
 VENTANA: Ventana
 AYUDA: Ayuda
 CURSO_SCRIPTING: Curso de Scripting
-TUTORIALES: Tutoriales
 REPORTAR_FALLOS: Reportar Bugs/Errores/Fallos
 DOCUMENTACION: Documentación
 NUEVA_ESCENA: Nueva Escena
@@ -365,7 +364,6 @@ TRIANGLE: Triángulo 3D
 CAPSULA: Cápsula
 UI: UI
 BOTON: Botón
-PANEL: Panel
 TEXTO: Texto
 LUZ: Luz
 LUZ_2D: Luz 2D
@@ -466,9 +464,6 @@ SIN_SCRIPTS_HINT: No se encontraron scripts (.ces) en la carpeta Assets.
 ERROR_BUSCAR_SCRIPTS: Error al buscar scripts.
 
 # Engine Terms
-POSICION: Posición
-ROTACION: Rotación
-ESCALA: Escala
 VELOCIDAD: Velocidad
 POTENCIA: Potencia
 MASA: Masa
@@ -496,12 +491,6 @@ OPTIMIZAR_MEMORIA_AHORA: Optimizar Memoria Ahora
 LIMITE_CPU: Límite de CPU (%)
 
 # Performance
-RENDIMIENTO: Desempenho
-MAX_FPS: FPS Máximo
-MIN_FPS: FPS Mínimo
-HINT_MAX_FPS: Limita os FPS para economizar bateria e recursos. Use 0 para sem limite.
-HINT_MIN_FPS: O motor ativará otimizações extremas se o desempenho cair perto deste valor.
-HINT_MIN_FPS_NOTICE: Nota: Esta quantidade mínima não é garantida, mas ativará uma otimização profunda para tentar manter a fluidez.
 
 # Combat & Health
 HEALTH: Vida
@@ -527,7 +516,6 @@ REPARAR: Reparar
 HISTORIAL_SCRIPT: Historial de Versiones
 SELECCIONAR_VERSION_HINT: Selecciona una versión para restaurarla. Se conservan las últimas 10.
 SIN_HISTORIAL: No hay versiones anteriores guardadas para este archivo.
-VERSION: Versión
 RESTAURAR: Restaurar
 VERSION_RESTAURADA: Versión restaurada en el editor. Recuerda guardar para aplicar los cambios.
 NADA_QUE_REPARAR: No se encontraron errores obvios que reparar.
@@ -614,7 +602,6 @@ SHOW_IN_GAME_GLOBAL: Mostrar en Juego (Global)
 POS_XY: Pos (X/Y)
 SIZE_WH: Tamaño (W/H)
 VISIBLE_IN_GAME: Visible en Juego
-LONGITUD: Longitud
 GROSOR: Grosor
 IMAGEN: Imagen
 HUESOS_ASIGNADOS: Huesos Asignados
@@ -899,7 +886,6 @@ ME_GUSTAS: Likes
 CREAR_CARPETA: Create Folder
 NOMBRE_CARPETA_PROMPT: Enter the name for the new folder:
 CREAR_CONTROLADOR_ANIMACION: Create Animation Controller
-CREAR_CONTROLADOR_ANIMACION: Create Animation Controller
 NOMBRE_CONTROLADOR_PROMPT: Enter the name for the new controller (.ceanim):
 CREAR_PREFAB: Create Prefab
 NOMBRE_PREFAB_PROMPT: Enter the name for the new prefab (.ceprefab):
@@ -935,7 +921,6 @@ EDITAR: Edit
 VENTANA: Window
 AYUDA: Help
 CURSO_SCRIPTING: Scripting Course
-TUTORIALES: Tutorials
 REPORTAR_FALLOS: Report Bugs/Errors/Failures
 DOCUMENTACION: Documentation
 NUEVA_ESCENA: New Scene
@@ -1021,7 +1006,6 @@ TRIANGLE: 3D Triangle
 CAPSULA: Capsule
 UI: UI
 BOTON: Button
-PANEL: Panel
 TEXTO: Text
 LUZ: Light
 LUZ_2D: 2D Light
@@ -1123,9 +1107,6 @@ SIN_SCRIPTS_HINT: No scripts (.ces) found in the Assets folder.
 ERROR_BUSCAR_SCRIPTS: Error finding scripts.
 
 # Engine Terms
-POSICION: Position
-ROTACION: Rotation
-ESCALA: Scale
 VELOCIDAD: Speed
 POTENCIA: Power
 MASA: Mass
@@ -1176,7 +1157,6 @@ REPARAR: Repair
 HISTORIAL_SCRIPT: Version History
 SELECCIONAR_VERSION_HINT: Select a version to restore it. The last 10 are kept.
 SIN_HISTORIAL: No previous versions saved for this file.
-VERSION: Version
 RESTAURAR: Restore
 VERSION_RESTAURADA: Version restored in the editor. Remember to save to apply changes.
 NADA_QUE_REPARAR: No obvious errors found to repair.
@@ -1263,7 +1243,6 @@ SHOW_IN_GAME_GLOBAL: Show in Game (Global)
 POS_XY: Pos (X/Y)
 SIZE_WH: Size (W/H)
 VISIBLE_IN_GAME: Visible in Game
-LONGITUD: Length
 GROSOR: Thickness
 IMAGEN: Image
 HUESOS_ASIGNADOS: Assigned Bones
@@ -1360,7 +1339,6 @@ CARGANDO_LIBS: Carregando bibliotecas...
 HA_OCURRIDO_ERROR: Ocorreu um erro.
 REINTENTAR: Repetir
 VOLVER_INICIO: Voltar ao Início
-OPT_LEVEL_NOTICE: Nivel de Optimización: {level} (FPS: {fps})
 CONCEDER_PERMISOS: Conceder Permissões
 ERROR_PERMISOS_DETALLES: O Creative Engine precisa da sua permissão para ler e escrever na pasta dos seus projetos.
 CARL_WELCOME_MSG: Olá! Eu sou o Carl, o seu assistente do Creative Engine. Como posso ajudar você a construir hoje?
@@ -1531,14 +1509,6 @@ DETENER_COLAB: Detener Colaboración
 INVITACION_PENDIENTE: Invitación de Colaboración
 ACEPTAR: Aceptar
 RECHAZAR: Rechazar
-COLABORAR: Collaborate
-COLABORAR_MENU_DESC: Manage real-time collaboration.
-INVITAR_COLAB: Invite to Collaborate
-INVITAR_COLAB_HINT: Share this code with other developers on your local network:
-DETENER_COLAB: Stop Collaboration
-INVITACION_PENDIENTE: Collaboration Invitation
-ACEPTAR: Accept
-RECHAZAR: Reject
 IMPORTAR_PROYECTO: Importar Projeto...
 EXPORTAR_PROYECTO: Exportar Projeto...
 IMPORTAR_ASSET: Importar Asset...
@@ -1615,7 +1585,6 @@ TRIANGLE: Triângulo 3D
 CAPSULA: Cápsula
 UI: UI
 BOTON: Botão
-PANEL: Painel
 TEXTO: Texto
 LUZ: Luz
 LUZ_2D: Luz 2D
@@ -1707,9 +1676,6 @@ SIN_SCRIPTS_HINT: Nenhum script (.ces) encontrado na pasta Assets.
 ERROR_BUSCAR_SCRIPTS: Erro ao buscar scripts.
 
 # Engine Terms
-POSICION: Posição
-ROTACION: Rotação
-ESCALA: Escala
 VELOCIDAD: Velocidade
 POTENCIA: Potência
 MASA: Massa
@@ -2099,7 +2065,6 @@ TRIANGLE: 3D Треугольник
 CAPSULA: Капсула
 UI: Интерфейс
 BOTON: Кнопка
-PANEL: Панель
 TEXTO: Текст
 LUZ: Свет
 LUZ_2D: 2D Свет
@@ -2197,9 +2162,6 @@ CREAR_CTRL_RAPIDO: Создать новый контроллер
 ABRIR_CTRL_RAPIDO: Открыть существующий
 
 # Engine Terms
-POSICION: Позиция
-ROTACION: Вращение
-ESCALA: Масштаб
 VELOCIDAD: Скорость
 POTENCIA: Мощность
 MASA: Масса
@@ -2248,7 +2210,6 @@ TRIGGER_TAG: Тег-активатор
 TRIGGER_KEY: Клавиша-активатор
 BUTTON_MATERIA: Объект кнопки
 SCENE_LOADER_DESC: Загружает сцену при столкновении игрока, нажатии клавиши или клике на назначенную кнопку.
-CARGA_ANIM_CTRL_HINT: Загрузите ассет контроллера (.ceanim), чтобы начать.
 CARGA_ANIM_CTRL_HINT_2: Вы можете создать новый или открыть существующий.
 ANIMACIONES: Анимации
 ESTADOS: Состояния
@@ -2397,7 +2358,6 @@ CARGANDO_LIBS: 正在加载库...
 HA_OCURRIDO_ERROR: 发生错误。
 REINTENTAR: 重试
 VOLVER_INICIO: 返回首页
-OPT_LEVEL_NOTICE: Nivel de Optimización: {level} (FPS: {fps})
 CONCEDER_PERMISOS: 授予权限
 ERROR_PERMISOS_DETALLES: Creative Engine 需要您的许可才能在您的项目文件夹中进行读写操作。
 CARL_WELCOME_MSG: 你好！我是 Carl，你的 Creative Engine 助手。今天我能帮你构建什么？
@@ -2603,7 +2563,6 @@ TRIANGLE: 3D 三角形
 CAPSULA: 胶囊体
 UI: 界面
 BOTON: 按钮
-PANEL: 面板
 TEXTO: 文本
 LUZ: 光源
 LUZ_2D: 2D 光源
@@ -2701,9 +2660,6 @@ CREAR_CTRL_RAPIDO: 创建新控制器
 ABRIR_CTRL_RAPIDO: 打开现有
 
 # Engine Terms
-POSICION: 位置
-ROTACION: 旋转
-ESCALA: 缩放
 VELOCIDAD: 速度
 POTENCIA: 功率
 MASA: 质量
@@ -2752,7 +2708,6 @@ TRIGGER_TAG: 触发标签
 TRIGGER_KEY: 触发按键
 BUTTON_MATERIA: 按钮对象
 SCENE_LOADER_DESC: 当玩家发生碰撞、按下按键或点击指定的按钮时加载场景。
-CARGA_ANIM_CTRL_HINT: 加载控制器资源 (.ceanim) 以开始。
 CARGA_ANIM_CTRL_HINT_2: 您可以创建一个新控制器或打开一个现有控制器。
 ANIMACIONES: 动画
 ESTADOS: 状态
@@ -2776,54 +2731,16 @@ CARL_TIP_ACTION: Ver sugerencia
 CARL_TIP_FIX_PROMPT: He notado que tienes este error varias veces: "{error}". ¿Quieres que analice tu código y te proponga una solución?
 
 # Novice Guide
-TITULO_NOVATO: Welcome!
-MSG_NOVATO: Hello, you have activated the novice checkbox. Here is a basic guide to get you started.
-DESACTIVAR_GUIA: Deactivate guide for this project
-CONSEJO_NOVATO_1: 1. Create a Matter in the Hierarchy to start your object.
-CONSEJO_NOVATO_2: 2. Add a Law (Component) in the Inspector to give it properties.
-CONSEJO_NOVATO_3: 3. Use Scripts (.ces) in the Browser to program the logic.
-IR_A_DOCUMENTACION: View Documentation
-ACCESOS_RAPIDOS: Quick Access:
 
 # Carl Proactive
-CARL_TIP_TITLE: Carl has a tip
-CARL_TIP_ACTION: See suggestion
-CARL_TIP_FIX_PROMPT: I've noticed you've had this error several times: "{error}". Would you like me to analyze your code and propose a fix?
 
 # Novice Guide
-TITULO_NOVATO: Bem-vindo!
-MSG_NOVATO: Olá, você ativou a caixa de novato. Aqui está um guia básico para você começar.
-DESACTIVAR_GUIA: Desativar guia para este projeto
-CONSEJO_NOVATO_1: 1. Crie uma Matéria na Hierarquia para iniciar seu objeto.
-CONSEJO_NOVATO_2: 2. Adicione uma Lei (Componente) no Inspetor para dar propriedades.
-CONSEJO_NOVATO_3: 3. Use Scripts (.ces) no Navegador para programar a lógica.
-IR_A_DOCUMENTACION: Ver Documentação
-ACCESOS_RAPIDOS: Acessos Rápidos:
 
 # Carl Proactive
-CARL_TIP_TITLE: Carl tem uma dica
-CARL_TIP_ACTION: Ver sugestão
-CARL_TIP_FIX_PROMPT: Notei que você teve esse erro várias vezes: "{error}". Gostaria que eu analisasse seu código e propusesse uma correção?
 
 # Novice Guide
-TITULO_NOVATO: Добро пожаловать!
-MSG_NOVATO: Привет, вы активировали флажок новичка. Вот базовое руководство, которое поможет вам начать работу.
-DESACTIVAR_GUIA: Отключить руководство для этого проекта
-CONSEJO_NOVATO_1: 1. Создайте Материю в Иерархии, чтобы начать свой объект.
-CONSEJO_NOVATO_2: 2. Добавьте Закон (Компонент) в Инспекторе, чтобы придать ему свойства.
-CONSEJO_NOVATO_3: 3. Используйте скрипты (.ces) в Браузере для программирования логики.
-IR_A_DOCUMENTACION: Просмотреть документацию
-ACCESOS_RAPIDOS: Быстрый доступ:
 
 # Novice Guide
-TITULO_NOVATO: 欢迎！
-MSG_NOVATO: 您好，您已激活新手复选框。这是一份帮助您入门的基础指南。
-DESACTIVAR_GUIA: 停用此项目的指南
-CONSEJO_NOVATO_1: 1. 在层级面板中创建一个“物质”来开始您的对象。
-CONSEJO_NOVATO_2: 2. 在检查器中添加一个“法律”（组件）来赋予其属性。
-CONSEJO_NOVATO_3: 3. 在浏览器中使用脚本 (.ces) 来编写逻辑。
-IR_A_DOCUMENTACION: 查看文档
-ACCESOS_RAPIDOS: 快速访问：
 
 # Preferences
 RESTABLECER_MOTOR: Restablecer Datos del Motor
