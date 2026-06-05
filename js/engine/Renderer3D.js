@@ -502,7 +502,12 @@ export class Renderer3D {
         });
 
         const pixels = new Uint8Array(4);
-        gl.readPixels(x, (h - 1) - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        // Using gl.canvas.clientHeight instead of h to handle potential CSS scaling
+        const rect = gl.canvas.getBoundingClientRect();
+        const pickX = (x / rect.width) * w;
+        const pickY = (y / rect.height) * h;
+
+        gl.readPixels(pickX, (h - 1) - pickY, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
         const pickedId = pixels[0] + (pixels[1] << 8) + (pixels[2] << 16);

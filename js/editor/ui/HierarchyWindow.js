@@ -33,6 +33,7 @@ let showContextMenuCallback = () => {};
 let projectsDirHandle = null; // Needed for drag-drop from assets
 let updateInspector = () => {}; // To refresh inspector after rename/delete
 let contextMateria = null; // DIRECT REFERENCE to the materia under the context menu
+let creationPosition = null; // Position where a new object should be created
 
 // The main update function for this module, which is exported
 export function updateHierarchy() {
@@ -180,6 +181,10 @@ export function initialize(dependencies) {
 
 export function setContextMateria(materia) {
     contextMateria = materia;
+}
+
+export function setCreationPosition(pos) {
+    creationPosition = pos;
 }
 
 export function handleContextMenuAction(action) {
@@ -567,6 +572,20 @@ export function handleContextMenuAction(action) {
     if (newMateria instanceof Promise) {
         newMateria.then(m => {
             if (m) {
+                 // Apply creation position if available
+                 if (creationPosition && !action.includes('rename') && !action.includes('delete') && !action.includes('duplicate')) {
+                     const transform = m.getComponent(Components.Transform);
+                     const uiTransform = m.getComponent(Components.UITransform);
+                     if (transform) {
+                         transform.x = creationPosition.x;
+                         transform.y = creationPosition.y;
+                         if (creationPosition.z !== undefined) transform.z = creationPosition.z;
+                     } else if (uiTransform) {
+                         uiTransform.position.x = creationPosition.x;
+                         uiTransform.position.y = creationPosition.y;
+                     }
+                 }
+
                  broadcastUpdate({ op: 'CREATE', data: SceneManager.serializeMateria(m, true) });
                  updateHierarchy();
                  setTimeout(() => selectMateriaCallback(m.id), 0);
@@ -576,6 +595,20 @@ export function handleContextMenuAction(action) {
     }
 
     if (newMateria) {
+        // Apply creation position if available
+        if (creationPosition && !action.includes('rename') && !action.includes('delete') && !action.includes('duplicate')) {
+            const transform = newMateria.getComponent(Components.Transform);
+            const uiTransform = newMateria.getComponent(Components.UITransform);
+            if (transform) {
+                transform.x = creationPosition.x;
+                transform.y = creationPosition.y;
+                if (creationPosition.z !== undefined) transform.z = creationPosition.z;
+            } else if (uiTransform) {
+                uiTransform.position.x = creationPosition.x;
+                uiTransform.position.y = creationPosition.y;
+            }
+        }
+
         // Broadcast creation
         broadcastUpdate({
             op: 'CREATE',
@@ -739,6 +772,9 @@ function setupEventListeners() {
     hierarchyContent.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         const item = e.target.closest('.hierarchy-item');
+
+        // If clicking in hierarchy, clear the scene creation position
+        creationPosition = null;
 
         // Determine the contextMateria from the right-clicked item. This is the crucial step.
         if (item) {

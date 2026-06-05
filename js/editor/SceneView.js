@@ -42,7 +42,7 @@ let dragState = {}; // To hold info about the current drag operation
 
 // --- Core Functions ---
 
-function screenToWorld(screenX, screenY) {
+export function screenToWorld(screenX, screenY) {
     if (!renderer || !renderer.camera) return { x: 0, y: 0 };
     const worldX = (screenX - renderer.canvas.width / 2) / renderer.camera.effectiveZoom + renderer.camera.x;
     const worldY = (screenY - renderer.canvas.height / 2) / renderer.camera.effectiveZoom + renderer.camera.y;
@@ -70,9 +70,6 @@ export function world3DToScreen(worldPos) {
 
     // NDC conversion
     const ndc = [clipPos[0] / clipPos[3], clipPos[1] / clipPos[3], clipPos[2] / clipPos[3]];
-
-    // Check if within visible range [-1, 1]
-    if (ndc[0] < -1.1 || ndc[0] > 1.1 || ndc[1] < -1.1 || ndc[1] > 1.1) return null;
 
     const width = canvas.width;
     const height = canvas.height;
@@ -1766,22 +1763,26 @@ export function initialize(dependencies) {
             const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
 
             if (!isAddingLayer && activeTool !== 'pan') {
-                let pickedId = null;
-                if (is3D) {
-                    const renderer3D = window._Renderer3D;
-                    if (renderer3D) {
-                        pickedId = renderer3D.pick(SceneManager.currentScene, null, canvasPos.x, canvasPos.y, { editorCamera: renderer.camera });
-                    }
-                } else {
-                    pickedId = pick2D(canvasPos);
-                }
+                const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCircleColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos) || checkUIGizmoHit(canvasPos);
 
-                if (pickedId !== null) {
-                    selectMateria(pickedId);
-                    // Don't return yet, we might want to drag it immediately if it was already selected
-                } else {
-                    selectMateria(null);
-                    return;
+                // Only pick new object if we didn't hit a gizmo handle
+                if (!hitHandle) {
+                    let pickedId = null;
+                    if (is3D) {
+                        const renderer3D = window._Renderer3D;
+                        if (renderer3D) {
+                            pickedId = renderer3D.pick(SceneManager.currentScene, null, canvasPos.x, canvasPos.y, { editorCamera: renderer.camera });
+                        }
+                    } else {
+                        pickedId = pick2D(canvasPos);
+                    }
+
+                    if (pickedId !== null) {
+                        selectMateria(pickedId);
+                    } else {
+                        selectMateria(null);
+                        return;
+                    }
                 }
             }
 
@@ -2738,7 +2739,10 @@ function drawOrientationGizmo() {
     const axes = [
         { vec: [1, 0, 0], color: '#ff4444', label: 'X' },
         { vec: [0, -1, 0], color: '#44ff44', label: 'Y' },
-        { vec: [0, 0, 1], color: '#4444ff', label: 'Z' }
+        { vec: [0, 0, 1], color: '#4444ff', label: 'Z' },
+        { vec: [-1, 0, 0], color: '#882222', label: '-X' },
+        { vec: [0, 1, 0], color: '#228822', label: '-Y' },
+        { vec: [0, 0, -1], color: '#222288', label: '-Z' }
     ];
 
     // Project and calculate depth
@@ -2755,9 +2759,11 @@ function drawOrientationGizmo() {
         const endX = centerX + a.px * size;
         const endY = centerY + a.py * size;
 
+        const isNegative = a.label.startsWith('-');
+
         // Draw line with rounded ends for a polished look
         ctx.strokeStyle = a.color;
-        ctx.lineWidth = 3;
+        ctx.lineWidth = isNegative ? 1 : 3;
         ctx.lineCap = 'round';
         ctx.beginPath();
         ctx.moveTo(centerX, centerY);
@@ -2767,19 +2773,21 @@ function drawOrientationGizmo() {
         // Draw small circle at the end (Unity style)
         ctx.fillStyle = a.color;
         ctx.beginPath();
-        ctx.arc(endX, endY, 4, 0, Math.PI * 2);
+        ctx.arc(endX, endY, isNegative ? 2 : 4, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw label with a small background for better readability
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 11px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
+        if (!isNegative) {
+            // Draw label with a small background for better readability
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 11px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
 
-        // Push label slightly beyond the axis end
-        const labelX = endX + a.px * 12;
-        const labelY = endY + a.py * 12;
-        ctx.fillText(a.label, labelX, labelY);
+            // Push label slightly beyond the axis end
+            const labelX = endX + a.px * 12;
+            const labelY = endY + a.py * 12;
+            ctx.fillText(a.label, labelX, labelY);
+        }
     });
 
     ctx.restore();
@@ -3013,39 +3021,29 @@ function draw3DGyzmoRects(gyzmo) {
         const hh = height / 2;
 
         const getPt = (ox, oy) => {
-            // Local to Materia center (applying layer offset lx, ly)
-            const localPos = [
-                (lx + ox) * transform.scale.x,
-                (ly + oy) * transform.scale.y,
-                0
-            ];
-            // Apply 3D Rotation
+            const localPos = [(lx + ox) * transform.scale.x, (ly + oy) * transform.scale.y, 0];
             const rotated = glm.vec3.create();
             glm.vec3.transformQuat(rotated, localPos, q);
-
-            return {
-                x: transform.x + rotated[0],
-                y: transform.y + rotated[1],
-                z: (transform.z || 0) + rotated[2]
-            };
+            return { x: transform.x + rotated[0], y: transform.y + rotated[1], z: (transform.z || 0) + rotated[2] };
         };
 
-        const p1 = world3DToScreen(getPt(-hw, -hh));
-        const p2 = world3DToScreen(getPt(hw, -hh));
-        const p3 = world3DToScreen(getPt(hw, hh));
-        const p4 = world3DToScreen(getPt(-hw, hh));
+        const pts = [getPt(-hw, -hh), getPt(hw, -hh), getPt(hw, hh), getPt(-hw, hh)];
+        const clr = color || '#00ff00';
 
-        if (p1 && p2 && p3 && p4) {
-            ctx.strokeStyle = color || '#00ff00';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
-            ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y);
-            ctx.closePath();
-            ctx.stroke();
+        // Draw edges with clipping
+        for (let i = 0; i < 4; i++) {
+            drawLineClipped(pts[i], pts[(i + 1) % 4], clr, 2);
+        }
 
+        // LENIENT FILL: only if all corners are in front of camera
+        const screenPts = pts.map(p => world3DToScreen(p));
+        if (screenPts.every(p => p !== null)) {
             ctx.globalAlpha = 0.2;
-            ctx.fillStyle = color || '#00ff00';
+            ctx.fillStyle = clr;
+            ctx.beginPath();
+            ctx.moveTo(screenPts[0].x, screenPts[0].y);
+            for (let i = 1; i < 4; i++) ctx.lineTo(screenPts[i].x, screenPts[i].y);
+            ctx.closePath();
             ctx.fill();
             ctx.globalAlpha = 1.0;
         }

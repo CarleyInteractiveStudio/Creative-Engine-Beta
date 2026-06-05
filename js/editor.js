@@ -11,7 +11,7 @@ import * as AnimationEditorWindow from './editor/ui/AnimationEditorWindow.js';
 import { initialize as initializePreferences, getPreferences, loadExternalPreferences } from './editor/ui/PreferencesWindow.js';
 import { initialize as initializeProjectSettings, populateUI as populateProjectSettingsUI, saveProjectConfig as saveProjectConfigFromModule } from './editor/ui/ProjectSettingsWindow.js';
 import { initialize as initializeAnimatorController, openAnimatorController } from './editor/ui/AnimatorControllerWindow.js';
-import { initialize as initializeHierarchy, updateHierarchy, duplicateSelectedMateria, handleContextMenuAction as handleHierarchyContextMenuAction, setContextMateria as setHierarchyContextMateria } from './editor/ui/HierarchyWindow.js';
+import { initialize as initializeHierarchy, updateHierarchy, duplicateSelectedMateria, handleContextMenuAction as handleHierarchyContextMenuAction, setContextMateria as setHierarchyContextMateria, setCreationPosition as setHierarchyCreationPosition } from './editor/ui/HierarchyWindow.js';
 import { initialize as initializeInspector, updateInspector, refreshInspectorValues } from './editor/ui/InspectorWindow.js';
 import { initialize as initializeAssetBrowser, updateAssetBrowser, getCurrentDirectoryHandle, handleContextMenuAction as handleAssetContextMenuAction } from './editor/ui/AssetBrowserWindow.js';
 import { initialize as initializeUIEditor, openUiAsset, openUiEditor as openUiEditorFromModule, createUiSystemFile } from './editor/ui/UIEditorWindow.js';
@@ -4863,6 +4863,36 @@ public start() {
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime, getCpuExecutionTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, showContextMenuCallback: (menu, e) => {
+                const rect = (dom.sceneCanvas3d && dom.sceneCanvas3d.style.display !== 'none' ? dom.sceneCanvas3d : dom.sceneCanvas).getBoundingClientRect();
+                const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
+                const config = getCurrentProjectConfig();
+                const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+
+                let worldPos = null;
+                if (is3D) {
+                    const ray = SceneView.getMouseRay3D(e.clientX, e.clientY);
+                    if (ray) {
+                        // Place on XZ plane (y=0)
+                        const glm = window.glMatrix;
+                        const normal = glm.vec3.fromValues(0, -1, 0); // Engine Y- is up
+                        const denom = glm.vec3.dot(ray.direction, normal);
+                        if (Math.abs(denom) > 1e-6) {
+                            const t = -glm.vec3.dot(ray.origin, normal) / denom;
+                            const hit = glm.vec3.create();
+                            glm.vec3.scaleAndAdd(hit, ray.origin, ray.direction, t);
+                            worldPos = { x: hit[0], y: hit[1], z: hit[2] };
+                        } else {
+                            // Fallback to origin or a fixed distance if looking horizontally
+                            worldPos = { x: 0, y: 0, z: 0 };
+                        }
+                    }
+                } else {
+                    worldPos = SceneView.screenToWorld(canvasPos.x, canvasPos.y);
+                }
+
+                setHierarchyCreationPosition(worldPos);
+
                 const selected = getSelectedMateria();
                 setHierarchyContextMateria(selected);
                 showContextMenu(menu, e);
