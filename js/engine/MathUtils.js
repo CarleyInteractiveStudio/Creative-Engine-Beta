@@ -200,9 +200,9 @@ export function estimateMateriaMemory(materia) {
     return { individual, total };
 }
 
-export function distancia(x1, y1, x2, y2) { return Math.sqrt((x2 - x1)**2 + (y2 - y1)**2); }
-export function seno(grados) { return Math.sin(grados * Math.PI / 180); }
-export function coseno(grados) { return Math.cos(grados * Math.PI / 180); }
+export function distance(x1, y1, x2, y2) { return Math.sqrt((x2 - x1)**2 + (y2 - y1)**2); }
+export function sin(degrees) { return Math.sin(degrees * Math.PI / 180); }
+export function cosin(degrees) { return Math.cos(degrees * Math.PI / 180); }
 
 // --- 3D Projection Utilities ---
 
