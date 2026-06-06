@@ -1,3 +1,4 @@
+import { world3DToScreen, drawLineClipped } from '../engine/MathUtils.js';
 // --- Module for Scene View Interactions and Gizmos ---
 
 import { getAbsoluteRect, getClosestAnchorPoint, getAnchorPosition } from '../engine/UITransformUtils.js';
@@ -49,41 +50,6 @@ export function screenToWorld(screenX, screenY) {
     return { x: worldX, y: worldY };
 }
 
-export function world3DToScreen(worldPos) {
-    const r3d = window._Renderer3D;
-    const glm = window.glMatrix;
-    if (!r3d || !r3d.lastProjectionMatrix || !r3d.lastViewMatrix || !glm) return null;
-
-    const canvas = r3d.canvas;
-    // Renderer3D uses a standard [x, y, z] world space.
-    // The Y-flip is handled by the projection matrix now.
-    const worldVec = glm.vec4.fromValues(worldPos.x, worldPos.y, worldPos.z || 0, 1.0);
-
-    const mvp = glm.mat4.create();
-    glm.mat4.multiply(mvp, r3d.lastProjectionMatrix, r3d.lastViewMatrix);
-
-    const clipPos = glm.vec4.create();
-    glm.vec4.transformMat4(clipPos, worldVec, mvp);
-
-    // Standard Frustum Culling in clip space
-    if (clipPos[3] < 0.001) return null;
-
-    // NDC conversion
-    const ndc = [clipPos[0] / clipPos[3], clipPos[1] / clipPos[3], clipPos[2] / clipPos[3]];
-
-    const width = canvas.width;
-    const height = canvas.height;
-
-    return {
-        x: (ndc[0] * 0.5 + 0.5) * width,
-        y: (0.5 - ndc[1] * 0.5) * height
-    };
-}
-
-/**
- * Returns a 3D ray {origin, direction} from screen coordinates.
- */
-export function getMouseRay3D(screenX, screenY) {
     const r3d = window._Renderer3D;
     const glm = window.glMatrix;
     if (!r3d || !r3d.lastProjectionMatrix || !r3d.lastViewMatrix || !glm) return null;
@@ -2918,86 +2884,6 @@ function drawRaycastGizmos() {
     ctx.restore();
 }
 
-function drawLineClipped(p1, p2, color, width = 1) {
-    const r3d = window._Renderer3D;
-    const glm = window.glMatrix;
-    if (!r3d || !r3d.lastProjectionMatrix || !r3d.lastViewMatrix || !glm) return;
-
-    const mvp = glm.mat4.create();
-    glm.mat4.multiply(mvp, r3d.lastProjectionMatrix, r3d.lastViewMatrix);
-
-    const v1 = glm.vec4.fromValues(p1.x, p1.y, p1.z || 0, 1.0);
-    const v2 = glm.vec4.fromValues(p2.x, p2.y, p2.z || 0, 1.0);
-
-    const c1 = glm.vec4.create();
-    const c2 = glm.vec4.create();
-    glm.vec4.transformMat4(c1, v1, mvp);
-    glm.vec4.transformMat4(c2, v2, mvp);
-
-    // Liang-Barsky-style clipping for Near Plane (W)
-    const wNear = 0.1;
-    if (c1[3] < wNear && c2[3] < wNear) return;
-
-    if (c1[3] < wNear) {
-        const t = (wNear - c1[3]) / (c2[3] - c1[3]);
-        glm.vec4.lerp(c1, c1, c2, t);
-    } else if (c2[3] < wNear) {
-        const t = (wNear - c2[3]) / (c1[3] - c2[3]);
-        glm.vec4.lerp(c2, c2, c1, t);
-    }
-
-    const w = r3d.canvas.width;
-    const h = r3d.canvas.height;
-
-    const s1 = { x: (c1[0]/c1[3] * 0.5 + 0.5) * w, y: (c1[1]/c1[3] * 0.5 + 0.5) * h };
-    const s2 = { x: (c2[0]/c2[3] * 0.5 + 0.5) * w, y: (c2[1]/c2[3] * 0.5 + 0.5) * h };
-
-    const { ctx } = renderer;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = width;
-    ctx.beginPath();
-    ctx.moveTo(s1.x, s1.y);
-    ctx.lineTo(s2.x, s2.y);
-    ctx.stroke();
-}
-
-function draw3DGrid() {
-    const prefs = getPreferences();
-    if (!prefs.showSceneGrid) return;
-
-    const { ctx, camera } = renderer;
-    if (!camera) return;
-
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0); // Screen Space
-
-    // --- Adaptive 3D Grid on XZ plane (Floor) ---
-    const dist = Math.abs(camera.y) || 500;
-    const magnitude = Math.pow(10, Math.floor(Math.log10(dist / 5)));
-    const step = Math.max(1, magnitude);
-
-    const gridRange = 50;
-    const gridColor = 'rgba(255, 255, 255, 0.1)';
-    const majorGridColor = 'rgba(255, 255, 255, 0.3)';
-
-    const snapX = Math.floor(camera.x / step) * step;
-    const snapZ = Math.floor(camera.z / step) * step;
-
-    const startX = snapX - (gridRange * step);
-    const endX = snapX + (gridRange * step);
-    const startZ = snapZ - (gridRange * step);
-    const endZ = snapZ + (gridRange * step);
-
-    // We skip floor grid lines in 2D overlay because Renderer3D already draws an infinite depth-tested grid.
-    // This prevents Z-fighting and ensures objects correctly occlude the grid.
-
-    // Main Axes (Infinite Origin Lines) - Removed redundant 2D overlay axes.
-    // They are now handled directly by the 3D grid shader for better performance and visual stability.
-
-    ctx.restore();
-}
-
-
 function draw3DGyzmoRects(gyzmo) {
     const transform = gyzmo.materia.getComponent(Components.Transform);
     if (!transform) return;
@@ -3032,7 +2918,7 @@ function draw3DGyzmoRects(gyzmo) {
 
         // Draw edges with clipping
         for (let i = 0; i < 4; i++) {
-            drawLineClipped(pts[i], pts[(i + 1) % 4], clr, 2);
+            drawLineClipped(ctx, pts[i], pts[(i + 1) % 4], clr, 2);
         }
 
         // LENIENT FILL: only if all corners are in front of camera

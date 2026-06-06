@@ -3,8 +3,6 @@
  * Includes vector operations, matrix transformations, and collision detection algorithms.
  */
 
-import { Transform, SpriteRenderer, Camera, Water, LineCollider2D, Gyzmo } from './Components.js';
-
 // Vector operations can be added here if needed.
 
 /**
@@ -14,178 +12,121 @@ import { Transform, SpriteRenderer, Camera, Water, LineCollider2D, Gyzmo } from 
  * @returns {Array<{x: number, y: number}>|null} An array of 4 vertex points or null if not applicable.
  */
 export function getOOB(materia, explicitPosition = null) {
-    const transform = materia.getComponent(Transform);
+    const transform = materia.getComponentByName('Transform');
     if (!transform) return null;
 
-    const spriteRenderer = materia.getComponent(SpriteRenderer);
-    const water = materia.getComponent(Water);
-    const lineCollider = materia.getComponent(LineCollider2D);
-    const gyzmo = materia.getComponent(Gyzmo);
+    const spriteRenderer = materia.getComponentByName('SpriteRenderer');
+    const textureRender = materia.getComponentByName('TextureRender');
+    const tilemap = materia.getComponentByName('Tilemap');
+    const terreno = materia.getComponentByName('Terreno2D');
+    const gyzmo = materia.getComponentByName('Gyzmo');
 
-    // Special case for World-Space Water
-    if (water && water._initializedWorldSpace) {
-        const b = water.bounds;
-        return [
-            { x: b.minX, y: b.minY },
-            { x: b.maxX, y: b.minY },
-            { x: b.maxX, y: b.maxY },
-            { x: b.minX, y: b.maxY }
-        ];
-    }
+    let w = 50, h = 50;
+    let pivotX = 0.5, pivotY = 0.5;
 
-    let w, h, pivotX = 0.5, pivotY = 0.5;
-
-    if (spriteRenderer && spriteRenderer.sprite && (spriteRenderer.sprite.naturalWidth || spriteRenderer.sprite.width)) {
-        w = spriteRenderer.sprite.naturalWidth || spriteRenderer.sprite.width;
-        h = spriteRenderer.sprite.naturalHeight || spriteRenderer.sprite.height;
-        pivotX = spriteRenderer.pivot ? spriteRenderer.pivot.x : 0.5;
-        pivotY = spriteRenderer.pivot ? spriteRenderer.pivot.y : 0.5;
-
-        // If using a sprite sheet, use the sprite's rect dimensions and pivot
+    if (spriteRenderer && spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
+        w = spriteRenderer.sprite.naturalWidth;
+        h = spriteRenderer.sprite.naturalHeight;
+        pivotX = spriteRenderer.pivot?.x ?? 0.5;
+        pivotY = spriteRenderer.pivot?.y ?? 0.5;
         if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
-            const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
-            if (spriteData.rect) {
-                w = spriteData.rect.width;
-                h = spriteData.rect.height;
-                pivotX = spriteData.pivot.x;
-                pivotY = spriteData.pivot.y;
-            }
+            const rect = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName].rect;
+            if (rect) { w = rect.width; h = rect.height; }
         }
-    } else if (water) {
-        w = water.width;
-        h = water.height;
-        pivotX = 0.5;
-        pivotY = 0.5;
-    } else if (lineCollider && lineCollider.points && lineCollider.points.length > 0) {
+    } else if (textureRender) {
+        if (textureRender.shape === 'Circle') { w = textureRender.radius * 2; h = textureRender.radius * 2; }
+        else { w = textureRender.width; h = textureRender.height; }
+    } else if (tilemap) {
+        const grid = materia.parent ? (materia.parent.getComponentByName ? materia.parent.getComponentByName('Grid') : null) : null;
+        if (grid) {
+            let minCol = Infinity, minRow = Infinity, maxCol = -Infinity, maxRow = -Infinity;
+            tilemap.layers.forEach(l => {
+                const lw = tilemap.width * grid.cellSize.x;
+                const lh = tilemap.height * grid.cellSize.y;
+                const lx = l.position.x * lw - lw / 2;
+                const ly = l.position.y * lh - lh / 2;
+                minCol = Math.min(minCol, lx); minRow = Math.min(minRow, ly);
+                maxCol = Math.max(maxCol, lx + lw); maxRow = Math.max(maxRow, ly + lh);
+            });
+            w = maxCol - minCol; h = maxRow - minRow;
+            pivotX = -minCol / (w || 1); pivotY = -minRow / (h || 1);
+        }
+    } else if (terreno) {
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        for (const p of lineCollider.points) {
-            minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
-            maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
-        }
-        w = maxX - minX;
-        h = maxY - minY;
-        // Adjust pivot to match the bounds center
-        pivotX = -minX / (w || 1);
-        pivotY = -minY / (h || 1);
+        terreno.chunks.forEach(chunk => {
+            minX = Math.min(minX, chunk.x); minY = Math.min(minY, chunk.y);
+            maxX = Math.max(maxX, chunk.x + terreno.chunkSize); maxY = Math.max(maxY, chunk.y + terreno.chunkSize);
+        });
+        w = maxX - minX; h = maxY - minY;
+        pivotX = -minX / (w || 1); pivotY = -minRow / (h || 1);
     } else if (gyzmo && gyzmo.layers && gyzmo.layers.length > 0) {
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         for (const l of gyzmo.layers) {
             minX = Math.min(minX, l.x - l.width / 2); minY = Math.min(minY, l.y - l.height / 2);
             maxX = Math.max(maxX, l.x + l.width / 2); maxY = Math.max(maxY, l.y + l.height / 2);
         }
-        w = maxX - minX;
-        h = maxY - minY;
-        pivotX = -minX / (w || 1);
-        pivotY = -minY / (h || 1);
+        w = maxX - minX; h = maxY - minY;
+        pivotX = -minX / (w || 1); pivotY = -minY / (h || 1);
     } else {
-        // For other objects (like empty transforms), don't cull
         return null;
     }
+
     const sx = transform.scale.x;
     const sy = transform.scale.y;
-
-    // Local-space corners relative to pivot
-    // We scale by sx/sy because we want the OOB in world units (pixels at scale 1)
-    // but the local coordinates should reflect the scaling.
-    // Wait, transform.scale is already used in the final multiplication or here?
-    // Actually, localCorners should be in "sprite-local" space, then scaled.
-
     const drawX = -w * pivotX;
     const drawY = -h * pivotY;
 
     const localCorners = [
-        { x: drawX * sx, y: drawY * sy }, // Top-left
-        { x: (drawX + w) * sx, y: drawY * sy }, // Top-right
-        { x: (drawX + w) * sx, y: (drawY + h) * sy }, // Bottom-right
-        { x: drawX * sx, y: (drawY + h) * sy }  // Bottom-left
+        { x: drawX * sx, y: drawY * sy },
+        { x: (drawX + w) * sx, y: drawY * sy },
+        { x: (drawX + w) * sx, y: (drawY + h) * sy },
+        { x: drawX * sx, y: (drawY + h) * sy }
     ];
 
     const angleRad = transform.rotation * Math.PI / 180;
-    const cosA = Math.cos(angleRad);
-    const sinA = Math.sin(angleRad);
-
+    const cosA = Math.cos(angleRad), sinA = Math.sin(angleRad);
     const pos = explicitPosition || transform.position;
 
-    const worldCorners = localCorners.map(corner => {
-        // Apply rotation
-        const rotatedX = corner.x * cosA - corner.y * sinA;
-        const rotatedY = corner.x * sinA + corner.y * cosA;
-
-        // Apply translation
-        return {
-            x: rotatedX + pos.x,
-            y: rotatedY + pos.y
-        };
-    });
-
-    return worldCorners;
+    return localCorners.map(corner => ({
+        x: (corner.x * cosA - corner.y * sinA) + pos.x,
+        y: (corner.x * sinA + corner.y * cosA) + pos.y
+    }));
 }
-
 
 /**
  * Calculates the world-space Oriented Bounding Box for a camera's view.
- * @param {Materia} cameraMateria The camera's game object.
- * @param {number} aspect The aspect ratio of the canvas (width / height).
- * @returns {Array<{x: number, y: number}>|null} An array of 4 vertex points for the camera's view box.
  */
 export function getCameraViewBox(cameraMateria, aspect) {
-    const transform = cameraMateria.getComponent(Transform);
-    const camera = cameraMateria.getComponent(Camera);
-
-    if (!transform || !camera) {
-        return null;
-    }
+    const transform = cameraMateria.getComponentByName('Transform');
+    const camera = cameraMateria.getComponentByName('Camera');
+    if (!transform || !camera) return null;
 
     let halfWidth, halfHeight;
-
     if (camera.projection === 'Orthographic') {
         halfHeight = camera.orthographicSize;
         halfWidth = halfHeight * aspect;
-    } else { // Perspective
-        // For a 2D perspective, the viewable area at the camera's focal plane (z=0)
-        // is determined by FOV. We can calculate an equivalent orthographic size.
-        // A distance of 1 is assumed for this calculation.
+    } else {
         const halfFov = camera.fov * 0.5 * Math.PI / 180;
-        halfHeight = Math.tan(halfFov); // This gives a size for a distance of 1
+        halfHeight = Math.tan(halfFov);
         halfWidth = halfHeight * aspect;
-        // This is a simplification but provides a reasonable culling box.
-        // For a true culling, we'd check against the trapezoid, but box-to-box is faster.
     }
 
     const localCorners = [
-        { x: -halfWidth, y: -halfHeight },
-        { x:  halfWidth, y: -halfHeight },
-        { x:  halfWidth, y:  halfHeight },
-        { x: -halfWidth, y:  halfHeight }
+        { x: -halfWidth, y: -halfHeight }, { x: halfWidth, y: -halfHeight },
+        { x: halfWidth, y: halfHeight }, { x: -halfWidth, y: halfHeight }
     ];
 
     const angleRad = transform.rotation * Math.PI / 180;
-    const cosA = Math.cos(angleRad);
-    const sinA = Math.sin(angleRad);
+    const cosA = Math.cos(angleRad), sinA = Math.sin(angleRad);
 
-    const worldCorners = localCorners.map(corner => {
-        const rotatedX = corner.x * cosA - corner.y * sinA;
-        const rotatedY = corner.x * sinA + corner.y * cosA;
-        return {
-            x: rotatedX + transform.x,
-            y: rotatedY + transform.y
-        };
-    });
-
-    return worldCorners;
+    return localCorners.map(corner => ({
+        x: (corner.x * cosA - corner.y * sinA) + transform.x,
+        y: (corner.x * sinA + corner.y * cosA) + transform.y
+    }));
 }
 
-// --- Separating Axis Theorem (SAT) ---
-
-/**
- * Projects a polygon onto an axis and returns the min and max projection values.
- * @param {Array<{x: number, y: number}>} vertices The vertices of the polygon.
- * @param {{x: number, y: number}} axis The axis to project onto.
- * @returns {{min: number, max: number}}
- */
 function project(vertices, axis) {
-    let min = Infinity;
-    let max = -Infinity;
+    let min = Infinity, max = -Infinity;
     for (const vertex of vertices) {
         const dotProduct = vertex.x * axis.x + vertex.y * axis.y;
         min = Math.min(min, dotProduct);
@@ -194,164 +135,141 @@ function project(vertices, axis) {
     return { min, max };
 }
 
-/**
- * Gets the perpendicular axes for each edge of a polygon.
- * @param {Array<{x: number, y: number}>} vertices The vertices of the polygon.
- * @returns {Array<{x: number, y: number}>} An array of normalized axis vectors.
- */
 function getAxes(vertices) {
     const axes = [];
     for (let i = 0; i < vertices.length; i++) {
-        const p1 = vertices[i];
-        const p2 = vertices[i + 1] || vertices[0]; // Wrap around to the first vertex
-
+        const p1 = vertices[i], p2 = vertices[i + 1] || vertices[0];
         const edge = { x: p2.x - p1.x, y: p2.y - p1.y };
-        const normal = { x: -edge.y, y: edge.x }; // Perpendicular vector
-
-        // Normalize the axis
+        const normal = { x: -edge.y, y: edge.x };
         const length = Math.sqrt(normal.x * normal.x + normal.y * normal.y);
-        if (length > 0) {
-            axes.push({ x: normal.x / length, y: normal.y / length });
-        }
+        if (length > 0) axes.push({ x: normal.x / length, y: normal.y / length });
     }
     return axes;
 }
 
-/**
- * Checks for collision between two convex polygons using the Separating Axis Theorem.
- * @param {Array<{x: number, y: number}>} polyA Vertices of the first polygon.
- * @param {Array<{x: number, y: number}>} polyB Vertices of the second polygon.
- * @returns {boolean} True if they are intersecting, false otherwise.
- */
 export function checkIntersection(polyA, polyB) {
     if (!polyA || !polyB) return false;
-
-    const axesA = getAxes(polyA);
-    const axesB = getAxes(polyB);
-
-    // Loop through all axes of both polygons
-    for (const axis of [...axesA, ...axesB]) {
-        const pA = project(polyA, axis);
-        const pB = project(polyB, axis);
-
-        // Check for a gap between the projections. If there is a gap, they don't collide.
-        if (pA.max < pB.min || pB.max < pA.min) {
-            return false; // Found a separating axis
-        }
+    const axes = [...getAxes(polyA), ...getAxes(polyB)];
+    for (const axis of axes) {
+        const pA = project(polyA, axis), pB = project(polyB, axis);
+        if (pA.max < pB.min || pB.max < pA.min) return false;
     }
-
-    // If no separating axis was found, the polygons are colliding.
     return true;
 }
 
-/**
- * Gets the bounding box from a set of corner points.
- * @param {Array<{x: number, y: number}>} corners
- */
 export function getBoundsFromCorners(corners) {
     if (!corners || corners.length === 0) return null;
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (const p of corners) {
-        minX = Math.min(minX, p.x);
-        maxX = Math.max(maxX, p.x);
-        minY = Math.min(minY, p.y);
-        maxY = Math.max(maxY, p.y);
+        minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+        minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
     }
     return { left: minX, right: maxX, top: minY, bottom: maxY };
 }
 
-/**
- * Converts a quaternion to Euler angles (in degrees).
- * @param {Array<number>} out The output array.
- * @param {Array<number>} q The input quaternion.
- */
 export function quatToEuler(out, q) {
     let x = q[0], y = q[1], z = q[2], w = q[3];
     let x2 = x + x, y2 = y + y, z2 = z + z;
-    let xx = x * x2, xy = x * y2, xz = x * z2;
-    let yy = y * y2, yz = y * z2, zz = z * z2;
-    let wx = w * x2, wy = w * y2, wz = w * z2;
-
+    let xx = x * x2, xy = x * y2, xz = x * z2, yy = y * y2, yz = y * z2, zz = z * z2, wx = w * x2, wy = w * y2, wz = w * z2;
     out[0] = Math.atan2(yz + wx, 1 - (xx + yy)) * 180 / Math.PI;
     out[1] = Math.asin(Math.max(-1, Math.min(1, wy - xz))) * 180 / Math.PI;
     out[2] = Math.atan2(xy + wz, 1 - (yy + zz)) * 180 / Math.PI;
-
     return out;
 }
 
-/**
- * Estimates the memory consumption of a Materia and its components.
- * Returns an object with individual and recursive totals in bytes.
- * @param {Materia} materia
- * @returns {{ individual: number, total: number }}
- */
 export function estimateMateriaMemory(materia) {
     if (!materia) return { individual: 0, total: 0 };
-
-    let individual = 512; // Base Materia overhead
-
+    let individual = 512;
     materia.leyes.forEach(ley => {
-        individual += 1024; // Base component overhead
-
+        individual += 1024;
         const constructorName = ley.constructor.name;
-
-        // Texture-based components
         if (constructorName === 'SpriteRenderer' || constructorName === 'UIImage' || constructorName === 'TextureRender') {
             const img = ley.sprite || ley.texture;
-            if (img && img.complete && img.naturalWidth > 0) {
-                individual += img.naturalWidth * img.naturalHeight * 4;
-            }
+            if (img && img.complete && img.naturalWidth > 0) individual += img.naturalWidth * img.naturalHeight * 4;
         }
-
-        // Script components
         if (constructorName === 'CreativeScript' || constructorName === 'CustomComponent') {
             if (ley.scriptName && window.CE_Script_Metadata && window.CE_Script_Metadata[ley.scriptName]) {
-                const meta = window.CE_Script_Metadata[ley.scriptName];
-                individual += (meta.codeLength || 0) * 2; // UTF-16 characters
+                individual += (window.CE_Script_Metadata[ley.scriptName].codeLength || 0) * 2;
             }
-            // Estimate variables memory
-            if (ley.instance) {
-                try {
-                    individual += JSON.stringify(ley.instance).length * 2;
-                } catch(e) {}
-            }
+            if (ley.instance) { try { individual += JSON.stringify(ley.instance).length * 2; } catch(e) {} }
         }
-
-        // Tilemaps
-        if (constructorName === 'Tilemap') {
-            ley.layers.forEach(layer => {
-                individual += layer.tileData.size * 128; // Estimate per tile data
-            });
-        }
+        if (constructorName === 'Tilemap') { ley.layers.forEach(layer => { individual += layer.tileData.size * 128; }); }
     });
-
     let total = individual;
-    materia.children.forEach(child => {
-        total += estimateMateriaMemory(child).total;
-    });
-
+    materia.children.forEach(child => { total += estimateMateriaMemory(child).total; });
     return { individual, total };
 }
 
+export function distancia(x1, y1, x2, y2) { return Math.sqrt((x2 - x1)**2 + (y2 - y1)**2); }
+export function seno(grados) { return Math.sin(grados * Math.PI / 180); }
+export function coseno(grados) { return Math.cos(grados * Math.PI / 180); }
+
+// --- 3D Projection Utilities ---
+
 /**
- * Calcula la distancia entre dos puntos (x1, y1) y (x2, y2).
+ * Converts a 3D world position to 2D screen coordinates.
  */
-export function distancia(x1, y1, x2, y2) {
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    return Math.sqrt(dx * dx + dy * dy);
+export function world3DToScreen(worldPos) {
+    const r3d = window._Renderer3D;
+    const glm = window.glMatrix;
+    if (!r3d || !r3d.lastProjectionMatrix || !r3d.lastViewMatrix || !glm) return null;
+
+    const canvas = r3d.canvas;
+    const worldVec = glm.vec4.fromValues(worldPos.x, worldPos.y, worldPos.z || 0, 1.0);
+    const mvp = glm.mat4.create();
+    glm.mat4.multiply(mvp, r3d.lastProjectionMatrix, r3d.lastViewMatrix);
+
+    const clipPos = glm.vec4.create();
+    glm.vec4.transformMat4(clipPos, worldVec, mvp);
+
+    if (clipPos[3] < 0.001) return null;
+
+    const ndc = [clipPos[0] / clipPos[3], clipPos[1] / clipPos[3], clipPos[2] / clipPos[3]];
+    const width = canvas.width, height = canvas.height;
+
+    return {
+        x: (ndc[0] * 0.5 + 0.5) * width,
+        y: (0.5 - ndc[1] * 0.5) * height
+    };
 }
 
 /**
- * Devuelve el seno de un ángulo en grados.
+ * Draws a 3D world line with clipping against the near plane.
  */
-export function seno(grados) {
-    return Math.sin(grados * Math.PI / 180);
-}
+export function drawLineClipped(ctx, p1, p2, color, width = 1) {
+    const r3d = window._Renderer3D;
+    const glm = window.glMatrix;
+    if (!r3d || !r3d.lastProjectionMatrix || !r3d.lastViewMatrix || !glm) return;
 
-/**
- * Devuelve el coseno de un ángulo en grados.
- */
-export function coseno(grados) {
-    return Math.cos(grados * Math.PI / 180);
+    const mvp = glm.mat4.create();
+    glm.mat4.multiply(mvp, r3d.lastProjectionMatrix, r3d.lastViewMatrix);
+
+    const v1 = glm.vec4.fromValues(p1.x, p1.y, p1.z || 0, 1.0);
+    const v2 = glm.vec4.fromValues(p2.x, p2.y, p2.z || 0, 1.0);
+
+    const c1 = glm.vec4.create(), c2 = glm.vec4.create();
+    glm.vec4.transformMat4(c1, v1, mvp);
+    glm.vec4.transformMat4(c2, v2, mvp);
+
+    const wNear = 0.1;
+    if (c1[3] < wNear && c2[3] < wNear) return;
+
+    if (c1[3] < wNear) {
+        const t = (wNear - c1[3]) / (c2[3] - c1[3]);
+        glm.vec4.lerp(c1, c1, c2, t);
+    } else if (c2[3] < wNear) {
+        const t = (wNear - c2[3]) / (c1[3] - c2[3]);
+        glm.vec4.lerp(c2, c2, c1, t);
+    }
+
+    const w = r3d.canvas.width, h = r3d.canvas.height;
+    const s1 = { x: (c1[0]/c1[3] * 0.5 + 0.5) * w, y: (0.5 - c1[1]/c1[3] * 0.5) * h };
+    const s2 = { x: (c2[0]/c2[3] * 0.5 + 0.5) * w, y: (0.5 - c2[1]/c2[3] * 0.5) * h };
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(s1.x, s1.y);
+    ctx.lineTo(s2.x, s2.y);
+    ctx.stroke();
 }

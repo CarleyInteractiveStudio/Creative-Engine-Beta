@@ -1,7 +1,7 @@
 // Gizmos.js
 // A collection of utility functions to draw gizmos in both 2D and 3D scenes.
 
-import { world3DToScreen, drawLineClipped } from '../editor/SceneView.js';
+import { world3DToScreen, drawLineClipped } from './MathUtils.js';
 
 export const Gizmos = {
     /**
@@ -33,15 +33,15 @@ export const Gizmos = {
 
         // Bottom face
         for (let i = 0; i < 4; i++) {
-            drawLineClipped(worldPoints[i], worldPoints[(i + 1) % 4], color, 1);
+            drawLineClipped(ctx, worldPoints[i], worldPoints[(i + 1) % 4], color, 1);
         }
         // Top face
         for (let i = 0; i < 4; i++) {
-            drawLineClipped(worldPoints[i + 4], worldPoints[((i + 1) % 4) + 4], color, 1);
+            drawLineClipped(ctx, worldPoints[i + 4], worldPoints[((i + 1) % 4) + 4], color, 1);
         }
         // Verticals
         for (let i = 0; i < 4; i++) {
-            drawLineClipped(worldPoints[i], worldPoints[i + 4], color, 1);
+            drawLineClipped(ctx, worldPoints[i], worldPoints[i + 4], color, 1);
         }
     },
 
@@ -80,7 +80,7 @@ export const Gizmos = {
                 };
 
                 if (lastWorld) {
-                    drawLineClipped(lastWorld, currentWorld, color, 1);
+                    drawLineClipped(ctx, lastWorld, currentWorld, color, 1);
                 }
                 lastWorld = currentWorld;
             }
@@ -118,9 +118,9 @@ export const Gizmos = {
             };
         });
 
-        drawLineClipped(worldPoints[0], worldPoints[1], color, 1);
-        drawLineClipped(worldPoints[1], worldPoints[2], color, 1);
-        drawLineClipped(worldPoints[2], worldPoints[0], color, 1);
+        drawLineClipped(ctx, worldPoints[0], worldPoints[1], color, 1);
+        drawLineClipped(ctx, worldPoints[1], worldPoints[2], color, 1);
+        drawLineClipped(ctx, worldPoints[2], worldPoints[0], color, 1);
     },
 
     /**
@@ -152,7 +152,7 @@ export const Gizmos = {
         });
 
         for (let i = 0; i < 4; i++) {
-            drawLineClipped(worldPoints[i], worldPoints[(i + 1) % 4], color, 1);
+            drawLineClipped(ctx, worldPoints[i], worldPoints[(i + 1) % 4], color, 1);
         }
     },
 
