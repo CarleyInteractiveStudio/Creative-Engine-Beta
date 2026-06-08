@@ -402,6 +402,7 @@ export class Renderer3D {
 
     resize() {
         if (!this.canvas) return;
+        if (!this.gl) return;
         const displayWidth  = this.canvas.clientWidth;
         const displayHeight = this.canvas.clientHeight;
 

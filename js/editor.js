@@ -464,6 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Project Settings State
     window.currentProjectConfig = {};
     let currentProjectConfig = window.currentProjectConfig;
+    const getCurrentProjectConfig = () => currentProjectConfig;
     // Editor Preferences State
 
 

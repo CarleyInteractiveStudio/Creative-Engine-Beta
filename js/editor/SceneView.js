@@ -2633,8 +2633,8 @@ export function drawOverlay() {
     }
 
     if (is3D) {
-        draw3DGrid();
         drawOrientationGizmo();
+        draw3DGrid();
     }
 
     // Draw Icons (Audio, Camera, etc)
@@ -3911,6 +3911,22 @@ function drawCanvasGizmos() {
         ctx.lineTo(startX + gizmoWidth, startY + (2 * gizmoHeight) / 3);
         ctx.stroke();
     }
+
+    ctx.restore();
+}
+
+function draw3DGrid() {
+    const prefs = getPreferences();
+    if (!prefs.showSceneGrid) return;
+
+    const { ctx, camera } = renderer;
+    if (!camera) return;
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // Screen Space
+
+    // Infinite grid is now handled by Renderer3D shader.
+    // This function can remain as a placeholder or draw auxiliary editor lines.
 
     ctx.restore();
 }
