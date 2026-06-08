@@ -1,3 +1,4 @@
+import { world3DToScreen, drawLineClipped } from '../engine/MathUtils.js';
 // --- Module for Scene View Interactions and Gizmos ---
 
 import { getAbsoluteRect, getClosestAnchorPoint, getAnchorPosition } from '../engine/UITransformUtils.js';
@@ -36,50 +37,54 @@ let lastSelectedId = -1;
 let lastPaintedCoords = { col: -1, row: -1 };
 // isPanning is no longer needed as a module-level state
 let lastMousePosition = { x: 0, y: 0 };
+let showContextMenuCallback = () => {};
 let dragState = {}; // To hold info about the current drag operation
 // debugDeltas is no longer needed
 
 // --- Core Functions ---
 
-function screenToWorld(screenX, screenY) {
+export function screenToWorld(screenX, screenY) {
     if (!renderer || !renderer.camera) return { x: 0, y: 0 };
     const worldX = (screenX - renderer.canvas.width / 2) / renderer.camera.effectiveZoom + renderer.camera.x;
     const worldY = (screenY - renderer.canvas.height / 2) / renderer.camera.effectiveZoom + renderer.camera.y;
     return { x: worldX, y: worldY };
 }
 
-export function world3DToScreen(worldPos) {
+export function getMouseRay3D(screenX, screenY) {
     const r3d = window._Renderer3D;
     const glm = window.glMatrix;
     if (!r3d || !r3d.lastProjectionMatrix || !r3d.lastViewMatrix || !glm) return null;
 
     const canvas = r3d.canvas;
-    // Renderer3D uses a standard [x, y, z] world space.
-    // The Y-flip is handled by the projection matrix now.
-    const worldVec = glm.vec4.fromValues(worldPos.x, worldPos.y, worldPos.z || 0, 1.0);
+    const rect = canvas.getBoundingClientRect();
 
-    const mvp = glm.mat4.create();
-    glm.mat4.multiply(mvp, r3d.lastProjectionMatrix, r3d.lastViewMatrix);
+    // Normalize coordinates to NDC
+    const x = ((screenX - rect.left) / rect.width) * 2 - 1;
+    const y = 1 - ((screenY - rect.top) / rect.height) * 2;
 
-    const clipPos = glm.vec4.create();
-    glm.vec4.transformMat4(clipPos, worldVec, mvp);
+    const invProj = glm.mat4.create();
+    glm.mat4.invert(invProj, r3d.lastProjectionMatrix);
+    const invView = glm.mat4.create();
+    glm.mat4.invert(invView, r3d.lastViewMatrix);
 
-    // Standard Frustum Culling in clip space
-    if (clipPos[3] < 0.001) return null;
-
-    // NDC conversion
-    const ndc = [clipPos[0] / clipPos[3], clipPos[1] / clipPos[3], clipPos[2] / clipPos[3]];
-
-    // Check if within visible range [-1, 1]
-    if (ndc[0] < -1.1 || ndc[0] > 1.1 || ndc[1] < -1.1 || ndc[1] > 1.1) return null;
-
-    const width = canvas.width;
-    const height = canvas.height;
-
-    return {
-        x: (ndc[0] * 0.5 + 0.5) * width,
-        y: (ndc[1] * 0.5 + 0.5) * height
+    const unproject = (nx, ny, nz) => {
+        const clipPos = glm.vec4.fromValues(nx, ny, nz, 1.0);
+        const viewPos = glm.vec4.create();
+        glm.vec4.transformMat4(viewPos, clipPos, invProj);
+        glm.vec4.scale(viewPos, viewPos, 1.0 / viewPos[3]);
+        const worldPos = glm.vec4.create();
+        glm.vec4.transformMat4(worldPos, viewPos, invView);
+        return glm.vec3.fromValues(worldPos[0], worldPos[1], worldPos[2]);
     };
+
+    const nearPt = unproject(x, y, -1.0);
+    const farPt = unproject(x, y, 1.0);
+
+    const dir = glm.vec3.create();
+    glm.vec3.subtract(dir, farPt, nearPt);
+    glm.vec3.normalize(dir, dir);
+
+    return { origin: nearPt, direction: dir };
 }
 
 function getRotateRadius(materia, transform, zoom) {
@@ -765,6 +770,7 @@ export function initialize(dependencies) {
     InputManager = dependencies.InputManager;
     getSelectedMateria = dependencies.getSelectedMateria;
     selectMateria = dependencies.selectMateria;
+    showContextMenuCallback = dependencies.showContextMenuCallback;
     updateInspector = dependencies.updateInspectorCallback;
     updateAssetBrowser = dependencies.updateAssetBrowserCallback;
     Components = dependencies.Components;
@@ -816,47 +822,51 @@ export function initialize(dependencies) {
             case 'move-z':
                 {
                     if (is3D && glm) {
+                        const ray = getMouseRay3D(moveEvent.clientX, moveEvent.clientY);
+                        if (!ray) break;
+
+                        // 1. Determine world axis vector
                         const isY = dragState.handle === 'move-y';
-                        const axis = dragState.handle === 'move-x' ? [1,0,0] : (isY ? [0,1,0] : [0,0,1]);
+                        const localAxis = dragState.handle === 'move-x' ? [1,0,0] : (isY ? [0,-1,0] : [0,0,1]);
                         const q = glm.quat.create();
                         glm.quat.fromEuler(q, dragState.initialTransform.rotationX || 0, dragState.initialTransform.rotationY || 0, dragState.initialTransform.rotationZ || 0);
                         const worldAxis = glm.vec3.create();
-                        glm.vec3.transformQuat(worldAxis, axis, q);
+                        glm.vec3.transformQuat(worldAxis, localAxis, q);
 
-                        const cam = renderer.camera;
-                        const camQ = glm.quat.create();
-                        glm.quat.fromEuler(camQ, cam.rotation.x, cam.rotation.y, 0);
-                        const camRight = glm.vec3.create();
-                        glm.vec3.transformQuat(camRight, [1,0,0], camQ);
-                        const camUp = glm.vec3.create();
-                        glm.vec3.transformQuat(camUp, [0,-1,0], camQ); // Up is negative Y
+                        // 2. Find closest points between the world axis line and the mouse ray
+                        // Line 1 (Axis): P = P0 + u * v  (v is worldAxis)
+                        // Line 2 (Ray): Q = Q0 + v * w   (w is ray direction)
+                        const p0 = glm.vec3.fromValues(dragState.initialTransform.x, dragState.initialTransform.y, dragState.initialTransform.z || 0);
+                        const v = worldAxis;
+                        const q0 = ray.origin;
+                        const w = ray.direction;
 
-                        const screenDx = moveEvent.clientX - dragState.initialMousePos.x;
-                        const screenDy = moveEvent.clientY - dragState.initialMousePos.y;
+                        // Solving for u (distance along axis)
+                        const w1 = glm.vec3.create();
+                        glm.vec3.subtract(w1, p0, q0);
+                        const a = glm.vec3.dot(v, v);
+                        const b = glm.vec3.dot(v, w);
+                        const c = glm.vec3.dot(w, w);
+                        const d = glm.vec3.dot(v, w1);
+                        const e = glm.vec3.dot(w, w1);
+                        const denom = a * c - b * b;
 
-                        // Project world axis onto camera right and up
-                        const axisOnScreenX = glm.vec3.dot(worldAxis, camRight);
-                        const axisOnScreenY = glm.vec3.dot(worldAxis, camUp);
+                        if (Math.abs(denom) > 1e-6) {
+                            const u = (b * e - c * d) / denom;
+                            const deltaU = u - (dragState.initialU || 0);
 
-                        const dist = glm.vec3.distance([cam.x, cam.y, cam.z], [transform.x, transform.y, transform.z || 0]);
-                        const sensitivity = dist / 1000;
+                            let nextPos = [p0[0] + v[0] * deltaU, p0[1] + v[1] * deltaU, p0[2] + v[2] * deltaU];
 
-                        const moveAmount = (screenDx * axisOnScreenX + screenDy * axisOnScreenY) * sensitivity;
+                            if (snapEnabled) {
+                                nextPos[0] = Math.round(nextPos[0] / snapSize) * snapSize;
+                                nextPos[1] = Math.round(nextPos[1] / snapSize) * snapSize;
+                                nextPos[2] = Math.round(nextPos[2] / snapSize) * snapSize;
+                            }
 
-                        let nextPos = [dragState.initialTransform.x, dragState.initialTransform.y, dragState.initialTransform.z || 0];
-                        nextPos[0] += worldAxis[0] * moveAmount;
-                        nextPos[1] += worldAxis[1] * moveAmount;
-                        nextPos[2] += worldAxis[2] * moveAmount;
-
-                        if (snapEnabled) {
-                            nextPos[0] = Math.round(nextPos[0] / snapSize) * snapSize;
-                            nextPos[1] = Math.round(nextPos[1] / snapSize) * snapSize;
-                            nextPos[2] = Math.round(nextPos[2] / snapSize) * snapSize;
+                            transform.x = nextPos[0];
+                            transform.y = nextPos[1];
+                            transform.z = nextPos[2];
                         }
-
-                        transform.x = nextPos[0];
-                        transform.y = nextPos[1];
-                        transform.z = nextPos[2];
                     } else {
                         if (dragState.handle === 'move-x') transform.x = dragState.initialTransform.x + (snapEnabled ? Math.round(totalDx / snapSize) * snapSize : totalDx);
                         if (dragState.handle === 'move-y') transform.y = dragState.initialTransform.y + (snapEnabled ? Math.round(totalDy / snapSize) * snapSize : totalDy);
@@ -866,35 +876,49 @@ export function initialize(dependencies) {
             case 'move-xy':
                 {
                     if (is3D && glm) {
-                        // In 3D, move object on a plane parallel to the camera view
+                        const ray = getMouseRay3D(moveEvent.clientX, moveEvent.clientY);
+                        if (!ray) break;
+
+                        // Create a plane parallel to camera view passing through initial transform
                         const cam = renderer.camera;
                         const camQ = glm.quat.create();
                         glm.quat.fromEuler(camQ, cam.rotation.x, cam.rotation.y, 0);
-                        const camRight = glm.vec3.create();
-                        glm.vec3.transformQuat(camRight, [1,0,0], camQ);
-                        const camUp = glm.vec3.create();
-                        glm.vec3.transformQuat(camUp, [0,1,0], camQ);
+                        const planeNormal = glm.vec3.fromValues(0, 0, 1);
+                        glm.vec3.transformQuat(planeNormal, planeNormal, camQ);
 
-                        const screenDxTotal = moveEvent.clientX - dragState.initialMousePos.x;
-                        const screenDyTotal = moveEvent.clientY - dragState.initialMousePos.y;
+                        const planePoint = glm.vec3.fromValues(dragState.initialTransform.x, dragState.initialTransform.y, dragState.initialTransform.z || 0);
 
-                        const dist = glm.vec3.distance([cam.x, cam.y, cam.z], [transform.x, transform.y, transform.z || 0]);
-                        const sensitivity = dist / 1000;
+                        // Ray-Plane intersection: t = (p0 - l0) . n / (l . n)
+                        const l0 = ray.origin;
+                        const l = ray.direction;
+                        const p0 = planePoint;
+                        const n = planeNormal;
 
-                        let nextPos = [dragState.initialTransform.x, dragState.initialTransform.y, dragState.initialTransform.z || 0];
-                        nextPos[0] += (camRight[0] * screenDxTotal - camUp[0] * screenDyTotal) * sensitivity;
-                        nextPos[1] += (camRight[1] * screenDxTotal - camUp[1] * screenDyTotal) * sensitivity;
-                        nextPos[2] += (camRight[2] * screenDxTotal - camUp[2] * screenDyTotal) * sensitivity;
+                        const denom = glm.vec3.dot(l, n);
+                        if (Math.abs(denom) > 1e-6) {
+                            const p0_l0 = glm.vec3.create();
+                            glm.vec3.subtract(p0_l0, p0, l0);
+                            const t = glm.vec3.dot(p0_l0, n) / denom;
 
-                        if (snapEnabled) {
-                            nextPos[0] = Math.round(nextPos[0] / snapSize) * snapSize;
-                            nextPos[1] = Math.round(nextPos[1] / snapSize) * snapSize;
-                            nextPos[2] = Math.round(nextPos[2] / snapSize) * snapSize;
+                            const intersection = glm.vec3.create();
+                            glm.vec3.scaleAndAdd(intersection, l0, l, t);
+
+                            let nextPos = [
+                                intersection[0] + (dragState.offsetFromRay ? dragState.offsetFromRay[0] : 0),
+                                intersection[1] + (dragState.offsetFromRay ? dragState.offsetFromRay[1] : 0),
+                                intersection[2] + (dragState.offsetFromRay ? dragState.offsetFromRay[2] : 0)
+                            ];
+
+                            if (snapEnabled) {
+                                nextPos[0] = Math.round(nextPos[0] / snapSize) * snapSize;
+                                nextPos[1] = Math.round(nextPos[1] / snapSize) * snapSize;
+                                nextPos[2] = Math.round(nextPos[2] / snapSize) * snapSize;
+                            }
+
+                            transform.x = nextPos[0];
+                            transform.y = nextPos[1];
+                            transform.z = nextPos[2];
                         }
-
-                        transform.x = nextPos[0];
-                        transform.y = nextPos[1];
-                        transform.z = nextPos[2];
                     } else {
                         let nextX = dragState.initialTransform.x + totalDx;
                         let nextY = dragState.initialTransform.y + totalDy;
@@ -1204,9 +1228,53 @@ export function initialize(dependencies) {
 
     sceneCanvases.forEach(canvas => {
         canvas.addEventListener('contextmenu', e => {
-            // ALWAYS prevent context menu on scene canvases to avoid browser interference
             e.preventDefault();
             e.stopPropagation();
+
+            const rect = canvas.getBoundingClientRect();
+            const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
+            const config = getCurrentProjectConfig();
+            const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+
+            let targetId = null;
+            if (is3D) {
+                const renderer3D = window._Renderer3D;
+                if (renderer3D) {
+                    targetId = renderer3D.pick(SceneManager.currentScene, null, canvasPos.x, canvasPos.y, { editorCamera: renderer.camera });
+                }
+            } else {
+                targetId = pick2D(canvasPos);
+            }
+
+            if (targetId !== null) {
+                selectMateria(targetId);
+            } else {
+                selectMateria(null);
+            }
+
+            const menu = document.getElementById('hierarchy-context-menu');
+            if (menu && showContextMenuCallback) {
+                // We need to set the global project type state for the menu
+                const projectType = window.currentProjectConfig?.projectType || '2d';
+                const is3DProject = projectType === '3d';
+
+                const updateDisabledState = (el, disabled) => {
+                    el.classList.toggle('disabled', disabled);
+                    el.style.display = 'block';
+                    const children = el.querySelectorAll('li, span, ul');
+                    children.forEach(child => child.classList.toggle('disabled', disabled));
+                };
+
+                menu.querySelectorAll('.only-3d').forEach(el => updateDisabledState(el, !is3DProject));
+                menu.querySelectorAll('.only-2d').forEach(el => updateDisabledState(el, is3DProject));
+
+                // Set context materia for HierarchyWindow actions
+                // We rely on editor.js or HierarchyWindow.js to handle the actual context reference if needed,
+                // but since we just selected the object, context actions will naturally apply to it.
+
+                showContextMenuCallback(menu, e);
+            }
         });
     });
 
@@ -1661,18 +1729,31 @@ export function initialize(dependencies) {
             const config = getCurrentProjectConfig();
             const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
 
-            if (is3D && !isAddingLayer && activeTool !== 'pan') {
-                const renderer3D = window._Renderer3D; // Assumed exposed or accessible
-                if (renderer3D) {
-                    const pickedId = renderer3D.pick(SceneManager.currentScene, null, canvasPos.x, canvasPos.y, { editorCamera: renderer.camera });
+            if (!isAddingLayer && activeTool !== 'pan') {
+                const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCircleColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos) || checkUIGizmoHit(canvasPos);
+
+                // Only pick new object if we didn't hit a gizmo handle
+                if (!hitHandle) {
+                    let pickedId = null;
+                    if (is3D) {
+                        const renderer3D = window._Renderer3D;
+                        if (renderer3D) {
+                            pickedId = renderer3D.pick(SceneManager.currentScene, null, canvasPos.x, canvasPos.y, { editorCamera: renderer.camera });
+                        }
+                    } else {
+                        pickedId = pick2D(canvasPos);
+                    }
+
                     if (pickedId !== null) {
                         selectMateria(pickedId);
+                    } else {
+                        selectMateria(null);
                         return;
                     }
                 }
             }
 
-            if (!selectedMateria || activeTool === 'pan') return;
+            if (!getSelectedMateria() || activeTool === 'pan') return;
 
             const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCircleColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos) || checkUIGizmoHit(canvasPos);
 
@@ -1680,18 +1761,75 @@ export function initialize(dependencies) {
                 e.stopPropagation();
                 isDragging = true;
                 const transform = selectedMateria.getComponent(Components.Transform);
+                const initialX = transform ? transform.x : 0;
+                const initialY = transform ? transform.y : 0;
+                const initialZ = transform ? (transform.z || 0) : 0;
+
+                let offsetFromRay = [0, 0, 0];
+                let initialU = 0; // Initial distance along axis
+                if (is3D && window.glMatrix) {
+                    const ray = getMouseRay3D(e.clientX, e.clientY);
+                    if (ray) {
+                        const glm = window.glMatrix;
+                        const p0 = [initialX, initialY, initialZ];
+
+                        if (hitHandle === 'move-xy') {
+                            // Calculate offset from ray intersection with move plane
+                            const camQ = glm.quat.create();
+                            glm.quat.fromEuler(camQ, renderer.camera.rotation.x, renderer.camera.rotation.y, 0);
+                            const planeNormal = glm.vec3.fromValues(0, 0, 1);
+                            glm.vec3.transformQuat(planeNormal, planeNormal, camQ);
+
+                            const denom = glm.vec3.dot(ray.direction, planeNormal);
+                            if (Math.abs(denom) > 1e-6) {
+                                const p0_l0 = glm.vec3.create();
+                                glm.vec3.subtract(p0_l0, p0, ray.origin);
+                                const t = glm.vec3.dot(p0_l0, planeNormal) / denom;
+                                const intersection = glm.vec3.create();
+                                glm.vec3.scaleAndAdd(intersection, ray.origin, ray.direction, t);
+                                glm.vec3.subtract(offsetFromRay, p0, intersection);
+                            }
+                        } else if (hitHandle.startsWith('move-')) {
+                            // Calculate initial 'u' for axis handles
+                            const isY = hitHandle === 'move-y';
+                            const localAxis = hitHandle === 'move-x' ? [1,0,0] : (isY ? [0,-1,0] : [0,0,1]);
+                            const q = glm.quat.create();
+                            glm.quat.fromEuler(q, transform.rotationX || 0, transform.rotationY || 0, transform.rotationZ || 0);
+                            const worldAxis = glm.vec3.create();
+                            glm.vec3.transformQuat(worldAxis, localAxis, q);
+
+                            const v = worldAxis;
+                            const q0 = ray.origin;
+                            const w = ray.direction;
+                            const w1 = glm.vec3.create();
+                            glm.vec3.subtract(w1, p0, q0);
+                            const a = glm.vec3.dot(v, v);
+                            const b = glm.vec3.dot(v, w);
+                            const c = glm.vec3.dot(w, w);
+                            const d = glm.vec3.dot(v, w1);
+                            const e = glm.vec3.dot(w, w1);
+                            const denom = a * c - b * b;
+                            if (Math.abs(denom) > 1e-6) {
+                                initialU = (b * e - c * d) / denom;
+                            }
+                        }
+                    }
+                }
+
                 dragState = {
                     handle: hitHandle,
                     materia: selectedMateria,
                     initialTransform: transform ? {
-                        x: transform.x,
-                        y: transform.y,
-                        z: transform.z || 0,
+                        x: initialX,
+                        y: initialY,
+                        z: initialZ,
                         rotation: transform.rotation,
                         scale: { x: transform.scale.x, y: transform.scale.y, z: transform.scale.z || 1 }
                     } : null,
                     initialMouseWorld: screenToWorld(canvasPos.x, canvasPos.y),
-                    initialMousePos: { x: e.clientX, y: e.clientY }
+                    initialMousePos: { x: e.clientX, y: e.clientY },
+                    offsetFromRay: offsetFromRay,
+                    initialU: initialU
                 };
                 lastMousePosition = { x: e.clientX, y: e.clientY };
 
@@ -1704,6 +1842,37 @@ export function initialize(dependencies) {
     });
     });
 
+}
+
+function pick2D(canvasPos) {
+    if (!renderer || !SceneManager.currentScene) return null;
+    const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
+
+    // Iterate in reverse to pick the topmost object
+    const allMaterias = SceneManager.currentScene.getAllMaterias().reverse();
+
+    for (const materia of allMaterias) {
+        if (!materia.isActive) continue;
+
+        const transform = materia.getComponent(Components.Transform);
+        if (!transform) continue;
+
+        const dims = getMateriaDimensions(materia);
+        const w = dims.width * Math.abs(transform.scale.x);
+        const h = dims.height * Math.abs(transform.scale.y);
+
+        // Simple AABB hit detection for 2D
+        const rad = -transform.rotation * Math.PI / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+        const lx = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
+        const ly = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
+
+        if (lx >= -w/2 && lx <= w/2 && ly >= -h/2 && ly <= h/2) {
+            return materia.id;
+        }
+    }
+    return null;
 }
 
 export function enterAddLayerMode() {
@@ -2333,7 +2502,7 @@ function check3DGizmoHit(canvasPos, materia) {
         if (Math.hypot(dx, dy) < 15) return activeTool === 'scale' ? 'scale-all' : 'move-xy';
 
         if (checkHandle({x:1, y:0, z:0}, 'X')) return activeTool === 'scale' ? 'scale-x' : 'move-x';
-        if (checkHandle({x:0, y:1, z:0}, 'Y')) return activeTool === 'scale' ? 'scale-y' : 'move-y';
+        if (checkHandle({x:0, y:-1, z:0}, 'Y')) return activeTool === 'scale' ? 'scale-y' : 'move-y';
         if (checkHandle({x:0, y:0, z:1}, 'Z')) return activeTool === 'scale' ? 'scale-z' : 'move-z';
     }
     return null;
@@ -2411,7 +2580,7 @@ function draw3DGizmos(materia) {
 
     if (activeTool === 'move' || activeTool === 'universal' || activeTool === 'scale') {
         drawAxis({x:1,y:0,z:0}, '#ff4444'); // X (Red)
-        drawAxis({x:0,y:1,z:0}, '#44ff44'); // Y (Green)
+        drawAxis({x:0,y:-1,z:0}, '#44ff44'); // Y (Green) - Pointing UP in World
         drawAxis({x:0,y:0,z:1}, '#4444ff'); // Z (Blue)
 
         // Center handle
@@ -2464,8 +2633,8 @@ export function drawOverlay() {
     }
 
     if (is3D) {
-        draw3DGrid();
         drawOrientationGizmo();
+        draw3DGrid();
     }
 
     // Draw Icons (Audio, Camera, etc)
@@ -2537,7 +2706,10 @@ function drawOrientationGizmo() {
     const axes = [
         { vec: [1, 0, 0], color: '#ff4444', label: 'X' },
         { vec: [0, -1, 0], color: '#44ff44', label: 'Y' },
-        { vec: [0, 0, 1], color: '#4444ff', label: 'Z' }
+        { vec: [0, 0, 1], color: '#4444ff', label: 'Z' },
+        { vec: [-1, 0, 0], color: '#882222', label: '-X' },
+        { vec: [0, 1, 0], color: '#228822', label: '-Y' },
+        { vec: [0, 0, -1], color: '#222288', label: '-Z' }
     ];
 
     // Project and calculate depth
@@ -2554,9 +2726,11 @@ function drawOrientationGizmo() {
         const endX = centerX + a.px * size;
         const endY = centerY + a.py * size;
 
+        const isNegative = a.label.startsWith('-');
+
         // Draw line with rounded ends for a polished look
         ctx.strokeStyle = a.color;
-        ctx.lineWidth = 3;
+        ctx.lineWidth = isNegative ? 1 : 3;
         ctx.lineCap = 'round';
         ctx.beginPath();
         ctx.moveTo(centerX, centerY);
@@ -2566,19 +2740,21 @@ function drawOrientationGizmo() {
         // Draw small circle at the end (Unity style)
         ctx.fillStyle = a.color;
         ctx.beginPath();
-        ctx.arc(endX, endY, 4, 0, Math.PI * 2);
+        ctx.arc(endX, endY, isNegative ? 2 : 4, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw label with a small background for better readability
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 11px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
+        if (!isNegative) {
+            // Draw label with a small background for better readability
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 11px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
 
-        // Push label slightly beyond the axis end
-        const labelX = endX + a.px * 12;
-        const labelY = endY + a.py * 12;
-        ctx.fillText(a.label, labelX, labelY);
+            // Push label slightly beyond the axis end
+            const labelX = endX + a.px * 12;
+            const labelY = endY + a.py * 12;
+            ctx.fillText(a.label, labelX, labelY);
+        }
     });
 
     ctx.restore();
@@ -2709,86 +2885,6 @@ function drawRaycastGizmos() {
     ctx.restore();
 }
 
-function drawLineClipped(p1, p2, color, width = 1) {
-    const r3d = window._Renderer3D;
-    const glm = window.glMatrix;
-    if (!r3d || !r3d.lastProjectionMatrix || !r3d.lastViewMatrix || !glm) return;
-
-    const mvp = glm.mat4.create();
-    glm.mat4.multiply(mvp, r3d.lastProjectionMatrix, r3d.lastViewMatrix);
-
-    const v1 = glm.vec4.fromValues(p1.x, p1.y, p1.z || 0, 1.0);
-    const v2 = glm.vec4.fromValues(p2.x, p2.y, p2.z || 0, 1.0);
-
-    const c1 = glm.vec4.create();
-    const c2 = glm.vec4.create();
-    glm.vec4.transformMat4(c1, v1, mvp);
-    glm.vec4.transformMat4(c2, v2, mvp);
-
-    // Liang-Barsky-style clipping for Near Plane (W)
-    const wNear = 0.1;
-    if (c1[3] < wNear && c2[3] < wNear) return;
-
-    if (c1[3] < wNear) {
-        const t = (wNear - c1[3]) / (c2[3] - c1[3]);
-        glm.vec4.lerp(c1, c1, c2, t);
-    } else if (c2[3] < wNear) {
-        const t = (wNear - c2[3]) / (c1[3] - c2[3]);
-        glm.vec4.lerp(c2, c2, c1, t);
-    }
-
-    const w = r3d.canvas.width;
-    const h = r3d.canvas.height;
-
-    const s1 = { x: (c1[0]/c1[3] * 0.5 + 0.5) * w, y: (c1[1]/c1[3] * 0.5 + 0.5) * h };
-    const s2 = { x: (c2[0]/c2[3] * 0.5 + 0.5) * w, y: (c2[1]/c2[3] * 0.5 + 0.5) * h };
-
-    const { ctx } = renderer;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = width;
-    ctx.beginPath();
-    ctx.moveTo(s1.x, s1.y);
-    ctx.lineTo(s2.x, s2.y);
-    ctx.stroke();
-}
-
-function draw3DGrid() {
-    const prefs = getPreferences();
-    if (!prefs.showSceneGrid) return;
-
-    const { ctx, camera } = renderer;
-    if (!camera) return;
-
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0); // Screen Space
-
-    // --- Adaptive 3D Grid on XZ plane (Floor) ---
-    const dist = Math.abs(camera.y) || 500;
-    const magnitude = Math.pow(10, Math.floor(Math.log10(dist / 5)));
-    const step = Math.max(1, magnitude);
-
-    const gridRange = 50;
-    const gridColor = 'rgba(255, 255, 255, 0.1)';
-    const majorGridColor = 'rgba(255, 255, 255, 0.3)';
-
-    const snapX = Math.floor(camera.x / step) * step;
-    const snapZ = Math.floor(camera.z / step) * step;
-
-    const startX = snapX - (gridRange * step);
-    const endX = snapX + (gridRange * step);
-    const startZ = snapZ - (gridRange * step);
-    const endZ = snapZ + (gridRange * step);
-
-    // We skip floor grid lines in 2D overlay because Renderer3D already draws an infinite depth-tested grid.
-    // This prevents Z-fighting and ensures objects correctly occlude the grid.
-
-    // Main Axes (Infinite Origin Lines) - Removed redundant 2D overlay axes.
-    // They are now handled directly by the 3D grid shader for better performance and visual stability.
-
-    ctx.restore();
-}
-
-
 function draw3DGyzmoRects(gyzmo) {
     const transform = gyzmo.materia.getComponent(Components.Transform);
     if (!transform) return;
@@ -2797,8 +2893,14 @@ function draw3DGyzmoRects(gyzmo) {
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-    const rad = transform.rotation * Math.PI / 180;
-    const cos = Math.cos(rad), sin = Math.sin(rad);
+    const rotation = {
+        x: transform.rotationX || 0,
+        y: transform.rotationY || 0,
+        z: transform.rotationZ || 0
+    };
+    const glm = window.glMatrix;
+    const q = glm.quat.create();
+    glm.quat.fromEuler(q, rotation.x, rotation.y, rotation.z);
 
     for (const layer of gyzmo.layers) {
         const { x: lx, y: ly, width, height, color } = layer;
@@ -2806,31 +2908,29 @@ function draw3DGyzmoRects(gyzmo) {
         const hh = height / 2;
 
         const getPt = (ox, oy) => {
-            // Local to Materia center (applying layer offset lx, ly)
-            const rx = (lx + ox) * transform.scale.x;
-            const ry = (ly + oy) * transform.scale.y;
-            // Apply Materia rotation
-            const wx = transform.x + (rx * cos - ry * sin);
-            const wy = transform.y + (rx * sin + ry * cos);
-            return { x: wx, y: wy, z: transform.z || 0 };
+            const localPos = [(lx + ox) * transform.scale.x, (ly + oy) * transform.scale.y, 0];
+            const rotated = glm.vec3.create();
+            glm.vec3.transformQuat(rotated, localPos, q);
+            return { x: transform.x + rotated[0], y: transform.y + rotated[1], z: (transform.z || 0) + rotated[2] };
         };
 
-        const p1 = world3DToScreen(getPt(-hw, -hh));
-        const p2 = world3DToScreen(getPt(hw, -hh));
-        const p3 = world3DToScreen(getPt(hw, hh));
-        const p4 = world3DToScreen(getPt(-hw, hh));
+        const pts = [getPt(-hw, -hh), getPt(hw, -hh), getPt(hw, hh), getPt(-hw, hh)];
+        const clr = color || '#00ff00';
 
-        if (p1 && p2 && p3 && p4) {
-            ctx.strokeStyle = color || '#00ff00';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
-            ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y);
-            ctx.closePath();
-            ctx.stroke();
+        // Draw edges with clipping
+        for (let i = 0; i < 4; i++) {
+            drawLineClipped(ctx, pts[i], pts[(i + 1) % 4], clr, 2);
+        }
 
+        // LENIENT FILL: only if all corners are in front of camera
+        const screenPts = pts.map(p => world3DToScreen(p));
+        if (screenPts.every(p => p !== null)) {
             ctx.globalAlpha = 0.2;
-            ctx.fillStyle = color || '#00ff00';
+            ctx.fillStyle = clr;
+            ctx.beginPath();
+            ctx.moveTo(screenPts[0].x, screenPts[0].y);
+            for (let i = 1; i < 4; i++) ctx.lineTo(screenPts[i].x, screenPts[i].y);
+            ctx.closePath();
             ctx.fill();
             ctx.globalAlpha = 1.0;
         }
@@ -3811,6 +3911,22 @@ function drawCanvasGizmos() {
         ctx.lineTo(startX + gizmoWidth, startY + (2 * gizmoHeight) / 3);
         ctx.stroke();
     }
+
+    ctx.restore();
+}
+
+function draw3DGrid() {
+    const prefs = getPreferences();
+    if (!prefs.showSceneGrid) return;
+
+    const { ctx, camera } = renderer;
+    if (!camera) return;
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // Screen Space
+
+    // Infinite grid is now handled by Renderer3D shader.
+    // This function can remain as a placeholder or draw auxiliary editor lines.
 
     ctx.restore();
 }

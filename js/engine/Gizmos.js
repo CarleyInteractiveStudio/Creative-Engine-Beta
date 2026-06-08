@@ -1,7 +1,7 @@
 // Gizmos.js
 // A collection of utility functions to draw gizmos in both 2D and 3D scenes.
 
-import { world3DToScreen } from '../editor/SceneView.js';
+import { world3DToScreen, drawLineClipped } from './MathUtils.js';
 
 export const Gizmos = {
     /**
@@ -21,39 +21,27 @@ export const Gizmos = {
         const q = glm.quat.create();
         glm.quat.fromEuler(q, rotation.x, rotation.y, rotation.z);
 
-        const screenPoints = points.map(p => {
+        const worldPoints = points.map(p => {
             const rotated = glm.vec3.create();
             glm.vec3.transformQuat(rotated, p, q);
-            return world3DToScreen({
+            return {
                 x: center.x + rotated[0],
                 y: center.y + rotated[1],
                 z: (center.z || 0) + rotated[2]
-            });
+            };
         });
 
-        if (screenPoints.some(p => p === null)) return;
-
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1;
-
         // Bottom face
-        ctx.beginPath();
-        ctx.moveTo(screenPoints[0].x, screenPoints[0].y);
-        for (let i = 1; i < 4; i++) ctx.lineTo(screenPoints[i].x, screenPoints[i].y);
-        ctx.closePath(); ctx.stroke();
-
-        // Top face
-        ctx.beginPath();
-        ctx.moveTo(screenPoints[4].x, screenPoints[4].y);
-        for (let i = 5; i < 8; i++) ctx.lineTo(screenPoints[i].x, screenPoints[i].y);
-        ctx.closePath(); ctx.stroke();
-
-        // Connecting lines
         for (let i = 0; i < 4; i++) {
-            ctx.beginPath();
-            ctx.moveTo(screenPoints[i].x, screenPoints[i].y);
-            ctx.lineTo(screenPoints[i + 4].x, screenPoints[i + 4].y);
-            ctx.stroke();
+            drawLineClipped(ctx, worldPoints[i], worldPoints[(i + 1) % 4], color, 1);
+        }
+        // Top face
+        for (let i = 0; i < 4; i++) {
+            drawLineClipped(ctx, worldPoints[i + 4], worldPoints[((i + 1) % 4) + 4], color, 1);
+        }
+        // Verticals
+        for (let i = 0; i < 4; i++) {
+            drawLineClipped(ctx, worldPoints[i], worldPoints[i + 4], color, 1);
         }
     },
 
@@ -67,7 +55,7 @@ export const Gizmos = {
         glm.quat.fromEuler(q, rotation.x, rotation.y, rotation.z);
 
         const drawRing = (axis) => {
-            ctx.beginPath();
+            let lastWorld = null;
             for (let i = 0; i <= segments; i++) {
                 const angle = (i / segments) * Math.PI * 2;
                 let pt = [0, 0, 0];
@@ -85,21 +73,19 @@ export const Gizmos = {
                 const rotated = glm.vec3.create();
                 glm.vec3.transformQuat(rotated, pt, q);
 
-                const screen = world3DToScreen({
+                const currentWorld = {
                     x: center.x + rotated[0],
                     y: center.y + rotated[1],
                     z: (center.z || 0) + rotated[2]
-                });
-                if (screen) {
-                    if (i === 0) ctx.moveTo(screen.x, screen.y);
-                    else ctx.lineTo(screen.x, screen.y);
+                };
+
+                if (lastWorld) {
+                    drawLineClipped(ctx, lastWorld, currentWorld, color, 1);
                 }
+                lastWorld = currentWorld;
             }
-            ctx.stroke();
         };
 
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1;
         drawRing('xy');
         drawRing('xz');
         drawRing('yz');
@@ -122,26 +108,19 @@ export const Gizmos = {
         const q = glm.quat.create();
         glm.quat.fromEuler(q, rotation.x, rotation.y, rotation.z);
 
-        const screenPoints = points.map(p => {
+        const worldPoints = points.map(p => {
             const rotated = glm.vec3.create();
             glm.vec3.transformQuat(rotated, p, q);
-            return world3DToScreen({
+            return {
                 x: center.x + rotated[0],
                 y: center.y + rotated[1],
                 z: (center.z || 0) + rotated[2]
-            });
+            };
         });
 
-        if (screenPoints.some(p => p === null)) return;
-
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(screenPoints[0].x, screenPoints[0].y);
-        ctx.lineTo(screenPoints[1].x, screenPoints[1].y);
-        ctx.lineTo(screenPoints[2].x, screenPoints[2].y);
-        ctx.closePath();
-        ctx.stroke();
+        drawLineClipped(ctx, worldPoints[0], worldPoints[1], color, 1);
+        drawLineClipped(ctx, worldPoints[1], worldPoints[2], color, 1);
+        drawLineClipped(ctx, worldPoints[2], worldPoints[0], color, 1);
     },
 
     /**
@@ -162,27 +141,19 @@ export const Gizmos = {
         const q = glm.quat.create();
         glm.quat.fromEuler(q, rotation.x, rotation.y, rotation.z);
 
-        const screenPoints = points.map(p => {
+        const worldPoints = points.map(p => {
             const rotated = glm.vec3.create();
             glm.vec3.transformQuat(rotated, p, q);
-            return world3DToScreen({
+            return {
                 x: center.x + rotated[0],
                 y: center.y + rotated[1],
                 z: (center.z || 0) + rotated[2]
-            });
+            };
         });
 
-        if (screenPoints.some(p => p === null)) return;
-
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(screenPoints[0].x, screenPoints[0].y);
-        ctx.lineTo(screenPoints[1].x, screenPoints[1].y);
-        ctx.lineTo(screenPoints[2].x, screenPoints[2].y);
-        ctx.lineTo(screenPoints[3].x, screenPoints[3].y);
-        ctx.closePath();
-        ctx.stroke();
+        for (let i = 0; i < 4; i++) {
+            drawLineClipped(ctx, worldPoints[i], worldPoints[(i + 1) % 4], color, 1);
+        }
     },
 
     /**

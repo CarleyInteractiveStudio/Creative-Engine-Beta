@@ -33,6 +33,7 @@ let showContextMenuCallback = () => {};
 let projectsDirHandle = null; // Needed for drag-drop from assets
 let updateInspector = () => {}; // To refresh inspector after rename/delete
 let contextMateria = null; // DIRECT REFERENCE to the materia under the context menu
+let creationPosition = null; // Position where a new object should be created
 
 // The main update function for this module, which is exported
 export function updateHierarchy() {
@@ -176,6 +177,14 @@ export function initialize(dependencies) {
 
     console.log("Initializing Hierarchy Window...");
     setupEventListeners();
+}
+
+export function setContextMateria(materia) {
+    contextMateria = materia;
+}
+
+export function setCreationPosition(pos) {
+    creationPosition = pos;
 }
 
 export function handleContextMenuAction(action) {
@@ -563,6 +572,20 @@ export function handleContextMenuAction(action) {
     if (newMateria instanceof Promise) {
         newMateria.then(m => {
             if (m) {
+                 // Apply creation position if available
+                 if (creationPosition && !action.includes('rename') && !action.includes('delete') && !action.includes('duplicate')) {
+                     const transform = m.getComponent(Components.Transform);
+                     const uiTransform = m.getComponent(Components.UITransform);
+                     if (transform) {
+                         transform.x = creationPosition.x;
+                         transform.y = creationPosition.y;
+                         if (creationPosition.z !== undefined) transform.z = creationPosition.z;
+                     } else if (uiTransform) {
+                         uiTransform.position.x = creationPosition.x;
+                         uiTransform.position.y = creationPosition.y;
+                     }
+                 }
+
                  broadcastUpdate({ op: 'CREATE', data: SceneManager.serializeMateria(m, true) });
                  updateHierarchy();
                  setTimeout(() => selectMateriaCallback(m.id), 0);
@@ -572,6 +595,20 @@ export function handleContextMenuAction(action) {
     }
 
     if (newMateria) {
+        // Apply creation position if available
+        if (creationPosition && !action.includes('rename') && !action.includes('delete') && !action.includes('duplicate')) {
+            const transform = newMateria.getComponent(Components.Transform);
+            const uiTransform = newMateria.getComponent(Components.UITransform);
+            if (transform) {
+                transform.x = creationPosition.x;
+                transform.y = creationPosition.y;
+                if (creationPosition.z !== undefined) transform.z = creationPosition.z;
+            } else if (uiTransform) {
+                uiTransform.position.x = creationPosition.x;
+                uiTransform.position.y = creationPosition.y;
+            }
+        }
+
         // Broadcast creation
         broadcastUpdate({
             op: 'CREATE',
@@ -736,6 +773,9 @@ function setupEventListeners() {
         e.preventDefault();
         const item = e.target.closest('.hierarchy-item');
 
+        // If clicking in hierarchy, clear the scene creation position
+        creationPosition = null;
+
         // Determine the contextMateria from the right-clicked item. This is the crucial step.
         if (item) {
             const materiaId = parseInt(item.dataset.id, 10);
@@ -756,16 +796,26 @@ function setupEventListeners() {
         menu.querySelector('[data-action="rename"]').classList.toggle('disabled', !hasContext);
         menu.querySelector('[data-action="delete"]').classList.toggle('disabled', !hasContext);
 
-        // Hide/Show 3D options based on View Mode
-        const viewMode = window.currentProjectConfig?.viewMode || '3d';
-        const is3DView = viewMode === '3d';
+        // Enable/Disable options based on Project Type
+        const projectType = window.currentProjectConfig?.projectType || '2d';
+        const is3DProject = projectType === '3d';
+
+        const updateDisabledState = (el, disabled) => {
+            el.classList.toggle('disabled', disabled);
+            el.style.display = 'block';
+            // Recursively update children to ensure full grey-out and interaction prevention
+            const children = el.querySelectorAll('li, span, ul');
+            children.forEach(child => {
+                child.classList.toggle('disabled', disabled);
+            });
+        };
 
         menu.querySelectorAll('.only-3d').forEach(el => {
-            el.style.display = is3DView ? 'block' : 'none';
+            updateDisabledState(el, !is3DProject);
         });
 
         menu.querySelectorAll('.only-2d').forEach(el => {
-            el.style.display = is3DView ? 'none' : 'block';
+            updateDisabledState(el, is3DProject);
         });
 
         showContextMenuCallback(menu, e);
