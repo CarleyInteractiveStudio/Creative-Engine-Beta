@@ -202,7 +202,7 @@ export function estimateMateriaMemory(materia) {
 
 export function distance(x1, y1, x2, y2) { return Math.sqrt((x2 - x1)**2 + (y2 - y1)**2); }
 export function sin(degrees) { return Math.sin(degrees * Math.PI / 180); }
-export function cosin(degrees) { return Math.cos(degrees * Math.PI / 180); }
+export function cos(degrees) { return Math.cos(degrees * Math.PI / 180); }
 
 // --- 3D Projection Utilities ---
 

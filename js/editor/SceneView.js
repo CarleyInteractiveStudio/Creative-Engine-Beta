@@ -50,6 +50,7 @@ export function screenToWorld(screenX, screenY) {
     return { x: worldX, y: worldY };
 }
 
+export function getMouseRay3D(screenX, screenY) {
     const r3d = window._Renderer3D;
     const glm = window.glMatrix;
     if (!r3d || !r3d.lastProjectionMatrix || !r3d.lastViewMatrix || !glm) return null;
