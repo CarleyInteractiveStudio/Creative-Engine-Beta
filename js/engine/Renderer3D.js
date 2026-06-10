@@ -186,6 +186,35 @@ export class Renderer3D {
         `;
         this.programs.standard = this.createProgram(stdVs, stdFs);
 
+        // 2.1 Skinned Standard Shader
+        const skinnedVs = `
+            attribute vec4 aVertexPosition;
+            attribute vec3 aVertexNormal;
+            attribute vec4 aJointIndices;
+            attribute vec4 aJointWeights;
+
+            uniform mat4 uModelMatrix;
+            uniform mat4 uViewMatrix;
+            uniform mat4 uProjectionMatrix;
+            uniform mat4 uBoneMatrices[64];
+
+            varying vec3 vNormal;
+
+            void main() {
+                mat4 skinMatrix =
+                    uBoneMatrices[int(aJointIndices.x)] * aJointWeights.x +
+                    uBoneMatrices[int(aJointIndices.y)] * aJointWeights.y +
+                    uBoneMatrices[int(aJointIndices.z)] * aJointWeights.z +
+                    uBoneMatrices[int(aJointIndices.w)] * aJointWeights.w;
+
+                vec4 worldPosition = uModelMatrix * skinMatrix * aVertexPosition;
+                gl_Position = uProjectionMatrix * uViewMatrix * worldPosition;
+
+                vNormal = (uModelMatrix * skinMatrix * vec4(aVertexNormal, 0.0)).xyz;
+            }
+        `;
+        this.programs.skinned = this.createProgram(skinnedVs, stdFs);
+
         // 3. Unlit Shader (for Axes)
         const unlitVs = `
             attribute vec4 aVertexPosition;
@@ -378,6 +407,13 @@ export class Renderer3D {
 
         scene.getAllMaterias().forEach(materia => {
             if (!materia.isActive) return;
+
+            const skinnedMesh = materia.getComponent(Components3D.SkinnedMeshRenderer3D);
+            if (skinnedMesh && skinnedMesh.isLoaded) {
+                this.drawSkinnedMesh(materia, skinnedMesh);
+                return;
+            }
+
             const mesh = materia.getComponent(Components3D.MeshRenderer3D);
             if (!mesh) return;
 
@@ -410,6 +446,58 @@ export class Renderer3D {
             this.canvas.width  = displayWidth;
             this.canvas.height = displayHeight;
             this.gl.viewport(0, 0, displayWidth, displayHeight);
+        }
+    }
+
+    drawSkinnedMesh(materia, mesh) {
+        const gl = this.gl;
+        const program = this.programs.skinned;
+        gl.useProgram(program);
+
+        const transform = materia.getComponent(Components.Transform);
+        const color = this.hexToRgb(mesh.color);
+
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, transform.worldMatrix);
+        gl.uniform4f(gl.getUniformLocation(program, 'uColor'), color[0], color[1], color[2], 1.0);
+
+        if (mesh.boneMatrices) {
+            gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uBoneMatrices'), false, mesh.boneMatrices);
+        }
+
+        const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
+        const normLoc = gl.getAttribLocation(program, 'aVertexNormal');
+        const jointLoc = gl.getAttribLocation(program, 'aJointIndices');
+        const weightLoc = gl.getAttribLocation(program, 'aJointWeights');
+
+        if (mesh.buffers) {
+            gl.bindBuffer(gl.ARRAY_BUFFER, mesh.buffers.positions);
+            gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(posLoc);
+
+            if (mesh.buffers.normals) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, mesh.buffers.normals);
+                gl.vertexAttribPointer(normLoc, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(normLoc);
+            }
+
+            if (mesh.buffers.joints) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, mesh.buffers.joints);
+                gl.vertexAttribPointer(jointLoc, 4, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(jointLoc);
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, mesh.buffers.weights);
+                gl.vertexAttribPointer(weightLoc, 4, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(weightLoc);
+            }
+
+            if (mesh.buffers.indices) {
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.buffers.indices);
+                gl.drawElements(gl.TRIANGLES, mesh.indexCount, gl.UNSIGNED_SHORT, 0);
+            } else {
+                gl.drawArrays(gl.TRIANGLES, 0, mesh.indexCount);
+            }
         }
     }
 

@@ -145,6 +145,147 @@ export async function createSpotLight3D(parent = null) {
     return newMateria;
 }
 
+export async function createSkinnedMeshObject(modelPath, parent = null) {
+    const C3D = await ensure3D();
+    const { ModelLoader3D } = await import('../engine/ModelLoader3D.js');
+
+    const modelData = await ModelLoader3D.loadModel(modelPath, window.projectsDirHandle);
+    if (!modelData) return null;
+
+    const rootName = modelPath.split('/').pop().split('.')[0];
+    const rootMateria = createBaseMateria(generateUniqueName(rootName), parent);
+
+    const nodeMaterias = [];
+
+    // 1. Create Materias for each node
+    if (modelData.nodes) {
+        for (let i = 0; i < modelData.nodes.length; i++) {
+            const node = modelData.nodes[i];
+            const nodeMtr = new Materia(node.name);
+            nodeMtr.addComponent(new Components.Transform(nodeMtr));
+            const transform = nodeMtr.getComponent(Components.Transform);
+            transform.localPosition = { x: node.translation[0], y: node.translation[1], z: node.translation[2] };
+            transform.localRotation = { x: 0, y: 0, z: 0 };
+            transform.localScale = { x: node.scale[0], y: node.scale[1], z: node.scale[2] };
+
+            nodeMaterias.push(nodeMtr);
+        }
+
+        // 2. Setup Hierarchy and Meshes
+        for (let i = 0; i < modelData.nodes.length; i++) {
+            const node = modelData.nodes[i];
+            const nodeMtr = nodeMaterias[i];
+
+            if (node.children) {
+                node.children.forEach(childIdx => {
+                    nodeMaterias[childIdx].setParent(nodeMtr, false);
+                });
+            }
+
+            if (node.mesh !== undefined) {
+                const meshData = modelData.meshes[node.mesh];
+                const primitive = meshData.primitives[0];
+
+                const renderer = new C3D.SkinnedMeshRenderer3D(nodeMtr);
+                renderer.modelPath = modelPath;
+                renderer.isLoaded = false;
+
+                if (window._Renderer3D) {
+                    const gl = window._Renderer3D.gl;
+                    renderer.indexCount = primitive.indices ? primitive.indices.length : primitive.positions.length / 3;
+                    renderer.buffers = {
+                        positions: gl.createBuffer(),
+                        indices: primitive.indices ? gl.createBuffer() : null,
+                        normals: primitive.normals ? gl.createBuffer() : null,
+                        joints: primitive.joints ? gl.createBuffer() : null,
+                        weights: primitive.weights ? gl.createBuffer() : null
+                    };
+
+                    gl.bindBuffer(gl.ARRAY_BUFFER, renderer.buffers.positions);
+                    gl.bufferData(gl.ARRAY_BUFFER, primitive.positions, gl.STATIC_DRAW);
+
+                    if (renderer.buffers.indices) {
+                        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, renderer.buffers.indices);
+                        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, primitive.indices, gl.STATIC_DRAW);
+                    }
+
+                    if (renderer.buffers.normals) {
+                        gl.bindBuffer(gl.ARRAY_BUFFER, renderer.buffers.normals);
+                        gl.bufferData(gl.ARRAY_BUFFER, primitive.normals, gl.STATIC_DRAW);
+                    }
+
+                    if (renderer.buffers.joints) {
+                        gl.bindBuffer(gl.ARRAY_BUFFER, renderer.buffers.joints);
+                        const jointsF32 = primitive.joints instanceof Float32Array ? primitive.joints : new Float32Array(primitive.joints);
+                        gl.bufferData(gl.ARRAY_BUFFER, jointsF32, gl.STATIC_DRAW);
+
+                        gl.bindBuffer(gl.ARRAY_BUFFER, renderer.buffers.weights);
+                        const weightsF32 = primitive.weights instanceof Float32Array ? primitive.weights : new Float32Array(primitive.weights);
+                        gl.bufferData(gl.ARRAY_BUFFER, weightsF32, gl.STATIC_DRAW);
+                    }
+
+                    if (node.skin !== undefined) {
+                        const skin = modelData.skins[node.skin];
+                        renderer.skeleton = {
+                            joints: skin.joints.map(idx => nodeMaterias[idx].id),
+                            inverseBindMatrices: skin.inverseBindMatrices
+                        };
+                    }
+                    renderer.isLoaded = true;
+                }
+                nodeMtr.addComponent(renderer);
+            }
+        }
+
+        // 3. Parent top-level nodes to rootMateria
+        for (let i = 0; i < modelData.nodes.length; i++) {
+            if (!nodeMaterias[i].parent) {
+                nodeMaterias[i].setParent(rootMateria, false);
+            }
+        }
+    } else {
+        // Flat model (OBJ)
+        const renderer = new C3D.SkinnedMeshRenderer3D(rootMateria);
+        renderer.modelPath = modelPath;
+        if (window._Renderer3D) {
+            const gl = window._Renderer3D.gl;
+            renderer.indexCount = modelData.indices ? modelData.indices.length : modelData.positions.length / 3;
+            renderer.buffers = {
+                positions: gl.createBuffer(),
+                indices: modelData.indices ? gl.createBuffer() : null,
+                normals: modelData.normals ? gl.createBuffer() : null
+            };
+            gl.bindBuffer(gl.ARRAY_BUFFER, renderer.buffers.positions);
+            gl.bufferData(gl.ARRAY_BUFFER, modelData.positions, gl.STATIC_DRAW);
+            if (renderer.buffers.indices) {
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, renderer.buffers.indices);
+                gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, modelData.indices, gl.STATIC_DRAW);
+            }
+            if (renderer.buffers.normals) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, renderer.buffers.normals);
+                gl.bufferData(gl.ARRAY_BUFFER, modelData.normals, gl.STATIC_DRAW);
+            }
+            renderer.isLoaded = true;
+        }
+        rootMateria.addComponent(renderer);
+    }
+
+    if (modelData.animations && modelData.animations.length > 0) {
+        const animator = new C3D.Animator3D(rootMateria);
+        animator.animations = modelData.animations.map(a => ({
+            ...a,
+            channels: a.channels.map(c => ({
+                ...c,
+                node: nodeMaterias[c.node] ? nodeMaterias[c.node].id : rootMateria.id
+            }))
+        }));
+        rootMateria.addComponent(animator);
+        animator.play();
+    }
+
+    return rootMateria;
+}
+
 export function createScrollViewObject(parent) {
     if (!parent) {
         console.error("createScrollViewObject requiere un padre que sea un Canvas.");

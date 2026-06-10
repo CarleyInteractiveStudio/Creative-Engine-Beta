@@ -472,6 +472,39 @@ export function handleContextMenuAction(action) {
         case 'create-spot-light-3d':
             newMateria = createSpotLight3D(selectedMateria);
             break;
+        case 'import-model-3d':
+            {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.glb,.gltf,.obj';
+                input.onchange = async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    const currentDirHandle = getCurrentDirectoryHandle();
+                    if (!currentDirHandle) {
+                        alert(L.get('SELECCIONAR_CARPETA_IMPORTAR') || "Selecciona primero una carpeta en el navegador de assets.");
+                        return;
+                    }
+
+                    const targetFileHandle = await currentDirHandle.getFileHandle(file.name, { create: true });
+                    const writable = await targetFileHandle.createWritable();
+                    await writable.write(file);
+                    await writable.close();
+
+                    const assetPath = (getCurrentDirectoryPath() || 'Assets') + '/' + file.name;
+                    await updateAssetBrowser();
+
+                    const { createSkinnedMeshObject } = await import('../MateriaFactory.js');
+                    const m = await createSkinnedMeshObject(assetPath, selectedMateria);
+                    if (m) {
+                        updateHierarchy();
+                        selectMateriaCallback(m.id);
+                    }
+                };
+                input.click();
+            }
+            return;
 
         // --- Templates ---
         case 'template-ui-movement':

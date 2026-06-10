@@ -545,7 +545,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'btn-play', 'btn-pause', 'btn-stop', 'btn-exit-prefab', 'btn-save-prefab', 'btn-toggle-2d-3d',
             'tool-tile-brush', 'tool-tile-bucket', 'tool-tile-rectangle-fill', 'tool-tile-eraser',
             // Menubar scene options
-            'menu-new-scene', 'menu-open-scene', 'menu-save-scene', 'menu-share-engine', 'menu-build', 'menu-import-asset', 'menu-import-skeleton',
+            'menu-new-scene', 'menu-open-scene', 'menu-save-scene', 'menu-share-engine', 'menu-build', 'menu-import-asset', 'menu-import-model-3d', 'menu-import-skeleton',
             // Asset Selector Bubble Elements
             'asset-selector-bubble', 'asset-selector-title', 'asset-selector-breadcrumbs', 'asset-selector-grid-view',
             'asset-selector-toolbar', 'asset-selector-view-modes', 'asset-selector-search',
@@ -2412,6 +2412,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
+                if (window.Components3D) {
+                    const skinned = materia.getComponent(window.Components3D.SkinnedMeshRenderer3D);
+                    if (skinned && skinned.isLoaded) {
+                        skinned.updateBoneMatrices();
+                    }
+                    const anim3d = materia.getComponent(window.Components3D.Animator3D);
+                    if (anim3d && (anim3d.isPlaying || materia === selectedMateria)) {
+                        anim3d.update(deltaTime);
+                    }
+                }
+
 
                 // ONLY update Animator and Controller for selected object to avoid performance issues
                 // but allow the user to see the character animate when selected.
@@ -3369,6 +3380,60 @@ document.addEventListener('DOMContentLoaded', () => {
             showBuildDialog(currentProjectConfig, (options) => {
                 buildProject(projectsDirHandle, currentProjectConfig, options);
             });
+        });
+
+        dom.menuImportModel3d.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const L = window.Localization;
+            const currentDirHandle = getCurrentDirectoryHandle();
+            if (!currentDirHandle) {
+                showNotificationDialog(L?.get('AVISO') || "Aviso", L?.get('SELECCIONAR_CARPETA_IMPORTAR') || "Selecciona primero una carpeta en el navegador de assets para importar archivos.");
+                return;
+            }
+
+            try {
+                if (window.showOpenFilePicker) {
+                    const files = await window.showOpenFilePicker({
+                        multiple: true,
+                        types: [
+                            {
+                                description: '3D Models',
+                                accept: {
+                                    'model/gltf+json': ['.gltf'],
+                                    'model/gltf-binary': ['.glb'],
+                                    'model/obj': ['.obj']
+                                }
+                            }
+                        ]
+                    });
+
+                    for (const fileHandle of files) {
+                        const file = await fileHandle.getFile();
+                        const targetFileHandle = await currentDirHandle.getFileHandle(file.name, { create: true });
+                        const writable = await targetFileHandle.createWritable();
+                        await writable.write(file);
+                        await writable.close();
+                    }
+                    updateAssetBrowser();
+                } else {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.multiple = true;
+                    input.accept = '.glb,.gltf,.obj';
+                    input.onchange = async (e) => {
+                        for (const file of e.target.files) {
+                            const targetFileHandle = await currentDirHandle.getFileHandle(file.name, { create: true });
+                            const writable = await targetFileHandle.createWritable();
+                            await writable.write(file);
+                            await writable.close();
+                        }
+                        updateAssetBrowser();
+                    };
+                    input.click();
+                }
+            } catch (err) {
+                console.error("Error al importar modelo 3D:", err);
+            }
         });
 
         dom.menuImportAsset.addEventListener('click', async (e) => {
