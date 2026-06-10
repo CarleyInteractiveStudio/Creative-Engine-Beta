@@ -37,14 +37,14 @@ const availableComponents = {
     'CAT_AUDIO': [Components.AudioSource],
     'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.PlatformEffector2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
     'CAT_CAMARA': [Components.Camera],
-    'CAT_3D': ['MeshRenderer3D', 'Rigidbody3D', 'BoxCollider3D', 'SphereCollider3D', 'DirectionalLight3D', 'PointLight3D', 'SpotLight3D'],
+    'CAT_3D': ['MeshRenderer3D', 'SkinnedMeshRenderer3D', 'Animator3D', 'Rigidbody3D', 'BoxCollider3D', 'SphereCollider3D', 'DirectionalLight3D', 'PointLight3D', 'SpotLight3D'],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
     'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Attack, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.Suspension, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController, Components.SceneLoader, Components.Inventario, Components.SistemaDialogos, Components.GestorMisiones],
     'CAT_SCRIPTING': [Components.CreativeScript]
 };
 
 const componentIcons = {
-    MeshRenderer3D: 'box', Rigidbody3D: 'weight', BoxCollider3D: 'square', SphereCollider3D: 'disc', DirectionalLight3D: 'sun', PointLight3D: 'lightbulb', SpotLight3D: 'flashlight',
+    MeshRenderer3D: 'box', SkinnedMeshRenderer3D: 'user', Animator3D: 'play', Rigidbody3D: 'weight', BoxCollider3D: 'square', SphereCollider3D: 'disc', DirectionalLight3D: 'sun', PointLight3D: 'lightbulb', SpotLight3D: 'flashlight',
     Transform: 'move', Rigidbody2D: 'weight', BoxCollider2D: 'square', PlatformEffector2D: 'square', CapsuleCollider2D: 'pill', CircleCollider2D: 'disc', PolygonCollider2D: 'hexagon', SpriteRenderer: 'image',
     Animator: 'run', AnimatorController: 'gamepad', AudioSource: 'music', VideoPlayer: 'video', Camera: 'camera', CreativeScript: 'scroll', SceneLoader: 'clapperboard',
     UITransform: 'box', UICanvas: 'image', UIImage: 'image', PointLight2D: 'lightbulb', SpotLight2D: 'flashlight', FreeformLight2D: 'pencil', SpriteLight2D: 'sparkles',
@@ -4168,6 +4168,44 @@ async function updateInspectorForMateria(selectedMateria) {
                     ${renderAIFuncInput('onTargetLost', L.get('ON_TARGET_LOST', 'Al perder Objetivo'))}
                     ${renderAIFuncInput('onTargetNear', L.get('ON_TARGET_NEAR', 'Al estar cerca'))}
                     ${renderAIFuncInput('onAttackRange', L.get('ON_ATTACK_RANGE', 'Rango Ataque'))}
+                </div>
+            `;
+        } else if (ley.constructor.name === 'SkinnedMeshRenderer3D') {
+            componentHTML = `
+                ${renderComponentHeader(L.get('SKINNED_MESH_RENDERER_3D', "Skinned Mesh Renderer 3D"), icon, index)}
+                <div class="component-content">
+                    <div class="inspector-group">
+                        <div class="prop-row-multi">
+                            <label data-i18n="MODEL_PATH">Model Path</label>
+                            <input type="text" class="prop-input" data-component="SkinnedMeshRenderer3D" data-prop="modelPath" value="${ley.modelPath || ''}" readonly>
+                        </div>
+                        <div class="prop-row-multi">
+                            <label data-i18n="COLOR">Color</label>
+                            <input type="color" class="prop-input" data-component="SkinnedMeshRenderer3D" data-prop="color" value="${ley.color}">
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (ley.constructor.name === 'Animator3D') {
+            componentHTML = `
+                ${renderComponentHeader(L.get('ANIMATOR_3D', "Animator 3D"), icon, index)}
+                <div class="component-content">
+                    <div class="inspector-group">
+                        <div class="prop-row-multi">
+                            <label data-i18n="VELOCIDAD">Speed</label>
+                            <input type="number" class="prop-input" data-component="Animator3D" data-prop="speed" value="${ley.speed}" step="0.1">
+                        </div>
+                        <div class="checkbox-field">
+                            <input type="checkbox" class="prop-input" data-component="Animator3D" data-prop="loop" ${ley.loop ? 'checked' : ''}>
+                            <label data-i18n="BUCLE">Loop</label>
+                        </div>
+                        <div class="prop-row-multi">
+                            <label data-i18n="ANIMACIONES">Animations</label>
+                            <select class="prop-input" data-component="Animator3D" data-prop="currentAnimation">
+                                ${ley.animations.map(a => `<option value="${a.name}" ${ley.currentAnimation?.name === a.name ? 'selected' : ''}>${a.name}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
                 </div>
             `;
         } else if (ley.constructor.name === 'MeshRenderer3D') {
