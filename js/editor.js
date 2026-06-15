@@ -1146,6 +1146,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'r':
                     setActiveTool('rotate');
                     break;
+                case 'v':
+                    setActiveTool('sculpt');
+                    break;
                 case 't':
                     setActiveTool('universal');
                     break;
@@ -3686,6 +3689,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // --- Project Settings Listeners are now in js/editor/ui/ProjectSettingsWindow.js ---
+
+        if (dom.toolbarSculptBtn) {
+            dom.toolbarSculptBtn.addEventListener('click', () => {
+                setActiveTool('sculpt');
+            });
+        }
 
         if (dom.btnToggle2d3d) {
             dom.btnToggle2d3d.addEventListener('click', async () => {

@@ -466,6 +466,12 @@ export class Renderer3D {
             gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uBoneMatrices'), false, mesh.boneMatrices);
         }
 
+        if (mesh.isDirty && mesh.cpuPositions && mesh.buffers?.positions) {
+            gl.bindBuffer(gl.ARRAY_BUFFER, mesh.buffers.positions);
+            gl.bufferSubData(gl.ARRAY_BUFFER, 0, mesh.cpuPositions);
+            mesh.isDirty = false;
+        }
+
         const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
         const normLoc = gl.getAttribLocation(program, 'aVertexNormal');
         const jointLoc = gl.getAttribLocation(program, 'aJointIndices');

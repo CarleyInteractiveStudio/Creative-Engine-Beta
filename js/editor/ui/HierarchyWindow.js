@@ -18,6 +18,8 @@ import {
     createLineColliderObject, createProgressBarObject, createCombatantObject, createScrollViewObject,
     createCubeObject, createSphereObject, createCapsule3DObject, createPlane3DObject, createTriangle3DObject,
     createDirectionalLight3D, createPointLight3D, createSpotLight3D,
+    createDefaultCharacter,
+    createTestCircuit,
     createMovementUITemplate, createMainMenuTemplate, createLevelManagerTemplate,
     createInventoryUITemplate
 } from '../MateriaFactory.js';
@@ -248,6 +250,12 @@ export function handleContextMenuAction(action) {
             break;
         case 'create-camera':
             newMateria = createCameraObject(selectedMateria);
+            break;
+        case 'create-humanoid-character':
+            newMateria = createDefaultCharacter(selectedMateria);
+            break;
+        case 'create-test-circuit':
+            newMateria = createTestCircuit(selectedMateria);
             break;
         case 'create-bone':
 

@@ -1586,6 +1586,58 @@ export function initialize(dependencies) {
         const config = getCurrentProjectConfig();
         const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
 
+        // --- Sculpting Logic ---
+        if (activeTool === 'sculpt' && e.button === 0 && is3D) {
+            e.preventDefault();
+            const sculpt = (event) => {
+                const ray = getMouseRay3D(event.clientX, event.clientY);
+                if (!ray) return;
+
+                const hit = SceneManager.currentScene.physicsSystem.raycast3D(ray.origin, ray.direction);
+                if (hit && hit.materia) {
+                    const renderer = hit.materia.getComponent(Components3D.MeshRenderer3D) || hit.materia.getComponent(Components3D.SkinnedMeshRenderer3D);
+                    if (renderer && renderer.cpuPositions) {
+                        const strength = 5.0;
+                        const radius = 30.0;
+                        const localHit = hit.localPoint;
+
+                        let changed = false;
+                        for (let i = 0; i < renderer.cpuPositions.length; i += 3) {
+                            const vx = renderer.cpuPositions[i];
+                            const vy = renderer.cpuPositions[i+1];
+                            const vz = renderer.cpuPositions[i+2];
+
+                            const dx = vx - localHit[0];
+                            const dy = vy - localHit[1];
+                            const dz = vz - localHit[2];
+                            const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+                            if (dist < radius) {
+                                const falloff = 1.0 - (dist / radius);
+                                // Pull towards camera/normal
+                                renderer.cpuPositions[i] -= ray.direction.x * strength * falloff;
+                                renderer.cpuPositions[i+1] -= ray.direction.y * strength * falloff;
+                                renderer.cpuPositions[i+2] -= ray.direction.z * strength * falloff;
+                                changed = true;
+                            }
+                        }
+                        if (changed) renderer.isDirty = true;
+                    }
+                }
+            };
+
+            const onSculptMove = (moveEvent) => sculpt(moveEvent);
+            const onSculptEnd = () => {
+                window.removeEventListener('mousemove', onSculptMove);
+                window.removeEventListener('mouseup', onSculptEnd);
+            };
+
+            window.addEventListener('mousemove', onSculptMove);
+            window.addEventListener('mouseup', onSculptEnd);
+            sculpt(e);
+            return;
+        }
+
         if (e.button === 1 || (e.button === 2 && !is3D)) {
             e.preventDefault();
             canvas.style.cursor = 'grabbing';
