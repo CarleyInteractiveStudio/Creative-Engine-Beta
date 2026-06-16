@@ -1660,6 +1660,11 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="PROP_ORDER_IN_LAYER">${L.get('PROP_ORDER_IN_LAYER', 'Order in Layer')}</label>
                         <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
                     </div>
+                    <hr>
+                    <div class="checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="TextureRender" data-prop="billboard" ${ley.billboard ? 'checked' : ''}>
+                        <label data-i18n="PROP_BILLBOARD">Billboard (Mirar siempre a cámara)</label>
+                    </div>
                 </div>
             `;
         } else if (ley instanceof Components.VerticalLayoutGroup || ley instanceof Components.HorizontalLayoutGroup) {
@@ -2406,6 +2411,11 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_ORDER_IN_LAYER">${L.get('PROP_ORDER_IN_LAYER', 'Order in Layer')}</label>
                         <input type="number" class="prop-input" step="1" data-component="SpriteRenderer" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
+                    </div>
+                    <hr>
+                    <div class="checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="SpriteRenderer" data-prop="billboard" ${ley.billboard ? 'checked' : ''}>
+                        <label data-i18n="PROP_BILLBOARD">Billboard (Mirar siempre a cámara)</label>
                     </div>
                 </div>`;
         }

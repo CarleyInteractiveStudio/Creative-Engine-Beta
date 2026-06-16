@@ -112,6 +112,9 @@ export class Renderer {
         if (cameraComponent && cameraComponent.clearFlags === 'SolidColor') {
             this.ctx.fillStyle = cameraComponent.backgroundColor;
             this.ctx.fillRect(x, y, w, h);
+        } else if (!cameraComponent && this.isEditor && !this.isGameView) {
+            // In editor mode with no specific camera, clear to transparent to show CSS background
+            this.ctx.clearRect(x, y, w, h);
         } else {
             this.ctx.clearRect(x, y, w, h);
         }

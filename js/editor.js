@@ -398,6 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'prefs-ai-provider', 'prefs-ai-api-key-group', 'prefs-ai-api-key', 'prefs-ai-save-key-btn', 'prefs-ai-delete-key-btn',
             'prefs-ai-model-selection-group', 'prefs-ai-model-selector', 'prefs-ai-error-display',
             'prefs-carl-can-use-console', 'prefs-carl-can-manage-files', 'prefs-carl-can-manipulate-scenes', 'prefs-carl-can-download-files',
+            'prefs-carl-execution-mode',
             'prefs-execution-mode', 'prefs-auto-close-game-window',
             // Library Window Elements
             'menubar-libraries-btn', 'library-panel', 'library-panel-create-btn', 'library-panel-import-btn', 'library-panel-export-btn',
@@ -1110,16 +1111,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const is3D = currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d';
 
         if (dom.sceneCanvas) {
-            dom.sceneCanvas.style.pointerEvents = is3D ? 'none' : 'all';
-            dom.sceneCanvas.style.zIndex = is3D ? '1' : '2';
+            // In hybrid mode, we want both to receive events
+            dom.sceneCanvas.style.pointerEvents = 'all';
+            dom.sceneCanvas.style.zIndex = is3D ? '1' : '2'; // 1 in 3D, 2 in 2D
         }
         if (dom.sceneCanvas3d) {
             dom.sceneCanvas3d.style.pointerEvents = is3D ? 'all' : 'none';
-            dom.sceneCanvas3d.style.zIndex = is3D ? '2' : '1';
+            dom.sceneCanvas3d.style.zIndex = is3D ? '2' : '1'; // 2 in 3D, 1 in 2D
         }
 
         if (dom.gameCanvas) {
-            dom.gameCanvas.style.pointerEvents = is3D ? 'none' : 'all';
+            dom.gameCanvas.style.pointerEvents = 'all';
             dom.gameCanvas.style.zIndex = is3D ? '1' : '2';
         }
         if (dom.gameCanvas3d) {
@@ -1646,6 +1648,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateScene = function(rendererInstance, isGameView) {
         if (!rendererInstance || !SceneManager.currentScene) return;
+
+        // Sync ambient light from scene
+        if (SceneManager.currentScene.ambiente && SceneManager.currentScene.ambiente.nocheDiaColor) {
+            rendererInstance.setAmbientLight(SceneManager.currentScene.ambiente.nocheDiaColor);
+        }
 
         // --- Pass 1: Draw Scene Geometry ---
         const materiasToRender = SceneManager.currentScene.getAllMaterias()
@@ -2181,11 +2188,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isGameRunning && !isGamePaused) {
             runGameLoop();
             if (is3D) {
-                if (renderer3D) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d' });
+                // In hybrid mode, we first render 2D as background, then 3D on top
+                if (renderer) updateScene(renderer, false);
+                if (renderer3D) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 0 });
+
+                if (gameRenderer) {
+                    gameRenderer.resize();
+                    updateScene(gameRenderer, true);
+                }
                 if (gameRenderer3D) {
                     gameRenderer3D.resize();
                     const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth)[0];
-                    if (mainCam) gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d' });
+                    if (mainCam) gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 0, isGameView: true });
                 }
             } else {
                 if (renderer) updateScene(renderer, false);
@@ -2197,16 +2211,21 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             if (activeView === 'scene-content') {
                 if (is3D) {
-                    if (renderer3D) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d' });
+                    if (renderer) updateScene(renderer, false);
+                    if (renderer3D) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 0 });
                 } else {
                     if (renderer) updateScene(renderer, false);
                 }
             } else if (activeView === 'game-content') {
                 if (is3D) {
+                    if (gameRenderer) {
+                        gameRenderer.resize();
+                        updateScene(gameRenderer, true);
+                    }
                     if (gameRenderer3D) {
                         gameRenderer3D.resize();
                         const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth)[0];
-                        if (mainCam) gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d' });
+                        if (mainCam) gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 0, isGameView: true });
                     }
                 } else {
                     if (gameRenderer) updateScene(gameRenderer, true);
@@ -4310,6 +4329,8 @@ public start() {
             SceneManager.currentScene.physicsSystem = physicsSystem; // Link for components
             EngineAPI.CEEngine.initialize({ physicsSystem }); // Pass physics system to the API
             InputManager.initialize(dom.sceneCanvas, dom.gameCanvas);
+            if (dom.sceneCanvas3d) InputManager.attachCanvas(dom.sceneCanvas3d);
+            if (dom.gameCanvas3d) InputManager.attachCanvas(dom.gameCanvas3d);
             UISystem.initialize(SceneManager.currentScene);
 
 

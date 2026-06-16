@@ -289,7 +289,15 @@ export class Renderer3D {
         const ambiente = scene.ambiente || {};
         const bgColor = this.hexToRgb(ambiente.nocheDiaColor || '#1a1a2a');
 
-        gl.clearColor(bgColor[0], bgColor[1], bgColor[2], 1.0);
+        // Allow transparency for hybrid modes
+        let alpha = (options.clearAlpha !== undefined) ? options.clearAlpha : 1.0;
+
+        // In editor mode without specific camera, be transparent to show CSS grey background
+        if (!cameraMateria && !options.isGameView) {
+            alpha = 0.0;
+        }
+
+        gl.clearColor(bgColor[0], bgColor[1], bgColor[2], alpha);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         const projectionMatrix = mat4.create();
@@ -299,6 +307,7 @@ export class Renderer3D {
         this.lastViewMatrix = viewMatrix;
 
         let is3DView = true;
+        let activeViewPosition = [0, 0, 0];
 
         if (cameraMateria) {
             const camComp = cameraMateria.getComponent(Camera);
@@ -315,7 +324,8 @@ export class Renderer3D {
 
             const q = quat.create();
             quat.fromEuler(q, camTrans.localRotation.x, camTrans.localRotation.y, camTrans.localRotation.z);
-            mat4.fromRotationTranslation(viewMatrix, q, [camTrans.x, camTrans.y, camTrans.z]);
+            activeViewPosition = [camTrans.x, camTrans.y, camTrans.z];
+            mat4.fromRotationTranslation(viewMatrix, q, activeViewPosition);
             mat4.invert(viewMatrix, viewMatrix);
         } else {
             // Editor default camera
@@ -324,16 +334,18 @@ export class Renderer3D {
 
             // In Renderer.js, this.camera in editor has {x, y, z, rotation: {x, y, z}, zoom}
             // Use a default Z that allows seeing 2D objects at Z=0
-            const editorCam = options.editorCamera || { x: 0, y: 0, z: 1000, rotation: { x: 0, y: 0, z: 0 } };
+            const editorCam = options.editorCamera || { x: 0, y: 0, z: 500, rotation: { x: 0, y: 0, z: 0 } };
             const q = quat.create();
             quat.fromEuler(q, editorCam.rotation.x, editorCam.rotation.y, editorCam.rotation.z);
 
             // Adjust camera position to be compatible with 2D world coordinates (which are often large)
-            mat4.fromRotationTranslation(viewMatrix, q, [editorCam.x, editorCam.y, editorCam.z]);
+            activeViewPosition = [editorCam.x, editorCam.y, editorCam.z];
+            mat4.fromRotationTranslation(viewMatrix, q, activeViewPosition);
             mat4.invert(viewMatrix, viewMatrix);
         }
 
         gl.useProgram(this.programInfo.program);
+        gl.uniform3fv(this.programInfo.uniformLocations.viewPosition, activeViewPosition);
 
         // Global Lights Setup
         const dirLight = scene.getAllMaterias().find(m => m.isActive && m.getComponent(Components.DirectionalLight3D));
@@ -372,17 +384,18 @@ export class Renderer3D {
     }
 
     renderMateria(materia, projectionMatrix, viewMatrix, options) {
-        if (options.picking && !materia.getComponent(Components.MeshRenderer3D) && !materia.getComponent(Components.SpriteRenderer)) return;
+        const meshRenderer = materia.getComponent(Components.MeshRenderer3D);
+        const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
+        const textureRender = materia.getComponent(Components.TextureRender);
+
+        if (options.picking && !meshRenderer && !spriteRenderer && !textureRender) return;
 
         const gl = this.gl;
         const programInfo = options.picking ? this.pickingProgramInfo : this.programInfo;
         const transform = materia.getComponent(Transform);
         if (!transform || !materia.isActive) return;
 
-        const meshRenderer = materia.getComponent(Components.MeshRenderer3D);
-        const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
-
-        if (!meshRenderer && !spriteRenderer) return;
+        if (!meshRenderer && !spriteRenderer && !textureRender) return;
 
         const modelMatrix = mat4.create();
         const pos = [transform.x, transform.y, transform.z || 0];
@@ -413,6 +426,9 @@ export class Renderer3D {
         } else if (spriteRenderer) {
             const rgb = this.hexToRgb(spriteRenderer.color);
             color = [rgb[0], rgb[1], rgb[2], spriteRenderer.opacity !== undefined ? spriteRenderer.opacity : 1.0];
+        } else if (textureRender) {
+            const rgb = this.hexToRgb(textureRender.color);
+            color = [rgb[0], rgb[1], rgb[2], 1.0];
         }
 
         gl.uniform4fv(this.programInfo.uniformLocations.uColor, color);
@@ -477,8 +493,70 @@ export class Renderer3D {
 
             const spriteModelMatrix = mat4.create();
             const spriteScale = [scale[0] * spriteScaleX, scale[1] * spriteScaleY, 1];
-            mat4.fromRotationTranslationScale(spriteModelMatrix, q, pos, spriteScale);
+
+            let finalRotation = q;
+            if (spriteRenderer.billboard && !options.picking) {
+                // To billboard, we take the view matrix and invert its rotation
+                const viewRot = quat.create();
+                mat4.getRotation(viewRot, viewMatrix);
+                quat.invert(viewRot, viewRot);
+                finalRotation = viewRot;
+            }
+
+            mat4.fromRotationTranslationScale(spriteModelMatrix, finalRotation, pos, spriteScale);
             gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, spriteModelMatrix);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.planeBuffer);
+            gl.vertexAttribPointer(this.programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexPosition);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.planeTexCoordBuffer);
+            gl.vertexAttribPointer(this.programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(this.programInfo.attribLocations.textureCoord);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.planeNormalBuffer);
+            gl.vertexAttribPointer(this.programInfo.attribLocations.vertexNormal, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexNormal);
+
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.planeIndexBuffer);
+            gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+        } else if (textureRender) {
+            if (options.picking) {
+                const id = options.idMap.get(materia.id);
+                const pickingColor = [
+                    ((id >>  0) & 0xFF) / 255,
+                    ((id >>  8) & 0xFF) / 255,
+                    ((id >> 16) & 0xFF) / 255,
+                    1.0
+                ];
+                gl.uniform4fv(programInfo.uniformLocations.uPickingColor, pickingColor);
+            }
+
+            if (!options.picking) {
+                const tex = this.getGLTexture(textureRender.texture);
+                if (tex) {
+                    gl.uniform1i(this.programInfo.uniformLocations.uUseTexture, 1);
+                    gl.activeTexture(gl.TEXTURE0);
+                    gl.bindTexture(gl.TEXTURE_2D, tex);
+                    gl.uniform1i(this.programInfo.uniformLocations.uSampler, 0);
+                } else {
+                    gl.uniform1i(this.programInfo.uniformLocations.uUseTexture, 0);
+                }
+            }
+
+            const modelMatrixTex = mat4.create();
+            const texScale = [scale[0] * textureRender.width, scale[1] * textureRender.height, 1];
+
+            let finalRotationTex = q;
+            if (textureRender.billboard && !options.picking) {
+                const viewRot = quat.create();
+                mat4.getRotation(viewRot, viewMatrix);
+                quat.invert(viewRot, viewRot);
+                finalRotationTex = viewRot;
+            }
+
+            mat4.fromRotationTranslationScale(modelMatrixTex, finalRotationTex, pos, texScale);
+            gl.uniformMatrix4fv(programInfo.uniformLocations.modelMatrix, false, modelMatrixTex);
 
             gl.bindBuffer(gl.ARRAY_BUFFER, this.planeBuffer);
             gl.vertexAttribPointer(this.programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
