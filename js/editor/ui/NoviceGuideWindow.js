@@ -15,14 +15,14 @@ export function show(dom) {
         alto: 500
     });
 
-    panel.texto(L.get('MSG_NOVATO', 'Hola, has activado la casilla de novatos. Aquí tienes una guía básica para empezar.'), { negrita: true });
+    panel.texto(L.get('MSG_NOVATO', '¡Hola! Qué alegría verte por aquí. Has activado el modo asistente para creadores. Sigue estos pasos para dar vida a tu primera idea:'), { negrita: true });
 
     panel.separador();
 
     panel.columna({ gap: '15px' }, (col) => {
-        col.texto(L.get('CONSEJO_NOVATO_1', '1. Crea una Materia en la Jerarquía para empezar tu objeto.'));
-        col.texto(L.get('CONSEJO_NOVATO_2', '2. Añade una Ley (Componente) en el Inspector para darle propiedades.'));
-        col.texto(L.get('CONSEJO_NOVATO_3', '3. Usa Scripts (.ces) en el Navegador para programar la lógica.'));
+        col.texto(`✨ ${L.get('CONSEJO_NOVATO_1', '1. Crea una Materia en la Jerarquía para empezar tu objeto.')}`);
+        col.texto(`🛠️ ${L.get('CONSEJO_NOVATO_2', '2. Añade una Ley (Componente) en el Inspector para darle propiedades.')}`);
+        col.texto(`📜 ${L.get('CONSEJO_NOVATO_3', '3. Usa Scripts (.ces) en el Navegador para programar la lógica.')}`);
     });
 
     panel.separador();

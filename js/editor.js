@@ -33,6 +33,9 @@ import * as RuntimeAPIManager from './engine/RuntimeAPIManager.js';
 import * as CES_Transpiler from './editor/CES_Transpiler.js';
 import { initialize as initializeLibraryWindow } from './editor/ui/LibraryWindow.js';
 import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
+import * as ParticleEditorWindow from './editor/ui/ParticleEditorWindow.js';
+import * as VisualScriptingWindow from './editor/ui/VisualScriptingWindow.js';
+import { VisualScriptingCore } from './editor/VisualScriptingCore.js';
 import { TerrenoEditorWindow } from './editor/ui/TerrenoEditorWindow.js';
 import * as EngineAPI from './engine/EngineAPI.js';
 import { getCustomComponentDefinitions } from './editor/EngineAPIExtension.js';
@@ -88,6 +91,64 @@ document.addEventListener('DOMContentLoaded', () => {
     let cachedRamEstimate = 0;
 
     // Performance tracking state
+    let errorStats = {}; // To track recurring errors: { message: count }
+    let carlTipNotification = null;
+
+    function showCarlProactiveTip(errorMsg, structuredError) {
+        if (carlTipNotification) return;
+
+        carlTipNotification = document.createElement('div');
+        carlTipNotification.className = 'carl-tip-notification';
+
+        const title = Localization.get('CARL_TIP_TITLE', 'Carl tiene un consejo');
+        const actionText = Localization.get('CARL_TIP_ACTION', 'Ver sugerencia');
+        const promptText = (Localization.get('CARL_TIP_FIX_PROMPT', 'He notado que tienes este error varias veces: "{error}". ¿Quieres que analice tu código y te proponga una solución?'))
+            .replace('{error}', translateErrorMessage(errorMsg));
+
+        carlTipNotification.innerHTML = `
+            <div class="tip-header">
+                <img src="https://raw.githubusercontent.com/CarleyInteractiveStudio/Carley-Interactive-Studio/main/carley_foto_web/Carl_model.jpeg" class="carl-avatar-small">
+                <span>${title}</span>
+                <button class="close-tip">×</button>
+            </div>
+            <div class="tip-body">
+                ${promptText}
+            </div>
+            <div class="tip-footer">
+                <button class="tip-action">${actionText}</button>
+            </div>
+        `;
+
+        document.body.appendChild(carlTipNotification);
+
+        // Trigger animation
+        setTimeout(() => carlTipNotification.classList.add('visible'), 100);
+
+        carlTipNotification.querySelector('.close-tip').onclick = () => {
+            carlTipNotification.classList.remove('visible');
+            setTimeout(() => {
+                carlTipNotification.remove();
+                carlTipNotification = null;
+            }, 500);
+        };
+
+        carlTipNotification.querySelector('.tip-action').onclick = () => {
+            // Open Carl Panel and send the error message
+            if (dom.carlIaPanel.classList.contains('hidden')) {
+                dom.menubarCarlIaBtn.click();
+            }
+
+            const context = structuredError.scriptName ? ` en el archivo ${structuredError.scriptName}` : '';
+            const helpPrompt = `He tenido este error varias veces: "${errorMsg}"${context}. ¿Me puedes ayudar a arreglarlo?`;
+
+            const input = dom.carlIaInput;
+            input.value = helpPrompt;
+            dom.carlIaSendBtn.click();
+
+            carlTipNotification.querySelector('.close-tip').click();
+        };
+    }
+
     let gamePerfStats = {
         minFps: Infinity,
         maxFps: -Infinity,
@@ -214,6 +275,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const scriptStr = structuredError.scriptName ? `en '${structuredError.scriptName}' ` : '';
             const friendlyMsg = translateErrorMessage(structuredError.message);
             fullMessage = `${lineStr}${scriptStr}${friendlyMsg}`;
+
+            // --- CARL 2.0 PROACTIVE LOGIC ---
+            if (type === 'error' && !structuredError.isOptimizer) {
+                const errorKey = structuredError.message;
+                errorStats[errorKey] = (errorStats[errorKey] || 0) + 1;
+
+                if (errorStats[errorKey] >= 3) {
+                    showCarlProactiveTip(errorKey, structuredError);
+                    errorStats[errorKey] = 0; // Reset after showing
+                }
+            }
         }
 
         // Group identical messages
@@ -437,7 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'lib-create-author-icon-preview', 'lib-create-author-icon-picker-btn', 'lib-create-author-icon-input',
             'lib-create-drop-zone', 'lib-create-file-input', 'lib-create-file-list', 'lib-create-confirm-btn', 'lib-create-cancel-btn',
             'prefs-show-terminal',
-            'toolbar-music-btn', 'music-player-panel',
+            'toolbar-music-btn', 'toolbar-share-btn', 'music-player-panel',
             'now-playing-bar', 'now-playing-title', 'playlist-container', 'music-controls', 'music-add-btn',
             'music-prev-btn', 'music-play-pause-btn', 'music-next-btn', 'music-volume-slider', 'export-description-modal',
             'export-description-text', 'export-description-next-btn', 'package-file-tree-modal', 'package-modal-title',
@@ -472,7 +544,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'btn-play', 'btn-pause', 'btn-stop', 'btn-exit-prefab', 'btn-save-prefab', 'btn-toggle-2d-3d',
             'tool-tile-brush', 'tool-tile-bucket', 'tool-tile-rectangle-fill', 'tool-tile-eraser',
             // Menubar scene options
-            'menu-new-scene', 'menu-open-scene', 'menu-save-scene', 'menu-build', 'menu-import-asset', 'menu-import-skeleton',
+            'menu-new-scene', 'menu-open-scene', 'menu-save-scene', 'menu-share-engine', 'menu-build', 'menu-import-asset', 'menu-import-skeleton',
             // Asset Selector Bubble Elements
             'asset-selector-bubble', 'asset-selector-title', 'asset-selector-breadcrumbs', 'asset-selector-grid-view',
             'asset-selector-toolbar', 'asset-selector-view-modes', 'asset-selector-search',
@@ -969,6 +1041,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update UI that depends on selection
         updateHierarchy();
         updateInspector();
+        ParticleEditorWindow.refresh();
     };
 
     function handleKeyboardShortcuts(e) {
@@ -1221,6 +1294,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'sprite-slicer-panel': 'menu-window-sprite-editor',
             'vid-spri-panel': 'menu-window-vid-spri',
             'ambiente-control-panel': 'menu-window-ambiente-control',
+            'particle-editor-panel': 'menu-window-particle-editor',
+            'visual-scripting-panel': 'menu-window-visual-scripting',
             'scene-panel': 'menu-window-scene',
             'updates-panel': 'menu-window-updates'
         };
@@ -3218,6 +3293,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // --- Menubar Scene Actions ---
+        dom.menuShareEngine.addEventListener('click', (e) => {
+            e.preventDefault();
+            dom.toolbarShareBtn.click();
+        });
+
         dom.menuSaveScene.addEventListener('click', (e) => {
             e.preventDefault();
             saveScene();
@@ -3609,6 +3689,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 dom.ksCommandOutput.classList.remove('hidden');
 
                 showNotificationDialog('Comando Generado', 'Comando generado. Copialo y ejecutalo en una terminal con JDK instalado para crear tu archivo keystore.');
+            });
+        }
+
+        if (dom.toolbarShareBtn) {
+            dom.toolbarShareBtn.addEventListener('click', async () => {
+                if (navigator.share) {
+                    try {
+                        await navigator.share({
+                            title: 'Creative Engine',
+                            text: '¡Mira lo que estoy creando en Creative Engine! El motor de videojuegos 2D/3D para el navegador.',
+                            url: window.location.origin + window.location.pathname.replace('editor.html', 'index.html')
+                        });
+                    } catch (error) {
+                        if (error.name !== 'AbortError') console.error('Error sharing:', error);
+                    }
+                } else {
+                    // Fallback to clipboard
+                    try {
+                        await navigator.clipboard.writeText(window.location.origin + window.location.pathname.replace('editor.html', 'index.html'));
+                        showNotificationDialog('Enlace Copiado', 'El enlace al motor ha sido copiado al portapapeles.');
+                    } catch (err) {
+                        console.error('Could not copy text: ', err);
+                    }
+                }
             });
         }
 
@@ -4175,6 +4279,42 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         if (isMobile) {
             document.body.classList.add('mobile-mode');
+            initializeMobileUI();
+        }
+
+        function initializeMobileUI() {
+            const navBar = document.getElementById('mobile-nav-bar');
+            if (!navBar) return;
+
+            navBar.classList.remove('hidden');
+            const navButtons = navBar.querySelectorAll('.mobile-nav-btn');
+
+            // Default active panel for mobile: Scene
+            dom.scenePanel.classList.add('mobile-active');
+
+            navButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const targetId = btn.getAttribute('data-target');
+                    const targetPanel = document.getElementById(targetId);
+
+                    if (targetPanel) {
+                        // Deactivate current active panels and buttons
+                        document.querySelectorAll('.editor-panel.mobile-active').forEach(p => p.classList.remove('mobile-active'));
+                        navButtons.forEach(b => b.classList.remove('active'));
+
+                        // Activate target
+                        targetPanel.classList.add('mobile-active');
+                        btn.classList.add('active');
+
+                        // Special triggers when switching panels
+                        if (targetId === 'scene-panel') {
+                            updateCanvasInteractivity();
+                        } else if (targetId === 'inspector-panel') {
+                            updateInspector();
+                        }
+                    }
+                });
+            });
         }
 
         // --- Prevent accidental navigation ---
@@ -4213,6 +4353,9 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado
         window.setActiveTool = SceneView.setActiveTool;
         window.CES_Transpiler = CES_Transpiler;
         window.getSelectedMateria = () => selectedMateria;
+        window.ParticleEditorWindow = ParticleEditorWindow;
+        window.VisualScriptingCore = VisualScriptingCore;
+        window.RuntimeAPIManager = RuntimeAPIManager;
         window.TerrenoEditorWindow = TerrenoEditorWindow;
         window.AnimationEditorWindow = AnimationEditorWindow;
         window.TilePalette = TilePalette;
@@ -4739,6 +4882,8 @@ public start() {
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
             TilePalette.initialize({ dom, projectsDirHandle, openAssetSelectorCallback: openAssetSelector, setActiveToolCallback: SceneView.setActiveTool });
             TerrenoEditorWindow.initialize({ dom, updateInspector });
+            ParticleEditorWindow.initialize({ dom, getSelectedMateria });
+            VisualScriptingWindow.initialize({ dom });
             AmbienteControlWindow.initialize({
                 dom,
                 editorRenderer: renderer,

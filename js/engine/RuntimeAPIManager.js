@@ -63,6 +63,55 @@ export function clearAPIs() {
     console.log("Todas las APIs de tiempo de ejecución han sido eliminadas.");
 }
 
+// --- Game Memory & Global Variables ---
+const gameMemory = new Map();
+
+/**
+ * Establece una variable global en la memoria del juego.
+ * @param {string} key
+ * @param {any} value
+ */
+export function setGlobal(key, value) {
+    gameMemory.set(key, value);
+}
+
+/**
+ * Obtiene una variable global de la memoria del juego.
+ * @param {string} key
+ * @returns {any}
+ */
+export function getGlobal(key) {
+    return gameMemory.get(key);
+}
+
+/**
+ * Guarda un dato de forma persistente en el disco del navegador.
+ * @param {string} key
+ * @param {any} value
+ */
+export function saveToDisk(key, value) {
+    try {
+        localStorage.setItem(`ce_save_${key}`, JSON.stringify(value));
+    } catch (e) {
+        console.error("Error al guardar en disco:", e);
+    }
+}
+
+/**
+ * Carga un dato persistente del disco del navegador.
+ * @param {string} key
+ * @returns {any}
+ */
+export function loadFromDisk(key) {
+    try {
+        const data = localStorage.getItem(`ce_save_${key}`);
+        return data ? JSON.parse(data) : null;
+    } catch (e) {
+        console.error("Error al cargar de disco:", e);
+        return null;
+    }
+}
+
 let uiSystem = null;
 export function setUISystem(ui) { uiSystem = ui; }
 export function getUISystem() { return uiSystem; }

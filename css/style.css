@@ -827,3 +827,114 @@ main { padding: 20px 0; }
     height: 0;
     display: none; /* Safari and Chrome */
 }
+
+/* Template Selector */
+.template-selector {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.template-card {
+    flex: 1;
+    position: relative;
+    cursor: pointer;
+    background: var(--primary-bg-color);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.template-card input[type="radio"] {
+    display: none;
+}
+
+.template-card.active {
+    border-color: var(--accent-color);
+    background: rgba(88, 166, 255, 0.05);
+}
+
+.template-card.active .card-content span {
+    color: var(--accent-color);
+    font-weight: bold;
+}
+
+/* Carl Proactive Tip */
+.carl-tip-notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 320px;
+    background: #1c2128;
+    border: 1px solid var(--accent-color);
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+    z-index: 60000;
+    padding: 18px;
+    transform: translateX(400px);
+    transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    text-align: left;
+    pointer-events: all;
+}
+
+.carl-tip-notification.visible {
+    transform: translateX(0);
+}
+
+.carl-tip-notification .tip-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    font-weight: bold;
+    color: var(--accent-color);
+    font-size: 0.95em;
+}
+
+.carl-tip-notification .carl-avatar-small {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--accent-color);
+}
+
+.carl-tip-notification .close-tip {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: #8b949e;
+    cursor: pointer;
+    font-size: 24px;
+    line-height: 1;
+    padding: 0;
+}
+
+.carl-tip-notification .tip-body {
+    font-size: 0.9em;
+    line-height: 1.5;
+    margin-bottom: 15px;
+    color: #c9d1d9;
+}
+
+.carl-tip-notification .tip-footer {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.carl-tip-notification .tip-action {
+    background: var(--accent-color);
+    color: #0d1117;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 600;
+    transition: opacity 0.2s;
+}
+
+.carl-tip-notification .tip-action:hover {
+    opacity: 0.9;
+}

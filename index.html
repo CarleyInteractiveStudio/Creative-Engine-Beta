@@ -88,6 +88,7 @@
 
                 <section id="actions" class="hero-actions">
                     <button id="btn-start" class="green-button" data-i18n="EMPEZAR">Empezar a Crear</button>
+                    <button id="btn-share-main" class="blue-button" data-i18n="COMPARTIR_MOTOR">Compartir Motor</button>
                 </section>
 
             </div>
@@ -105,6 +106,9 @@
                     </button>
                     <button id="btn-add-project-top" class="launcher-btn green">
                         <img src="icons/plus.svg" class="ce-icon"> <span data-i18n="CREAR_PROYECTO">Crear Proyecto</span>
+                    </button>
+                    <button id="btn-share-launcher" class="launcher-btn blue" title="Compartir Motor" data-i18n-title="COMPARTIR_MOTOR">
+                        <img src="icons/share-2.svg" class="ce-icon" style="filter: brightness(0) invert(1);">
                     </button>
                 </div>
             </div>
@@ -225,6 +229,31 @@
                             <span data-i18n="PROYECTO_3D">Proyecto 3D</span>
                         </div>
                     </label>
+                </div>
+
+                <div id="template-selection-container">
+                    <label data-i18n="PLANTILLA">Plantilla:</label>
+                    <div class="template-selector">
+                        <label class="template-card active">
+                            <input type="radio" name="projectTemplate" value="empty" checked>
+                            <div class="card-content">
+                                <span data-i18n="PLANTILLA_VACIA">Vacío</span>
+                            </div>
+                        </label>
+                        <label class="template-card">
+                            <input type="radio" name="projectTemplate" value="platformer">
+                            <div class="card-content">
+                                <span data-i18n="PLANTILLA_PLATAFORMAS">Plataformas</span>
+                            </div>
+                        </label>
+                        <label class="template-card">
+                            <input type="radio" name="projectTemplate" value="topdown">
+                            <div class="card-content">
+                                <span data-i18n="PLANTILLA_TOPDOWN">Top-down</span>
+                            </div>
+                        </label>
+                    </div>
+                    <p class="modal-hint" data-i18n="HINT_PLANTILLA" style="margin-top: 5px;">Empieza con un proyecto pre-configurado y código comentado.</p>
                 </div>
 
                 <div class="novice-checkbox-container" style="margin-top: 20px; display: flex; align-items: center; gap: 10px; background: rgba(0,255,100,0.1); padding: 10px; border-radius: 8px; border: 1px solid rgba(0,255,100,0.2);">

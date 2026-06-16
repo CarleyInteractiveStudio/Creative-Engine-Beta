@@ -181,6 +181,18 @@ const engineAPIs = {
     solapamientoUI: checkUIOverlap,
     getDeltaTime: getDeltaTime,
     obtenerDeltaTime: getDeltaTime,
+
+    // Global Variables & Persistence
+    setGlobal: RuntimeAPIManager.setGlobal,
+    getGlobal: RuntimeAPIManager.getGlobal,
+    saveToDisk: RuntimeAPIManager.saveToDisk,
+    loadFromDisk: RuntimeAPIManager.loadFromDisk,
+
+    // Spanish Aliases
+    establecerGlobal: RuntimeAPIManager.setGlobal,
+    obtenerGlobal: RuntimeAPIManager.getGlobal,
+    guardarEnDisco: RuntimeAPIManager.saveToDisk,
+    cargarDeDisco: RuntimeAPIManager.loadFromDisk,
 };
 
 export function getAPIs() {

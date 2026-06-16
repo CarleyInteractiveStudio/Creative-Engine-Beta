@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const startButton = document.getElementById('btn-start');
     const shareButton = document.getElementById('btn-share');
     const shareButtonMain = document.getElementById('btn-share-main');
+    const shareButtonLauncher = document.getElementById('btn-share-launcher');
     const createProjectBtn = document.getElementById('btn-add-project-top');
     const selectFolderBtn = document.getElementById('btn-select-folder');
     const joinCollabBtn = document.getElementById('btn-join-collab');
@@ -332,6 +333,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
+    // Template Selector Visual Logic
+    const templateCards = document.querySelectorAll('.template-card');
+    templateCards.forEach(card => {
+        card.addEventListener('click', () => {
+            templateCards.forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+            const radio = card.querySelector('input[type="radio"]');
+            if (radio) radio.checked = true;
+        });
+    });
+
     const handleShare = async (e) => {
         if (e) e.preventDefault();
         if (navigator.share) {
@@ -358,6 +370,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (shareButton) shareButton.addEventListener('click', handleShare);
     if (shareButtonMain) shareButtonMain.addEventListener('click', handleShare);
+    if (shareButtonLauncher) shareButtonLauncher.addEventListener('click', handleShare);
 
     if(closeCreateProject) closeCreateProject.addEventListener('click', closeModal);
 
@@ -408,6 +421,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const projectNameInput = document.getElementById('project-name');
         const projectName = projectNameInput.value.trim().replace(/[^a-zA-Z0-9-]/g, '-');
         const projectType = createProjectForm.querySelector('input[name="projectType"]:checked').value;
+        const projectTemplate = createProjectForm.querySelector('input[name="projectTemplate"]:checked').value;
         const isNewUser = document.getElementById('is-new-user').checked;
 
         if (!projectName) {
@@ -455,7 +469,117 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Crear el archivo de escena por defecto
             const sceneFileHandle = await assetsDirHandle.getFileHandle('default.ceScene', { create: true });
             let writable = await sceneFileHandle.createWritable();
-            await writable.write(JSON.stringify({ materias: [] }, null, 2));
+
+            let sceneData = { materias: [] };
+
+            if (projectTemplate === 'platformer') {
+                sceneData = {
+                    materias: [
+                        {
+                            name: "Suelo",
+                            id: "materia_floor_001",
+                            transform: { position: { x: 400, y: 500, z: 0 }, rotation: 0, scale: { x: 800, y: 40, z: 1 } },
+                            components: [
+                                { type: "SpriteRenderer", color: "#228822" },
+                                { type: "BoxCollider2D", size: { x: 1, y: 1 }, isStatic: true }
+                            ]
+                        },
+                        {
+                            name: "Jugador",
+                            id: "materia_player_001",
+                            transform: { position: { x: 400, y: 300, z: 0 }, rotation: 0, scale: { x: 50, y: 50, z: 1 } },
+                            components: [
+                                { type: "SpriteRenderer", color: "#55aaff" },
+                                { type: "Rigidbody2D", gravityScale: 1 },
+                                { type: "BoxCollider2D", size: { x: 1, y: 1 } }
+                            ]
+                        }
+                    ]
+                };
+
+                // Crear script de ejemplo para el plataformas
+                const playerScript = `/**
+ * CONTROLADOR DE JUGADOR (PLATAFORMAS)
+ *
+ * Este script controla el movimiento lateral y el salto.
+ */
+
+export default class PlayerController extends Ley {
+    onStart() {
+        this.speed = 300;
+        this.jumpForce = 600;
+        this.rb = this.getComponent("Rigidbody2D");
+    }
+
+    onUpdate(dt) {
+        // Movimiento Horizontal
+        let moveX = 0;
+        if (Input.isKeyDown("ArrowRight") || Input.isKeyDown("d")) moveX = 1;
+        if (Input.isKeyDown("ArrowLeft") || Input.isKeyDown("a")) moveX = -1;
+
+        this.transform.position.x += moveX * this.speed * dt;
+
+        // Salto
+        if ((Input.isKeyDown("ArrowUp") || Input.isKeyDown("w") || Input.isKeyDown(" ")) && this.rb.velocity.y === 0) {
+            this.rb.applyImpulse({ x: 0, y: -this.jumpForce });
+        }
+    }
+}`;
+                const scriptFileHandle = await assetsDirHandle.getFileHandle('ControladorJugador.ces', { create: true });
+                let sw = await scriptFileHandle.createWritable();
+                await sw.write(playerScript);
+                await sw.close();
+            } else if (projectTemplate === 'topdown') {
+                sceneData = {
+                    materias: [
+                        {
+                            name: "Personaje",
+                            id: "materia_char_001",
+                            transform: { position: { x: 400, y: 300, z: 0 }, rotation: 0, scale: { x: 40, y: 40, z: 1 } },
+                            components: [
+                                { type: "SpriteRenderer", color: "#ff5555" }
+                            ]
+                        }
+                    ]
+                };
+
+                const topdownScript = `/**
+ * CONTROLADOR TOP-DOWN
+ *
+ * Movimiento en 8 direcciones para juegos tipo Zelda o RPG.
+ */
+
+export default class TopDownMovement extends Ley {
+    onStart() {
+        this.speed = 250;
+    }
+
+    onUpdate(dt) {
+        let vx = 0;
+        let vy = 0;
+
+        if (Input.isKeyDown("ArrowRight") || Input.isKeyDown("d")) vx = 1;
+        if (Input.isKeyDown("ArrowLeft") || Input.isKeyDown("a")) vx = -1;
+        if (Input.isKeyDown("ArrowDown") || Input.isKeyDown("s")) vy = 1;
+        if (Input.isKeyDown("ArrowUp") || Input.isKeyDown("w")) vy = -1;
+
+        // Normalizar diagonal (opcional)
+        if (vx !== 0 && vy !== 0) {
+            vx *= 0.707;
+            vy *= 0.707;
+        }
+
+        this.transform.position.x += vx * this.speed * dt;
+        this.transform.position.y += vy * this.speed * dt;
+    }
+}`;
+                const scriptFileHandle = await assetsDirHandle.getFileHandle('MovimientoTopDown.ces', { create: true });
+                let sw = await scriptFileHandle.createWritable();
+                await sw.write(topdownScript);
+                await sw.close();
+            }
+
+            await writable.write(JSON.stringify(sceneData, null, 2));
             await writable.close();
 
             // Cargar y escribir los archivos de documentación

@@ -528,8 +528,80 @@ body.mobile-mode .logo-area span {
 }
 
 body.mobile-mode #editor-main-content {
-    grid-template-columns: 35% 6px 1fr 6px 35%;
-    padding: 2px;
+    display: block;
+    height: calc(100vh - 44px - 60px); /* Menubar and Bottom Nav */
+    padding: 0;
+}
+
+body.mobile-mode .editor-panel {
+    display: none;
+    height: 100%;
+    width: 100%;
+    border: none;
+    border-radius: 0;
+}
+
+body.mobile-mode .editor-panel.mobile-active {
+    display: flex !important;
+}
+
+body.mobile-mode .floating-panel {
+    top: 44px !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: calc(100vh - 44px - 60px) !important;
+    transform: none !important;
+    border-radius: 0 !important;
+    z-index: 6000 !important;
+}
+
+body.mobile-mode .resizer-v,
+body.mobile-mode .resizer-h {
+    display: none !important;
+}
+
+#mobile-nav-bar {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 60px;
+    background-color: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+    z-index: 5000;
+    justify-content: space-around;
+    align-items: center;
+}
+
+body.mobile-mode #mobile-nav-bar {
+    display: flex;
+}
+
+.mobile-nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 10px;
+    cursor: pointer;
+    flex: 1;
+    height: 100%;
+    transition: background 0.2s;
+}
+
+.mobile-nav-btn.active {
+    color: var(--accent-color);
+    background: rgba(14, 99, 156, 0.1);
+}
+
+.mobile-nav-btn .ce-icon {
+    width: 20px;
+    height: 20px;
 }
 
 /* --- Panel Assignments & Styles --- */
@@ -3050,6 +3122,29 @@ body.mobile-mode .component-item:active {
 .component-header-controls {
     display: flex;
     align-items: center;
+    gap: 5px;
+}
+
+.help-component-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text-secondary);
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    font-size: 11px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-weight: bold;
+}
+
+.help-component-btn:hover {
+    background: var(--accent-color);
+    color: white;
+    border-color: transparent;
 }
 
 .inspector-row {
@@ -3478,6 +3573,46 @@ body.mobile-mode .component-item:active {
 
 #code-editor-toolbar::-webkit-scrollbar {
     display: none;
+}
+
+#mobile-code-tools {
+    display: none;
+    background-color: var(--bg-tertiary);
+    border-top: 1px solid var(--border-color);
+    padding: 5px;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-shrink: 0;
+}
+
+#mobile-code-tools::-webkit-scrollbar {
+    display: none;
+}
+
+body.mobile-mode #mobile-code-tools {
+    display: flex;
+}
+
+.mobile-code-btn {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    cursor: pointer;
+    white-space: nowrap;
+    min-width: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mobile-code-btn:active {
+    background-color: var(--accent-color);
+    color: white;
 }
 
 #code-editor-toolbar button {
@@ -5251,6 +5386,151 @@ body.game-mode #loading-overlay {
     min-height: 150px;
 }
 
+
+/* --- Visual Scripting Editor --- */
+.vs-layout {
+    display: flex;
+    height: 100%;
+}
+
+#vs-toolbox {
+    width: 200px;
+    background-color: var(--bg-tertiary);
+    border-right: 1px solid var(--border-color);
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.vs-toolbox-section h4 {
+    margin: 0 0 10px 0;
+    font-size: 0.8em;
+    text-transform: uppercase;
+    color: var(--accent-color);
+}
+
+.vs-draggable-item {
+    padding: 8px;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    margin-bottom: 5px;
+    cursor: grab;
+    font-size: 0.9em;
+}
+
+#vs-workspace {
+    flex: 1;
+    background-color: #1e1e1e;
+    position: relative;
+    overflow: hidden;
+    background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+#vs-connections-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.vs-block {
+    position: absolute;
+    width: 180px;
+    background-color: var(--bg-secondary);
+    border-radius: 6px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    border-left: 5px solid #888;
+    z-index: 10;
+}
+
+.vs-block-header {
+    padding: 6px 10px;
+    font-weight: bold;
+    font-size: 0.85em;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.vs-block-body {
+    padding: 10px;
+    font-size: 0.8em;
+}
+
+.vs-block-body input {
+    background: #000;
+    border: 1px solid #444;
+    color: white;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+.event-block { border-left-color: #f39c12; }
+.action-block { border-left-color: #3498db; }
+
+.vs-block-connector-out, .vs-block-connector-in, .vs-block-connector-branch {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background-color: #0e639c;
+    border-radius: 50%;
+    right: -6px;
+    top: 24px;
+    cursor: crosshair;
+}
+
+.vs-block-connector-in {
+    left: -6px;
+    background-color: #27ae60;
+}
+
+.vs-block-connector-branch {
+    background-color: #4caf50;
+    top: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    color: white;
+}
+
+.variable-decl-block { border-left-color: #f3ca58; }
+.function-decl-block { border-left-color: #9c27b0; }
+
+.vs-var-chip {
+    background: #f3ca58;
+    color: #000;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin: 2px;
+    display: inline-block;
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.vs-block-connector-branch:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 5px #4caf50;
+}
+
+.vs-block-delete {
+    position: absolute;
+    top: 2px;
+    right: 5px;
+    cursor: pointer;
+    opacity: 0.5;
+}
+
+#vs-workspace-hint {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0.3;
+}
 
 /* --- Improved Window Styles for Libraries --- */
 

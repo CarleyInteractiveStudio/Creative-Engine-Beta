@@ -69,6 +69,7 @@ export class StandaloneRuntime {
         // 2. Initialize subsystems
         this.renderer = new Renderer(this.canvas, false, true);
         InputManager.initialize(this.canvas, this.canvas);
+        InputManager.setupDefaultVirtualControls();
 
         // --- Splash Screen Phase ---
         const hasSplashes = this.config.splashScreens && (this.config.splashScreens.show || this.config.splashScreens.showEngineLogo);

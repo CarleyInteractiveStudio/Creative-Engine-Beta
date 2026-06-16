@@ -5,6 +5,8 @@ SILENCIAR_MUSICA: Silenciar Música
 
 # General
 TUTORIALES: Tutoriales
+VER_AYUDA: Ver Ayuda
+COMPARTIR_MOTOR_DESC: ¡Creative Engine es asombroso! Únete a la comunidad de creadores.
 EMPEZAR: Empezar a Crear
 CONTACTO: Contacto
 SOPORTE: Soporte
@@ -131,6 +133,11 @@ HERRAMIENTA_MULTI: Multi
 HERRAMIENTA_GOMA: Borrar
 
 # Launcher
+PLANTILLA: Plantilla
+PLANTILLA_VACIA: Vacío
+PLANTILLA_PLATAFORMAS: Plataformas
+PLANTILLA_TOPDOWN: Top-down
+HINT_PLANTILLA: Empieza con un proyecto pre-configurado y código comentado.
 GRAFICOS_AVANZADOS: Gráficos Avanzados
 OPTIMIZACION_GRAFICA: Optimización y Detalle
 RESOURCE_LOADING_MODE: Modo de Carga de Recursos
@@ -297,6 +304,35 @@ CONTROLADOR_ANIMACION: Controlador de Animación
 PALETA_TILES: Tiles
 EDITOR_SPRITES: Sprites
 CONTROL_AMBIENTE: Ambiente
+EDITOR_PARTICULAS: Editor de Partículas
+SCRIPTING_VISUAL: Scripting Visual
+VARIABLES: Variables
+LOGICA: Lógica
+FUNCIONES: Funciones
+CREAR_VARIABLE: Crear Variable
+ASIGNAR_VARIABLE: Asignar Variable
+SUMAR_VARIABLE: Sumar a Var
+ESTABLECER_GLOBAL: Establecer Global
+SI_CONDICION: Si (Condición)
+NUEVA_FUNCION: Nueva Función
+LLAMAR_FUNCION: Llamar Función
+VARIABLES_ACTIVAS: Variables Activas
+PS_SELECT_HINT: Selecciona una Materia con Sistema de Partículas para empezar.
+FUEGO: Fuego
+HUMO: Humo
+EXPLOSION: Explosión
+MAGIA: Magia
+EMISION: Emisión
+MAX_PARTICULAS: Máx Partículas
+TASA_EMISION: Tasa Emisión
+FISICA_TIEMPO: Física y Tiempo
+VIDA_SEG: Vida (seg)
+DISPERSION: Dispersión (º)
+COLOR_INICIO: Color Inicio
+COLOR_FIN: Color Fin
+TAMANO_INICIO: Tamaño Inicio
+TAMANO_FIN: Tamaño Fin
+DESVANECER_ALPHA: Desvanecer Alpha
 SISTEMA_VERIFICACION: Verificación
 ACTUALIZACIONES: Actualizaciones
 ACTIVIDAD_COLABORATIVA: Actividad Colaborativa
@@ -747,6 +783,11 @@ HERRAMIENTA_MULTI: Multi
 HERRAMIENTA_GOMA: Erase
 
 # Launcher
+PLANTILLA: Template
+PLANTILLA_VACIA: Empty
+PLANTILLA_PLATAFORMAS: Platformer
+PLANTILLA_TOPDOWN: Top-down
+HINT_PLANTILLA: Start with a pre-configured project and commented code.
 GRAFICOS_AVANZADOS: Advanced Graphics
 OPTIMIZACION_GRAFICA: Optimization & Detail
 RESOURCE_LOADING_MODE: Resource Loading Mode
@@ -914,6 +955,35 @@ CONTROLADOR_ANIMACION: Animation Controller
 PALETA_TILES: Tiles
 EDITOR_SPRITES: Sprites
 CONTROL_AMBIENTE: Environment
+EDITOR_PARTICULAS: Particle Editor
+SCRIPTING_VISUAL: Visual Scripting
+VARIABLES: Variables
+LOGICA: Logic
+FUNCIONES: Functions
+CREAR_VARIABLE: Create Variable
+ASIGNAR_VARIABLE: Assign Variable
+SUMAR_VARIABLE: Add to Var
+ESTABLECER_GLOBAL: Set Global
+SI_CONDICION: If (Condition)
+NUEVA_FUNCION: New Function
+LLAMAR_FUNCION: Call Function
+VARIABLES_ACTIVAS: Active Variables
+PS_SELECT_HINT: Select a Matter with a Particle System to start.
+FUEGO: Fire
+HUMO: Smoke
+EXPLOSION: Explosion
+MAGIA: Magic
+EMISION: Emission
+MAX_PARTICULAS: Max Particles
+TASA_EMISION: Emission Rate
+FISICA_TIEMPO: Physics & Time
+VIDA_SEG: Lifetime (sec)
+DISPERSION: Spread (º)
+COLOR_INICIO: Start Color
+COLOR_FIN: End Color
+TAMANO_INICIO: Start Size
+TAMANO_FIN: End Size
+DESVANECER_ALPHA: Fade Alpha
 SISTEMA_VERIFICACION: Verification
 ACTUALIZACIONES: Updates
 ACTIVIDAD_COLABORATIVA: Collaborative Activity
@@ -1324,6 +1394,11 @@ AUTH_RESET_SENT: Se existir uma conta com este e-mail, um link de recuperação 
 ENVIANDO: Enviando...
 
 # Launcher
+PLANTILLA: Modelo
+PLANTILLA_VACIA: Vazio
+PLANTILLA_PLATAFORMAS: Plataformas
+PLANTILLA_TOPDOWN: Top-down
+HINT_PLANTILLA: Comece com um projeto pré-configurado e código comentado.
 GRAFICOS_AVANZADOS: Gráficos Avançados
 OPTIMIZACION_GRAFICA: Otimização e Detalhe
 RESOURCE_LOADING_MODE: Modo de Carregamento de Recursos
@@ -1473,6 +1548,35 @@ CONTROLADOR_ANIMACION: Controlador de Animação
 PALETA_TILES: Editor de Paleta de Tiles
 EDITOR_SPRITES: Editor de Sprites
 CONTROL_AMBIENTE: Control de Ambiente
+EDITOR_PARTICULAS: Editor de Partículas
+SCRIPTING_VISUAL: Scripting Visual
+VARIABLES: Variáveis
+LOGICA: Lógica
+FUNCIONES: Funções
+CREAR_VARIABLE: Criar Variável
+ASIGNAR_VARIABLE: Atribuir Variável
+SUMAR_VARIABLE: Somar à Var
+ESTABLECER_GLOBAL: Definir Global
+SI_CONDICION: Se (Condição)
+NUEVA_FUNCION: Nova Função
+LLAMAR_FUNCION: Chamar Função
+VARIABLES_ACTIVAS: Variáveis Ativas
+PS_SELECT_HINT: Selecione uma Matéria com Sistema de Partículas para começar.
+FUEGO: Fogo
+HUMO: Fumaça
+EXPLOSION: Explosão
+MAGIA: Magia
+EMISION: Emissão
+MAX_PARTICULAS: Máx Partículas
+TASA_EMISION: Taxa de Emissão
+FISICA_TIEMPO: Física e Tempo
+VIDA_SEG: Vida (seg)
+DISPERSION: Dispersão (º)
+COLOR_INICIO: Cor Inicial
+COLOR_FIN: Cor Final
+TAMANO_INICIO: Tamanho Inicial
+TAMANO_FIN: Tamanho Final
+DESVANECER_ALPHA: Desvanecer Alpha
 SISTEMA_VERIFICACION: Sistema de Verificação
 ACTUALIZACIONES: Atualizações
 ACTIVIDAD_COLABORATIVA: Atividade Colaborativa
@@ -2640,6 +2744,11 @@ CONSEJO_NOVATO_3: 3. Usa Scripts (.ces) en el Navegador para programar la lógic
 IR_A_DOCUMENTACION: Ver Documentación
 ACCESOS_RAPIDOS: Accesos Rápidos:
 
+# Carl Proactive
+CARL_TIP_TITLE: Carl tiene un consejo
+CARL_TIP_ACTION: Ver sugerencia
+CARL_TIP_FIX_PROMPT: He notado que tienes este error varias veces: "{error}". ¿Quieres que analice tu código y te proponga una solución?
+
 # Novice Guide
 TITULO_NOVATO: Welcome!
 MSG_NOVATO: Hello, you have activated the novice checkbox. Here is a basic guide to get you started.
@@ -2650,6 +2759,11 @@ CONSEJO_NOVATO_3: 3. Use Scripts (.ces) in the Browser to program the logic.
 IR_A_DOCUMENTACION: View Documentation
 ACCESOS_RAPIDOS: Quick Access:
 
+# Carl Proactive
+CARL_TIP_TITLE: Carl has a tip
+CARL_TIP_ACTION: See suggestion
+CARL_TIP_FIX_PROMPT: I've noticed you've had this error several times: "{error}". Would you like me to analyze your code and propose a fix?
+
 # Novice Guide
 TITULO_NOVATO: Bem-vindo!
 MSG_NOVATO: Olá, você ativou a caixa de novato. Aqui está um guia básico para você começar.
@@ -2659,6 +2773,11 @@ CONSEJO_NOVATO_2: 2. Adicione uma Lei (Componente) no Inspetor para dar propried
 CONSEJO_NOVATO_3: 3. Use Scripts (.ces) no Navegador para programar a lógica.
 IR_A_DOCUMENTACION: Ver Documentação
 ACCESOS_RAPIDOS: Acessos Rápidos:
+
+# Carl Proactive
+CARL_TIP_TITLE: Carl tem uma dica
+CARL_TIP_ACTION: Ver sugestão
+CARL_TIP_FIX_PROMPT: Notei que você teve esse erro várias vezes: "{error}". Gostaria que eu analisasse seu código e propusesse uma correção?
 
 # Novice Guide
 TITULO_NOVATO: Добро пожаловать!
