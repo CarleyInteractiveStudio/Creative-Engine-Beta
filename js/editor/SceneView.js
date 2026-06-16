@@ -2255,19 +2255,24 @@ function drawCameraGizmos(renderer) {
                 return world3DToScreen({ x: transform.x + worldPos[0], y: transform.y + worldPos[1], z: (transform.z || 0) + worldPos[2] });
             };
 
-            const n1 = project(-nearW, nearH, near), n2 = project(nearW, nearH, near), n3 = project(nearW, -nearH, near), n4 = project(-nearW, -nearH, near);
-            const f1 = project(-farW, farH, far), f2 = project(farW, farH, far), f3 = project(farW, -farH, far), f4 = project(-farW, -farH, far);
-
-            const drawLine = (p1, p2) => {
-                if (p1 && p2) { ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke(); }
+            const projectRaw = (lx, ly, lz) => {
+                const worldPos = glm.vec3.create();
+                glm.vec3.transformQuat(worldPos, [lx, ly, -lz], q);
+                return { x: transform.x + worldPos[0], y: transform.y + worldPos[1], z: (transform.z || 0) + worldPos[2] };
             };
 
+            const n1 = projectRaw(-nearW, nearH, near), n2 = projectRaw(nearW, nearH, near), n3 = projectRaw(nearW, -nearH, near), n4 = projectRaw(-nearW, -nearH, near);
+            const f1 = projectRaw(-farW, farH, far), f2 = projectRaw(farW, farH, far), f3 = projectRaw(farW, -farH, far), f4 = projectRaw(-farW, -farH, far);
+
+            const clr = isSelected ? 'rgba(255, 255, 0, 0.8)' : 'rgba(255, 255, 255, 0.4)';
+            const drawL = (p1, p2) => drawLineClipped(ctx, p1, p2, clr, is3D ? 2 : 1 / renderer.camera.effectiveZoom);
+
             // Near plane
-            drawLine(n1, n2); drawLine(n2, n3); drawLine(n3, n4); drawLine(n4, n1);
+            drawL(n1, n2); drawL(n2, n3); drawL(n3, n4); drawL(n4, n1);
             // Far plane
-            drawLine(f1, f2); drawLine(f2, f3); drawLine(f3, f4); drawLine(f4, f1);
+            drawL(f1, f2); drawL(f2, f3); drawL(f3, f4); drawL(f4, f1);
             // Connecting lines
-            drawLine(n1, f1); drawLine(n2, f2); drawLine(n3, f3); drawLine(n4, f4);
+            drawL(n1, f1); drawL(n2, f2); drawL(n3, f3); drawL(n4, f4);
         }
 
         ctx.restore();

@@ -7,7 +7,7 @@ import { registerComponent } from './ComponentRegistry.js';
 export class MeshRenderer3D extends Leyes {
     constructor(materia) {
         super(materia);
-        this.meshType = 'Cube'; // 'Cube', 'Sphere', 'Plane', 'Custom'
+        this.meshType = 'Cube'; // 'Cube', 'Sphere', 'Plane', 'Triangle', 'Capsule', 'Custom'
         this.color = '#ffffff';
         this.texturePath = null;
         this.isUnlit = false;
@@ -66,10 +66,6 @@ export class SpotLight3D extends Light3D {
     }
 }
 
-/**
- * Rigidbody3D: Componente de físicas para objetos 3D.
- * Permite movimiento, rotación y fuerzas en los 3 ejes.
- */
 export class Rigidbody3D extends Leyes {
     static actionableMethods = {
         'addForce': ['aplicarFuerza', 'приложитьСилу', '施加力'],
@@ -84,7 +80,6 @@ export class Rigidbody3D extends Leyes {
         this.drag = 0.01;
         this.angularDrag = 0.05;
         this.isKinematic = false;
-
         this.velocity = { x: 0, y: 0, z: 0 };
         this.angularVelocity = { x: 0, y: 0, z: 0 };
     }
@@ -129,9 +124,6 @@ export class Rigidbody3D extends Leyes {
     }
 }
 
-/**
- * Collider3D: Clase base para colisionadores 3D.
- */
 export class Collider3D extends Leyes {
     constructor(materia) {
         super(materia);
@@ -167,55 +159,37 @@ export class SphereCollider3D extends Collider3D {
     }
 }
 
-/**
- * SkinnedMeshRenderer3D: Componente para renderizar mallas con animación esquelética.
- */
 export class SkinnedMeshRenderer3D extends MeshRenderer3D {
     constructor(materia) {
         super(materia);
         this.meshType = 'Custom';
         this.modelPath = null;
-        this.skeleton = null; // { joints: [], inverseBindMatrices: [] }
-        this.rootBone = null; // Referencia a la Materia que es el hueso raíz
-        this.weights = null;
-        this.jointIndices = null;
-        this.cpuPositions = null; // Float32Array for sculpting
+        this.skeleton = null;
+        this.rootBone = null;
+        this.cpuPositions = null;
         this.isDirty = false;
-
-        // Cache de matrices de huesos para el shader
         this.boneMatrices = new Float32Array(64 * 16);
         for(let i=0; i<64; i++) {
             const idx = i * 16;
-            this.boneMatrices[idx] = 1;
-            this.boneMatrices[idx+5] = 1;
-            this.boneMatrices[idx+10] = 1;
-            this.boneMatrices[idx+15] = 1;
+            this.boneMatrices[idx] = 1; this.boneMatrices[idx+5] = 1; this.boneMatrices[idx+10] = 1; this.boneMatrices[idx+15] = 1;
         }
-
         this.isLoaded = false;
     }
 
     updateBoneMatrices() {
         if (!this.skeleton || !this.skeleton.joints) return;
-
         const glm = window.glMatrix;
         if (!glm) return;
-
         const scene = this.materia.scene || window.SceneManager?.currentScene;
         if (!scene) return;
 
         for (let i = 0; i < this.skeleton.joints.length && i < 64; i++) {
             const jointMateria = scene.findMateriaById(this.skeleton.joints[i]);
             if (!jointMateria) continue;
-
             const transform = jointMateria.getComponent(window.Components.Transform);
-            const worldMatrix = transform.worldMatrix;
-
-            // Bone Matrix = WorldMatrix * InverseBindMatrix
             const invBind = new Float32Array(this.skeleton.inverseBindMatrices.buffer, this.skeleton.inverseBindMatrices.byteOffset + i * 64, 16);
             const boneMat = glm.mat4.create();
-            glm.mat4.multiply(boneMat, worldMatrix, invBind);
-
+            glm.mat4.multiply(boneMat, transform.worldMatrix, invBind);
             this.boneMatrices.set(boneMat, i * 16);
         }
     }
@@ -227,9 +201,6 @@ export class SkinnedMeshRenderer3D extends MeshRenderer3D {
     }
 }
 
-/**
- * Animator3D: Gestiona la reproducción de animaciones 3D en un SkinnedMeshRenderer3D.
- */
 export class Animator3D extends Leyes {
     static actionableMethods = {
         'play': ['reproducir', 'воспроизвести', '播放'],
@@ -248,37 +219,23 @@ export class Animator3D extends Leyes {
     }
 
     play(name = null) {
-        if (name) {
-            this.currentAnimation = this.animations.find(a => a.name === name);
-        } else if (this.animations.length > 0) {
-            this.currentAnimation = this.animations[0];
-        }
+        if (name) this.currentAnimation = this.animations.find(a => a.name === name);
+        else if (this.animations.length > 0) this.currentAnimation = this.animations[0];
         this.isPlaying = true;
         this.time = 0;
     }
 
-    stop() {
-        this.isPlaying = false;
-        this.time = 0;
-    }
-
-    pause() {
-        this.isPlaying = false;
-    }
+    stop() { this.isPlaying = false; this.time = 0; }
+    pause() { this.isPlaying = false; }
 
     update(deltaTime) {
         if (!this.isPlaying || !this.currentAnimation) return;
-
         this.time += deltaTime * this.speed;
         const duration = this.getMaxTime();
         if (this.time > duration) {
             if (this.loop) this.time %= duration;
-            else {
-                this.time = duration;
-                this.isPlaying = false;
-            }
+            else { this.time = duration; this.isPlaying = false; }
         }
-
         this.applyAnimation(this.time);
     }
 
@@ -294,14 +251,12 @@ export class Animator3D extends Leyes {
     applyAnimation(time) {
         const glm = window.glMatrix;
         if (!glm) return;
-
         const scene = this.materia.scene || window.SceneManager?.currentScene;
         if (!scene) return;
 
         for (const channel of this.currentAnimation.channels) {
             const targetMateria = scene.findMateriaById(channel.node);
             if (!targetMateria) continue;
-
             const transform = targetMateria.getComponent(window.Components.Transform);
             if (!transform) continue;
 
@@ -336,7 +291,6 @@ export class Animator3D extends Leyes {
 
         const t = (time - times[i]) / (times[i + 1] - times[i]);
         const result = new Float32Array(compCount);
-
         for (let j = 0; j < compCount; j++) {
             const v1 = values[i * compCount + j];
             const v2 = values[(i + 1) * compCount + j];
@@ -347,7 +301,6 @@ export class Animator3D extends Leyes {
             const mag = Math.sqrt(result[0]**2 + result[1]**2 + result[2]**2 + result[3]**2);
             result[0] /= mag; result[1] /= mag; result[2] /= mag; result[3] /= mag;
         }
-
         return result;
     }
 
@@ -355,9 +308,7 @@ export class Animator3D extends Leyes {
         const x = q[0], y = q[1], z = q[2], w = q[3];
         const x2 = x + x, y2 = y + y, z2 = z + z;
         const xx = x * x2, xy = x * y2, xz = x * z2;
-        const yy = y * y2, yz = y * z2, zz = z * z2;
-        const wx = w * x2, wy = w * y2, wz = w * z2;
-
+        const yy = y * y2, yz = y * z2, zz = z * z2, wx = w * x2, wy = w * y2, wz = w * z2;
         out[0] = Math.atan2(yz + wx, 1 - (xx + yy)) * 180 / Math.PI;
         out[1] = Math.asin(Math.max(-1, Math.min(1, wy - xz))) * 180 / Math.PI;
         out[2] = Math.atan2(xy + wz, 1 - (yy + zz)) * 180 / Math.PI;
@@ -370,20 +321,6 @@ export class Animator3D extends Leyes {
     }
 }
 
-// Register 3D Components
-registerComponent('MeshRenderer3D', MeshRenderer3D);
-registerComponent('SkinnedMeshRenderer3D', SkinnedMeshRenderer3D);
-registerComponent('DirectionalLight3D', DirectionalLight3D);
-registerComponent('PointLight3D', PointLight3D);
-registerComponent('SpotLight3D', SpotLight3D);
-registerComponent('Rigidbody3D', Rigidbody3D);
-registerComponent('BoxCollider3D', BoxCollider3D);
-registerComponent('SphereCollider3D', SphereCollider3D);
-registerComponent('Animator3D', Animator3D);
-
-/**
- * HumanoidPhysics3D: Main component for advanced 3D character physics and IK.
- */
 export class HumanoidPhysics3D extends Leyes {
     constructor(materia) {
         super(materia);
@@ -391,107 +328,14 @@ export class HumanoidPhysics3D extends Leyes {
         this.leftLegChain = [];
         this.rightLegChain = [];
         this.isGrounded = true;
-        this.isLimping = false;
-        this.injuryLevel = 0;
     }
-
-    update(deltaTime) {
-        if (!window.isGameRunning) return;
-        if (this.leftLegChain.length === 0) this._autoDetectBones();
-
-        this._handleLedgeDetection(deltaTime);
-    }
-
-    _handleLedgeDetection(deltaTime) {
-        const scene = this.materia.scene || window.SceneManager?.currentScene;
-        if (!scene || !scene.physicsSystem?.raycast3D) return;
-
-        const transform = this.materia.getComponent(window.Components.Transform);
-        const forward = { x: Math.sin(transform.localRotation.y * Math.PI / 180), y: 0, z: Math.cos(transform.localRotation.y * Math.PI / 180) };
-        const rayOrigin = { x: transform.x, y: transform.y - 120, z: (transform.z || 0) }; // Chest level
-
-        const hit = scene.physicsSystem.raycast3D(rayOrigin, forward, 50);
-        if (hit) {
-            // Potential wall/ledge detected. Position hands.
-            const lHand = this.materia.findChildByName('Mano_I', true);
-            const rHand = this.materia.findChildByName('Mano_D', true);
-
-            if (lHand) this.solveIK([this.materia.findChildByName('Brazo_I', true), lHand], hit.point);
-            if (rHand) this.solveIK([this.materia.findChildByName('Brazo_D', true), rHand], hit.point);
-        }
-    }
-
-    _autoDetectBones() {
-        const hip = this.materia.findChildByName('Cadera', true);
-        const lLeg = this.materia.findChildByName('Pierna_I', true);
-        const rLeg = this.materia.findChildByName('Pierna_D', true);
-        const lFoot = this.materia.findChildByName('Pie_I', true);
-        const rFoot = this.materia.findChildByName('Pie_D', true);
-        if (hip && lLeg && lFoot) this.leftLegChain = [hip, lLeg, lFoot];
-        if (hip && rLeg && rFoot) this.rightLegChain = [hip, rLeg, rFoot];
-    }
-
-    solveIK(chain, targetPos) {
-        const glm = window.glMatrix;
-        if (!glm || !glm.vec3 || chain.length < 2) return;
-
-        const target = glm.vec3.fromValues(targetPos.x, targetPos.y, targetPos.z);
-
-        for (let iter = 0; iter < 10; iter++) {
-            for (let i = chain.length - 2; i >= 0; i--) {
-                const bone = chain[i];
-                const effector = chain[chain.length - 1];
-                const t = bone.getComponent(window.Components.Transform);
-                const et = effector.getComponent(window.Components.Transform);
-
-                const bPos = glm.vec3.fromValues(t.position.x, t.position.y, t.position.z);
-                const ePos = glm.vec3.fromValues(et.position.x, et.position.y, et.position.z);
-
-                const toEffector = glm.vec3.normalize(glm.vec3.create(), glm.vec3.sub(glm.vec3.create(), ePos, bPos));
-                const toTarget = glm.vec3.normalize(glm.vec3.create(), glm.vec3.sub(glm.vec3.create(), target, bPos));
-
-                const dot = glm.vec3.dot(toEffector, toTarget);
-                if (dot < 0.9999) {
-                    const axis = glm.vec3.cross(glm.vec3.create(), toEffector, toTarget);
-                    glm.vec3.normalize(axis, axis);
-                    const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
-
-                    const q = glm.quat.setAxisAngle(glm.quat.create(), axis, angle);
-
-                    // Convert current local rotation to quat
-                    const currentRot = glm.quat.fromEuler(glm.quat.create(), t.localRotation.x, t.localRotation.y, t.localRotation.z);
-                    glm.quat.multiply(currentRot, q, currentRot);
-
-                    // Convert back to Euler
-                    const euler = glm.vec3.create();
-                    this.quatToEuler(euler, currentRot);
-                    t.localRotation = { x: euler[0], y: euler[1], z: euler[2] };
-                }
-            }
-        }
-    }
-
-    quatToEuler(out, q) {
-        const x = q[0], y = q[1], z = q[2], w = q[3];
-        const x2 = x + x, y2 = y + y, z2 = z + z;
-        const xx = x * x2, xy = x * y2, xz = x * z2;
-        const yy = y * y2, yz = y * z2, zz = z * z2;
-        const wx = w * x2, wy = w * y2, wz = w * z2;
-
-        out[0] = Math.atan2(yz + wx, 1 - (xx + yy)) * 180 / Math.PI;
-        out[1] = Math.asin(Math.max(-1, Math.min(1, wy - xz))) * 180 / Math.PI;
-        out[2] = Math.atan2(xy + wz, 1 - (yy + zz)) * 180 / Math.PI;
-    }
+    update(deltaTime) {}
     clone() { return new HumanoidPhysics3D(null); }
 }
 
-/**
- * MovementControl3D: Procedural humanoid movement component.
- */
 export class MovementControl3D extends Leyes {
     constructor(materia) {
         super(materia);
-        this.speed = 200;
         this.walkCycleTime = 0;
         this.walkSpeedMultiplier = 12.0;
         this.bobAmount = 8;
@@ -501,17 +345,10 @@ export class MovementControl3D extends Leyes {
 
     update(deltaTime) {
         if (!window.isGameRunning) return;
-
-        // Check if an AnimatorController is already handling the movement
-        const controller = this.materia.getComponent(window.Components.AnimatorController);
-        if (controller && controller.isPlaying) return;
-
         const rb = this.materia.getComponent(Rigidbody3D);
         if (!rb) return;
 
-        const vel = rb.velocity;
-        const groundSpeed = Math.sqrt(vel.x * vel.x + vel.z * vel.z);
-
+        const groundSpeed = Math.sqrt(rb.velocity.x * rb.velocity.x + rb.velocity.z * rb.velocity.z);
         if (groundSpeed > 0.1) {
             this.walkCycleTime += deltaTime * this.walkSpeedMultiplier * Math.min(2.0, groundSpeed * 0.5);
             this._applyProceduralWalk();
@@ -522,131 +359,62 @@ export class MovementControl3D extends Leyes {
     }
 
     _applyProceduralWalk() {
-        const hip = this.materia.findChildByName('Cadera', true) || this.materia.findChildByName('Hips', true);
-        const torso = this.materia.findChildByName('Torso', true) || this.materia.findChildByName('Spine', true);
-        const armL = this.materia.findChildByName('Brazo_I', true) || this.materia.findChildByName('LeftArm', true);
-        const armR = this.materia.findChildByName('Brazo_D', true) || this.materia.findChildByName('RightArm', true);
-        const legL = this.materia.findChildByName('Pierna_I', true) || this.materia.findChildByName('LeftLeg', true);
-        const legR = this.materia.findChildByName('Pierna_D', true) || this.materia.findChildByName('RightLeg', true);
+        const hip = this.materia.findChildByName('Cadera', true);
+        const torso = this.materia.findChildByName('Torso', true);
+        const neck = this.materia.findChildByName('Cuello', true);
+        const armL = this.materia.findChildByName('Brazo_I', true);
+        const armR = this.materia.findChildByName('Brazo_D', true);
+        const legL = this.materia.findChildByName('Pierna_I', true);
+        const legR = this.materia.findChildByName('Pierna_D', true);
 
         const sin = Math.sin(this.walkCycleTime);
         const cos = Math.cos(this.walkCycleTime);
 
-        // Hip & Torso movement
         if (hip) {
             const hTrans = hip.getComponent(window.Components.Transform);
             hTrans.localPosition.y = -Math.abs(sin) * this.bobAmount;
             hTrans.localRotation.z = cos * this.swayAmount;
         }
-
         if (torso) {
             const tTrans = torso.getComponent(window.Components.Transform);
-            tTrans.localRotation.x = Math.abs(cos) * 3; // Slight forward lean
-            tTrans.localRotation.y = -sin * 5; // Torso counter-rotation
+            tTrans.localRotation.x = Math.abs(cos) * 3;
+            tTrans.localRotation.y = -sin * 5;
         }
-
-        // Arm swing (opposite to legs)
+        if (neck) neck.getComponent(window.Components.Transform).localRotation.y = sin * 3;
         if (armL) armL.getComponent(window.Components.Transform).localRotation.x = sin * this.armSwingAmount;
         if (armR) armR.getComponent(window.Components.Transform).localRotation.x = -sin * this.armSwingAmount;
-
-        // Leg movement
         if (legL) legL.getComponent(window.Components.Transform).localRotation.x = -sin * (this.armSwingAmount * 1.2);
         if (legR) legR.getComponent(window.Components.Transform).localRotation.x = sin * (this.armSwingAmount * 1.2);
     }
 
     _applyProceduralIdle() {
-        const hip = this.materia.findChildByName('Cadera', true) || this.materia.findChildByName('Hips', true);
-        const torso = this.materia.findChildByName('Torso', true) || this.materia.findChildByName('Spine', true);
-        const armL = this.materia.findChildByName('Brazo_I', true) || this.materia.findChildByName('LeftArm', true);
-        const armR = this.materia.findChildByName('Brazo_D', true) || this.materia.findChildByName('RightArm', true);
+        const hip = this.materia.findChildByName('Cadera', true);
+        const torso = this.materia.findChildByName('Torso', true);
+        const neck = this.materia.findChildByName('Cuello', true);
+        const armL = this.materia.findChildByName('Brazo_I', true);
+        const armR = this.materia.findChildByName('Brazo_D', true);
 
         const time = performance.now() / 1000;
         const breathe = Math.sin(time * 2);
 
-        if (hip) {
-            const hTrans = hip.getComponent(window.Components.Transform);
-            hTrans.localPosition.y = 0;
-            hTrans.localRotation.x = breathe * 1;
-        }
-
-        if (torso) {
-            const tTrans = torso.getComponent(window.Components.Transform);
-            tTrans.localRotation.x = breathe * 2;
-        }
-
+        if (hip) hip.getComponent(window.Components.Transform).localRotation.x = breathe * 1;
+        if (torso) torso.getComponent(window.Components.Transform).localRotation.x = breathe * 2;
+        if (neck) neck.getComponent(window.Components.Transform).localRotation.x = -breathe * 1;
         if (armL) armL.getComponent(window.Components.Transform).localRotation.z = -5 - breathe * 2;
         if (armR) armR.getComponent(window.Components.Transform).localRotation.z = 5 + breathe * 2;
     }
     clone() { return new MovementControl3D(null); }
 }
 
-/**
- * HealthController3D: Manages localized damage and procedural reactions.
- */
 export class HealthController3D extends Leyes {
     constructor(materia) {
         super(materia);
         this.maxHealth = 100;
         this.currentHealth = 100;
-        this.isDead = false;
-
-        // Bone indices or names for localized hitboxes
-        this.hitboxes = {
-            'Cabeza': { damageMult: 2.0, state: 'normal' },
-            'Pecho': { damageMult: 1.0, state: 'normal' },
-            'Brazo_I': { damageMult: 0.5, state: 'normal' },
-            'Brazo_D': { damageMult: 0.5, state: 'normal' },
-            'Pierna_I': { damageMult: 0.5, state: 'normal' },
-            'Pierna_D': { damageMult: 0.5, state: 'normal' }
-        };
-
-        this.lastHitLocation = null;
     }
-
-    takeDamage(amount, location = 'Pecho') {
-        if (this.isDead) return;
-
-        const hb = this.hitboxes[location] || this.hitboxes['Pecho'];
-        const actualDamage = amount * hb.damageMult;
-
-        this.currentHealth -= actualDamage;
-        this.lastHitLocation = location;
-        hb.state = 'injured';
-
-        if (this.currentHealth <= 0) {
-            this.currentHealth = 0;
-            this.die();
-        } else {
-            this._applyProceduralReaction();
-        }
-    }
-
-    _applyProceduralReaction() {
-        // Trigger specific reactions in HumanoidPhysics3D
-        const hp = this.materia.getComponent(HumanoidPhysics3D);
-        if (!hp) return;
-
-        if (this.lastHitLocation.includes('Brazo')) {
-            // Logic for covering the arm wound would go here (using IK)
-        } else if (this.lastHitLocation.includes('Pierna')) {
-            hp.isLimping = true;
-            hp.injuryLevel = 1.0 - (this.currentHealth / this.maxHealth);
-        }
-    }
-
-    die() {
-        this.isDead = true;
-        // Trigger ragdoll or death animation
-    }
-
     clone() { return new HealthController3D(null); }
 }
 
-registerComponent('HumanoidPhysics3D', HumanoidPhysics3D);
-registerComponent('MovementControl3D', MovementControl3D);
-/**
- * ThirdPersonController3D: Standard 3rd person control system.
- */
 export class ThirdPersonController3D extends Leyes {
     constructor(materia) {
         super(materia);
@@ -655,8 +423,6 @@ export class ThirdPersonController3D extends Leyes {
         this.jumpForce = 600;
         this.acceleration = 10;
         this.deceleration = 10;
-
-        this._currentVelocity = { x: 0, z: 0 };
     }
 
     update(deltaTime) {
@@ -668,72 +434,54 @@ export class ThirdPersonController3D extends Leyes {
         const transform = this.materia.getComponent(window.Components.Transform);
         if (!rb || !transform) return;
 
-        // Movement Input
-        let inputX = 0;
-        let inputZ = 0;
+        let inputX = 0, inputZ = 0;
         if (input.isKeyPressed('w')) inputZ = -1;
         if (input.isKeyPressed('s')) inputZ = 1;
         if (input.isKeyPressed('a')) inputX = -1;
         if (input.isKeyPressed('d')) inputX = 1;
 
-        // Camera-relative movement
         let moveDir = { x: 0, z: 0 };
         const scene = this.materia.scene || window.SceneManager?.currentScene;
         const camera = scene?.findFirstCamera();
 
         if (camera && (inputX !== 0 || inputZ !== 0)) {
             const camTrans = camera.getComponent(window.Components.Transform);
-            const camYaw = camTrans.localRotation.y * Math.PI / 180;
-
+            const camYaw = camTrans.rotationY * Math.PI / 180;
             const forward = { x: Math.sin(camYaw), z: Math.cos(camYaw) };
             const right = { x: Math.cos(camYaw), z: -Math.sin(camYaw) };
-
             moveDir.x = forward.x * inputZ + right.x * inputX;
             moveDir.z = forward.z * inputZ + right.z * inputX;
-
-            // Normalize
             const mag = Math.sqrt(moveDir.x * moveDir.x + moveDir.z * moveDir.z);
-            moveDir.x /= mag;
-            moveDir.z /= mag;
+            moveDir.x /= mag; moveDir.z /= mag;
 
-            // Smoothly rotate character towards movement direction
             const targetYaw = Math.atan2(moveDir.x, moveDir.z) * 180 / Math.PI;
-            let diff = targetYaw - transform.localRotation.y;
+            let diff = targetYaw - transform.rotationY;
             while (diff > 180) diff -= 360;
             while (diff < -180) diff += 360;
-            transform.localRotation.y += diff * this.turnSpeed * deltaTime;
+            transform.rotationY += diff * this.turnSpeed * deltaTime;
         }
 
-        // Apply movement with acceleration/deceleration
         const targetVelX = moveDir.x * (this.moveSpeed / 100);
         const targetVelZ = moveDir.z * (this.moveSpeed / 100);
-
         const lerpFactor = (inputX !== 0 || inputZ !== 0) ? this.acceleration : this.deceleration;
-
         rb.velocity.x += (targetVelX - rb.velocity.x) * lerpFactor * deltaTime;
         rb.velocity.z += (targetVelZ - rb.velocity.z) * lerpFactor * deltaTime;
 
-        // Jump
         if (input.isKeyJustPressed('space')) {
             const hp = this.materia.getComponent(HumanoidPhysics3D);
-            if (hp && hp.isGrounded) {
-                rb.addForce(0, -this.jumpForce, 0); // Up is -Y in CE
-            }
+            if (!hp || hp.isGrounded) rb.addForce(0, -this.jumpForce, 0);
         }
     }
     clone() { return new ThirdPersonController3D(null); }
 }
 
-/**
- * CameraControl3D: 3rd person orbiting camera.
- */
 export class CameraControl3D extends Leyes {
     constructor(materia) {
         super(materia);
-        this.target = null; // Materia ID to follow
+        this.target = null;
         this.distance = 450;
         this.height = 60;
-        this.rotationY = 0;
+        this.yaw = 0;
         this.pitch = 20;
         this.smoothSpeed = 10;
         this.sensitivity = 0.2;
@@ -744,107 +492,85 @@ export class CameraControl3D extends Leyes {
         const input = window.RuntimeAPIManager.getAPI('input');
         if (!input) return;
 
-        // Mouse look (Right click or touch drag)
         if (input.isMouseButtonPressed(2) || input.isMouseButtonPressed(0)) {
             const delta = input.getMouseDelta ? input.getMouseDelta() : { x: 0, y: 0 };
-            this.rotationY -= delta.x * this.sensitivity;
+            this.yaw -= delta.x * this.sensitivity;
             this.pitch += delta.y * this.sensitivity;
             this.pitch = Math.max(-10, Math.min(70, this.pitch));
         }
 
         const scene = this.materia.scene || window.SceneManager?.currentScene;
         if (!scene) return;
+        let targetMtr = this.target ? (typeof this.target === 'number' ? scene.findMateriaById(this.target) : scene.findMateriaByName(this.target)) : this.materia.parent;
+        if (!targetMtr) return;
 
-        let followTarget = null;
-        if (this.target) {
-            if (typeof this.target === 'number') followTarget = scene.findMateriaById(this.target);
-            else if (typeof this.target === 'string') followTarget = scene.findMateriaByName(this.target);
-        } else {
-            // Default to parent if no target specified
-            followTarget = this.materia.parent;
-        }
-
-        if (!followTarget) return;
-
-        const targetTrans = followTarget.getComponent(window.Components.Transform);
+        const targetTrans = targetMtr.getComponent(window.Components.Transform);
         const myTrans = this.materia.getComponent(window.Components.Transform);
 
-        // Position camera behind target
-        const rad = this.rotationY * Math.PI / 180;
+        const rad = this.yaw * Math.PI / 180;
         const pitchRad = this.pitch * Math.PI / 180;
-
         const offsetX = Math.sin(rad) * Math.cos(pitchRad) * this.distance;
         const offsetZ = Math.cos(rad) * Math.cos(pitchRad) * this.distance;
         const offsetY = Math.sin(pitchRad) * this.distance;
 
-        const targetX = targetTrans.x + offsetX;
-        const targetY = targetTrans.y - offsetY - this.height;
-        const targetZ = (targetTrans.z || 0) + offsetZ;
+        const targetX = targetTrans.position.x + offsetX;
+        const targetY = targetTrans.position.y - offsetY - this.height;
+        const targetZ = targetTrans.position.z + offsetZ;
 
-        // Smooth camera movement (using world position to handle parent hierarchy correctly)
-        const currentPos = myTrans.position;
+        const curPos = myTrans.position;
         myTrans.position = {
-            x: currentPos.x + (targetX - currentPos.x) * this.smoothSpeed * deltaTime,
-            y: currentPos.y + (targetY - currentPos.y) * this.smoothSpeed * deltaTime,
-            z: currentPos.z + (targetZ - currentPos.z) * this.smoothSpeed * deltaTime
+            x: curPos.x + (targetX - curPos.x) * this.smoothSpeed * deltaTime,
+            y: curPos.y + (targetY - curPos.y) * this.smoothSpeed * deltaTime,
+            z: curPos.z + (targetZ - curPos.z) * this.smoothSpeed * deltaTime
         };
 
-        // Make camera look at target (using world rotation)
         myTrans.rotationX = this.pitch;
-        myTrans.rotationY = this.rotationY + 180;
-        myTrans.rotationZ = 0;
+        myTrans.rotationY = this.yaw + 180;
     }
     clone() { return new CameraControl3D(null); }
 }
 
-registerComponent('HealthController3D', HealthController3D);
-registerComponent('ThirdPersonController3D', ThirdPersonController3D);
-/**
- * DeformableMesh3D: Allows mesh deformation on collision.
- */
 export class DeformableMesh3D extends Leyes {
     constructor(materia) {
         super(materia);
         this.strength = 1.0;
         this.radius = 20;
     }
-
     onCollision(hitPoint, force) {
         const renderer = this.materia.getComponent(MeshRenderer3D) || this.materia.getComponent(SkinnedMeshRenderer3D);
         if (!renderer || !renderer.cpuPositions) return;
-
         const glm = window.glMatrix;
         const transform = this.materia.getComponent(window.Components.Transform);
         const invMat = glm.mat4.invert(glm.mat4.create(), transform.worldMatrix);
-
         const localHit = glm.vec3.transformMat4(glm.vec3.create(), [hitPoint.x, hitPoint.y, hitPoint.z], invMat);
 
         let changed = false;
         for (let i = 0; i < renderer.cpuPositions.length; i += 3) {
-            const vx = renderer.cpuPositions[i];
-            const vy = renderer.cpuPositions[i+1];
-            const vz = renderer.cpuPositions[i+2];
-
-            const dx = vx - localHit[0];
-            const dy = vy - localHit[1];
-            const dz = vz - localHit[2];
+            const dx = renderer.cpuPositions[i] - localHit[0], dy = renderer.cpuPositions[i+1] - localHit[1], dz = renderer.cpuPositions[i+2] - localHit[2];
             const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
-
             if (dist < this.radius) {
-                const falloff = 1.0 - (dist / this.radius);
-                const move = this.strength * falloff * (force / 100);
-                // Push vertices inward relative to the impact
-                renderer.cpuPositions[i] -= dx * move;
-                renderer.cpuPositions[i+1] -= dy * move;
-                renderer.cpuPositions[i+2] -= dz * move;
+                const move = this.strength * (1.0 - (dist / this.radius)) * (force / 100);
+                renderer.cpuPositions[i] -= dx * move; renderer.cpuPositions[i+1] -= dy * move; renderer.cpuPositions[i+2] -= dz * move;
                 changed = true;
             }
         }
-
         if (changed) renderer.isDirty = true;
     }
     clone() { return new DeformableMesh3D(null); }
 }
 
+registerComponent('MeshRenderer3D', MeshRenderer3D);
+registerComponent('SkinnedMeshRenderer3D', SkinnedMeshRenderer3D);
+registerComponent('DirectionalLight3D', DirectionalLight3D);
+registerComponent('PointLight3D', PointLight3D);
+registerComponent('SpotLight3D', SpotLight3D);
+registerComponent('Rigidbody3D', Rigidbody3D);
+registerComponent('BoxCollider3D', BoxCollider3D);
+registerComponent('SphereCollider3D', SphereCollider3D);
+registerComponent('Animator3D', Animator3D);
+registerComponent('HumanoidPhysics3D', HumanoidPhysics3D);
+registerComponent('MovementControl3D', MovementControl3D);
+registerComponent('HealthController3D', HealthController3D);
+registerComponent('ThirdPersonController3D', ThirdPersonController3D);
 registerComponent('CameraControl3D', CameraControl3D);
 registerComponent('DeformableMesh3D', DeformableMesh3D);

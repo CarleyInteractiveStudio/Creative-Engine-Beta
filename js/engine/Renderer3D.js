@@ -77,7 +77,6 @@ export class Renderer3D {
         const gl = this.gl;
 
         // 1. Infinite Grid & Axes Shader
-        // Optimized to use ray-plane intersection on a single quad covering the screen
         const gridVs = `
             attribute vec3 aVertexPosition;
             varying vec3 vNearPoint;
@@ -94,7 +93,6 @@ export class Renderer3D {
             }
 
             void main() {
-                // We use a full-screen quad but pass near/far world positions to the fragment shader
                 vNearPoint = unprojectPoint(aVertexPosition.x, aVertexPosition.y, 0.0, uInvView, uInvProj);
                 vFarPoint = unprojectPoint(aVertexPosition.x, aVertexPosition.y, 1.0, uInvView, uInvProj);
                 gl_Position = vec4(aVertexPosition, 1.0);
@@ -125,12 +123,8 @@ export class Renderer3D {
 
                 if (drawAxes) {
                     float axisThickness = 2.0;
-                    // X Axis (Red)
-                    if (abs(fragPos3D.z) < axisThickness * minimumz)
-                        color = vec4(1.0, 0.1, 0.1, 1.0);
-                    // Z Axis (Blue)
-                    if (abs(fragPos3D.x) < axisThickness * minimumx)
-                        color = vec4(0.1, 0.4, 1.0, 1.0);
+                    if (abs(fragPos3D.z) < axisThickness * minimumz) color = vec4(1.0, 0.1, 0.1, 1.0);
+                    if (abs(fragPos3D.x) < axisThickness * minimumx) color = vec4(0.1, 0.4, 1.0, 1.0);
                 }
 
                 return color;
@@ -161,7 +155,7 @@ export class Renderer3D {
 
         this.programs.grid = this.createProgram(gridVs, gridFs);
 
-        // 2. Simple Standard Shader (Lambert Shading)
+        // 2. Simple Standard Shader
         const stdVs = `
             attribute vec4 aVertexPosition;
             attribute vec3 aVertexNormal;
@@ -215,7 +209,7 @@ export class Renderer3D {
         `;
         this.programs.skinned = this.createProgram(skinnedVs, stdFs);
 
-        // 3. Unlit Shader (for Axes)
+        // 3. Unlit Shader
         const unlitVs = `
             attribute vec4 aVertexPosition;
             uniform mat4 uModelMatrix;
@@ -235,35 +229,20 @@ export class Renderer3D {
         this.programs.unlit = this.createProgram(unlitVs, unlitFs);
 
         // 4. Picking Shader
-        const pickVs = `
-            attribute vec4 aVertexPosition;
-            uniform mat4 uModelMatrix;
-            uniform mat4 uViewMatrix;
-            uniform mat4 uProjectionMatrix;
-            void main() {
-                gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrix * aVertexPosition;
-            }
-        `;
-        const pickFs = `
+        this.programs.picking = this.createProgram(unlitVs, `
             precision mediump float;
             uniform vec4 uPickColor;
-            void main() {
-                gl_FragColor = uPickColor;
-            }
-        `;
-        this.programs.picking = this.createProgram(pickVs, pickFs);
+            void main() { gl_FragColor = uPickColor; }
+        `);
     }
 
     initBasicGeometry() {
         const gl = this.gl;
-
-        // Screen-space quad for Grid
         const quadPos = new Float32Array([-1,1,0, 1,1,0, -1,-1,0, 1,-1,0]);
         this.buffers.quad = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.quad);
         gl.bufferData(gl.ARRAY_BUFFER, quadPos, gl.STATIC_DRAW);
 
-        // Basic Cube
         const cubePos = new Float32Array([
             -0.5,-0.5,0.5, 0.5,-0.5,0.5, 0.5,0.5,0.5, -0.5,0.5,0.5, -0.5,-0.5,-0.5, -0.5,0.5,-0.5, 0.5,0.5,-0.5, 0.5,-0.5,-0.5,
             -0.5,0.5,-0.5, -0.5,0.5,0.5, 0.5,0.5,0.5, 0.5,0.5,-0.5, -0.5,-0.5,-0.5, 0.5,-0.5,-0.5, 0.5,-0.5,0.5, -0.5,-0.5,0.5,
@@ -290,10 +269,9 @@ export class Renderer3D {
 
     render(scene, cameraMateria, options = {}) {
         if (!this.initialized && !this.init()) return;
-        window._Renderer3D = this; // Sync global reference for 3D projection
+        window._Renderer3D = this;
         const gl = this.gl;
 
-        // Setup Viewport
         this.resize();
         gl.clearColor(0.1, 0.1, 0.12, options.clearAlpha !== undefined ? options.clearAlpha : 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -302,15 +280,21 @@ export class Renderer3D {
         const near = 0.1;
         const far = 10000.0;
 
-        // Setup Projection & View
-        mat4.perspective(this.projectionMatrix, 45 * Math.PI / 180, aspect, near, far);
-
         if (cameraMateria) {
+            const cam = cameraMateria.getComponent(Components.Camera);
             const transform = cameraMateria.getComponent(Components.Transform);
-            mat4.copy(this.viewMatrix, transform.worldMatrix);
-            mat4.invert(this.viewMatrix, this.viewMatrix);
+            const cNear = cam.nearClipPlane || 0.1;
+            const cFar = cam.farClipPlane || 10000.0;
+
+            if (cam.projection === 'Orthographic') {
+                const size = cam.orthographicSize || 500;
+                mat4.ortho(this.projectionMatrix, -size * aspect, size * aspect, -size, size, cNear, cFar);
+            } else {
+                mat4.perspective(this.projectionMatrix, (cam.fov || 60) * Math.PI / 180, aspect, cNear, cFar);
+            }
+            mat4.invert(this.viewMatrix, transform.worldMatrix);
         } else {
-            // Default Editor Camera: Positioned "above" ground (-Y) looking slightly down
+            mat4.perspective(this.projectionMatrix, 45 * Math.PI / 180, aspect, near, far);
             const cam = options.editorCamera || { x: 0, y: -200, z: 600, rotation: { x: 15, y: 0, z: 0 } };
             const q = quat.create();
             quat.fromEuler(q, cam.rotation.x, cam.rotation.y, cam.rotation.z);
@@ -318,21 +302,12 @@ export class Renderer3D {
             mat4.invert(this.viewMatrix, this.viewMatrix);
         }
 
-        // Global Y-Flip for 2D consistency (+Y is down in CE 2D)
         mat4.scale(this.projectionMatrix, this.projectionMatrix, [1, -1, 1]);
-
         mat4.copy(this.lastProjectionMatrix, this.projectionMatrix);
         mat4.copy(this.lastViewMatrix, this.viewMatrix);
 
-        // 1. Draw Infinite Grid
-        if (options.showGrid !== false) {
-            this.drawGrid(near, far);
-        }
-
-        // 2. Draw Scene Objects
+        if (options.showGrid !== false) this.drawGrid(near, far);
         this.drawScene(scene);
-
-        // 3. Draw Origin Axis Lines (X, Y, Z crossing at center)
         this.drawOriginAxes();
     }
 
@@ -341,10 +316,8 @@ export class Renderer3D {
         const program = this.programs.grid;
         gl.useProgram(program);
 
-        const invView = mat4.create();
-        mat4.invert(invView, this.viewMatrix);
-        const invProj = mat4.create();
-        mat4.invert(invProj, this.projectionMatrix);
+        const invView = mat4.create(); mat4.invert(invView, this.viewMatrix);
+        const invProj = mat4.create(); mat4.invert(invProj, this.projectionMatrix);
 
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uView'), false, this.viewMatrix);
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProj'), false, this.projectionMatrix);
@@ -357,7 +330,6 @@ export class Renderer3D {
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.quad);
         gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(posLoc);
-
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     }
 
@@ -365,28 +337,21 @@ export class Renderer3D {
         const gl = this.gl;
         const program = this.programs.unlit;
         gl.useProgram(program);
-
-        const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
-        const colorLoc = gl.getUniformLocation(program, 'uColor');
-        const modelLoc = gl.getUniformLocation(program, 'uModelMatrix');
-
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
 
-        const thickness = 0.4;
-        const length = 100000;
+        const modelLoc = gl.getUniformLocation(program, 'uModelMatrix');
+        const colorLoc = gl.getUniformLocation(program, 'uColor');
+        const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cube);
         gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(posLoc);
 
-        // Y-Axis (Green) - X and Z axes are handled with higher precision in the grid shader
         const yModel = mat4.create();
-        // Centering the axis line so it goes in both directions
-        mat4.fromTranslation(yModel, [0, 0, 0]);
-        mat4.scale(yModel, yModel, [thickness, length, thickness]);
+        mat4.scale(yModel, yModel, [0.4, 100000, 0.4]);
         gl.uniformMatrix4fv(modelLoc, false, yModel);
-        gl.uniform4f(colorLoc, 0.0, 1.0, 0.0, 1.0);
+        gl.uniform4f(colorLoc, 0, 1, 0, 1);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.cubeIdx);
         gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
     }
@@ -418,7 +383,6 @@ export class Renderer3D {
             if (!mesh) return;
 
             const transform = materia.getComponent(Components.Transform);
-
             gl.uniformMatrix4fv(modelLoc, false, transform.worldMatrix);
             const color = this.hexToRgb(mesh.color);
             gl.uniform4f(colorLoc, color[0], color[1], color[2], 1.0);
@@ -426,27 +390,12 @@ export class Renderer3D {
             gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cube);
             gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
             gl.enableVertexAttribArray(posLoc);
-
             gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cubeNorm);
             gl.vertexAttribPointer(normLoc, 3, gl.FLOAT, false, 0, 0);
             gl.enableVertexAttribArray(normLoc);
-
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.cubeIdx);
             gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
         });
-    }
-
-    resize() {
-        if (!this.canvas) return;
-        if (!this.gl) return;
-        const displayWidth  = this.canvas.clientWidth;
-        const displayHeight = this.canvas.clientHeight;
-
-        if (this.canvas.width !== displayWidth || this.canvas.height !== displayHeight) {
-            this.canvas.width  = displayWidth;
-            this.canvas.height = displayHeight;
-            this.gl.viewport(0, 0, displayWidth, displayHeight);
-        }
     }
 
     drawSkinnedMesh(materia, mesh) {
@@ -459,12 +408,12 @@ export class Renderer3D {
 
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
-        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, transform.worldMatrix);
+
+        // Identity for skinned meshes as bone matrices are in world space
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, mat4.create());
         gl.uniform4f(gl.getUniformLocation(program, 'uColor'), color[0], color[1], color[2], 1.0);
 
-        if (mesh.boneMatrices) {
-            gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uBoneMatrices'), false, mesh.boneMatrices);
-        }
+        if (mesh.boneMatrices) gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uBoneMatrices'), false, mesh.boneMatrices);
 
         if (mesh.isDirty && mesh.cpuPositions && mesh.buffers?.positions) {
             gl.bindBuffer(gl.ARRAY_BUFFER, mesh.buffers.positions);
@@ -492,7 +441,6 @@ export class Renderer3D {
                 gl.bindBuffer(gl.ARRAY_BUFFER, mesh.buffers.joints);
                 gl.vertexAttribPointer(jointLoc, 4, gl.FLOAT, false, 0, 0);
                 gl.enableVertexAttribArray(jointLoc);
-
                 gl.bindBuffer(gl.ARRAY_BUFFER, mesh.buffers.weights);
                 gl.vertexAttribPointer(weightLoc, 4, gl.FLOAT, false, 0, 0);
                 gl.enableVertexAttribArray(weightLoc);
@@ -507,7 +455,17 @@ export class Renderer3D {
         }
     }
 
-    // Utilities
+    resize() {
+        if (!this.canvas || !this.gl) return;
+        const displayWidth  = this.canvas.clientWidth;
+        const displayHeight = this.canvas.clientHeight;
+        if (this.canvas.width !== displayWidth || this.canvas.height !== displayHeight) {
+            this.canvas.width  = displayWidth;
+            this.canvas.height = displayHeight;
+            this.gl.viewport(0, 0, displayWidth, displayHeight);
+        }
+    }
+
     createProgram(vsSource, fsSource) {
         const gl = this.gl;
         const vs = this.loadShader(gl.VERTEX_SHADER, vsSource);
@@ -516,9 +474,7 @@ export class Renderer3D {
         gl.attachShader(program, vs);
         gl.attachShader(program, fs);
         gl.linkProgram(program);
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-            console.error('Shader link error:', gl.getProgramInfoLog(program));
-        }
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) console.error('Shader link error:', gl.getProgramInfoLog(program));
         return program;
     }
 
@@ -537,19 +493,11 @@ export class Renderer3D {
 
     pick(scene, cameraMateria, x, y, options = {}) {
         if (!this.initialized || !this.gl) return null;
-        window._Renderer3D = this; // Sync global reference for 3D projection
         const gl = this.gl;
+        const w = gl.canvas.width, h = gl.canvas.height;
 
-        const w = gl.canvas.width;
-        const h = gl.canvas.height;
-
-        // Setup Picking Framebuffer
         if (!this.pickFB || this._pickW !== w || this._pickH !== h) {
-            if (this.pickFB) {
-                gl.deleteFramebuffer(this.pickFB);
-                gl.deleteTexture(this.pickTex);
-                gl.deleteRenderbuffer(this.pickDepth);
-            }
+            if (this.pickFB) { gl.deleteFramebuffer(this.pickFB); gl.deleteTexture(this.pickTex); gl.deleteRenderbuffer(this.pickDepth); }
             this.pickFB = gl.createFramebuffer();
             this.pickTex = gl.createTexture();
             gl.bindTexture(gl.TEXTURE_2D, this.pickTex);
@@ -573,47 +521,29 @@ export class Renderer3D {
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.lastViewMatrix);
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.lastProjectionMatrix);
 
-        const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
-        const colorLoc = gl.getUniformLocation(program, 'uPickColor');
-        const modelLoc = gl.getUniformLocation(program, 'uModelMatrix');
-
         const idMap = new Map();
         scene.getAllMaterias().forEach((m, index) => {
             if (!m.isActive || !m.getComponent(Components3D.MeshRenderer3D)) return;
             const id = index + 1;
             idMap.set(id, m.id);
-            const r = (id & 0xFF) / 255;
-            const g = ((id >> 8) & 0xFF) / 255;
-            const b = ((id >> 16) & 0xFF) / 255;
-
-            gl.uniform4f(colorLoc, r, g, b, 1.0);
-            gl.uniformMatrix4fv(modelLoc, false, m.getComponent(Components.Transform).worldMatrix);
-
+            gl.uniform4f(gl.getUniformLocation(program, 'uPickColor'), (id & 0xFF)/255, ((id >> 8) & 0xFF)/255, ((id >> 16) & 0xFF)/255, 1.0);
+            gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, m.getComponent(Components.Transform).worldMatrix);
             gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cube);
-            gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(posLoc);
+            gl.vertexAttribPointer(gl.getAttribLocation(program, 'aVertexPosition'), 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(gl.getAttribLocation(program, 'aVertexPosition'));
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.cubeIdx);
             gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
         });
 
         const pixels = new Uint8Array(4);
-        // Using gl.canvas.clientHeight instead of h to handle potential CSS scaling
         const rect = gl.canvas.getBoundingClientRect();
-        const pickX = (x / rect.width) * w;
-        const pickY = (y / rect.height) * h;
-
-        gl.readPixels(pickX, (h - 1) - pickY, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        gl.readPixels((x / rect.width) * w, (h - 1) - (y / rect.height) * h, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-        const pickedId = pixels[0] + (pixels[1] << 8) + (pixels[2] << 16);
-        return idMap.get(pickedId) || null;
+        return idMap.get(pixels[0] + (pixels[1] << 8) + (pixels[2] << 16)) || null;
     }
 
     hexToRgb(hex) {
         if (!hex || hex[0] !== '#') return [1, 1, 1];
-        const r = parseInt(hex.slice(1, 3), 16) / 255;
-        const g = parseInt(hex.slice(3, 5), 16) / 255;
-        const b = parseInt(hex.slice(5, 7), 16) / 255;
-        return [r, g, b];
+        return [parseInt(hex.slice(1, 3), 16) / 255, parseInt(hex.slice(3, 5), 16) / 255, parseInt(hex.slice(5, 7), 16) / 255];
     }
 }
