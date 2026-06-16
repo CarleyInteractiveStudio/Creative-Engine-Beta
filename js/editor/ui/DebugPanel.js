@@ -29,6 +29,13 @@ export function initialize(dependencies) {
                 import('../../engine/CEEngine.js').then(CEEngine => {
                     CEEngine.optimize();
                 });
+            } else if (e.target.id === 'btn-debug-gc') {
+                if (window.gc) {
+                    window.gc();
+                    console.log("[Debug] Manual GC triggered.");
+                } else {
+                    console.warn("[Debug] window.gc() is not available in this browser.");
+                }
             }
         });
     }
@@ -57,17 +64,34 @@ export function update() {
 
     // RAM Monitoring
     let ramInfo = "No soportado";
+    let motorRamInfo = "---";
+    let gameRamInfo = "---";
     let ramStyle = "";
     let usagePercent = 0;
+
     if (window.performance && window.performance.memory) {
         const memory = window.performance.memory;
-        const usedMB = Math.round(memory.usedJSHeapSize / 1048576);
+        const usedBytes = memory.usedJSHeapSize;
+        const usedMB = usedBytes / 1048576;
+
+        // Estimate Game RAM based on loaded objects
+        let gameBytes = 0;
+        if (SceneManager.currentScene) {
+            SceneManager.currentScene.getAllMaterias().forEach(m => {
+                gameBytes += estimateMateriaMemory(m).total;
+            });
+        }
+
+        const gameMB = gameBytes / 1048576;
+        const motorMB = Math.max(0, usedMB - gameMB);
 
         // Use user-defined limit if available, fallback to 2048MB
         const targetLimitMB = window.currentProjectConfig?.ramLimit || 2048;
         usagePercent = Math.min(100, (usedMB / targetLimitMB) * 100);
 
-        ramInfo = `${usedMB} MB / ${targetLimitMB} MB (${((usedMB / targetLimitMB) * 100).toFixed(1)}%)`;
+        ramInfo = `${usedMB.toFixed(1)} MB / ${targetLimitMB} MB`;
+        motorRamInfo = `${motorMB.toFixed(1)} MB`;
+        gameRamInfo = `${gameMB.toFixed(1)} MB`;
 
         // Color coding based on the user-defined budget
         if (usagePercent > 80) ramStyle = "background-color: #ff4444;";
@@ -114,7 +138,7 @@ export function update() {
         </div>
         <div class="debug-section">
             <h4>Rendimiento</h4>
-            <pre>FPS: ${fps}\nDeltaTime: ${dtMs} ms\nRAM: <span>${ramInfo}</span>\n<div class="ram-bar-container"><div class="ram-bar-fill" style="width: ${usagePercent}%; ${ramStyle}"></div></div></pre>
+            <pre>FPS: ${fps}\nDeltaTime: ${dtMs} ms\nRAM Total: <span>${ramInfo}</span>\n<div class="ram-bar-container"><div class="ram-bar-fill" style="width: ${usagePercent}%; ${ramStyle}"></div></div>\nMotor: ${motorRamInfo} | Juego: ${gameRamInfo}</pre>
         </div>
         <div class="debug-section">
             <h4>Memoria por Materia</h4>
@@ -126,6 +150,7 @@ export function update() {
         </div>
         <div class="debug-section">
             <button id="btn-debug-optimize" style="width: 100%; padding: 5px; cursor: pointer; background: #333; color: white; border: 1px solid #555; border-radius: 4px;">Optimizar Memoria</button>
+            <button id="btn-debug-gc" style="width: 100%; padding: 5px; cursor: pointer; background: #333; color: #aaa; border: 1px solid #555; border-radius: 4px; margin-top: 5px; font-size: 0.8em;">Forzar GC (Si está habilitado)</button>
         </div>
         <div class="debug-section">
             <h4>Input</h4>

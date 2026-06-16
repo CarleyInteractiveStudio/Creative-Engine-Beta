@@ -1,4 +1,5 @@
-import { Transform, SpriteRenderer, Camera } from './Components.js';
+import * as Components from './Components.js';
+const { Transform, SpriteRenderer, Camera } = Components;
 
 // Import gl-matrix for 3D math via importmap
 import * as glMatrix from 'gl-matrix';
@@ -7,10 +8,28 @@ const { mat4, vec3, quat } = glMatrix;
 export class Renderer3D {
     constructor(canvas) {
         this.canvas = canvas;
-        this.gl = canvas.getContext('webgl', { antialias: true });
+        this.gl = null;
+        this.initialized = false;
+        this.textureCache = new Map();
+    }
+
+    clearCache() {
+        if (!this.gl) return;
+        this.textureCache.forEach(tex => {
+            this.gl.deleteTexture(tex);
+        });
+        this.textureCache.clear();
+        console.log(`[Renderer3D] Texture cache cleared for ${this.canvas.id}`);
+    }
+
+    init() {
+        if (this.initialized) return true;
+
+        console.log(`[Renderer3D] Initializing WebGL context for canvas: ${this.canvas.id}`);
+        this.gl = this.canvas.getContext('webgl', { antialias: true });
         if (!this.gl) {
             console.error('WebGL not supported');
-            return;
+            return false;
         }
 
         this.gl.enable(this.gl.DEPTH_TEST);
@@ -20,6 +39,8 @@ export class Renderer3D {
 
         this.initShaders();
         this.initBuffers();
+        this.initialized = true;
+        return true;
     }
 
     initShaders() {
@@ -262,12 +283,32 @@ export class Renderer3D {
         this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     }
 
-    getGLTexture(image) {
-        if (!image || !image.complete) return null;
-        if (this.textureCache.has(image.src)) return this.textureCache.get(image.src);
+    getGLTexture(image, forceUpdate = false) {
+        if (!image) return null;
+        if (image instanceof HTMLImageElement && !image.complete) return null;
 
+        const cacheKey = image.src || image;
         const gl = this.gl;
-        const texture = gl.createTexture();
+
+        // RAM OPTIMIZATION: Limit texture cache size
+        if (this.textureCache.size > 50 && !this.textureCache.has(cacheKey)) {
+            const firstKey = this.textureCache.keys().next().value;
+            const tex = this.textureCache.get(firstKey);
+            gl.deleteTexture(tex);
+            this.textureCache.delete(firstKey);
+        }
+
+        if (this.textureCache.has(cacheKey) && !forceUpdate) {
+            return this.textureCache.get(cacheKey);
+        }
+
+        let texture;
+        if (this.textureCache.has(cacheKey)) {
+            texture = this.textureCache.get(cacheKey);
+        } else {
+            texture = gl.createTexture();
+        }
+
         gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
 
@@ -278,13 +319,17 @@ export class Renderer3D {
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         }
 
-        this.textureCache.set(image.src, texture);
+        this.textureCache.set(cacheKey, texture);
         return texture;
     }
 
     render(scene, cameraMateria, options = {}) {
+        if (!this.initialized) {
+            if (!this.init()) return;
+        }
         if (!this.gl) return;
         const gl = this.gl;
         const ambiente = scene.ambiente || {};
@@ -323,10 +368,10 @@ export class Renderer3D {
             if (camComp.projection === 'Orthographic') {
                 is3DView = false;
                 const size = camComp.orthographicSize;
-                // Adjust scale factor to match 2D renderer pixels
                 const orthoH = size;
                 const orthoW = size * aspect;
-                mat4.ortho(projectionMatrix, -orthoW, orthoW, -orthoH, orthoH, 0.1, 10000);
+                // Reverse Y for orthographic to match 2D Canvas coordinate system (Y-down)
+                mat4.ortho(projectionMatrix, -orthoW, orthoW, orthoH, -orthoH, 0.1, 10000);
             } else {
                 mat4.perspective(projectionMatrix, camComp.fov * Math.PI / 180, aspect, 0.1, 50000);
             }
@@ -393,7 +438,9 @@ export class Renderer3D {
             return m.getComponent(Components.MeshRenderer3D) ||
                    m.getComponent(Components.SpriteRenderer) ||
                    m.getComponent(Components.TextureRender) ||
-                   m.getComponent(Components.TilemapRenderer);
+                   m.getComponent(Components.TilemapRenderer) ||
+                   m.getComponent(Components.Terreno2D) ||
+                   m.getComponent(Components.Water);
         });
 
         // Depth sorting for transparent objects (Sprites) in 3D
@@ -421,6 +468,8 @@ export class Renderer3D {
         const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
         const textureRender = materia.getComponent(Components.TextureRender);
         const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
+        const terreno2D = materia.getComponent(Components.Terreno2D);
+        const water = materia.getComponent(Components.Water);
 
         if (options.picking && !meshRenderer && !spriteRenderer && !textureRender) return;
 
@@ -429,12 +478,19 @@ export class Renderer3D {
         const transform = materia.getComponent(Transform);
         if (!transform || !materia.isActive) return;
 
-        if (!meshRenderer && !spriteRenderer && !textureRender && !tilemapRenderer) return;
+        if (!meshRenderer && !spriteRenderer && !textureRender && !tilemapRenderer && !terreno2D && !water) return;
 
-        // Support for rendering Tilemaps as billboarded planes in 3D for now
-        // This ensures they are perspective-correct but "flat" in the world.
+        // Specialized Renderers
         if (tilemapRenderer) {
             this.renderTilemap(materia, projectionMatrix, viewMatrix, options);
+            return;
+        }
+        if (terreno2D) {
+            this.renderTerreno2D(materia, projectionMatrix, viewMatrix, options);
+            return;
+        }
+        if (water) {
+            this.renderWater(materia, projectionMatrix, viewMatrix, options);
             return;
         }
 
@@ -536,7 +592,7 @@ export class Renderer3D {
             let spriteScaleX = 1;
             let spriteScaleY = 1;
             if (sprite && sprite.complete && sprite.naturalWidth > 0) {
-                spriteScaleX = sprite.naturalWidth; // Dividing by 200 because plane is 2x2 units
+                spriteScaleX = sprite.naturalWidth;
                 spriteScaleY = sprite.naturalHeight;
             }
 
@@ -549,8 +605,8 @@ export class Renderer3D {
                 const viewRot = quat.create();
                 mat4.getRotation(viewRot, viewMatrix);
                 quat.invert(viewRot, viewRot);
-                // Invert the view rotation to keep the sprite facing the camera
-                finalRotation = viewRot;
+                // Combine billboard rotation with local rotation for flexibility
+                quat.multiply(finalRotation, viewRot, q);
             }
 
             mat4.fromRotationTranslationScale(spriteModelMatrix, finalRotation, pos, spriteScale);
@@ -602,8 +658,8 @@ export class Renderer3D {
                 const viewRot = quat.create();
                 mat4.getRotation(viewRot, viewMatrix);
                 quat.invert(viewRot, viewRot);
-                // Keep texture flat in world unless billboarded
-                finalRotationTex = viewRot;
+                // Combine billboard rotation with local rotation
+                quat.multiply(finalRotationTex, viewRot, q);
             }
 
             mat4.fromRotationTranslationScale(modelMatrixTex, finalRotationTex, pos, texScale);
@@ -635,6 +691,7 @@ export class Renderer3D {
     }
 
     pick(scene, cameraMateria, x, y, options = {}) {
+        if (!this.initialized) return null;
         if (!this.gl) return null;
         const gl = this.gl;
 
@@ -745,7 +802,18 @@ export class Renderer3D {
     bakeTilemap(materia) {
         const tilemap = materia.getComponent(Components.Tilemap);
         const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
-        const grid = materia.parent?.getComponent(Components.Grid);
+
+        let gridMateria = null;
+        const parent = materia.parent;
+        if (parent) {
+            if (typeof parent === 'object' && typeof parent.getComponent === 'function') {
+                gridMateria = parent;
+            } else if (typeof parent === 'number') {
+                gridMateria = (materia.scene || window.SceneManager?.currentScene)?.findMateriaById(parent);
+            }
+        }
+        const grid = gridMateria ? gridMateria.getComponent(Components.Grid) : null;
+
         if (!tilemap || !tilemapRenderer || !grid) return;
 
         const canvas = document.createElement('canvas');
@@ -778,6 +846,144 @@ export class Renderer3D {
 
         tilemapRenderer._bakedTexture = canvas;
         tilemapRenderer.isDirty = false;
+    }
+
+    renderTerreno2D(materia, projectionMatrix, viewMatrix, options) {
+        const terreno = materia.getComponent(Components.Terreno2D);
+        if (!terreno || options.picking) return;
+
+        // Use the 2D logic to bake terrain into a texture
+        if (!terreno._bakedTexture || terreno.isDirty) {
+            this.bakeTerreno2D(materia);
+        }
+
+        const tex = this.getGLTexture(terreno._bakedTexture);
+        if (!tex) return;
+
+        const gl = this.gl;
+        const transform = materia.getComponent(Transform);
+        const worldPos = transform.position;
+        const worldScale = transform.scale;
+        const pos = [worldPos.x, worldPos.y, worldPos.z || 0];
+
+        const q = quat.create();
+        quat.fromEuler(q, transform.rotationX || 0, transform.rotationY || 0, transform.rotationZ || 0);
+
+        const modelMatrix = mat4.create();
+        const finalScale = [worldScale.x * terreno.width, worldScale.y * terreno.height, 1];
+        mat4.fromRotationTranslationScale(modelMatrix, q, pos, finalScale);
+
+        gl.uniformMatrix4fv(this.programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
+        gl.uniformMatrix4fv(this.programInfo.uniformLocations.viewMatrix, false, viewMatrix);
+        gl.uniformMatrix4fv(this.programInfo.uniformLocations.modelMatrix, false, modelMatrix);
+        gl.uniform4fv(this.programInfo.uniformLocations.uColor, [1, 1, 1, 1]);
+
+        gl.uniform1i(this.programInfo.uniformLocations.uUseTexture, 1);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.uniform1i(this.programInfo.uniformLocations.uSampler, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.planeBuffer);
+        gl.vertexAttribPointer(this.programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexPosition);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.planeTexCoordBuffer);
+        gl.vertexAttribPointer(this.programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(this.programInfo.attribLocations.textureCoord);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.planeIndexBuffer);
+        gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+    }
+
+    bakeTerreno2D(materia) {
+        const terreno = materia.getComponent(Components.Terreno2D);
+        const canvas = document.createElement('canvas');
+        canvas.width = terreno.width;
+        canvas.height = terreno.height;
+        const ctx = canvas.getContext('2d');
+
+        // Reuse Renderer.drawTerreno2D logic but simplified for baking
+        for (let l = 0; l < terreno.layers.length; l++) {
+            const layer = terreno.layers[l];
+            if (!layer.maskCanvas) continue;
+            const img = terreno.getImageForLayer(l);
+            if (img && img.complete) {
+                const pattern = ctx.createPattern(img, 'repeat');
+                ctx.save();
+                ctx.fillStyle = pattern;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.globalCompositeOperation = 'destination-in';
+                ctx.drawImage(layer.maskCanvas, 0, 0);
+                ctx.restore();
+            }
+        }
+        terreno._bakedTexture = canvas;
+        terreno.isDirty = false;
+    }
+
+    renderWater(materia, projectionMatrix, viewMatrix, options) {
+        const water = materia.getComponent(Components.Water);
+        if (!water || options.picking) return;
+
+        // Render water particles as additive/blended spheres or a baked mesh
+        // For simplicity in v0.1.2 hybrid, we bake it to a texture based on its bounds
+        const now = performance.now();
+        const shouldUpdate = !water._bakedTexture || (now - (water._lastBakeTime || 0) > 33); // ~30fps update
+
+        if (shouldUpdate) {
+            this.bakeWater(materia);
+            water._lastBakeTime = now;
+        }
+
+        const tex = this.getGLTexture(water._bakedTexture, shouldUpdate);
+        if (!tex) return;
+
+        const gl = this.gl;
+        const transform = materia.getComponent(Transform);
+        const bounds = water.bounds;
+        const w = bounds.maxX - bounds.minX;
+        const h = bounds.maxY - bounds.minY;
+        if (w <= 0 || h <= 0) return;
+
+        const pos = [bounds.minX + w/2, bounds.minY + h/2, transform.z || 0];
+        const modelMatrix = mat4.create();
+        mat4.fromRotationTranslationScale(modelMatrix, quat.create(), pos, [w, h, 1]);
+
+        gl.uniformMatrix4fv(this.programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
+        gl.uniformMatrix4fv(this.programInfo.uniformLocations.viewMatrix, false, viewMatrix);
+        gl.uniformMatrix4fv(this.programInfo.uniformLocations.modelMatrix, false, modelMatrix);
+        gl.uniform4fv(this.programInfo.uniformLocations.uColor, [1, 1, 1, 1]);
+        gl.uniform1i(this.programInfo.uniformLocations.uUseTexture, 1);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.planeBuffer);
+        gl.vertexAttribPointer(this.programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(this.programInfo.attribLocations.vertexPosition);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.planeTexCoordBuffer);
+        gl.vertexAttribPointer(this.programInfo.attribLocations.textureCoord, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(this.programInfo.attribLocations.textureCoord);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.planeIndexBuffer);
+        gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+    }
+
+    bakeWater(materia) {
+        const water = materia.getComponent(Components.Water);
+        const bounds = water.bounds;
+        const w = Math.ceil(bounds.maxX - bounds.minX);
+        const h = Math.ceil(bounds.maxY - bounds.minY);
+        if (w <= 0 || h <= 0) return;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.min(2048, w);
+        canvas.height = Math.min(2048, h);
+        const ctx = canvas.getContext('2d');
+
+        // We use a simplified metaball draw for baking
+        ctx.fillStyle = water.color || 'rgba(52, 152, 219, 0.8)';
+        for (const p of water.particles) {
+            ctx.beginPath();
+            ctx.arc(p.x - bounds.minX, p.y - bounds.minY, water._particleRadius || 14, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        water._bakedTexture = canvas;
     }
 
     initShaderProgram(gl, vsSource, fsSource) {

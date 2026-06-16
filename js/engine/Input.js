@@ -181,6 +181,10 @@ class InputManager {
         targetWindow.addEventListener('keyup', this._onKeyUp.bind(this));
         targetWindow.addEventListener('wheel', this._onWheel.bind(this), { passive: false });
 
+        // Listen for mouse events on the window to ensure we catch releases outside the canvas
+        targetWindow.addEventListener('mousedown', this._onWindowMouseDown.bind(this));
+        targetWindow.addEventListener('mouseup', this._onWindowMouseUp.bind(this));
+
         // Also listen for mouse move on the window to track position even when not over canvas
         targetWindow.addEventListener('mousemove', (e) => {
             // Update delta even when moving outside the canvas while a button is likely pressed
@@ -203,15 +207,21 @@ class InputManager {
         targetWindow.removeEventListener('keydown', this._onKeyDown.bind(this));
         targetWindow.removeEventListener('keyup', this._onKeyUp.bind(this));
         targetWindow.removeEventListener('wheel', this._onWheel.bind(this));
+        targetWindow.removeEventListener('mousedown', this._onWindowMouseDown.bind(this));
+        targetWindow.removeEventListener('mouseup', this._onWindowMouseUp.bind(this));
     }
 
     // Keyboard Methods
     static _onKeyDown(event) {
         // If the engine is playing, ignore keyboard input unless:
         // 1. It comes from an external game window
-        // 2. The active canvas is the game canvas (integrated mode)
+        // 2. The active canvas is a game canvas (integrated mode)
         const isFromGameWindow = this._gameWindows.has(event.view);
-        if (this._isGameRunning && !isFromGameWindow && this._activeCanvas !== this._gameCanvas) return;
+
+        // In hybrid mode, both gameCanvas and gameCanvas3d are valid for game input
+        const isGameCanvas = (this._activeCanvas && (this._activeCanvas.id === 'game-canvas' || this._activeCanvas.id === 'game-canvas-3d'));
+
+        if (this._isGameRunning && !isFromGameWindow && !isGameCanvas) return;
 
         const key = event.key;
         if (!this._keys.get(key)) {
@@ -222,7 +232,9 @@ class InputManager {
 
     static _onKeyUp(event) {
         const isFromGameWindow = this._gameWindows.has(event.view);
-        if (this._isGameRunning && !isFromGameWindow && this._activeCanvas !== this._gameCanvas) return;
+        const isGameCanvas = (this._activeCanvas && (this._activeCanvas.id === 'game-canvas' || this._activeCanvas.id === 'game-canvas-3d'));
+
+        if (this._isGameRunning && !isFromGameWindow && !isGameCanvas) return;
 
         const key = event.key;
         this._keys.set(key, false);
@@ -466,6 +478,16 @@ class InputManager {
     }
 
     static _onMouseUp(event) {
+        this._onPointerUp(event.button);
+    }
+
+    static _onWindowMouseDown(event) {
+        // Only trigger if not already handled by canvas (optional, but avoids double counts)
+        // Actually, _onPointerDown handles double clicks via Map
+        this._onPointerDown(event.button);
+    }
+
+    static _onWindowMouseUp(event) {
         this._onPointerUp(event.button);
     }
 

@@ -53,25 +53,19 @@ function world3DToScreen(worldPos) {
     if (!r3d || !r3d.lastProjectionMatrix || !r3d.lastViewMatrix) return null;
 
     const canvas = r3d.canvas;
-    const clipPos = [0, 0, 0, 0];
-    // Units are 1:1 in Creative Engine
     const worldVec = [worldPos.x, worldPos.y, (worldPos.z || 0), 1.0];
 
     const mvp = mat4.create();
     mat4.multiply(mvp, r3d.lastProjectionMatrix, r3d.lastViewMatrix);
 
-    vec3.transformMat4(clipPos, worldVec, mvp);
-
-    // Check if behind camera
-    // vec3.transformMat4 doesn't give w, let's use full 4x4
-    const v4 = [worldVec[0], worldVec[1], worldVec[2], 1.0];
     const res = [0, 0, 0, 0];
-    // manual multiplication to get W
+    // manual multiplication to get W correctly for clipping
     for(let i=0; i<4; i++) {
-        res[i] = mvp[i]*v4[0] + mvp[i+4]*v4[1] + mvp[i+8]*v4[2] + mvp[i+12]*v4[3];
+        res[i] = mvp[i]*worldVec[0] + mvp[i+4]*worldVec[1] + mvp[i+8]*worldVec[2] + mvp[i+12]*worldVec[3];
     }
 
-    if (res[3] <= 0) return null;
+    // Near plane clipping
+    if (res[3] < 0.1) return null;
 
     const ndc = [res[0] / res[3], res[1] / res[3], res[2] / res[3]];
 
@@ -1063,19 +1057,18 @@ export function initialize(dependencies) {
 
     sceneCanvases.forEach(canvas => {
         canvas.addEventListener('contextmenu', e => {
-            const config = getCurrentProjectConfig();
-            const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+            // ALWAYS prevent context menu on scene canvases to avoid browser interference
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    });
 
-            // In 3D mode, we ALWAYS prevent context menu to allow right-click rotation
-            if (is3D) {
-                e.preventDefault();
-                e.stopPropagation();
-            } else {
-                // In 2D, we might want to allow it unless we are over an object
-                // For now, keep it consistent with the existing editor behavior
-                e.preventDefault();
-                e.stopPropagation();
-            }
+    // Also prevent on containers to be double-safe
+    const containers = document.querySelectorAll('.canvas-container');
+    containers.forEach(container => {
+        container.addEventListener('contextmenu', e => {
+            e.preventDefault();
+            e.stopPropagation();
         });
     });
 
@@ -1289,17 +1282,36 @@ export function initialize(dependencies) {
 
         if (!renderer || !renderer.camera) return;
 
+        const config = getCurrentProjectConfig();
+        const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+
         const scrollDelta = event.deltaY;
         const zoomFactor = getPreferences().zoomSpeed || 1.1;
 
-        if (scrollDelta < 0) { // Zoom in
-            renderer.camera.zoom *= zoomFactor;
-        } else { // Zoom out
-            renderer.camera.zoom /= zoomFactor;
-        }
+        if (is3D) {
+            const cam = renderer.camera;
+            const moveDir = vec3.create();
+            moveDir[2] = scrollDelta > 0 ? 1 : -1;
 
-        // Clamp zoom to avoid issues - expanded limits for more flexibility
-        renderer.camera.zoom = Math.max(0.001, Math.min(renderer.camera.zoom, 1000.0));
+            const rotationQuat = quat.create();
+            quat.fromEuler(rotationQuat, cam.rotation.x, cam.rotation.y, 0);
+
+            const rotatedDir = vec3.create();
+            vec3.transformQuat(rotatedDir, moveDir, rotationQuat);
+
+            const zoomSpeed = 200; // Physical movement in 3D
+            cam.x += rotatedDir[0] * zoomSpeed;
+            cam.y += rotatedDir[1] * zoomSpeed;
+            cam.z += rotatedDir[2] * zoomSpeed;
+        } else {
+            if (scrollDelta < 0) { // Zoom in
+                renderer.camera.zoom *= zoomFactor;
+            } else { // Zoom out
+                renderer.camera.zoom /= zoomFactor;
+            }
+            // Clamp zoom to avoid issues - expanded limits for more flexibility
+            renderer.camera.zoom = Math.max(0.001, Math.min(renderer.camera.zoom, 1000.0));
+        }
     }, { passive: false });
 
     canvas.addEventListener('mousedown', (e) => {
@@ -1581,8 +1593,8 @@ function handle3DCameraNavigation() {
         if (Math.abs(delta.x) > 0.01 || Math.abs(delta.y) > 0.01) {
             // Standard First Person Look: Mouse Right = Turn Right (Decrease Yaw in YXZ)
             cam.rotation.y -= delta.x * rotSpeed;
-            // Mouse Down = Look Down (Increase Pitch in YXZ)
-            cam.rotation.x += delta.y * rotSpeed;
+            // Mouse Down = Look UP (requested Inverted Y-axis)
+            cam.rotation.x -= delta.y * rotSpeed; // Changed + to -
             cam.rotation.x = Math.max(-89, Math.min(89, cam.rotation.x));
         }
     }
@@ -1634,6 +1646,8 @@ function drawCameraGizmos(renderer) {
     if (!scene) return;
 
     const { ctx, canvas } = renderer;
+    const config = getCurrentProjectConfig();
+    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
     const allMaterias = scene.getAllMaterias();
     const aspect = canvas.width / canvas.height;
     const selectedMateria = getSelectedMateria();
@@ -1649,22 +1663,36 @@ function drawCameraGizmos(renderer) {
         const isSelected = selectedMateria && selectedMateria.id === materia.id;
 
         ctx.save();
-
-        // --- Draw Camera Wireframe ---
         ctx.strokeStyle = isSelected ? 'rgba(255, 255, 0, 0.8)' : 'rgba(255, 255, 255, 0.4)';
-        ctx.lineWidth = 1 / renderer.camera.effectiveZoom;
+        ctx.lineWidth = is3D ? 2 : 1 / renderer.camera.effectiveZoom;
 
-        ctx.translate(transform.x, transform.y);
-        ctx.rotate(transform.rotation * Math.PI / 180);
+        if (!is3D) {
+            ctx.translate(transform.x, transform.y);
+            ctx.rotate(transform.rotation * Math.PI / 180);
+        }
 
         if (cameraComponent.projection === 'Orthographic') {
             const size = cameraComponent.orthographicSize;
             const halfHeight = size;
             const halfWidth = size * aspect;
 
-            ctx.beginPath();
-            ctx.rect(-halfWidth, -halfHeight, halfWidth * 2, halfHeight * 2);
-            ctx.stroke();
+            if (is3D) {
+                const z = transform.z || 0;
+                const p1 = world3DToScreen({ x: transform.x - halfWidth, y: transform.y - halfHeight, z });
+                const p2 = world3DToScreen({ x: transform.x + halfWidth, y: transform.y - halfHeight, z });
+                const p3 = world3DToScreen({ x: transform.x + halfWidth, y: transform.y + halfHeight, z });
+                const p4 = world3DToScreen({ x: transform.x - halfWidth, y: transform.y + halfHeight, z });
+                if (p1 && p2 && p3 && p4) {
+                    ctx.beginPath();
+                    ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+                    ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y);
+                    ctx.closePath(); ctx.stroke();
+                }
+            } else {
+                ctx.beginPath();
+                ctx.rect(-halfWidth, -halfHeight, halfWidth * 2, halfHeight * 2);
+                ctx.stroke();
+            }
 
             // --- Draw Interactive Handles (only for selected camera) ---
             if (isSelected) {
@@ -1817,6 +1845,8 @@ function drawComponentGrids() {
     if (!transform) return;
 
     const { ctx, camera, canvas } = renderer;
+    const config = getCurrentProjectConfig();
+    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
     const zoom = camera.effectiveZoom;
     const prefs = getPreferences();
     const isSceneGridVisible = prefs.showSceneGrid;
@@ -1824,31 +1854,71 @@ function drawComponentGrids() {
     const { cellSize } = grid;
     if (cellSize.x <= 0 || cellSize.y <= 0) return;
 
-    const viewLeft = camera.x - (canvas.width / 2 / zoom);
-    const viewRight = camera.x + (canvas.width / 2 / zoom);
-    const viewTop = camera.y - (canvas.height / 2 / zoom);
-    const viewBottom = camera.y + (canvas.height / 2 / zoom);
-
     ctx.save();
-    ctx.lineWidth = 1 / zoom;
-    ctx.strokeStyle = isSceneGridVisible ? 'rgba(0, 100, 255, 0.5)' : 'rgba(255, 255, 255, 0.1)';
-    ctx.beginPath();
+    if (is3D) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0); // Screen Space for overlay
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(0, 150, 255, 0.4)';
 
-    const startX = Math.floor((viewLeft - transform.x) / cellSize.x) * cellSize.x + transform.x;
-    const endX = Math.ceil((viewRight - transform.x) / cellSize.x) * cellSize.x + transform.x;
-    for (let x = startX; x <= endX; x += cellSize.x) {
-        ctx.moveTo(x, viewTop);
-        ctx.lineTo(x, viewBottom);
+        const gridRange = 20; // Number of cells around object
+
+        // Use local bounds for the component grid to ensure rotation is applied correctly
+        const startX = -(gridRange * cellSize.x);
+        const endX = (gridRange * cellSize.x);
+        const startY = -(gridRange * cellSize.y);
+        const endY = (gridRange * cellSize.y);
+
+        const rad = (transform.rotation || 0) * Math.PI / 180;
+        const cos = Math.cos(rad), sin = Math.sin(rad);
+
+        const drawLine3D = (p1World, p2World) => {
+            const p1 = world3DToScreen(p1World);
+            const p2 = world3DToScreen(p2World);
+            if (p1 && p2) {
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+            }
+        };
+
+        const getPt = (lx, ly) => {
+            const rx = lx * cos - ly * sin;
+            const ry = lx * sin + ly * cos;
+            return { x: transform.x + rx, y: transform.y + ry, z: transform.z || 0 };
+        };
+
+        for (let x = startX; x <= endX; x += cellSize.x) {
+            drawLine3D(getPt(x, startY), getPt(x, endY));
+        }
+        for (let y = startY; y <= endY; y += cellSize.y) {
+            drawLine3D(getPt(startX, y), getPt(endX, y));
+        }
+    } else {
+        const viewLeft = camera.x - (canvas.width / 2 / zoom);
+        const viewRight = camera.x + (canvas.width / 2 / zoom);
+        const viewTop = camera.y - (canvas.height / 2 / zoom);
+        const viewBottom = camera.y + (canvas.height / 2 / zoom);
+
+        ctx.lineWidth = 1 / zoom;
+        ctx.strokeStyle = isSceneGridVisible ? 'rgba(0, 100, 255, 0.5)' : 'rgba(255, 255, 255, 0.1)';
+        ctx.beginPath();
+
+        const startX = Math.floor((viewLeft - transform.x) / cellSize.x) * cellSize.x + transform.x;
+        const endX = Math.ceil((viewRight - transform.x) / cellSize.x) * cellSize.x + transform.x;
+        for (let x = startX; x <= endX; x += cellSize.x) {
+            ctx.moveTo(x, viewTop);
+            ctx.lineTo(x, viewBottom);
+        }
+
+        const startY = Math.floor((viewTop - transform.y) / cellSize.y) * cellSize.y + transform.y;
+        const endY = Math.ceil((viewBottom - transform.y) / cellSize.y) * cellSize.y + transform.y;
+        for (let y = startY; y <= endY; y += cellSize.y) {
+            ctx.moveTo(viewLeft, y);
+            ctx.lineTo(viewRight, y);
+        }
+        ctx.stroke();
     }
-
-    const startY = Math.floor((viewTop - transform.y) / cellSize.y) * cellSize.y + transform.y;
-    const endY = Math.ceil((viewBottom - transform.y) / cellSize.y) * cellSize.y + transform.y;
-    for (let y = startY; y <= endY; y += cellSize.y) {
-        ctx.moveTo(viewLeft, y);
-        ctx.lineTo(viewRight, y);
-    }
-
-    ctx.stroke();
     ctx.restore();
 }
 
@@ -2035,10 +2105,13 @@ export function drawOverlay() {
     const config = getCurrentProjectConfig();
     const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
 
-    if (!is3D) {
-        drawEditorGrid();
-    } else {
+    if (is3D) {
+        // Reset 2D transform to Screen Space for 3D-projected gizmos
+        renderer.ctx.save();
+        renderer.ctx.setTransform(1, 0, 0, 1, 0, 0);
         draw3DGrid();
+    } else {
+        drawEditorGrid();
     }
     drawComponentGrids();
     drawLayerPlacementPreview();
@@ -2081,6 +2154,10 @@ export function drawOverlay() {
     drawWeightPainterGizmo();
 
     drawBasicAIGizmos();
+
+    if (is3D) {
+        renderer.ctx.restore();
+    }
 }
 
 function drawWeightPainterGizmo() {
@@ -2104,10 +2181,12 @@ function drawGizmoIcons() {
     if (!SceneManager || !renderer || !SceneManager.currentScene) return;
 
     const { ctx, camera } = renderer;
+    const config = getCurrentProjectConfig();
+    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
     const zoom = camera.effectiveZoom;
     const allMaterias = SceneManager.currentScene.getAllMaterias();
 
-    const ICON_SIZE = 32 / zoom;
+    const BASE_ICON_SIZE = 32;
 
     allMaterias.forEach(materia => {
         if (!materia.isActive) return;
@@ -2127,10 +2206,28 @@ function drawGizmoIcons() {
         if (iconPath) {
             const iconImg = getCachedIcon(iconPath);
             if (iconImg.complete && iconImg.naturalWidth > 0) {
-                ctx.save();
-                ctx.globalAlpha = 0.8;
-                ctx.drawImage(iconImg, transform.x - ICON_SIZE / 2, transform.y - ICON_SIZE / 2, ICON_SIZE, ICON_SIZE);
-                ctx.restore();
+                let screenPos;
+                if (is3D) {
+                    screenPos = world3DToScreen({ x: transform.x, y: transform.y, z: transform.z || 0 });
+                } else {
+                    screenPos = {
+                        x: transform.x,
+                        y: transform.y
+                    };
+                }
+
+                if (screenPos) {
+                    ctx.save();
+                    if (!is3D) {
+                        ctx.translate(screenPos.x, screenPos.y);
+                    } else {
+                        ctx.translate(screenPos.x, screenPos.y);
+                    }
+                    ctx.globalAlpha = 0.8;
+                    const size = is3D ? BASE_ICON_SIZE : BASE_ICON_SIZE / zoom;
+                    ctx.drawImage(iconImg, -size / 2, -size / 2, size, size);
+                    ctx.restore();
+                }
             }
         }
     });
@@ -2198,68 +2295,62 @@ function draw3DGrid() {
     const magnitude = Math.pow(10, Math.floor(Math.log10(dist / 5)));
     const step = Math.max(1, magnitude);
 
-    const gridRange = 40; // Visible lines around camera
-    const gridColor = 'rgba(255, 255, 255, 0.08)';
-    const majorGridColor = 'rgba(255, 255, 255, 0.2)';
-    const axisColorX = 'rgba(255, 50, 50, 0.7)'; // Red
-    const axisColorZ = 'rgba(50, 50, 255, 0.7)'; // Blue
-    const centerColor = 'rgba(255, 255, 255, 0.8)';
+    const gridRange = 60; // Increased range
+    const gridColor = 'rgba(255, 255, 255, 0.1)';
+    const majorGridColor = 'rgba(255, 255, 255, 0.3)';
+    const axisColorX = 'rgba(255, 50, 50, 0.8)'; // Red
+    const axisColorY = 'rgba(50, 255, 50, 0.8)'; // Green
+    const centerColor = 'rgba(255, 255, 255, 0.9)';
 
-    // Infinite effect: snapped to steps
-    const startX = Math.floor((camera.x - (gridRange * step)) / step) * step;
-    const endX = Math.ceil((camera.x + (gridRange * step)) / step) * step;
-    const startZ = Math.floor((camera.z - (gridRange * step)) / step) * step;
-    const endZ = Math.ceil((camera.z + (gridRange * step)) / step) * step;
+    // Infinite effect: snapped to steps on XY plane
+    const snapX = Math.floor(camera.x / step) * step;
+    const snapY = Math.floor(camera.y / step) * step;
+
+    const startX = snapX - (gridRange * step);
+    const endX = snapX + (gridRange * step);
+    const startY = snapY - (gridRange * step);
+    const endY = snapY + (gridRange * step);
 
     ctx.lineWidth = 1;
 
-    // Grid lines parallel to Z (varying X)
+    // Helper for clipped line drawing
+    const drawLine3D = (p1World, p2World, color) => {
+        const p1 = world3DToScreen(p1World);
+        const p2 = world3DToScreen(p2World);
+        if (p1 && p2) {
+            ctx.strokeStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+        }
+    };
+
+    // Vertical grid lines (varying Y)
     for (let x = startX; x <= endX; x += step) {
-        const isMajor = Math.abs(x) % (step * 5) === 0;
+        const isMajor = Math.round(x / step) % 10 === 0;
         const isOrigin = Math.abs(x) < 0.01;
         if (isOrigin) continue;
-
-        ctx.strokeStyle = isMajor ? majorGridColor : gridColor;
-        const p1 = world3DToScreen({ x, y: 0, z: startZ });
-        const p2 = world3DToScreen({ x, y: 0, z: endZ });
-        if (p1 && p2) {
-            ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
-        }
+        drawLine3D({ x, y: startY, z: 0 }, { x, y: endY, z: 0 }, isMajor ? majorGridColor : gridColor);
     }
 
-    // Grid lines parallel to X (varying Z)
-    for (let z = startZ; z <= endZ; z += step) {
-        const isMajor = Math.abs(z) % (step * 5) === 0;
-        const isOrigin = Math.abs(z) < 0.01;
+    // Horizontal grid lines (varying X)
+    for (let y = startY; y <= endY; y += step) {
+        const isMajor = Math.round(y / step) % 10 === 0;
+        const isOrigin = Math.abs(y) < 0.01;
         if (isOrigin) continue;
-
-        ctx.strokeStyle = isMajor ? majorGridColor : gridColor;
-        const p1 = world3DToScreen({ x: startX, y: 0, z });
-        const p2 = world3DToScreen({ x: endX, y: 0, z });
-        if (p1 && p2) {
-            ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
-        }
+        drawLine3D({ x: startX, y, z: 0 }, { x: endX, y, z: 0 }, isMajor ? majorGridColor : gridColor);
     }
 
     // Main Axes
     ctx.lineWidth = 2;
-    const axisLen = Math.max(5000, gridRange * step * 2);
+    const axisLen = gridRange * step * 1.5;
 
     // X Axis (Red)
-    const x1 = world3DToScreen({ x: -axisLen, y: 0, z: 0 });
-    const x2 = world3DToScreen({ x: axisLen, y: 0, z: 0 });
-    if (x1 && x2) {
-        ctx.strokeStyle = axisColorX;
-        ctx.beginPath(); ctx.moveTo(x1.x, x1.y); ctx.lineTo(x2.x, x2.y); ctx.stroke();
-    }
+    drawLine3D({ x: -axisLen, y: 0, z: 0 }, { x: axisLen, y: 0, z: 0 }, axisColorX);
 
-    // Z Axis (Blue)
-    const z1 = world3DToScreen({ x: 0, y: 0, z: -axisLen });
-    const z2 = world3DToScreen({ x: 0, y: 0, z: axisLen });
-    if (z1 && z2) {
-        ctx.strokeStyle = axisColorZ;
-        ctx.beginPath(); ctx.moveTo(z1.x, z1.y); ctx.lineTo(z2.x, z2.y); ctx.stroke();
-    }
+    // Y Axis (Green)
+    drawLine3D({ x: 0, y: -axisLen, z: 0 }, { x: 0, y: axisLen, z: 0 }, axisColorY);
 
     // Center Crosshair
     const origin = world3DToScreen({ x: 0, y: 0, z: 0 });
@@ -2516,6 +2607,31 @@ function drawPhysicsGizmos() {
     const { ctx, camera } = renderer;
     if (!ctx || !camera) return;
 
+    const config = getCurrentProjectConfig();
+    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+
+    // Helper for 3D projected lines
+    const strokeRect3D = (cx, cy, w, h, z, rot) => {
+        const hw = w / 2;
+        const hh = h / 2;
+        const rad = rot * Math.PI / 180;
+        const cos = Math.cos(rad), sin = Math.sin(rad);
+
+        const getPt = (lx, ly) => {
+            const rx = lx * cos - ly * sin;
+            const ry = lx * sin + ly * cos;
+            return world3DToScreen({ x: cx + rx, y: cy + ry, z });
+        };
+
+        const p1 = getPt(-hw, -hh), p2 = getPt(hw, -hh), p3 = getPt(hw, hh), p4 = getPt(-hw, hh);
+        if (p1 && p2 && p3 && p4) {
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+            ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y);
+            ctx.closePath(); ctx.stroke();
+        }
+    };
+
     // Draw BoxCollider2D
     const boxCollider = selectedMateria.getComponent(Components.BoxCollider2D);
     if (boxCollider) {
@@ -2525,26 +2641,16 @@ function drawPhysicsGizmos() {
         const centerY = transform.y + boxCollider.offset.y;
 
         ctx.save();
-        ctx.translate(centerX, centerY);
-        ctx.rotate(transform.rotation * Math.PI / 180);
-
         ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
-        ctx.lineWidth = 2 / camera.effectiveZoom;
-        ctx.setLineDash([]);
-        ctx.strokeRect(-width / 2, -height / 2, width, height);
+        ctx.lineWidth = is3D ? 2 : 2 / camera.effectiveZoom;
 
-        const handleSize = 8 / camera.effectiveZoom;
-        const halfHandle = handleSize / 2;
-        ctx.fillStyle = 'rgba(0, 255, 0, 0.9)';
-
-        const handles = [
-            { x: 0, y: -height / 2 }, { x: 0, y: height / 2 },
-            { x: width / 2, y: 0 }, { x: -width / 2, y: 0 },
-            { x: -width / 2, y: -height / 2 }, { x: width / 2, y: -height / 2 },
-            { x: -width / 2, y: height / 2 }, { x: width / 2, y: height / 2 }
-        ];
-        handles.forEach(handle => ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize));
-
+        if (is3D) {
+            strokeRect3D(centerX, centerY, width, height, transform.z || 0, transform.rotation);
+        } else {
+            ctx.translate(centerX, centerY);
+            ctx.rotate(transform.rotation * Math.PI / 180);
+            ctx.strokeRect(-width / 2, -height / 2, width, height);
+        }
         ctx.restore();
     }
 
@@ -2636,26 +2742,71 @@ function drawTilemapOutline() {
     if (!transform) return;
 
     const { ctx, camera } = renderer;
+    const config = getCurrentProjectConfig();
+    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
     const { cellSize } = grid;
     const { width, height } = tilemap;
 
     const layerWidth = width * cellSize.x;
     const layerHeight = height * cellSize.y;
 
-    ctx.save();
-    ctx.translate(transform.x, transform.y);
-    ctx.rotate(transform.rotation * Math.PI / 180);
+    if (is3D) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.lineWidth = 2;
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.lineWidth = 2 / camera.effectiveZoom;
+        const drawRect3D = (x, y, w, h) => {
+            const hw = w / 2;
+            const hh = h / 2;
 
-    for (const layer of tilemap.layers) {
-        const offsetX = layer.position.x * layerWidth;
-        const offsetY = layer.position.y * layerHeight;
-        ctx.strokeRect(offsetX - layerWidth / 2, offsetY - layerHeight / 2, layerWidth, layerHeight);
+            // Apply object rotation to the corners locally before adding world position
+            const rad = (transform.rotation || 0) * Math.PI / 180;
+            const cos = Math.cos(rad), sin = Math.sin(rad);
+
+            const getCorner = (lx, ly) => {
+                const rx = lx * cos - ly * sin;
+                const ry = lx * sin + ly * cos;
+                return world3DToScreen({ x: x + rx, y: y + ry, z: transform.z || 0 });
+            };
+
+            const p1 = getCorner(-hw, -hh);
+            const p2 = getCorner(hw, -hh);
+            const p3 = getCorner(hw, hh);
+            const p4 = getCorner(-hw, hh);
+
+            if (p1 && p2 && p3 && p4) {
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+                ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y);
+                ctx.closePath();
+                ctx.stroke();
+            }
+        };
+
+        for (const layer of tilemap.layers) {
+            // offsetX/Y are local to the transform center
+            const localX = layer.position.x * layerWidth;
+            const localY = layer.position.y * layerHeight;
+
+            // In 3D pass, we need to apply world position correctly
+            const worldX = transform.x + localX;
+            const worldY = transform.y + localY;
+            drawRect3D(worldX, worldY, layerWidth, layerHeight);
+        }
+    } else {
+        ctx.save();
+        ctx.translate(transform.x, transform.y);
+        ctx.rotate(transform.rotation * Math.PI / 180);
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.lineWidth = 2 / camera.effectiveZoom;
+
+        for (const layer of tilemap.layers) {
+            const offsetX = layer.position.x * layerWidth;
+            const offsetY = layer.position.y * layerHeight;
+            ctx.strokeRect(offsetX - layerWidth / 2, offsetY - layerHeight / 2, layerWidth, layerHeight);
+        }
+        ctx.restore();
     }
-
-    ctx.restore();
 }
 
 function drawTerrenoColliders() {
@@ -2672,22 +2823,53 @@ function drawTerrenoColliders() {
     }
 
     const { ctx, camera } = renderer;
+    const config = getCurrentProjectConfig();
+    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+
+    const drawLine3D = (p1World, p2World) => {
+        const p1 = world3DToScreen(p1World);
+        const p2 = world3DToScreen(p2World);
+        if (p1 && p2) {
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+        }
+    };
+
+    const drawRect3D = (cx, cy, w, h) => {
+        const hw = w / 2, hh = h / 2;
+        const rad = (transform.rotation || 0) * Math.PI / 180;
+        const cos = Math.cos(rad), sin = Math.sin(rad);
+        const getPt = (lx, ly) => {
+            const rx = lx * cos - ly * sin;
+            const ry = lx * sin + ly * cos;
+            return { x: transform.x + rx, y: transform.y + ry, z: transform.z || 0 };
+        };
+        const p1 = getPt(cx - hw, cy - hh), p2 = getPt(cx + hw, cy - hh), p3 = getPt(cx + hw, cy + hh), p4 = getPt(cx - hw, cy + hh);
+        drawLine3D(p1, p2); drawLine3D(p2, p3); drawLine3D(p3, p4); drawLine3D(p4, p1);
+    };
 
     ctx.save();
-    ctx.translate(transform.x, transform.y);
-    ctx.rotate(transform.rotation * Math.PI / 180);
+    if (!is3D) {
+        ctx.translate(transform.x, transform.y);
+        ctx.rotate(transform.rotation * Math.PI / 180);
+    }
 
     ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
-    ctx.lineWidth = 2 / camera.effectiveZoom;
-    ctx.setLineDash([4 / camera.effectiveZoom, 4 / camera.effectiveZoom]);
+    ctx.lineWidth = is3D ? 2 : 2 / camera.effectiveZoom;
+    if (!is3D) ctx.setLineDash([4 / camera.effectiveZoom, 4 / camera.effectiveZoom]);
 
     // Draw based on mode to avoid visual clutter from old data
     if (collider.mode === 'Rectangles') {
         for (const rect of collider.generatedColliders) {
-            ctx.strokeRect(rect.x - rect.width / 2, rect.y - rect.height / 2, rect.width, rect.height);
+            if (is3D) {
+                drawRect3D(rect.x, rect.y, rect.width, rect.height);
+            } else {
+                ctx.strokeRect(rect.x - rect.width / 2, rect.y - rect.height / 2, rect.width, rect.height);
+            }
         }
     } else if (collider.mode === 'Polygon') {
-        // Draw the full polygon outlines for a cleaner look
         const polysToDraw = (collider.debugPolygons && collider.debugPolygons.length > 0)
             ? collider.debugPolygons
             : collider.generatedPolygons;
@@ -2695,13 +2877,33 @@ function drawTerrenoColliders() {
         if (polysToDraw) {
             for (const poly of polysToDraw) {
                 if (poly.vertices && poly.vertices.length > 2) {
-                    ctx.beginPath();
-                    ctx.moveTo(poly.vertices[0].x, poly.vertices[0].y);
-                    for (let i = 1; i < poly.vertices.length; i++) {
-                        ctx.lineTo(poly.vertices[i].x, poly.vertices[i].y);
+                    if (is3D) {
+                        const rad = (transform.rotation || 0) * Math.PI / 180;
+                        const cos = Math.cos(rad), sin = Math.sin(rad);
+                        for (let i = 0; i < poly.vertices.length; i++) {
+                            const v1 = poly.vertices[i];
+                            const v2 = poly.vertices[(i + 1) % poly.vertices.length];
+                            const p1 = {
+                                x: transform.x + (v1.x * cos - v1.y * sin),
+                                y: transform.y + (v1.x * sin + v1.y * cos),
+                                z: transform.z || 0
+                            };
+                            const p2 = {
+                                x: transform.x + (v2.x * cos - v2.y * sin),
+                                y: transform.y + (v2.x * sin + v2.y * cos),
+                                z: transform.z || 0
+                            };
+                            drawLine3D(p1, p2);
+                        }
+                    } else {
+                        ctx.beginPath();
+                        ctx.moveTo(poly.vertices[0].x, poly.vertices[0].y);
+                        for (let i = 1; i < poly.vertices.length; i++) {
+                            ctx.lineTo(poly.vertices[i].x, poly.vertices[i].y);
+                        }
+                        ctx.closePath();
+                        ctx.stroke();
                     }
-                    ctx.closePath();
-                    ctx.stroke();
                 }
             }
         }
@@ -2736,39 +2938,65 @@ function drawTilemapColliders() {
     if (!transform || !tilemap || !grid) return;
 
     const { ctx, camera } = renderer;
+    const config = getCurrentProjectConfig();
+    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
     const { cellSize } = grid;
 
+    const drawColliderRect = (rx, ry, rw, rh) => {
+        if (is3D) {
+            // Tiles in Tilemap are local to the Tilemap center.
+            // We need to apply rotation manually since we are in screen-space overlay
+            const rad = (transform.rotation || 0) * Math.PI / 180;
+            const cos = Math.cos(rad), sin = Math.sin(rad);
+
+            const getPt = (lx, ly) => {
+                const rx_loc = lx * cos - ly * sin;
+                const ry_loc = lx * sin + ly * cos;
+                return world3DToScreen({ x: transform.x + rx_loc, y: transform.y + ry_loc, z: transform.z || 0 });
+            };
+
+            const p1 = getPt(rx, ry), p2 = getPt(rx + rw, ry), p3 = getPt(rx + rw, ry + rh), p4 = getPt(rx, ry + rh);
+            if (p1 && p2 && p3 && p4) {
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+                ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y);
+                ctx.closePath(); ctx.stroke();
+            }
+        } else {
+            ctx.strokeRect(rx - transform.x, ry - transform.y, rw, rh);
+        }
+    };
+
     ctx.save();
-    ctx.translate(transform.x, transform.y);
-    ctx.rotate(transform.rotation * Math.PI / 180);
+    if (!is3D) {
+        ctx.translate(transform.x, transform.y);
+        ctx.rotate(transform.rotation * Math.PI / 180);
+    }
 
     ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
-    ctx.lineWidth = 2 / camera.effectiveZoom;
-    ctx.setLineDash([6 / camera.effectiveZoom, 4 / camera.effectiveZoom]);
+    ctx.lineWidth = is3D ? 2 : 2 / camera.effectiveZoom;
+    if (!is3D) ctx.setLineDash([6 / camera.effectiveZoom, 4 / camera.effectiveZoom]);
 
     const layerWidth = tilemap.width * cellSize.x;
     const layerHeight = tilemap.height * cellSize.y;
 
     for (let i = 0; i < tilemap.layers.length; i++) {
         const layer = tilemap.layers[i];
-
-        // Visual feedback: only draw active collision layers or ALL layers if 'useAllLayers' is true
         if (!collider.useAllLayers && i !== collider.sourceLayerIndex) continue;
 
-        // Use the new safe accessor method to prevent crashes
         const rects = collider.getMeshForLayer(i);
-
         const layerOffsetX = layer.position.x * layerWidth;
         const layerOffsetY = layer.position.y * layerHeight;
         const layerTopLeftX = layerOffsetX - layerWidth / 2;
         const layerTopLeftY = layerOffsetY - layerHeight / 2;
 
         for (const rect of rects) {
+            // rect coordinates are relative to the Tilemap center (local)
             const rectX = layerTopLeftX + rect.col * cellSize.x;
             const rectY = layerTopLeftY + rect.row * cellSize.y;
             const rectWidth = rect.width * cellSize.x;
             const rectHeight = rect.height * cellSize.y;
-            ctx.strokeRect(rectX, rectY, rectWidth, rectHeight);
+            drawColliderRect(rectX, rectY, rectWidth, rectHeight);
         }
     }
     ctx.restore();

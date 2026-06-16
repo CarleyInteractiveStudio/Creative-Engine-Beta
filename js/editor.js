@@ -84,6 +84,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let isGameRunning = false;
     let isGamePaused = false;
     let lastFrameTime = 0;
+
+    // Performance tracking state
+    let gamePerfStats = {
+        minFps: Infinity,
+        maxFps: -Infinity,
+        maxRam: 0,
+        startTime: 0
+    };
     let gameWindow = null;
     let isExternalRunnerReady = false;
 
@@ -309,6 +317,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         consoleMessages.appendChild(msgEl);
+
+        // RAM OPTIMIZATION: Limit total messages to 200 to prevent DOM bloat
+        if (consoleMessages.children.length > 200) {
+            consoleMessages.removeChild(consoleMessages.firstChild);
+        }
 
         // Apply current filter visibility immediately
         const activeFilterBtn = document.querySelector('.console-filters .filter-btn.active');
@@ -1055,12 +1068,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     setActiveTool('tile-eraser');
                     break;
                 case '2':
-                    if (dom.btnToggle2d3d && currentProjectConfig.rendererMode !== 'canvas2d') {
+                    if (currentProjectConfig.projectType !== '2d' && dom.btnToggle2d3d && currentProjectConfig.rendererMode !== 'canvas2d') {
                         dom.btnToggle2d3d.click();
                     }
                     break;
                 case '3':
-                    if (dom.btnToggle2d3d && currentProjectConfig.rendererMode !== '3d-mode') {
+                    if (currentProjectConfig.projectType !== '2d' && dom.btnToggle2d3d && currentProjectConfig.rendererMode !== '3d-mode') {
                         dom.btnToggle2d3d.click();
                     }
                     break;
@@ -1114,25 +1127,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateCanvasInteractivity = function() {
         if (!currentProjectConfig) return;
-        const is3D = currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d';
+        const is3D = (currentProjectConfig.projectType !== '2d') && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
+
+        // RAM OPTIMIZATION: Clear 3D cache if we are in strict 2D mode
+        if (currentProjectConfig.projectType === '2d') {
+            if (renderer3D) renderer3D.clearCache();
+            if (gameRenderer3D) gameRenderer3D.clearCache();
+        }
+
+        // Hide toggle for strict 2D projects
+        if (dom.btnToggle2d3d) {
+            dom.btnToggle2d3d.style.display = currentProjectConfig.projectType === '2d' ? 'none' : 'flex';
+        }
 
         if (dom.sceneCanvas) {
-            // In hybrid mode, we want both to receive events
-            dom.sceneCanvas.style.pointerEvents = 'all';
-            dom.sceneCanvas.style.zIndex = is3D ? '1' : '2'; // 1 in 3D, 2 in 2D
+            dom.sceneCanvas.style.pointerEvents = is3D ? 'none' : 'all';
+            dom.sceneCanvas.style.zIndex = is3D ? '2' : '1';
         }
         if (dom.sceneCanvas3d) {
+            dom.sceneCanvas3d.style.display = currentProjectConfig.projectType === '2d' ? 'none' : 'block';
             dom.sceneCanvas3d.style.pointerEvents = is3D ? 'all' : 'none';
-            dom.sceneCanvas3d.style.zIndex = is3D ? '2' : '1'; // 2 in 3D, 1 in 2D
+            dom.sceneCanvas3d.style.zIndex = is3D ? '1' : '2';
         }
 
         if (dom.gameCanvas) {
-            dom.gameCanvas.style.pointerEvents = 'all';
-            dom.gameCanvas.style.zIndex = is3D ? '1' : '2';
+            // In game, 2D handles UI and 3D handles world.
+            // Clicks should go to 3D for picking or 2D for UI.
+            dom.gameCanvas.style.pointerEvents = is3D ? 'none' : 'all';
+            dom.gameCanvas.style.zIndex = is3D ? '2' : '1';
         }
         if (dom.gameCanvas3d) {
+            dom.gameCanvas3d.style.display = currentProjectConfig.projectType === '2d' ? 'none' : 'block';
             dom.gameCanvas3d.style.pointerEvents = is3D ? 'all' : 'none';
-            dom.gameCanvas3d.style.zIndex = is3D ? '2' : '1';
+            dom.gameCanvas3d.style.zIndex = is3D ? '1' : '2';
         }
 
         // Sync 2D/3D toggle button UI
@@ -1232,6 +1259,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = await configFileHandle.getFile();
             const content = await file.text();
             currentProjectConfig = JSON.parse(content);
+            // Default projectType to 2d if missing in config file
+            if (!currentProjectConfig.projectType) {
+                currentProjectConfig.projectType = '2d';
+            }
+
+            // ENFORCEMENT: If project is 2D, rendererMode MUST be 2D-compatible
+            if (currentProjectConfig.projectType === '2d') {
+                if (currentProjectConfig.rendererMode !== 'canvas2d' && currentProjectConfig.rendererMode !== 'realista') {
+                    console.warn(`[Config] Incompatible rendererMode '${currentProjectConfig.rendererMode}' for 2D project. Resetting to 'canvas2d'.`);
+                    currentProjectConfig.rendererMode = 'canvas2d';
+                }
+            }
+
             window.currentProjectConfig = currentProjectConfig;
             console.log("Configuracion del proyecto cargada:", currentProjectConfig);
 
@@ -1249,6 +1289,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 appName: 'MiJuego',
                 authorName: 'Un Creador',
                 appVersion: '1.0.0',
+                projectType: '2d', // New: '2d' or '3d'
                 engineVersion: '0.1.2',
                 maxFps: 60,
                 minFps: 30,
@@ -1312,7 +1353,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Project Settings and Preferences Logic has been moved to their respective modules ---
 
     loadRuntimeApis = async function() {
-        RuntimeAPIManager.clearAPIs();
+        // NOTE: We don't clear APIs here because this is called AFTER some internal APIs
+        // might have been registered, or when reloading a project.
+        // clearAPIs() is handled at the start of Play or project change.
 
         const projectName = new URLSearchParams(window.location.search).get('project');
         if (!projectName || !projectsDirHandle) {
@@ -1424,14 +1467,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Clear previous runtime APIs to ensure a clean slate for every "Play"
         RuntimeAPIManager.clearAPIs();
 
-        // Load external libraries first
-        await loadRuntimeApis();
-
         // Now, register the internal engine APIs
         const internalApis = EngineAPI.getAllInternalApis();
         for (const [name, apiObject] of Object.entries(internalApis)) {
             RuntimeAPIManager.registerAPI(name, apiObject);
         }
+
+        // Load external libraries LAST so they can potentially override or use internal ones
+        await loadRuntimeApis();
         console.log("Registered internal and external runtime APIs.");
 
 
@@ -1501,6 +1544,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 3. Actuar segun el resultado
         if (allErrors.length > 0) {
+            console.warn("[Build] Build fallido debido a errores de script.");
             if (gameWindow) {
                 gameWindow.close();
                 gameWindow = null;
@@ -1518,7 +1562,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             console.log("[Build] Build exitoso. Todos los scripts se compilaron sin errores.");
             // 4. Iniciar el juego. La logica ahora esta en startGame.
-            originalStartGame();
+            if (typeof originalStartGame === 'function') {
+                originalStartGame();
+            } else {
+                console.error("[Build] Error fatal: originalStartGame no está definido.");
+            }
         }
         } catch (e) {
             console.error("Error durante la preparacion del juego:", e);
@@ -1661,7 +1709,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // --- Pass 1: Draw Scene Geometry ---
-        const is3D = currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d';
+        const is3D = currentProjectConfig.projectType !== '2d' && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
 
         const materiasToRender = SceneManager.currentScene.getAllMaterias()
             .filter(m => {
@@ -1674,11 +1722,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     const has3DSupported = m.getComponent(Components.SpriteRenderer) ||
                                           m.getComponent(Components.TextureRender) ||
                                           m.getComponent(Components.MeshRenderer3D) ||
-                                          m.getComponent(Components.TilemapRenderer);
+                                          m.getComponent(Components.TilemapRenderer) ||
+                                          m.getComponent(Components.Terreno2D) ||
+                                          m.getComponent(Components.Water);
 
                     // We only exclude it if it DOESN'T have 2D-only components like UI
-                    const has2DOnly = m.getComponent(Components.Canvas) ||
-                                     m.getComponent(Components.Terreno2D);
+                    // A Canvas can be world-space, but currently they are mostly 2D overlays or drawn in drawCanvas.
+                    const has2DOnly = m.getComponent(Components.Canvas);
 
                     if (has3DSupported && !has2DOnly) return false;
                 }
@@ -1687,7 +1737,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // Sorting is now centralized in drawObjects' allInLayer sort
 
         const tilemapsToRender = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.TilemapRenderer))
+            .filter(m => {
+                if (!m.getComponent(Components.Transform) || !m.getComponent(Components.TilemapRenderer)) return false;
+                if (is3D) return false; // Already handled by 3D renderer
+                return true;
+            })
             .sort((a, b) => {
                 const orderA = a.getComponent(Components.TilemapRenderer).orderInLayer || 0;
                 const orderB = b.getComponent(Components.TilemapRenderer).orderInLayer || 0;
@@ -2210,23 +2264,35 @@ document.addEventListener('DOMContentLoaded', () => {
             gameRenderer.resize();
         }
 
-        const is3D = currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d';
+        const is3D = currentProjectConfig.projectType !== '2d' && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
 
         if (isGameRunning && !isGamePaused) {
             runGameLoop();
-            if (is3D) {
-                // In hybrid mode, we first render 2D as background, then 3D on top
-                if (renderer) updateScene(renderer, false);
-                if (renderer3D) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 0 });
 
-                if (gameRenderer) {
-                    gameRenderer.resize();
-                    updateScene(gameRenderer, true);
-                }
+            // Track performance stats
+            if (deltaTime > 0) {
+                const currentFps = 1.0 / deltaTime;
+                if (currentFps < gamePerfStats.minFps) gamePerfStats.minFps = currentFps;
+                if (currentFps > gamePerfStats.maxFps) gamePerfStats.maxFps = currentFps;
+            }
+            if (window.performance && window.performance.memory) {
+                const currentRam = window.performance.memory.usedJSHeapSize / 1048576;
+                if (currentRam > gamePerfStats.maxRam) gamePerfStats.maxRam = currentRam;
+            }
+
+            if (is3D) {
+                // 3D background, 2D UI overlay
+                if (renderer3D) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1 });
+                if (renderer) updateScene(renderer, false);
+
                 if (gameRenderer3D) {
                     gameRenderer3D.resize();
                     const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth)[0];
-                    if (mainCam) gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 0, isGameView: true });
+                    if (mainCam) gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1, isGameView: true });
+                }
+                if (gameRenderer) {
+                    gameRenderer.resize();
+                    updateScene(gameRenderer, true);
                 }
             } else {
                 if (renderer) updateScene(renderer, false);
@@ -2238,21 +2304,21 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             if (activeView === 'scene-content') {
                 if (is3D) {
+                    if (renderer3D) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1 });
                     if (renderer) updateScene(renderer, false);
-                    if (renderer3D) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 0 });
                 } else {
                     if (renderer) updateScene(renderer, false);
                 }
             } else if (activeView === 'game-content') {
                 if (is3D) {
-                    if (gameRenderer) {
-                        gameRenderer.resize();
-                        updateScene(gameRenderer, true);
-                    }
                     if (gameRenderer3D) {
                         gameRenderer3D.resize();
                         const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth)[0];
-                        if (mainCam) gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 0, isGameView: true });
+                        if (mainCam) gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1, isGameView: true });
+                    }
+                    if (gameRenderer) {
+                        gameRenderer.resize();
+                        updateScene(gameRenderer, true);
                     }
                 } else {
                     if (gameRenderer) updateScene(gameRenderer, true);
@@ -2353,6 +2419,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         isGameRunning = true;
         window.isGameRunning = true;
+
+        // Auto-switch to Game View for better feedback
+        const gameViewBtn = document.querySelector('.view-toggle-btn[data-view="game-content"]');
+        if (gameViewBtn && activeView !== 'game-content') {
+            gameViewBtn.click();
+        }
+
+        // Reset performance stats
+        gamePerfStats = {
+            minFps: Infinity,
+            maxFps: -Infinity,
+            maxRam: 0,
+            startTime: performance.now()
+        };
+
         // NO auto-cambiar a vista de juego - mantener vista actual
         // const gameViewButton = dom.scenePanel.querySelector('[data-view="game-content"]');
         // if (gameViewButton && activeView !== 'game-content') {
@@ -2436,6 +2517,17 @@ document.addEventListener('DOMContentLoaded', () => {
         isGameRunning = false;
         window.isGameRunning = false;
         document.body.classList.remove('game-mode');
+
+        // Show Performance Capture Summary
+        const totalTime = ((performance.now() - gamePerfStats.startTime) / 1000).toFixed(1);
+        if (totalTime > 0.5) {
+            const summary = `
+                <b>Tiempo total:</b> ${totalTime}s<br>
+                <b>FPS:</b> Min: ${gamePerfStats.minFps === Infinity ? 0 : gamePerfStats.minFps.toFixed(1)} | Max: ${gamePerfStats.maxFps.toFixed(1)}<br>
+                <b>RAM Pico:</b> ${gamePerfStats.maxRam.toFixed(1)} MB
+            `;
+            showNotificationDialog('Captura de Rendimiento', summary);
+        }
         // Restore InputManager out of game mode
         try { InputManager.setGameRunning(false); } catch(e) { /* ignore if not available */ }
         console.log("Game Stopped");
@@ -3211,13 +3303,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     setTimeout(() => {
                         renderer.resize();
                         if (renderer3D) renderer3D.resize();
-                        try { InputManager.setActiveCanvas(dom.sceneCanvas3d); } catch(e) {}
+
+                        const is3D = (currentProjectConfig.projectType !== '2d') && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
+                        InputManager.setActiveCanvas(is3D ? dom.sceneCanvas3d : dom.sceneCanvas);
                     } , 0);
                 } else if (viewId === 'game-content' && gameRenderer) {
                     setTimeout(() => {
                         gameRenderer.resize();
                         if (gameRenderer3D) gameRenderer3D.resize();
-                        try { InputManager.setActiveCanvas(dom.gameCanvas3d); } catch(e) {}
+
+                        const is3D = (currentProjectConfig.projectType !== '2d') && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
+                        InputManager.setActiveCanvas(is3D ? dom.gameCanvas3d : dom.gameCanvas);
                     } , 0);
                 }
             }
@@ -4330,6 +4426,9 @@ public start() {
             gameRenderer = new Renderer(dom.gameCanvas, false, true); // isGameView = true
             renderer3D = new Renderer3D(dom.sceneCanvas3d);
             gameRenderer3D = new Renderer3D(dom.gameCanvas3d);
+
+            // Note: 3D Renderers will only initialize WebGL when needed (lazy)
+
             window._Renderer3D = renderer3D;
             window.renderer = renderer; // Expose after initialization
 

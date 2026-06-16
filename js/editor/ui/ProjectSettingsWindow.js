@@ -7,6 +7,55 @@ let projectsDirHandle = null;
 let currentProjectConfig = {};
 let getPreferences = null;
 
+function updateRendererModeOptions(projectType) {
+    const rendererSelect = dom.settingsRendererMode;
+    if (!rendererSelect) return;
+
+    // Clear and repopulate
+    const currentVal = rendererSelect.value;
+    rendererSelect.innerHTML = '';
+
+    const L = window.Localization;
+
+    if (projectType === '2d') {
+        const options = [
+            { value: 'canvas2d', text: L?.get('SIMPLE_2D') || 'Simple (2D Estándar)' },
+            { value: 'realista', text: L?.get('AVANZADO_LUCES') || 'Avanzado (Iluminación y Noche/Día)' }
+        ];
+        options.forEach(opt => {
+            const el = document.createElement('option');
+            el.value = opt.value;
+            el.textContent = opt.text;
+            rendererSelect.appendChild(el);
+        });
+
+        // Force valid value if switching from 3D
+        if (currentVal !== 'canvas2d' && currentVal !== 'realista') {
+            rendererSelect.value = 'canvas2d';
+        } else {
+            rendererSelect.value = currentVal;
+        }
+    } else {
+        const options = [
+            { value: '3d-mode', text: L?.get('MODE_3D') || '3D World (Beta)' },
+            { value: 'hybrid-3d', text: L?.get('MODE_HYBRID') || 'Mixed (2D + 3D)' },
+            { value: 'anime-3d', text: L?.get('MODE_ANIME') || '2.5D Anime (Cel-Shaded)' }
+        ];
+        options.forEach(opt => {
+            const el = document.createElement('option');
+            el.value = opt.value;
+            el.textContent = opt.text;
+            rendererSelect.appendChild(el);
+        });
+
+        if (!['3d-mode', 'hybrid-3d', 'anime-3d'].includes(currentVal)) {
+            rendererSelect.value = '3d-mode';
+        } else {
+            rendererSelect.value = currentVal;
+        }
+    }
+}
+
 // This function will be called from the main editor.js to initialize the module
 export function initialize(editorDom, editorProjectsDirHandle, config, getPrefsFunc) {
     dom = editorDom;
@@ -32,6 +81,7 @@ export async function saveProjectConfig(showAlert = true) {
         currentProjectConfig.appName = dom.settingsAppName.value;
         currentProjectConfig.authorName = dom.settingsAuthorName.value;
         currentProjectConfig.appVersion = dom.settingsAppVersion.value;
+        currentProjectConfig.projectType = document.getElementById('settings-project-type').value;
         currentProjectConfig.rendererMode = dom.settingsRendererMode.value;
         currentProjectConfig.maxFps = parseInt(dom.settingsMaxFps.value) || 0;
         currentProjectConfig.minFps = parseInt(dom.settingsMinFps.value) || 30;
@@ -386,6 +436,13 @@ export function populateUI(config) {
     if (dom.settingsAppName) dom.settingsAppName.value = currentProjectConfig.appName;
     if (dom.settingsAuthorName) dom.settingsAuthorName.value = currentProjectConfig.authorName;
     if (dom.settingsAppVersion) dom.settingsAppVersion.value = currentProjectConfig.appVersion;
+
+    const typeSelect = document.getElementById('settings-project-type');
+    if (typeSelect) {
+        typeSelect.value = currentProjectConfig.projectType || '2d';
+        updateRendererModeOptions(typeSelect.value);
+    }
+
     if (dom.settingsRendererMode) dom.settingsRendererMode.value = currentProjectConfig.rendererMode;
     if (dom.settingsMaxFps) dom.settingsMaxFps.value = currentProjectConfig.maxFps !== undefined ? currentProjectConfig.maxFps : 60;
     if (dom.settingsMinFps) dom.settingsMinFps.value = currentProjectConfig.minFps !== undefined ? currentProjectConfig.minFps : 30;
