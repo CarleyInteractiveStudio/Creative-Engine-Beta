@@ -1057,7 +1057,16 @@ export function initialize(dependencies) {
     };
 
     // Setup event listeners
-    dom.sceneCanvas.addEventListener('contextmenu', e => e.preventDefault());
+    dom.sceneCanvas.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        e.stopPropagation();
+    });
+    if (dom.sceneCanvas3d) {
+        dom.sceneCanvas3d.addEventListener('contextmenu', e => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    }
 
     const toggleGizmosBtn = document.getElementById('btn-toggle-gizmos');
     if (toggleGizmosBtn) {
@@ -1928,29 +1937,64 @@ function draw3DGizmos(materia) {
     ctx.translate(screenPos.x, screenPos.y);
 
     if (activeTool === 'move' || activeTool === 'universal') {
+        const ARROW_SIZE = 10;
+
         // Red X
         ctx.strokeStyle = '#ff4444';
+        ctx.fillStyle = '#ff4444';
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.lineTo(GIZMO_SIZE, 0);
         ctx.stroke();
+        // X Arrow head
+        ctx.beginPath();
+        ctx.moveTo(GIZMO_SIZE + ARROW_SIZE, 0);
+        ctx.lineTo(GIZMO_SIZE, -ARROW_SIZE / 2);
+        ctx.lineTo(GIZMO_SIZE, ARROW_SIZE / 2);
+        ctx.closePath();
+        ctx.fill();
 
         // Green Y
         ctx.strokeStyle = '#44ff44';
+        ctx.fillStyle = '#44ff44';
+        ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.lineTo(0, -GIZMO_SIZE);
         ctx.stroke();
+        // Y Arrow head
+        ctx.beginPath();
+        ctx.moveTo(0, -GIZMO_SIZE - ARROW_SIZE);
+        ctx.lineTo(-ARROW_SIZE / 2, -GIZMO_SIZE);
+        ctx.lineTo(ARROW_SIZE / 2, -GIZMO_SIZE);
+        ctx.closePath();
+        ctx.fill();
 
         // Blue Z
         const zEnd = world3DToScreen({ x: transform.x, y: transform.y, z: transform.z + 100 });
         if (zEnd) {
+            const zDx = zEnd.x - screenPos.x;
+            const zDy = zEnd.y - screenPos.y;
             ctx.strokeStyle = '#4444ff';
+            ctx.fillStyle = '#4444ff';
             ctx.beginPath();
             ctx.moveTo(0, 0);
-            ctx.lineTo(zEnd.x - screenPos.x, zEnd.y - screenPos.y);
+            ctx.lineTo(zDx, zDy);
             ctx.stroke();
+
+            // Z Arrow head (pointing towards zEnd)
+            const angle = Math.atan2(zDy, zDx);
+            ctx.save();
+            ctx.translate(zDx, zDy);
+            ctx.rotate(angle);
+            ctx.beginPath();
+            ctx.moveTo(ARROW_SIZE, 0);
+            ctx.lineTo(0, -ARROW_SIZE / 2);
+            ctx.lineTo(0, ARROW_SIZE / 2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
         }
     }
 
@@ -1964,7 +2008,11 @@ export function drawOverlay() {
     const config = getCurrentProjectConfig();
     const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
 
-    if (!is3D) drawEditorGrid();
+    if (!is3D) {
+        drawEditorGrid();
+    } else {
+        draw3DGrid();
+    }
     drawComponentGrids();
     drawLayerPlacementPreview();
 
@@ -2103,6 +2151,84 @@ function drawRaycastGizmos() {
         ctx.arc(endX, endY, dotSize / 2, 0, Math.PI * 2);
         ctx.fill();
     });
+
+    ctx.restore();
+}
+
+function draw3DGrid() {
+    const prefs = getPreferences();
+    if (!prefs.showSceneGrid) return;
+
+    const { ctx, camera, canvas } = renderer;
+    if (!camera) return;
+
+    const zoom = camera.effectiveZoom;
+    const viewLeft = camera.x - (canvas.width / 2 / zoom);
+    const viewRight = camera.x + (canvas.width / 2 / zoom);
+    const viewTop = camera.y - (canvas.height / 2 / zoom);
+    const viewBottom = camera.y + (canvas.height / 2 / zoom);
+
+    // Grid on the XZ plane (Y=0)
+    ctx.save();
+    ctx.lineWidth = 1 / zoom;
+
+    const step = 100; // Fixed grid step for 3D
+    const gridColor = 'rgba(255, 255, 255, 0.05)';
+    const axisColorX = 'rgba(255, 0, 0, 0.5)';
+    const axisColorZ = 'rgba(0, 0, 255, 0.5)';
+
+    // Horizontal lines (along X axis)
+    ctx.strokeStyle = gridColor;
+    ctx.beginPath();
+    const startZ = Math.floor((viewTop) / step) * step;
+    const endZ = Math.ceil((viewBottom) / step) * step;
+
+    for (let z = startZ; z <= endZ; z += step) {
+        const p1 = world3DToScreen({ x: viewLeft, y: 0, z: z });
+        const p2 = world3DToScreen({ x: viewRight, y: 0, z: z });
+        if (p1 && p2) {
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+        }
+    }
+
+    // Vertical lines (along Z axis)
+    const startX = Math.floor((viewLeft) / step) * step;
+    const endX = Math.ceil((viewRight) / step) * step;
+    for (let x = startX; x <= endX; x += step) {
+        const p1 = world3DToScreen({ x: x, y: 0, z: startZ });
+        const p2 = world3DToScreen({ x: x, y: 0, z: endZ });
+        if (p1 && p2) {
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+        }
+    }
+    ctx.stroke();
+
+    // Draw origin axes
+    // X Axis (Red)
+    const xOrigin1 = world3DToScreen({ x: viewLeft, y: 0, z: 0 });
+    const xOrigin2 = world3DToScreen({ x: viewRight, y: 0, z: 0 });
+    if (xOrigin1 && xOrigin2) {
+        ctx.strokeStyle = axisColorX;
+        ctx.lineWidth = 2 / zoom;
+        ctx.beginPath();
+        ctx.moveTo(xOrigin1.x, xOrigin1.y);
+        ctx.lineTo(xOrigin2.x, xOrigin2.y);
+        ctx.stroke();
+    }
+
+    // Z Axis (Blue)
+    const zOrigin1 = world3DToScreen({ x: 0, y: 0, z: startZ });
+    const zOrigin2 = world3DToScreen({ x: 0, y: 0, z: endZ });
+    if (zOrigin1 && zOrigin2) {
+        ctx.strokeStyle = axisColorZ;
+        ctx.lineWidth = 2 / zoom;
+        ctx.beginPath();
+        ctx.moveTo(zOrigin1.x, zOrigin1.y);
+        ctx.lineTo(zOrigin2.x, zOrigin2.y);
+        ctx.stroke();
+    }
 
     ctx.restore();
 }
