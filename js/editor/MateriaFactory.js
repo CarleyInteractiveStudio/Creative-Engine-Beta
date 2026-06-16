@@ -71,12 +71,14 @@ export function createImageObject(parent) {
 
 // --- 3D Objects ---
 
-export async function createCubeObject(parent = null) {
+export async function createCubeObject(parent = null, color = '#ffffff') {
     const C3D = await ensure3D();
     const newMateria = createBaseMateria(generateUniqueName('Cubo'), parent);
     const transform = newMateria.getComponent(Components.Transform);
     if (transform) transform.localScale = { x: 100, y: 100, z: 100 };
-    newMateria.addComponent(new C3D.MeshRenderer3D(newMateria));
+    const renderer = new C3D.MeshRenderer3D(newMateria);
+    renderer.color = color;
+    newMateria.addComponent(renderer);
     return newMateria;
 }
 
@@ -669,6 +671,11 @@ export async function createDefaultCharacter(parent = null) {
     const transform = root.getComponent(Components.Transform);
     transform.localPosition = { x: 0, y: -10, z: 0 };
 
+    // Center the character on create
+    transform.x = 0;
+    transform.y = -20; // Feet are at +20 from root, so -20 puts them at Y=0 (ground)
+    transform.z = 0;
+
     // 1. Hierarchal Bone Structure (Skeleton)
     const hip = createBaseMateria('Cadera', root);
     hip.getComponent(Components.Transform).localPosition = { x: 0, y: 100, z: 0 };
@@ -706,6 +713,7 @@ export async function createDefaultCharacter(parent = null) {
 
     // 2. Skinned Mesh Data (Minimal Humanoid Quad-Mesh)
     const renderer = new C3D.SkinnedMeshRenderer3D(root);
+    renderer.color = '#ffdbac'; // Skin color (caucasian-ish default)
 
     // Joint IDs for weights
     const jointIds = [hip.id, torso.id, head.id, armL.id, handL.id, armR.id, handR.id, legL.id, footL.id, legR.id, footR.id];
@@ -721,7 +729,7 @@ export async function createDefaultCharacter(parent = null) {
         joints[i*4] = 1; weights[i*4] = 1.0;
     }
 
-    if (window._Renderer3D) {
+    if (window._Renderer3D && window._Renderer3D.gl) {
         const gl = window._Renderer3D.gl;
         renderer.buffers = {
             positions: gl.createBuffer(),
@@ -779,37 +787,45 @@ export async function createTestCircuit(parent = null) {
     // 1. Ground Plane
     const ground = await createPlane3DObject(root);
     ground.name = "Suelo";
-    ground.getComponent(Components.Transform).localScale = { x: 2000, y: 1, z: 2000 };
+    ground.getComponent(Components.Transform).localScale = { x: 5000, y: 1, z: 5000 };
+    const groundRenderer = ground.getComponent(window.Components3D.MeshRenderer3D);
+    if (groundRenderer) groundRenderer.color = '#333333';
 
     // 2. Stairs
     const stairsRoot = createBaseMateria('Escaleras', root);
     for(let i=0; i<10; i++) {
-        const step = await createCubeObject(stairsRoot);
+        const step = await createCubeObject(stairsRoot, '#555555');
         step.name = `Escalon_${i}`;
         const t = step.getComponent(Components.Transform);
         t.localPosition = { x: 0, y: -i * 20, z: i * 40 }; // -Y is UP
-        t.localScale = { x: 200, y: 20, z: 40 };
+        t.localScale = { x: 400, y: 20, z: 40 };
     }
 
     // 3. Narrow Corridor
     const corridor = createBaseMateria('Pasillo_Estrecho', root);
-    const wallL = await createCubeObject(corridor);
+    const wallL = await createCubeObject(corridor, '#444444');
     wallL.name = "Pared_I";
     const tL = wallL.getComponent(Components.Transform);
-    tL.localPosition = { x: -45, y: -100, z: 500 };
-    tL.localScale = { x: 10, y: 200, z: 400 };
+    tL.localPosition = { x: -80, y: -100, z: 1000 };
+    tL.localScale = { x: 20, y: 200, z: 1000 };
 
-    const wallR = await createCubeObject(corridor);
+    const wallR = await createCubeObject(corridor, '#444444');
     wallR.name = "Pared_D";
     const tR = wallR.getComponent(Components.Transform);
-    tR.localPosition = { x: 45, y: -100, z: 500 };
-    tR.localScale = { x: 10, y: 200, z: 400 };
+    tR.localPosition = { x: 80, y: -100, z: 1000 };
+    tR.localScale = { x: 20, y: 200, z: 1000 };
 
     // 4. Obstacles
     const obstacles = createBaseMateria('Obstaculos', root);
-    const box = await createCubeObject(obstacles);
-    box.localPosition = { x: 200, y: -25, z: 200 };
-    box.localScale = { x: 50, y: 50, z: 50 };
+    const box = await createCubeObject(obstacles, '#aa5500');
+    const tBox = box.getComponent(Components.Transform);
+    tBox.localPosition = { x: 400, y: -50, z: 400 };
+    tBox.localScale = { x: 100, y: 100, z: 100 };
+
+    const jumpPad = await createCubeObject(obstacles, '#0099ff');
+    const tJump = jumpPad.getComponent(Components.Transform);
+    tJump.localPosition = { x: -400, y: -5, z: 400 };
+    tJump.localScale = { x: 100, y: 10, z: 100 };
 
     return root;
 }

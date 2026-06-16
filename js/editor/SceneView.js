@@ -1231,6 +1231,15 @@ export function initialize(dependencies) {
             e.preventDefault();
             e.stopPropagation();
 
+            // Prevent context menu if we are navigating the 3D scene
+            const isNavigating = InputManager.getKey('w') || InputManager.getKey('a') || InputManager.getKey('s') || InputManager.getKey('d') ||
+                               InputManager.getKey('q') || InputManager.getKey('e') ||
+                               InputManager.getKey('ArrowUp') || InputManager.getKey('ArrowDown') ||
+                               InputManager.getKey('ArrowLeft') || InputManager.getKey('ArrowRight') ||
+                               Math.abs(InputManager.getMouseDelta().x) > 2 || Math.abs(InputManager.getMouseDelta().y) > 2;
+
+            if (isNavigating) return;
+
             const rect = canvas.getBoundingClientRect();
             const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
 
