@@ -386,15 +386,69 @@ export async function createDefaultCharacter(parent = null) {
 }
 
 export async function createTestCircuit(parent = null) {
-    const root = createBaseMateria('Circuito_Test', parent);
+    const C3D = await ensure3D();
+    const root = createBaseMateria('Circuito_Entrenamiento', parent);
+
+    // --- 1. Gran Plataforma de Base ---
     const ground = await createPlane3DObject(root);
-    ground.getComponent(Components.Transform).localScale = { x: 5000, y: 1, z: 5000 };
-    ground.getComponent(window.Components3D.MeshRenderer3D).color = '#1a3c1a';
-    for (let i = 0; i < 5; i++) {
-        const step = await createCubeObject(root, '#555555');
+    ground.getComponent(Components.Transform).localScale = { x: 10000, y: 1, z: 10000 };
+    ground.getComponent(C3D.MeshRenderer3D).color = '#2c3e50'; // Industrial Dark Blue/Grey
+
+    // --- 2. Pista de Carreras Central ---
+    const track = await createPlane3DObject(root);
+    track.getComponent(Components.Transform).localPosition = { x: 0, y: -2, z: 0 };
+    track.getComponent(Components.Transform).localScale = { x: 1000, y: 1, z: 5000 };
+    track.getComponent(C3D.MeshRenderer3D).color = '#34495e';
+
+    // --- 3. Escalera de Desafío ---
+    for (let i = 0; i < 8; i++) {
+        const step = await createCubeObject(root, i % 2 === 0 ? '#e67e22' : '#d35400'); // Orange accent
         const t = step.getComponent(Components.Transform);
-        t.localPosition = { x: 0, y: -i * 20, z: 200 + i * 50 };
-        t.localScale = { x: 200, y: 20, z: 50 };
+        t.localPosition = { x: -300, y: -i * 30, z: 500 + i * 100 };
+        t.localScale = { x: 300, y: 30, z: 100 };
+        step.addComponent(new C3D.BoxCollider3D(step));
     }
+
+    // --- 4. Rampa de Salto ---
+    const ramp = await createCubeObject(root, '#3498db'); // Bright Blue
+    const rt = ramp.getComponent(Components.Transform);
+    rt.localPosition = { x: 200, y: -40, z: 1200 };
+    rt.localScale = { x: 400, y: 20, z: 800 };
+    rt.localRotation = { x: -15, y: 0, z: 0 };
+    ramp.addComponent(new C3D.BoxCollider3D(ramp));
+
+    // --- 5. Túnel de Obstáculos ---
+    const tunnelLeft = await createCubeObject(root, '#7f8c8d');
+    tunnelLeft.getComponent(Components.Transform).localPosition = { x: 450, y: -150, z: 2500 };
+    tunnelLeft.getComponent(Components.Transform).localScale = { x: 50, y: 300, z: 1000 };
+    tunnelLeft.addComponent(new C3D.BoxCollider3D(tunnelLeft));
+
+    const tunnelRight = await createCubeObject(root, '#7f8c8d');
+    tunnelRight.getComponent(Components.Transform).localPosition = { x: -450, y: -150, z: 2500 };
+    tunnelRight.getComponent(Components.Transform).localScale = { x: 50, y: 300, z: 1000 };
+    tunnelRight.addComponent(new C3D.BoxCollider3D(tunnelRight));
+
+    const tunnelTop = await createCubeObject(root, '#95a5a6');
+    tunnelTop.getComponent(Components.Transform).localPosition = { x: 0, y: -300, z: 2500 };
+    tunnelTop.getComponent(Components.Transform).localScale = { x: 950, y: 50, z: 1000 };
+    tunnelTop.addComponent(new C3D.BoxCollider3D(tunnelTop));
+
+    // --- 6. Zona de Plataformas Flotantes ---
+    const colors = ['#2ecc71', '#27ae60', '#1abc9c', '#16a085'];
+    for (let i = 0; i < 4; i++) {
+        const plat = await createCubeObject(root, colors[i]);
+        const pt = plat.getComponent(Components.Transform);
+        pt.localPosition = { x: Math.sin(i) * 400, y: -200 - i * 100, z: 4000 + i * 500 };
+        pt.localScale = { x: 250, y: 40, z: 250 };
+        plat.addComponent(new C3D.BoxCollider3D(plat));
+    }
+
+    // --- 7. Meta (Goal) ---
+    const goal = await createCubeObject(root, '#f1c40f'); // Yellow
+    const gt = goal.getComponent(Components.Transform);
+    gt.localPosition = { x: 0, y: -50, z: 6500 };
+    gt.localScale = { x: 800, y: 100, z: 100 };
+    goal.addComponent(new C3D.BoxCollider3D(goal));
+
     return root;
 }

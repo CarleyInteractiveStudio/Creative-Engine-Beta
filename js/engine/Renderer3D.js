@@ -155,6 +155,36 @@ export class Renderer3D {
 
         this.programs.grid = this.createProgram(gridVs, gridFs);
 
+        // 1.1 Skybox Shader
+        const skyVs = `
+            attribute vec3 aVertexPosition;
+            varying vec3 vDir;
+            uniform mat4 uInvViewProj;
+            void main() {
+                vDir = (uInvViewProj * vec4(aVertexPosition, 1.0)).xyz;
+                gl_Position = vec4(aVertexPosition.xy, 0.999, 1.0);
+            }
+        `;
+        const skyFs = `
+            precision mediump float;
+            varying vec3 vDir;
+            uniform vec3 uSkyColor;
+            uniform vec3 uHorizonColor;
+            uniform vec3 uGroundColor;
+            void main() {
+                vec3 dir = normalize(vDir);
+                float y = dir.y; // In CE, -Y is UP
+                vec3 color;
+                if (y < 0.0) {
+                    color = mix(uHorizonColor, uSkyColor, pow(clamp(-y, 0.0, 1.0), 0.5));
+                } else {
+                    color = mix(uHorizonColor, uGroundColor, pow(clamp(y, 0.0, 1.0), 0.5));
+                }
+                gl_FragColor = vec4(color, 1.0);
+            }
+        `;
+        this.programs.sky = this.createProgram(skyVs, skyFs);
+
         // 2. Simple Standard Shader
         const stdVs = `
             attribute vec4 aVertexPosition;
@@ -273,7 +303,7 @@ export class Renderer3D {
         const gl = this.gl;
 
         this.resize();
-        gl.clearColor(0.1, 0.1, 0.12, options.clearAlpha !== undefined ? options.clearAlpha : 1.0);
+        gl.clearColor(0.05, 0.05, 0.07, options.clearAlpha !== undefined ? options.clearAlpha : 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         const aspect = gl.canvas.width / gl.canvas.height;
@@ -306,9 +336,47 @@ export class Renderer3D {
         mat4.copy(this.lastProjectionMatrix, this.projectionMatrix);
         mat4.copy(this.lastViewMatrix, this.viewMatrix);
 
+        if (scene && scene.ambiente && scene.ambiente.skyMode === 'Gradient') {
+            this.drawSky(scene.ambiente);
+        }
+
         if (options.showGrid !== false) this.drawGrid(near, far);
         this.drawScene(scene);
         this.drawOriginAxes();
+    }
+
+    drawSky(ambiente) {
+        const gl = this.gl;
+        const program = this.programs.sky;
+        gl.useProgram(program);
+
+        // Remove translation from view matrix for skybox (infinite distance effect)
+        const viewNoPos = mat4.copy(mat4.create(), this.viewMatrix);
+        viewNoPos[12] = 0; viewNoPos[13] = 0; viewNoPos[14] = 0;
+
+        const viewProj = mat4.create();
+        mat4.multiply(viewProj, this.projectionMatrix, viewNoPos);
+        const invViewProj = mat4.create();
+        mat4.invert(invViewProj, viewProj);
+
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uInvViewProj'), false, invViewProj);
+
+        const sky = this.hexToRgb(ambiente.skyColor || '#87ceeb');
+        const horizon = this.hexToRgb(ambiente.horizonColor || '#ffffff');
+        const ground = this.hexToRgb(ambiente.groundColor || '#222222');
+
+        gl.uniform3f(gl.getUniformLocation(program, 'uSkyColor'), sky[0], sky[1], sky[2]);
+        gl.uniform3f(gl.getUniformLocation(program, 'uHorizonColor'), horizon[0], horizon[1], horizon[2]);
+        gl.uniform3f(gl.getUniformLocation(program, 'uGroundColor'), ground[0], ground[1], ground[2]);
+
+        const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.quad);
+        gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(posLoc);
+
+        gl.disable(gl.DEPTH_TEST);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        gl.enable(gl.DEPTH_TEST);
     }
 
     drawGrid(near, far) {

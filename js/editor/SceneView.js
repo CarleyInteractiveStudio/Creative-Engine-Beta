@@ -2544,8 +2544,12 @@ function check3DGizmoHit(canvasPos, materia) {
     const screenPos = world3DToScreen(center);
     if (!screenPos) return null;
 
-    const hitRadius = 20;
-    const gizmoLen = 80;
+    const cam = renderer.camera;
+    const dist = Math.sqrt((center.x - cam.x)**2 + (center.y - cam.y)**2 + ((center.z||0) - cam.z)**2);
+    const gizmoScale = Math.max(0.1, dist / 800);
+
+    const hitRadius = 25;
+    const gizmoLen = 80 * gizmoScale;
 
     const glm = window.glMatrix;
     const q = glm.quat.create();
@@ -2586,8 +2590,14 @@ function draw3DGizmos(materia) {
     if (!screenPos) return;
 
     const { ctx } = renderer;
-    const GIZMO_SIZE = 80;
-    const ARROW_SIZE = 12;
+
+    // Dynamic scale to maintain constant screen size
+    const cam = renderer.camera;
+    const dist = Math.sqrt((center.x - cam.x)**2 + (center.y - cam.y)**2 + ((center.z||0) - cam.z)**2);
+    const gizmoScale = Math.max(0.1, dist / 800);
+
+    const GIZMO_SIZE = 80 * gizmoScale;
+    const ARROW_SIZE = 12 * gizmoScale;
 
     const C3D = window.Components3D || Components3D;
     if (!C3D) return;
