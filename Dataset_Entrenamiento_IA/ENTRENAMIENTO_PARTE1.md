@@ -89867,3 +89867,36 @@ alRecibir("ITEM_RECOGIDO", (item) => {
     }
 });
 ```
+
+## Optimización por Rendimiento
+Este ejemplo muestra cómo usar el evento 'alBajoRendimiento' para optimizar el juego en tiempo real.
+
+```ces
+ve motor;
+
+public numero calidadEfectos = 3;
+
+funcion alBajoRendimiento(nivel) {
+    consola.imprimir("Detectado bajo rendimiento. Nivel de optimización: " + nivel);
+
+    // Si el nivel es 1 (Cerca del mínimo), bajamos un poco la calidad
+    si (nivel == 1) {
+        calidadEfectos = 2;
+    }
+    // Si el nivel es 2 o 3 (Optimización Extrema), desactivamos efectos pesados
+    sino si (nivel >= 2) {
+        calidadEfectos = 1;
+        // Supongamos que tenemos un componente de partículas
+        si (mtr.tieneLey("ParticleSystem")) {
+            mtr.obtenerLey("ParticleSystem").activado = falso;
+        }
+    }
+}
+
+funcion alActualizar(delta) {
+    // Lógica que depende de la calidad
+    si (calidadEfectos > 1) {
+        // Ejecutar efectos visuales bonitos pero pesados
+    }
+}
+```

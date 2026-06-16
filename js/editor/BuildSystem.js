@@ -1,6 +1,8 @@
 // js/editor/BuildSystem.js
 import { showNotification, showBuildSuccessDialog, showProgressDialog } from './ui/DialogWindow.js';
 import * as CES_Transpiler from './CES_Transpiler.js';
+import * as DataCollector from './DataCollectorProvider.js';
+import { getPreferences } from './ui/PreferencesWindow.js';
 
 /**
  * Handles the game build process, exporting a functional standalone version of the project.
@@ -272,7 +274,18 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
             showNotification("Build Completado", `Tu juego ha sido exportado exitosamente a la carpeta seleccionada.`);
         }
 
-        // 11. Run after build if requested
+        // 11. Telemetry / Data Collection for Carley IA
+        const prefs = getPreferences();
+        if (prefs.shareWithCarley !== false) {
+            console.log("[Build] Sending anonymous script data for IA training...");
+            DataCollector.collectProjectData(projectHandle, {
+                engineVersion: buildConfig.engineVersion,
+                projectType: buildConfig.projectType,
+                appVersion: buildConfig.appVersion
+            });
+        }
+
+        // 12. Run after build if requested
         if (options.runAfterBuild) {
             runStandalonePreview(buildConfig);
         }

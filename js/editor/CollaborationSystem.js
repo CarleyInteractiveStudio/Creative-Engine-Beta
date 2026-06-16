@@ -9,11 +9,13 @@ import { showNotification, showConfirmation } from './ui/DialogWindow.js';
 import * as SceneManager from '../engine/SceneManager.js';
 import * as CodeMirror from './CodeMirrorBundle.js';
 import * as CollabActivityWindow from './ui/CollabActivityWindow.js';
+import * as HFProvider from './HFCollaborationProvider.js';
 
 let peer = null;
 let connections = [];
 let isHosting = false;
 let collabId = null;
+let isHFMode = false;
 
 // Administration state
 const permissions = {
@@ -25,6 +27,13 @@ const permissions = {
 const COLLAB_VERSION = "1.0";
 
 export function initialize(dom) {
+    window._CollabSystem = {
+        startHosting,
+        startHFHosting,
+        stopCollaboration,
+        updateMenuVisibility
+    };
+
     const hostBtn = document.getElementById('menu-collab-host');
     const stopBtn = document.getElementById('menu-collab-stop');
     const statusText = document.getElementById('collab-status-text');
@@ -32,18 +41,36 @@ export function initialize(dom) {
     const copyBtn = document.getElementById('btn-copy-collab-link');
     const activeOptions = document.getElementById('collab-active-options');
 
+    // Hook into remote sync from HFProvider
+    window.addEventListener('CE_REMOTE_SYNC', (e) => {
+        handleReceivedData({ type: 'SCENE_UPDATE', data: e.detail }, null);
+    });
+
     // Check if we are joining a session via URL
     const urlParams = new URLSearchParams(window.location.search);
     const joinId = urlParams.get('collab');
+    const relayUrl = urlParams.get('relay');
 
     if (joinId) {
-        console.log(`[Collab] Intentando unirse a la sesión: ${joinId}`);
-        joinSession(joinId);
+        if (relayUrl) {
+            console.log(`[Collab] Intentando unirse a sesión PRO: ${joinId} vía ${relayUrl}`);
+            joinHFSession(joinId, relayUrl);
+        } else {
+            console.log(`[Collab] Intentando unirse a sesión P2P: ${joinId}`);
+            joinSession(joinId);
+        }
     }
 
     hostBtn.addEventListener('click', (e) => {
         e.preventDefault();
-        startHosting();
+        showConfirmation(
+            'Tipo de Colaboración',
+            '¿Deseas iniciar una colaboración local (P2P) o una colaboración Online (Modo Pro)?',
+            () => startHFHosting(), // Acepta -> Pro
+            () => startHosting(),   // Cancela -> Local (o podemos añadir un tercer botón en el futuro)
+            'Online (Pro)',
+            'Local (P2P)'
+        );
     });
 
     stopBtn.addEventListener('click', (e) => {
@@ -57,6 +84,25 @@ export function initialize(dom) {
         navigator.clipboard.writeText(url.toString());
         showNotification(window.Localization.get('EXITO'), 'Enlace de colaboración copiado al portapapeles.');
     });
+
+    function updateMenuVisibility() {
+        const collabBtn = document.getElementById('menubar-collab-btn');
+        const settingsP2P = document.getElementById('settings-collab-p2p-btn');
+        const settingsPro = document.getElementById('settings-collab-pro-btn');
+        const settingsStop = document.getElementById('settings-collab-stop-btn');
+
+        if (collabId || peer || isHosting) {
+            if (collabBtn) collabBtn.classList.remove('hidden');
+            if (settingsP2P) settingsP2P.classList.add('hidden');
+            if (settingsPro) settingsPro.classList.add('hidden');
+            if (settingsStop) settingsStop.classList.remove('hidden');
+        } else {
+            if (collabBtn) collabBtn.classList.add('hidden');
+            if (settingsP2P) settingsP2P.classList.remove('hidden');
+            if (settingsPro) settingsPro.classList.remove('hidden');
+            if (settingsStop) settingsStop.classList.add('hidden');
+        }
+    }
 
     function startHosting() {
         if (peer) return;
@@ -73,12 +119,14 @@ export function initialize(dom) {
 
         peer.on('open', (id) => {
             isHosting = true;
+            isHFMode = false;
             collabId = id.replace('CE-', '');
             codeDisplay.textContent = collabId;
-            statusText.textContent = 'Anfitrión';
+            statusText.textContent = 'Anfitrión (Local)';
             statusText.style.color = '#00ff64';
             hostBtn.classList.add('hidden');
             activeOptions.classList.remove('hidden');
+            updateMenuVisibility();
             showNotification('Colaboración Activada', `Tu código es: ${collabId}. Comparte este enlace con tus colaboradores.`);
             console.log(`[Collab] Hosting as ${id}`);
         });
@@ -92,6 +140,65 @@ export function initialize(dom) {
             stopCollaboration();
             showNotification('Error de Conexión', 'No se pudo iniciar la colaboración P2P.');
         });
+    }
+
+    async function startHFHosting() {
+        // Verificar si el usuario está logueado antes de empezar Pro
+        if (window.auth) {
+            const user = await window.auth.getUser();
+            if (!user) {
+                showNotification('Acceso Denegado', 'Debes iniciar sesión con tu cuenta de Carley Studio para hospedar una colaboración online.', 'error');
+                window.auth.openAuthModal();
+                return;
+            }
+        }
+
+        // Usar URL por defecto de Hugging Face
+        const relayUrl = "https://carley1234-colabce.hf.space";
+
+        statusText.textContent = 'Iniciando Pro...';
+        statusText.style.color = '#f3ca58';
+
+        try {
+            const code = await HFProvider.hostSession(relayUrl);
+            isHosting = true;
+            isHFMode = true;
+            collabId = code;
+            codeDisplay.textContent = code;
+            statusText.textContent = 'Anfitrión (Online)';
+            statusText.style.color = '#f3ca58';
+            hostBtn.classList.add('hidden');
+            activeOptions.classList.remove('hidden');
+            updateMenuVisibility();
+            showNotification('Colaboración Pro Activada', `Tu código es: ${code}. El proyecto está en línea.`);
+        } catch (err) {
+            console.error('[Collab] HF Host error:', err);
+            showNotification('Error de Conexión', 'No se pudo conectar con Hugging Face.');
+            stopCollaboration();
+        }
+    }
+
+    async function joinHFSession(id, relayUrl) {
+        statusText.textContent = 'Conectando Pro...';
+        statusText.style.color = '#f3ca58';
+
+        try {
+            await HFProvider.joinSession(id, relayUrl);
+            isHosting = false;
+            isHFMode = true;
+            collabId = id;
+            statusText.textContent = 'Conectado (Online)';
+            statusText.style.color = '#00ff64';
+            activeOptions.classList.remove('hidden');
+            hostBtn.classList.add('hidden');
+            codeDisplay.textContent = id;
+            updateMenuVisibility();
+        } catch (err) {
+            console.error('[Collab] HF Join error:', err);
+            statusText.textContent = 'Error';
+            statusText.style.color = '#ff4444';
+            showNotification('Error de Conexión', err);
+        }
     }
 
     async function joinSession(id) {
@@ -118,6 +225,7 @@ export function initialize(dom) {
     function setupConnection(conn) {
         conn.on('open', () => {
             console.log(`[Collab] Connected to ${conn.peer}`);
+            updateMenuVisibility();
 
             if (isHosting) {
                 // Security check: Ask host to accept collaborator
@@ -283,9 +391,13 @@ export function initialize(dom) {
             peer.destroy();
             peer = null;
         }
+        if (isHFMode) {
+            HFProvider.disconnect();
+        }
         connections.forEach(c => c.close());
         connections = [];
         isHosting = false;
+        isHFMode = false;
         collabId = null;
 
         statusText.textContent = 'Desconectado';
@@ -293,7 +405,11 @@ export function initialize(dom) {
         hostBtn.classList.remove('hidden');
         activeOptions.classList.add('hidden');
         codeDisplay.textContent = '-----';
+        updateMenuVisibility();
     }
+
+    // Initial sync
+    updateMenuVisibility();
 }
 
 // --- Administration API ---
@@ -332,6 +448,11 @@ export function updateGlobalPermissions(newPermissions) {
  * @param {object} updateData
  */
 export function broadcastUpdate(updateData) {
+    if (isHFMode) {
+        HFProvider.broadcast(updateData);
+        return;
+    }
+
     if (connections.length === 0) return;
 
     let type = 'SCENE_UPDATE';

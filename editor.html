@@ -116,7 +116,7 @@
                     </button>
                 </div>
                 <div class="menu-item">
-                    <button id="menubar-collab-btn" class="menu-btn" data-i18n="COLABORAR">Colaborar</button>
+                    <button id="menubar-collab-btn" class="menu-btn hidden" data-i18n="COLABORAR">Colaborar</button>
                     <div class="menu-content" id="collab-menu-content">
                         <div id="collab-status-info" style="padding: 10px; font-size: 0.85em; border-bottom: 1px solid #444; color: #aaa;">
                             <span data-i18n="ESTADO">Estado</span>: <b id="collab-status-text" style="color: #ff4444;" data-i18n="DESCONECTADO">Desconectado</b>
@@ -468,7 +468,7 @@ public star() {
                     </div>
                     <div id="terminal-content" class="panel-content view-content no-padding">
                         <div id="terminal-output">
-                            <span data-i18n="TERMINAL_VERSION">Creative Engine Terminal [Versión 0.1.0]</span><br>
+                            <span data-i18n="TERMINAL_VERSION">Creative Engine Terminal [Versión 0.1.2]</span><br>
                             <span data-i18n="TERMINAL_COPYRIGHT">(c) Carley Interactive Studio. Todos los derechos reservados.</span><br><br>
                         </div>
                         <div id="terminal-input-line">
@@ -1057,7 +1057,7 @@ public star() {
                     <label for="settings-app-version" data-i18n="VERSION_JUEGO">Versión del Juego</label>
                     <input type="text" id="settings-app-version" placeholder="1.0.0">
                     <label data-i18n="VERSION_MOTOR">Versión del Motor</label>
-                    <input type="text" id="settings-engine-version" value="0.1.0-beta" readonly>
+                    <input type="text" id="settings-engine-version" value="0.1.2" readonly>
                 </fieldset>
 
                 <fieldset class="settings-section">
@@ -1131,7 +1131,23 @@ public star() {
                     </div>
                 </fieldset>
                 <fieldset class="settings-section">
-                    <legend data-i18n="SISTEMA">Sistema</legend>
+                    <legend data-i18n="RENDIMIENTO">Rendimiento</legend>
+
+                    <div class="inspector-row">
+                        <label for="settings-max-fps" data-i18n="MAX_FPS">FPS Máximo</label>
+                        <input type="number" id="settings-max-fps" min="0" value="60">
+                    </div>
+                    <p class="field-description" data-i18n="HINT_MAX_FPS">Limita los FPS para ahorrar batería y recursos. Usa 0 para sin límite.</p>
+
+                    <div class="inspector-row">
+                        <label for="settings-min-fps" data-i18n="MIN_FPS">FPS Mínimo</label>
+                        <input type="number" id="settings-min-fps" min="10" value="30">
+                    </div>
+                    <p class="field-description" data-i18n="HINT_MIN_FPS">El motor activará optimizaciones extremas si el rendimiento cae cerca de este valor.</p>
+                    <p class="field-description" style="color: #f3ca58; font-style: italic; font-size: 0.85em;" data-i18n="HINT_MIN_FPS_NOTICE">Nota: Esta cantidad mínima no está garantizada, pero activará una optimización profunda para intentar mantener la fluidez.</p>
+
+                    <hr>
+
                     <div class="inspector-row">
                         <label for="settings-ram-limit" data-i18n="LIMITE_RAM">Límite de RAM (MB)</label>
                         <input type="number" id="settings-ram-limit" min="256" step="128" value="2048">
@@ -1144,6 +1160,30 @@ public star() {
                     <p class="field-description" data-i18n="HINT_CAMARAS">Activa las cámaras que quieres que el motor use. Si activas varias, se dibujarán en orden según su 'Depth'.</p>
                     <div id="settings-camera-list" class="layer-list">
                         <!-- List of cameras in the current scene will be populated here -->
+                    </div>
+                </fieldset>
+
+                <fieldset class="settings-section">
+                    <legend data-i18n="PROYECTO_COLABORATIVO">Proyecto Colaborativo</legend>
+                    <p class="field-description">Gestiona la colaboración en tiempo real para este proyecto.</p>
+
+                    <div id="collab-settings-actions" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+                        <div style="display: flex; gap: 10px;">
+                            <button id="settings-collab-p2p-btn" class="modal-btn secondary small" style="flex: 1;">
+                                <img src="icons/wifi.svg" class="ce-icon small"> Activar Local
+                            </button>
+                            <button id="settings-collab-pro-btn" class="modal-btn pro-btn small" style="flex: 1; background: linear-gradient(135deg, #f3ca58, #ff9800); color: #000;">
+                                <img src="icons/globe.svg" class="ce-icon small" style="filter: brightness(0);"> Activar Online
+                            </button>
+                        </div>
+                        <button id="settings-collab-stop-btn" class="modal-btn danger small hidden">Detener Colaboración</button>
+                    </div>
+
+                    <div id="gamecollab-ad" style="margin-top: 20px; padding: 15px; background: rgba(0, 122, 204, 0.1); border: 1px solid rgba(0, 122, 204, 0.3); border-radius: 8px; text-align: center;">
+                        <p style="font-size: 0.9em; margin-bottom: 10px;">Estamos en colaboración con <b>GameCollab</b>. Puedes buscar colaboradores en su plataforma.</p>
+                        <a href="https://gamecollab.site/" target="_blank" class="modal-btn blue small" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none; justify-content: center;">
+                            <img src="icons/user.svg" class="ce-icon small" style="filter: brightness(0) invert(1);"> Buscar Colaboradores
+                        </a>
                     </div>
                 </fieldset>
 
@@ -1388,11 +1428,11 @@ public star() {
                 <fieldset class="settings-section">
                     <legend data-i18n="PROYECTO_COLABORATIVO">Proyecto Colaborativo</legend>
                     <div class="checkbox-field">
-                        <input type="checkbox" id="prefs-share-with-carley">
+                        <input type="checkbox" id="prefs-share-with-carley" checked>
                         <label for="prefs-share-with-carley" data-i18n="COMPARTIR_CON_CARLEY">Compartir con Carley</label>
                     </div>
                     <p class="field-description"><b data-i18n="COMPARTIR_CON_CARLEY_HINT">Comparte tus códigos cada vez que publicas un videojuego</b></p>
-                    <p class="field-description" data-i18n="COMPARTIR_CON_CARLEY_DESC" style="font-size: 0.85em; opacity: 0.8; line-height: 1.4;"></p>
+                    <p class="field-description" data-i18n="COMPARTIR_CON_CARLEY_DESC" style="font-size: 0.85em; opacity: 0.8; line-height: 1.4;">Tus códigos CES y metadatos anónimos se enviarán para mejorar la IA del motor y ayudar a otros desarrolladores. No se compartirá información personal.</p>
                     <hr>
                     <div class="development-feature disabled">
                          <div class="checkbox-field">

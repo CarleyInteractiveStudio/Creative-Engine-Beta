@@ -19,6 +19,7 @@ export class StandaloneRuntime {
         this.lastTime = 0;
         this.config = null;
         this.deltaTime = 0;
+        this.frameCount = 0;
 
         // Scratch canvas for tinting sprites
         this.scratchCanvas = document.createElement('canvas');
@@ -45,6 +46,12 @@ export class StandaloneRuntime {
                 console.error("Failed to load project.json", e);
                 this.config = {};
             }
+        }
+
+        // Initialize Performance Monitor with config
+        const perfMonitor = EngineAPI.getPerformanceMonitor();
+        if (perfMonitor) {
+            perfMonitor.updateConfig(this.config);
         }
 
         // Apply App Name and Icon to document
@@ -161,13 +168,27 @@ export class StandaloneRuntime {
     }
 
     loop(timestamp) {
+        this.frameCount++;
+        // --- FPS Control ---
+        const perfMonitor = EngineAPI.getPerformanceMonitor();
+        const targetMaxFps = perfMonitor ? perfMonitor.targetMaxFps : 0;
+
+        if (targetMaxFps > 0) {
+            const frameTime = 1000 / targetMaxFps;
+            if (timestamp - this.lastTime < frameTime) {
+                requestAnimationFrame(this.loop.bind(this));
+                return;
+            }
+        }
+
         this.deltaTime = Math.min((timestamp - this.lastTime) / 1000, 0.1);
         this.lastTime = timestamp;
 
         // --- Fixed Update Loop ---
+        const subSteps = perfMonitor ? perfMonitor.getPhysicsSubSteps() : 4;
         this.fixedAccumulator += this.deltaTime;
         while (this.fixedAccumulator >= this.FIXED_DELTA) {
-            if (this.physicsSystem) this.physicsSystem.update(this.FIXED_DELTA);
+            if (this.physicsSystem) this.physicsSystem.update(this.FIXED_DELTA, subSteps);
 
             if (SceneManager.currentScene) {
                 SceneManager.currentScene.getAllMaterias().forEach(m => {
@@ -666,6 +687,21 @@ export class StandaloneRuntime {
 
         const drawLights = (lights) => {
             if (this.config.rendererMode !== 'realista') return;
+
+            // Performance Optimization: Throttle lights if optimization level is high
+            const perfMonitor = EngineAPI.getPerformanceMonitor();
+            if (perfMonitor && perfMonitor.getShouldThrottleLights()) {
+                if (this.frameCount % 2 !== 0) {
+                    if (this.renderer.lightMapCanvas.width > 0) {
+                        this.renderer.ctx.save();
+                        this.renderer.ctx.setTransform(1, 0, 0, 1, 0, 0);
+                        this.renderer.ctx.globalCompositeOperation = 'multiply';
+                        this.renderer.ctx.drawImage(this.renderer.lightMapCanvas, 0, 0);
+                        this.renderer.ctx.restore();
+                        return;
+                    }
+                }
+            }
 
             this.renderer.beginLights();
             lights.point.forEach(m => {

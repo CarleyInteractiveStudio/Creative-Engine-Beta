@@ -380,7 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'animation-save-btn', 'current-scene-name', 'animator-controller-panel', 'drawing-canvas-container',
             'anim-onion-skin-canvas', 'anim-grid-canvas', 'anim-bg-toggle-btn', 'anim-grid-toggle-btn',
             'anim-onion-toggle-btn', 'timeline-toggle-btn', 'project-settings-modal', 'settings-app-name',
-            'settings-author-name', 'settings-app-version', 'settings-engine-version', 'settings-renderer-mode', 'settings-ram-limit', 'settings-icon-preview',
+            'settings-author-name', 'settings-app-version', 'settings-engine-version', 'settings-renderer-mode', 'settings-max-fps', 'settings-min-fps', 'settings-ram-limit', 'settings-icon-preview',
             'settings-icon-picker-btn', 'settings-logo-list', 'settings-add-logo-btn', 'settings-show-engine-logo',
             'settings-keystore-path', 'settings-keystore-picker-btn', 'settings-keystore-pass', 'settings-key-alias',
             'settings-key-pass', 'settings-export-project-btn', 'settings-save-btn', 'engine-logo-confirm-modal',
@@ -1182,13 +1182,21 @@ document.addEventListener('DOMContentLoaded', () => {
             currentProjectConfig = JSON.parse(content);
             window.currentProjectConfig = currentProjectConfig;
             console.log("Configuracion del proyecto cargada:", currentProjectConfig);
+
+            // Sync FPS settings to PerformanceMonitor
+            const perfMonitor = EngineAPI.getPerformanceMonitor();
+            if (perfMonitor) {
+                perfMonitor.updateConfig(currentProjectConfig);
+            }
         } catch (error) {
             console.warn("No se encontro 'project.ceconfig'. Creando uno nuevo con valores por defecto.");
             currentProjectConfig = {
                 appName: 'MiJuego',
                 authorName: 'Un Creador',
                 appVersion: '1.0.0',
-                engineVersion: '0.1.0-beta',
+                engineVersion: '0.1.2',
+                maxFps: 60,
+                minFps: 30,
                 iconPath: '',
                 splashLogos: [],
                 showEngineLogo: true,
@@ -1551,6 +1559,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     runGameLoop = function() {
+        const perfMonitor = EngineAPI.getPerformanceMonitor();
+        const subSteps = perfMonitor ? perfMonitor.getPhysicsSubSteps() : 4;
+
         // --- Fixed update (deterministic updates like physics-related logic) ---
         fixedAccumulator += deltaTime;
         while (fixedAccumulator >= FIXED_DELTA) {
@@ -1573,7 +1584,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Update physics (non-fixed as currently implemented)
         if (physicsSystem) {
-            physicsSystem.update(deltaTime);
+            physicsSystem.update(deltaTime, subSteps);
         }
 
         // Update all game objects scripts (frame-dependent)
@@ -1912,6 +1923,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            // Performance Optimization: Throttle lights if optimization level is high
+            const perfMonitor = EngineAPI.getPerformanceMonitor();
+            if (perfMonitor && perfMonitor.getShouldThrottleLights()) {
+                if (frameCount % 2 !== 0) {
+                    // Draw last lightmap buffer if available, or skip
+                    if (rendererInstance.lightMapCanvas.width > 0) {
+                        rendererInstance.ctx.save();
+                        rendererInstance.ctx.setTransform(1, 0, 0, 1, 0, 0);
+                        rendererInstance.ctx.globalCompositeOperation = 'multiply';
+                        rendererInstance.ctx.drawImage(rendererInstance.lightMapCanvas, 0, 0);
+                        rendererInstance.ctx.restore();
+                        return;
+                    }
+                }
+            }
+
             const ambiente = SceneManager.currentScene.ambiente;
             rendererInstance.beginLights(ambiente.nocheDiaColor, ambiente.nocheDiaOpacidad);
 
@@ -2006,6 +2033,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const editorLoop = (timestamp) => {
+        // --- FPS Control ---
+        const perfMonitor = EngineAPI.getPerformanceMonitor();
+        const targetMaxFps = perfMonitor ? perfMonitor.targetMaxFps : 0;
+
+        if (targetMaxFps > 0) {
+            const frameTime = 1000 / targetMaxFps;
+            if (timestamp - lastFrameTime < frameTime) {
+                editorLoopId = requestAnimationFrame(editorLoop);
+                return;
+            }
+        }
+
         frameCount++;
         // Calculate deltaTime
         if (lastFrameTime > 0) {
@@ -3344,7 +3383,7 @@ CONOCIMIENTO DE COMPONENTES (LEYES):
 - Basicos: Transform (posicion), Camara (camara), AudioSource (fuenteDeAudio), VideoPlayer, CreativeScript.
 - Renderizado: SpriteRenderer (renderizadorDeSprite), TextureRender, ParticleSystem, Water (agua).
 - Fisicas 2D: Rigidbody2D (fisica), BoxCollider2D, CapsuleCollider2D, CircleCollider2D, TilemapCollider2D, LineCollider2D.
-- Vehiculos y Controladores: SuspensionHC, VehicleTopDown, PlaneController, HelicopterController.
+- Vehiculos y Controladores: Suspension, VehicleTopDown, PlaneController, HelicopterController.
 - Mapas: Tilemap (rejilla), Terreno2D.
 - Iluminacion: PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D.
 - Interfaz (UI): Canvas (lienzo), UIImage (imagen), UIText (texto), Button (boton), UIEventTrigger.

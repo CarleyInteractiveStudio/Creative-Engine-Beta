@@ -33,6 +33,8 @@ export async function saveProjectConfig(showAlert = true) {
         currentProjectConfig.authorName = dom.settingsAuthorName.value;
         currentProjectConfig.appVersion = dom.settingsAppVersion.value;
         currentProjectConfig.rendererMode = dom.settingsRendererMode.value;
+        currentProjectConfig.maxFps = parseInt(dom.settingsMaxFps.value) || 0;
+        currentProjectConfig.minFps = parseInt(dom.settingsMinFps.value) || 30;
         currentProjectConfig.ramLimit = parseInt(dom.settingsRamLimit.value) || 2048;
         // Note: The mask type is saved via the AmbienteControlWindow, not here.
         currentProjectConfig.showEngineLogo = dom.settingsShowEngineLogo.checked;
@@ -328,6 +330,41 @@ function setupEventListeners() {
         });
     }
 
+    // --- Collaboration Listeners ---
+    const p2pBtn = document.getElementById('settings-collab-p2p-btn');
+    const proBtn = document.getElementById('settings-collab-pro-btn');
+    const stopCollabBtn = document.getElementById('settings-collab-stop-btn');
+
+    if (p2pBtn) {
+        p2pBtn.addEventListener('click', () => {
+            dom.projectSettingsModal.classList.remove('is-open');
+            // Trigger local hosting in CollaborationSystem
+            const hostMenuBtn = document.getElementById('menu-collab-host');
+            // CollaborationSystem.js startHosting is private, but we can trigger the menu click
+            // Actually, we'll need to expose a public method in CollaborationSystem.
+            if (window._CollabSystem && window._CollabSystem.startHosting) {
+                window._CollabSystem.startHosting();
+            }
+        });
+    }
+
+    if (proBtn) {
+        proBtn.addEventListener('click', () => {
+            dom.projectSettingsModal.classList.remove('is-open');
+            if (window._CollabSystem && window._CollabSystem.startHFHosting) {
+                window._CollabSystem.startHFHosting();
+            }
+        });
+    }
+
+    if (stopCollabBtn) {
+        stopCollabBtn.addEventListener('click', () => {
+            if (window._CollabSystem && window._CollabSystem.stopCollaboration) {
+                window._CollabSystem.stopCollaboration();
+            }
+        });
+    }
+
     if (dom.ksGenerateBtn) {
         dom.ksGenerateBtn.addEventListener('click', () => {
             const dname = `CN=${dom.ksCn.value}, OU=${dom.ksOu.value}, O=${dom.ksO.value}, L=${dom.ksL.value}, ST=${dom.ksSt.value}, C=${dom.ksC.value}`;
@@ -350,6 +387,8 @@ export function populateUI(config) {
     if (dom.settingsAuthorName) dom.settingsAuthorName.value = currentProjectConfig.authorName;
     if (dom.settingsAppVersion) dom.settingsAppVersion.value = currentProjectConfig.appVersion;
     if (dom.settingsRendererMode) dom.settingsRendererMode.value = currentProjectConfig.rendererMode;
+    if (dom.settingsMaxFps) dom.settingsMaxFps.value = currentProjectConfig.maxFps !== undefined ? currentProjectConfig.maxFps : 60;
+    if (dom.settingsMinFps) dom.settingsMinFps.value = currentProjectConfig.minFps !== undefined ? currentProjectConfig.minFps : 30;
     if (dom.settingsRamLimit) dom.settingsRamLimit.value = currentProjectConfig.ramLimit || 2048;
     if (dom.settingsShowEngineLogo) dom.settingsShowEngineLogo.checked = currentProjectConfig.showEngineLogo;
     if (dom.settingsKeystorePath) dom.settingsKeystorePath.value = currentProjectConfig.keystore.path;

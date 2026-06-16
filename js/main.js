@@ -274,15 +274,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (closeCollab) closeCollab.addEventListener('click', closeModal);
 
     if (confirmJoinBtn) {
-        confirmJoinBtn.addEventListener('click', () => {
+        confirmJoinBtn.addEventListener('click', async () => {
             const code = collabCodeInput.value.trim().toUpperCase();
             if (code.length < 4) {
                 Dialogs.showNotification(Localization.get('AVISO'), 'Por favor, introduce un código de colaboración válido.');
                 return;
             }
 
-            // Redirect to editor in collaboration mode
-            window.location.href = `editor.html?collab=${encodeURIComponent(code)}`;
+            const collabType = document.querySelector('input[name="collabType"]:checked').value;
+
+            if (collabType === 'online') {
+                // Online mode requires checking Supabase for the relay URL
+                if (!window.auth || !window.auth._supabase) {
+                    Dialogs.showNotification('Error', 'Debes estar conectado para usar la colaboración online.');
+                    return;
+                }
+
+                confirmJoinBtn.disabled = true;
+                confirmJoinBtn.textContent = 'Buscando...';
+
+                const { data, error } = await window.auth._supabase
+                    .from('proyectos_activos')
+                    .select('url_hf')
+                    .eq('codigo', code)
+                    .single();
+
+                if (error || !data) {
+                    Dialogs.showNotification('Error', 'El código de proyecto no existe o ha expirado.');
+                    confirmJoinBtn.disabled = false;
+                    confirmJoinBtn.textContent = Localization.get('UNIRSE', 'Unirse');
+                    return;
+                }
+
+                // Redirect with both code and relay
+                window.location.href = `editor.html?collab=${encodeURIComponent(code)}&relay=${encodeURIComponent(data.url_hf)}`;
+            } else {
+                // Redirect to editor in local collaboration mode
+                window.location.href = `editor.html?collab=${encodeURIComponent(code)}`;
+            }
         });
 
         collabCodeInput.addEventListener('keydown', (e) => {
@@ -415,7 +444,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 appVersion: '1.0.0',
                 projectType: projectType,
                 isNewUser: isNewUser,
-                engineVersion: '0.1.0-beta'
+                engineVersion: '0.1.2'
             };
             const configFileHandle = await projectDirHandle.getFileHandle('project.ceconfig', { create: true });
             let writableConfig = await configFileHandle.createWritable();
@@ -682,6 +711,29 @@ Para más detalles, consulta la sección "Ayuda" del editor.`;
     // AI Key Logic
     const aiKeyInput = document.getElementById('carl-ai-key');
     const saveAiKeyBtn = document.getElementById('btn-save-ai-key');
+    const shareWithCarleyToggle = document.getElementById('prefs-share-with-carley');
+
+    // Share with Carley Preference Logic (Launcher)
+    if (shareWithCarleyToggle) {
+        const savedPrefs = localStorage.getItem('creativeEnginePrefs');
+        if (savedPrefs) {
+            try {
+                const prefs = JSON.parse(savedPrefs);
+                shareWithCarleyToggle.checked = prefs.shareWithCarley !== false;
+            } catch(e) {}
+        }
+
+        shareWithCarleyToggle.addEventListener('change', () => {
+            const savedPrefs = localStorage.getItem('creativeEnginePrefs');
+            let prefs = {};
+            if (savedPrefs) {
+                try { prefs = JSON.parse(savedPrefs); } catch(e) {}
+            }
+            prefs.shareWithCarley = shareWithCarleyToggle.checked;
+            localStorage.setItem('creativeEnginePrefs', JSON.stringify(prefs));
+            Dialogs.showNotification('Preferencia Actualizada', 'Tu preferencia de telemetría ha sido guardada.');
+        });
+    }
 
     if (aiKeyInput) {
         const savedKey = localStorage.getItem('creativeEngine_gemini_apiKey');

@@ -6,6 +6,7 @@ import { registerComponent } from './ComponentRegistry.js';
 import { getURLForAssetPath, getFileHandleForPath } from './AssetUtils.js';
 import { InputManager } from './Input.js';
 import * as RuntimeAPIManager from './RuntimeAPIManager.js';
+import * as PerformanceAPI from './PerformanceAPI.js';
 import { bus as MessageBus } from './Messaging.js';
 
 let editorLogic = null;
@@ -65,7 +66,7 @@ const componentAliases = {
     'VerticalLayoutGroup': 'autoDisposicionVertical',
     'HorizontalLayoutGroup': 'autoDisposicionHorizontal',
     'GridLayoutGroup': 'autoDisposicionRejilla',
-    'SuspensionHC': 'suspensionHC',
+    'Suspension': 'suspension',
     'VehicleTopDown': 'controladorVehiculoTopDown',
     'PlaneController': 'controladorDeAvion',
     'HelicopterController': 'controladorDeHelicoptero',
@@ -168,6 +169,8 @@ export class CreativeScriptBehavior {
     }
     start() { /* To be overridden by user scripts */ }
     update(deltaTime) { /* To be overridden by user scripts */ } // Kept for compatibility; user scripts receive deltaTime now
+    onLowPerformance(level) { /* To be overridden by user scripts */ }
+    alBajoRendimiento(nivel) { /* To be overridden by user scripts */ }
 
     /**
      * Pausa la ejecución del script por una cantidad determinada de segundos.
@@ -1178,7 +1181,8 @@ export class CreativeScript extends Leyes {
                     onPointerEnter: ['alEntrar'],
                     onPointerExit: ['alSalir'],
                     onPointerClick: ['alHacerClick', 'alClicar'],
-                    onPointerDrag: ['alDeslizar'],
+                    onReceive: ['alRecibir'],
+                    onLowPerformance: ['alBajoRendimiento'],
                     onPointerHold: ['alMantener']
                 };
 
@@ -5993,6 +5997,9 @@ export class ParticleSystem extends Leyes {
     停止() { this.stop(); }
 
     update(deltaTime) {
+        const perfMonitor = PerformanceAPI.getPerformanceMonitor();
+        const throttle = perfMonitor ? perfMonitor.getParticleThrottle() : 1.0;
+
         // Gestionar vida de partículas activas en el pool
         for (let i = 0; i < this._pool.length; i++) {
             const p = this._pool[i];
@@ -6007,7 +6014,7 @@ export class ParticleSystem extends Leyes {
         if (!this._active) return;
 
         this._emissionAccumulator += deltaTime;
-        const interval = 1 / Math.max(0.1, this.emissionRate);
+        const interval = 1 / Math.max(0.1, this.emissionRate * throttle);
 
         while (this._emissionAccumulator >= interval) {
             this.emit();
@@ -6870,7 +6877,7 @@ export class LineCollider2D extends Leyes {
 }
 
 /**
- * Componente SuspensionHC: Sistema de amortiguación tipo Hill Climb Racing.
+ * Componente Suspension: Sistema de amortiguación tipo Hill Climb Racing.
  * Se añade a las ruedas y las conecta con un chasis.
  */
 /**
@@ -7185,9 +7192,9 @@ export class PlaneController extends Leyes {
         if (!input) return;
 
         // 1. Detección de Suelo
-        // El avión está en el suelo si ALGUNA de sus ruedas (hijos con SuspensionHC) toca algo
+        // El avión está en el suelo si ALGUNA de sus ruedas (hijos con Suspension) toca algo
         this.estaEnSuelo = false;
-        const suspensiones = this.materia.getChildrenWithComponent(SuspensionHC);
+        const suspensiones = this.materia.getChildrenWithComponent(Suspension);
         for (const susp of suspensiones) {
             if (engine && (engine.alPermanecerEnColision(susp.materia).length > 0 ||
                            engine.alEntrarEnColision(susp.materia).length > 0)) {
@@ -7346,35 +7353,23 @@ export class PlaneController extends Leyes {
     }
 }
 
-export class SuspensionHC extends Leyes {
+/**
+ * Componente Suspension: Sistema de amortiguación física para ruedas.
+ * Conecta una Materia (Rueda) a otra (Chasis) mediante un muelle físico.
+ */
+export class Suspension extends Leyes {
     static actionableMethods = {
-        'accelerate': ['acelerar', 'ускориться', '加速'],
-        'brake': ['frenar', 'тормозить', '制动']
+        'suspension': ['suspension', 'suspensão', 'подвеска', '悬挂']
     };
 
     constructor(materia) {
         super(materia);
-        this.chasis = null; // ID de la materia o referencia al objeto
-        this.dureza = 50;  // Reducido para evitar explosiones iniciales
-        this.amortiguacion = 2; // Reducido
-        this.longitudReposo = 60; // Un poco más largo para que se vea la suspensión
-        this.eje = { x: 0, y: 1 }; // Dirección local de la suspensión (hacia abajo)
-
-        this.potenciaMotor = 1000; // Aumentado para mejor tracción
-        this.velocidadMaxima = 2000;
-        this.frenadoMotor = 0.5; // Resistencia al rodamiento/frenado (0-1)
-
-        this.fuerzaInclinacion = 1.0; // Multiplicador para el "caballito"
-        this.controlAire = 500;       // Fuerza de rotación manual
-        this.estabilidadAire = 0.5;   // Fuerza de auto-nivelación (0-1)
-        this.recuperacionGiro = 0.5;  // Fuerza de centrado del chasis en suelo (0-1)
-
-        // Configuración de controles
-        this.teclaAcelerar = 'd';
-        this.teclaFrenar = 'a';
-
-        // Sonidos
-        this.suspensionSound = "";
+        this.chasis = null; // ID de la Materia que actúa como cuerpo del vehículo
+        this.dureza = 50;
+        this.amortiguacion = 2;
+        this.longitudReposo = 60;
+        this.eje = { x: 0, y: 1 }; // Dirección del muelle (normalmente hacia abajo)
+        this.suspensionSound = ""; // Opcional: sonido al amortiguar
 
         // Estado interno
         this._puntoAnclajeLocal = null;
@@ -7382,78 +7377,16 @@ export class SuspensionHC extends Leyes {
         this._warnedMissing = new Set();
     }
 
-    // --- Multilingual Aliases ---
-    get potencia() { return this.potenciaMotor; }
-    set potencia(v) { this.potenciaMotor = v; }
-    get potenciaPT() { return this.potenciaMotor; }
-    set potenciaPT(v) { this.potenciaMotor = v; }
-    get мощность() { return this.potenciaMotor; }
-    set мощность(v) { this.potenciaMotor = v; }
-    get 功率() { return this.potenciaMotor; }
-    set 功率(v) { this.potenciaMotor = v; }
-
-    get velocidadLimite() { return this.velocidadMaxima; }
-    set velocidadLimite(v) { this.velocidadMaxima = v; }
-    get velocidadeLimite() { return this.velocidadMaxima; }
-    set velocidadeLimite(v) { this.velocidadMaxima = v; }
-    get пределСкорости() { return this.velocidadMaxima; }
-    set пределСкорости(v) { this.velocidadMaxima = v; }
-    get 速度限制() { return this.velocidadMaxima; }
-    set 速度限制(v) { this.velocidadMaxima = v; }
-
-    get frenado() { return this.frenadoMotor; }
-    set frenado(v) { this.frenadoMotor = v; }
-    get freio() { return this.frenadoMotor; }
-    set freio(v) { this.frenadoMotor = v; }
-    get торможение() { return this.frenadoMotor; }
-    set торможение(v) { this.frenadoMotor = v; }
-    get 制动() { return this.frenadoMotor; }
-    set 制动(v) { this.frenadoMotor = v; }
-
-    get inclinacionAire() { return this.controlAire; }
-    set inclinacionAire(v) { this.controlAire = v; }
-    get inclinacaoAr() { return this.controlAire; }
-    set inclinacaoAr(v) { this.controlAire = v; }
-    get наклонВВоздухе() { return this.controlAire; }
-    set наклонВВоздухе(v) { this.controlAire = v; }
-    get 空中倾斜() { return this.controlAire; }
-    set 空中倾斜(v) { this.controlAire = v; }
-
-    get inclinacion() { return this.fuerzaInclinacion; }
-    set inclinacion(v) { this.fuerzaInclinacion = v; }
-    get inclinacao() { return this.fuerzaInclinacion; }
-    set inclinacao(v) { this.fuerzaInclinacion = v; }
-    get наклон() { return this.fuerzaInclinacion; }
-    set наклон(v) { this.fuerzaInclinacion = v; }
-    get 倾斜() { return this.fuerzaInclinacion; }
-    set 倾斜(v) { this.fuerzaInclinacion = v; }
-
-    get autoEstabilidad() { return this.estabilidadAire; }
-    set autoEstabilidad(v) { this.estabilidadAire = v; }
-    get autoEstabilidade() { return this.estabilidadAire; }
-    set autoEstabilidade(v) { this.estabilidadAire = v; }
-    get автоСтабилизация() { return this.estabilidadAire; }
-    set автоСтабилизация(v) { this.estabilidadAire = v; }
-    get 自动稳定() { return this.estabilidadAire; }
-    set 自动稳定(v) { this.estabilidadAire = v; }
-
-    get centradoGiro() { return this.recuperacionGiro; }
-    set centradoGiro(v) { this.recuperacionGiro = v; }
-    get centradoGiroPT() { return this.recuperacionGiro; }
-    set centradoGiroPT(v) { this.recuperacionGiro = v; }
-    get центрированиеПоворота() { return this.recuperacionGiro; }
-    set центрированиеПоворота(v) { this.recuperacionGiro = v; }
-    get 转向居中() { return this.recuperacionGiro; }
-    set 转向居中(v) { this.recuperacionGiro = v; }
-
-    get suspensionHC() { return this; }
+    get hardness() { return this.dureza; }
+    set hardness(v) { this.dureza = v; }
+    get damping() { return this.amortiguacion; }
+    set damping(v) { this.amortiguacion = v; }
+    get restLength() { return this.longitudReposo; }
+    set restLength(v) { this.longitudReposo = v; }
 
     update(deltaTime) {
         const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
-
-        // Siempre marcar como rueda para que el sistema de colisiones lo sepa en el editor también
         this.materia.isWheel = true;
-
         if (!isGame) return;
     }
 
@@ -7518,33 +7451,86 @@ export class SuspensionHC extends Leyes {
         const dampingForce = -relVelAlongAxis * this.amortiguacion;
         let totalForce = springForce + dampingForce;
 
-        // Limitar la fuerza máxima para evitar explosiones físicas
         const maxForce = 5000;
         totalForce = Math.max(-maxForce, Math.min(maxForce, totalForce));
 
         const forceVec = { x: worldAxis.x * totalForce, y: worldAxis.y * totalForce };
 
         // Aplicar fuerzas
-        // NOTA: addForce en este motor suma directamente a la velocidad (v += F/m).
-        // Para que la fuerza sea estable e independiente del frame-rate, escalamos por deltaTime.
-        const forceScale = deltaTime; // Eliminamos el 0.5 para mayor respuesta
+        const forceScale = deltaTime;
         rbRueda.addForce(forceVec.x * forceScale, forceVec.y * forceScale);
         rbChasis.addForce(-forceVec.x * forceScale, -forceVec.y * forceScale);
 
-        // 4. Restricción lateral (Mantiene la rueda alineada con el eje de suspensión)
+        // 4. Restricción lateral
         const perpAxis = { x: -worldAxis.y, y: worldAxis.x };
         const lateralDiff = diff.x * perpAxis.x + diff.y * perpAxis.y;
         const lateralVel = relVel.x * perpAxis.x + relVel.y * perpAxis.y;
 
-        // Multiplicadores reducidos drásticamente (de 1000/50 a 100/10)
         const lateralCorrection = -lateralDiff * 100 - lateralVel * 10;
         rbRueda.addForce(perpAxis.x * lateralCorrection * forceScale, perpAxis.y * lateralCorrection * forceScale);
         rbChasis.addForce(-perpAxis.x * lateralCorrection * forceScale, -perpAxis.y * lateralCorrection * forceScale);
+    }
 
-        // 5. Control de Motor e Inclinación
-        // PRIORIDAD: Si hay un PlaneController en un ancestro, él manda.
-        const planeCtrl = this.materia.findAncestorWithComponent(PlaneController);
-        if (planeCtrl) return;
+    clone() {
+        const copy = new Suspension(null);
+        Object.assign(copy, this);
+        copy._puntoAnclajeLocal = this._puntoAnclajeLocal ? { ...this._puntoAnclajeLocal } : null;
+        copy._warnedMissing = new Set();
+        return copy;
+    }
+}
+
+/**
+ * Componente VehicleSideView2D: Controlador de vehículos en vista lateral.
+ * Maneja la aceleración, frenado y equilibrio del chasis.
+ */
+export class VehicleSideView2D extends Leyes {
+    static actionableMethods = {
+        'accelerate': ['acelerar', 'ускориться', '加速'],
+        'brake': ['frenar', 'тормозить', '制动']
+    };
+
+    constructor(materia) {
+        super(materia);
+        this.wheels = []; // IDs de las Materias que actúan como ruedas
+        this.potenciaMotor = 1000;
+        this.velocidadMaxima = 2000;
+        this.frenadoMotor = 0.5;
+        this.fuerzaInclinacion = 1.0;
+        this.controlAire = 500;
+        this.estabilidadAire = 0.5;
+        this.recuperacionGiro = 0.5;
+        this.teclaAcelerar = "flechaderecha";
+        this.teclaFrenar = "flechaizquierda";
+        this.motorSound = "";
+
+        this._warnedMissing = new Set();
+    }
+
+    get vehicle() { return this; }
+    get motor() { return this.potenciaMotor; }
+    set motor(v) { this.potenciaMotor = v; }
+    get maxVel() { return this.velocidadMaxima; }
+    set maxVel(v) { this.velocidadMaxima = v; }
+
+    fixedUpdate(deltaTime) {
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (!isGame) return;
+
+        const scene = this.materia.scene;
+        if (!scene) return;
+
+        const rbChasis = this.materia.getComponent(Rigidbody2D);
+        const transChasis = this.materia.getComponent(Transform);
+        if (!rbChasis || !transChasis) return;
+
+        // Autodetectar ruedas si la lista está vacía
+        if (this.wheels.length === 0) {
+            const hijos = this.materia.getChildrenWithComponent(Suspension);
+            if (hijos.length > 0) {
+                this.wheels = hijos.map(h => h.id);
+            }
+        }
 
         const input = RuntimeAPIManager.getAPI('input');
         if (!input) return;
@@ -7553,79 +7539,80 @@ export class SuspensionHC extends Leyes {
         if (input.isKeyPressed(this.teclaAcelerar)) moveInput += 1;
         if (input.isKeyPressed(this.teclaFrenar)) moveInput -= 1;
 
-        // 5. Control de Motor e Inclinación
         const engine = RuntimeAPIManager.getAPI('engine');
-        const isGrounded = engine ? (engine.alPermanecerEnColision(this.materia).length > 0 ||
-                                    engine.alEntrarEnColision(this.materia).length > 0) : false;
+        let anyWheelGrounded = false;
+        const wheelObjects = [];
 
-        if (isGrounded) {
-            // Aumentar el arrastre angular del chasis cuando toca el suelo para simular el peso de las gomas
-            rbChasis.angularVelocity *= Math.pow(0.9, deltaTime * 60);
-
-            if (moveInput !== 0) {
-                // Aplicar torque a la rueda para que avance
-                if (Math.abs(rbRueda.angularVelocity) < this.velocidadMaxima / 100) {
-                    const torqueScale = 1500; // Multiplicador para sentir la fuerza
-                    const torque = moveInput * this.potenciaMotor * torqueScale * deltaTime;
-                    rbRueda.addTorque(torque);
-
-                    if (this.suspensionSound) {
-                        const audio = this.materia.getComponent(AudioSource);
-                        if (audio) {
-                            if (!audio.isPlaying) audio.play(this.suspensionSound);
-                        } else if (!this._warnedMissing.has('AudioSource')) {
-                            this._warnedMissing.add('AudioSource');
-                            throw new Error(`El componente 'SuspensionHC' requiere un 'AudioSource' para reproducir el sonido de amortiguación.`);
-                        }
-                    }
-
-                    // Efecto de inclinación mejorado con control de fuerza
-                    const reactionTorque = -moveInput * this.potenciaMotor * (torqueScale * 1.5) * this.fuerzaInclinacion * deltaTime;
-                    rbChasis.addTorque(reactionTorque);
-                }
-            } else {
-                // Frenado de motor / Resistencia al rodamiento
-                if (this.frenadoMotor > 0) {
-                    // Usamos una caída exponencial para mayor estabilidad con valores altos (>1.0)
-                    rbRueda.angularVelocity *= Math.exp(-this.frenadoMotor * deltaTime * 10);
-                }
-
-                // Centrado del chasis (Recuperar posición horizontal en suelo)
-                if (this.recuperacionGiro > 0) {
-                    let currentRot = transChasis.rotation % 360;
-                    if (currentRot > 180) currentRot -= 360;
-                    if (currentRot < -180) currentRot += 360;
-
-                    const centeringTorque = -currentRot * this.recuperacionGiro * 2000 * deltaTime;
-                    rbChasis.addTorque(centeringTorque);
+        this.wheels.forEach(wheelId => {
+            const wheelMtr = scene.findMateriaById(wheelId);
+            if (wheelMtr) {
+                wheelObjects.push(wheelMtr);
+                if (engine && (engine.alPermanecerEnColision(wheelMtr).length > 0 ||
+                              engine.alEntrarEnColision(wheelMtr).length > 0)) {
+                    anyWheelGrounded = true;
                 }
             }
-        } else {
-            // Control en el aire
-            if (moveInput !== 0) {
-                // Rotación manual
-                const airTorque = -moveInput * this.controlAire * 2000 * deltaTime;
-                rbChasis.addTorque(airTorque);
-            } else if (this.estabilidadAire > 0) {
-                // Auto-nivelación: intentar mantener el chasis horizontal (rotación 0)
+        });
+
+        if (anyWheelGrounded) {
+            // Fricción de chasis
+            rbChasis.angularVelocity *= Math.pow(0.9, deltaTime * 60);
+
+            wheelObjects.forEach(wheelMtr => {
+                const rbRueda = wheelMtr.getComponent(Rigidbody2D);
+                if (!rbRueda) return;
+
+                if (moveInput !== 0) {
+                    if (Math.abs(rbRueda.angularVelocity) < this.velocidadMaxima / 100) {
+                        const torqueScale = 1500;
+                        const torque = moveInput * this.potenciaMotor * torqueScale * deltaTime;
+                        rbRueda.addTorque(torque);
+
+                        // Reaction torque on chassis (Tilt)
+                        rbChasis.addTorque(-torque * 1.5 * this.fuerzaInclinacion);
+
+                        if (this.motorSound) {
+                            const audio = this.materia.getComponent(AudioSource);
+                            if (audio) {
+                                if (!audio.isPlaying) audio.play(this.motorSound);
+                            } else if (!this._warnedMissing.has('AudioSource')) {
+                                this._warnedMissing.add('AudioSource');
+                                throw new Error(`El componente 'VehicleSideView2D' requiere un 'AudioSource' para reproducir el sonido del motor.`);
+                            }
+                        }
+                    }
+                } else {
+                    if (this.frenadoMotor > 0) {
+                        rbRueda.angularVelocity *= Math.pow(0.95, deltaTime * 60);
+                    }
+                }
+            });
+
+            // Recuperación de giro en suelo
+            if (moveInput === 0 && this.recuperacionGiro > 0) {
                 let currentRot = transChasis.rotation % 360;
                 if (currentRot > 180) currentRot -= 360;
                 if (currentRot < -180) currentRot += 360;
-
-                // Aplicar torque correctivo suave
-                const stabilityTorque = -currentRot * this.estabilidadAire * 1000 * deltaTime;
-                rbChasis.addTorque(stabilityTorque);
-
-                // Amortiguar rotación para evitar oscilaciones infinitas
+                rbChasis.addTorque(-currentRot * this.recuperacionGiro * 2000 * deltaTime);
+            }
+        } else {
+            // Control en aire
+            if (moveInput !== 0) {
+                rbChasis.addTorque(-moveInput * this.controlAire * 2000 * deltaTime);
+            } else if (this.estabilidadAire > 0) {
+                let currentRot = transChasis.rotation % 360;
+                if (currentRot > 180) currentRot -= 360;
+                if (currentRot < -180) currentRot += 360;
+                rbChasis.addTorque(-currentRot * this.estabilidadAire * 1000 * deltaTime);
                 rbChasis.angularVelocity *= Math.pow(0.95, deltaTime * 60);
             }
         }
     }
 
     clone() {
-        const copy = new SuspensionHC(null);
+        const copy = new VehicleSideView2D(null);
         Object.assign(copy, this);
-        copy._puntoAnclajeLocal = this._puntoAnclajeLocal ? { ...this._puntoAnclajeLocal } : null;
+        copy.wheels = [...this.wheels];
         copy._warnedMissing = new Set();
         return copy;
     }
@@ -8230,7 +8217,8 @@ registerComponent('ParticleSystem', ParticleSystem);
 registerComponent('RaycastSource', RaycastSource);
 registerComponent('BasicAI', BasicAI);
 registerComponent('Water', Water);
-registerComponent('SuspensionHC', SuspensionHC);
+registerComponent('Suspension', Suspension);
+registerComponent('VehicleSideView2D', VehicleSideView2D);
 registerComponent('VehicleTopDown', VehicleTopDown);
 registerComponent('PlaneController', PlaneController);
 registerComponent('HelicopterController', HelicopterController);

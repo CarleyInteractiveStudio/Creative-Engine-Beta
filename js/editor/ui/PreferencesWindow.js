@@ -38,7 +38,7 @@ const defaultPrefs = {
     showTerminal: false,
     executionMode: 'integrated',
     autoCloseGameWindow: true,
-    shareWithCarley: false,
+    shareWithCarley: true,
     autoCorrectorInteligente: true
 };
 

@@ -27,4 +27,8 @@ export function getEngineAPI() {
     return CEEngine.getAPIs();
 }
 
+export function getPerformanceMonitor() {
+    return CEEngine.getPerformanceMonitor();
+}
+
 export { CEEngine };
