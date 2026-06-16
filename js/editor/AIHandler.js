@@ -25,6 +25,9 @@ export async function listModels(provider, apiKey) {
             'x-api-key': apiKey,
             'anthropic-version': '2023-06-01'
         };
+    } else if (provider === 'huggingface') {
+        // Para Hugging Face Custom Space, no solemos listar modelos dinámicamente
+        return { success: true, models: [{ id: 'hf-custom-space', name: 'Hugging Face Custom Space' }] };
     } else {
         return { success: false, error: 'Proveedor no soportado.' };
     }
@@ -82,7 +85,27 @@ export async function callGenerativeAI(provider, modelName, apiKey, prompt, syst
     let headers = { 'Content-Type': 'application/json' };
     let body = {};
 
-    if (provider === 'gemini') {
+    if (provider === 'huggingface') {
+        // Normalizar URL de Hugging Face Space si es necesario
+        // De: https://huggingface.co/spaces/user/name -> https://user-name.hf.space
+        let normalizedUrl = modelName;
+        if (normalizedUrl.includes('huggingface.co/spaces/')) {
+            const parts = normalizedUrl.split('huggingface.co/spaces/')[1].split('/');
+            if (parts.length >= 2) {
+                const user = parts[0].toLowerCase();
+                const name = parts[1].toLowerCase();
+                normalizedUrl = `https://${user}-${name}.hf.space`;
+            }
+        }
+
+        // El modelName en este caso será la URL del Space de Hugging Face
+        endpoint = normalizedUrl.endsWith('/generate') ? normalizedUrl : `${normalizedUrl}/generate`;
+        body = {
+            prompt: prompt,
+            system_prompt: systemPrompt,
+            history: history
+        };
+    } else if (provider === 'gemini') {
         endpoint = `https://generativelanguage.googleapis.com/v1beta/${modelName}:generateContent?key=${apiKey}`;
         const isGemini15 = modelName.includes('1.5');
 
@@ -158,7 +181,12 @@ export async function callGenerativeAI(provider, modelName, apiKey, prompt, syst
         }
 
         let textResponse = '';
-        if (provider === 'gemini') {
+        if (provider === 'huggingface') {
+            if (data.status === 'busy') {
+                return { success: false, error: data.message, code: 'BUSY' };
+            }
+            textResponse = data.text;
+        } else if (provider === 'gemini') {
             textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
         } else if (provider === 'openai') {
             textResponse = data.choices?.[0]?.message?.content;
