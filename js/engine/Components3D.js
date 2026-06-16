@@ -493,6 +493,10 @@ export class MovementControl3D extends Leyes {
         super(materia);
         this.speed = 200;
         this.walkCycleTime = 0;
+        this.walkSpeedMultiplier = 12.0;
+        this.bobAmount = 8;
+        this.swayAmount = 4;
+        this.armSwingAmount = 35;
     }
 
     update(deltaTime) {
@@ -506,32 +510,72 @@ export class MovementControl3D extends Leyes {
         if (!rb) return;
 
         const vel = rb.velocity;
-        const speedSq = vel.x * vel.x + vel.z * vel.z;
+        const groundSpeed = Math.sqrt(vel.x * vel.x + vel.z * vel.z);
 
-        if (speedSq > 0.01) {
-            this.walkCycleTime += deltaTime * 10;
+        if (groundSpeed > 0.1) {
+            this.walkCycleTime += deltaTime * this.walkSpeedMultiplier * Math.min(2.0, groundSpeed * 0.5);
             this._applyProceduralWalk();
         } else {
+            this.walkCycleTime = 0;
             this._applyProceduralIdle();
         }
     }
 
     _applyProceduralWalk() {
         const hip = this.materia.findChildByName('Cadera', true) || this.materia.findChildByName('Hips', true);
-        if (!hip) return;
-        const trans = hip.getComponent(window.Components.Transform);
-        const sway = Math.sin(this.walkCycleTime) * 5;
-        const bob = Math.abs(Math.cos(this.walkCycleTime)) * 5;
-        trans.localRotation = { x: 0, y: 0, z: sway };
-        trans.localPosition.y = -bob; // Engine Y is inverted
+        const torso = this.materia.findChildByName('Torso', true) || this.materia.findChildByName('Spine', true);
+        const armL = this.materia.findChildByName('Brazo_I', true) || this.materia.findChildByName('LeftArm', true);
+        const armR = this.materia.findChildByName('Brazo_D', true) || this.materia.findChildByName('RightArm', true);
+        const legL = this.materia.findChildByName('Pierna_I', true) || this.materia.findChildByName('LeftLeg', true);
+        const legR = this.materia.findChildByName('Pierna_D', true) || this.materia.findChildByName('RightLeg', true);
+
+        const sin = Math.sin(this.walkCycleTime);
+        const cos = Math.cos(this.walkCycleTime);
+
+        // Hip & Torso movement
+        if (hip) {
+            const hTrans = hip.getComponent(window.Components.Transform);
+            hTrans.localPosition.y = -Math.abs(sin) * this.bobAmount;
+            hTrans.localRotation.z = cos * this.swayAmount;
+        }
+
+        if (torso) {
+            const tTrans = torso.getComponent(window.Components.Transform);
+            tTrans.localRotation.x = Math.abs(cos) * 3; // Slight forward lean
+            tTrans.localRotation.y = -sin * 5; // Torso counter-rotation
+        }
+
+        // Arm swing (opposite to legs)
+        if (armL) armL.getComponent(window.Components.Transform).localRotation.x = sin * this.armSwingAmount;
+        if (armR) armR.getComponent(window.Components.Transform).localRotation.x = -sin * this.armSwingAmount;
+
+        // Leg movement
+        if (legL) legL.getComponent(window.Components.Transform).localRotation.x = -sin * (this.armSwingAmount * 1.2);
+        if (legR) legR.getComponent(window.Components.Transform).localRotation.x = sin * (this.armSwingAmount * 1.2);
     }
 
     _applyProceduralIdle() {
         const hip = this.materia.findChildByName('Cadera', true) || this.materia.findChildByName('Hips', true);
-        if (!hip) return;
-        const trans = hip.getComponent(window.Components.Transform);
-        const breathe = Math.sin(performance.now() / 1000 * 2) * 2;
-        trans.localRotation = { x: breathe, y: 0, z: 0 };
+        const torso = this.materia.findChildByName('Torso', true) || this.materia.findChildByName('Spine', true);
+        const armL = this.materia.findChildByName('Brazo_I', true) || this.materia.findChildByName('LeftArm', true);
+        const armR = this.materia.findChildByName('Brazo_D', true) || this.materia.findChildByName('RightArm', true);
+
+        const time = performance.now() / 1000;
+        const breathe = Math.sin(time * 2);
+
+        if (hip) {
+            const hTrans = hip.getComponent(window.Components.Transform);
+            hTrans.localPosition.y = 0;
+            hTrans.localRotation.x = breathe * 1;
+        }
+
+        if (torso) {
+            const tTrans = torso.getComponent(window.Components.Transform);
+            tTrans.localRotation.x = breathe * 2;
+        }
+
+        if (armL) armL.getComponent(window.Components.Transform).localRotation.z = -5 - breathe * 2;
+        if (armR) armR.getComponent(window.Components.Transform).localRotation.z = 5 + breathe * 2;
     }
     clone() { return new MovementControl3D(null); }
 }
@@ -606,10 +650,13 @@ registerComponent('MovementControl3D', MovementControl3D);
 export class ThirdPersonController3D extends Leyes {
     constructor(materia) {
         super(materia);
-        this.moveSpeed = 300;
-        this.turnSpeed = 10;
-        this.jumpForce = 500;
-        this.cameraTarget = null; // Materia ID for the camera
+        this.moveSpeed = 400;
+        this.turnSpeed = 15;
+        this.jumpForce = 600;
+        this.acceleration = 10;
+        this.deceleration = 10;
+
+        this._currentVelocity = { x: 0, z: 0 };
     }
 
     update(deltaTime) {
@@ -621,25 +668,50 @@ export class ThirdPersonController3D extends Leyes {
         const transform = this.materia.getComponent(window.Components.Transform);
         if (!rb || !transform) return;
 
-        // Movement
-        let moveX = 0;
-        let moveZ = 0;
-        if (input.isKeyPressed('w')) moveZ = -1;
-        if (input.isKeyPressed('s')) moveZ = 1;
-        if (input.isKeyPressed('a')) moveX = -1;
-        if (input.isKeyPressed('d')) moveX = 1;
+        // Movement Input
+        let inputX = 0;
+        let inputZ = 0;
+        if (input.isKeyPressed('w')) inputZ = -1;
+        if (input.isKeyPressed('s')) inputZ = 1;
+        if (input.isKeyPressed('a')) inputX = -1;
+        if (input.isKeyPressed('d')) inputX = 1;
 
-        if (moveX !== 0 || moveZ !== 0) {
-            const rad = transform.localRotation.y * Math.PI / 180;
-            const forward = { x: Math.sin(rad), z: Math.cos(rad) };
-            const right = { x: Math.cos(rad), z: -Math.sin(rad) };
+        // Camera-relative movement
+        let moveDir = { x: 0, z: 0 };
+        const scene = this.materia.scene || window.SceneManager?.currentScene;
+        const camera = scene?.findFirstCamera();
 
-            rb.velocity.x = (forward.x * moveZ + right.x * moveX) * (this.moveSpeed / 100);
-            rb.velocity.z = (forward.z * moveZ + right.z * moveX) * (this.moveSpeed / 100);
-        } else {
-            rb.velocity.x = 0;
-            rb.velocity.z = 0;
+        if (camera && (inputX !== 0 || inputZ !== 0)) {
+            const camTrans = camera.getComponent(window.Components.Transform);
+            const camYaw = camTrans.localRotation.y * Math.PI / 180;
+
+            const forward = { x: Math.sin(camYaw), z: Math.cos(camYaw) };
+            const right = { x: Math.cos(camYaw), z: -Math.sin(camYaw) };
+
+            moveDir.x = forward.x * inputZ + right.x * inputX;
+            moveDir.z = forward.z * inputZ + right.z * inputX;
+
+            // Normalize
+            const mag = Math.sqrt(moveDir.x * moveDir.x + moveDir.z * moveDir.z);
+            moveDir.x /= mag;
+            moveDir.z /= mag;
+
+            // Smoothly rotate character towards movement direction
+            const targetYaw = Math.atan2(moveDir.x, moveDir.z) * 180 / Math.PI;
+            let diff = targetYaw - transform.localRotation.y;
+            while (diff > 180) diff -= 360;
+            while (diff < -180) diff += 360;
+            transform.localRotation.y += diff * this.turnSpeed * deltaTime;
         }
+
+        // Apply movement with acceleration/deceleration
+        const targetVelX = moveDir.x * (this.moveSpeed / 100);
+        const targetVelZ = moveDir.z * (this.moveSpeed / 100);
+
+        const lerpFactor = (inputX !== 0 || inputZ !== 0) ? this.acceleration : this.deceleration;
+
+        rb.velocity.x += (targetVelX - rb.velocity.x) * lerpFactor * deltaTime;
+        rb.velocity.z += (targetVelZ - rb.velocity.z) * lerpFactor * deltaTime;
 
         // Jump
         if (input.isKeyJustPressed('space')) {
@@ -659,10 +731,12 @@ export class CameraControl3D extends Leyes {
     constructor(materia) {
         super(materia);
         this.target = null; // Materia ID to follow
-        this.distance = 400;
-        this.height = 100;
+        this.distance = 450;
+        this.height = 60;
         this.rotationY = 0;
-        this.pitch = 15;
+        this.pitch = 20;
+        this.smoothSpeed = 10;
+        this.sensitivity = 0.2;
     }
 
     update(deltaTime) {
@@ -670,17 +744,26 @@ export class CameraControl3D extends Leyes {
         const input = window.RuntimeAPIManager.getAPI('input');
         if (!input) return;
 
-        // Mouse look
-        const delta = input.getMouseDelta ? input.getMouseDelta() : { x: 0, y: 0 };
-        this.rotationY -= delta.x * 0.2;
-        this.pitch += delta.y * 0.2;
-        this.pitch = Math.max(-30, Math.min(60, this.pitch));
+        // Mouse look (Right click or touch drag)
+        if (input.isMouseButtonPressed(2) || input.isMouseButtonPressed(0)) {
+            const delta = input.getMouseDelta ? input.getMouseDelta() : { x: 0, y: 0 };
+            this.rotationY -= delta.x * this.sensitivity;
+            this.pitch += delta.y * this.sensitivity;
+            this.pitch = Math.max(-10, Math.min(70, this.pitch));
+        }
 
         const scene = this.materia.scene || window.SceneManager?.currentScene;
         if (!scene) return;
 
         let followTarget = null;
-        if (typeof this.target === 'number') followTarget = scene.findMateriaById(this.target);
+        if (this.target) {
+            if (typeof this.target === 'number') followTarget = scene.findMateriaById(this.target);
+            else if (typeof this.target === 'string') followTarget = scene.findMateriaByName(this.target);
+        } else {
+            // Default to parent if no target specified
+            followTarget = this.materia.parent;
+        }
+
         if (!followTarget) return;
 
         const targetTrans = followTarget.getComponent(window.Components.Transform);
@@ -694,17 +777,22 @@ export class CameraControl3D extends Leyes {
         const offsetZ = Math.cos(rad) * Math.cos(pitchRad) * this.distance;
         const offsetY = Math.sin(pitchRad) * this.distance;
 
-        myTrans.localPosition = {
-            x: targetTrans.x + offsetX,
-            y: targetTrans.y - offsetY - this.height,
-            z: (targetTrans.z || 0) + offsetZ
+        const targetX = targetTrans.x + offsetX;
+        const targetY = targetTrans.y - offsetY - this.height;
+        const targetZ = (targetTrans.z || 0) + offsetZ;
+
+        // Smooth camera movement (using world position to handle parent hierarchy correctly)
+        const currentPos = myTrans.position;
+        myTrans.position = {
+            x: currentPos.x + (targetX - currentPos.x) * this.smoothSpeed * deltaTime,
+            y: currentPos.y + (targetY - currentPos.y) * this.smoothSpeed * deltaTime,
+            z: currentPos.z + (targetZ - currentPos.z) * this.smoothSpeed * deltaTime
         };
 
-        // Make camera look at target
-        myTrans.localRotation = { x: this.pitch, y: this.rotationY + 180, z: 0 };
-
-        // Sync target rotation with camera (optional but common)
-        targetTrans.localRotation.y = this.rotationY;
+        // Make camera look at target (using world rotation)
+        myTrans.rotationX = this.pitch;
+        myTrans.rotationY = this.rotationY + 180;
+        myTrans.rotationZ = 0;
     }
     clone() { return new CameraControl3D(null); }
 }

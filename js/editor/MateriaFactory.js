@@ -683,8 +683,11 @@ export async function createDefaultCharacter(parent = null) {
     const torso = createBaseMateria('Torso', hip);
     torso.getComponent(Components.Transform).localPosition = { x: 0, y: 30, z: 0 };
 
-    const head = createBaseMateria('Cabeza', torso);
-    head.getComponent(Components.Transform).localPosition = { x: 0, y: 40, z: 0 };
+    const neck = createBaseMateria('Cuello', torso);
+    neck.getComponent(Components.Transform).localPosition = { x: 0, y: 35, z: 0 };
+
+    const head = createBaseMateria('Cabeza', neck);
+    head.getComponent(Components.Transform).localPosition = { x: 0, y: 15, z: 0 };
 
     const eyeL = createBaseMateria('Ojo_I', head);
     eyeL.getComponent(Components.Transform).localPosition = { x: -8, y: 5, z: 12 };
@@ -692,14 +695,14 @@ export async function createDefaultCharacter(parent = null) {
     eyeR.getComponent(Components.Transform).localPosition = { x: 8, y: 5, z: 12 };
 
     const armL = createBaseMateria('Brazo_I', torso);
-    armL.getComponent(Components.Transform).localPosition = { x: -30, y: 0, z: 0 };
+    armL.getComponent(Components.Transform).localPosition = { x: -30, y: 5, z: 0 };
     const handL = createBaseMateria('Mano_I', armL);
-    handL.getComponent(Components.Transform).localPosition = { x: 0, y: -40, z: 0 };
+    handL.getComponent(Components.Transform).localPosition = { x: 0, y: -45, z: 0 };
 
     const armR = createBaseMateria('Brazo_D', torso);
-    armR.getComponent(Components.Transform).localPosition = { x: 30, y: 0, z: 0 };
+    armR.getComponent(Components.Transform).localPosition = { x: 30, y: 5, z: 0 };
     const handR = createBaseMateria('Mano_D', armR);
-    handR.getComponent(Components.Transform).localPosition = { x: 0, y: -40, z: 0 };
+    handR.getComponent(Components.Transform).localPosition = { x: 0, y: -45, z: 0 };
 
     const legL = createBaseMateria('Pierna_I', hip);
     legL.getComponent(Components.Transform).localPosition = { x: -15, y: -10, z: 0 };
@@ -712,10 +715,10 @@ export async function createDefaultCharacter(parent = null) {
     footR.getComponent(Components.Transform).localPosition = { x: 0, y: -80, z: 0 };
 
     // Joint IDs for weights
-    const jointsOrder = [hip, torso, head, eyeL, eyeR, armL, handL, armR, handR, legL, footL, legR, footR];
+    const jointsOrder = [hip, torso, neck, head, eyeL, eyeR, armL, handL, armR, handR, legL, footL, legR, footR];
     const jointIds = jointsOrder.map(m => m.id);
 
-    // 2. Build Multi-Part Mesh
+    // 2. Build Improved Mesh (More detailed proportions)
     const meshData = { positions: [], joints: [], weights: [], indices: [] };
 
     const addBoxToMesh = (pos, size, boneIdx) => {
@@ -740,23 +743,23 @@ export async function createDefaultCharacter(parent = null) {
     };
 
     // Construct the body parts at bind-pose relative to root
-    // In CE, -Y is UP. So Head has negative Y, Feet have positive Y.
-    addBoxToMesh({x:0, y:0, z:0}, {x:40, y:30, z:25}, 0); // Pelvis (Hip)
-    addBoxToMesh({x:0, y:-30, z:0}, {x:45, y:40, z:30}, 1); // Torso
-    addBoxToMesh({x:0, y:-70, z:0}, {x:25, y:25, z:25}, 2); // Head
-    addBoxToMesh({x:-8, y:-75, z:12}, {x:6, y:6, z:6}, 3); // Eye L
-    addBoxToMesh({x:8, y:-75, z:12}, {x:6, y:6, z:6}, 4); // Eye R
-    addBoxToMesh({x:-35, y:-30, z:0}, {x:15, y:40, z:15}, 5); // Arm L
-    addBoxToMesh({x:-35, y:10, z:0}, {x:12, y:15, z:15}, 6); // Hand L
-    addBoxToMesh({x:35, y:-30, z:0}, {x:15, y:40, z:15}, 7); // Arm R
-    addBoxToMesh({x:35, y:10, z:0}, {x:12, y:15, z:15}, 8); // Hand R
-    addBoxToMesh({x:-15, y:40, z:0}, {x:18, y:50, z:18}, 9); // Leg L
-    addBoxToMesh({x:-15, y:90, z:5}, {x:20, y:12, z:30}, 10); // Foot L
-    addBoxToMesh({x:15, y:40, z:0}, {x:18, y:50, z:18}, 11); // Leg R
-    addBoxToMesh({x:15, y:90, z:5}, {x:20, y:12, z:30}, 12); // Foot R
+    addBoxToMesh({x:0, y:0, z:0}, {x:35, y:25, z:20}, 0); // Pelvis (Hip)
+    addBoxToMesh({x:0, y:-30, z:0}, {x:40, y:45, z:25}, 1); // Torso
+    addBoxToMesh({x:0, y:-55, z:0}, {x:12, y:15, z:12}, 2); // Neck
+    addBoxToMesh({x:0, y:-75, z:0}, {x:25, y:25, z:25}, 3); // Head
+    addBoxToMesh({x:-8, y:-80, z:12}, {x:5, y:5, z:5}, 4); // Eye L
+    addBoxToMesh({x:8, y:-80, z:12}, {x:5, y:5, z:5}, 5); // Eye R
+    addBoxToMesh({x:-35, y:-30, z:0}, {x:12, y:45, z:12}, 6); // Arm L
+    addBoxToMesh({x:-35, y:15, z:0}, {x:10, y:12, z:12}, 7); // Hand L
+    addBoxToMesh({x:35, y:-30, z:0}, {x:12, y:45, z:12}, 8); // Arm R
+    addBoxToMesh({x:35, y:15, z:0}, {x:10, y:12, z:12}, 9); // Hand R
+    addBoxToMesh({x:-15, y:40, z:0}, {x:16, y:60, z:16}, 10); // Leg L
+    addBoxToMesh({x:-15, y:95, z:5}, {x:18, y:10, z:28}, 11); // Foot L
+    addBoxToMesh({x:15, y:40, z:0}, {x:16, y:60, z:16}, 12); // Leg R
+    addBoxToMesh({x:15, y:95, z:5}, {x:18, y:10, z:28}, 13); // Foot R
 
     const renderer = new C3D.SkinnedMeshRenderer3D(root);
-    renderer.color = '#ffdbac';
+    renderer.color = '#ffdbac'; // Realistic skin tone
 
     if (window._Renderer3D && window._Renderer3D.gl) {
         const gl = window._Renderer3D.gl;
@@ -790,11 +793,14 @@ export async function createDefaultCharacter(parent = null) {
     // 3. Component Systems
     root.addComponent(new C3D.Rigidbody3D(root));
     const rb = root.getComponent(C3D.Rigidbody3D);
-    if(rb) rb.drag = 0.1;
+    if(rb) {
+        rb.drag = 0.05;
+        rb.angularDrag = 0.1;
+    }
 
     root.addComponent(new C3D.BoxCollider3D(root));
     const col = root.getComponent(C3D.BoxCollider3D);
-    if(col) col.size = { x: 50, y: 180, z: 50 };
+    if(col) col.size = { x: 45, y: 190, z: 45 };
 
     root.addComponent(new C3D.HumanoidPhysics3D(root));
     root.addComponent(new C3D.ThirdPersonController3D(root));
@@ -807,6 +813,22 @@ export async function createDefaultCharacter(parent = null) {
         hp.leftLegChain = [hip, legL, footL];
         hp.rightLegChain = [hip, legR, footR];
     }
+
+    // 4. Create 3rd Person Camera automatically
+    const camMateria = createBaseMateria('Camara_3ra_Persona', root);
+    const camTransform = camMateria.getComponent(Components.Transform);
+    camTransform.localPosition = { x: 0, y: -150, z: 450 }; // Positioned behind and slightly above
+
+    camMateria.addComponent(new Components.Camera(camMateria));
+    const camera = camMateria.getComponent(Components.Camera);
+    camera.projection = 'Perspective';
+    camera.fov = 65;
+
+    camMateria.addComponent(new C3D.CameraControl3D(camMateria));
+    const camControl = camMateria.getComponent(C3D.CameraControl3D);
+    camControl.distance = 450;
+    camControl.height = 60;
+    camControl.pitch = 20;
 
     return root;
 }
