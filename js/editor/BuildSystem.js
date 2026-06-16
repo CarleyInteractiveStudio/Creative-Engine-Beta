@@ -163,9 +163,14 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
             }
         };
 
-        // 1. Export index.html
-        updateProgress("Generando index.html...");
+        // 1. Export index.html and PWA files
+        updateProgress("Generando index.html y PWA...");
         await writeFile('index.html', generateIndexHtml(mergedConfig));
+        await writeFile('manifest.json', generateManifest(mergedConfig));
+        try {
+            const swResp = await fetch('js/engine/sw.js');
+            if (swResp.ok) await writeFile('sw.js', await swResp.text());
+        } catch(e) {}
 
         // 2. Export engine and runtime
         updateProgress("Copiando archivos del motor...");
@@ -306,6 +311,8 @@ function generateIndexHtml(config) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${config.appName || 'Creative Engine Game'}</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#000000">
     <link rel="icon" type="image/png" href="${config.appIcon || 'image/Logo_C.png'}">
     <link rel="stylesheet" href="style.css">
     <style>
@@ -351,6 +358,13 @@ function generateIndexHtml(config) {
         window.addEventListener('DOMContentLoaded', () => {
             const runtime = new StandaloneRuntime('game-canvas');
             runtime.start();
+
+            // Register PWA Service Worker
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./sw.js').catch(err => {
+                    console.log("Service Worker registration failed: ", err);
+                });
+            }
         });
     </script>
 </body>
@@ -571,4 +585,28 @@ function downloadBlob(blob, filename) {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+}
+
+function generateManifest(config) {
+    const manifest = {
+        name: config.appName || 'Creative Engine Game',
+        short_name: config.appName || 'CE Game',
+        start_url: './index.html',
+        display: 'standalone',
+        background_color: '#000000',
+        theme_color: '#000000',
+        icons: [
+            {
+                src: config.appIcon || 'image/Logo_C.png',
+                sizes: '192x192',
+                type: 'image/png'
+            },
+            {
+                src: config.appIcon || 'image/Logo_C.png',
+                sizes: '512x512',
+                type: 'image/png'
+            }
+        ]
+    };
+    return JSON.stringify(manifest, null, 2);
 }

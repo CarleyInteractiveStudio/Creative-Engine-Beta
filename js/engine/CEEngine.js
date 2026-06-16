@@ -5,6 +5,8 @@ import { PerformanceMonitor } from './PerformanceMonitor.js';
 import * as PerformanceAPI from './PerformanceAPI.js';
 import * as AssetUtils from './AssetUtils.js';
 import * as Components from './Components.js';
+import * as MathUtils from './MathUtils.js';
+import * as RuntimeAPIManager from './RuntimeAPIManager.js';
 
 let physicsSystem = null;
 let currentDeltaTime = 0;
@@ -141,11 +143,35 @@ function isTouchingTag(materia, tag = null) {
 
 function raycast(origin, direction, maxDistance = Infinity, tag = null) {
     if (!physicsSystem) return null;
+
+    // Soporte para argumentos desglosados (x, y, dirX, dirY, dist)
+    if (arguments.length >= 5 && typeof arguments[0] === 'number') {
+        const x = arguments[0];
+        const y = arguments[1];
+        const dx = arguments[2];
+        const dy = arguments[3];
+        const dist = arguments[4];
+        const t = arguments[5] || null;
+        return physicsSystem.raycast({x, y}, {x: dx, y: dy}, dist, t);
+    }
+
     return physicsSystem.raycast(origin, direction, maxDistance, tag);
 }
 
 function circleCast(origin, direction, radius, maxDistance = Infinity, tag = null) {
     if (!physicsSystem) return null;
+
+    if (arguments.length >= 6 && typeof arguments[0] === 'number') {
+        const x = arguments[0];
+        const y = arguments[1];
+        const dx = arguments[2];
+        const dy = arguments[3];
+        const r = arguments[4];
+        const dist = arguments[5];
+        const t = arguments[6] || null;
+        return physicsSystem.circleCast({x, y}, {x: dx, y: dy}, r, dist, t);
+    }
+
     return physicsSystem.circleCast(origin, direction, radius, maxDistance, tag);
 }
 
@@ -193,6 +219,16 @@ const engineAPIs = {
     obtenerGlobal: RuntimeAPIManager.getGlobal,
     guardarEnDisco: RuntimeAPIManager.saveToDisk,
     cargarDeDisco: RuntimeAPIManager.loadFromDisk,
+
+    // Math Utils
+    random: MathUtils.random,
+    azar: MathUtils.random,
+    sin: MathUtils.seno,
+    seno: MathUtils.seno,
+    cos: MathUtils.coseno,
+    coseno: MathUtils.coseno,
+    distance: MathUtils.distancia,
+    distancia: MathUtils.distancia,
 };
 
 export function getAPIs() {

@@ -332,3 +332,26 @@ export function estimateMateriaMemory(materia) {
 
     return { individual, total };
 }
+
+/**
+ * Calcula la distancia entre dos puntos (x1, y1) y (x2, y2).
+ */
+export function distancia(x1, y1, x2, y2) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+/**
+ * Devuelve el seno de un ángulo en grados.
+ */
+export function seno(grados) {
+    return Math.sin(grados * Math.PI / 180);
+}
+
+/**
+ * Devuelve el coseno de un ángulo en grados.
+ */
+export function coseno(grados) {
+    return Math.cos(grados * Math.PI / 180);
+}

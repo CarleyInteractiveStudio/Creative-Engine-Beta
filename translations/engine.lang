@@ -2893,3 +2893,10 @@ AUTO_STABILIZE: Auto-Estabilizar
 GROUND_CENTERING: Centrado Suelo
 ACCELERATE_KEY: Tecla Acelerar
 BRAKE_KEY: Tecla Frenar
+
+# Added in V4
+SISTEMAS: Sistemas Inteligentes
+UI_MOVIMIENTO: UI de Movimiento
+MENU_PRINCIPAL: Menú Principal
+GESTOR_NIVELES: Gestor de Niveles
+LIMPIAR_CACHE: Limpiar Caché

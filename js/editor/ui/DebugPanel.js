@@ -1,6 +1,7 @@
 // --- Module for the Debug Panel ---
 
 import { estimateMateriaMemory } from '../../engine/MathUtils.js';
+import { networkMonitor } from '../../engine/NetworkMonitor.js';
 
 // Dependencies
 let dom;
@@ -77,6 +78,14 @@ export function update() {
         else if (cpuUsage > 50) cpuStyle = "background-color: #ffbb33;";
         else cpuStyle = "background-color: #00C851;";
     }
+
+    // Network Monitoring
+    const netStats = networkMonitor.getStats();
+    const currentKB = (netStats.currentSpeed / 1024).toFixed(1);
+    const totalMB = (netStats.totalDownloaded / 1048576).toFixed(2);
+    const netLimit = netStats.limitMB === Infinity ? "∞" : `${netStats.limitMB} MB`;
+    const netPercent = netStats.limitMB === Infinity ? 0 : Math.min(100, (netStats.totalDownloaded / 1048576 / netStats.limitMB) * 100);
+    const netStyle = netStats.isThrottling ? "background-color: #ff4444;" : "background-color: #0099ff;";
 
     // RAM Monitoring
     let ramInfo = "No soportado";
@@ -155,6 +164,10 @@ export function update() {
         <div class="debug-section">
             <h4>Rendimiento</h4>
             <pre>FPS: ${fps}\nDeltaTime: ${dtMs} ms\nCPU: <span>${cpuInfo}</span>\n<div class="ram-bar-container"><div class="ram-bar-fill" style="width: ${parseFloat(cpuInfo) || 0}%; ${cpuStyle}"></div></div>\nRAM Total: <span>${ramInfo}</span>\n<div class="ram-bar-container"><div class="ram-bar-fill" style="width: ${usagePercent}%; ${ramStyle}"></div></div>\nMotor: ${motorRamInfo} | Juego: ${gameRamInfo}</pre>
+        </div>
+        <div class="debug-section">
+            <h4>Red e Internet</h4>
+            <pre>Velocidad: ${currentKB} KB/s\nTotal: ${totalMB} MB / ${netLimit}\n<div class="ram-bar-container"><div class="ram-bar-fill" style="width: ${netPercent}%; ${netStyle}"></div></div></pre>
         </div>
         <div class="debug-section">
             <h4>Memoria por Materia</h4>

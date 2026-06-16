@@ -35,11 +35,48 @@ export function clearAssetCache(path) {
     }
 }
 
+/**
+ * Monitorización de red global.
+ */
+async function recordFetch(response, path = null) {
+    if (!response) return;
+    try {
+        const { networkMonitor } = await import('./NetworkMonitor.js');
+        const contentLength = response.headers.get('content-length');
+        if (contentLength) networkMonitor.recordDownload(parseInt(contentLength), path);
+    } catch (e) {}
+}
+
+export { recordFetch };
+
 export async function getURLForAssetPath(path, projectsDirHandle) {
     if (!path) return null;
 
     // --- Data, Blob, and HTTP URL Support ---
-    if (path.startsWith('data:') || path.startsWith('blob:') || path.startsWith('http')) {
+    if (path.startsWith('data:') || path.startsWith('blob:')) {
+        return path;
+    }
+
+    // --- Automatic Cache System for Remote Assets (HTTP/S) ---
+    if (path.startsWith('http')) {
+        try {
+            const cache = await caches.open('ce-asset-cache');
+            const cachedResponse = await cache.match(path);
+            if (cachedResponse) {
+                const blob = await cachedResponse.blob();
+                return URL.createObjectURL(blob);
+            }
+            // If not in cache, fetch and store
+            const response = await fetch(path);
+            if (response.ok) {
+                await recordFetch(response.clone(), path);
+                await cache.put(path, response.clone());
+                const blob = await response.blob();
+                return URL.createObjectURL(blob);
+            }
+        } catch (e) {
+            console.error("[Cache] Error gestionando caché remota:", e);
+        }
         return path;
     }
 
@@ -65,6 +102,26 @@ export async function getURLForAssetPath(path, projectsDirHandle) {
     // Create a new promise for this path
     const loadPromise = (async () => {
         try {
+            // --- Network Optimization Logic ---
+            const config = window.currentProjectConfig;
+            const { networkMonitor } = await import('./NetworkMonitor.js');
+
+            if (config && config.slowNetMode) {
+                // En modo red lenta, priorizamos archivos críticos o pequeños
+                const ext = path.split('.').pop().toLowerCase();
+                const criticalExts = ['ces', 'json', 'ceconfig', 'cescene'];
+
+                if (!criticalExts.includes(ext)) {
+                    // Si no es crítico, añadimos una pequeña espera para no saturar la red
+                    await new Promise(r => setTimeout(r, 100));
+                }
+            }
+
+            if (networkMonitor.isThrottling) {
+                // Si el límite se excedió, lanzamos error o esperamos mucho
+                throw new Error("Network limit reached. Throttling active.");
+            }
+
             const projectName = new URLSearchParams(window.location.search).get('project');
             const projectHandle = await effectiveHandle.getDirectoryHandle(projectName);
 

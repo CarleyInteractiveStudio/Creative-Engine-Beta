@@ -87,6 +87,14 @@ export async function saveProjectConfig(showAlert = true) {
         currentProjectConfig.minFps = parseInt(dom.settingsMinFps.value) || 30;
         currentProjectConfig.ramLimit = parseInt(dom.settingsRamLimit.value) || 2048;
         currentProjectConfig.cpuLimit = parseInt(dom.settingsCpuLimit.value) || 100;
+        currentProjectConfig.netLimit = parseInt(document.getElementById('settings-net-limit')?.value) || 0;
+        currentProjectConfig.slowNetMode = document.getElementById('settings-slow-net')?.checked || false;
+
+        // Aplicar límite al monitor de red
+        import('../../engine/NetworkMonitor.js').then(({ networkMonitor }) => {
+            networkMonitor.setLimit(currentProjectConfig.netLimit || Infinity);
+        });
+
         // Note: The mask type is saved via the AmbienteControlWindow, not here.
         currentProjectConfig.showEngineLogo = dom.settingsShowEngineLogo.checked;
         currentProjectConfig.keystore.pass = dom.settingsKeystorePass.value;
@@ -278,6 +286,21 @@ function setupEventListeners() {
             import('../../engine/CEEngine.js').then(CEEngine => {
                 CEEngine.optimize();
             });
+        });
+    }
+
+    const clearCacheBtn = document.getElementById('settings-clear-cache-btn');
+    if (clearCacheBtn) {
+        clearCacheBtn.addEventListener('click', async () => {
+            try {
+                const deleted = await caches.delete('ce-asset-cache');
+                if (deleted) {
+                    showNotification("Caché", "La caché de activos ha sido limpiada con éxito.");
+                    updateCacheStatus();
+                }
+            } catch (e) {
+                console.error("Error al limpiar caché:", e);
+            }
         });
     }
 
@@ -520,6 +543,17 @@ export function populateUI(config) {
     if (dom.settingsMinFps) dom.settingsMinFps.value = currentProjectConfig.minFps !== undefined ? currentProjectConfig.minFps : 30;
     if (dom.settingsRamLimit) dom.settingsRamLimit.value = currentProjectConfig.ramLimit || 2048;
     if (dom.settingsCpuLimit) dom.settingsCpuLimit.value = currentProjectConfig.cpuLimit || 100;
+
+    const netLimitEl = document.getElementById('settings-net-limit');
+    if (netLimitEl) netLimitEl.value = currentProjectConfig.netLimit || 0;
+
+    const slowNetEl = document.getElementById('settings-slow-net');
+    if (slowNetEl) slowNetEl.checked = !!currentProjectConfig.slowNetMode;
+
+    // Sincronizar monitor al cargar
+    import('../../engine/NetworkMonitor.js').then(({ networkMonitor }) => {
+        networkMonitor.setLimit(currentProjectConfig.netLimit || Infinity);
+    });
     if (dom.settingsShowEngineLogo) dom.settingsShowEngineLogo.checked = currentProjectConfig.showEngineLogo;
     if (dom.settingsKeystorePath) dom.settingsKeystorePath.value = currentProjectConfig.keystore.path;
 
@@ -529,6 +563,7 @@ export function populateUI(config) {
     }
 
     populateCameraList();
+    updateCacheStatus();
 
     dom.settingsLogoList.innerHTML = '';
     if (currentProjectConfig.splashLogos && currentProjectConfig.splashLogos.length > 0) {
@@ -650,4 +685,28 @@ function populateCameraList() {
 
         cameraList.appendChild(item);
     });
+}
+
+async function updateCacheStatus() {
+    const statusEl = document.getElementById('settings-cache-status');
+    if (!statusEl) return;
+
+    try {
+        const cache = await caches.open('ce-asset-cache');
+        const keys = await cache.keys();
+        let totalSize = 0;
+
+        for (const request of keys) {
+            const response = await cache.match(request);
+            if (response) {
+                const blob = await response.blob();
+                totalSize += blob.size;
+            }
+        }
+
+        const sizeMB = (totalSize / (1024 * 1024)).toFixed(2);
+        statusEl.textContent = `Caché: ${keys.length} archivos (${sizeMB} MB)`;
+    } catch (e) {
+        statusEl.textContent = "Caché: No disponible";
+    }
 }

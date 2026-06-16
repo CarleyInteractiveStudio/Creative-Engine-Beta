@@ -39,6 +39,10 @@ export async function listModels(provider, apiKey) {
 
     try {
         const response = await fetch(endpoint, { headers });
+        try {
+            const { recordFetch } = await import('../engine/AssetUtils.js');
+            recordFetch(response);
+        } catch(e) {}
         const data = await response.json();
 
         if (!response.ok || data.error) {
@@ -159,6 +163,10 @@ export async function callGenerativeAI(provider, modelName, apiKey, prompt, syst
             headers: headers,
             body: JSON.stringify(body),
         });
+        try {
+            const { recordFetch } = await import('../engine/AssetUtils.js');
+            recordFetch(response);
+        } catch(e) {}
 
         const data = await response.json();
 

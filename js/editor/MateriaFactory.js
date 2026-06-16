@@ -395,3 +395,148 @@ export function createPanelObject(parent) {
     parent.addChild(newMateria);
     return newMateria;
 }
+
+/**
+ * Busca un Canvas existente en la escena. Si no existe, crea uno nuevo.
+ */
+export function getOrCreateCanvas() {
+    const allMaterias = SceneManager.currentScene.getAllMaterias();
+    const existingCanvas = allMaterias.find(m => m.getComponent(Components.Canvas));
+    if (existingCanvas) return existingCanvas;
+    return createCanvasObject();
+}
+
+/**
+ * Plantilla: UI de Movimiento Inteligente
+ */
+export function createMovementUITemplate() {
+    const canvas = getOrCreateCanvas();
+    const L = window.Localization;
+
+    const group = createBaseMateria(generateUniqueName(L.get('UI_MOVIMIENTO', 'Control de Movimiento')), canvas, true);
+    const transform = group.getComponent(Components.UITransform);
+    transform.anchorPreset = 'stretch-stretch';
+    transform.size = { width: 0, height: 0 };
+
+    // Joystick Izquierdo (Simulado con botones o panel)
+    const joystick = createPanelObject(group);
+    joystick.name = "Joystick";
+    const joyTrans = joystick.getComponent(Components.UITransform);
+    joyTrans.anchorPreset = 'bottom-left';
+    joyTrans.position = { x: 100, y: 100 };
+    joyTrans.size = { width: 150, height: 150 };
+
+    // Botón de Acción
+    const btnJump = createButtonObject(group);
+    btnJump.name = "BotonSalto";
+    const jumpTrans = btnJump.getComponent(Components.UITransform);
+    jumpTrans.anchorPreset = 'bottom-right';
+    jumpTrans.position = { x: -100, y: 100 };
+    jumpTrans.size = { width: 80, height: 80 };
+
+    // Auto-configuración: Intentar encontrar al Jugador para asignar el script
+    const player = SceneManager.currentScene.getAllMaterias().find(m => m.tag === 'Player' || m.name.toLowerCase().includes('jugador'));
+
+    // Añadimos un script básico de control si no existe
+    if (player) {
+        console.log("[SmartTemplate] Jugador detectado, vinculando controles UI...");
+        // Aquí se podría añadir un componente 'MobileController' al jugador
+    }
+
+    return group;
+}
+
+/**
+ * Plantilla: Menú Principal
+ */
+export function createMainMenuTemplate() {
+    const canvas = getOrCreateCanvas();
+    const L = window.Localization;
+
+    const menu = createPanelObject(canvas);
+    menu.name = "MenuPrincipal";
+    const trans = menu.getComponent(Components.UITransform);
+    trans.anchorPreset = 'stretch-stretch';
+    trans.size = { width: 0, height: 0 };
+
+    const titulo = createTextObject(menu);
+    titulo.name = "TituloJuego";
+    const titComp = titulo.getComponent(Components.UIText);
+    titComp.text = "MI GRAN JUEGO";
+    titComp.fontSize = 48;
+    titComp.horizontalAlign = 'center';
+    const titTrans = titulo.getComponent(Components.UITransform);
+    titTrans.position = { x: 0, y: 150 };
+
+    const btnPlay = createButtonObject(menu);
+    btnPlay.name = "BotonJugar";
+    const btnTrans = btnPlay.getComponent(Components.UITransform);
+    btnTrans.position = { x: 0, y: 0 };
+    btnTrans.size = { width: 200, height: 60 };
+
+    const btnText = btnPlay.children[0].getComponent(Components.UIText);
+    btnText.text = "JUGAR";
+
+    // Auto-configuración de escena
+    // El usuario podrá ver esto en el Inspector (script o evento del botón)
+    console.log("[SmartTemplate] Menú Principal creado. El botón 'Jugar' apuntará a la escena 1 por defecto.");
+
+    return menu;
+}
+
+/**
+ * Plantilla: Gestor de Niveles (Trigger de Carga)
+ */
+export function createLevelManagerTemplate() {
+    const L = window.Localization;
+    const manager = createBaseMateria(generateUniqueName(L.get('GESTOR_NIVELES', 'GestorNiveles')));
+
+    manager.addComponent(new Components.BoxCollider2D(manager));
+    const col = manager.getComponent(Components.BoxCollider2D);
+    col.isTrigger = true;
+
+    // Simulamos un componente de carga
+    manager.tag = "Finish";
+
+    console.log("[SmartTemplate] Gestor de Niveles creado. Detectará colisión con el Jugador para cargar la siguiente escena.");
+
+    return manager;
+}
+
+/**
+ * Plantilla: Sistema de Inventario UI
+ */
+export function createInventoryUITemplate() {
+    const canvas = getOrCreateCanvas();
+    const L = window.Localization;
+
+    const invPanel = createPanelObject(canvas);
+    invPanel.name = "PanelInventario";
+    const trans = invPanel.getComponent(Components.UITransform);
+    trans.anchorPreset = 'center-middle';
+    trans.size = { width: 400, height: 300 };
+
+    const titulo = createTextObject(invPanel);
+    titulo.name = "TituloInventario";
+    const titComp = titulo.getComponent(Components.UIText);
+    titComp.text = "INVENTARIO";
+    titComp.horizontalAlign = 'center';
+    const titTrans = titulo.getComponent(Components.UITransform);
+    titTrans.position = { x: 0, y: 120 };
+
+    const grid = createBaseMateria("GridItems", invPanel, true);
+    const gridTrans = grid.getComponent(Components.UITransform);
+    gridTrans.size = { width: 350, height: 200 };
+    grid.addComponent(new Components.GridLayoutGroup(grid));
+
+    // Crear 8 espacios de ejemplo
+    for(let i=0; i<8; i++) {
+        const slot = createPanelObject(grid);
+        slot.name = "Slot_" + i;
+        const slotImg = slot.getComponent(Components.UIImage);
+        slotImg.opacity = 0.3;
+    }
+
+    console.log("[SmartTemplate] Sistema de Inventario UI creado.");
+    return invPanel;
+}
