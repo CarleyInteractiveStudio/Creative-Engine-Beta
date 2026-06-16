@@ -2854,6 +2854,7 @@ function drawTerrenoColliders() {
     if (!is3D) {
         ctx.translate(transform.x, transform.y);
         ctx.rotate(transform.rotation * Math.PI / 180);
+        ctx.scale(transform.scale.x, transform.scale.y);
     }
 
     ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
@@ -2963,7 +2964,8 @@ function drawTilemapColliders() {
                 ctx.closePath(); ctx.stroke();
             }
         } else {
-            ctx.strokeRect(rx - transform.x, ry - transform.y, rw, rh);
+            // In 2D, the context is already translated to transform.x, transform.y
+            ctx.strokeRect(rx, ry, rw, rh);
         }
     };
 
@@ -2971,6 +2973,7 @@ function drawTilemapColliders() {
     if (!is3D) {
         ctx.translate(transform.x, transform.y);
         ctx.rotate(transform.rotation * Math.PI / 180);
+        ctx.scale(transform.scale.x, transform.scale.y);
     }
 
     ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';

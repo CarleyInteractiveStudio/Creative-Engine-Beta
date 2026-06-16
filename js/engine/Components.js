@@ -4318,6 +4318,7 @@ export class Tilemap extends Leyes {
     }
 
     _dirtyCollider() {
+        if (!this.materia) return;
         const collider = this.materia.getComponent(TilemapCollider2D);
         if (collider) collider.isDirty = true;
     }

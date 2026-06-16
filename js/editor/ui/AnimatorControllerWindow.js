@@ -513,7 +513,7 @@ function updateStateInspector() {
     `;
 
     // Listeners for inspector
-    container.querySelector('#anim-state-name').onchange = (e) => {
+    container.querySelector('#anim-state-name').oninput = (e) => {
         const oldName = selectedState.name;
         const newName = e.target.value;
         if (!newName || newName === oldName) return;
@@ -533,6 +533,7 @@ function updateStateInspector() {
 
         selectedState.name = newName;
         renderAnimatorGraph();
+        populateStatesList();
     };
 
     container.querySelector('#anim-state-asset-btn').onclick = () => {
@@ -979,10 +980,15 @@ function setupEventListeners() {
         if (node) {
             const stateName = node.dataset.name;
             const state = currentControllerData.states.find(s => s.name === stateName);
-            const animData = JSON.parse(e.dataTransfer.getData('text/plain'));
-            if (animData.path && (animData.path.endsWith('.cea') || animData.path.endsWith('.ceanimclip'))) {
-                state.animationClip = animData.path;
-                renderAnimatorGraph();
+            try {
+                const animData = JSON.parse(e.dataTransfer.getData('text/plain'));
+                if (animData.path && (animData.path.endsWith('.cea') || animData.path.endsWith('.ceanimclip'))) {
+                    state.animationClip = animData.path;
+                    renderAnimatorGraph();
+                    if (selectedState === state) updateStateInspector();
+                }
+            } catch (err) {
+                console.error("[AnimatorController] Error parsing drop data:", err);
             }
         }
     });

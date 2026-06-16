@@ -5212,7 +5212,8 @@ export async function showAddComponentModal() {
 function extractFramesFromImage(imageUrl, cols, rows) {
     return new Promise((resolve, reject) => {
         const img = new Image();
-        img.crossOrigin = "Anonymous";
+        // Use anonymous for blob URLs and local files to avoid tainted canvas issues
+        img.crossOrigin = "anonymous";
         img.src = imageUrl;
 
         img.onload = () => {
@@ -5311,6 +5312,7 @@ async function renderCeSpriteInspector(content, dirHandle, assetPath) {
 }
 function openAnimationCreatorModal(spriteAsset, sourceImageUrl) {
     const modal = dom.animationFromSpriteModal;
+    if (!modal) return;
     const gallery = dom.animSpriteSelectionGallery;
     const timeline = dom.animSpriteTimeline;
     const createBtn = dom.animSpriteCreateBtn;
@@ -5322,6 +5324,7 @@ function openAnimationCreatorModal(spriteAsset, sourceImageUrl) {
     let selectedFrames = [];
 
     const sourceImage = new Image();
+    sourceImage.crossOrigin = "anonymous";
     sourceImage.onload = () => {
         // Populate the selection gallery
         for (const spriteName in spriteAsset.sprites) {

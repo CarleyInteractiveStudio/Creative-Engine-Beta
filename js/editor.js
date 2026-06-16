@@ -1129,10 +1129,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentProjectConfig) return;
         const is3D = (currentProjectConfig.projectType !== '2d') && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
 
-        // RAM OPTIMIZATION: Clear 3D cache if we are in strict 2D mode
+        // RAM OPTIMIZATION: Completely dispose of 3D engine if we are in strict 2D mode
         if (currentProjectConfig.projectType === '2d') {
-            if (renderer3D) renderer3D.clearCache();
-            if (gameRenderer3D) gameRenderer3D.clearCache();
+            console.log("[Engine] 2D project detected. Disposing of 3D renderers to save RAM.");
+            if (renderer3D) renderer3D.dispose();
+            if (gameRenderer3D) gameRenderer3D.dispose();
+        } else {
+            // If we are in 3D mode but canvases were hidden/disposed, we need to show them
+            if (dom.sceneCanvas3d) dom.sceneCanvas3d.style.display = 'block';
+            if (dom.gameCanvas3d) dom.gameCanvas3d.style.display = 'block';
         }
 
         // Hide toggle for strict 2D projects
@@ -1145,19 +1150,16 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.sceneCanvas.style.zIndex = is3D ? '2' : '1';
         }
         if (dom.sceneCanvas3d) {
-            dom.sceneCanvas3d.style.display = currentProjectConfig.projectType === '2d' ? 'none' : 'block';
             dom.sceneCanvas3d.style.pointerEvents = is3D ? 'all' : 'none';
             dom.sceneCanvas3d.style.zIndex = is3D ? '1' : '2';
         }
 
         if (dom.gameCanvas) {
             // In game, 2D handles UI and 3D handles world.
-            // Clicks should go to 3D for picking or 2D for UI.
             dom.gameCanvas.style.pointerEvents = is3D ? 'none' : 'all';
             dom.gameCanvas.style.zIndex = is3D ? '2' : '1';
         }
         if (dom.gameCanvas3d) {
-            dom.gameCanvas3d.style.display = currentProjectConfig.projectType === '2d' ? 'none' : 'block';
             dom.gameCanvas3d.style.pointerEvents = is3D ? 'all' : 'none';
             dom.gameCanvas3d.style.zIndex = is3D ? '1' : '2';
         }
@@ -1426,6 +1428,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     runChecksAndPlay = async function() {
+        console.log("[Editor] Inicia runChecksAndPlay...");
         try {
             if (!isEditorReady) {
                 showNotificationDialog(
@@ -1560,12 +1563,16 @@ document.addEventListener('DOMContentLoaded', () => {
             // Cambiar a la pestana de la consola para que los errores sean visibles
             dom.assetsPanel.querySelector('[data-tab="console-content"]').click();
         } else {
-            console.log("[Build] Build exitoso. Todos los scripts se compilaron sin errores.");
+            console.log("[Build] Build exitoso. Todos los scripts se compilaron sin errores. Iniciando juego...");
             // 4. Iniciar el juego. La logica ahora esta en startGame.
             if (typeof originalStartGame === 'function') {
-                originalStartGame();
+                await originalStartGame();
             } else {
                 console.error("[Build] Error fatal: originalStartGame no está definido.");
+                // Intentar recuperar startGame si falló la captura
+                if (typeof startGame === 'function' && startGame !== runChecksAndPlay) {
+                     await startGame();
+                }
             }
         }
         } catch (e) {
@@ -2259,11 +2266,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
 
-        // Ensure game canvas is always resized correctly when active
-        if (activeView === 'game-content' && gameRenderer) {
-            gameRenderer.resize();
-        }
-
         const is3D = currentProjectConfig.projectType !== '2d' && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
 
         if (isGameRunning && !isGamePaused) {
@@ -2281,48 +2283,46 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (is3D) {
-                // 3D background, 2D UI overlay
-                if (renderer3D) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1 });
-                if (renderer) updateScene(renderer, false);
-
-                if (gameRenderer3D) {
-                    gameRenderer3D.resize();
-                    const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth)[0];
-                    if (mainCam) gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1, isGameView: true });
-                }
-                if (gameRenderer) {
-                    gameRenderer.resize();
-                    updateScene(gameRenderer, true);
+                // Hybrid/3D: Only render views that are visible
+                if (activeView === 'scene-content') {
+                    if (renderer3D && renderer3D.initialized) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1 });
+                    if (renderer) updateScene(renderer, false);
+                } else if (activeView === 'game-content') {
+                    if (gameRenderer3D) {
+                        const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth)[0];
+                        if (mainCam) {
+                            if (!gameRenderer3D.initialized) gameRenderer3D.init();
+                            gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1, isGameView: true });
+                        }
+                    }
+                    if (gameRenderer) updateScene(gameRenderer, true);
                 }
             } else {
-                if (renderer) updateScene(renderer, false);
-                if (gameRenderer) {
-                    gameRenderer.resize();
-                    updateScene(gameRenderer, true);
-                }
+                // 2D only: Update the active view
+                if (activeView === 'scene-content' && renderer) updateScene(renderer, false);
+                else if (activeView === 'game-content' && gameRenderer) updateScene(gameRenderer, true);
             }
         } else {
+            // Editor mode (not running): Only update visible view
             if (activeView === 'scene-content') {
                 if (is3D) {
-                    if (renderer3D) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1 });
-                    if (renderer) updateScene(renderer, false);
-                } else {
-                    if (renderer) updateScene(renderer, false);
+                    if (renderer3D) {
+                        if (!renderer3D.initialized) renderer3D.init();
+                        renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1 });
+                    }
                 }
+                if (renderer) updateScene(renderer, false);
             } else if (activeView === 'game-content') {
                 if (is3D) {
                     if (gameRenderer3D) {
-                        gameRenderer3D.resize();
                         const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth)[0];
-                        if (mainCam) gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1, isGameView: true });
+                        if (mainCam) {
+                            if (!gameRenderer3D.initialized) gameRenderer3D.init();
+                            gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1, isGameView: true });
+                        }
                     }
-                    if (gameRenderer) {
-                        gameRenderer.resize();
-                        updateScene(gameRenderer, true);
-                    }
-                } else {
-                    if (gameRenderer) updateScene(gameRenderer, true);
                 }
+                if (gameRenderer) updateScene(gameRenderer, true);
             }
         }
 

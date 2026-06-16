@@ -234,7 +234,6 @@ ME_GUSTAS: Me Gusta
 CREAR_CARPETA: Crear Carpeta
 NOMBRE_CARPETA_PROMPT: Introduce el nombre de la nueva carpeta:
 CREAR_CONTROLADOR_ANIMACION: Crear Controlador de Animación
-CREAR_CONTROLADOR_ANIMACION: Crear Controlador de Animação
 NOMBRE_CONTROLADOR_PROMPT: Introduce el nombre del nuevo controlador (.ceanim):
 CREAR_PREFAB: Crear Prefab
 NOMBRE_PREFAB_PROMPT: Introduce el nombre del nuevo prefab (.ceprefab):
@@ -290,8 +289,8 @@ INSPECTOR: Inspector
 NAVEGADOR: Navegador
 CONSOLA: Consola
 DEPURADOR: Depurador
-EDITOR_ANIMACION: Animación
-CONTROLADOR_ANIMACION: Animador
+EDITOR_ANIMACION: Editor de Animaciones
+CONTROLADOR_ANIMACION: Controlador de Animación
 PALETA_TILES: Tiles
 EDITOR_SPRITES: Sprites
 CONTROL_AMBIENTE: Ambiente
@@ -891,8 +890,8 @@ INSPECTOR: Inspector
 NAVEGADOR: Browser
 CONSOLA: Console
 DEPURADOR: Debugger
-EDITOR_ANIMACION: Animation
-CONTROLADOR_ANIMACION: Animator
+EDITOR_ANIMACION: Animation Editor
+CONTROLADOR_ANIMACION: Animation Controller
 PALETA_TILES: Tiles
 EDITOR_SPRITES: Sprites
 CONTROL_AMBIENTE: Environment
@@ -1434,7 +1433,7 @@ INSPECTOR: Inspetor
 NAVEGADOR: Navegador
 CONSOLA: Console
 DEPURADOR: Depurador
-EDITOR_ANIMACION: Editor de Animação
+EDITOR_ANIMACION: Editor de Animações
 CONTROLADOR_ANIMACION: Controlador de Animação
 PALETA_TILES: Editor de Paleta de Tiles
 EDITOR_SPRITES: Editor de Sprites
@@ -1908,7 +1907,7 @@ INSPECTOR: Инспектор
 NAVEGADOR: Браузер
 CONSOLA: Консоль
 DEPURADOR: Отладчик
-EDITOR_ANIMACION: Редактор анимации
+EDITOR_ANIMACION: Редактор анимаций
 CONTROLADOR_ANIMACION: Контроллер анимации
 PALETA_TILES: Редактор палитры тайлов
 EDITOR_SPRITES: Редактор спрайтов
