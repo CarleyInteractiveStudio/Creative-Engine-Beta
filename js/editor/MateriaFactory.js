@@ -71,12 +71,14 @@ export function createImageObject(parent) {
 
 // --- 3D Objects ---
 
-export async function createCubeObject(parent = null) {
+export async function createCubeObject(parent = null, color = '#ffffff') {
     const C3D = await ensure3D();
     const newMateria = createBaseMateria(generateUniqueName('Cubo'), parent);
     const transform = newMateria.getComponent(Components.Transform);
     if (transform) transform.localScale = { x: 100, y: 100, z: 100 };
-    newMateria.addComponent(new C3D.MeshRenderer3D(newMateria));
+    const renderer = new C3D.MeshRenderer3D(newMateria);
+    renderer.color = color;
+    newMateria.addComponent(renderer);
     return newMateria;
 }
 
@@ -663,6 +665,261 @@ export function createLevelManagerTemplate() {
 /**
  * Plantilla: Sistema de Inventario UI
  */
+export async function createDefaultCharacter(parent = null) {
+    const C3D = await ensure3D();
+    const root = createBaseMateria('Personaje Humanoide', parent);
+    const transform = root.getComponent(Components.Transform);
+
+    // Position root so feet are at ground
+    transform.x = 0;
+    transform.y = -90; // Root at waist-ish height
+    transform.z = 0;
+
+    // 1. Hierarchal Bone Structure (Skeleton)
+    // Root is hips
+    const hip = createBaseMateria('Cadera', root);
+    hip.getComponent(Components.Transform).localPosition = { x: 0, y: 0, z: 0 };
+
+    const torso = createBaseMateria('Torso', hip);
+    torso.getComponent(Components.Transform).localPosition = { x: 0, y: 30, z: 0 };
+
+    const head = createBaseMateria('Cabeza', torso);
+    head.getComponent(Components.Transform).localPosition = { x: 0, y: 40, z: 0 };
+
+    const eyeL = createBaseMateria('Ojo_I', head);
+    eyeL.getComponent(Components.Transform).localPosition = { x: -8, y: 5, z: 12 };
+    const eyeR = createBaseMateria('Ojo_D', head);
+    eyeR.getComponent(Components.Transform).localPosition = { x: 8, y: 5, z: 12 };
+
+    const armL = createBaseMateria('Brazo_I', torso);
+    armL.getComponent(Components.Transform).localPosition = { x: -30, y: 0, z: 0 };
+    const handL = createBaseMateria('Mano_I', armL);
+    handL.getComponent(Components.Transform).localPosition = { x: 0, y: -40, z: 0 };
+
+    const armR = createBaseMateria('Brazo_D', torso);
+    armR.getComponent(Components.Transform).localPosition = { x: 30, y: 0, z: 0 };
+    const handR = createBaseMateria('Mano_D', armR);
+    handR.getComponent(Components.Transform).localPosition = { x: 0, y: -40, z: 0 };
+
+    const legL = createBaseMateria('Pierna_I', hip);
+    legL.getComponent(Components.Transform).localPosition = { x: -15, y: -10, z: 0 };
+    const footL = createBaseMateria('Pie_I', legL);
+    footL.getComponent(Components.Transform).localPosition = { x: 0, y: -80, z: 0 };
+
+    const legR = createBaseMateria('Pierna_D', hip);
+    legR.getComponent(Components.Transform).localPosition = { x: 15, y: -10, z: 0 };
+    const footR = createBaseMateria('Pie_D', legR);
+    footR.getComponent(Components.Transform).localPosition = { x: 0, y: -80, z: 0 };
+
+    // Joint IDs for weights
+    const jointsOrder = [hip, torso, head, eyeL, eyeR, armL, handL, armR, handR, legL, footL, legR, footR];
+    const jointIds = jointsOrder.map(m => m.id);
+
+    // 2. Build Multi-Part Mesh
+    const meshData = { positions: [], joints: [], weights: [], indices: [] };
+
+    const addBoxToMesh = (pos, size, boneIdx) => {
+        const hw = size.x / 2; const hh = size.y / 2; const hd = size.z / 2;
+        const startIndex = meshData.positions.length / 3;
+        // 8 vertices for a box
+        const boxVerts = [
+            -hw, -hh, -hd,  hw, -hh, -hd,  hw,  hh, -hd, -hw,  hh, -hd,
+            -hw, -hh,  hd,  hw, -hh,  hd,  hw,  hh,  hd, -hw,  hh,  hd
+        ];
+        for(let i=0; i<boxVerts.length; i+=3) {
+            meshData.positions.push(boxVerts[i] + pos.x, boxVerts[i+1] + pos.y, boxVerts[i+2] + pos.z);
+            meshData.joints.push(boneIdx, 0, 0, 0);
+            meshData.weights.push(1, 0, 0, 0);
+        }
+        const boxIndices = [
+            0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7, // front/back
+            0, 1, 5, 0, 5, 4, 2, 3, 7, 2, 7, 6, // bottom/top
+            0, 4, 7, 0, 7, 3, 1, 2, 6, 1, 6, 5  // left/right
+        ];
+        boxIndices.forEach(idx => meshData.indices.push(idx + startIndex));
+    };
+
+    // Construct the body parts at bind-pose relative to root
+    // In CE, -Y is UP. So Head has negative Y, Feet have positive Y.
+    addBoxToMesh({x:0, y:0, z:0}, {x:40, y:30, z:25}, 0); // Pelvis (Hip)
+    addBoxToMesh({x:0, y:-30, z:0}, {x:45, y:40, z:30}, 1); // Torso
+    addBoxToMesh({x:0, y:-70, z:0}, {x:25, y:25, z:25}, 2); // Head
+    addBoxToMesh({x:-8, y:-75, z:12}, {x:6, y:6, z:6}, 3); // Eye L
+    addBoxToMesh({x:8, y:-75, z:12}, {x:6, y:6, z:6}, 4); // Eye R
+    addBoxToMesh({x:-35, y:-30, z:0}, {x:15, y:40, z:15}, 5); // Arm L
+    addBoxToMesh({x:-35, y:10, z:0}, {x:12, y:15, z:15}, 6); // Hand L
+    addBoxToMesh({x:35, y:-30, z:0}, {x:15, y:40, z:15}, 7); // Arm R
+    addBoxToMesh({x:35, y:10, z:0}, {x:12, y:15, z:15}, 8); // Hand R
+    addBoxToMesh({x:-15, y:40, z:0}, {x:18, y:50, z:18}, 9); // Leg L
+    addBoxToMesh({x:-15, y:90, z:5}, {x:20, y:12, z:30}, 10); // Foot L
+    addBoxToMesh({x:15, y:40, z:0}, {x:18, y:50, z:18}, 11); // Leg R
+    addBoxToMesh({x:15, y:90, z:5}, {x:20, y:12, z:30}, 12); // Foot R
+
+    const renderer = new C3D.SkinnedMeshRenderer3D(root);
+    renderer.color = '#ffdbac';
+
+    if (window._Renderer3D && window._Renderer3D.gl) {
+        const gl = window._Renderer3D.gl;
+        renderer.buffers = {
+            positions: gl.createBuffer(),
+            indices: gl.createBuffer(),
+            joints: gl.createBuffer(),
+            weights: gl.createBuffer()
+        };
+        gl.bindBuffer(gl.ARRAY_BUFFER, renderer.buffers.positions);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(meshData.positions), gl.DYNAMIC_DRAW);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, renderer.buffers.indices);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(meshData.indices), gl.STATIC_DRAW);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, renderer.buffers.joints);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(meshData.joints), gl.STATIC_DRAW);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, renderer.buffers.weights);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(meshData.weights), gl.STATIC_DRAW);
+
+        renderer.indexCount = meshData.indices.length;
+        renderer.skeleton = { joints: jointIds, inverseBindMatrices: new Float32Array(jointIds.length * 16) };
+        for(let i=0; i<jointIds.length; i++) renderer.skeleton.inverseBindMatrices.set([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1], i*16);
+
+        renderer.cpuPositions = new Float32Array(meshData.positions);
+        renderer.isLoaded = true;
+    }
+    root.addComponent(renderer);
+
+    // 3. Component Systems
+    root.addComponent(new C3D.Rigidbody3D(root));
+    const rb = root.getComponent(C3D.Rigidbody3D);
+    if(rb) rb.drag = 0.1;
+
+    root.addComponent(new C3D.BoxCollider3D(root));
+    const col = root.getComponent(C3D.BoxCollider3D);
+    if(col) col.size = { x: 50, y: 180, z: 50 };
+
+    root.addComponent(new C3D.HumanoidPhysics3D(root));
+    root.addComponent(new C3D.ThirdPersonController3D(root));
+    root.addComponent(new C3D.HealthController3D(root));
+    root.addComponent(new C3D.MovementControl3D(root));
+
+    // Register bones in HumanoidPhysics3D
+    const hp = root.getComponent(C3D.HumanoidPhysics3D);
+    if(hp) {
+        hp.leftLegChain = [hip, legL, footL];
+        hp.rightLegChain = [hip, legR, footR];
+    }
+
+    return root;
+}
+
+export async function createTestCircuit(parent = null) {
+    const root = createBaseMateria('Pequeña_Ciudad', parent);
+    const L = window.Localization;
+
+    // 1. Foundation: Ground and Streets
+    const ground = await createPlane3DObject(root);
+    ground.name = "Terreno_Base";
+    ground.getComponent(Components.Transform).localScale = { x: 8000, y: 1, z: 8000 };
+    const groundRenderer = ground.getComponent(window.Components3D.MeshRenderer3D);
+    if (groundRenderer) groundRenderer.color = '#1a3c1a'; // Dark green grass
+
+    const mainStreet = await createCubeObject(root, '#222222');
+    mainStreet.name = "Calle_Principal";
+    const tStreet = mainStreet.getComponent(Components.Transform);
+    tStreet.localPosition = { x: 0, y: -2, z: 0 };
+    tStreet.localScale = { x: 600, y: 5, z: 8000 };
+
+    const crossStreet = await createCubeObject(root, '#222222');
+    crossStreet.name = "Calle_Transversal";
+    const tCross = crossStreet.getComponent(Components.Transform);
+    tCross.localPosition = { x: 0, y: -2, z: 0 };
+    tCross.localScale = { x: 8000, y: 5, z: 6000 };
+
+    // 2. City Center / Plaza
+    const plaza = createBaseMateria('Plaza_Central', root);
+    const plazaFloor = await createCubeObject(plaza, '#444444');
+    plazaFloor.getComponent(Components.Transform).localScale = { x: 1000, y: 8, z: 1000 };
+    plazaFloor.getComponent(Components.Transform).localPosition = { x: 0, y: -4, z: 0 };
+
+    const fountain = await createSphereObject(plaza);
+    fountain.name = "Fuente";
+    const tFount = fountain.getComponent(Components.Transform);
+    tFount.localPosition = { x: 0, y: -50, z: 0 };
+    tFount.localScale = { x: 80, y: 80, z: 80 };
+    fountain.getComponent(window.Components3D.MeshRenderer3D).color = '#00aaff';
+
+    // 3. Buildings Procedural Generation
+    const buildBuilding = async (name, pos, size, color, p) => {
+        const building = await createCubeObject(p, color);
+        building.name = name;
+        const t = building.getComponent(Components.Transform);
+        t.localPosition = { x: pos.x, y: -size.y / 2, z: pos.z };
+        t.localScale = size;
+
+        // Add roof details or windows if we wanted to be fancy, but keep it simple for now
+        const roof = await createCubeObject(building, '#333333');
+        roof.name = "Techo";
+        const tr = roof.getComponent(Components.Transform);
+        tr.localPosition = { x: 0, y: -size.y/2 - 2, z: 0 };
+        tr.localScale = { x: 0.9, y: 0.05, z: 0.9 }; // Local scale relative to parent
+    };
+
+    const buildingContainer = createBaseMateria('Edificios', root);
+    const bConfigs = [
+        { name: 'Rascacielos_A', pos: { x: 600, z: 600 }, size: { x: 400, y: 1500, z: 400 }, color: '#556677' },
+        { name: 'Edificio_Oficinas', pos: { x: -600, z: 600 }, size: { x: 400, y: 800, z: 400 }, color: '#778899' },
+        { name: 'Apartamentos_1', pos: { x: 600, z: -600 }, size: { x: 400, y: 600, z: 400 }, color: '#aa8877' },
+        { name: 'Apartamentos_2', pos: { x: -600, z: -600 }, size: { x: 400, y: 600, z: 400 }, color: '#aa8877' },
+
+        { name: 'Tienda_1', pos: { x: 1200, z: 0 }, size: { x: 300, y: 200, z: 500 }, color: '#ccaa33' },
+        { name: 'Tienda_2', pos: { x: -1200, z: 0 }, size: { x: 300, y: 200, z: 500 }, color: '#33aa33' },
+
+        { name: 'Casa_Suburbio_1', pos: { x: 2000, z: 1500 }, size: { x: 250, y: 150, z: 250 }, color: '#ffffff' },
+        { name: 'Casa_Suburbio_2', pos: { x: 2300, z: 1500 }, size: { x: 250, y: 150, z: 250 }, color: '#ffffff' },
+        { name: 'Casa_Suburbio_3', pos: { x: 2600, z: 1500 }, size: { x: 250, y: 150, z: 250 }, color: '#ffffff' }
+    ];
+
+    for (const conf of bConfigs) {
+        await buildBuilding(conf.name, conf.pos, conf.size, conf.color, buildingContainer);
+    }
+
+    // 4. Park Area
+    const park = createBaseMateria('Parque', root);
+    const buildTree = async (pos, p) => {
+        const tree = createBaseMateria('Arbol', p);
+        const trunk = await createCubeObject(tree, '#442211');
+        trunk.getComponent(Components.Transform).localPosition = { x: pos.x, y: -40, z: pos.z };
+        trunk.getComponent(Components.Transform).localScale = { x: 20, y: 80, z: 20 };
+
+        const leaves = await createSphereObject(tree);
+        leaves.getComponent(window.Components3D.MeshRenderer3D).color = '#228822';
+        leaves.getComponent(Components.Transform).localPosition = { x: pos.x, y: -100, z: pos.z };
+        leaves.getComponent(Components.Transform).localScale = { x: 100, y: 100, z: 100 };
+    };
+
+    for(let i=0; i<8; i++) {
+        const ang = (i / 8) * Math.PI * 2;
+        await buildTree({ x: Math.cos(ang) * 1500, z: Math.sin(ang) * 1500 + 2000 }, park);
+    }
+
+    // 5. Training Elements (Stairs and Jumps)
+    const training = createBaseMateria('Zona_Entrenamiento', root);
+    training.getComponent(Components.Transform).localPosition = { x: 0, y: 0, z: -2500 };
+
+    for(let i=0; i<15; i++) {
+        const step = await createCubeObject(training, '#555555');
+        const t = step.getComponent(Components.Transform);
+        t.localPosition = { x: 0, y: -i * 15, z: i * 35 };
+        t.localScale = { x: 400, y: 15, z: 35 };
+    }
+
+    const jumpPad = await createCubeObject(training, '#0099ff');
+    jumpPad.name = "Super_Salto";
+    jumpPad.getComponent(Components.Transform).localPosition = { x: 500, y: -5, z: 500 };
+    jumpPad.getComponent(Components.Transform).localScale = { x: 200, y: 10, z: 200 };
+
+    return root;
+}
+
 export function createInventoryUITemplate() {
     const canvas = getOrCreateCanvas();
     const L = window.Localization;

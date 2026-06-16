@@ -99,7 +99,51 @@ export class PhysicsSystem {
 
         for (let s = 0; s < SUB_STEPS; s++) {
             this._step(subDeltaTime);
+            this._step3D(subDeltaTime);
             this._resolveConstraints(subDeltaTime);
+        }
+    }
+
+    _step3D(deltaTime) {
+        const allMaterias = this.scene.getAllMaterias();
+        const collidables = allMaterias.filter(m => m.isActive && (m.getComponent(window.Components3D?.BoxCollider3D) || m.getComponent(window.Components3D?.SphereCollider3D)));
+
+        for (let i = 0; i < collidables.length; i++) {
+            const m = collidables[i];
+            const rb = m.getComponent(window.Components3D?.Rigidbody3D);
+            const transform = m.getComponent(Components.Transform);
+
+            if (rb && !rb.isKinematic) {
+                if (rb.useGravity) rb.velocity.y += this.gravity.y * 10 * deltaTime; // Simplified 3D gravity
+
+                // Drag
+                rb.velocity.x *= (1.0 - rb.drag);
+                rb.velocity.y *= (1.0 - rb.drag);
+                rb.velocity.z *= (1.0 - rb.drag);
+
+                transform.x += rb.velocity.x * deltaTime;
+                transform.y += rb.velocity.y * deltaTime;
+                if (transform.z !== undefined) transform.z += rb.velocity.z * deltaTime;
+            }
+
+            // Very basic 3D collision check for deformation
+            for (let j = i + 1; j < collidables.length; j++) {
+                const other = collidables[j];
+                const t1 = transform;
+                const t2 = other.getComponent(Components.Transform);
+
+                const dist = Math.hypot(t1.x - t2.x, t1.y - t2.y, (t1.z || 0) - (t2.z || 0));
+                if (dist < 100) { // Simple overlap
+                    const hitPoint = { x: (t1.x + t2.x)/2, y: (t1.y + t2.y)/2, z: ((t1.z||0) + (t2.z||0))/2 };
+                    const force = 50; // Arbitrary
+
+                    const dm1 = m.getComponent(window.Components3D?.DeformableMesh3D);
+                    if (dm1) dm1.onCollision(hitPoint, force);
+
+                    const dm2 = other.getComponent(window.Components3D?.DeformableMesh3D);
+                    if (dm2) dm2.onCollision(hitPoint, force);
+                }
+            }
         }
     }
 
@@ -2140,6 +2184,75 @@ export class PhysicsSystem {
             point: { x: origin.x + direction.x * closestT, y: origin.y + direction.y * closestT },
             normal: closestNormal
         };
+    }
+
+    /**
+     * Lanza un rayo en el espacio 3D y devuelve información sobre el primer objeto que impacta.
+     * @param {{x: number, y: number, z: number}} origin
+     * @param {{x: number, y: number, z: number}} direction
+     * @param {number} maxDistance
+     */
+    raycast3D(origin, direction, maxDistance = Infinity) {
+        const glm = window.glMatrix;
+        if (!glm) return null;
+
+        let closestHit = null;
+        let minDistance = maxDistance;
+
+        const collidables = this.scene.getAllMaterias().filter(m =>
+            m.isActive && (m.getComponent(window.Components3D?.MeshRenderer3D) || m.getComponent(window.Components3D?.SkinnedMeshRenderer3D))
+        );
+
+        for (const materia of collidables) {
+            const transform = materia.getComponent(Components.Transform);
+            const renderer = materia.getComponent(window.Components3D.MeshRenderer3D) || materia.getComponent(window.Components3D.SkinnedMeshRenderer3D);
+
+            // Simplified: Treat all 3D objects as AABBs for raycasting
+            const worldMatrix = transform.worldMatrix;
+            const invWorldMatrix = glm.mat4.create();
+            glm.mat4.invert(invWorldMatrix, worldMatrix);
+
+            // Transform ray to local space
+            const localOrigin = glm.vec3.transformMat4(glm.vec3.create(), [origin.x, origin.y, origin.z], invWorldMatrix);
+            const localRayEnd = glm.vec3.transformMat4(glm.vec3.create(), [origin.x + direction.x * 1000, origin.y + direction.y * 1000, origin.z + direction.z * 1000], invWorldMatrix);
+            const localDir = glm.vec3.subtract(glm.vec3.create(), localRayEnd, localOrigin);
+            glm.vec3.normalize(localDir, localDir);
+
+            // Ray vs Unit Cube (-0.5 to 0.5)
+            let tmin = -Infinity, tmax = Infinity;
+            for (let i = 0; i < 3; i++) {
+                if (localDir[i] !== 0) {
+                    let t1 = (-0.5 - localOrigin[i]) / localDir[i];
+                    let t2 = (0.5 - localOrigin[i]) / localDir[i];
+                    tmin = Math.max(tmin, Math.min(t1, t2));
+                    tmax = Math.min(tmax, Math.max(t1, t2));
+                } else if (localOrigin[i] < -0.5 || localOrigin[i] > 0.5) {
+                    tmax = -1; break;
+                }
+            }
+
+            if (tmax >= tmin && tmax >= 0) {
+                const distance = tmin > 0 ? tmin : 0;
+                const worldScale = glm.vec3.length([worldMatrix[0], worldMatrix[1], worldMatrix[2]]);
+                const worldDistance = distance * worldScale;
+
+                if (worldDistance < minDistance) {
+                    minDistance = worldDistance;
+                    const hitPoint = {
+                        x: origin.x + direction.x * worldDistance,
+                        y: origin.y + direction.y * worldDistance,
+                        z: origin.z + direction.z * worldDistance
+                    };
+                    closestHit = {
+                        materia,
+                        point: hitPoint,
+                        distance: worldDistance,
+                        localPoint: [localOrigin[0] + localDir[0] * distance, localOrigin[1] + localDir[1] * distance, localOrigin[2] + localDir[2] * distance]
+                    };
+                }
+            }
+        }
+        return closestHit;
     }
 
     _rayVsSegment(origin, direction, p1, p2) {

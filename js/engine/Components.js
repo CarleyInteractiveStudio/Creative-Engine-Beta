@@ -88,6 +88,12 @@ const componentAliases = {
     'MeshRenderer3D': 'renderizadorDeMalla3D',
     'SkinnedMeshRenderer3D': 'renderizadorDeMallaConHuesos3D',
     'Animator3D': 'animador3D',
+    'HumanoidPhysics3D': 'fisicaHumanoide3D',
+    'MovementControl3D': 'controlMovimiento3D',
+    'HealthController3D': 'controladorSalud3D',
+    'ThirdPersonController3D': 'controladorTerceraPersona3D',
+    'CameraControl3D': 'controlCamara3D',
+    'DeformableMesh3D': 'mallaDeformable3D',
 };
 
 
@@ -417,6 +423,24 @@ export class CreativeScriptBehavior {
     get animacion3D() { return this.obtenerComponente('Animator3D') || this._missingComponentProxy('animacion3D', 'Animator3D'); }
     get animador3D() { return this.animacion3D; }
     get animator3D() { return this.animacion3D; }
+
+    get fisicaHumanoide3D() { return this.obtenerComponente('HumanoidPhysics3D') || this._missingComponentProxy('fisicaHumanoide3D', 'HumanoidPhysics3D'); }
+    get humanoidPhysics3D() { return this.fisicaHumanoide3D; }
+
+    get controlMovimiento3D() { return this.obtenerComponente('MovementControl3D') || this._missingComponentProxy('controlMovimiento3D', 'MovementControl3D'); }
+    get movementControl3D() { return this.controlMovimiento3D; }
+
+    get controladorSalud3D() { return this.obtenerComponente('HealthController3D') || this._missingComponentProxy('controladorSalud3D', 'HealthController3D'); }
+    get healthController3D() { return this.controladorSalud3D; }
+
+    get controladorTerceraPersona3D() { return this.obtenerComponente('ThirdPersonController3D') || this._missingComponentProxy('controladorTerceraPersona3D', 'ThirdPersonController3D'); }
+    get thirdPersonController3D() { return this.controladorTerceraPersona3D; }
+
+    get controlCamara3D() { return this.obtenerComponente('CameraControl3D') || this._missingComponentProxy('controlCamara3D', 'CameraControl3D'); }
+    get cameraControl3D() { return this.controlCamara3D; }
+
+    get mallaDeformable3D() { return this.obtenerComponente('DeformableMesh3D') || this._missingComponentProxy('mallaDeformable3D', 'DeformableMesh3D'); }
+    get deformableMesh3D() { return this.mallaDeformable3D; }
 
     get vida() { return this.obtenerComponente('Health') || this._missingComponentProxy('vida', 'Health'); }
     get salud() { return this.vida; }

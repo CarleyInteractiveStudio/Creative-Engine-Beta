@@ -18,6 +18,8 @@ import {
     createLineColliderObject, createProgressBarObject, createCombatantObject, createScrollViewObject,
     createCubeObject, createSphereObject, createCapsule3DObject, createPlane3DObject, createTriangle3DObject,
     createDirectionalLight3D, createPointLight3D, createSpotLight3D,
+    createDefaultCharacter,
+    createTestCircuit,
     createMovementUITemplate, createMainMenuTemplate, createLevelManagerTemplate,
     createInventoryUITemplate
 } from '../MateriaFactory.js';
@@ -187,6 +189,20 @@ export function setCreationPosition(pos) {
     creationPosition = pos;
 }
 
+function applyCreationPosition(m) {
+    if (!m || !creationPosition) return;
+    const transform = m.getComponent(Components.Transform);
+    const uiTransform = m.getComponent(Components.UITransform);
+    if (transform) {
+        transform.x = creationPosition.x;
+        transform.y = creationPosition.y;
+        if (creationPosition.z !== undefined) transform.z = creationPosition.z;
+    } else if (uiTransform) {
+        uiTransform.position.x = creationPosition.x;
+        uiTransform.position.y = creationPosition.y;
+    }
+}
+
 export function handleContextMenuAction(action) {
     const selectedMateria = getSelectedMateria();
     const L = window.Localization;
@@ -195,6 +211,8 @@ export function handleContextMenuAction(action) {
     // The `contextMateria` is now a direct reference, set during the 'contextmenu' event.
     let newMateria = null;
     let shouldUpdate = false;
+
+    const isCreationAction = !action.includes('rename') && !action.includes('delete') && !action.includes('duplicate');
 
     switch (action) {
         case 'create-empty':
@@ -248,6 +266,12 @@ export function handleContextMenuAction(action) {
             break;
         case 'create-camera':
             newMateria = createCameraObject(selectedMateria);
+            break;
+        case 'create-humanoid-character':
+            newMateria = createDefaultCharacter(selectedMateria);
+            break;
+        case 'create-test-circuit':
+            newMateria = createTestCircuit(selectedMateria);
             break;
         case 'create-bone':
 
@@ -498,6 +522,7 @@ export function handleContextMenuAction(action) {
                     const { createSkinnedMeshObject } = await import('../MateriaFactory.js');
                     const m = await createSkinnedMeshObject(assetPath, selectedMateria);
                     if (m) {
+                        applyCreationPosition(m);
                         updateHierarchy();
                         selectMateriaCallback(m.id);
                     }
@@ -536,6 +561,7 @@ export function handleContextMenuAction(action) {
                     const prefab = await SceneManager.instantiatePrefabFromPath('Assets/HealthBar.ceprefab');
                     if (prefab) {
                         prefab.setParent(parentCanvas, true);
+                        applyCreationPosition(prefab);
                         updateHierarchy();
                         selectMateriaCallback(prefab.id);
                     }
@@ -606,17 +632,8 @@ export function handleContextMenuAction(action) {
         newMateria.then(m => {
             if (m) {
                  // Apply creation position if available
-                 if (creationPosition && !action.includes('rename') && !action.includes('delete') && !action.includes('duplicate')) {
-                     const transform = m.getComponent(Components.Transform);
-                     const uiTransform = m.getComponent(Components.UITransform);
-                     if (transform) {
-                         transform.x = creationPosition.x;
-                         transform.y = creationPosition.y;
-                         if (creationPosition.z !== undefined) transform.z = creationPosition.z;
-                     } else if (uiTransform) {
-                         uiTransform.position.x = creationPosition.x;
-                         uiTransform.position.y = creationPosition.y;
-                     }
+                 if (isCreationAction) {
+                     applyCreationPosition(m);
                  }
 
                  broadcastUpdate({ op: 'CREATE', data: SceneManager.serializeMateria(m, true) });
@@ -629,17 +646,8 @@ export function handleContextMenuAction(action) {
 
     if (newMateria) {
         // Apply creation position if available
-        if (creationPosition && !action.includes('rename') && !action.includes('delete') && !action.includes('duplicate')) {
-            const transform = newMateria.getComponent(Components.Transform);
-            const uiTransform = newMateria.getComponent(Components.UITransform);
-            if (transform) {
-                transform.x = creationPosition.x;
-                transform.y = creationPosition.y;
-                if (creationPosition.z !== undefined) transform.z = creationPosition.z;
-            } else if (uiTransform) {
-                uiTransform.position.x = creationPosition.x;
-                uiTransform.position.y = creationPosition.y;
-            }
+        if (isCreationAction) {
+            applyCreationPosition(newMateria);
         }
 
         // Broadcast creation

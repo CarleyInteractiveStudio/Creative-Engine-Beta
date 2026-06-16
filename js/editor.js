@@ -1146,6 +1146,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'r':
                     setActiveTool('rotate');
                     break;
+                case 'v':
+                    setActiveTool('sculpt');
+                    break;
                 case 't':
                     setActiveTool('universal');
                     break;
@@ -3687,6 +3690,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Project Settings Listeners are now in js/editor/ui/ProjectSettingsWindow.js ---
 
+        if (dom.toolbarSculptBtn) {
+            dom.toolbarSculptBtn.addEventListener('click', () => {
+                setActiveTool('sculpt');
+            });
+        }
+
         if (dom.btnToggle2d3d) {
             dom.btnToggle2d3d.addEventListener('click', async () => {
                 const currentMode = currentProjectConfig.viewMode || '3d';
@@ -4939,18 +4948,27 @@ public start() {
                 if (is3D) {
                     const ray = SceneView.getMouseRay3D(e.clientX, e.clientY);
                     if (ray) {
-                        // Place on XZ plane (y=0)
-                        const glm = window.glMatrix;
-                        const normal = glm.vec3.fromValues(0, -1, 0); // Engine Y- is up
-                        const denom = glm.vec3.dot(ray.direction, normal);
-                        if (Math.abs(denom) > 1e-6) {
-                            const t = -glm.vec3.dot(ray.origin, normal) / denom;
-                            const hit = glm.vec3.create();
-                            glm.vec3.scaleAndAdd(hit, ray.origin, ray.direction, t);
-                            worldPos = { x: hit[0], y: hit[1], z: hit[2] };
+                        const physics = SceneManager.currentScene.physicsSystem;
+                        const hit = physics.raycast3D(ray.origin, ray.direction);
+
+                        if (hit) {
+                            worldPos = hit.point;
                         } else {
-                            // Fallback to origin or a fixed distance if looking horizontally
-                            worldPos = { x: 0, y: 0, z: 0 };
+                            // Place on XZ plane (y=0) if no hit
+                            const glm = window.glMatrix;
+                            const normal = glm.vec3.fromValues(0, -1, 0); // Engine Y- is up
+                            const denom = glm.vec3.dot(ray.direction, normal);
+                            if (Math.abs(denom) > 1e-6) {
+                                const t = -glm.vec3.dot(ray.origin, normal) / denom;
+                                const hitPos = glm.vec3.create();
+                                glm.vec3.scaleAndAdd(hitPos, ray.origin, ray.direction, t);
+                                worldPos = { x: hitPos[0], y: hitPos[1], z: hitPos[2] };
+                            } else {
+                                // Fallback to a fixed distance in front of camera
+                                const hitPos = glm.vec3.create();
+                                glm.vec3.scaleAndAdd(hitPos, ray.origin, ray.direction, 500);
+                                worldPos = { x: hitPos[0], y: hitPos[1], z: hitPos[2] };
+                            }
                         }
                     }
                 } else {
