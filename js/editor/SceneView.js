@@ -2552,17 +2552,26 @@ function drawLayerPlacementPreview() {
 }
 
 function getGizmoScale(center) {
+    if (!renderer || !renderer.camera) return 1.0;
     const cam = renderer.camera;
+    const glm = window.glMatrix;
 
-    // In perspective, distance to camera plane is better than distance to point
-    // but dist to point is simpler for now.
-    const dist = Math.sqrt((center.x - cam.x)**2 + (center.y - cam.y)**2 + ((center.z||0) - cam.z)**2);
+    // Use distance to the camera plane for consistent screen-space scaling
+    // Cam forward vector in world space:
+    const q = glm.quat.create();
+    glm.quat.fromEuler(q, cam.rotation.x, cam.rotation.y, 0);
+    const forward = glm.vec3.fromValues(0, 0, -1);
+    glm.vec3.transformQuat(forward, forward, q);
 
-    // Default FOV in CE is 45. Adjust scale based on FOV if needed.
-    let gizmoScale = dist / 800;
+    const camToObj = glm.vec3.fromValues(center.x - cam.x, center.y - cam.y, (center.z || 0) - cam.z);
+    const dist = glm.vec3.dot(camToObj, forward); // Projected distance
 
-    // Clamp to prevent gargantuan or microscopic gizmos
-    return Math.max(0.01, Math.min(gizmoScale, 10.0));
+    // Base scale on distance. 800 is a magic constant for 'normal' size at standard zoom
+    // We use Math.abs because dist could be negative if object is behind (though world3DToScreen handles that)
+    let gizmoScale = Math.abs(dist) / 800;
+
+    // Minimum scale to keep it selectable, and maximum to avoid screen flooding
+    return Math.max(0.1, Math.min(gizmoScale, 5.0));
 }
 
 function getMateriaAxes(materia) {
@@ -2812,9 +2821,11 @@ function drawOrientationGizmo() {
     glm.quat.invert(q, q);
 
     // Standard Orientation: X (Right), Y (Up), Z (Forward)
-        // Note: In CE, Y- is UP in world space.
-        // Our Y-flipped projection maps world -Y (UP) to screen -1 (NDC TOP),
-        // and world +Y (DOWN) to screen +1 (NDC BOTTOM).
+    // Note: In CE, Y- is UP in world space.
+    // In our coordinate system:
+    // +X: Right
+    // -Y: Up (World UP)
+    // +Z: Forward/Away (depends on view matrix, but we'll use standard axes)
     const axes = [
         { vec: [1, 0, 0], color: '#ff4444', label: 'X' },
         { vec: [0, -1, 0], color: '#44ff44', label: 'Y' },

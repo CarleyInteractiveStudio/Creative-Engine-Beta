@@ -466,68 +466,115 @@ export async function createDefaultCharacter(parent = null) {
 
 export async function createTestCircuit(parent = null) {
     const C3D = await ensure3D();
-    const root = createBaseMateria('Circuito_Entrenamiento', parent);
+    const root = createBaseMateria('Circuito_Industrial_Pro', parent);
 
-    // --- 1. Gran Plataforma de Base ---
+    // Colors
+    const industrialBlue = '#2c3e50';
+    const darkMetal = '#1a1a1a';
+    const lightMetal = '#95a5a6';
+    const safetyYellow = '#f1c40f';
+    const accentOrange = '#e67e22';
+
+    // --- 1. Base Gran Plataforma ---
     const ground = await createPlane3DObject(root);
     ground.getComponent(Components.Transform).localScale = { x: 10000, y: 1, z: 10000 };
-    ground.getComponent(C3D.MeshRenderer3D).color = '#2c3e50'; // Industrial Dark Blue/Grey
+    ground.getComponent(C3D.MeshRenderer3D).color = industrialBlue;
 
-    // --- 2. Pista de Carreras Central ---
+    // --- 2. Pista Refinada con Bordes de Seguridad ---
     const track = await createPlane3DObject(root);
     track.getComponent(Components.Transform).localPosition = { x: 0, y: -2, z: 0 };
-    track.getComponent(Components.Transform).localScale = { x: 1000, y: 1, z: 5000 };
-    track.getComponent(C3D.MeshRenderer3D).color = '#34495e';
+    track.getComponent(Components.Transform).localScale = { x: 800, y: 1, z: 8000 };
+    track.getComponent(C3D.MeshRenderer3D).color = darkMetal;
 
-    // --- 3. Escalera de Desafío ---
-    for (let i = 0; i < 8; i++) {
-        const step = await createCubeObject(root, i % 2 === 0 ? '#e67e22' : '#d35400'); // Orange accent
+    // Bordes amarillos (Caution Stripes effect)
+    const leftBorder = await createCubeObject(root, safetyYellow);
+    leftBorder.getComponent(Components.Transform).localPosition = { x: -410, y: -5, z: 0 };
+    leftBorder.getComponent(Components.Transform).localScale = { x: 20, y: 10, z: 8000 };
+
+    const rightBorder = await createCubeObject(root, safetyYellow);
+    rightBorder.getComponent(Components.Transform).localPosition = { x: 410, y: -5, z: 0 };
+    rightBorder.getComponent(Components.Transform).localScale = { x: 20, y: 10, z: 8000 };
+
+    // --- 3. Tuberías Industriales ---
+    const createPipe = async (pos, rot, scale) => {
+        const pipe = await createCapsule3DObject(root);
+        pipe.name = "Tuberia_Industrial";
+        const t = pipe.getComponent(Components.Transform);
+        t.localPosition = pos;
+        t.localRotation = rot;
+        t.localScale = scale;
+        pipe.getComponent(C3D.MeshRenderer3D).color = '#7f8c8d';
+        return pipe;
+    };
+
+    await createPipe({x: 500, y: -100, z: 500}, {x: 90, y: 0, z: 0}, {x: 40, y: 1000, z: 40});
+    await createPipe({x: -500, y: -100, z: 1500}, {x: 90, y: 0, z: 0}, {x: 40, y: 1500, z: 40});
+    await createPipe({x: 0, y: -400, z: 2500}, {x: 0, y: 0, z: 90}, {x: 30, y: 1200, z: 30});
+
+    // --- 4. Escalera Metálica ---
+    for (let i = 0; i < 10; i++) {
+        const step = await createCubeObject(root, i % 2 === 0 ? darkMetal : lightMetal);
         const t = step.getComponent(Components.Transform);
-        t.localPosition = { x: -300, y: -i * 30, z: 500 + i * 100 };
-        t.localScale = { x: 300, y: 30, z: 100 };
+        t.localPosition = { x: -300, y: -i * 25, z: 1000 + i * 80 };
+        t.localScale = { x: 250, y: 15, z: 80 };
         step.addComponent(new C3D.BoxCollider3D(step));
     }
 
-    // --- 4. Rampa de Salto ---
-    const ramp = await createCubeObject(root, '#3498db'); // Bright Blue
+    // --- 5. Estación de Energía (Obstáculo Complejo) ---
+    const station = createBaseMateria("Estacion_Energia", root);
+    station.getComponent(Components.Transform).localPosition = { x: 0, y: -150, z: 3000 };
+
+    const core = await createCubeObject(station, '#3498db');
+    core.getComponent(Components.Transform).localScale = { x: 200, y: 300, z: 200 };
+    core.addComponent(new C3D.BoxCollider3D(core));
+
+    const light = await createPointLight3D(station);
+    light.getComponent(Components.Transform).localPosition = { x: 0, y: -350, z: 0 };
+    const pLight = light.getComponent(C3D.PointLight3D);
+    pLight.color = '#00ffff'; pLight.intensity = 2.0; pLight.radius = 800;
+
+    // --- 6. Rampa de Salto con Neones ---
+    const ramp = await createCubeObject(root, industrialBlue);
     const rt = ramp.getComponent(Components.Transform);
-    rt.localPosition = { x: 200, y: -40, z: 1200 };
-    rt.localScale = { x: 400, y: 20, z: 800 };
-    rt.localRotation = { x: -15, y: 0, z: 0 };
+    rt.localPosition = { x: 250, y: -50, z: 4500 };
+    rt.localScale = { x: 400, y: 20, z: 1000 };
+    rt.localRotation = { x: -20, y: 0, z: 0 };
     ramp.addComponent(new C3D.BoxCollider3D(ramp));
 
-    // --- 5. Túnel de Obstáculos ---
-    const tunnelLeft = await createCubeObject(root, '#7f8c8d');
-    tunnelLeft.getComponent(Components.Transform).localPosition = { x: 450, y: -150, z: 2500 };
-    tunnelLeft.getComponent(Components.Transform).localScale = { x: 50, y: 300, z: 1000 };
-    tunnelLeft.addComponent(new C3D.BoxCollider3D(tunnelLeft));
+    const neon = await createCubeObject(ramp, '#e74c3c');
+    neon.getComponent(Components.Transform).localPosition = { x: 0, y: -15, z: 0 };
+    neon.getComponent(Components.Transform).localScale = { x: 380, y: 5, z: 980 };
+    neon.getComponent(C3D.MeshRenderer3D).isUnlit = true;
 
-    const tunnelRight = await createCubeObject(root, '#7f8c8d');
-    tunnelRight.getComponent(Components.Transform).localPosition = { x: -450, y: -150, z: 2500 };
-    tunnelRight.getComponent(Components.Transform).localScale = { x: 50, y: 300, z: 1000 };
-    tunnelRight.addComponent(new C3D.BoxCollider3D(tunnelRight));
-
-    const tunnelTop = await createCubeObject(root, '#95a5a6');
-    tunnelTop.getComponent(Components.Transform).localPosition = { x: 0, y: -300, z: 2500 };
-    tunnelTop.getComponent(Components.Transform).localScale = { x: 950, y: 50, z: 1000 };
-    tunnelTop.addComponent(new C3D.BoxCollider3D(tunnelTop));
-
-    // --- 6. Zona de Plataformas Flotantes ---
-    const colors = ['#2ecc71', '#27ae60', '#1abc9c', '#16a085'];
-    for (let i = 0; i < 4; i++) {
-        const plat = await createCubeObject(root, colors[i]);
+    // --- 7. Plataformas de Vértigo (Flotantes) ---
+    for (let i = 0; i < 5; i++) {
+        const plat = await createCubeObject(root, i === 4 ? safetyYellow : darkMetal);
         const pt = plat.getComponent(Components.Transform);
-        pt.localPosition = { x: Math.sin(i) * 400, y: -200 - i * 100, z: 4000 + i * 500 };
-        pt.localScale = { x: 250, y: 40, z: 250 };
+        pt.localPosition = { x: Math.cos(i) * 500, y: -400 - i * 50, z: 6000 + i * 600 };
+        pt.localScale = { x: 300, y: 30, z: 300 };
         plat.addComponent(new C3D.BoxCollider3D(plat));
+
+        // Add a support pillar visual
+        const support = await createCubeObject(plat, '#333333');
+        support.getComponent(Components.Transform).localPosition = { x: 0, y: 1000, z: 0 };
+        support.getComponent(Components.Transform).localScale = { x: 0.1, y: 100, z: 0.1 };
     }
 
-    // --- 7. Meta (Goal) ---
-    const goal = await createCubeObject(root, '#f1c40f'); // Yellow
-    const gt = goal.getComponent(Components.Transform);
-    gt.localPosition = { x: 0, y: -50, z: 6500 };
-    gt.localScale = { x: 800, y: 100, z: 100 };
-    goal.addComponent(new C3D.BoxCollider3D(goal));
+    // --- 8. Meta Tecnológica ---
+    const goal = await createBaseMateria("Meta_Final", root);
+    goal.getComponent(Components.Transform).localPosition = { x: 0, y: -100, z: 9500 };
+
+    const archL = await createCubeObject(goal, lightMetal);
+    archL.getComponent(Components.Transform).localPosition = { x: -400, y: -200, z: 0 };
+    archL.getComponent(Components.Transform).localScale = { x: 50, y: 500, z: 50 };
+
+    const archR = await createCubeObject(goal, lightMetal);
+    archR.getComponent(Components.Transform).localPosition = { x: 400, y: -200, z: 0 };
+    archR.getComponent(Components.Transform).localScale = { x: 50, y: 500, z: 50 };
+
+    const archTop = await createCubeObject(goal, safetyYellow);
+    archTop.getComponent(Components.Transform).localPosition = { x: 0, y: -450, z: 0 };
+    archTop.getComponent(Components.Transform).localScale = { x: 850, y: 50, z: 100 };
 
     return root;
 }
