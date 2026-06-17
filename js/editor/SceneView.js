@@ -1222,21 +1222,34 @@ export function initialize(dependencies) {
         window.removeEventListener('mouseup', onGizmoDragEnd);
     };
 
+    let rightClickStartTime = 0;
+    let rightClickStartPos = { x: 0, y: 0 };
+
     // Setup event listeners
     const sceneCanvases = [dom.sceneCanvas];
     if (dom.sceneCanvas3d) sceneCanvases.push(dom.sceneCanvas3d);
 
     sceneCanvases.forEach(canvas => {
+        canvas.addEventListener('mousedown', e => {
+            if (e.button === 2) {
+                rightClickStartTime = performance.now();
+                rightClickStartPos = { x: e.clientX, y: e.clientY };
+            }
+        });
+
         canvas.addEventListener('contextmenu', e => {
             e.preventDefault();
             e.stopPropagation();
 
             // Prevent context menu if we are navigating the 3D scene
-            const isNavigating = InputManager.getKey('w') || InputManager.getKey('a') || InputManager.getKey('s') || InputManager.getKey('d') ||
-                               InputManager.getKey('q') || InputManager.getKey('e') ||
-                               InputManager.getKey('ArrowUp') || InputManager.getKey('ArrowDown') ||
-                               InputManager.getKey('ArrowLeft') || InputManager.getKey('ArrowRight') ||
-                               Math.abs(InputManager.getMouseDelta().x) > 2 || Math.abs(InputManager.getMouseDelta().y) > 2;
+            const heldKeys = ['w', 'a', 's', 'd', 'q', 'e', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+            const isHoldingNavKey = heldKeys.some(k => InputManager.getKey(k));
+
+            const timeSinceClick = performance.now() - rightClickStartTime;
+            const mouseMoveDist = Math.hypot(e.clientX - rightClickStartPos.x, e.clientY - rightClickStartPos.y);
+
+            // If right click was held for long, moved significantly, or navigation keys are held, it was navigation.
+            const isNavigating = isHoldingNavKey || timeSinceClick > 250 || mouseMoveDist > 10;
 
             if (isNavigating) return;
 
