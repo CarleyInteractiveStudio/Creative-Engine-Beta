@@ -2253,7 +2253,7 @@ function drawCameraGizmos(renderer) {
         } else if (is3D && glm) { // 3D Perspective Frustum
             const fovRad = cameraComponent.fov * Math.PI / 180;
             const near = cameraComponent.nearClipPlane;
-            const far = Math.min(cameraComponent.farClipPlane, 1000); // Limit far for gizmo visibility
+            const far = Math.min(cameraComponent.farClipPlane, 10000); // Increased limit further for professional feel
             const nearH = Math.tan(fovRad / 2) * near;
             const nearW = nearH * aspect;
             const farH = Math.tan(fovRad / 2) * far;

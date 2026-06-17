@@ -167,6 +167,12 @@ export class SkinnedMeshRenderer3D extends MeshRenderer3D {
         this.skeleton = null;
         this.rootBone = null;
         this.cpuPositions = null;
+        this.cpuNormals = null;
+        this.cpuColors = null;
+        this.cpuIndices = null;
+        this.cpuJoints = null;
+        this.cpuWeights = null;
+        this.indexCount = 0;
         this.isDirty = false;
         this.boneMatrices = new Float32Array(64 * 16);
         for(let i=0; i<64; i++) {
@@ -174,6 +180,11 @@ export class SkinnedMeshRenderer3D extends MeshRenderer3D {
             this.boneMatrices[idx] = 1; this.boneMatrices[idx+5] = 1; this.boneMatrices[idx+10] = 1; this.boneMatrices[idx+15] = 1;
         }
         this.isLoaded = false;
+    }
+
+    update(deltaTime) {
+        super.update(deltaTime);
+        this.updateBoneMatrices();
     }
 
     updateBoneMatrices() {

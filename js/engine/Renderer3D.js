@@ -63,8 +63,7 @@ export class Renderer3D {
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         gl.enable(gl.CULL_FACE);
-        // CW is required because the Y-flip in projection matrix inverts triangle winding
-        gl.frontFace(gl.CW);
+        gl.frontFace(gl.CW); // Required for Y-flip projection
 
         this.initShaders();
         this.initBasicGeometry();
@@ -93,9 +92,9 @@ export class Renderer3D {
             }
 
             void main() {
-                vNearPoint = unprojectPoint(aVertexPosition.x, aVertexPosition.y, 0.0, uInvView, uInvProj);
+                vNearPoint = unprojectPoint(aVertexPosition.x, aVertexPosition.y, -1.0, uInvView, uInvProj);
                 vFarPoint = unprojectPoint(aVertexPosition.x, aVertexPosition.y, 1.0, uInvView, uInvProj);
-                gl_Position = vec4(aVertexPosition, 1.0);
+                gl_Position = vec4(aVertexPosition.xy, 0.999, 1.0);
             }
         `;
 
@@ -195,16 +194,17 @@ export class Renderer3D {
             varying vec3 vNormal;
             void main() {
                 gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrix * aVertexPosition;
-                vNormal = aVertexNormal;
+                vNormal = (uModelMatrix * vec4(aVertexNormal, 0.0)).xyz;
             }
         `;
         const stdFs = `
             precision mediump float;
             varying vec3 vNormal;
             uniform vec4 uColor;
+            uniform vec3 uLightDir;
             void main() {
-                vec3 lightDir = normalize(vec3(0.5, 1.0, 0.3));
-                float diff = max(dot(normalize(vNormal), lightDir), 0.4);
+                vec3 normal = normalize(vNormal);
+                float diff = max(dot(normal, normalize(uLightDir)), 0.2);
                 gl_FragColor = vec4(uColor.rgb * diff, uColor.a);
             }
         `;
@@ -216,6 +216,7 @@ export class Renderer3D {
             attribute vec3 aVertexNormal;
             attribute vec4 aJointIndices;
             attribute vec4 aJointWeights;
+            attribute vec4 aVertexColor;
 
             uniform mat4 uModelMatrix;
             uniform mat4 uViewMatrix;
@@ -223,6 +224,7 @@ export class Renderer3D {
             uniform mat4 uBoneMatrices[64];
 
             varying vec3 vNormal;
+            varying vec4 vColor;
 
             void main() {
                 mat4 skinMatrix =
@@ -235,9 +237,26 @@ export class Renderer3D {
                 gl_Position = uProjectionMatrix * uViewMatrix * worldPosition;
 
                 vNormal = (uModelMatrix * skinMatrix * vec4(aVertexNormal, 0.0)).xyz;
+                vColor = aVertexColor;
             }
         `;
-        this.programs.skinned = this.createProgram(skinnedVs, stdFs);
+
+        const skinnedFs = `
+            precision mediump float;
+            varying vec3 vNormal;
+            varying vec4 vColor;
+            uniform vec4 uColor;
+            uniform vec3 uLightDir;
+            void main() {
+                vec3 normal = normalize(vNormal);
+                float diff = max(dot(normal, normalize(uLightDir)), 0.25);
+                // Fallback to uColor if vertex color alpha is 0
+                vec3 baseColor = (vColor.a > 0.05) ? vColor.rgb : uColor.rgb;
+                gl_FragColor = vec4(baseColor * diff, uColor.a);
+            }
+        `;
+
+        this.programs.skinned = this.createProgram(skinnedVs, skinnedFs);
 
         // 3. Unlit Shader
         const unlitVs = `
@@ -312,8 +331,10 @@ export class Renderer3D {
         this.resize();
 
         let clearColor = [0.05, 0.05, 0.07];
+        let clearFlags = 'SolidColor';
         if (cameraMateria) {
             const cam = cameraMateria.getComponent(Components.Camera);
+            clearFlags = cam.clearFlags;
             if (cam.clearFlags === 'SolidColor') {
                 const rgb = this.hexToRgb(cam.backgroundColor);
                 clearColor = [rgb[0], rgb[1], rgb[2]];
@@ -324,20 +345,20 @@ export class Renderer3D {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         const aspect = gl.canvas.width / gl.canvas.height;
-        const near = 0.1;
-        const far = 20000.0;
+        let near = 0.1;
+        let far = 20000.0;
 
         if (cameraMateria) {
             const cam = cameraMateria.getComponent(Components.Camera);
             const transform = cameraMateria.getComponent(Components.Transform);
-            const cNear = cam.nearClipPlane || 0.1;
-            const cFar = cam.farClipPlane || 10000.0;
+            near = cam.nearClipPlane || 0.1;
+            far = cam.farClipPlane || 20000.0;
 
             if (cam.projection === 'Orthographic') {
                 const size = cam.orthographicSize || 500;
-                mat4.ortho(this.projectionMatrix, -size * aspect, size * aspect, -size, size, cNear, cFar);
+                mat4.ortho(this.projectionMatrix, -size * aspect, size * aspect, -size, size, near, far);
             } else {
-                mat4.perspective(this.projectionMatrix, (cam.fov || 60) * Math.PI / 180, aspect, cNear, cFar);
+                mat4.perspective(this.projectionMatrix, (cam.fov || 60) * Math.PI / 180, aspect, near, far);
             }
             mat4.invert(this.viewMatrix, transform.worldMatrix);
         } else {
@@ -353,7 +374,7 @@ export class Renderer3D {
         mat4.copy(this.lastProjectionMatrix, this.projectionMatrix);
         mat4.copy(this.lastViewMatrix, this.viewMatrix);
 
-        const skyMode = scene?.ambiente?.skyMode || (cameraMateria ? cameraMateria.getComponent(Components.Camera).clearFlags : 'None');
+        const skyMode = scene?.ambiente?.skyMode || clearFlags;
         if (skyMode === 'Gradient' || skyMode === 'Skybox') {
             this.drawSky(scene?.ambiente || {});
         }
@@ -361,6 +382,9 @@ export class Renderer3D {
         if (options.showGrid !== false) this.drawGrid(near, far);
         this.drawScene(scene, cameraMateria);
         this.drawOriginAxes();
+        if (options.isGameView) {
+            // console.log("[Renderer3D] Rendered scene for game view");
+        }
     }
 
     drawSky(ambiente) {
@@ -368,7 +392,6 @@ export class Renderer3D {
         const program = this.programs.sky;
         gl.useProgram(program);
 
-        // Remove translation from view matrix for skybox (infinite distance effect)
         const viewNoPos = mat4.copy(mat4.create(), this.viewMatrix);
         viewNoPos[12] = 0; viewNoPos[13] = 0; viewNoPos[14] = 0;
 
@@ -393,7 +416,9 @@ export class Renderer3D {
         gl.enableVertexAttribArray(posLoc);
 
         gl.disable(gl.DEPTH_TEST);
+        gl.depthMask(false);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        gl.depthMask(true);
         gl.enable(gl.DEPTH_TEST);
     }
 
@@ -446,9 +471,13 @@ export class Renderer3D {
         if (!scene) return;
         const gl = this.gl;
 
-        const cullingMask = cameraMateria ? cameraMateria.getComponent(Components.Camera).cullingMask : -1;
+        gl.enable(gl.DEPTH_TEST);
+        gl.enable(gl.CULL_FACE);
 
-        scene.getAllMaterias().forEach(materia => {
+        const cullingMask = cameraMateria ? cameraMateria.getComponent(Components.Camera).cullingMask : -1;
+        const materias = scene.getAllMaterias();
+
+        materias.forEach(materia => {
             if (!materia.isActive) return;
             if (cullingMask !== -1 && !(cullingMask & (1 << materia.layer))) return;
 
@@ -461,15 +490,15 @@ export class Renderer3D {
             const mesh = materia.getComponent(Components3D.MeshRenderer3D);
             if (!mesh) return;
 
-            // Ensure standard program is active
-            const program = this.programs.standard;
+            const program = mesh.isUnlit ? this.programs.unlit : this.programs.standard;
             gl.useProgram(program);
 
             gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
             gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
+            if (!mesh.isUnlit) gl.uniform3f(gl.getUniformLocation(program, 'uLightDir'), 0.5, 1.0, 0.3);
 
             const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
-            const normLoc = gl.getAttribLocation(program, 'aVertexNormal');
+            const normLoc = !mesh.isUnlit ? gl.getAttribLocation(program, 'aVertexNormal') : -1;
             const colorLoc = gl.getUniformLocation(program, 'uColor');
             const modelLoc = gl.getUniformLocation(program, 'uModelMatrix');
 
@@ -511,46 +540,94 @@ export class Renderer3D {
 
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
+        gl.uniform3f(gl.getUniformLocation(program, 'uLightDir'), 0.5, 1.0, 0.3);
 
         // Identity for skinned meshes as bone matrices are in world space
-        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, mat4.create());
+        const identity = mat4.create();
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, identity);
         gl.uniform4f(gl.getUniformLocation(program, 'uColor'), color[0], color[1], color[2], 1.0);
 
         if (mesh.boneMatrices) gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uBoneMatrices'), false, mesh.boneMatrices);
 
-        if (mesh.isDirty && mesh.cpuPositions && mesh.buffers?.positions) {
-            gl.bindBuffer(gl.ARRAY_BUFFER, mesh.buffers.positions);
-            gl.bufferSubData(gl.ARRAY_BUFFER, 0, mesh.cpuPositions);
-            mesh.isDirty = false;
+        // --- Multi-context Buffer Management ---
+        if (!mesh._glBuffers) mesh._glBuffers = new Map();
+        let buffers = mesh._glBuffers.get(gl);
+
+        if (!buffers && mesh.cpuPositions) {
+            buffers = {
+                positions: gl.createBuffer(),
+                normals: mesh.cpuNormals ? gl.createBuffer() : null,
+                colors: mesh.cpuColors ? gl.createBuffer() : null,
+                indices: mesh.cpuIndices ? gl.createBuffer() : null,
+                joints: mesh.cpuJoints ? gl.createBuffer() : null,
+                weights: mesh.cpuWeights ? gl.createBuffer() : null
+            };
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.positions);
+            gl.bufferData(gl.ARRAY_BUFFER, mesh.cpuPositions, gl.STATIC_DRAW);
+            if (buffers.normals) { gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normals); gl.bufferData(gl.ARRAY_BUFFER, mesh.cpuNormals, gl.STATIC_DRAW); }
+            if (buffers.colors) { gl.bindBuffer(gl.ARRAY_BUFFER, buffers.colors); gl.bufferData(gl.ARRAY_BUFFER, mesh.cpuColors, gl.STATIC_DRAW); }
+            if (buffers.joints) { gl.bindBuffer(gl.ARRAY_BUFFER, buffers.joints); gl.bufferData(gl.ARRAY_BUFFER, mesh.cpuJoints, gl.STATIC_DRAW); }
+            if (buffers.weights) { gl.bindBuffer(gl.ARRAY_BUFFER, buffers.weights); gl.bufferData(gl.ARRAY_BUFFER, mesh.cpuWeights, gl.STATIC_DRAW); }
+            if (buffers.indices) { gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, mesh.cpuIndices, gl.STATIC_DRAW); }
+            mesh._glBuffers.set(gl, buffers);
+        }
+
+        if (mesh.isDirty && mesh.cpuPositions && buffers?.positions) {
+            if (!mesh._glDirtyFlags) mesh._glDirtyFlags = new Map();
+            if (!mesh._glDirtyFlags.get(gl)) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.positions);
+                gl.bufferSubData(gl.ARRAY_BUFFER, 0, mesh.cpuPositions);
+                mesh._glDirtyFlags.set(gl, true);
+
+                // If all active renderers have updated, reset the main isDirty
+                // This is a bit simplified, but works for Scene/Game view
+                let allDone = true;
+                if (window._Renderer3D && window._Renderer3D.gl !== gl) allDone = false;
+                // Since we usually only have 2 renderers max, we can just check if this is the last one
+                if (mesh._glDirtyFlags.size >= 2) {
+                    mesh.isDirty = false;
+                    mesh._glDirtyFlags.clear();
+                }
+            }
         }
 
         const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
         const normLoc = gl.getAttribLocation(program, 'aVertexNormal');
+        const colorLoc = gl.getAttribLocation(program, 'aVertexColor');
         const jointLoc = gl.getAttribLocation(program, 'aJointIndices');
         const weightLoc = gl.getAttribLocation(program, 'aJointWeights');
 
-        if (mesh.buffers) {
-            gl.bindBuffer(gl.ARRAY_BUFFER, mesh.buffers.positions);
+        if (buffers) {
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.positions);
             gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
             gl.enableVertexAttribArray(posLoc);
 
-            if (mesh.buffers.normals) {
-                gl.bindBuffer(gl.ARRAY_BUFFER, mesh.buffers.normals);
+            if (buffers.normals) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normals);
                 gl.vertexAttribPointer(normLoc, 3, gl.FLOAT, false, 0, 0);
                 gl.enableVertexAttribArray(normLoc);
             }
 
-            if (mesh.buffers.joints) {
-                gl.bindBuffer(gl.ARRAY_BUFFER, mesh.buffers.joints);
+            if (buffers.colors) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.colors);
+                gl.vertexAttribPointer(colorLoc, 4, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(colorLoc);
+            } else if (colorLoc !== -1) {
+                gl.disableVertexAttribArray(colorLoc);
+                gl.vertexAttrib4f(colorLoc, 0, 0, 0, 0);
+            }
+
+            if (buffers.joints) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.joints);
                 gl.vertexAttribPointer(jointLoc, 4, gl.FLOAT, false, 0, 0);
                 gl.enableVertexAttribArray(jointLoc);
-                gl.bindBuffer(gl.ARRAY_BUFFER, mesh.buffers.weights);
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.weights);
                 gl.vertexAttribPointer(weightLoc, 4, gl.FLOAT, false, 0, 0);
                 gl.enableVertexAttribArray(weightLoc);
             }
 
-            if (mesh.buffers.indices) {
-                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.buffers.indices);
+            if (buffers.indices) {
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
                 gl.drawElements(gl.TRIANGLES, mesh.indexCount, gl.UNSIGNED_SHORT, 0);
             } else {
                 gl.drawArrays(gl.TRIANGLES, 0, mesh.indexCount);
