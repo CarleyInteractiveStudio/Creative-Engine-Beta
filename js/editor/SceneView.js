@@ -2538,26 +2538,54 @@ function drawLayerPlacementPreview() {
     }
 }
 
+function getGizmoScale(center) {
+    const cam = renderer.camera;
+
+    // In perspective, distance to camera plane is better than distance to point
+    // but dist to point is simpler for now.
+    const dist = Math.sqrt((center.x - cam.x)**2 + (center.y - cam.y)**2 + ((center.z||0) - cam.z)**2);
+
+    // Default FOV in CE is 45. Adjust scale based on FOV if needed.
+    let gizmoScale = dist / 800;
+
+    // Clamp to prevent gargantuan or microscopic gizmos
+    return Math.max(0.01, Math.min(gizmoScale, 10.0));
+}
+
+function getMateriaAxes(materia) {
+    const transform = materia.getComponent(Components.Transform);
+    const matrix = transform.worldMatrix;
+    const glm = window.glMatrix;
+
+    // Extract basis vectors from world matrix columns
+    const xAxis = glm.vec3.fromValues(matrix[0], matrix[1], matrix[2]);
+    const yAxis = glm.vec3.fromValues(matrix[4], matrix[5], matrix[6]);
+    const zAxis = glm.vec3.fromValues(matrix[8], matrix[9], matrix[10]);
+
+    glm.vec3.normalize(xAxis, xAxis);
+    glm.vec3.normalize(yAxis, yAxis);
+    glm.vec3.normalize(zAxis, zAxis);
+
+    // Flip Y because in CE Y- is UP. Standard matrix column for Y points to world DOWN.
+    glm.vec3.scale(yAxis, yAxis, -1);
+
+    return { x: xAxis, y: yAxis, z: zAxis };
+}
+
 function check3DGizmoHit(canvasPos, materia) {
     const transform = materia.getComponent(Components.Transform);
     const center = { x: transform.x, y: transform.y, z: transform.z || 0 };
     const screenPos = world3DToScreen(center);
     if (!screenPos) return null;
 
-    const cam = renderer.camera;
-    const dist = Math.sqrt((center.x - cam.x)**2 + (center.y - cam.y)**2 + ((center.z||0) - cam.z)**2);
-    const gizmoScale = Math.max(0.1, dist / 800);
-
+    const gizmoScale = getGizmoScale(center);
     const hitRadius = 25;
     const gizmoLen = 80 * gizmoScale;
 
+    const axes = getMateriaAxes(materia);
     const glm = window.glMatrix;
-    const q = glm.quat.create();
-    glm.quat.fromEuler(q, transform.rotationX || 0, transform.rotationY || 0, transform.rotationZ || 0);
 
-    const checkHandle = (localAxis, name) => {
-        const worldAxis = glm.vec3.create();
-        glm.vec3.transformQuat(worldAxis, [localAxis.x, localAxis.y, localAxis.z], q);
+    const checkHandle = (worldAxis, name) => {
         const axisEnd = { x: center.x + worldAxis[0] * gizmoLen, y: center.y + worldAxis[1] * gizmoLen, z: center.z + worldAxis[2] * gizmoLen };
         const screenEnd = world3DToScreen(axisEnd);
         if (!screenEnd) return false;
@@ -2569,11 +2597,11 @@ function check3DGizmoHit(canvasPos, materia) {
     if (activeTool === 'move' || activeTool === 'universal' || activeTool === 'scale') {
         const dx = canvasPos.x - screenPos.x;
         const dy = canvasPos.y - screenPos.y;
-        if (Math.hypot(dx, dy) < 15) return activeTool === 'scale' ? 'scale-all' : 'move-xy';
+        if (Math.hypot(dx, dy) < 20) return activeTool === 'scale' ? 'scale-all' : 'move-xy';
 
-        if (checkHandle({x:1, y:0, z:0}, 'X')) return activeTool === 'scale' ? 'scale-x' : 'move-x';
-        if (checkHandle({x:0, y:-1, z:0}, 'Y')) return activeTool === 'scale' ? 'scale-y' : 'move-y';
-        if (checkHandle({x:0, y:0, z:1}, 'Z')) return activeTool === 'scale' ? 'scale-z' : 'move-z';
+        if (checkHandle(axes.x, 'X')) return activeTool === 'scale' ? 'scale-x' : 'move-x';
+        if (checkHandle(axes.y, 'Y')) return activeTool === 'scale' ? 'scale-y' : 'move-y';
+        if (checkHandle(axes.z, 'Z')) return activeTool === 'scale' ? 'scale-z' : 'move-z';
     }
     return null;
 }
@@ -2590,14 +2618,10 @@ function draw3DGizmos(materia) {
     if (!screenPos) return;
 
     const { ctx } = renderer;
-
-    // Dynamic scale to maintain constant screen size
-    const cam = renderer.camera;
-    const dist = Math.sqrt((center.x - cam.x)**2 + (center.y - cam.y)**2 + ((center.z||0) - cam.z)**2);
-    const gizmoScale = Math.max(0.1, dist / 800);
+    const gizmoScale = getGizmoScale(center);
 
     const GIZMO_SIZE = 80 * gizmoScale;
-    const ARROW_SIZE = 12 * gizmoScale;
+    const ARROW_SIZE = 14 * gizmoScale;
 
     const C3D = window.Components3D || Components3D;
     if (!C3D) return;
@@ -2617,15 +2641,12 @@ function draw3DGizmos(materia) {
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-    const glm = window.glMatrix;
-    const q = glm.quat.create();
-    glm.quat.fromEuler(q, transform.rotationX || 0, transform.rotationY || 0, transform.rotationZ || 0);
+    const axes = getMateriaAxes(materia);
 
-    const drawAxis = (localAxis, color) => {
-        const worldAxis = glm.vec3.create();
-        glm.vec3.transformQuat(worldAxis, [localAxis.x, localAxis.y, localAxis.z], q);
-
+    const drawAxis = (worldAxis, color) => {
         const endPos = { x: center.x + worldAxis[0] * GIZMO_SIZE, y: center.y + worldAxis[1] * GIZMO_SIZE, z: center.z + worldAxis[2] * GIZMO_SIZE };
+
+        // Use drawLineClipped for axes too, in case one end is behind camera
         const endScreen = world3DToScreen(endPos);
         if (!endScreen) return;
 
@@ -2655,9 +2676,9 @@ function draw3DGizmos(materia) {
     };
 
     if (activeTool === 'move' || activeTool === 'universal' || activeTool === 'scale') {
-        drawAxis({x:1,y:0,z:0}, '#ff4444'); // X (Red)
-        drawAxis({x:0,y:-1,z:0}, '#44ff44'); // Y (Green) - Pointing UP in World
-        drawAxis({x:0,y:0,z:1}, '#4444ff'); // Z (Blue)
+        drawAxis(axes.x, '#ff4444'); // X (Red)
+        drawAxis(axes.y, '#44ff44'); // Y (Green)
+        drawAxis(axes.z, '#4444ff'); // Z (Blue)
 
         // Center handle
         ctx.fillStyle = activeTool === 'scale' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)';
@@ -2778,7 +2799,9 @@ function drawOrientationGizmo() {
     glm.quat.invert(q, q);
 
     // Standard Orientation: X (Right), Y (Up), Z (Forward)
-    // Note: In CE, Y- is UP in world space.
+        // Note: In CE, Y- is UP in world space.
+        // Our Y-flipped projection maps world -Y (UP) to screen -1 (NDC TOP),
+        // and world +Y (DOWN) to screen +1 (NDC BOTTOM).
     const axes = [
         { vec: [1, 0, 0], color: '#ff4444', label: 'X' },
         { vec: [0, -1, 0], color: '#44ff44', label: 'Y' },

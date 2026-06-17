@@ -227,9 +227,10 @@ export function world3DToScreen(worldPos) {
     const ndc = [clipPos[0] / clipPos[3], clipPos[1] / clipPos[3], clipPos[2] / clipPos[3]];
     const width = canvas.width, height = canvas.height;
 
+    // Corrected for Y-flipped projection matrix: NDC -1 is Top, 1 is Bottom
     return {
         x: (ndc[0] * 0.5 + 0.5) * width,
-        y: (0.5 - ndc[1] * 0.5) * height
+        y: (ndc[1] * 0.5 + 0.5) * height
     };
 }
 
@@ -263,8 +264,9 @@ export function drawLineClipped(ctx, p1, p2, color, width = 1) {
     }
 
     const w = r3d.canvas.width, h = r3d.canvas.height;
-    const s1 = { x: (c1[0]/c1[3] * 0.5 + 0.5) * w, y: (0.5 - c1[1]/c1[3] * 0.5) * h };
-    const s2 = { x: (c2[0]/c2[3] * 0.5 + 0.5) * w, y: (0.5 - c2[1]/c2[3] * 0.5) * h };
+    // Corrected for Y-flipped projection
+    const s1 = { x: (c1[0]/c1[3] * 0.5 + 0.5) * w, y: (c1[1]/c1[3] * 0.5 + 0.5) * h };
+    const s2 = { x: (c2[0]/c2[3] * 0.5 + 0.5) * w, y: (c2[1]/c2[3] * 0.5 + 0.5) * h };
 
     ctx.strokeStyle = color;
     ctx.lineWidth = width;

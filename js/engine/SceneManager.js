@@ -21,14 +21,14 @@ export class Scene {
             nocheDiaOpacidad: 1.0,
             nocheDiaIntensidad: 0.8,   // Default to 80% as requested
             capasExcluidas: [],
-            hora: '6',
+            hora: '12',                // Start at Noon for better visibility
             cicloAutomatico: false,
             duracionDia: '60',
             // 3D Sky system
             skyMode: 'Gradient',
-            skyColor: '#87ceeb',
+            skyColor: '#4a90e2',      // Beautiful Sky Blue
             horizonColor: '#ffffff',
-            groundColor: '#222222'
+            groundColor: '#1a1a1c'    // Dark Ground matches VS background
         };
         this.layerSettings = {}; // { layerIndex: { opacity: 1, visible: true, pixelated: false } }
     }
@@ -688,9 +688,10 @@ function createDefaultScene() {
 
     if (is3D) {
         cameraComponent.projection = 'Perspective';
+        cameraComponent.clearFlags = 'Skybox'; // Default to show procedural sky
         const trans = cameraNode.getComponent(Transform);
         // Better default view for 3D
-        trans.localPosition = { x: 0, y: 200, z: 800 };
+        trans.localPosition = { x: 0, y: 150, z: 500 };
         trans.localRotation = { x: 15, y: 0, z: 0 };
     }
 

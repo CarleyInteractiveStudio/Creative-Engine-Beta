@@ -268,10 +268,17 @@ export class Renderer3D {
 
     initBasicGeometry() {
         const gl = this.gl;
+        // Quad for Full-screen effects / Sky (XY plane)
         const quadPos = new Float32Array([-1,1,0, 1,1,0, -1,-1,0, 1,-1,0]);
         this.buffers.quad = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.quad);
         gl.bufferData(gl.ARRAY_BUFFER, quadPos, gl.STATIC_DRAW);
+
+        // Plane for Floor (XZ plane) - Standard 1x1 unit
+        const planePos = new Float32Array([-0.5,0,-0.5, 0.5,0,-0.5, -0.5,0,0.5, 0.5,0,0.5]);
+        this.buffers.plane = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.plane);
+        gl.bufferData(gl.ARRAY_BUFFER, planePos, gl.STATIC_DRAW);
 
         const cubePos = new Float32Array([
             -0.5,-0.5,0.5, 0.5,-0.5,0.5, 0.5,0.5,0.5, -0.5,0.5,0.5, -0.5,-0.5,-0.5, -0.5,0.5,-0.5, 0.5,0.5,-0.5, 0.5,-0.5,-0.5,
@@ -303,12 +310,22 @@ export class Renderer3D {
         const gl = this.gl;
 
         this.resize();
-        gl.clearColor(0.05, 0.05, 0.07, options.clearAlpha !== undefined ? options.clearAlpha : 1.0);
+
+        let clearColor = [0.05, 0.05, 0.07];
+        if (cameraMateria) {
+            const cam = cameraMateria.getComponent(Components.Camera);
+            if (cam.clearFlags === 'SolidColor') {
+                const rgb = this.hexToRgb(cam.backgroundColor);
+                clearColor = [rgb[0], rgb[1], rgb[2]];
+            }
+        }
+
+        gl.clearColor(clearColor[0], clearColor[1], clearColor[2], options.clearAlpha !== undefined ? options.clearAlpha : 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         const aspect = gl.canvas.width / gl.canvas.height;
         const near = 0.1;
-        const far = 10000.0;
+        const far = 20000.0;
 
         if (cameraMateria) {
             const cam = cameraMateria.getComponent(Components.Camera);
@@ -336,12 +353,13 @@ export class Renderer3D {
         mat4.copy(this.lastProjectionMatrix, this.projectionMatrix);
         mat4.copy(this.lastViewMatrix, this.viewMatrix);
 
-        if (scene && scene.ambiente && scene.ambiente.skyMode === 'Gradient') {
-            this.drawSky(scene.ambiente);
+        const skyMode = scene?.ambiente?.skyMode || (cameraMateria ? cameraMateria.getComponent(Components.Camera).clearFlags : 'None');
+        if (skyMode === 'Gradient' || skyMode === 'Skybox') {
+            this.drawSky(scene?.ambiente || {});
         }
 
         if (options.showGrid !== false) this.drawGrid(near, far);
-        this.drawScene(scene);
+        this.drawScene(scene, cameraMateria);
         this.drawOriginAxes();
     }
 
@@ -424,22 +442,15 @@ export class Renderer3D {
         gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
     }
 
-    drawScene(scene) {
+    drawScene(scene, cameraMateria = null) {
         if (!scene) return;
         const gl = this.gl;
-        const program = this.programs.standard;
-        gl.useProgram(program);
 
-        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
-        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
-
-        const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
-        const normLoc = gl.getAttribLocation(program, 'aVertexNormal');
-        const colorLoc = gl.getUniformLocation(program, 'uColor');
-        const modelLoc = gl.getUniformLocation(program, 'uModelMatrix');
+        const cullingMask = cameraMateria ? cameraMateria.getComponent(Components.Camera).cullingMask : -1;
 
         scene.getAllMaterias().forEach(materia => {
             if (!materia.isActive) return;
+            if (cullingMask !== -1 && !(cullingMask & (1 << materia.layer))) return;
 
             const skinnedMesh = materia.getComponent(Components3D.SkinnedMeshRenderer3D);
             if (skinnedMesh && skinnedMesh.isLoaded) {
@@ -450,19 +461,43 @@ export class Renderer3D {
             const mesh = materia.getComponent(Components3D.MeshRenderer3D);
             if (!mesh) return;
 
+            // Ensure standard program is active
+            const program = this.programs.standard;
+            gl.useProgram(program);
+
+            gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
+            gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
+
+            const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
+            const normLoc = gl.getAttribLocation(program, 'aVertexNormal');
+            const colorLoc = gl.getUniformLocation(program, 'uColor');
+            const modelLoc = gl.getUniformLocation(program, 'uModelMatrix');
+
             const transform = materia.getComponent(Components.Transform);
             gl.uniformMatrix4fv(modelLoc, false, transform.worldMatrix);
             const color = this.hexToRgb(mesh.color);
             gl.uniform4f(colorLoc, color[0], color[1], color[2], 1.0);
 
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cube);
-            gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(posLoc);
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cubeNorm);
-            gl.vertexAttribPointer(normLoc, 3, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(normLoc);
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.cubeIdx);
-            gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+            // Handle Primitives
+            if (mesh.meshType === 'Cube' || !mesh.meshType) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cube);
+                gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(posLoc);
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cubeNorm);
+                gl.vertexAttribPointer(normLoc, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(normLoc);
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.cubeIdx);
+                gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+            } else if (mesh.meshType === 'Plane') {
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.plane);
+                gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(posLoc);
+                // Simple normal for plane (pointing UP in world = -Y)
+                gl.disableVertexAttribArray(normLoc);
+                gl.vertexAttrib3f(normLoc, 0, -1, 0);
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            }
+            // Add more primitives here as needed
         });
     }
 
@@ -589,18 +624,33 @@ export class Renderer3D {
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.lastViewMatrix);
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.lastProjectionMatrix);
 
+        const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
+        const modelLoc = gl.getUniformLocation(program, 'uModelMatrix');
+        const pickColorLoc = gl.getUniformLocation(program, 'uPickColor');
+
         const idMap = new Map();
         scene.getAllMaterias().forEach((m, index) => {
-            if (!m.isActive || !m.getComponent(Components3D.MeshRenderer3D)) return;
+            if (!m.isActive) return;
+            const mesh = m.getComponent(Components3D.MeshRenderer3D);
+            if (!mesh) return;
+
             const id = index + 1;
             idMap.set(id, m.id);
-            gl.uniform4f(gl.getUniformLocation(program, 'uPickColor'), (id & 0xFF)/255, ((id >> 8) & 0xFF)/255, ((id >> 16) & 0xFF)/255, 1.0);
-            gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, m.getComponent(Components.Transform).worldMatrix);
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cube);
-            gl.vertexAttribPointer(gl.getAttribLocation(program, 'aVertexPosition'), 3, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(gl.getAttribLocation(program, 'aVertexPosition'));
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.cubeIdx);
-            gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+            gl.uniform4f(pickColorLoc, (id & 0xFF)/255, ((id >> 8) & 0xFF)/255, ((id >> 16) & 0xFF)/255, 1.0);
+            gl.uniformMatrix4fv(modelLoc, false, m.getComponent(Components.Transform).worldMatrix);
+
+            if (mesh.meshType === 'Cube' || !mesh.meshType) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cube);
+                gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(posLoc);
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.cubeIdx);
+                gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+            } else if (mesh.meshType === 'Plane') {
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.plane);
+                gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(posLoc);
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            }
         });
 
         const pixels = new Uint8Array(4);
@@ -612,6 +662,13 @@ export class Renderer3D {
 
     hexToRgb(hex) {
         if (!hex || hex[0] !== '#') return [1, 1, 1];
+        if (hex.length === 4) {
+            return [
+                parseInt(hex[1] + hex[1], 16) / 255,
+                parseInt(hex[2] + hex[2], 16) / 255,
+                parseInt(hex[3] + hex[3], 16) / 255
+            ];
+        }
         return [parseInt(hex.slice(1, 3), 16) / 255, parseInt(hex.slice(3, 5), 16) / 255, parseInt(hex.slice(5, 7), 16) / 255];
     }
 }
