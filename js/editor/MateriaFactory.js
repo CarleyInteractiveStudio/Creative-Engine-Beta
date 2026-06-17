@@ -474,11 +474,13 @@ export async function createTestCircuit(parent = null) {
     const lightMetal = '#95a5a6';
     const safetyYellow = '#f1c40f';
     const accentOrange = '#e67e22';
+    const neonCyan = '#00f2ff';
+    const neonRed = '#ff3e3e';
 
     // --- 1. Base Gran Plataforma ---
     const ground = await createPlane3DObject(root);
     ground.getComponent(Components.Transform).localScale = { x: 10000, y: 1, z: 10000 };
-    ground.getComponent(C3D.MeshRenderer3D).color = industrialBlue;
+    ground.getComponent(C3D.MeshRenderer3D).color = '#0d0d0f';
 
     // --- 2. Pista Refinada con Bordes de Seguridad ---
     const track = await createPlane3DObject(root);
@@ -496,20 +498,21 @@ export async function createTestCircuit(parent = null) {
     rightBorder.getComponent(Components.Transform).localScale = { x: 20, y: 10, z: 8000 };
 
     // --- 3. Tuberías Industriales ---
-    const createPipe = async (pos, rot, scale) => {
+    const createPipe = async (pos, rot, scale, color = '#7f8c8d') => {
         const pipe = await createCapsule3DObject(root);
         pipe.name = "Tuberia_Industrial";
         const t = pipe.getComponent(Components.Transform);
         t.localPosition = pos;
         t.localRotation = rot;
         t.localScale = scale;
-        pipe.getComponent(C3D.MeshRenderer3D).color = '#7f8c8d';
+        pipe.getComponent(C3D.MeshRenderer3D).color = color;
         return pipe;
     };
 
     await createPipe({x: 500, y: -100, z: 500}, {x: 90, y: 0, z: 0}, {x: 40, y: 1000, z: 40});
     await createPipe({x: -500, y: -100, z: 1500}, {x: 90, y: 0, z: 0}, {x: 40, y: 1500, z: 40});
     await createPipe({x: 0, y: -400, z: 2500}, {x: 0, y: 0, z: 90}, {x: 30, y: 1200, z: 30});
+    await createPipe({x: 450, y: -300, z: 1200}, {x: 0, y: 0, z: 45}, {x: 20, y: 800, z: 20}, neonCyan);
 
     // --- 4. Escalera Metálica ---
     for (let i = 0; i < 10; i++) {
@@ -531,7 +534,7 @@ export async function createTestCircuit(parent = null) {
     const light = await createPointLight3D(station);
     light.getComponent(Components.Transform).localPosition = { x: 0, y: -350, z: 0 };
     const pLight = light.getComponent(C3D.PointLight3D);
-    pLight.color = '#00ffff'; pLight.intensity = 2.0; pLight.radius = 800;
+    pLight.color = neonCyan; pLight.intensity = 2.0; pLight.radius = 800;
 
     // --- 6. Rampa de Salto con Neones ---
     const ramp = await createCubeObject(root, industrialBlue);
@@ -541,7 +544,7 @@ export async function createTestCircuit(parent = null) {
     rt.localRotation = { x: -20, y: 0, z: 0 };
     ramp.addComponent(new C3D.BoxCollider3D(ramp));
 
-    const neon = await createCubeObject(ramp, '#e74c3c');
+    const neon = await createCubeObject(ramp, neonRed);
     neon.getComponent(Components.Transform).localPosition = { x: 0, y: -15, z: 0 };
     neon.getComponent(Components.Transform).localScale = { x: 380, y: 5, z: 980 };
     neon.getComponent(C3D.MeshRenderer3D).isUnlit = true;
@@ -560,21 +563,42 @@ export async function createTestCircuit(parent = null) {
         support.getComponent(Components.Transform).localScale = { x: 0.1, y: 100, z: 0.1 };
     }
 
-    // --- 8. Meta Tecnológica ---
+    // --- 8. Túnel de Neón ---
+    const tunnelRoot = createBaseMateria("Tunel_Neon", root);
+    tunnelRoot.getComponent(Components.Transform).localPosition = { x: 0, y: -100, z: 7500 };
+    for(let i=0; i<8; i++) {
+        const ring = createBaseMateria(`Anillo_${i}`, tunnelRoot);
+        ring.getComponent(Components.Transform).localPosition = { x: 0, y: 0, z: i * 300 };
+
+        const sideL = await createCubeObject(ring, '#2980b9');
+        sideL.getComponent(Components.Transform).localPosition = { x: -400, y: -150, z: 0 };
+        sideL.getComponent(Components.Transform).localScale = { x: 20, y: 400, z: 20 };
+
+        const sideR = await createCubeObject(ring, '#2980b9');
+        sideR.getComponent(Components.Transform).localPosition = { x: 400, y: -150, z: 0 };
+        sideR.getComponent(Components.Transform).localScale = { x: 20, y: 400, z: 20 };
+
+        const top = await createCubeObject(ring, neonCyan);
+        top.getComponent(Components.Transform).localPosition = { x: 0, y: -350, z: 0 };
+        top.getComponent(Components.Transform).localScale = { x: 800, y: 15, z: 15 };
+        top.getComponent(C3D.MeshRenderer3D).isUnlit = true;
+    }
+
+    // --- 9. Meta Tecnológica ---
     const goal = await createBaseMateria("Meta_Final", root);
-    goal.getComponent(Components.Transform).localPosition = { x: 0, y: -100, z: 9500 };
+    goal.getComponent(Components.Transform).localPosition = { x: 0, y: -100, z: 10500 };
 
     const archL = await createCubeObject(goal, lightMetal);
     archL.getComponent(Components.Transform).localPosition = { x: -400, y: -200, z: 0 };
-    archL.getComponent(Components.Transform).localScale = { x: 50, y: 500, z: 50 };
+    archL.getComponent(Components.Transform).localScale = { x: 50, y: 600, z: 50 };
 
     const archR = await createCubeObject(goal, lightMetal);
     archR.getComponent(Components.Transform).localPosition = { x: 400, y: -200, z: 0 };
-    archR.getComponent(Components.Transform).localScale = { x: 50, y: 500, z: 50 };
+    archR.getComponent(Components.Transform).localScale = { x: 50, y: 600, z: 50 };
 
     const archTop = await createCubeObject(goal, safetyYellow);
-    archTop.getComponent(Components.Transform).localPosition = { x: 0, y: -450, z: 0 };
-    archTop.getComponent(Components.Transform).localScale = { x: 850, y: 50, z: 100 };
+    archTop.getComponent(Components.Transform).localPosition = { x: 0, y: -500, z: 0 };
+    archTop.getComponent(Components.Transform).localScale = { x: 850, y: 60, z: 120 };
 
     return root;
 }

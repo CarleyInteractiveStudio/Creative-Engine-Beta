@@ -2588,7 +2588,7 @@ function getMateriaAxes(materia) {
     glm.vec3.normalize(yAxis, yAxis);
     glm.vec3.normalize(zAxis, zAxis);
 
-    // Flip Y because in CE Y- is UP. Standard matrix column for Y points to world DOWN.
+    // In CE, -Y is UP in world space. We ensure the gizmo axis handle points UP.
     glm.vec3.scale(yAxis, yAxis, -1);
 
     return { x: xAxis, y: yAxis, z: zAxis };
@@ -2642,8 +2642,10 @@ function draw3DGizmos(materia) {
     const { ctx } = renderer;
     const gizmoScale = getGizmoScale(center);
 
+    // GIZMO_SIZE is the line length in world units. It scales with distance to appear constant on screen.
     const GIZMO_SIZE = 80 * gizmoScale;
-    const ARROW_SIZE = 14 * gizmoScale;
+    // ARROW_SIZE is the handle size in constant screen PIXELS.
+    const ARROW_SIZE = 18;
 
     const C3D = window.Components3D || Components3D;
     if (!C3D) return;
@@ -2820,18 +2822,13 @@ function drawOrientationGizmo() {
     glm.quat.fromEuler(q, camera.rotation.x, camera.rotation.y, 0);
     glm.quat.invert(q, q);
 
-    // Standard Orientation: X (Right), Y (Up), Z (Forward)
-    // Note: In CE, Y- is UP in world space.
-    // In our coordinate system:
-    // +X: Right
-    // -Y: Up (World UP)
-    // +Z: Forward/Away (depends on view matrix, but we'll use standard axes)
+    // Orientation Compass in CE (+Y is DOWN)
     const axes = [
         { vec: [1, 0, 0], color: '#ff4444', label: 'X' },
-        { vec: [0, -1, 0], color: '#44ff44', label: 'Y' },
+        { vec: [0, -1, 0], color: '#44ff44', label: 'Y' }, // Points to world -Y (UP)
         { vec: [0, 0, 1], color: '#4444ff', label: 'Z' },
         { vec: [-1, 0, 0], color: '#882222', label: '-X' },
-        { vec: [0, 1, 0], color: '#228822', label: '-Y' },
+        { vec: [0, 1, 0], color: '#228822', label: '-Y' }, // Points to world +Y (DOWN)
         { vec: [0, 0, -1], color: '#222288', label: '-Z' }
     ];
 
