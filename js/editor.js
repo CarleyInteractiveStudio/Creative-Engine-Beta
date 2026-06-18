@@ -2287,7 +2287,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
             if (!isGameView) {
-                SceneView.drawOverlay();
+                // Pass current frame matrices to eliminate drifting
+                SceneView.drawOverlay(renderer3D?.lastProjectionMatrix, renderer3D?.lastViewMatrix);
             }
             rendererInstance.end();
         };
