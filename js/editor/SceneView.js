@@ -2135,6 +2135,11 @@ function drawFrustumCullingGizmos() {
     const allMaterias = scene.getAllMaterias();
     const { ctx } = renderer;
 
+    const r3d = window._Renderer3D;
+    const proj = r3d?.lastProjectionMatrix;
+    const view = r3d?.lastViewMatrix;
+    const cw = r3d?.canvas?.width, ch = r3d?.canvas?.height;
+
     allMaterias.forEach(materia => {
         if (!materia.isActive) return;
         const cameraComponent = materia.getComponent(Components.Camera);
@@ -2163,8 +2168,8 @@ function drawFrustumCullingGizmos() {
                 y: transform.y,
                 z: transform.z + Math.sin(a+0.5) * lodDist
             };
-            const s1 = world3DToScreen(p1);
-            const s2 = world3DToScreen(p2);
+            const s1 = world3DToScreen(p1, proj, view, cw, ch);
+            const s2 = world3DToScreen(p2, proj, view, cw, ch);
             if (s1 && s2) {
                 ctx.beginPath();
                 ctx.moveTo(s1.x, s1.y);
@@ -2211,6 +2216,7 @@ function drawCameraGizmos(renderer) {
         const r3d = window._Renderer3D;
         const proj = r3d?.lastProjectionMatrix;
         const view = r3d?.lastViewMatrix;
+        const cw = r3d?.canvas?.width, ch = r3d?.canvas?.height;
 
         if (cameraComponent.projection === 'Orthographic') {
             const size = cameraComponent.orthographicSize;
@@ -2225,10 +2231,10 @@ function drawCameraGizmos(renderer) {
                 const p4 = { x: transform.x - halfWidth, y: transform.y + halfHeight, z };
 
                 const clr = isSelected ? 'rgba(255, 255, 0, 0.8)' : 'rgba(255, 255, 255, 0.4)';
-                drawLineClipped(ctx, p1, p2, clr, 2, proj, view);
-                drawLineClipped(ctx, p2, p3, clr, 2, proj, view);
-                drawLineClipped(ctx, p3, p4, clr, 2, proj, view);
-                drawLineClipped(ctx, p4, p1, clr, 2, proj, view);
+                drawLineClipped(ctx, p1, p2, clr, 2, proj, view, cw, ch);
+                drawLineClipped(ctx, p2, p3, clr, 2, proj, view, cw, ch);
+                drawLineClipped(ctx, p3, p4, clr, 2, proj, view, cw, ch);
+                drawLineClipped(ctx, p4, p1, clr, 2, proj, view, cw, ch);
             } else {
                 ctx.beginPath();
                 ctx.rect(-halfWidth, -halfHeight, halfWidth * 2, halfHeight * 2);
@@ -2269,7 +2275,7 @@ function drawCameraGizmos(renderer) {
             const project = (lx, ly, lz) => {
                 const worldPos = glm.vec3.create();
                 glm.vec3.transformQuat(worldPos, [lx, ly, -lz], q); // Cameras look towards -Z in many conventions, check ours
-                return world3DToScreen({ x: transform.x + worldPos[0], y: transform.y + worldPos[1], z: (transform.z || 0) + worldPos[2] });
+                return world3DToScreen({ x: transform.x + worldPos[0], y: transform.y + worldPos[1], z: (transform.z || 0) + worldPos[2] }, proj, view, cw, ch);
             };
 
             const projectRaw = (lx, ly, lz) => {
@@ -2282,7 +2288,7 @@ function drawCameraGizmos(renderer) {
             const f1 = projectRaw(-farW, farH, far), f2 = projectRaw(farW, farH, far), f3 = projectRaw(farW, -farH, far), f4 = projectRaw(-farW, -farH, far);
 
             const clr = isSelected ? 'rgba(255, 255, 0, 0.8)' : 'rgba(255, 255, 255, 0.4)';
-            const drawL = (p1, p2) => drawLineClipped(ctx, p1, p2, clr, is3D ? 2 : 1 / renderer.camera.effectiveZoom, proj, view);
+            const drawL = (p1, p2) => drawLineClipped(ctx, p1, p2, clr, is3D ? 2 : 1 / renderer.camera.effectiveZoom, proj, view, cw, ch);
 
             // Near plane
             drawL(n1, n2); drawL(n2, n3); drawL(n3, n4); drawL(n4, n1);
@@ -2422,6 +2428,11 @@ function drawComponentGrids() {
 
         const gridRange = 20; // Number of cells around object
 
+        const r3d = window._Renderer3D;
+        const proj = r3d?.lastProjectionMatrix;
+        const view = r3d?.lastViewMatrix;
+        const cw = r3d?.canvas?.width, ch = r3d?.canvas?.height;
+
         // Use local bounds for the component grid to ensure rotation is applied correctly
         const startX = -(gridRange * cellSize.x);
         const endX = (gridRange * cellSize.x);
@@ -2432,8 +2443,8 @@ function drawComponentGrids() {
         const cos = Math.cos(rad), sin = Math.sin(rad);
 
         const drawLine3D = (p1World, p2World) => {
-            const p1 = world3DToScreen(p1World);
-            const p2 = world3DToScreen(p2World);
+            const p1 = world3DToScreen(p1World, proj, view, cw, ch);
+            const p2 = world3DToScreen(p2World, proj, view, cw, ch);
             if (p1 && p2) {
                 ctx.beginPath();
                 ctx.moveTo(p1.x, p1.y);
@@ -2601,10 +2612,16 @@ function getMateriaAxes(materia) {
 function check3DGizmoHit(canvasPos, materia) {
     const transform = materia.getComponent(Components.Transform);
     const center = { x: transform.x, y: transform.y, z: transform.z || 0 };
-    const screenPos = world3DToScreen(center);
+
+    const r3d = window._Renderer3D;
+    const proj = r3d?.lastProjectionMatrix;
+    const view = r3d?.lastViewMatrix;
+    const cw = r3d?.canvas?.width, ch = r3d?.canvas?.height;
+
+    const screenPos = world3DToScreen(center, proj, view, cw, ch);
     if (!screenPos) return null;
 
-    const gizmoScale = getGizmoScale(center);
+    const gizmoScale = getGizmoScale(center, proj, view, cw, ch);
     const hitRadius = 25;
     const gizmoLen = 80 * gizmoScale;
 
@@ -2613,7 +2630,7 @@ function check3DGizmoHit(canvasPos, materia) {
 
     const checkHandle = (worldAxis, name) => {
         const axisEnd = { x: center.x + worldAxis[0] * gizmoLen, y: center.y + worldAxis[1] * gizmoLen, z: center.z + worldAxis[2] * gizmoLen };
-        const screenEnd = world3DToScreen(axisEnd);
+        const screenEnd = world3DToScreen(axisEnd, proj, view, cw, ch);
         if (!screenEnd) return false;
         const dx = canvasPos.x - screenEnd.x;
         const dy = canvasPos.y - screenEnd.y;
@@ -2917,6 +2934,11 @@ function drawGizmoIcons() {
     const zoom = camera.effectiveZoom;
     const allMaterias = SceneManager.currentScene.getAllMaterias();
 
+    const r3d = window._Renderer3D;
+    const proj = r3d?.lastProjectionMatrix;
+    const view = r3d?.lastViewMatrix;
+    const cw = r3d?.canvas?.width, ch = r3d?.canvas?.height;
+
     const BASE_ICON_SIZE = 32;
 
     allMaterias.forEach(materia => {
@@ -2945,7 +2967,7 @@ function drawGizmoIcons() {
             if (iconImg.complete && iconImg.naturalWidth > 0) {
                 let screenPos;
                 if (is3D) {
-                    screenPos = world3DToScreen({ x: transform.x, y: transform.y, z: transform.z || 0 });
+                    screenPos = world3DToScreen({ x: transform.x, y: transform.y, z: transform.z || 0 }, proj, view, cw, ch);
                 } else {
                     screenPos = {
                         x: transform.x,
@@ -3021,6 +3043,12 @@ function draw3DGyzmoRects(gyzmo) {
     if (!transform) return;
 
     const { ctx } = renderer;
+
+    const r3d = window._Renderer3D;
+    const proj = r3d?.lastProjectionMatrix;
+    const view = r3d?.lastViewMatrix;
+    const cw = r3d?.canvas?.width, ch = r3d?.canvas?.height;
+
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
@@ -3050,11 +3078,11 @@ function draw3DGyzmoRects(gyzmo) {
 
         // Draw edges with clipping
         for (let i = 0; i < 4; i++) {
-            drawLineClipped(ctx, pts[i], pts[(i + 1) % 4], clr, 2);
+            drawLineClipped(ctx, pts[i], pts[(i + 1) % 4], clr, 2, proj, view, cw, ch);
         }
 
         // LENIENT FILL: only if all corners are in front of camera
-        const screenPts = pts.map(p => world3DToScreen(p));
+        const screenPts = pts.map(p => world3DToScreen(p, proj, view, cw, ch));
         if (screenPts.every(p => p !== null)) {
             ctx.globalAlpha = 0.2;
             ctx.fillStyle = clr;
@@ -3308,6 +3336,11 @@ function draw3DPhysicsGizmos() {
     const transform = selectedMateria.getComponent(Components.Transform);
     if (!transform) return;
 
+    const r3d = window._Renderer3D;
+    const proj = r3d?.lastProjectionMatrix;
+    const view = r3d?.lastViewMatrix;
+    const cw = r3d?.canvas?.width, ch = r3d?.canvas?.height;
+
     const C3D = window.Components3D || Components3D;
     if (!C3D) return;
 
@@ -3326,7 +3359,7 @@ function draw3DPhysicsGizmos() {
             y: center.y + box.offset.y,
             z: center.z + box.offset.z
         };
-        Gizmos.drawWireCube(ctx, worldCenter, worldSize, 'rgba(0, 255, 0, 0.8)');
+        Gizmos.drawWireCube(ctx, worldCenter, worldSize, { x: 0, y: 0, z: 0 }, 'rgba(0, 255, 0, 0.8)', proj, view, cw, ch);
     }
 
     const sphere = selectedMateria.getComponent(C3D.SphereCollider3D);
@@ -3337,7 +3370,7 @@ function draw3DPhysicsGizmos() {
             y: center.y + sphere.offset.y,
             z: center.z + sphere.offset.z
         };
-        Gizmos.drawWireSphere(ctx, worldCenter, worldRadius, 'rgba(0, 255, 0, 0.8)');
+        Gizmos.drawWireSphere(ctx, worldCenter, worldRadius, { x: 0, y: 0, z: 0 }, 'rgba(0, 255, 0, 0.8)', proj, view, cw, ch);
     }
 }
 
@@ -3354,6 +3387,11 @@ function drawPhysicsGizmos() {
     const config = getCurrentProjectConfig();
     const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
 
+    const r3d = window._Renderer3D;
+    const proj = r3d?.lastProjectionMatrix;
+    const view = r3d?.lastViewMatrix;
+    const cw = r3d?.canvas?.width, ch = r3d?.canvas?.height;
+
     // Helper for 3D projected lines
     const strokeRect3D = (cx, cy, w, h, z, rot) => {
         const hw = w / 2;
@@ -3364,7 +3402,7 @@ function drawPhysicsGizmos() {
         const getPt = (lx, ly) => {
             const rx = lx * cos - ly * sin;
             const ry = lx * sin + ly * cos;
-            return world3DToScreen({ x: cx + rx, y: cy + ry, z });
+            return world3DToScreen({ x: cx + rx, y: cy + ry, z }, proj, view, cw, ch);
         };
 
         const p1 = getPt(-hw, -hh), p2 = getPt(hw, -hh), p3 = getPt(hw, hh), p4 = getPt(-hw, hh);
@@ -3494,6 +3532,11 @@ function drawTilemapOutline() {
     const layerWidth = width * cellSize.x;
     const layerHeight = height * cellSize.y;
 
+    const r3d = window._Renderer3D;
+    const proj = r3d?.lastProjectionMatrix;
+    const view = r3d?.lastViewMatrix;
+    const cw = r3d?.canvas?.width, ch = r3d?.canvas?.height;
+
     if (is3D) {
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
         ctx.lineWidth = 2;
@@ -3509,7 +3552,7 @@ function drawTilemapOutline() {
             const getCorner = (lx, ly) => {
                 const rx = lx * cos - ly * sin;
                 const ry = lx * sin + ly * cos;
-                return world3DToScreen({ x: x + rx, y: y + ry, z: transform.z || 0 });
+                return world3DToScreen({ x: x + rx, y: y + ry, z: transform.z || 0 }, proj, view, cw, ch);
             };
 
             const p1 = getCorner(-hw, -hh);
@@ -3570,9 +3613,14 @@ function drawTerrenoColliders() {
     const config = getCurrentProjectConfig();
     const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
 
+    const r3d = window._Renderer3D;
+    const proj = r3d?.lastProjectionMatrix;
+    const view = r3d?.lastViewMatrix;
+    const cw = r3d?.canvas?.width, ch = r3d?.canvas?.height;
+
     const drawLine3D = (p1World, p2World) => {
-        const p1 = world3DToScreen(p1World);
-        const p2 = world3DToScreen(p2World);
+        const p1 = world3DToScreen(p1World, proj, view, cw, ch);
+        const p2 = world3DToScreen(p2World, proj, view, cw, ch);
         if (p1 && p2) {
             ctx.beginPath();
             ctx.moveTo(p1.x, p1.y);
@@ -3687,6 +3735,11 @@ function drawTilemapColliders() {
     const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
     const { cellSize } = grid;
 
+    const r3d = window._Renderer3D;
+    const proj = r3d?.lastProjectionMatrix;
+    const view = r3d?.lastViewMatrix;
+    const cw = r3d?.canvas?.width, ch = r3d?.canvas?.height;
+
     const drawColliderRect = (rx, ry, rw, rh) => {
         if (is3D) {
             // Tiles in Tilemap are local to the Tilemap center.
@@ -3697,7 +3750,7 @@ function drawTilemapColliders() {
             const getPt = (lx, ly) => {
                 const rx_loc = lx * cos - ly * sin;
                 const ry_loc = lx * sin + ly * cos;
-                return world3DToScreen({ x: transform.x + rx_loc, y: transform.y + ry_loc, z: transform.z || 0 });
+                return world3DToScreen({ x: transform.x + rx_loc, y: transform.y + ry_loc, z: transform.z || 0 }, proj, view, cw, ch);
             };
 
             const p1 = getPt(rx, ry), p2 = getPt(rx + rw, ry), p3 = getPt(rx + rw, ry + rh), p4 = getPt(rx, ry + rh);
