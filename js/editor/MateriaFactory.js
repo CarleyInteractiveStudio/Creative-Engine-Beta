@@ -332,41 +332,117 @@ export async function createDefaultCharacter(parent = null) {
     const footR = createBaseMateria('Pie_D', legR); footR.getComponent(Components.Transform).localPosition = { x: 0, y: 80, z: 0 };
 
     const jointsOrder = [hip, torso, neck, head, eyeL, eyeR, armL, handL, armR, handR, legL, footL, legR, footR];
-    const meshData = { positions: [], joints: [], weights: [], indices: [] };
-    const addBox = (pos, size, boneIdx) => {
+    const meshData = { positions: [], normals: [], colors: [], joints: [], weights: [], indices: [] };
+
+    const hexToRgb01 = (hex) => {
+        const r = parseInt(hex.slice(1, 3), 16) / 255;
+        const g = parseInt(hex.slice(3, 5), 16) / 255;
+        const b = parseInt(hex.slice(5, 7), 16) / 255;
+        return [r, g, b];
+    };
+
+    const addBox = (pos, size, boneIdx, colorHex = null) => {
         const hw = size.x/2, hh = size.y/2, hd = size.z/2, start = meshData.positions.length/3;
-        const v = [-hw,-hh,-hd, hw,-hh,-hd, hw,hh,-hd, -hw,hh,-hd, -hw,-hh,hd, hw,-hh,hd, hw,hh,hd, -hw,hh,hd];
+
+        // Ensure we are using the absolute world position for vertices at bind pose
+        const px = pos.x, py = pos.y, pz = pos.z;
+
+        // Vertices for each face to have unique normals (no shared vertices between faces)
+        const v = [
+            // Front
+            -hw, -hh, hd,  hw, -hh, hd,  hw,  hh, hd, -hw,  hh, hd,
+            // Back
+            -hw, -hh, -hd, -hw,  hh, -hd,  hw,  hh, -hd,  hw, -hh, -hd,
+            // Top
+            -hw,  hh, -hd, -hw,  hh,  hd,  hw,  hh,  hd,  hw,  hh, -hd,
+            // Bottom
+            -hw, -hh, -hd,  hw, -hh, -hd,  hw, -hh,  hd, -hw, -hh,  hd,
+            // Right
+             hw, -hh, -hd,  hw,  hh, -hd,  hw,  hh,  hd,  hw, -hh,  hd,
+            // Left
+            -hw, -hh, -hd, -hw, -hh,  hd, -hw,  hh,  hd, -hw,  hh, -hd
+        ];
+
+        const normals = [
+            0, 0, 1,  0, 0, 1,  0, 0, 1,  0, 0, 1,
+            0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1,
+            0, 1, 0,  0, 1, 0,  0, 1, 0,  0, 1, 0,
+            0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0,
+            1, 0, 0,  1, 0, 0,  1, 0, 0,  1, 0, 0,
+            -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0
+        ];
+
         for(let i=0; i<v.length; i+=3) {
             meshData.positions.push(v[i]+pos.x, v[i+1]+pos.y, v[i+2]+pos.z);
+            meshData.normals.push(normals[i], normals[i+1], normals[i+2]);
             meshData.joints.push(boneIdx,0,0,0); meshData.weights.push(1,0,0,0);
         }
-        [0,2,1, 0,3,2, 4,5,6, 4,6,7, 0,1,5, 0,5,4, 2,3,7, 2,7,6, 0,4,7, 0,7,3, 1,2,6, 1,6,5].forEach(i => meshData.indices.push(i+start));
+
+        const faceIndices = [0,1,2, 0,2,3, 4,5,6, 4,6,7, 8,9,10, 8,10,11, 12,13,14, 12,14,15, 16,17,18, 16,18,19, 20,21,22, 20,22,23];
+        faceIndices.forEach(i => meshData.indices.push(i+start));
+
+        const rgb = colorHex ? hexToRgb01(colorHex) : [0,0,0];
+        const alpha = colorHex ? 1.0 : 0.0;
+        for(let i=0; i<v.length/3; i++) {
+            meshData.colors.push(rgb[0], rgb[1], rgb[2], alpha);
+        }
     };
-    addBox({x:0, y:0, z:0}, {x:35, y:25, z:20}, 0); addBox({x:0, y:-30, z:0}, {x:40, y:45, z:25}, 1); addBox({x:0, y:-65, z:0}, {x:12, y:25, z:12}, 2);
-    addBox({x:0, y:-85, z:0}, {x:25, y:25, z:25}, 3); addBox({x:-8, y:-90, z:12}, {x:5, y:5, z:5}, 4); addBox({x:8, y:-90, z:12}, {x:5, y:5, z:5}, 5);
-    addBox({x:-35, y:-30, z:0}, {x:12, y:45, z:12}, 6); addBox({x:-35, y:5, z:0}, {x:10, y:12, z:12}, 7); addBox({x:35, y:-30, z:0}, {x:12, y:45, z:12}, 8);
-    addBox({x:35, y:5, z:0}, {x:10, y:12, z:12}, 9); addBox({x:-15, y:40, z:0}, {x:16, y:60, z:16}, 10); addBox({x:-15, y:75, z:5}, {x:18, y:10, z:28}, 11);
-    addBox({x:15, y:40, z:0}, {x:16, y:60, z:16}, 12); addBox({x:15, y:75, z:5}, {x:18, y:10, z:28}, 13);
+
+    const skin = '#ffdbac';
+    const shirt = '#3498db';
+    const pants = '#2c3e50';
+    const white = '#ffffff';
+
+    // Helper to get world position of a joint for vertex alignment
+    const getJointWorldPos = (joint) => {
+        const pos = joint.getComponent(Components.Transform).position;
+        return pos;
+    };
+
+    // Hip
+    addBox(getJointWorldPos(hip), {x:35, y:25, z:20}, 0, pants);
+    // Torso
+    addBox(getJointWorldPos(torso), {x:40, y:45, z:25}, 1, shirt);
+    // Neck & Head
+    addBox(getJointWorldPos(neck), {x:12, y:25, z:12}, 2, skin);
+    addBox(getJointWorldPos(head), {x:25, y:25, z:25}, 3, skin);
+    // Eyes
+    addBox(getJointWorldPos(eyeL), {x:5, y:5, z:5}, 4, white);
+    addBox(getJointWorldPos(eyeR), {x:5, y:5, z:5}, 5, white);
+    // Arms
+    addBox(getJointWorldPos(armL), {x:12, y:45, z:12}, 6, shirt);
+    addBox(getJointWorldPos(handL), {x:10, y:12, z:12}, 7, skin);
+    addBox(getJointWorldPos(armR), {x:12, y:45, z:12}, 8, shirt);
+    addBox(getJointWorldPos(handR), {x:10, y:12, z:12}, 9, skin);
+    // Legs
+    addBox(getJointWorldPos(legL), {x:16, y:60, z:16}, 10, pants);
+    addBox(getJointWorldPos(footL), {x:18, y:10, z:28}, 11, pants);
+    addBox(getJointWorldPos(legR), {x:16, y:60, z:16}, 12, pants);
+    addBox(getJointWorldPos(footR), {x:18, y:10, z:28}, 13, pants);
 
     const renderer = new C3D.SkinnedMeshRenderer3D(root);
-    renderer.color = '#ffdbac';
-    if (window._Renderer3D?.gl) {
-        const gl = window._Renderer3D.gl;
-        renderer.buffers = { positions: gl.createBuffer(), indices: gl.createBuffer(), joints: gl.createBuffer(), weights: gl.createBuffer() };
-        gl.bindBuffer(gl.ARRAY_BUFFER, renderer.buffers.positions); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(meshData.positions), gl.DYNAMIC_DRAW);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, renderer.buffers.indices); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(meshData.indices), gl.STATIC_DRAW);
-        gl.bindBuffer(gl.ARRAY_BUFFER, renderer.buffers.joints); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(meshData.joints), gl.STATIC_DRAW);
-        gl.bindBuffer(gl.ARRAY_BUFFER, renderer.buffers.weights); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(meshData.weights), gl.STATIC_DRAW);
-        renderer.indexCount = meshData.indices.length;
-        renderer.skeleton = { joints: jointsOrder.map(m => m.id), inverseBindMatrices: new Float32Array(jointsOrder.length * 16) };
-        const glm = window.glMatrix;
-        jointsOrder.forEach((m, i) => {
-            const inv = glm.mat4.create(); glm.mat4.invert(inv, m.getComponent(Components.Transform).worldMatrix);
-            renderer.skeleton.inverseBindMatrices.set(inv, i * 16);
-        });
-        renderer.cpuPositions = new Float32Array(meshData.positions);
-        renderer.isLoaded = true;
-    }
+    renderer.color = skin;
+    renderer.cpuPositions = new Float32Array(meshData.positions);
+    renderer.cpuNormals = new Float32Array(meshData.normals);
+    renderer.cpuColors = new Float32Array(meshData.colors);
+    renderer.cpuIndices = new Uint16Array(meshData.indices);
+    renderer.cpuJoints = new Float32Array(meshData.joints);
+    renderer.cpuWeights = new Float32Array(meshData.weights);
+    renderer.indexCount = meshData.indices.length;
+    renderer.skeleton = { joints: jointsOrder.map(m => m.id), inverseBindMatrices: new Float32Array(jointsOrder.length * 16) };
+
+    // --- Skeleton Normalization ---
+    // World matrices are calculated lazily via the 'worldMatrix' getter, which handles
+    // hierarchy recursion. We simply invert them to get the InverseBindMatrices.
+    const glm = window.glMatrix;
+    jointsOrder.forEach((m, i) => {
+        const t = m.getComponent(Components.Transform);
+        const inv = glm.mat4.create();
+        // Accessing the worldMatrix getter triggers the necessary calculations
+        glm.mat4.invert(inv, t.worldMatrix);
+        renderer.skeleton.inverseBindMatrices.set(inv, i * 16);
+    });
+    renderer.isLoaded = true;
     root.addComponent(renderer);
     root.addComponent(new C3D.Rigidbody3D(root));
     const rb = root.getComponent(C3D.Rigidbody3D); rb.drag = 0.05; rb.angularDrag = 0.1;
@@ -380,21 +456,149 @@ export async function createDefaultCharacter(parent = null) {
     const camMtr = createBaseMateria('Camara_3ra_Persona', root);
     camMtr.getComponent(Components.Transform).localPosition = { x: 0, y: -150, z: 450 };
     camMtr.addComponent(new Components.Camera(camMtr));
-    const cam = camMtr.getComponent(Components.Camera); cam.projection = 'Perspective'; cam.fov = 65;
+    const cam = camMtr.getComponent(Components.Camera);
+    cam.projection = 'Perspective';
+    cam.fov = 65;
+    cam.clearFlags = 'Skybox';
     camMtr.addComponent(new C3D.CameraControl3D(camMtr));
     return root;
 }
 
 export async function createTestCircuit(parent = null) {
-    const root = createBaseMateria('Circuito_Test', parent);
+    const C3D = await ensure3D();
+    const root = createBaseMateria('Circuito_Industrial_Pro', parent);
+
+    // Colors
+    const industrialBlue = '#2c3e50';
+    const darkMetal = '#1a1a1a';
+    const lightMetal = '#95a5a6';
+    const safetyYellow = '#f1c40f';
+    const accentOrange = '#e67e22';
+    const neonCyan = '#00f2ff';
+    const neonRed = '#ff3e3e';
+
+    // --- 1. Base Gran Plataforma ---
     const ground = await createPlane3DObject(root);
-    ground.getComponent(Components.Transform).localScale = { x: 5000, y: 1, z: 5000 };
-    ground.getComponent(window.Components3D.MeshRenderer3D).color = '#1a3c1a';
-    for (let i = 0; i < 5; i++) {
-        const step = await createCubeObject(root, '#555555');
+    ground.getComponent(Components.Transform).localScale = { x: 10000, y: 1, z: 10000 };
+    ground.getComponent(C3D.MeshRenderer3D).color = '#0d0d0f';
+
+    // --- 2. Pista Refinada con Bordes de Seguridad ---
+    const track = await createPlane3DObject(root);
+    track.getComponent(Components.Transform).localPosition = { x: 0, y: -2, z: 0 };
+    track.getComponent(Components.Transform).localScale = { x: 800, y: 1, z: 8000 };
+    track.getComponent(C3D.MeshRenderer3D).color = darkMetal;
+
+    // Bordes amarillos (Caution Stripes effect)
+    const leftBorder = await createCubeObject(root, safetyYellow);
+    leftBorder.getComponent(Components.Transform).localPosition = { x: -410, y: -5, z: 0 };
+    leftBorder.getComponent(Components.Transform).localScale = { x: 20, y: 10, z: 8000 };
+
+    const rightBorder = await createCubeObject(root, safetyYellow);
+    rightBorder.getComponent(Components.Transform).localPosition = { x: 410, y: -5, z: 0 };
+    rightBorder.getComponent(Components.Transform).localScale = { x: 20, y: 10, z: 8000 };
+
+    // --- 3. Tuberías Industriales ---
+    const createPipe = async (pos, rot, scale, color = '#7f8c8d') => {
+        const pipe = await createCapsule3DObject(root);
+        pipe.name = "Tuberia_Industrial";
+        const t = pipe.getComponent(Components.Transform);
+        t.localPosition = pos;
+        t.localRotation = rot;
+        t.localScale = scale;
+        pipe.getComponent(C3D.MeshRenderer3D).color = color;
+        return pipe;
+    };
+
+    await createPipe({x: 500, y: -100, z: 500}, {x: 90, y: 0, z: 0}, {x: 40, y: 1000, z: 40});
+    await createPipe({x: -500, y: -100, z: 1500}, {x: 90, y: 0, z: 0}, {x: 40, y: 1500, z: 40});
+    await createPipe({x: 0, y: -400, z: 2500}, {x: 0, y: 0, z: 90}, {x: 30, y: 1200, z: 30});
+    await createPipe({x: 450, y: -300, z: 1200}, {x: 0, y: 0, z: 45}, {x: 20, y: 800, z: 20}, neonCyan);
+
+    // --- 4. Escalera Metálica ---
+    for (let i = 0; i < 10; i++) {
+        const step = await createCubeObject(root, i % 2 === 0 ? darkMetal : lightMetal);
         const t = step.getComponent(Components.Transform);
-        t.localPosition = { x: 0, y: -i * 20, z: 200 + i * 50 };
-        t.localScale = { x: 200, y: 20, z: 50 };
+        t.localPosition = { x: -300, y: -i * 25, z: 1000 + i * 80 };
+        t.localScale = { x: 250, y: 15, z: 80 };
+        step.addComponent(new C3D.BoxCollider3D(step));
     }
+
+    // --- 5. Estación de Energía (Obstáculo Complejo) ---
+    const station = createBaseMateria("Estacion_Energia", root);
+    station.getComponent(Components.Transform).localPosition = { x: 0, y: -150, z: 3000 };
+
+    const core = await createCubeObject(station, '#3498db');
+    core.getComponent(Components.Transform).localScale = { x: 200, y: 300, z: 200 };
+    core.addComponent(new C3D.BoxCollider3D(core));
+
+    const light = await createPointLight3D(station);
+    light.getComponent(Components.Transform).localPosition = { x: 0, y: -350, z: 0 };
+    const pLight = light.getComponent(C3D.PointLight3D);
+    pLight.color = neonCyan; pLight.intensity = 2.0; pLight.radius = 800;
+
+    // --- 6. Rampa de Salto con Neones ---
+    const ramp = await createCubeObject(root, industrialBlue);
+    const rt = ramp.getComponent(Components.Transform);
+    rt.localPosition = { x: 250, y: -50, z: 4500 };
+    rt.localScale = { x: 400, y: 20, z: 1000 };
+    rt.localRotation = { x: -20, y: 0, z: 0 };
+    ramp.addComponent(new C3D.BoxCollider3D(ramp));
+
+    const neon = await createCubeObject(ramp, neonRed);
+    neon.getComponent(Components.Transform).localPosition = { x: 0, y: -15, z: 0 };
+    neon.getComponent(Components.Transform).localScale = { x: 380, y: 5, z: 980 };
+    neon.getComponent(C3D.MeshRenderer3D).isUnlit = true;
+
+    // --- 7. Plataformas de Vértigo (Flotantes) ---
+    for (let i = 0; i < 5; i++) {
+        const plat = await createCubeObject(root, i === 4 ? safetyYellow : darkMetal);
+        const pt = plat.getComponent(Components.Transform);
+        pt.localPosition = { x: Math.cos(i) * 500, y: -400 - i * 50, z: 6000 + i * 600 };
+        pt.localScale = { x: 300, y: 30, z: 300 };
+        plat.addComponent(new C3D.BoxCollider3D(plat));
+
+        // Add a support pillar visual
+        const support = await createCubeObject(plat, '#333333');
+        support.getComponent(Components.Transform).localPosition = { x: 0, y: 1000, z: 0 };
+        support.getComponent(Components.Transform).localScale = { x: 0.1, y: 100, z: 0.1 };
+    }
+
+    // --- 8. Túnel de Neón ---
+    const tunnelRoot = createBaseMateria("Tunel_Neon", root);
+    tunnelRoot.getComponent(Components.Transform).localPosition = { x: 0, y: -100, z: 7500 };
+    for(let i=0; i<8; i++) {
+        const ring = createBaseMateria(`Anillo_${i}`, tunnelRoot);
+        ring.getComponent(Components.Transform).localPosition = { x: 0, y: 0, z: i * 300 };
+
+        const sideL = await createCubeObject(ring, '#2980b9');
+        sideL.getComponent(Components.Transform).localPosition = { x: -400, y: -150, z: 0 };
+        sideL.getComponent(Components.Transform).localScale = { x: 20, y: 400, z: 20 };
+
+        const sideR = await createCubeObject(ring, '#2980b9');
+        sideR.getComponent(Components.Transform).localPosition = { x: 400, y: -150, z: 0 };
+        sideR.getComponent(Components.Transform).localScale = { x: 20, y: 400, z: 20 };
+
+        const top = await createCubeObject(ring, neonCyan);
+        top.getComponent(Components.Transform).localPosition = { x: 0, y: -350, z: 0 };
+        top.getComponent(Components.Transform).localScale = { x: 800, y: 15, z: 15 };
+        top.getComponent(C3D.MeshRenderer3D).isUnlit = true;
+    }
+
+    // --- 9. Meta Tecnológica ---
+    const goal = await createBaseMateria("Meta_Final", root);
+    goal.getComponent(Components.Transform).localPosition = { x: 0, y: -100, z: 10500 };
+
+    const archL = await createCubeObject(goal, lightMetal);
+    archL.getComponent(Components.Transform).localPosition = { x: -400, y: -200, z: 0 };
+    archL.getComponent(Components.Transform).localScale = { x: 50, y: 600, z: 50 };
+
+    const archR = await createCubeObject(goal, lightMetal);
+    archR.getComponent(Components.Transform).localPosition = { x: 400, y: -200, z: 0 };
+    archR.getComponent(Components.Transform).localScale = { x: 50, y: 600, z: 50 };
+
+    const archTop = await createCubeObject(goal, safetyYellow);
+    archTop.getComponent(Components.Transform).localPosition = { x: 0, y: -500, z: 0 };
+    archTop.getComponent(Components.Transform).localScale = { x: 850, y: 60, z: 120 };
+
     return root;
 }

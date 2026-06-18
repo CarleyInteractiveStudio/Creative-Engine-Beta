@@ -500,9 +500,15 @@ class InputManager {
     }
 
     static _onBlur() {
-        // Release virtual keys as well
+        this.clearAllInputs();
+        console.log('[InputManager] Focus lost: All inputs released.');
+    }
+
+    /**
+     * Resets all input states (keys, buttons, deltas).
+     */
+    static clearAllInputs() {
         this._virtualKeys.clear();
-        // Release all keys and buttons when window loses focus to prevent stuck states
         this._keys.clear();
         this._mouseButtons.clear();
         this._keysDown.clear();
@@ -511,7 +517,8 @@ class InputManager {
         this._keysUp.clear();
         this._mouseDelta.x = 0;
         this._mouseDelta.y = 0;
-        console.log('[InputManager] Focus lost: All inputs released.');
+        this._mouseWheelDelta.x = 0;
+        this._mouseWheelDelta.y = 0;
     }
 
     static _onWindowMouseDown(event) {

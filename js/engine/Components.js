@@ -1183,8 +1183,8 @@ export class Camera extends Leyes {
         this.orthographicSize = 5; // Size for Orthographic
         this.fov = 60; // Field of view for Perspective
         this.nearClipPlane = 0.1;
-        this.farClipPlane = 1000;
-        this.clearFlags = 'SolidColor'; // 'SolidColor', 'Skybox', or 'DontClear'
+        this.farClipPlane = 20000;
+        this.clearFlags = 'Skybox'; // 'SolidColor', 'Skybox', or 'DontClear'
         this.backgroundColor = '#1e293b'; // Default solid color
         this.cullingMask = -1; // Bitmask, -1 means 'Everything'
         this.rect = { x: 0, y: 0, w: 1, h: 1 }; // Viewport rect (0-1)
