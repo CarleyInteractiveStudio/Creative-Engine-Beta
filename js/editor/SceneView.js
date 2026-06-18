@@ -2208,6 +2208,10 @@ function drawCameraGizmos(renderer) {
             ctx.rotate(transform.rotation * Math.PI / 180);
         }
 
+        const r3d = window._Renderer3D;
+        const proj = r3d?.lastProjectionMatrix;
+        const view = r3d?.lastViewMatrix;
+
         if (cameraComponent.projection === 'Orthographic') {
             const size = cameraComponent.orthographicSize;
             const halfHeight = size;
@@ -2215,16 +2219,16 @@ function drawCameraGizmos(renderer) {
 
             if (is3D) {
                 const z = transform.z || 0;
-                const p1 = world3DToScreen({ x: transform.x - halfWidth, y: transform.y - halfHeight, z });
-                const p2 = world3DToScreen({ x: transform.x + halfWidth, y: transform.y - halfHeight, z });
-                const p3 = world3DToScreen({ x: transform.x + halfWidth, y: transform.y + halfHeight, z });
-                const p4 = world3DToScreen({ x: transform.x - halfWidth, y: transform.y + halfHeight, z });
-                if (p1 && p2 && p3 && p4) {
-                    ctx.beginPath();
-                    ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
-                    ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y);
-                    ctx.closePath(); ctx.stroke();
-                }
+                const p1 = { x: transform.x - halfWidth, y: transform.y - halfHeight, z };
+                const p2 = { x: transform.x + halfWidth, y: transform.y - halfHeight, z };
+                const p3 = { x: transform.x + halfWidth, y: transform.y + halfHeight, z };
+                const p4 = { x: transform.x - halfWidth, y: transform.y + halfHeight, z };
+
+                const clr = isSelected ? 'rgba(255, 255, 0, 0.8)' : 'rgba(255, 255, 255, 0.4)';
+                drawLineClipped(ctx, p1, p2, clr, 2, proj, view);
+                drawLineClipped(ctx, p2, p3, clr, 2, proj, view);
+                drawLineClipped(ctx, p3, p4, clr, 2, proj, view);
+                drawLineClipped(ctx, p4, p1, clr, 2, proj, view);
             } else {
                 ctx.beginPath();
                 ctx.rect(-halfWidth, -halfHeight, halfWidth * 2, halfHeight * 2);
@@ -2278,7 +2282,7 @@ function drawCameraGizmos(renderer) {
             const f1 = projectRaw(-farW, farH, far), f2 = projectRaw(farW, farH, far), f3 = projectRaw(farW, -farH, far), f4 = projectRaw(-farW, -farH, far);
 
             const clr = isSelected ? 'rgba(255, 255, 0, 0.8)' : 'rgba(255, 255, 255, 0.4)';
-            const drawL = (p1, p2) => drawLineClipped(ctx, p1, p2, clr, is3D ? 2 : 1 / renderer.camera.effectiveZoom);
+            const drawL = (p1, p2) => drawLineClipped(ctx, p1, p2, clr, is3D ? 2 : 1 / renderer.camera.effectiveZoom, proj, view);
 
             // Near plane
             drawL(n1, n2); drawL(n2, n3); drawL(n3, n4); drawL(n4, n1);
@@ -2552,26 +2556,26 @@ function drawLayerPlacementPreview() {
 }
 
 function getGizmoScale(center) {
-    if (!renderer || !renderer.camera) return 1.0;
+    const r3d = window._Renderer3D;
+    if (!r3d || !renderer || !renderer.camera) return 1.0;
     const cam = renderer.camera;
     const glm = window.glMatrix;
 
-    // Use distance to the camera plane for consistent screen-space scaling
-    // Cam forward vector in world space:
-    const q = glm.quat.create();
-    glm.quat.fromEuler(q, cam.rotation.x, cam.rotation.y, 0);
-    const forward = glm.vec3.fromValues(0, 0, -1);
-    glm.vec3.transformQuat(forward, forward, q);
+    // Use the actual view matrix for projected distance calculation
+    const view = r3d.lastViewMatrix;
+    const worldPos = glm.vec4.fromValues(center.x, center.y, center.z || 0, 1.0);
+    const viewPos = glm.vec4.create();
+    glm.vec4.transformMat4(viewPos, worldPos, view);
 
-    const camToObj = glm.vec3.fromValues(center.x - cam.x, center.y - cam.y, (center.z || 0) - cam.z);
-    const dist = glm.vec3.dot(camToObj, forward); // Projected distance
+    // View-space Z is the distance from camera plane.
+    // In our convention, camera looks towards -Z in view space.
+    let dist = -viewPos[2];
 
-    // Base scale on distance. 800 is a magic constant for 'normal' size at standard zoom
-    // We use Math.abs because dist could be negative if object is behind (though world3DToScreen handles that)
+    // Base scale on distance. 800 is a magic constant for 'normal' size.
     let gizmoScale = Math.abs(dist) / 800;
 
     // Minimum scale to keep it selectable, and maximum to avoid screen flooding
-    return Math.max(0.1, Math.min(gizmoScale, 5.0));
+    return Math.max(0.1, Math.min(gizmoScale, 10.0));
 }
 
 function getMateriaAxes(materia) {
@@ -2636,7 +2640,15 @@ function draw3DGizmos(materia) {
         y: transform.rotationY || 0,
         z: transform.rotationZ || 0
     };
-    const screenPos = world3DToScreen(center);
+
+    const r3d = window._Renderer3D;
+    if (!r3d) return;
+
+    // Use current rendering matrices for correct projection
+    const proj = r3d.lastProjectionMatrix;
+    const view = r3d.lastViewMatrix;
+
+    const screenPos = world3DToScreen(center, proj, view);
     if (!screenPos) return;
 
     const { ctx } = renderer;
@@ -2670,22 +2682,21 @@ function draw3DGizmos(materia) {
     const drawAxis = (worldAxis, color) => {
         const endPos = { x: center.x + worldAxis[0] * GIZMO_SIZE, y: center.y + worldAxis[1] * GIZMO_SIZE, z: center.z + worldAxis[2] * GIZMO_SIZE };
 
-        // Use drawLineClipped for axes too, in case one end is behind camera
-        const endScreen = world3DToScreen(endPos);
+        // Draw clipped line for the axis stem
+        drawLineClipped(ctx, center, endPos, color, 3, proj, view);
+
+        const endScreen = world3DToScreen(endPos, proj, view);
         if (!endScreen) return;
 
-        ctx.strokeStyle = color;
-        ctx.fillStyle = color;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(screenPos.x, screenPos.y);
-        ctx.lineTo(endScreen.x, endScreen.y);
-        ctx.stroke();
+        // Draw arrowhead only if it's not overlapping too much with the center
+        const screenDist = Math.hypot(endScreen.x - screenPos.x, endScreen.y - screenPos.y);
+        if (screenDist < ARROW_SIZE) return;
 
         const angle = Math.atan2(endScreen.y - screenPos.y, endScreen.x - screenPos.x);
         ctx.save();
         ctx.translate(endScreen.x, endScreen.y);
         ctx.rotate(angle);
+        ctx.fillStyle = color;
         ctx.beginPath();
         if (activeTool === 'scale') {
             ctx.rect(-ARROW_SIZE/2, -ARROW_SIZE/2, ARROW_SIZE, ARROW_SIZE);
