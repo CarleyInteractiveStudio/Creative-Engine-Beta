@@ -459,12 +459,19 @@ export class Renderer3D {
         gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(posLoc);
 
-        const yModel = mat4.create();
-        mat4.scale(yModel, yModel, [0.4, 100000, 0.4]);
-        gl.uniformMatrix4fv(modelLoc, false, yModel);
-        gl.uniform4f(colorLoc, 0, 1, 0, 1);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.cubeIdx);
-        gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+        // Finite axes at origin
+        const drawAxis = (scale, color) => {
+            const m = mat4.create();
+            mat4.scale(m, m, scale);
+            gl.uniformMatrix4fv(modelLoc, false, m);
+            gl.uniform4f(colorLoc, color[0], color[1], color[2], 1);
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.cubeIdx);
+            gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+        };
+
+        drawAxis([0.2, 500, 0.2], [0, 1, 0]); // Y (Up/Down)
+        drawAxis([500, 0.2, 0.2], [1, 0, 0]); // X
+        drawAxis([0.2, 0.2, 500], [0, 0, 1]); // Z
     }
 
     drawScene(scene, cameraMateria = null) {

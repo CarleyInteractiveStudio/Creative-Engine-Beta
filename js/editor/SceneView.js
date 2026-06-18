@@ -60,6 +60,7 @@ export function getMouseRay3D(screenX, screenY) {
 
     // Normalize coordinates to NDC
     const x = ((screenX - rect.left) / rect.width) * 2 - 1;
+    // Standard unproject expects Y to be flipped from screen space
     const y = 1 - ((screenY - rect.top) / rect.height) * 2;
 
     const invProj = glm.mat4.create();
@@ -681,7 +682,7 @@ function drawUIGizmos(renderer, materia) {
     ctx.restore();
 }
 
-function drawGizmos(renderer, materia) {
+function drawGizmos(renderer, materia, proj = null, view = null, cw = null, ch = null) {
     if (!materia || !renderer) return;
 
     const transform = materia.getComponent(Components.Transform);
@@ -691,7 +692,7 @@ function drawGizmos(renderer, materia) {
     const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
 
     if (is3D) {
-        draw3DGizmos(materia);
+        draw3DGizmos(materia, proj, view, cw, ch);
         return;
     }
 
@@ -827,6 +828,7 @@ export function initialize(dependencies) {
 
                         // 1. Determine world axis vector
                         const isY = dragState.handle === 'move-y';
+                        // Use [0,-1,0] for Y to match visual UP (-Y world)
                         const localAxis = dragState.handle === 'move-x' ? [1,0,0] : (isY ? [0,-1,0] : [0,0,1]);
                         const q = glm.quat.create();
                         glm.quat.fromEuler(q, dragState.initialTransform.rotationX || 0, dragState.initialTransform.rotationY || 0, dragState.initialTransform.rotationZ || 0);
@@ -2127,7 +2129,7 @@ export function update() {
     }
 }
 
-function drawFrustumCullingGizmos() {
+function drawFrustumCullingGizmos(proj = null, view = null, cw = null, ch = null) {
     if (!SceneManager || !renderer) return;
     const scene = SceneManager.currentScene;
     if (!scene) return;
@@ -2163,8 +2165,8 @@ function drawFrustumCullingGizmos() {
                 y: transform.y,
                 z: transform.z + Math.sin(a+0.5) * lodDist
             };
-            const s1 = world3DToScreen(p1);
-            const s2 = world3DToScreen(p2);
+            const s1 = world3DToScreen(p1, proj, view, cw, ch);
+            const s2 = world3DToScreen(p2, proj, view, cw, ch);
             if (s1 && s2) {
                 ctx.beginPath();
                 ctx.moveTo(s1.x, s1.y);
@@ -2176,7 +2178,7 @@ function drawFrustumCullingGizmos() {
     });
 }
 
-function drawCameraGizmos(renderer) {
+function drawCameraGizmos(renderer, proj = null, view = null, cw = null, ch = null) {
     if (!SceneManager || !renderer) return;
     const scene = SceneManager.currentScene;
     if (!scene) return;
@@ -2208,6 +2210,12 @@ function drawCameraGizmos(renderer) {
             ctx.rotate(transform.rotation * Math.PI / 180);
         }
 
+        const r3d = window._Renderer3D;
+        const _proj = proj || r3d?.lastProjectionMatrix;
+        const _view = view || r3d?.lastViewMatrix;
+        const _cw = cw || r3d?.canvas?.width;
+        const _ch = ch || r3d?.canvas?.height;
+
         if (cameraComponent.projection === 'Orthographic') {
             const size = cameraComponent.orthographicSize;
             const halfHeight = size;
@@ -2215,16 +2223,16 @@ function drawCameraGizmos(renderer) {
 
             if (is3D) {
                 const z = transform.z || 0;
-                const p1 = world3DToScreen({ x: transform.x - halfWidth, y: transform.y - halfHeight, z });
-                const p2 = world3DToScreen({ x: transform.x + halfWidth, y: transform.y - halfHeight, z });
-                const p3 = world3DToScreen({ x: transform.x + halfWidth, y: transform.y + halfHeight, z });
-                const p4 = world3DToScreen({ x: transform.x - halfWidth, y: transform.y + halfHeight, z });
-                if (p1 && p2 && p3 && p4) {
-                    ctx.beginPath();
-                    ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
-                    ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y);
-                    ctx.closePath(); ctx.stroke();
-                }
+                const p1 = { x: transform.x - halfWidth, y: transform.y - halfHeight, z };
+                const p2 = { x: transform.x + halfWidth, y: transform.y - halfHeight, z };
+                const p3 = { x: transform.x + halfWidth, y: transform.y + halfHeight, z };
+                const p4 = { x: transform.x - halfWidth, y: transform.y + halfHeight, z };
+
+                const clr = isSelected ? 'rgba(255, 255, 0, 0.8)' : 'rgba(255, 255, 255, 0.4)';
+                drawLineClipped(ctx, p1, p2, clr, 2, _proj, _view, _cw, _ch);
+                drawLineClipped(ctx, p2, p3, clr, 2, _proj, _view, _cw, _ch);
+                drawLineClipped(ctx, p3, p4, clr, 2, _proj, _view, _cw, _ch);
+                drawLineClipped(ctx, p4, p1, clr, 2, _proj, _view, _cw, _ch);
             } else {
                 ctx.beginPath();
                 ctx.rect(-halfWidth, -halfHeight, halfWidth * 2, halfHeight * 2);
@@ -2265,7 +2273,7 @@ function drawCameraGizmos(renderer) {
             const project = (lx, ly, lz) => {
                 const worldPos = glm.vec3.create();
                 glm.vec3.transformQuat(worldPos, [lx, ly, -lz], q); // Cameras look towards -Z in many conventions, check ours
-                return world3DToScreen({ x: transform.x + worldPos[0], y: transform.y + worldPos[1], z: (transform.z || 0) + worldPos[2] });
+                return world3DToScreen({ x: transform.x + worldPos[0], y: transform.y + worldPos[1], z: (transform.z || 0) + worldPos[2] }, _proj, _view, _cw, _ch);
             };
 
             const projectRaw = (lx, ly, lz) => {
@@ -2278,7 +2286,7 @@ function drawCameraGizmos(renderer) {
             const f1 = projectRaw(-farW, farH, far), f2 = projectRaw(farW, farH, far), f3 = projectRaw(farW, -farH, far), f4 = projectRaw(-farW, -farH, far);
 
             const clr = isSelected ? 'rgba(255, 255, 0, 0.8)' : 'rgba(255, 255, 255, 0.4)';
-            const drawL = (p1, p2) => drawLineClipped(ctx, p1, p2, clr, is3D ? 2 : 1 / renderer.camera.effectiveZoom);
+            const drawL = (p1, p2) => drawLineClipped(ctx, p1, p2, clr, is3D ? 2 : 1 / renderer.camera.effectiveZoom, _proj, _view, _cw, _ch);
 
             // Near plane
             drawL(n1, n2); drawL(n2, n3); drawL(n3, n4); drawL(n4, n1);
@@ -2418,6 +2426,11 @@ function drawComponentGrids() {
 
         const gridRange = 20; // Number of cells around object
 
+        const r3d = window._Renderer3D;
+        const proj = r3d?.lastProjectionMatrix;
+        const view = r3d?.lastViewMatrix;
+        const cw = r3d?.canvas?.width, ch = r3d?.canvas?.height;
+
         // Use local bounds for the component grid to ensure rotation is applied correctly
         const startX = -(gridRange * cellSize.x);
         const endX = (gridRange * cellSize.x);
@@ -2428,8 +2441,8 @@ function drawComponentGrids() {
         const cos = Math.cos(rad), sin = Math.sin(rad);
 
         const drawLine3D = (p1World, p2World) => {
-            const p1 = world3DToScreen(p1World);
-            const p2 = world3DToScreen(p2World);
+            const p1 = world3DToScreen(p1World, proj, view, cw, ch);
+            const p2 = world3DToScreen(p2World, proj, view, cw, ch);
             if (p1 && p2) {
                 ctx.beginPath();
                 ctx.moveTo(p1.x, p1.y);
@@ -2551,27 +2564,26 @@ function drawLayerPlacementPreview() {
     }
 }
 
-function getGizmoScale(center) {
-    if (!renderer || !renderer.camera) return 1.0;
-    const cam = renderer.camera;
+function getGizmoScale(center, customProj = null, customView = null, cw = null, ch = null) {
+    const r3d = window._Renderer3D;
+    if (!r3d || !renderer || !renderer.camera) return 1.0;
     const glm = window.glMatrix;
 
-    // Use distance to the camera plane for consistent screen-space scaling
-    // Cam forward vector in world space:
-    const q = glm.quat.create();
-    glm.quat.fromEuler(q, cam.rotation.x, cam.rotation.y, 0);
-    const forward = glm.vec3.fromValues(0, 0, -1);
-    glm.vec3.transformQuat(forward, forward, q);
+    // Use the actual view matrix for projected distance calculation
+    const view = customView || r3d.lastViewMatrix;
+    const worldPos = glm.vec4.fromValues(center.x, center.y, center.z || 0, 1.0);
+    const viewPos = glm.vec4.create();
+    glm.vec4.transformMat4(viewPos, worldPos, view);
 
-    const camToObj = glm.vec3.fromValues(center.x - cam.x, center.y - cam.y, (center.z || 0) - cam.z);
-    const dist = glm.vec3.dot(camToObj, forward); // Projected distance
+    // View-space Z is the distance from camera plane.
+    // In our convention, camera looks towards -Z in view space.
+    let dist = -viewPos[2];
 
-    // Base scale on distance. 800 is a magic constant for 'normal' size at standard zoom
-    // We use Math.abs because dist could be negative if object is behind (though world3DToScreen handles that)
+    // Base scale on distance. 800 is a magic constant for 'normal' size.
     let gizmoScale = Math.abs(dist) / 800;
 
     // Minimum scale to keep it selectable, and maximum to avoid screen flooding
-    return Math.max(0.1, Math.min(gizmoScale, 5.0));
+    return Math.max(0.1, Math.min(gizmoScale, 10.0));
 }
 
 function getMateriaAxes(materia) {
@@ -2588,28 +2600,33 @@ function getMateriaAxes(materia) {
     glm.vec3.normalize(yAxis, yAxis);
     glm.vec3.normalize(zAxis, zAxis);
 
-    // In CE, -Y is UP in world space. We ensure the gizmo axis handle points UP.
-    glm.vec3.scale(yAxis, yAxis, -1);
+    // In CE, +Y is DOWN. Therefore, the "natural" UP direction for gizmos
+    // should be the NEGATIVE Y axis of the object.
+    const upAxis = glm.vec3.create();
+    glm.vec3.scale(upAxis, yAxis, -1);
 
-    return { x: xAxis, y: yAxis, z: zAxis };
+    return { x: xAxis, y: upAxis, z: zAxis, worldCenter: [matrix[12], matrix[13], matrix[14]] };
 }
 
 function check3DGizmoHit(canvasPos, materia) {
-    const transform = materia.getComponent(Components.Transform);
-    const center = { x: transform.x, y: transform.y, z: transform.z || 0 };
-    const screenPos = world3DToScreen(center);
+    const r3d = window._Renderer3D;
+    const proj = r3d?.lastProjectionMatrix;
+    const view = r3d?.lastViewMatrix;
+    const cw = r3d?.canvas?.width, ch = r3d?.canvas?.height;
+
+    const axes = getMateriaAxes(materia);
+    const center = { x: axes.worldCenter[0], y: axes.worldCenter[1], z: axes.worldCenter[2] };
+
+    const screenPos = world3DToScreen(center, proj, view, cw, ch);
     if (!screenPos) return null;
 
-    const gizmoScale = getGizmoScale(center);
+    const gizmoScale = getGizmoScale(center, proj, view, cw, ch);
     const hitRadius = 25;
     const gizmoLen = 80 * gizmoScale;
 
-    const axes = getMateriaAxes(materia);
-    const glm = window.glMatrix;
-
-    const checkHandle = (worldAxis, name) => {
+    const checkHandle = (worldAxis) => {
         const axisEnd = { x: center.x + worldAxis[0] * gizmoLen, y: center.y + worldAxis[1] * gizmoLen, z: center.z + worldAxis[2] * gizmoLen };
-        const screenEnd = world3DToScreen(axisEnd);
+        const screenEnd = world3DToScreen(axisEnd, proj, view, cw, ch);
         if (!screenEnd) return false;
         const dx = canvasPos.x - screenEnd.x;
         const dy = canvasPos.y - screenEnd.y;
@@ -2628,19 +2645,24 @@ function check3DGizmoHit(canvasPos, materia) {
     return null;
 }
 
-function draw3DGizmos(materia) {
-    const transform = materia.getComponent(Components.Transform);
-    const center = { x: transform.x, y: transform.y, z: transform.z || 0 };
-    const rotation = {
-        x: transform.rotationX || 0,
-        y: transform.rotationY || 0,
-        z: transform.rotationZ || 0
-    };
-    const screenPos = world3DToScreen(center);
+function draw3DGizmos(materia, customProj = null, customView = null, customCw = null, customCh = null) {
+    const r3d = window._Renderer3D;
+    if (!r3d) return;
+
+    // Use current rendering matrices for correct projection
+    const proj = customProj || r3d.lastProjectionMatrix;
+    const view = customView || r3d.lastViewMatrix;
+    const cw = customCw || r3d.canvas.width;
+    const ch = customCh || r3d.canvas.height;
+
+    const axes = getMateriaAxes(materia);
+    const center = { x: axes.worldCenter[0], y: axes.worldCenter[1], z: axes.worldCenter[2] };
+
+    const screenPos = world3DToScreen(center, proj, view, cw, ch);
     if (!screenPos) return;
 
     const { ctx } = renderer;
-    const gizmoScale = getGizmoScale(center);
+    const gizmoScale = getGizmoScale(center, proj, view, cw, ch);
 
     // GIZMO_SIZE is the line length in world units. It scales with distance to appear constant on screen.
     const GIZMO_SIZE = 80 * gizmoScale;
@@ -2650,42 +2672,41 @@ function draw3DGizmos(materia) {
     const C3D = window.Components3D || Components3D;
     if (!C3D) return;
 
+    const transform = materia.getComponent(Components.Transform);
     const meshRenderer = materia.getComponent(C3D.MeshRenderer3D);
     if (meshRenderer) {
         const scale = { x: transform.scale.x, y: transform.scale.y, z: transform.scale.z || 1 };
-        if (meshRenderer.meshType === 'Cube') Gizmos.drawWireCube(ctx, center, scale, rotation);
-        else if (meshRenderer.meshType === 'Sphere') Gizmos.drawWireSphere(ctx, center, Math.max(scale.x, scale.y, scale.z) * 0.5, rotation);
-        else if (meshRenderer.meshType === 'Plane') Gizmos.drawWirePlane(ctx, center, { x: scale.x, z: scale.z }, rotation);
-        else if (meshRenderer.meshType === 'Triangle') Gizmos.drawWireTriangle(ctx, center, { x: scale.x, y: scale.y }, rotation);
-        else if (meshRenderer.meshType === 'Capsule') Gizmos.drawWireCapsule(ctx, center, Math.max(scale.x, scale.z) * 0.25, scale.y, rotation);
+        const rotation = { x: transform.rotationX || 0, y: transform.rotationY || 0, z: transform.rotationZ || 0 };
+        if (meshRenderer.meshType === 'Cube') Gizmos.drawWireCube(ctx, center, scale, rotation, 'rgba(0, 255, 255, 0.8)', proj, view, cw, ch);
+        else if (meshRenderer.meshType === 'Sphere') Gizmos.drawWireSphere(ctx, center, Math.max(scale.x, scale.y, scale.z) * 0.5, rotation, 'rgba(0, 255, 255, 0.8)', proj, view, cw, ch);
+        else if (meshRenderer.meshType === 'Plane') Gizmos.drawWirePlane(ctx, center, { x: scale.x, z: scale.z }, rotation, 'rgba(0, 255, 255, 0.8)', proj, view, cw, ch);
+        else if (meshRenderer.meshType === 'Triangle') Gizmos.drawWireTriangle(ctx, center, { x: scale.x, y: scale.y }, rotation, 'rgba(0, 255, 255, 0.8)', proj, view, cw, ch);
+        else if (meshRenderer.meshType === 'Capsule') Gizmos.drawWireCapsule(ctx, center, Math.max(scale.x, scale.z) * 0.25, scale.y, rotation, 'rgba(0, 255, 255, 0.8)', proj, view, cw, ch);
     } else if (materia.getComponent(Components.Camera)) {
-        drawCameraGizmos(renderer);
+        drawCameraGizmos(renderer, proj, view, cw, ch);
     }
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-    const axes = getMateriaAxes(materia);
-
     const drawAxis = (worldAxis, color) => {
         const endPos = { x: center.x + worldAxis[0] * GIZMO_SIZE, y: center.y + worldAxis[1] * GIZMO_SIZE, z: center.z + worldAxis[2] * GIZMO_SIZE };
 
-        // Use drawLineClipped for axes too, in case one end is behind camera
-        const endScreen = world3DToScreen(endPos);
+        // Draw clipped line for the axis stem
+        drawLineClipped(ctx, center, endPos, color, 3, proj, view, cw, ch);
+
+        const endScreen = world3DToScreen(endPos, proj, view, cw, ch);
         if (!endScreen) return;
 
-        ctx.strokeStyle = color;
-        ctx.fillStyle = color;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(screenPos.x, screenPos.y);
-        ctx.lineTo(endScreen.x, endScreen.y);
-        ctx.stroke();
+        // Draw arrowhead only if it's not overlapping too much with the center
+        const screenDist = Math.hypot(endScreen.x - screenPos.x, endScreen.y - screenPos.y);
+        if (screenDist < ARROW_SIZE) return;
 
         const angle = Math.atan2(endScreen.y - screenPos.y, endScreen.x - screenPos.x);
         ctx.save();
         ctx.translate(endScreen.x, endScreen.y);
         ctx.rotate(angle);
+        ctx.fillStyle = color;
         ctx.beginPath();
         if (activeTool === 'scale') {
             ctx.rect(-ARROW_SIZE/2, -ARROW_SIZE/2, ARROW_SIZE, ARROW_SIZE);
@@ -2713,13 +2734,19 @@ function draw3DGizmos(materia) {
     ctx.restore();
 }
 
-export function drawOverlay() {
+export function drawOverlay(customProj = null, customView = null) {
     // This will be called from updateScene to draw grid/gizmos
     if (!renderer) return;
 
     const config = getCurrentProjectConfig();
     const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
     const is3DActive = is3D && config.viewMode !== '2d';
+
+    // Capture matrices at the start of the overlay pass to ensure consistency
+    const r3d = window._Renderer3D;
+    const proj = customProj || r3d?.lastProjectionMatrix;
+    const view = customView || r3d?.lastViewMatrix;
+    const cw = r3d?.canvas?.width, ch = r3d?.canvas?.height;
 
     if (is3D) {
         // Reset 2D transform to Screen Space for 3D-projected gizmos
@@ -2736,21 +2763,21 @@ export function drawOverlay() {
 
     // Draw gizmo for the selected object
     if (getSelectedMateria()) {
-        drawGizmos(renderer, getSelectedMateria());
+        drawGizmos(renderer, getSelectedMateria(), proj, view, cw, ch);
 
         // Project Gyzmo rectangles if in 3D
         if (is3DActive) {
             const gyzmo = getSelectedMateria().getComponent(Components.Gyzmo);
-            if (gyzmo) draw3DGyzmoRects(gyzmo);
+            if (gyzmo) draw3DGyzmoRects(gyzmo, proj, view, cw, ch);
         }
     }
 
     // Draw gizmos for all cameras in the scene
-    drawCameraGizmos(renderer);
+    drawCameraGizmos(renderer, proj, view, cw, ch);
 
     // Frustum Visualizer for Optimization Mode
     if (config.optiCameraCulling) {
-        drawFrustumCullingGizmos();
+        drawFrustumCullingGizmos(proj, view, cw, ch);
     }
 
     if (is3D) {
@@ -2760,7 +2787,7 @@ export function drawOverlay() {
 
     // Draw Icons (Audio, Camera, etc)
     if (showGizmoIcons) {
-        drawGizmoIcons();
+        drawGizmoIcons(proj, view, cw, ch);
     }
 
     if (!is3DActive) {
@@ -2768,20 +2795,20 @@ export function drawOverlay() {
         drawTileCursor();
 
         // Draw tilemap colliders
-        drawTilemapColliders();
+        drawTilemapColliders(proj, view, cw, ch);
 
         // Draw terrain colliders
-        drawTerrenoColliders();
+        drawTerrenoColliders(proj, view, cw, ch);
 
         // Draw physics colliders for selected object
-        drawPhysicsGizmos();
+        drawPhysicsGizmos(proj, view, cw, ch);
     }
 
-    draw3DPhysicsGizmos();
+    draw3DPhysicsGizmos(proj, view, cw, ch);
 
     if (!is3DActive) {
         // Draw outline for selected Tilemap
-        drawTilemapOutline();
+        drawTilemapOutline(proj, view, cw, ch);
 
         // Draw Canvas gizmos
         drawCanvasGizmos();
@@ -2897,7 +2924,7 @@ function getCachedIcon(path) {
     return img;
 }
 
-function drawGizmoIcons() {
+function drawGizmoIcons(proj = null, view = null, cw = null, ch = null) {
     if (!SceneManager || !renderer || !SceneManager.currentScene) return;
 
     const { ctx, camera } = renderer;
@@ -2934,7 +2961,7 @@ function drawGizmoIcons() {
             if (iconImg.complete && iconImg.naturalWidth > 0) {
                 let screenPos;
                 if (is3D) {
-                    screenPos = world3DToScreen({ x: transform.x, y: transform.y, z: transform.z || 0 });
+                    screenPos = world3DToScreen({ x: transform.x, y: transform.y, z: transform.z || 0 }, proj, view, cw, ch);
                 } else {
                     screenPos = {
                         x: transform.x,
@@ -3010,6 +3037,12 @@ function draw3DGyzmoRects(gyzmo) {
     if (!transform) return;
 
     const { ctx } = renderer;
+
+    const r3d = window._Renderer3D;
+    const proj = r3d?.lastProjectionMatrix;
+    const view = r3d?.lastViewMatrix;
+    const cw = r3d?.canvas?.width, ch = r3d?.canvas?.height;
+
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
@@ -3039,11 +3072,11 @@ function draw3DGyzmoRects(gyzmo) {
 
         // Draw edges with clipping
         for (let i = 0; i < 4; i++) {
-            drawLineClipped(ctx, pts[i], pts[(i + 1) % 4], clr, 2);
+            drawLineClipped(ctx, pts[i], pts[(i + 1) % 4], clr, 2, proj, view, cw, ch);
         }
 
         // LENIENT FILL: only if all corners are in front of camera
-        const screenPts = pts.map(p => world3DToScreen(p));
+        const screenPts = pts.map(p => world3DToScreen(p, proj, view, cw, ch));
         if (screenPts.every(p => p !== null)) {
             ctx.globalAlpha = 0.2;
             ctx.fillStyle = clr;
@@ -3291,7 +3324,7 @@ function drawCapsulePath(ctx, width, height, direction) {
     }
 }
 
-function draw3DPhysicsGizmos() {
+function draw3DPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return;
     const transform = selectedMateria.getComponent(Components.Transform);
@@ -3315,7 +3348,7 @@ function draw3DPhysicsGizmos() {
             y: center.y + box.offset.y,
             z: center.z + box.offset.z
         };
-        Gizmos.drawWireCube(ctx, worldCenter, worldSize, 'rgba(0, 255, 0, 0.8)');
+        Gizmos.drawWireCube(ctx, worldCenter, worldSize, { x: 0, y: 0, z: 0 }, 'rgba(0, 255, 0, 0.8)', proj, view, cw, ch);
     }
 
     const sphere = selectedMateria.getComponent(C3D.SphereCollider3D);
@@ -3326,11 +3359,11 @@ function draw3DPhysicsGizmos() {
             y: center.y + sphere.offset.y,
             z: center.z + sphere.offset.z
         };
-        Gizmos.drawWireSphere(ctx, worldCenter, worldRadius, 'rgba(0, 255, 0, 0.8)');
+        Gizmos.drawWireSphere(ctx, worldCenter, worldRadius, { x: 0, y: 0, z: 0 }, 'rgba(0, 255, 0, 0.8)', proj, view, cw, ch);
     }
 }
 
-function drawPhysicsGizmos() {
+function drawPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return;
 
@@ -3353,7 +3386,7 @@ function drawPhysicsGizmos() {
         const getPt = (lx, ly) => {
             const rx = lx * cos - ly * sin;
             const ry = lx * sin + ly * cos;
-            return world3DToScreen({ x: cx + rx, y: cy + ry, z });
+            return world3DToScreen({ x: cx + rx, y: cy + ry, z }, proj, view, cw, ch);
         };
 
         const p1 = getPt(-hw, -hh), p2 = getPt(hw, -hh), p3 = getPt(hw, hh), p4 = getPt(-hw, hh);
@@ -3451,7 +3484,7 @@ function drawPhysicsGizmos() {
 }
 
 
-function drawTilemapOutline() {
+function drawTilemapOutline(proj = null, view = null, cw = null, ch = null) {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return;
 
@@ -3498,7 +3531,7 @@ function drawTilemapOutline() {
             const getCorner = (lx, ly) => {
                 const rx = lx * cos - ly * sin;
                 const ry = lx * sin + ly * cos;
-                return world3DToScreen({ x: x + rx, y: y + ry, z: transform.z || 0 });
+                return world3DToScreen({ x: x + rx, y: y + ry, z: transform.z || 0 }, proj, view, cw, ch);
             };
 
             const p1 = getCorner(-hw, -hh);
@@ -3542,7 +3575,7 @@ function drawTilemapOutline() {
     }
 }
 
-function drawTerrenoColliders() {
+function drawTerrenoColliders(proj = null, view = null, cw = null, ch = null) {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return;
 
@@ -3560,8 +3593,8 @@ function drawTerrenoColliders() {
     const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
 
     const drawLine3D = (p1World, p2World) => {
-        const p1 = world3DToScreen(p1World);
-        const p2 = world3DToScreen(p2World);
+        const p1 = world3DToScreen(p1World, proj, view, cw, ch);
+        const p2 = world3DToScreen(p2World, proj, view, cw, ch);
         if (p1 && p2) {
             ctx.beginPath();
             ctx.moveTo(p1.x, p1.y);
@@ -3646,7 +3679,7 @@ function drawTerrenoColliders() {
     ctx.restore();
 }
 
-function drawTilemapColliders() {
+function drawTilemapColliders(proj = null, view = null, cw = null, ch = null) {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return;
 
@@ -3686,7 +3719,7 @@ function drawTilemapColliders() {
             const getPt = (lx, ly) => {
                 const rx_loc = lx * cos - ly * sin;
                 const ry_loc = lx * sin + ly * cos;
-                return world3DToScreen({ x: transform.x + rx_loc, y: transform.y + ry_loc, z: transform.z || 0 });
+                return world3DToScreen({ x: transform.x + rx_loc, y: transform.y + ry_loc, z: transform.z || 0 }, proj, view, cw, ch);
             };
 
             const p1 = getPt(rx, ry), p2 = getPt(rx + rw, ry), p3 = getPt(rx + rw, ry + rh), p4 = getPt(rx, ry + rh);

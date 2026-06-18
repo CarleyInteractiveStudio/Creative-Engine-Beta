@@ -3,13 +3,8 @@
  * Includes vector operations, matrix transformations, and collision detection algorithms.
  */
 
-// Vector operations can be added here if needed.
-
 /**
  * Calculates the world-space vertices of an object's Oriented Bounding Box (OOB).
- * @param {Materia} materia The game object.
- * @param {{x:number, y:number}} [explicitPosition] Optional explicit world position.
- * @returns {Array<{x: number, y: number}>|null} An array of 4 vertex points or null if not applicable.
  */
 export function getOOB(materia, explicitPosition = null) {
     const transform = materia.getComponentByName('Transform');
@@ -58,7 +53,7 @@ export function getOOB(materia, explicitPosition = null) {
             maxX = Math.max(maxX, chunk.x + terreno.chunkSize); maxY = Math.max(maxY, chunk.y + terreno.chunkSize);
         });
         w = maxX - minX; h = maxY - minY;
-        pivotX = -minX / (w || 1); pivotY = -minRow / (h || 1);
+        pivotX = -minX / (w || 1); pivotY = -minY / (h || 1);
     } else if (gyzmo && gyzmo.layers && gyzmo.layers.length > 0) {
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         for (const l of gyzmo.layers) {
@@ -209,28 +204,34 @@ export function cos(degrees) { return Math.cos(degrees * Math.PI / 180); }
 /**
  * Converts a 3D world position to 2D screen coordinates.
  */
-export function world3DToScreen(worldPos) {
+export function world3DToScreen(worldPos, customProj = null, customView = null, canvasWidth = null, canvasHeight = null) {
     const r3d = window._Renderer3D;
     const glm = window.glMatrix;
-    if (!r3d || !r3d.lastProjectionMatrix || !r3d.lastViewMatrix || !glm) return null;
+    const proj = customProj || r3d?.lastProjectionMatrix;
+    const view = customView || r3d?.lastViewMatrix;
 
-    const canvas = r3d.canvas;
+    if (!proj || !view || !glm) return null;
+
+    const width = canvasWidth ?? r3d?.canvas?.width ?? 800;
+    const height = canvasHeight ?? r3d?.canvas?.height ?? 600;
+
     const worldVec = glm.vec4.fromValues(worldPos.x, worldPos.y, worldPos.z || 0, 1.0);
     const mvp = glm.mat4.create();
-    glm.mat4.multiply(mvp, r3d.lastProjectionMatrix, r3d.lastViewMatrix);
+    glm.mat4.multiply(mvp, proj, view);
 
     const clipPos = glm.vec4.create();
     glm.vec4.transformMat4(clipPos, worldVec, mvp);
 
-    if (clipPos[3] < 0.001) return null;
+    if (clipPos[3] < 0.01) return null;
 
     const ndc = [clipPos[0] / clipPos[3], clipPos[1] / clipPos[3], clipPos[2] / clipPos[3]];
-    const width = canvas.width, height = canvas.height;
+    if (Math.abs(ndc[0]) > 10.0 || Math.abs(ndc[1]) > 10.0) return null;
 
-    // Corrected for Y-flipped projection matrix:
-    // In our Renderer3D, we use mat4.scale(proj, [1, -1, 1]), which flips NDC Y.
-    // Mapping NDC Y [-1, 1] to screen [0, height] where screen 0 is TOP:
-    // With Y-flipped projection, NDC -1 is TOP.
+    // NDC Y mapping for CE: World UP is -Y, World DOWN is +Y.
+    // Our Renderer3D uses a flipped projection matrix (scale [1, -1, 1]).
+    // This maps World-UP to NDC -1 and World-DOWN to NDC +1.
+    // Screen: TOP is 0. So NDC -1 (UP) -> 0.
+    // Formula: (ndcY * 0.5 + 0.5) * height
     return {
         x: (ndc[0] * 0.5 + 0.5) * width,
         y: (ndc[1] * 0.5 + 0.5) * height
@@ -240,13 +241,19 @@ export function world3DToScreen(worldPos) {
 /**
  * Draws a 3D world line with clipping against the near plane.
  */
-export function drawLineClipped(ctx, p1, p2, color, width = 1) {
+export function drawLineClipped(ctx, p1, p2, color, width = 1, customProj = null, customView = null, canvasWidth = null, canvasHeight = null) {
     const r3d = window._Renderer3D;
     const glm = window.glMatrix;
-    if (!r3d || !r3d.lastProjectionMatrix || !r3d.lastViewMatrix || !glm) return;
+    const proj = customProj || r3d?.lastProjectionMatrix;
+    const view = customView || r3d?.lastViewMatrix;
+
+    if (!proj || !view || !glm) return;
+
+    const w = canvasWidth ?? r3d?.canvas?.width ?? 800;
+    const h = canvasHeight ?? r3d?.canvas?.height ?? 600;
 
     const mvp = glm.mat4.create();
-    glm.mat4.multiply(mvp, r3d.lastProjectionMatrix, r3d.lastViewMatrix);
+    glm.mat4.multiply(mvp, proj, view);
 
     const v1 = glm.vec4.fromValues(p1.x, p1.y, p1.z || 0, 1.0);
     const v2 = glm.vec4.fromValues(p2.x, p2.y, p2.z || 0, 1.0);
@@ -255,7 +262,7 @@ export function drawLineClipped(ctx, p1, p2, color, width = 1) {
     glm.vec4.transformMat4(c1, v1, mvp);
     glm.vec4.transformMat4(c2, v2, mvp);
 
-    const wNear = 0.1;
+    const wNear = 0.01;
     if (c1[3] < wNear && c2[3] < wNear) return;
 
     if (c1[3] < wNear) {
@@ -266,10 +273,10 @@ export function drawLineClipped(ctx, p1, p2, color, width = 1) {
         glm.vec4.lerp(c2, c2, c1, t);
     }
 
-    const w = r3d.canvas.width, h = r3d.canvas.height;
-    // Corrected for Y-flipped projection (NDC -1 is TOP)
     const s1 = { x: (c1[0]/c1[3] * 0.5 + 0.5) * w, y: (c1[1]/c1[3] * 0.5 + 0.5) * h };
     const s2 = { x: (c2[0]/c2[3] * 0.5 + 0.5) * w, y: (c2[1]/c2[3] * 0.5 + 0.5) * h };
+
+    if (isNaN(s1.x) || isNaN(s1.y) || isNaN(s2.x) || isNaN(s2.y)) return;
 
     ctx.strokeStyle = color;
     ctx.lineWidth = width;
