@@ -4371,20 +4371,12 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="number" autocomplete="off" class="prop-input inspector-re-render" data-component="Terreno3D" data-prop="resolution" value="${ley.resolution}" readonly>
                     </div>
                     <hr>
-                    <div class="inspector-section-header"><span>Esculpir</span></div>
-                    <div class="prop-row-multi">
-                        <label data-i18n="BRUSH_SIZE">Tamaño Pincel</label>
-                        <input type="range" min="10" max="500" value="${window.TerrenoEditorWindow?.settings?.brushSize || 50}" oninput="window.TerrenoEditorWindow.setBrushSize(this.value); this.nextElementSibling.innerText = this.value;">
-                        <span style="min-width: 30px;">${window.TerrenoEditorWindow?.settings?.brushSize || 50}</span>
-                    </div>
-                    <div class="prop-row-multi">
-                        <label data-i18n="BRUSH_STRENGTH">Fuerza</label>
-                        <input type="range" min="1" max="200" value="${window.TerrenoEditorWindow?.settings?.brushStrength || 50}" oninput="window.TerrenoEditorWindow.setBrushStrength(this.value); this.nextElementSibling.innerText = this.value;">
-                        <span style="min-width: 30px;">${window.TerrenoEditorWindow?.settings?.brushStrength || 50}</span>
-                    </div>
-                    <button class="primary-btn" style="width:100%; margin-top:10px;" onclick="window.SceneView.setActiveTool('sculpt')">Activar Herramienta Esculpir (V)</button>
+                    <div id="terreno-editor-container" class="terrain-editor-embedded"></div>
+                    <button class="primary-btn" style="width:100%; margin-top:10px;" onclick="window.SceneView.setActiveTool('sculpt')">Activar Pincel 3D (V)</button>
                 </div>
             `;
+            // Trigger setup after HTML is inserted (will happen after the loop)
+            setTimeout(() => TerrenoEditorWindow.setupUI(), 10);
         } else if (ley.constructor.name === 'TerrenoCollider3D') {
             componentHTML = `
                 ${renderComponentHeader(L.get('TERRENO_COLLIDER_3D', "Terreno Collider 3D"), icon, index)}

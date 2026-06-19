@@ -6126,3 +6126,66 @@ body.mobile-mode .submenu li {
     padding: 10px 15px !important;
     font-size: 14px !important;
 }
+
+/* Terrain Editor Advanced UI */
+.terrain-editor-embedded {
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    padding: 8px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border-color);
+}
+.terrain-editor-tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+.terrain-editor-tabs .tab-btn {
+    flex: 1;
+    font-size: 0.75em;
+    padding: 5px 2px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 4px 4px 0 0;
+}
+.terrain-editor-tabs .tab-btn.active {
+    background: var(--bg-tertiary);
+    color: var(--accent-color);
+    font-weight: bold;
+}
+.terrain-tab-content {
+    display: none;
+}
+.terrain-tab-content.active {
+    display: block;
+}
+.brush-shapes, .sculpt-modes {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+.shape-btn, .mode-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    padding: 4px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8em;
+}
+.shape-btn.active, .mode-btn.active {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    background: rgba(var(--accent-color-rgb), 0.1);
+}
+.asset-drop-zone {
+    border: 2px dashed var(--border-color);
+    padding: 20px;
+    text-align: center;
+    font-size: 0.8em;
+    opacity: 0.6;
+    border-radius: 5px;
+}

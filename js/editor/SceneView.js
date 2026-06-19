@@ -1635,8 +1635,10 @@ export function initialize(dependencies) {
                         const terrain = h.materia.getComponent(Components3D.Terreno3D);
                         if (terrain) {
                             const localHit = h.localPoint;
-                            const brushSize = window.TerrenoEditorWindow?.settings?.brushSize || 50;
-                            const brushStrength = window.TerrenoEditorWindow?.settings?.brushStrength || 50;
+                            const tSettings = window.TerrenoEditorWindow?.settings || {};
+                            const brushSize = tSettings.brushSize || 50;
+                            const brushStrength = tSettings.brushStrength || 50;
+                            const activeTab = tSettings.activeTab || 'sculpt';
 
                             const gridX = ((localHit[0] + terrain.size.x / 2) / terrain.size.x) * terrain.resolution;
                             const gridZ = ((localHit[2] + terrain.size.z / 2) / terrain.size.z) * terrain.resolution;
@@ -1646,14 +1648,53 @@ export function initialize(dependencies) {
                                 for (let x = Math.floor(gridX - radius); x <= Math.ceil(gridX + radius); x++) {
                                     if (x < 0 || x > terrain.resolution || z < 0 || z > terrain.resolution) continue;
                                     const dx = x - gridX; const dz = z - gridZ;
-                                    const dist = Math.sqrt(dx * dx + dz * dz);
+
+                                    // Shape Check
+                                    let dist = 0;
+                                    if (tSettings.brushShape === 'square') dist = Math.max(Math.abs(dx), Math.abs(dz));
+                                    else dist = Math.sqrt(dx * dx + dz * dz);
+
                                     if (dist < radius) {
-                                        const falloff = 1.0 - (dist / radius);
-                                        const oldH = terrain.getHeight(x, z);
-                                        terrain.setHeight(x, z, oldH - (brushStrength / 10) * falloff);
+                                        const falloff = tSettings.brushShape === 'mountain' ? Math.pow(1.0 - (dist / radius), 2.0) : (1.0 - (dist / radius));
+                                        const power = (brushStrength / 10) * falloff;
+
+                                        if (activeTab === 'sculpt') {
+                                            const mode = tSettings.sculptMode;
+                                            if (mode === 'elevate') {
+                                                const sign = event.shiftKey ? 1 : -1; // Shift to lower
+                                                terrain.setHeight(x, z, terrain.getHeight(x, z) + sign * power);
+                                            } else if (mode === 'smooth') {
+                                                terrain.smoothHeight(x, z, power * 0.1);
+                                            } else if (mode === 'hole') {
+                                                terrain.setHole(Math.floor(x), Math.floor(z), !event.shiftKey);
+                                            }
+                                        } else if (activeTab === 'paint') {
+                                            const rgb = renderer.hexToRgb(tSettings.paintColor);
+                                            terrain.setPaintColor(x, z, rgb[0], rgb[1], rgb[2]);
+                                        }
                                     }
                                 }
                             }
+
+                            if (activeTab === 'trees' && event.type === 'mousedown') {
+                                // Simple Tree Placement
+                                const treePrefab = tSettings.treePrefab || 'Assets/DefaultTree.ceprefab';
+                                SceneManager.instantiatePrefabFromPath(treePrefab).then(tree => {
+                                    if (tree) {
+                                        tree.getComponent(Components.Transform).position = hit.point;
+                                        tree.setParent(hit.materia, true);
+                                    }
+                                });
+                            } else if (activeTab === 'vegetation') {
+                                // Add to grass list
+                                terrain.grass.push({
+                                    type: tSettings.grassType,
+                                    pos: hit.localPoint,
+                                    rot: { x: 0, y: Math.random() * 360, z: 0 },
+                                    scale: 1.0 + Math.random() * 0.5
+                                });
+                            }
+
                             terrain.isDirty = true;
                             return;
                         }
