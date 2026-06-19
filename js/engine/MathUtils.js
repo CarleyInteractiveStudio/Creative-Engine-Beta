@@ -229,12 +229,12 @@ export function world3DToScreen(worldPos, customProj = null, customView = null, 
 
     // NDC Y mapping for CE: World UP is -Y, World DOWN is +Y.
     // Our Renderer3D uses a flipped projection matrix (scale [1, -1, 1]).
-    // This maps World-UP to NDC -1 and World-DOWN to NDC +1.
-    // Screen: TOP is 0. So NDC -1 (UP) -> 0.
-    // Formula: (ndcY * 0.5 + 0.5) * height
+    // This maps World-UP (-Y) to NDC +1 and World-DOWN (+Y) to NDC -1.
+    // Screen: TOP is 0. So NDC +1 (UP) -> 0.
+    // Formula: (0.5 - ndcY * 0.5) * height
     return {
         x: (ndc[0] * 0.5 + 0.5) * width,
-        y: (ndc[1] * 0.5 + 0.5) * height
+        y: (0.5 - ndc[1] * 0.5) * height
     };
 }
 
@@ -273,8 +273,8 @@ export function drawLineClipped(ctx, p1, p2, color, width = 1, customProj = null
         glm.vec4.lerp(c2, c2, c1, t);
     }
 
-    const s1 = { x: (c1[0]/c1[3] * 0.5 + 0.5) * w, y: (c1[1]/c1[3] * 0.5 + 0.5) * h };
-    const s2 = { x: (c2[0]/c2[3] * 0.5 + 0.5) * w, y: (c2[1]/c2[3] * 0.5 + 0.5) * h };
+    const s1 = { x: (c1[0]/c1[3] * 0.5 + 0.5) * w, y: (0.5 - c1[1]/c1[3] * 0.5) * h };
+    const s2 = { x: (c2[0]/c2[3] * 0.5 + 0.5) * w, y: (0.5 - c2[1]/c2[3] * 0.5) * h };
 
     if (isNaN(s1.x) || isNaN(s1.y) || isNaN(s2.x) || isNaN(s2.y)) return;
 

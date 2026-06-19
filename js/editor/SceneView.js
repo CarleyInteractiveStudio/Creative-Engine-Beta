@@ -2960,8 +2960,14 @@ function drawGizmoIcons(proj = null, view = null, cw = null, ch = null) {
             const iconImg = getCachedIcon(iconPath);
             if (iconImg.complete && iconImg.naturalWidth > 0) {
                 let screenPos;
+                let scale = 1.0;
                 if (is3D) {
-                    screenPos = world3DToScreen({ x: transform.x, y: transform.y, z: transform.z || 0 }, proj, view, cw, ch);
+                    const worldPos = { x: transform.x, y: transform.y, z: transform.z || 0 };
+                    screenPos = world3DToScreen(worldPos, proj, view, cw, ch);
+                    // Use standard gizmo scale logic to make icons smaller at distance
+                    scale = 1.0 / getGizmoScale(worldPos, proj, view, cw, ch);
+                    // Limit max size
+                    scale = Math.min(1.0, scale);
                 } else {
                     screenPos = {
                         x: transform.x,
@@ -2971,13 +2977,9 @@ function drawGizmoIcons(proj = null, view = null, cw = null, ch = null) {
 
                 if (screenPos) {
                     ctx.save();
-                    if (!is3D) {
-                        ctx.translate(screenPos.x, screenPos.y);
-                    } else {
-                        ctx.translate(screenPos.x, screenPos.y);
-                    }
+                    ctx.translate(screenPos.x, screenPos.y);
                     ctx.globalAlpha = 0.8;
-                    const size = is3D ? BASE_ICON_SIZE : BASE_ICON_SIZE / zoom;
+                    const size = (is3D ? BASE_ICON_SIZE * scale : BASE_ICON_SIZE / zoom);
                     ctx.drawImage(iconImg, -size / 2, -size / 2, size, size);
                     ctx.restore();
                 }
