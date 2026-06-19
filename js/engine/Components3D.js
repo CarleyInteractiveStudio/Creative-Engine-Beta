@@ -829,5 +829,152 @@ registerComponent('HealthController3D', HealthController3D);
 registerComponent('ThirdPersonController3D', ThirdPersonController3D);
 registerComponent('CameraControl3D', CameraControl3D);
 registerComponent('DeformableMesh3D', DeformableMesh3D);
+export class WheelCollider3D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.radius = 35;
+        this.suspensionDistance = 40;
+        this.suspensionStiffness = 50;
+        this.suspensionDamping = 5;
+        this.friction = 1.0;
+
+        // Runtime state
+        this.isGrounded = false;
+        this.contactPoint = { x: 0, y: 0, z: 0 };
+        this.contactNormal = { x: 0, y: -1, z: 0 };
+        this.suspensionLength = 0;
+        this.lastSuspensionLength = 0;
+    }
+    clone() {
+        const copy = new WheelCollider3D(null);
+        Object.assign(copy, this);
+        return copy;
+    }
+}
+
+export class VehicleController3D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.wheels = []; // List of materia IDs
+        this.motorForce = 1500;
+        this.brakeForce = 2000;
+        this.maxSteerAngle = 35;
+        this.driftIntensity = 0.5;
+
+        // Internal state
+        this.currentSteer = 0;
+        this.isDrifting = false;
+    }
+
+    update(deltaTime) {
+        if (!window.isGameRunning) return;
+        const rb = this.materia.getComponent(Rigidbody3D);
+        if (!rb) return;
+
+        const input = window.RuntimeAPIManager?.getAPI('input');
+        if (!input) return;
+
+        let accel = 0;
+        if (input.isKeyPressed('w')) accel = 1;
+        if (input.isKeyPressed('s')) accel = -1;
+
+        let steer = 0;
+        if (input.isKeyPressed('a')) steer = -1;
+        if (input.isKeyPressed('d')) steer = 1;
+
+        const handbrake = input.isKeyPressed('shift') || input.isKeyPressed(' ');
+        this.isDrifting = handbrake;
+
+        const scene = this.materia.scene || window.SceneManager?.currentScene;
+        const physics = scene?.physicsSystem;
+        if (!physics) return;
+
+        this.currentSteer += (steer * this.maxSteerAngle - this.currentSteer) * 5 * deltaTime;
+
+        this.wheels.forEach((wheelId, index) => {
+            const wheelMtr = scene.findMateriaById(wheelId);
+            if (!wheelMtr) return;
+
+            const wheelCol = wheelMtr.getComponent(WheelCollider3D);
+            if (!wheelCol) return;
+
+            const transform = wheelMtr.getComponent(window.Components.Transform);
+            const worldPos = transform.position;
+            const downDir = { x: 0, y: 1, z: 0 }; // Engine Y-down, so 1 is world-down
+
+            // Raycast for suspension
+            const hit = physics.raycast3D(worldPos, downDir, wheelCol.suspensionDistance + wheelCol.radius);
+
+            if (hit && hit.materia.id !== this.materia.id) {
+                wheelCol.isGrounded = true;
+                wheelCol.contactPoint = hit.point;
+                wheelCol.contactNormal = hit.normal;
+
+                const currentDist = hit.distance - wheelCol.radius;
+                const compression = wheelCol.suspensionDistance - currentDist;
+
+                // 1. Suspension Force (Hooke's Law)
+                const springForce = compression * wheelCol.suspensionStiffness;
+                const velocityAtWheel = rb.velocity.y; // Simplified
+                const dampingForce = (currentDist - wheelCol.lastSuspensionLength) / deltaTime * wheelCol.suspensionDamping;
+
+                const totalSuspensionForce = springForce - dampingForce;
+                rb.addForce(0, -totalSuspensionForce, 0); // Push chassis UP (-Y)
+
+                wheelCol.lastSuspensionLength = currentDist;
+
+                // 2. Motor & Steering (Only if grounded)
+                const isFrontWheel = index < 2;
+                if (isFrontWheel) {
+                    transform.localRotationY = this.currentSteer;
+                }
+
+                if (accel !== 0) {
+                    const forward = this._getForwardVector();
+                    const force = accel * this.motorForce;
+                    rb.addForce(forward.x * force, forward.y * force, forward.z * force);
+                }
+
+                // 3. Friction & Drift
+                const sideVelocity = this._getSideVelocity(rb);
+                const frictionImpulse = -sideVelocity * wheelCol.friction * (this.isDrifting ? (1.0 - this.driftIntensity) : 1.0);
+                const sideDir = this._getRightVector();
+                rb.addForce(sideDir.x * frictionImpulse * 10, 0, sideDir.z * frictionImpulse * 10);
+
+            } else {
+                wheelCol.isGrounded = false;
+                wheelCol.lastSuspensionLength = wheelCol.suspensionDistance;
+            }
+
+            // Visual wheel rotation
+            if (accel !== 0 || Math.abs(rb.velocity.x) + Math.abs(rb.velocity.z) > 1) {
+                const speed = Math.sqrt(rb.velocity.x**2 + rb.velocity.z**2);
+                transform.localRotationX += speed * deltaTime * 5;
+            }
+        });
+    }
+
+    _getForwardVector() {
+        const t = this.materia.getComponent(window.Components.Transform);
+        const yaw = t.rotationY * Math.PI / 180;
+        return { x: Math.sin(yaw), y: 0, z: Math.cos(yaw) };
+    }
+
+    _getRightVector() {
+        const t = this.materia.getComponent(window.Components.Transform);
+        const yaw = (t.rotationY + 90) * Math.PI / 180;
+        return { x: Math.sin(yaw), y: 0, z: Math.cos(yaw) };
+    }
+
+    _getSideVelocity(rb) {
+        const right = this._getRightVector();
+        return rb.velocity.x * right.x + rb.velocity.z * right.z;
+    }
+
+    clone() { return new VehicleController3D(null); }
+}
+
 registerComponent('ProceduralChain3D', ProceduralChain3D);
 registerComponent('ClothRenderer3D', ClothRenderer3D);
+registerComponent('WheelCollider3D', WheelCollider3D);
+registerComponent('VehicleController3D', VehicleController3D);

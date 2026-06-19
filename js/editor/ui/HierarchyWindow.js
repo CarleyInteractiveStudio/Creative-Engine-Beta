@@ -285,6 +285,10 @@ export async function handleContextMenuAction(action) {
         case 'create-humanoid-character':
             newMateria = await createDefaultCharacter(selectedMateria);
             break;
+        case 'create-advanced-vehicle':
+            const { createAdvancedVehicle } = await import('../MateriaFactory.js');
+            newMateria = await createAdvancedVehicle(selectedMateria);
+            break;
         case 'create-test-circuit':
             newMateria = await createTestCircuit(selectedMateria);
             break;

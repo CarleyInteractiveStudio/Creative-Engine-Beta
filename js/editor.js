@@ -46,6 +46,7 @@ import * as CarlAgent from './editor/CarlAgent.js';
 import * as CollaborationSystem from './editor/CollaborationSystem.js';
 import * as UpdatesWindow from './editor/ui/UpdatesWindow.js';
 import * as CollabActivityWindow from './editor/ui/CollabActivityWindow.js';
+import { showExtensionsWindow } from './editor/ui/ExtensionsWindow.js';
 import * as NoviceGuide from './editor/ui/NoviceGuideWindow.js';
 import { buildProject, runStandalonePreview } from './editor/BuildSystem.js';
 import * as Dialogs from './editor/ui/DialogWindow.js';
@@ -3671,6 +3672,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             else if (panelName === 'collab-activity') {
                 CollabActivityWindow.show();
+                return;
+            }
+            else if (panelName === 'extensions') {
+                showExtensionsWindow();
                 return;
             }
 

@@ -464,6 +464,50 @@ export async function createDefaultCharacter(parent = null) {
     return root;
 }
 
+export async function createAdvancedVehicle(parent = null) {
+    const C3D = await ensure3D();
+    const root = createBaseMateria('Vehiculo_Pro', parent);
+    const rb = new C3D.Rigidbody3D(root);
+    rb.mass = 1500;
+    root.addComponent(rb);
+    root.addComponent(new C3D.BoxCollider3D(root));
+    root.getComponent(C3D.BoxCollider3D).size = { x: 220, y: 100, z: 450 };
+
+    const body = await createCubeObject(root, '#e74c3c');
+    body.name = 'Carroceria';
+    body.getComponent(C3D.Transform).localScale = { x: 220, y: 90, z: 450 };
+
+    const wheelNames = ['Rueda_Frontal_Izquierda', 'Rueda_Frontal_Derecha', 'Rueda_Trasera_Izquierda', 'Rueda_Trasera_Derecha'];
+    const wheelPositions = [
+        { x: -120, y: 50, z: -160 }, { x: 120, y: 50, z: -160 },
+        { x: -120, y: 50, z: 160 }, { x: 120, y: 50, z: 160 }
+    ];
+
+    const wheelIds = [];
+    for (let i = 0; i < 4; i++) {
+        const wheel = await createSphereObject(root);
+        wheel.name = wheelNames[i];
+        const t = wheel.getComponent(C3D.Transform);
+        t.localPosition = wheelPositions[i];
+        t.localScale = { x: 60, y: 60, z: 60 };
+
+        const wheelCol = new C3D.WheelCollider3D(wheel);
+        wheelCol.radius = 30;
+        wheelCol.suspensionDistance = 40;
+        wheelCol.suspensionStiffness = 60;
+        wheel.addComponent(wheelCol);
+        wheelIds.push(wheel.id);
+    }
+
+    const controller = new C3D.VehicleController3D(root);
+    controller.wheels = wheelIds;
+    controller.motorForce = 2000;
+    controller.driftIntensity = 0.6;
+    root.addComponent(controller);
+
+    return root;
+}
+
 export async function createVehicleTemplate(parent = null) {
     const C3D = await ensure3D();
     const root = createBaseMateria('Vehículo', parent);

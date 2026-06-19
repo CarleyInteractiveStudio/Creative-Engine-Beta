@@ -123,7 +123,18 @@ export async function getURLForAssetPath(path, projectsDirHandle) {
             }
 
             const projectName = new URLSearchParams(window.location.search).get('project');
-            const projectHandle = await effectiveHandle.getDirectoryHandle(projectName);
+            let projectHandle;
+
+            // --- Shared Extensions Support ---
+            if (path.startsWith('Extensions/')) {
+                try {
+                    projectHandle = await effectiveHandle.getDirectoryHandle('Extensions', { create: true });
+                } catch (e) {
+                    projectHandle = await effectiveHandle.getDirectoryHandle(projectName);
+                }
+            } else {
+                projectHandle = await effectiveHandle.getDirectoryHandle(projectName);
+            }
 
             let currentHandle = projectHandle;
             const parts = path.split('/').filter(p => p);
@@ -232,7 +243,17 @@ export async function getFileHandleForPath(path, rootDirHandle) {
 
     try {
         const projectName = new URLSearchParams(window.location.search).get('project');
-        const projectHandle = await rootDirHandle.getDirectoryHandle(projectName);
+        let projectHandle;
+
+        if (path.startsWith('Extensions/')) {
+            try {
+                projectHandle = await rootDirHandle.getDirectoryHandle('Extensions', { create: true });
+            } catch (e) {
+                projectHandle = await rootDirHandle.getDirectoryHandle(projectName);
+            }
+        } else {
+            projectHandle = await rootDirHandle.getDirectoryHandle(projectName);
+        }
 
         let currentHandle = projectHandle;
         const parts = path.split('/').filter(p => p);
