@@ -128,9 +128,16 @@ export async function getURLForAssetPath(path, projectsDirHandle) {
             // --- Shared Extensions Support ---
             if (path.startsWith('Extensions/')) {
                 try {
+                    // Try to access root Extensions first
                     projectHandle = await effectiveHandle.getDirectoryHandle('Extensions', { create: true });
                 } catch (e) {
-                    projectHandle = await effectiveHandle.getDirectoryHandle(projectName);
+                    console.warn("[AssetUtils] Fallback to project-local Extensions directory.");
+                    try {
+                        const projH = await effectiveHandle.getDirectoryHandle(projectName);
+                        projectHandle = await projH.getDirectoryHandle('Extensions', { create: true });
+                    } catch(e2) {
+                        projectHandle = await effectiveHandle.getDirectoryHandle(projectName);
+                    }
                 }
             } else {
                 projectHandle = await effectiveHandle.getDirectoryHandle(projectName);
@@ -140,8 +147,12 @@ export async function getURLForAssetPath(path, projectsDirHandle) {
             const parts = path.split('/').filter(p => p);
             const fileName = parts.pop();
 
-            for (const part of parts) {
-                currentHandle = await currentHandle.getDirectoryHandle(part);
+            // If we are in the shared 'Extensions' directory, the path starts with 'Extensions/'
+            // so we must skip the first part if it matches the directory we already obtained.
+            const startIdx = (path.startsWith('Extensions/') && projectHandle.name === 'Extensions') ? 1 : 0;
+
+            for (let i = startIdx; i < parts.length; i++) {
+                currentHandle = await currentHandle.getDirectoryHandle(parts[i]);
             }
 
             const fileHandle = await currentHandle.getFileHandle(fileName);
@@ -249,7 +260,12 @@ export async function getFileHandleForPath(path, rootDirHandle) {
             try {
                 projectHandle = await rootDirHandle.getDirectoryHandle('Extensions', { create: true });
             } catch (e) {
-                projectHandle = await rootDirHandle.getDirectoryHandle(projectName);
+                try {
+                    const projH = await rootDirHandle.getDirectoryHandle(projectName);
+                    projectHandle = await projH.getDirectoryHandle('Extensions', { create: true });
+                } catch(e2) {
+                    projectHandle = await rootDirHandle.getDirectoryHandle(projectName);
+                }
             }
         } else {
             projectHandle = await rootDirHandle.getDirectoryHandle(projectName);
@@ -259,8 +275,10 @@ export async function getFileHandleForPath(path, rootDirHandle) {
         const parts = path.split('/').filter(p => p);
         const fileName = parts.pop();
 
-        for (const part of parts) {
-            currentHandle = await currentHandle.getDirectoryHandle(part);
+        const startIdx = (path.startsWith('Extensions/') && projectHandle.name === 'Extensions') ? 1 : 0;
+
+        for (let i = startIdx; i < parts.length; i++) {
+            currentHandle = await currentHandle.getDirectoryHandle(parts[i]);
         }
 
         const fileHandle = await currentHandle.getFileHandle(fileName);

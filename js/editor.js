@@ -4776,7 +4776,9 @@ public start() {
                     dom.currentSceneName.textContent = sceneData.fileHandle.name.replace('.ceScene', '');
                     SceneManager.setSceneDirty(false);
                 } else {
-                    throw new Error("Fallo critico! No se pudo cargar o crear una escena.");
+                    console.warn("[Editor] No se pudo inicializar la escena desde el disco. Usando escena vacía de respaldo.");
+                    SceneManager.setCurrentScene(new SceneManager.Scene());
+                    dom.currentSceneName.textContent = 'Nueva Escena';
                 }
             } else {
                 // In test/no-handle mode, create a default empty scene
@@ -5090,6 +5092,11 @@ public start() {
             await updateAssetBrowser();
             updateWindowMenuUI();
             updateAmbientePanelFromScene(); // Sync UI on initial load
+
+            // --- Auto-show Templates for new 3D projects ---
+            if (new URLSearchParams(window.location.search).get('showTemplates') === 'true') {
+                showPreMadeScenesWindow();
+            }
 
             updateLoadingProgress(90, "Finalizando...");
             setupEventListeners();

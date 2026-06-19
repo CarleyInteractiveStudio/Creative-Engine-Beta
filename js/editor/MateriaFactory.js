@@ -530,7 +530,7 @@ export async function createVehicleTemplate(parent = null) {
     for (let i = 0; i < 4; i++) {
         const wheel = await createSphereObject(root);
         wheel.name = wheelNames[i];
-        const t = wheel.getComponent(Components.Transform);
+        const t = wheel.getComponent(C3D.Transform);
         t.localPosition = wheelPositions[i];
         t.localScale = { x: 40, y: 40, z: 40 };
     }

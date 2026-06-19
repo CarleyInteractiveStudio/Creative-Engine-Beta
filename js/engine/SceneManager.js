@@ -722,8 +722,19 @@ function createDefaultScene() {
 export async function initialize(projectsDirHandle) {
     const defaultSceneName = 'default.ceScene';
     const projectName = new URLSearchParams(window.location.search).get('project');
-    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-    const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+    if (!projectName) {
+        console.warn("[SceneManager] No se especificó un proyecto en la URL.");
+        return null;
+    }
+
+    let projectHandle, assetsHandle;
+    try {
+        projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+        assetsHandle = await projectHandle.getDirectoryHandle('Assets', { create: true });
+    } catch (e) {
+        console.error(`[SceneManager] Error al acceder a las carpetas del proyecto '${projectName}':`, e);
+        return null;
+    }
 
     // Check if any scene file exists
     let sceneFileToLoad = null;

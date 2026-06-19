@@ -6,6 +6,7 @@
 
 import * as SceneManager from '../../engine/SceneManager.js';
 import { showNotification } from './DialogWindow.js';
+import { ExtensionsManager } from '../../engine/ExtensionsManager.js';
 
 let dom = {};
 
@@ -41,7 +42,7 @@ export function showPreMadeScenesWindow() {
     updateContent();
 }
 
-function updateContent() {
+async function updateContent() {
     const L = window.Localization;
     const templates = [
         {
@@ -49,14 +50,16 @@ function updateContent() {
             name: L.get('CIUDAD_INICIAL', 'Ciudad Inicial 3D'),
             description: L.get('CIUDAD_DESC', 'Una pequeña zona urbana con calles, edificios y un auto pro ya configurado para conducir.'),
             thumbnail: 'https://images.pexels.com/photos/1034662/pexels-photo-1034662.jpeg?auto=compress&cs=tinysrgb&w=400',
-            type: '3d'
+            type: '3d',
+            extensions: ['city-pack-01']
         },
         {
             id: 'race-track',
             name: L.get('PISTA_CARRERAS', 'Circuito de Carreras'),
             description: L.get('PISTA_DESC', 'Pista de alta velocidad con curvas técnicas y terreno 3D optimizado.'),
             thumbnail: 'https://images.pexels.com/photos/35967/pexels-photo-35967.jpg?auto=compress&cs=tinysrgb&w=400',
-            type: '3d'
+            type: '3d',
+            extensions: ['race-track-01']
         },
         {
             id: 'character-test',
@@ -68,25 +71,67 @@ function updateContent() {
     ];
 
     dom.grid.innerHTML = '';
-    templates.forEach(tpl => {
+    for (const tpl of templates) {
         const card = document.createElement('div');
         card.className = 'scene-template-card';
+
+        let needsDownload = false;
+        if (tpl.extensions) {
+            const available = ExtensionsManager.getAvailableExtensions();
+            for (const extId of tpl.extensions) {
+                const ext = available.find(e => e.id === extId);
+                if (ext && !(await ExtensionsManager.isExtensionDownloaded(ext.assets[0].path))) {
+                    needsDownload = true;
+                    break;
+                }
+            }
+        }
+
+        const btnLabel = needsDownload ? L.get('DESCARGAR_Y_CREAR', 'Descargar y Crear') : L.get('CREAR_ESCENA', 'Crear Escena');
+
         card.innerHTML = `
             <div class="card-thumb" style="background-image: url('${tpl.thumbnail}')"></div>
             <div class="card-info">
                 <h3>${tpl.name}</h3>
                 <p>${tpl.description}</p>
-                <button class="create-btn primary-btn">${L.get('CREAR_ESCENA', 'Crear Escena')}</button>
+                <button class="create-btn primary-btn">${btnLabel}</button>
             </div>
         `;
 
-        card.querySelector('.create-btn').onclick = () => instantiateTemplate(tpl);
+        card.querySelector('.create-btn').onclick = () => instantiateTemplate(tpl, card.querySelector('.create-btn'));
         dom.grid.appendChild(card);
-    });
+    }
 }
 
-async function instantiateTemplate(tpl) {
+async function instantiateTemplate(tpl, btn) {
     const L = window.Localization;
+
+    // --- Asset Downloading Logic ---
+    if (tpl.extensions) {
+        const available = ExtensionsManager.getAvailableExtensions();
+        for (const extId of tpl.extensions) {
+            const ext = available.find(e => e.id === extId);
+            if (ext) {
+                const isDownloaded = await ExtensionsManager.isExtensionDownloaded(ext.assets[0].path);
+                if (!isDownloaded) {
+                    if (btn) {
+                        btn.disabled = true;
+                        btn.textContent = L.get('DESCARGANDO', 'Descargando...');
+                    }
+
+                    for (const asset of ext.assets) {
+                        const ok = await ExtensionsManager.downloadExtension(asset.path, asset.url);
+                        if (!ok) {
+                            showNotification(L.get('ERROR'), L.get('ERROR_DESCARGA', 'Error al descargar assets necesarios.'));
+                            if (btn) { btn.disabled = false; btn.textContent = L.get('REINTENTAR', 'Reintentar'); }
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     const assetsDir = await (await window.projectsDirHandle.getDirectoryHandle(new URLSearchParams(window.location.search).get('project'))).getDirectoryHandle('Assets');
 
     const fileName = `${tpl.id}_${Date.now()}.ceScene`;
