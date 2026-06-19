@@ -1612,54 +1612,92 @@ export function initialize(dependencies) {
 
         // --- Sculpting Logic ---
         if (activeTool === 'sculpt' && e.button === 0 && is3D) {
-            e.preventDefault();
-            const sculpt = (event) => {
-                const ray = getMouseRay3D(event.clientX, event.clientY);
-                if (!ray) return;
+            const ray = getMouseRay3D(e.clientX, e.clientY);
+            const hit = ray ? SceneManager.currentScene.physicsSystem.raycast3D(ray.origin, ray.direction) : null;
 
-                const hit = SceneManager.currentScene.physicsSystem.raycast3D(ray.origin, ray.direction);
-                if (hit && hit.materia) {
-                    const renderer = hit.materia.getComponent(Components3D.MeshRenderer3D) || hit.materia.getComponent(Components3D.SkinnedMeshRenderer3D);
-                    if (renderer && renderer.cpuPositions) {
-                        const strength = 5.0;
-                        const radius = 30.0;
-                        const localHit = hit.localPoint;
+            // Only proceed with sculpting if we hit a mesh or terrain
+            const isSculptable = hit && hit.materia && (
+                hit.materia.getComponent(Components3D.Terreno3D) ||
+                hit.materia.getComponent(Components3D.MeshRenderer3D) ||
+                hit.materia.getComponent(Components3D.SkinnedMeshRenderer3D)
+            );
 
-                        let changed = false;
-                        for (let i = 0; i < renderer.cpuPositions.length; i += 3) {
-                            const vx = renderer.cpuPositions[i];
-                            const vy = renderer.cpuPositions[i+1];
-                            const vz = renderer.cpuPositions[i+2];
+            if (isSculptable) {
+                e.preventDefault();
+                e.stopPropagation();
 
-                            const dx = vx - localHit[0];
-                            const dy = vy - localHit[1];
-                            const dz = vz - localHit[2];
-                            const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                const sculpt = (event) => {
+                    const r = getMouseRay3D(event.clientX, event.clientY);
+                    if (!r) return;
 
-                            if (dist < radius) {
-                                const falloff = 1.0 - (dist / radius);
-                                // Pull towards camera/normal
-                                renderer.cpuPositions[i] -= ray.direction.x * strength * falloff;
-                                renderer.cpuPositions[i+1] -= ray.direction.y * strength * falloff;
-                                renderer.cpuPositions[i+2] -= ray.direction.z * strength * falloff;
-                                changed = true;
+                    const h = SceneManager.currentScene.physicsSystem.raycast3D(r.origin, r.direction);
+                    if (h && h.materia) {
+                        const terrain = h.materia.getComponent(Components3D.Terreno3D);
+                        if (terrain) {
+                            const localHit = h.localPoint;
+                            const brushSize = window.TerrenoEditorWindow?.settings?.brushSize || 50;
+                            const brushStrength = window.TerrenoEditorWindow?.settings?.brushStrength || 50;
+
+                            const gridX = ((localHit[0] + terrain.size.x / 2) / terrain.size.x) * terrain.resolution;
+                            const gridZ = ((localHit[2] + terrain.size.z / 2) / terrain.size.z) * terrain.resolution;
+                            const radius = (brushSize / terrain.size.x) * terrain.resolution;
+
+                            for (let z = Math.floor(gridZ - radius); z <= Math.ceil(gridZ + radius); z++) {
+                                for (let x = Math.floor(gridX - radius); x <= Math.ceil(gridX + radius); x++) {
+                                    if (x < 0 || x > terrain.resolution || z < 0 || z > terrain.resolution) continue;
+                                    const dx = x - gridX; const dz = z - gridZ;
+                                    const dist = Math.sqrt(dx * dx + dz * dz);
+                                    if (dist < radius) {
+                                        const falloff = 1.0 - (dist / radius);
+                                        const oldH = terrain.getHeight(x, z);
+                                        terrain.setHeight(x, z, oldH - (brushStrength / 10) * falloff);
+                                    }
+                                }
                             }
+                            terrain.isDirty = true;
+                            return;
                         }
-                        if (changed) renderer.isDirty = true;
+
+                        const renderer = h.materia.getComponent(Components3D.MeshRenderer3D) || h.materia.getComponent(Components3D.SkinnedMeshRenderer3D);
+                        if (renderer && renderer.cpuPositions) {
+                            const brushSize = window.TerrenoEditorWindow?.settings?.brushSize || 50;
+                            const brushStrength = window.TerrenoEditorWindow?.settings?.brushStrength || 50;
+                            const strength = brushStrength / 10;
+                            const radius = brushSize;
+                            const localHit = h.localPoint;
+
+                            let changed = false;
+                            for (let i = 0; i < renderer.cpuPositions.length; i += 3) {
+                                const vx = renderer.cpuPositions[i];
+                                const vy = renderer.cpuPositions[i+1];
+                                const vz = renderer.cpuPositions[i+2];
+                                const dx = vx - localHit[0]; const dy = vy - localHit[1]; const dz = vz - localHit[2];
+                                const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+                                if (dist < radius) {
+                                    const falloff = 1.0 - (dist / radius);
+                                    renderer.cpuPositions[i] -= r.direction.x * strength * falloff;
+                                    renderer.cpuPositions[i+1] -= r.direction.y * strength * falloff;
+                                    renderer.cpuPositions[i+2] -= r.direction.z * strength * falloff;
+                                    changed = true;
+                                }
+                            }
+                            if (changed) renderer.isDirty = true;
+                        }
                     }
-                }
-            };
+                };
 
-            const onSculptMove = (moveEvent) => sculpt(moveEvent);
-            const onSculptEnd = () => {
-                window.removeEventListener('mousemove', onSculptMove);
-                window.removeEventListener('mouseup', onSculptEnd);
-            };
+                const onSculptMove = (moveEvent) => sculpt(moveEvent);
+                const onSculptEnd = () => {
+                    window.removeEventListener('mousemove', onSculptMove);
+                    window.removeEventListener('mouseup', onSculptEnd);
+                };
 
-            window.addEventListener('mousemove', onSculptMove);
-            window.addEventListener('mouseup', onSculptEnd);
-            sculpt(e);
-            return;
+                window.addEventListener('mousemove', onSculptMove);
+                window.addEventListener('mouseup', onSculptEnd);
+                sculpt(e);
+                return;
+            }
         }
 
         if (e.button === 1 || (e.button === 2 && !is3D)) {

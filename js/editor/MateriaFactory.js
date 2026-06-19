@@ -248,6 +248,16 @@ export function createTerrenoObject(parent = null) {
     return mtr;
 }
 
+export async function createTerreno3DObject(parent = null) {
+    const C3D = await ensure3D();
+    const mtr = createBaseMateria(generateUniqueName('Terreno 3D'), parent);
+    const terrain = new C3D.Terreno3D(mtr);
+    terrain.color = '#3d5c2e'; // Grass green
+    mtr.addComponent(terrain);
+    mtr.addComponent(new C3D.TerrenoCollider3D(mtr));
+    return mtr;
+}
+
 export function createTextObject(parent) {
     if (!parent) return null;
     const mtr = createBaseMateria(generateUniqueName('Texto'), parent, true);

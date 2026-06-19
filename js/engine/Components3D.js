@@ -186,6 +186,128 @@ export class PlaneCollider3D extends Collider3D {
     }
 }
 
+export class Terreno3D extends MeshRenderer3D {
+    constructor(materia) {
+        super(materia);
+        this.meshType = 'Custom';
+        this.resolution = 64; // 64x64 grid
+        this.size = { x: 2000, z: 2000 };
+        this.heightData = new Float32Array((this.resolution + 1) * (this.resolution + 1));
+        this.isDirty = true;
+
+        this.cpuPositions = null;
+        this.cpuNormals = null;
+        this.cpuIndices = null;
+        this.indexCount = 0;
+    }
+
+    setHeight(x, z, val) {
+        if (x < 0 || x > this.resolution || z < 0 || z > this.resolution) return;
+        this.heightData[z * (this.resolution + 1) + x] = val;
+        this.isDirty = true;
+    }
+
+    getHeight(x, z) {
+        if (x < 0 || x > this.resolution || z < 0 || z > this.resolution) return 0;
+        return this.heightData[z * (this.resolution + 1) + x];
+    }
+
+    update(deltaTime) {
+        if (this.isDirty) this.generateMesh();
+    }
+
+    generateMesh() {
+        const res = this.resolution;
+        const res1 = res + 1;
+        const vertCount = res1 * res1;
+        const positions = new Float32Array(vertCount * 3);
+        const normals = new Float32Array(vertCount * 3);
+        const indices = new Uint16Array(res * res * 6);
+
+        const stepX = this.size.x / res;
+        const stepZ = this.size.z / res;
+        const offsetX = -this.size.x / 2;
+        const offsetZ = -this.size.z / 2;
+
+        for (let z = 0; z <= res; z++) {
+            for (let x = 0; x <= res; x++) {
+                const i = z * res1 + x;
+                const idx = i * 3;
+                positions[idx] = offsetX + x * stepX;
+                positions[idx + 1] = this.heightData[i];
+                positions[idx + 2] = offsetZ + z * stepZ;
+            }
+        }
+
+        // Generate Normals
+        for (let z = 0; z <= res; z++) {
+            for (let x = 0; x <= res; x++) {
+                const i = z * res1 + x;
+                const idx = i * 3;
+
+                // Simple normal calculation using neighbors
+                let hl = this.getHeight(x - 1, z);
+                let hr = this.getHeight(x + 1, z);
+                let hd = this.getHeight(x, z - 1);
+                let hu = this.getHeight(x, z + 1);
+
+                // CE is +Y Down. In CE, -Y is UP.
+                // Standard normal formula [hl-hr, 2, hd-hu] for +Y UP.
+                // For +Y DOWN, we want [hr-hl, -2, hu-hd].
+                const normal = [hr - hl, -2.0, hu - hd];
+                const mag = Math.sqrt(normal[0]**2 + normal[1]**2 + normal[2]**2);
+                normals[idx] = normal[0] / mag;
+                normals[idx + 1] = normal[1] / mag;
+                normals[idx + 2] = normal[2] / mag;
+            }
+        }
+
+        // Generate Indices
+        let indexPtr = 0;
+        for (let z = 0; z < res; z++) {
+            for (let x = 0; x < res; x++) {
+                const row1 = z * res1;
+                const row2 = (z + 1) * res1;
+
+                indices[indexPtr++] = row1 + x;
+                indices[indexPtr++] = row2 + x;
+                indices[indexPtr++] = row1 + x + 1;
+
+                indices[indexPtr++] = row1 + x + 1;
+                indices[indexPtr++] = row2 + x;
+                indices[indexPtr++] = row2 + x + 1;
+            }
+        }
+
+        this.cpuPositions = positions;
+        this.cpuNormals = normals;
+        this.cpuIndices = indices;
+        this.indexCount = indices.length;
+        this.isDirty = false;
+        this.isBuffersDirty = true; // Flag for renderer to update GPU buffers
+    }
+
+    clone() {
+        const copy = new Terreno3D(null);
+        Object.assign(copy, this);
+        copy.heightData = new Float32Array(this.heightData);
+        copy.size = { ...this.size };
+        return copy;
+    }
+}
+
+export class TerrenoCollider3D extends Collider3D {
+    constructor(materia) {
+        super(materia);
+    }
+    clone() {
+        const copy = new TerrenoCollider3D(null);
+        Object.assign(copy, this);
+        copy.offset = { ...this.offset };
+        return copy;
+    }
+}
+
 export class SkinnedMeshRenderer3D extends MeshRenderer3D {
     constructor(materia) {
         super(materia);
@@ -607,6 +729,8 @@ registerComponent('BoxCollider3D', BoxCollider3D);
 registerComponent('SphereCollider3D', SphereCollider3D);
 registerComponent('CapsuleCollider3D', CapsuleCollider3D);
 registerComponent('PlaneCollider3D', PlaneCollider3D);
+registerComponent('Terreno3D', Terreno3D);
+registerComponent('TerrenoCollider3D', TerrenoCollider3D);
 registerComponent('Animator3D', Animator3D);
 registerComponent('HumanoidPhysics3D', HumanoidPhysics3D);
 registerComponent('MovementControl3D', MovementControl3D);

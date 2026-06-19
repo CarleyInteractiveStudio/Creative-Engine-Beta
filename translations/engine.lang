@@ -269,6 +269,7 @@ ARCHIVO_LEAME: Archivo Léame (.md)
 ASSET_ANIMACION: Asset de Animación (.cea)
 IMAGE: Imagen
 TERRENO: Terreno
+TERRENO_3D: Terreno 3D
 CANVAS: Canvas
 PANEL: Panel
 COMBATANT: Combatiente
@@ -913,6 +914,7 @@ ARCHIVO_LEAME: Readme File (.md)
 ASSET_ANIMACION: Animation Asset (.cea)
 IMAGE: Image
 TERRENO: Terrain
+TERRENO_3D: 3D Terrain
 CANVAS: Canvas
 PANEL: Panel
 COMBATANT: Combatant
@@ -1494,6 +1496,7 @@ ARCHIVO_LEAME: Arquivo Leia-me (.md)
 ASSET_ANIMACION: Asset de Animação (.cea)
 IMAGE: Imagem
 TERRENO: Terreno
+TERRENO_3D: Terreno 3D
 CANVAS: Canvas
 PANEL: Painel
 
@@ -2013,6 +2016,7 @@ ARCHIVO_LEAME: Файл Readme (.md)
 ASSET_ANIMACION: Ассет анимации (.cea)
 IMAGE: Изображение
 TERRENO: Террейн
+TERRENO_3D: 3D Террейн
 CANVAS: Канвас
 PANEL: Панель
 
@@ -2514,6 +2518,7 @@ ARCHIVO_LEAME: Readme 文件 (.md)
 ASSET_ANIMACION: 动画资源 (.cea)
 IMAGE: 图像
 TERRENO: 地形
+TERRENO_3D: 3D 地形
 CANVAS: 画布
 PANEL: 面板
 

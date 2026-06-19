@@ -488,6 +488,12 @@ export class Renderer3D {
             if (!materia.isActive) return;
             if (cullingMask !== -1 && !(cullingMask & (1 << materia.layer))) return;
 
+            const terrain = materia.getComponent(Components3D.Terreno3D);
+            if (terrain) {
+                this.drawTerreno3D(materia, terrain);
+                return;
+            }
+
             const skinnedMesh = materia.getComponent(Components3D.SkinnedMeshRenderer3D);
             if (skinnedMesh && skinnedMesh.isLoaded) {
                 this.drawSkinnedMesh(materia, skinnedMesh);
@@ -535,6 +541,60 @@ export class Renderer3D {
             }
             // Add more primitives here as needed
         });
+    }
+
+    drawTerreno3D(materia, terrain) {
+        const gl = this.gl;
+        const program = this.programs.standard;
+        gl.useProgram(program);
+
+        const transform = materia.getComponent(Components.Transform);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, transform.worldMatrix);
+        gl.uniform3f(gl.getUniformLocation(program, 'uLightDir'), 0.5, 1.0, 0.3);
+
+        const color = this.hexToRgb(terrain.color);
+        gl.uniform4f(gl.getUniformLocation(program, 'uColor'), color[0], color[1], color[2], 1.0);
+
+        if (!terrain._glBuffers) terrain._glBuffers = new Map();
+        let buffers = terrain._glBuffers.get(gl);
+
+        if (!buffers && terrain.cpuPositions) {
+            buffers = {
+                positions: gl.createBuffer(),
+                normals: gl.createBuffer(),
+                indices: gl.createBuffer()
+            };
+            terrain._glBuffers.set(gl, buffers);
+            terrain.isBuffersDirty = true;
+        }
+
+        if (terrain.isBuffersDirty && buffers) {
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.positions);
+            gl.bufferData(gl.ARRAY_BUFFER, terrain.cpuPositions, gl.STATIC_DRAW);
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normals);
+            gl.bufferData(gl.ARRAY_BUFFER, terrain.cpuNormals, gl.STATIC_DRAW);
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, terrain.cpuIndices, gl.STATIC_DRAW);
+            terrain.isBuffersDirty = false;
+        }
+
+        if (buffers) {
+            const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
+            const normLoc = gl.getAttribLocation(program, 'aVertexNormal');
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.positions);
+            gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(posLoc);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normals);
+            gl.vertexAttribPointer(normLoc, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(normLoc);
+
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+            gl.drawElements(gl.TRIANGLES, terrain.indexCount, gl.UNSIGNED_SHORT, 0);
+        }
     }
 
     drawSkinnedMesh(materia, mesh) {
