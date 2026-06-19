@@ -10,6 +10,7 @@ export class MeshRenderer3D extends Leyes {
         this.meshType = 'Cube'; // 'Cube', 'Sphere', 'Plane', 'Triangle', 'Capsule', 'Custom'
         this.color = '#ffffff';
         this.texturePath = null;
+        this.normalMapPath = null;
         this.isUnlit = false;
         this.shininess = 32.0;
         this.castShadows = true;
@@ -353,6 +354,7 @@ export class SkinnedMeshRenderer3D extends MeshRenderer3D {
         this.rootBone = null;
         this.cpuPositions = null;
         this.cpuNormals = null;
+        this.cpuUVs = null;
         this.cpuColors = null;
         this.cpuIndices = null;
         this.cpuJoints = null;
@@ -611,6 +613,59 @@ export class HealthController3D extends Leyes {
     clone() { return new HealthController3D(null); }
 }
 
+export class ProceduralChain3D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.bones = []; // Array of materia IDs
+        this.stiffness = 0.5;
+        this.gravity = 1.0;
+        this.delay = 0.1;
+        this.lastPositions = [];
+    }
+
+    update(deltaTime) {
+        if (!window.isGameRunning || this.bones.length === 0) return;
+        const scene = this.materia.scene || window.SceneManager?.currentScene;
+        if (!scene) return;
+
+        for (let i = 0; i < this.bones.length; i++) {
+            const bone = scene.findMateriaById(this.bones[i]);
+            if (!bone) continue;
+            const trans = bone.getComponent(window.Components.Transform);
+
+            // Basic follow logic with delay for "jiggle" or "cloth" effect
+            if (i > 0) {
+                const prevBone = scene.findMateriaById(this.bones[i-1]);
+                if (prevBone) {
+                    const prevTrans = prevBone.getComponent(window.Components.Transform);
+                    // In CE engine, -Y is UP, so to hang down we add to Y
+                    const targetPos = { ...prevTrans.position };
+                    targetPos.y += 20 * this.gravity;
+
+                    trans.position.x += (targetPos.x - trans.position.x) * this.stiffness;
+                    trans.position.y += (targetPos.y - trans.position.y) * this.stiffness;
+                    trans.position.z += (targetPos.z - trans.position.z) * this.stiffness;
+                }
+            }
+        }
+    }
+    clone() { return new ProceduralChain3D(null); }
+}
+
+export class ClothRenderer3D extends SkinnedMeshRenderer3D {
+    constructor(materia) {
+        super(materia);
+        this.clothRes = { x: 10, y: 10 };
+        this.pinnedPoints = [0, 9]; // Indices of pinned vertices
+    }
+    // Logic for Verlet integration or similar would go here
+    update(deltaTime) {
+        super.update(deltaTime);
+        // Simplified cloth physics placeholder
+    }
+    clone() { return new ClothRenderer3D(null); }
+}
+
 export class ThirdPersonController3D extends Leyes {
     constructor(materia) {
         super(materia);
@@ -774,3 +829,5 @@ registerComponent('HealthController3D', HealthController3D);
 registerComponent('ThirdPersonController3D', ThirdPersonController3D);
 registerComponent('CameraControl3D', CameraControl3D);
 registerComponent('DeformableMesh3D', DeformableMesh3D);
+registerComponent('ProceduralChain3D', ProceduralChain3D);
+registerComponent('ClothRenderer3D', ClothRenderer3D);

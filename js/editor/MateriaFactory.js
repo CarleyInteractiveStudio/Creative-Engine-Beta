@@ -140,27 +140,20 @@ export async function createSkinnedMeshObject(modelPath, parent = null) {
                 const primitive = modelData.meshes[node.mesh].primitives[0];
                 const renderer = new C3D.SkinnedMeshRenderer3D(nodeMtr);
                 renderer.modelPath = modelPath;
-                if (window._Renderer3D) {
-                    const gl = window._Renderer3D.gl;
-                    renderer.indexCount = primitive.indices ? primitive.indices.length : primitive.positions.length / 3;
-                    renderer.buffers = {
-                        positions: gl.createBuffer(), indices: primitive.indices ? gl.createBuffer() : null,
-                        normals: primitive.normals ? gl.createBuffer() : null, joints: primitive.joints ? gl.createBuffer() : null,
-                        weights: primitive.weights ? gl.createBuffer() : null
-                    };
-                    gl.bindBuffer(gl.ARRAY_BUFFER, renderer.buffers.positions); gl.bufferData(gl.ARRAY_BUFFER, primitive.positions, gl.STATIC_DRAW);
-                    if (renderer.buffers.indices) { gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, renderer.buffers.indices); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, primitive.indices, gl.STATIC_DRAW); }
-                    if (renderer.buffers.normals) { gl.bindBuffer(gl.ARRAY_BUFFER, renderer.buffers.normals); gl.bufferData(gl.ARRAY_BUFFER, primitive.normals, gl.STATIC_DRAW); }
-                    if (renderer.buffers.joints) {
-                        gl.bindBuffer(gl.ARRAY_BUFFER, renderer.buffers.joints); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(primitive.joints), gl.STATIC_DRAW);
-                        gl.bindBuffer(gl.ARRAY_BUFFER, renderer.buffers.weights); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(primitive.weights), gl.STATIC_DRAW);
-                    }
-                    if (node.skin !== undefined) {
-                        const skin = modelData.skins[node.skin];
-                        renderer.skeleton = { joints: skin.joints.map(idx => nodeMaterias[idx].id), inverseBindMatrices: skin.inverseBindMatrices };
-                    }
-                    renderer.isLoaded = true;
+
+                renderer.cpuPositions = primitive.positions;
+                renderer.cpuNormals = primitive.normals;
+                renderer.cpuUVs = primitive.uvs;
+                renderer.cpuIndices = primitive.indices;
+                renderer.cpuJoints = primitive.joints ? new Float32Array(primitive.joints) : null;
+                renderer.cpuWeights = primitive.weights ? new Float32Array(primitive.weights) : null;
+                renderer.indexCount = primitive.indices ? primitive.indices.length : primitive.positions.length / 3;
+
+                if (node.skin !== undefined) {
+                    const skin = modelData.skins[node.skin];
+                    renderer.skeleton = { joints: skin.joints.map(idx => nodeMaterias[idx].id), inverseBindMatrices: skin.inverseBindMatrices };
                 }
+                renderer.isLoaded = true;
                 nodeMtr.addComponent(renderer);
             }
         }
@@ -168,15 +161,12 @@ export async function createSkinnedMeshObject(modelPath, parent = null) {
     } else {
         const renderer = new C3D.SkinnedMeshRenderer3D(rootMateria);
         renderer.modelPath = modelPath;
-        if (window._Renderer3D) {
-            const gl = window._Renderer3D.gl;
-            renderer.indexCount = modelData.indices ? modelData.indices.length : modelData.positions.length / 3;
-            renderer.buffers = { positions: gl.createBuffer(), indices: modelData.indices ? gl.createBuffer() : null, normals: modelData.normals ? gl.createBuffer() : null };
-            gl.bindBuffer(gl.ARRAY_BUFFER, renderer.buffers.positions); gl.bufferData(gl.ARRAY_BUFFER, modelData.positions, gl.STATIC_DRAW);
-            if (renderer.buffers.indices) { gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, renderer.buffers.indices); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, modelData.indices, gl.STATIC_DRAW); }
-            if (renderer.buffers.normals) { gl.bindBuffer(gl.ARRAY_BUFFER, renderer.buffers.normals); gl.bufferData(gl.ARRAY_BUFFER, modelData.normals, gl.STATIC_DRAW); }
-            renderer.isLoaded = true;
-        }
+        renderer.cpuPositions = modelData.positions;
+        renderer.cpuNormals = modelData.normals;
+        renderer.cpuUVs = modelData.uvs;
+        renderer.cpuIndices = modelData.indices;
+        renderer.indexCount = modelData.indices ? modelData.indices.length : modelData.positions.length / 3;
+        renderer.isLoaded = true;
         rootMateria.addComponent(renderer);
     }
 
@@ -471,6 +461,36 @@ export async function createDefaultCharacter(parent = null) {
     cam.fov = 65;
     cam.clearFlags = 'Skybox';
     camMtr.addComponent(new C3D.CameraControl3D(camMtr));
+    return root;
+}
+
+export async function createVehicleTemplate(parent = null) {
+    const C3D = await ensure3D();
+    const root = createBaseMateria('Vehículo', parent);
+    const rb = new C3D.Rigidbody3D(root);
+    rb.mass = 1200;
+    root.addComponent(rb);
+    root.addComponent(new C3D.BoxCollider3D(root));
+    root.getComponent(C3D.BoxCollider3D).size = { x: 200, y: 100, z: 400 };
+
+    const body = await createCubeObject(root, '#3498db');
+    body.name = 'Chasis';
+    body.getComponent(Components.Transform).localScale = { x: 200, y: 80, z: 400 };
+
+    const wheelNames = ['Rueda_DI', 'Rueda_DD', 'Rueda_TI', 'Rueda_TD'];
+    const wheelPositions = [
+        { x: -110, y: 40, z: -150 }, { x: 110, y: 40, z: -150 },
+        { x: -110, y: 40, z: 150 }, { x: 110, y: 40, z: 150 }
+    ];
+
+    for (let i = 0; i < 4; i++) {
+        const wheel = await createSphereObject(root);
+        wheel.name = wheelNames[i];
+        const t = wheel.getComponent(Components.Transform);
+        t.localPosition = wheelPositions[i];
+        t.localScale = { x: 40, y: 40, z: 40 };
+    }
+
     return root;
 }
 
