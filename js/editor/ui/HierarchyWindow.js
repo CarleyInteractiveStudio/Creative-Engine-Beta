@@ -67,6 +67,21 @@ export function updateHierarchy() {
         } else if (isInsidePrefab) {
             item.classList.add('prefab-descendant');
         }
+
+        // --- Accessory Detection & Color Highlight ---
+        const nameLower = materia.name.toLowerCase();
+        const isAccessory = nameLower.includes('ropa') ||
+                           nameLower.includes('cloth') ||
+                           nameLower.includes('acc') ||
+                           nameLower.includes('capa') ||
+                           nameLower.includes('hat') ||
+                           materia.getComponentByName('ProceduralChain3D') ||
+                           materia.getComponentByName('ClothRenderer3D');
+
+        if (isAccessory) {
+            item.classList.add('hierarchy-accessory');
+            item.style.color = '#ffcc00'; // Golden highlight for accessories
+        }
         item.dataset.id = materia.id;
         item.draggable = true;
         item.style.marginLeft = `${depth * 18}px`;
@@ -269,6 +284,10 @@ export async function handleContextMenuAction(action) {
             break;
         case 'create-humanoid-character':
             newMateria = await createDefaultCharacter(selectedMateria);
+            break;
+        case 'create-advanced-vehicle':
+            const { createAdvancedVehicle } = await import('../MateriaFactory.js');
+            newMateria = await createAdvancedVehicle(selectedMateria);
             break;
         case 'create-test-circuit':
             newMateria = await createTestCircuit(selectedMateria);

@@ -46,6 +46,8 @@ import * as CarlAgent from './editor/CarlAgent.js';
 import * as CollaborationSystem from './editor/CollaborationSystem.js';
 import * as UpdatesWindow from './editor/ui/UpdatesWindow.js';
 import * as CollabActivityWindow from './editor/ui/CollabActivityWindow.js';
+import { showExtensionsWindow } from './editor/ui/ExtensionsWindow.js';
+ import { showPreMadeScenesWindow } from './editor/ui/PreMadeScenesWindow.js';
 import * as NoviceGuide from './editor/ui/NoviceGuideWindow.js';
 import { buildProject, runStandalonePreview } from './editor/BuildSystem.js';
 import * as Dialogs from './editor/ui/DialogWindow.js';
@@ -3673,6 +3675,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 CollabActivityWindow.show();
                 return;
             }
+            else if (panelName === 'extensions') {
+                showExtensionsWindow();
+                return;
+            }
+            else if (panelName === 'pre-made-scenes') {
+                showPreMadeScenesWindow();
+                return;
+            }
 
             const panel = document.getElementById(panelId);
             if (panel) {
@@ -4766,7 +4776,9 @@ public start() {
                     dom.currentSceneName.textContent = sceneData.fileHandle.name.replace('.ceScene', '');
                     SceneManager.setSceneDirty(false);
                 } else {
-                    throw new Error("Fallo critico! No se pudo cargar o crear una escena.");
+                    console.warn("[Editor] No se pudo inicializar la escena desde el disco. Usando escena vacía de respaldo.");
+                    SceneManager.setCurrentScene(new SceneManager.Scene());
+                    dom.currentSceneName.textContent = 'Nueva Escena';
                 }
             } else {
                 // In test/no-handle mode, create a default empty scene
@@ -5080,6 +5092,11 @@ public start() {
             await updateAssetBrowser();
             updateWindowMenuUI();
             updateAmbientePanelFromScene(); // Sync UI on initial load
+
+            // --- Auto-show Templates for new 3D projects ---
+            if (new URLSearchParams(window.location.search).get('showTemplates') === 'true') {
+                showPreMadeScenesWindow();
+            }
 
             updateLoadingProgress(90, "Finalizando...");
             setupEventListeners();

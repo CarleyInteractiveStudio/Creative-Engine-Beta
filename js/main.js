@@ -431,6 +431,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             isCreatingProject = true;
+
+            // --- Pre-made Scenes / Template Choice Logic ---
+            // If project is 3D, we store a flag to show templates window immediately in the editor
+            const startWithTemplates = (projectType === '3d');
+
             let dirHandle = await getDirHandle();
             if (!dirHandle) {
                  dirHandle = await window.showDirectoryPicker({ mode: 'readwrite', id: 'creative-engine-projects' });
@@ -641,7 +646,10 @@ Para más detalles, consulta la sección "Ayuda" del editor.`;
             projectNameInput.value = '';
             closeModal();
             Dialogs.showNotification('¡Éxito!', `Proyecto "${projectName}" creado con éxito.`);
-            loadProjects();
+
+            // Redirect to editor, adding template flag if 3D
+            const templateQuery = startWithTemplates ? '&showTemplates=true' : '';
+            window.location.href = `editor.html?project=${encodeURIComponent(projectName)}${templateQuery}`;
 
         } catch (error) {
             if (error.name !== 'AbortError') {
