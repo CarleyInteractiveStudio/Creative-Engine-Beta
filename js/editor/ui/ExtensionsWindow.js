@@ -3,7 +3,7 @@
  * (c) 2024 Carley Interactive Studio
  */
 
-import { ExtensionsManager } from '../engine/ExtensionsManager.js';
+import { ExtensionsManager } from '../../engine/ExtensionsManager.js';
 
 let dom = {};
 
