@@ -2657,72 +2657,190 @@ export class PhysicsSystem {
     }
 
     /**
-     * Lanza un rayo en el espacio 3D y devuelve información sobre el primer objeto que impacta.
+     * Lanza un rayo en el espacio 3D y devuelve información precisa sobre el primer colisionador que impacta.
      * @param {{x: number, y: number, z: number}} origin
      * @param {{x: number, y: number, z: number}} direction
      * @param {number} maxDistance
      */
     raycast3D(origin, direction, maxDistance = Infinity) {
         const glm = window.glMatrix;
-        if (!glm) return null;
+        const C3D = window.Components3D;
+        if (!glm || !C3D) return null;
 
         let closestHit = null;
         let minDistance = maxDistance;
 
         const collidables = this.scene.getAllMaterias().filter(m =>
-            m.isActive && (m.getComponent(window.Components3D?.MeshRenderer3D) || m.getComponent(window.Components3D?.SkinnedMeshRenderer3D))
+            m.isActive && (m.getComponent(C3D.BoxCollider3D) || m.getComponent(C3D.SphereCollider3D) || m.getComponent(C3D.CapsuleCollider3D) || m.getComponent(C3D.PlaneCollider3D))
         );
 
         for (const materia of collidables) {
             const transform = materia.getComponent(Components.Transform);
-            const renderer = materia.getComponent(window.Components3D.MeshRenderer3D) || materia.getComponent(window.Components3D.SkinnedMeshRenderer3D);
+            const box = materia.getComponent(C3D.BoxCollider3D);
+            const sphere = materia.getComponent(C3D.SphereCollider3D);
+            const capsule = materia.getComponent(C3D.CapsuleCollider3D);
+            const plane = materia.getComponent(C3D.PlaneCollider3D);
 
-            // Simplified: Treat all 3D objects as AABBs for raycasting
-            const worldMatrix = transform.worldMatrix;
-            const invWorldMatrix = glm.mat4.create();
-            glm.mat4.invert(invWorldMatrix, worldMatrix);
+            let hit = null;
 
-            // Transform ray to local space
-            const localOrigin = glm.vec3.transformMat4(glm.vec3.create(), [origin.x, origin.y, origin.z], invWorldMatrix);
-            const localRayEnd = glm.vec3.transformMat4(glm.vec3.create(), [origin.x + direction.x * 1000, origin.y + direction.y * 1000, origin.z + direction.z * 1000], invWorldMatrix);
-            const localDir = glm.vec3.subtract(glm.vec3.create(), localRayEnd, localOrigin);
-            glm.vec3.normalize(localDir, localDir);
+            if (box) hit = this._rayVsBox3D(origin, direction, materia, box);
+            else if (sphere) hit = this._rayVsSphere3D(origin, direction, materia, sphere);
+            else if (capsule) hit = this._rayVsCapsule3D(origin, direction, materia, capsule);
+            else if (plane) hit = this._rayVsPlane3D(origin, direction, materia, plane);
 
-            // Ray vs Unit Cube (-0.5 to 0.5)
-            let tmin = -Infinity, tmax = Infinity;
-            for (let i = 0; i < 3; i++) {
-                if (localDir[i] !== 0) {
-                    let t1 = (-0.5 - localOrigin[i]) / localDir[i];
-                    let t2 = (0.5 - localOrigin[i]) / localDir[i];
-                    tmin = Math.max(tmin, Math.min(t1, t2));
-                    tmax = Math.min(tmax, Math.max(t1, t2));
-                } else if (localOrigin[i] < -0.5 || localOrigin[i] > 0.5) {
-                    tmax = -1; break;
-                }
-            }
-
-            if (tmax >= tmin && tmax >= 0) {
-                const distance = tmin > 0 ? tmin : 0;
-                const worldScale = glm.vec3.length([worldMatrix[0], worldMatrix[1], worldMatrix[2]]);
-                const worldDistance = distance * worldScale;
-
-                if (worldDistance < minDistance) {
-                    minDistance = worldDistance;
-                    const hitPoint = {
-                        x: origin.x + direction.x * worldDistance,
-                        y: origin.y + direction.y * worldDistance,
-                        z: origin.z + direction.z * worldDistance
-                    };
-                    closestHit = {
-                        materia,
-                        point: hitPoint,
-                        distance: worldDistance,
-                        localPoint: [localOrigin[0] + localDir[0] * distance, localOrigin[1] + localDir[1] * distance, localOrigin[2] + localDir[2] * distance]
-                    };
-                }
+            if (hit && hit.distance < minDistance) {
+                minDistance = hit.distance;
+                closestHit = {
+                    materia,
+                    point: hit.point,
+                    normal: hit.normal,
+                    distance: hit.distance
+                };
             }
         }
         return closestHit;
+    }
+
+    _rayVsSphere3D(origin, direction, materia, collider) {
+        const glm = window.glMatrix;
+        const transform = materia.getComponent(Components.Transform);
+        const radius = collider.radius * Math.max(Math.abs(transform.scale.x), Math.abs(transform.scale.y), Math.abs(transform.scale.z || 1));
+        const center = [transform.x + collider.offset.x, transform.y + collider.offset.y, (transform.z || 0) + collider.offset.z];
+
+        const L = glm.vec3.subtract(glm.vec3.create(), center, [origin.x, origin.y, origin.z]);
+        const tca = glm.vec3.dot(L, [direction.x, direction.y, direction.z]);
+        if (tca < 0) return null;
+
+        const d2 = glm.vec3.dot(L, L) - tca * tca;
+        if (d2 > radius * radius) return null;
+
+        const thc = Math.sqrt(radius * radius - d2);
+        const t0 = tca - thc;
+        const t1 = tca + thc;
+
+        const t = t0 < 0 ? t1 : t0;
+        if (t < 0) return null;
+
+        const hitPoint = { x: origin.x + direction.x * t, y: origin.y + direction.y * t, z: (origin.z || 0) + direction.z * t };
+        const normalVec = glm.vec3.normalize(glm.vec3.create(), [hitPoint.x - center[0], hitPoint.y - center[1], hitPoint.z - center[2]]);
+
+        return { distance: t, point: hitPoint, normal: { x: normalVec[0], y: normalVec[1], z: normalVec[2] } };
+    }
+
+    _rayVsBox3D(origin, direction, materia, collider) {
+        const glm = window.glMatrix;
+        const transform = materia.getComponent(Components.Transform);
+        const obb = this._getOBBData(materia);
+
+        // Transform ray to OBB local space
+        const invWorld = glm.mat4.invert(glm.mat4.create(), transform.worldMatrix);
+        const localOrigin = glm.vec3.transformMat4(glm.vec3.create(), [origin.x, origin.y, origin.z], invWorld);
+
+        // Offset is in local space relative to transform center, so subtract it
+        glm.vec3.subtract(localOrigin, localOrigin, [collider.offset.x, collider.offset.y, collider.offset.z]);
+
+        const localDir = glm.vec3.transformMat3(glm.vec3.create(), [direction.x, direction.y, direction.z], glm.mat3.fromMat4(glm.mat3.create(), invWorld));
+        glm.vec3.normalize(localDir, localDir);
+
+        const half = [collider.size.x / 2, collider.size.y / 2, collider.size.z / 2];
+        let tmin = -Infinity, tmax = Infinity;
+        let normalIdx = -1;
+
+        for (let i = 0; i < 3; i++) {
+            if (Math.abs(localDir[i]) > 1e-6) {
+                let t1 = (-half[i] - localOrigin[i]) / localDir[i];
+                let t2 = (half[i] - localOrigin[i]) / localDir[i];
+
+                if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
+                if (t1 > tmin) { tmin = t1; normalIdx = i; }
+                tmax = Math.min(tmax, t2);
+            } else if (localOrigin[i] < -half[i] || localOrigin[i] > half[i]) return null;
+        }
+
+        if (tmax >= tmin && tmax >= 0) {
+            const t = tmin > 0 ? tmin : 0;
+            const hitPoint = { x: origin.x + direction.x * t, y: origin.y + direction.y * t, z: (origin.z || 0) + direction.z * t };
+
+            // Calculate normal in world space
+            const localNormal = [0, 0, 0];
+            localNormal[normalIdx] = localOrigin[normalIdx] < 0 ? -1 : 1;
+            const worldNormal = glm.vec3.transformMat3(glm.vec3.create(), localNormal, glm.mat3.fromMat4(glm.mat3.create(), transform.worldMatrix));
+            glm.vec3.normalize(worldNormal, worldNormal);
+
+            return { distance: t, point: hitPoint, normal: { x: worldNormal[0], y: worldNormal[1], z: worldNormal[2] } };
+        }
+        return null;
+    }
+
+    _rayVsPlane3D(origin, direction, materia, collider) {
+        const glm = window.glMatrix;
+        const transform = materia.getComponent(Components.Transform);
+
+        const normal = glm.vec3.fromValues(transform.worldMatrix[4], transform.worldMatrix[5], transform.worldMatrix[6]);
+        glm.vec3.normalize(normal, normal);
+        const center = [transform.x + collider.offset.x, transform.y + collider.offset.y, (transform.z || 0) + collider.offset.z];
+
+        const denom = glm.vec3.dot(normal, [direction.x, direction.y, direction.z]);
+        if (Math.abs(denom) > 1e-6) {
+            const t = glm.vec3.dot(glm.vec3.subtract(glm.vec3.create(), center, [origin.x, origin.y, origin.z]), normal) / denom;
+            if (t >= 0) {
+                return {
+                    distance: t,
+                    point: { x: origin.x + direction.x * t, y: origin.y + direction.y * t, z: (origin.z || 0) + direction.z * t },
+                    normal: { x: normal[0], y: normal[1], z: normal[2] }
+                };
+            }
+        }
+        return null;
+    }
+
+    _rayVsCapsule3D(origin, direction, materia, collider) {
+        const cap = this._getCapsuleData3D(materia);
+        const glm = window.glMatrix;
+        const ro = glm.vec3.fromValues(origin.x, origin.y, origin.z);
+        const rd = glm.vec3.fromValues(direction.x, direction.y, direction.z);
+
+        const ba = glm.vec3.subtract(glm.vec3.create(), cap.p2, cap.p1);
+        const oa = glm.vec3.subtract(glm.vec3.create(), ro, cap.p1);
+
+        const baba = glm.vec3.dot(ba, ba);
+        const bard = glm.vec3.dot(ba, rd);
+        const baoa = glm.vec3.dot(ba, oa);
+        const r2 = cap.radius * cap.radius;
+
+        const k2 = baba - bard * bard;
+        const k1 = baba * glm.vec3.dot(oa, rd) - baoa * bard;
+        const k0 = baba * glm.vec3.dot(oa, oa) - baoa * baoa - r2 * baba;
+
+        const h = k1 * k1 - k2 * k0;
+        if (h < 0.0) return null;
+
+        let t = (-k1 - Math.sqrt(h)) / k2;
+        const y = baoa + t * bard;
+
+        // Body intersection
+        if (y > 0.0 && y < baba) {
+            const hitPoint = { x: origin.x + direction.x * t, y: origin.y + direction.y * t, z: (origin.z || 0) + direction.z * t };
+            const n = glm.vec3.subtract(glm.vec3.create(), [hitPoint.x, hitPoint.y, hitPoint.z], cap.p1);
+            glm.vec3.scaleAndAdd(n, n, ba, -y / baba);
+            glm.vec3.normalize(n, n);
+            return { distance: t, point: hitPoint, normal: { x: n[0], y: n[1], z: n[2] } };
+        }
+
+        // Caps intersection
+        const hit1 = this._rayVsSphere3D(origin, direction, {
+            getComponent: (t) => t === Components.Transform ? { x: cap.p1[0], y: cap.p1[1], z: cap.p1[2], scale: {x:1,y:1,z:1} } : { radius: cap.radius, offset: {x:0,y:0,z:0} }
+        }, { radius: cap.radius, offset: {x:0,y:0,z:0} });
+
+        const hit2 = this._rayVsSphere3D(origin, direction, {
+            getComponent: (t) => t === Components.Transform ? { x: cap.p2[0], y: cap.p2[1], z: cap.p2[2], scale: {x:1,y:1,z:1} } : { radius: cap.radius, offset: {x:0,y:0,z:0} }
+        }, { radius: cap.radius, offset: {x:0,y:0,z:0} });
+
+        let closest = null;
+        if (hit1) closest = hit1;
+        if (hit2 && (!closest || hit2.distance < closest.distance)) closest = hit2;
+
+        return closest;
     }
 
     _rayVsSegment(origin, direction, p1, p2) {
