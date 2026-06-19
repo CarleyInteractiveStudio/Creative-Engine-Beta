@@ -106,7 +106,12 @@ export class PhysicsSystem {
 
     _step3D(deltaTime) {
         const allMaterias = this.scene.getAllMaterias();
-        const collidables = allMaterias.filter(m => m.isActive && (m.getComponent(window.Components3D?.BoxCollider3D) || m.getComponent(window.Components3D?.SphereCollider3D)));
+        const collidables = allMaterias.filter(m => m.isActive && (
+            m.getComponent(window.Components3D?.BoxCollider3D) ||
+            m.getComponent(window.Components3D?.SphereCollider3D) ||
+            m.getComponent(window.Components3D?.CapsuleCollider3D) ||
+            m.getComponent(window.Components3D?.PlaneCollider3D)
+        ));
 
         for (let i = 0; i < collidables.length; i++) {
             const m = collidables[i];
@@ -126,24 +131,145 @@ export class PhysicsSystem {
                 if (transform.z !== undefined) transform.z += rb.velocity.z * deltaTime;
             }
 
-            // Very basic 3D collision check for deformation
+            // 3D Collision Detection & Resolution
             for (let j = i + 1; j < collidables.length; j++) {
                 const other = collidables[j];
-                const t1 = transform;
-                const t2 = other.getComponent(Components.Transform);
+                const collision = this.checkCollision3D(m, other);
+                if (collision) {
+                    this.resolveCollision3D(m, other, collision);
 
-                const dist = Math.hypot(t1.x - t2.x, t1.y - t2.y, (t1.z || 0) - (t2.z || 0));
-                if (dist < 100) { // Simple overlap
-                    const hitPoint = { x: (t1.x + t2.x)/2, y: (t1.y + t2.y)/2, z: ((t1.z||0) + (t2.z||0))/2 };
-                    const force = 50; // Arbitrary
-
+                    // Trigger deformation if component exists
+                    const hitPoint = collision.point || { x: transform.x, y: transform.y, z: transform.z || 0 };
+                    const force = 50; // Simplified force
                     const dm1 = m.getComponent(window.Components3D?.DeformableMesh3D);
                     if (dm1) dm1.onCollision(hitPoint, force);
-
                     const dm2 = other.getComponent(window.Components3D?.DeformableMesh3D);
                     if (dm2) dm2.onCollision(hitPoint, force);
                 }
             }
+        }
+    }
+
+    checkCollision3D(mA, mB) {
+        const C3D = window.Components3D;
+        const cA = mA.getComponent(C3D.BoxCollider3D) || mA.getComponent(C3D.SphereCollider3D) || mA.getComponent(C3D.CapsuleCollider3D) || mA.getComponent(C3D.PlaneCollider3D);
+        const cB = mB.getComponent(C3D.BoxCollider3D) || mB.getComponent(C3D.SphereCollider3D) || mB.getComponent(C3D.CapsuleCollider3D) || mB.getComponent(C3D.PlaneCollider3D);
+
+        if (!cA || !cB) return null;
+
+        // Dispatcher
+        if (cA instanceof C3D.SphereCollider3D) {
+            if (cB instanceof C3D.SphereCollider3D) return this.isSphereVsSphere(mA, mB);
+            if (cB instanceof C3D.PlaneCollider3D) return this.isSphereVsPlane(mA, mB);
+        } else if (cA instanceof C3D.PlaneCollider3D) {
+            if (cB instanceof C3D.SphereCollider3D) {
+                const hit = this.isSphereVsPlane(mB, mA);
+                if (hit) { hit.normal.x *= -1; hit.normal.y *= -1; hit.normal.z *= -1; }
+                return hit;
+            }
+        }
+        // More 3D collision types will be added here
+        return null;
+    }
+
+    isSphereVsSphere(mA, mB) {
+        const tA = mA.getComponent(Components.Transform);
+        const cA = mA.getComponent(window.Components3D.SphereCollider3D);
+        const tB = mB.getComponent(Components.Transform);
+        const cB = mB.getComponent(window.Components3D.SphereCollider3D);
+
+        const rA = cA.radius * Math.max(Math.abs(tA.scale.x), Math.abs(tA.scale.y), Math.abs(tA.scale.z || 1));
+        const rB = cB.radius * Math.max(Math.abs(tB.scale.x), Math.abs(tB.scale.y), Math.abs(tB.scale.z || 1));
+
+        const pA = [tA.x + cA.offset.x, tA.y + cA.offset.y, (tA.z || 0) + cA.offset.z];
+        const pB = [tB.x + cB.offset.x, tB.y + cB.offset.y, (tB.z || 0) + cB.offset.z];
+
+        const dx = pA[0] - pB[0], dy = pA[1] - pB[1], dz = pA[2] - pB[2];
+        const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+        if (dist < rA + rB) {
+            const overlap = (rA + rB) - dist;
+            const normal = dist > 0 ? { x: dx/dist, y: dy/dist, z: dz/dist } : { x: 0, y: -1, z: 0 };
+            return { normal, overlap, point: { x: pB[0] + normal.x * rB, y: pB[1] + normal.y * rB, z: pB[2] + normal.z * rB } };
+        }
+        return null;
+    }
+
+    isSphereVsPlane(mSphere, mPlane) {
+        const tS = mSphere.getComponent(Components.Transform);
+        const cS = mSphere.getComponent(window.Components3D.SphereCollider3D);
+        const tP = mPlane.getComponent(Components.Transform);
+        const cP = mPlane.getComponent(window.Components3D.PlaneCollider3D);
+        const glm = window.glMatrix;
+
+        const radius = cS.radius * Math.max(Math.abs(tS.scale.x), Math.abs(tS.scale.y), Math.abs(tS.scale.z || 1));
+        const spherePos = [tS.x + cS.offset.x, tS.y + cS.offset.y, (tS.z || 0) + cS.offset.z];
+
+        // Plane is infinite in XZ, centered at tP. Normal is Y-axis of tP world matrix
+        const normal = glm.vec3.fromValues(tP.worldMatrix[4], tP.worldMatrix[5], tP.worldMatrix[6]);
+        glm.vec3.normalize(normal, normal);
+        // Plane normal is UP in world (+Y is down), so normal is [0, -1, 0] in bind pose
+
+        const planePos = [tP.x + cP.offset.x, tP.y + cP.offset.y, (tP.z || 0) + cP.offset.z];
+        const v = [spherePos[0] - planePos[0], spherePos[1] - planePos[1], spherePos[2] - planePos[2]];
+        const dist = v[0] * normal[0] + v[1] * normal[1] + v[2] * normal[2];
+
+        if (Math.abs(dist) < radius) {
+            const overlap = radius - Math.abs(dist);
+            const resNormal = { x: normal[0], y: normal[1], z: normal[2] };
+            if (dist < 0) { resNormal.x *= -1; resNormal.y *= -1; resNormal.z *= -1; }
+            return {
+                normal: resNormal,
+                overlap,
+                point: { x: spherePos[0] - resNormal.x * radius, y: spherePos[1] - resNormal.y * radius, z: spherePos[2] - resNormal.z * radius }
+            };
+        }
+        return null;
+    }
+
+    resolveCollision3D(mA, mB, hit) {
+        const tA = mA.getComponent(Components.Transform);
+        const tB = mB.getComponent(Components.Transform);
+        const rbA = mA.getComponent(window.Components3D.Rigidbody3D);
+        const rbB = mB.getComponent(window.Components3D.Rigidbody3D);
+
+        const isADyn = rbA && !rbA.isKinematic;
+        const isBDyn = rbB && !rbB.isKinematic;
+
+        // 1. Positional correction
+        const mtv = { x: hit.normal.x * hit.overlap, y: hit.normal.y * hit.overlap, z: hit.normal.z * hit.overlap };
+        if (isADyn && !isBDyn) {
+            tA.x += mtv.x; tA.y += mtv.y; tA.z = (tA.z || 0) + mtv.z;
+        } else if (!isADyn && isBDyn) {
+            tB.x -= mtv.x; tB.y -= mtv.y; tB.z = (tB.z || 0) - mtv.z;
+        } else if (isADyn && isBDyn) {
+            tA.x += mtv.x * 0.5; tA.y += mtv.y * 0.5; tA.z = (tA.z || 0) + mtv.z * 0.5;
+            tB.x -= mtv.x * 0.5; tB.y -= mtv.y * 0.5; tB.z = (tB.z || 0) - mtv.z * 0.5;
+        }
+
+        // 2. Impulse resolution
+        const relVel = {
+            x: (rbA ? rbA.velocity.x : 0) - (rbB ? rbB.velocity.x : 0),
+            y: (rbA ? rbA.velocity.y : 0) - (rbB ? rbB.velocity.y : 0),
+            z: (rbA ? rbA.velocity.z : 0) - (rbB ? rbB.velocity.z : 0)
+        };
+        const velAlongNorm = relVel.x * hit.normal.x + relVel.y * hit.normal.y + relVel.z * hit.normal.z;
+        if (velAlongNorm > 0) return;
+
+        const e = 0.2; // Bounciness
+        let j = -(1 + e) * velAlongNorm;
+        j /= (isADyn ? 1/rbA.mass : 0) + (isBDyn ? 1/rbB.mass : 0);
+
+        const impulse = { x: j * hit.normal.x, y: j * hit.normal.y, z: j * hit.normal.z };
+        if (isADyn) {
+            rbA.velocity.x += impulse.x / rbA.mass;
+            rbA.velocity.y += impulse.y / rbA.mass;
+            rbA.velocity.z += impulse.z / rbA.mass;
+        }
+        if (isBDyn) {
+            rbB.velocity.x -= impulse.x / rbB.mass;
+            rbB.velocity.y -= impulse.y / rbB.mass;
+            rbB.velocity.z -= impulse.z / rbB.mass;
         }
     }
 

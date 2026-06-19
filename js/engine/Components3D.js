@@ -159,6 +159,33 @@ export class SphereCollider3D extends Collider3D {
     }
 }
 
+export class CapsuleCollider3D extends Collider3D {
+    constructor(materia) {
+        super(materia);
+        this.radius = 25;
+        this.height = 100;
+        this.direction = 'Y'; // 'X', 'Y', 'Z'
+    }
+    clone() {
+        const copy = new CapsuleCollider3D(null);
+        Object.assign(copy, this);
+        copy.offset = { ...this.offset };
+        return copy;
+    }
+}
+
+export class PlaneCollider3D extends Collider3D {
+    constructor(materia) {
+        super(materia);
+    }
+    clone() {
+        const copy = new PlaneCollider3D(null);
+        Object.assign(copy, this);
+        copy.offset = { ...this.offset };
+        return copy;
+    }
+}
+
 export class SkinnedMeshRenderer3D extends MeshRenderer3D {
     constructor(materia) {
         super(materia);
@@ -578,6 +605,8 @@ registerComponent('SpotLight3D', SpotLight3D);
 registerComponent('Rigidbody3D', Rigidbody3D);
 registerComponent('BoxCollider3D', BoxCollider3D);
 registerComponent('SphereCollider3D', SphereCollider3D);
+registerComponent('CapsuleCollider3D', CapsuleCollider3D);
+registerComponent('PlaneCollider3D', PlaneCollider3D);
 registerComponent('Animator3D', Animator3D);
 registerComponent('HumanoidPhysics3D', HumanoidPhysics3D);
 registerComponent('MovementControl3D', MovementControl3D);

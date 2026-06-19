@@ -3339,6 +3339,8 @@ function draw3DPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
     const center = { x: transform.x, y: transform.y, z: transform.z || 0 };
 
     const box = selectedMateria.getComponent(C3D.BoxCollider3D);
+    const rotation = { x: transform.rotationX || 0, y: transform.rotationY || 0, z: transform.rotationZ || 0 };
+
     if (box) {
         const worldSize = {
             x: box.size.x * Math.abs(transform.scale.x),
@@ -3350,7 +3352,7 @@ function draw3DPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
             y: center.y + box.offset.y,
             z: center.z + box.offset.z
         };
-        Gizmos.drawWireCube(ctx, worldCenter, worldSize, { x: 0, y: 0, z: 0 }, 'rgba(0, 255, 0, 0.8)', proj, view, cw, ch);
+        Gizmos.drawWireCube(ctx, worldCenter, worldSize, rotation, 'rgba(0, 255, 0, 0.8)', proj, view, cw, ch);
     }
 
     const sphere = selectedMateria.getComponent(C3D.SphereCollider3D);
@@ -3361,7 +3363,29 @@ function draw3DPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
             y: center.y + sphere.offset.y,
             z: center.z + sphere.offset.z
         };
-        Gizmos.drawWireSphere(ctx, worldCenter, worldRadius, { x: 0, y: 0, z: 0 }, 'rgba(0, 255, 0, 0.8)', proj, view, cw, ch);
+        Gizmos.drawWireSphere(ctx, worldCenter, worldRadius, rotation, 'rgba(0, 255, 0, 0.8)', proj, view, cw, ch);
+    }
+
+    const capsule = selectedMateria.getComponent(C3D.CapsuleCollider3D);
+    if (capsule) {
+        const worldRadius = capsule.radius * Math.max(Math.abs(transform.scale.x), Math.abs(transform.scale.z));
+        const worldHeight = capsule.height * Math.abs(transform.scale.y);
+        const worldCenter = {
+            x: center.x + capsule.offset.x,
+            y: center.y + capsule.offset.y,
+            z: center.z + capsule.offset.z
+        };
+        Gizmos.drawWireCapsule(ctx, worldCenter, worldRadius, worldHeight, rotation, 'rgba(0, 255, 0, 0.8)', proj, view, cw, ch);
+    }
+
+    const plane = selectedMateria.getComponent(C3D.PlaneCollider3D);
+    if (plane) {
+        const worldCenter = {
+            x: center.x + plane.offset.x,
+            y: center.y + plane.offset.y,
+            z: center.z + plane.offset.z
+        };
+        Gizmos.drawWirePlane(ctx, worldCenter, { x: 500, z: 500 }, rotation, 'rgba(0, 255, 0, 0.5)', proj, view, cw, ch);
     }
 }
 
