@@ -6189,3 +6189,105 @@ body.mobile-mode .submenu li {
     opacity: 0.6;
     border-radius: 5px;
 }
+
+/* --- Pre-made Scenes Gallery --- */
+.scenes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+    padding: 10px;
+}
+
+.scene-template-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.2s, border-color 0.2s;
+    display: flex;
+    flex-direction: column;
+}
+
+.scene-template-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--accent-color);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.scene-template-card .card-thumb {
+    height: 140px;
+    background-size: cover;
+    background-position: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.scene-template-card .card-info {
+    padding: 15px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.scene-template-card h3 {
+    margin: 0 0 10px 0;
+    font-size: 1.1em;
+    color: #fff;
+}
+
+.scene-template-card p {
+    margin: 0 0 15px 0;
+    font-size: 0.85em;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    flex-grow: 1;
+}
+
+.scene-template-card .create-btn {
+    width: 100%;
+}
+
+/* --- Extensions Gallery --- */
+.extensions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+    padding: 10px;
+}
+
+.extension-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.extension-card .card-thumb {
+    height: 120px;
+    width: 100%;
+    object-fit: cover;
+}
+
+.extension-card .card-info {
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.extension-card h3 {
+    margin: 0;
+    font-size: 1em;
+}
+
+.extension-card p {
+    margin: 0;
+    font-size: 0.8em;
+    color: var(--text-secondary);
+}
+
+.download-btn.downloaded {
+    background: #2ecc71 !important;
+    cursor: default;
+}
