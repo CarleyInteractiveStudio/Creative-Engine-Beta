@@ -5868,12 +5868,35 @@ async function renderModel3DInspector(assetName, assetPath) {
     let animationId = null;
     let previewMateria = null;
 
+    const captureThumbnail = async () => {
+        if (!canvas) return;
+        const thumbCanvas = document.createElement('canvas');
+        thumbCanvas.width = 128;
+        thumbCanvas.height = 128;
+        const thumbCtx = thumbCanvas.getContext('2d');
+        thumbCtx.drawImage(canvas, 0, 0, 128, 128);
+
+        thumbCanvas.toBlob(async (blob) => {
+            const thumbName = assetName + '.thumb.png';
+            const dirHandle = currentDirectoryHandle();
+            try {
+                const thumbHandle = await dirHandle.getFileHandle(thumbName, { create: true });
+                const writable = await thumbHandle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+                if (updateAssetBrowserCallback) await updateAssetBrowserCallback();
+            } catch (e) {
+                console.warn("Error saving thumbnail:", e);
+            }
+        }, 'image/png');
+    };
+
     const startPreview = async () => {
         const { Scene } = await import('../../engine/SceneManager.js');
         const { createSkinnedMeshObject } = await import('../MateriaFactory.js');
 
         renderer = new Renderer3D(canvas);
-        renderer.init();
+        renderer.init({ preserveDrawingBuffer: true });
 
         previewScene = new Scene();
         previewScene.ambiente.skyMode = 'SolidColor';
@@ -5908,20 +5931,46 @@ async function renderModel3DInspector(assetName, assetPath) {
         let lastTime = performance.now();
         const editorCam = { x: 0, y: -50, z: 300, rotation: { x: 10, y: 0, z: 0 } };
 
+        let isDragging = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+
+        canvas.onmousedown = (e) => { isDragging = true; lastMouseX = e.clientX; lastMouseY = e.clientY; };
+        window.onmouseup = () => { isDragging = false; };
+        window.onmousemove = (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - lastMouseX;
+            const dy = e.clientY - lastMouseY;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+
+            if (previewMateria) {
+                const t = previewMateria.getComponent(Components.Transform);
+                t.localRotation.y += dx * 0.5;
+                t.localRotation.x += dy * 0.5;
+            }
+        };
+
         const loop = (time) => {
             const dt = (time - lastTime) / 1000;
             lastTime = time;
 
-            rotation += dt * 30;
-            if (previewMateria) {
-                previewMateria.getComponent(Components.Transform).localRotation.y = rotation;
-                previewMateria.update(dt);
+            if (!isDragging) {
+                rotation += dt * 30;
+                if (previewMateria) {
+                    previewMateria.getComponent(Components.Transform).localRotation.y = rotation;
+                }
             }
+
+            if (previewMateria) previewMateria.update(dt);
 
             renderer.render(previewScene, null, { editorCamera: editorCam, showGrid: false, clearAlpha: 1 });
             animationId = requestAnimationFrame(loop);
         };
         animationId = requestAnimationFrame(loop);
+
+        // Auto-capture thumbnail after a delay to ensure model is loaded
+        setTimeout(captureThumbnail, 2000);
     };
 
     startPreview();
@@ -5972,7 +6021,7 @@ async function renderModel3DInspector(assetName, assetPath) {
         showNotification(L.get('EXITO'), `Se han extraído ${extractedCount} animaciones.`);
 
         // Capture a thumbnail for the model after a short delay
-        setTimeout(async () => {
+        const captureThumbnail = async () => {
             const thumbCanvas = document.createElement('canvas');
             thumbCanvas.width = 128;
             thumbCanvas.height = 128;
@@ -5991,7 +6040,8 @@ async function renderModel3DInspector(assetName, assetPath) {
                     console.warn("Error saving thumbnail:", e);
                 }
             }, 'image/png');
-        }, 1000);
+        };
+        setTimeout(captureThumbnail, 1000);
 
         if (updateAssetBrowserCallback) await updateAssetBrowserCallback();
     };

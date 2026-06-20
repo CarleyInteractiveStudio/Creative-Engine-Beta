@@ -31,7 +31,7 @@ export class Renderer3D {
         this.textureCache = new Map();
     }
 
-    init() {
+    init(options = {}) {
         if (this.initialized) return true;
         if (!this.canvas) return false;
 
@@ -40,7 +40,7 @@ export class Renderer3D {
         const glOptions = {
             antialias: true,
             alpha: true,
-            preserveDrawingBuffer: false,
+            preserveDrawingBuffer: options.preserveDrawingBuffer || false,
             powerPreference: "high-performance"
         };
 

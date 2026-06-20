@@ -151,8 +151,14 @@ export class ModelLoader3D {
                     uvs: getAccessorData(p.attributes.TEXCOORD_0),
                     indices: getAccessorData(p.indices),
                     weights: getAccessorData(p.attributes.WEIGHTS_0),
-                    joints: getAccessorData(p.attributes.JOINTS_0)
+                    joints: getAccessorData(p.attributes.JOINTS_0),
+                    material: p.material
                 }))
+            })),
+            materials: (json.materials || []).map(m => ({
+                name: m.name,
+                baseColor: m.pbrMetallicRoughness?.baseColorFactor || [1, 1, 1, 1],
+                baseColorTexture: m.pbrMetallicRoughness?.baseColorTexture?.index
             })),
             skins: (json.skins || []).map(s => ({
                 joints: s.joints,
