@@ -837,6 +837,16 @@ export async function updateAssetBrowser() {
                 iconContainer.innerHTML = `<img src="icons/map.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.endsWith('.obj')) {
                 iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+                // Try to load a thumbnail if it exists (.thumb.png)
+                const thumbPath = fullPath + '.thumb.png';
+                const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
+                getURLForAssetPath(thumbPath, currentDirHandle).then(url => {
+                    if (url) {
+                        imgIcon.src = url;
+                        iconContainer.innerHTML = '';
+                        iconContainer.appendChild(imgIcon);
+                    }
+                });
             } else if (lowerName.endsWith('.ceprefab')) {
                 iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (lowerName.endsWith('.celib')) {

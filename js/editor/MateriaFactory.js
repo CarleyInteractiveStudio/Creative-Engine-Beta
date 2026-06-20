@@ -128,14 +128,25 @@ export async function createSkinnedMeshObject(modelPath, parent = null) {
             nodeMtr.addComponent(new Components.Transform(nodeMtr));
             const t = nodeMtr.getComponent(Components.Transform);
             t.localPosition = { x: node.translation[0], y: node.translation[1], z: node.translation[2] };
+
+            // GLTF quaternions are [x, y, z, w]. Our engine currently uses Euler [x, y, z] in Transform.
+            // For now, we keep scale. A full quaternion to euler conversion might be needed later.
             t.localScale = { x: node.scale[0], y: node.scale[1], z: node.scale[2] };
+
             nodeMaterias.push(nodeMtr);
         }
 
         for (let i = 0; i < modelData.nodes.length; i++) {
             const node = modelData.nodes[i];
             const nodeMtr = nodeMaterias[i];
-            if (node.children) node.children.forEach(childIdx => nodeMaterias[childIdx].setParent(nodeMtr, false));
+
+            if (node.children) {
+                node.children.forEach(childIdx => {
+                    const childMtr = nodeMaterias[childIdx];
+                    childMtr.setParent(nodeMtr, false);
+                });
+            }
+
             if (node.mesh !== undefined) {
                 const primitive = modelData.meshes[node.mesh].primitives[0];
                 const renderer = new C3D.SkinnedMeshRenderer3D(nodeMtr);
@@ -157,7 +168,11 @@ export async function createSkinnedMeshObject(modelPath, parent = null) {
                 nodeMtr.addComponent(renderer);
             }
         }
-        nodeMaterias.forEach(m => { if (!m.parent) m.setParent(rootMateria, false); });
+        nodeMaterias.forEach(m => {
+            if (!m.parent) {
+                m.setParent(rootMateria, false);
+            }
+        });
     } else {
         const renderer = new C3D.SkinnedMeshRenderer3D(rootMateria);
         renderer.modelPath = modelPath;

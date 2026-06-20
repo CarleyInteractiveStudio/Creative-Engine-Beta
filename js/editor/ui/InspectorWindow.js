@@ -7,6 +7,7 @@ import { getCustomComponentDefinitions } from '../EngineAPIExtension.js';
 import * as CES_Transpiler from '../../editor/CES_Transpiler.js';
 import { showPrompt, showNotification } from './DialogWindow.js';
 import { TerrenoEditorWindow } from './TerrenoEditorWindow.js';
+import { Renderer3D } from '../../engine/Renderer3D.js';
 import { broadcastUpdate } from '../CollaborationSystem.js';
 
 // --- Module State ---
@@ -5353,8 +5354,13 @@ export async function showAddComponentModal() {
 
         const categoryHeader = document.createElement('h4');
         categoryHeader.className = 'category-header';
-        let categoryLabel = L.get(category, category);
-        if (is3D && categoryLabel.endsWith(' 3D')) {
+        let categoryLabel = L.get(category);
+        if (categoryLabel === category) {
+            // Si no hay traducción, limpiar el prefijo CAT_ y formatear
+            categoryLabel = category.replace('CAT_', '').replace(/_/g, ' ').toLowerCase();
+            categoryLabel = categoryLabel.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        }
+        if (is3D && categoryLabel.toLowerCase().endsWith(' 3d')) {
             categoryLabel = categoryLabel.substring(0, categoryLabel.length - 3);
         }
         categoryHeader.innerHTML = `<span class="category-toggle"></span>${categoryLabel}`;
@@ -5825,20 +5831,109 @@ async function renderModel3DInspector(assetName, assetPath) {
     container.innerHTML = `
         <div class="inspector-section">
             <label data-i18n="MODEL_3D">Modelo 3D</label>
-            <div class="model-info-bubble" style="padding: 15px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; margin-top: 10px; display: flex; flex-direction: column; align-items: center; gap: 10px;">
-                <span class="asset-preview-icon" style="display: block; width: 48px; height: 48px;">${getIconHTML('box')}</span>
-                <span style="font-weight: bold;">${assetName}</span>
-                <span style="font-size: 0.8em; opacity: 0.6;">${assetName.split('.').pop().toUpperCase()} Format</span>
+            <div class="model-preview-container" style="width: 100%; height: 250px; background: #000; border-radius: 8px; overflow: hidden; position: relative; margin-top: 10px;">
+                <canvas id="model-preview-canvas" style="width: 100%; height: 100%; display: block;"></canvas>
+                <div class="preview-overlay" style="position: absolute; bottom: 10px; right: 10px; pointer-events: none; opacity: 0.6;">
+                    <span style="font-size: 0.8em; background: rgba(0,0,0,0.5); padding: 2px 6px; border-radius: 4px;">3D Preview</span>
+                </div>
+            </div>
+            <div class="model-info-bubble" style="padding: 10px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+                <span class="asset-preview-icon" style="display: block; width: 24px; height: 24px;">${getIconHTML('box')}</span>
+                <span style="font-weight: bold; flex-grow: 1; font-size: 0.9em;">${assetName}</span>
+                <span style="font-size: 0.75em; opacity: 0.6;">${assetName.split('.').pop().toUpperCase()}</span>
             </div>
         </div>
+
+        <div class="inspector-section">
+             <label data-i18n="ANIMATIONS">${L.get('ANIMATIONS', 'Animaciones')}</label>
+             <div id="model-animations-list" class="layer-list" style="margin-top: 8px; max-height: 120px; overflow-y: auto;">
+                <p class="field-description" style="opacity: 0.5;">Cargando animaciones...</p>
+             </div>
+        </div>
+
         <div class="inspector-section">
             <label data-i18n="ACTIONS">${L.get('ACTIONS', 'Acciones')}</label>
             <button id="btn-import-model-scene" class="primary-btn" style="width: 100%; margin-top: 10px;">Importar a la Escena</button>
+            <button id="btn-extract-animations" class="panel-tool-btn" style="width: 100%; margin-top: 5px;">Extraer Animaciones (.cea)</button>
+            <button id="btn-auto-rig" class="panel-tool-btn" style="width: 100%; margin-top: 5px;" title="Añade componentes de Hueso a la jerarquía del modelo automáticamente.">Generar Rigging (Huesos)</button>
             <p class="field-description" style="margin-top: 10px;">${L.get('HINT_ARRASTRAR_MODELO', 'Puedes arrastrar este archivo a la escena para importarlo.')}</p>
         </div>
     `;
 
     dom.inspectorContent.appendChild(container);
+
+    const canvas = document.getElementById('model-preview-canvas');
+    let renderer = null;
+    let previewScene = null;
+    let animationId = null;
+    let previewMateria = null;
+
+    const startPreview = async () => {
+        const { Scene } = await import('../../engine/SceneManager.js');
+        const { createSkinnedMeshObject } = await import('../MateriaFactory.js');
+
+        renderer = new Renderer3D(canvas);
+        renderer.init();
+
+        previewScene = new Scene();
+        previewScene.ambiente.skyMode = 'SolidColor';
+        previewScene.ambiente.skyColor = '#111111';
+
+        previewMateria = await createSkinnedMeshObject(assetPath, null);
+        if (previewMateria) {
+            previewScene.addMateria(previewMateria);
+
+            // Populate animations list
+            const animList = document.getElementById('model-animations-list');
+            const animator = previewMateria.getComponentByName('Animator3D');
+            if (animator && animator.animations && animator.animations.length > 0) {
+                animList.innerHTML = animator.animations.map((a, i) => `
+                    <div class="layer-item" style="padding: 4px 8px; font-size: 0.85em; display: flex; justify-content: space-between;">
+                        <span>${a.name || 'Anim ' + i}</span>
+                        <button class="small-btn play-preview-anim" data-index="${i}">▶</button>
+                    </div>
+                `).join('');
+
+                animList.querySelectorAll('.play-preview-anim').forEach(btn => {
+                    btn.onclick = () => {
+                        animator.play(animator.animations[parseInt(btn.dataset.index)].name);
+                    };
+                });
+            } else {
+                animList.innerHTML = `<p class="field-description" style="opacity: 0.5;">No hay animaciones embebidas.</p>`;
+            }
+        }
+
+        let rotation = 0;
+        let lastTime = performance.now();
+        const editorCam = { x: 0, y: -50, z: 300, rotation: { x: 10, y: 0, z: 0 } };
+
+        const loop = (time) => {
+            const dt = (time - lastTime) / 1000;
+            lastTime = time;
+
+            rotation += dt * 30;
+            if (previewMateria) {
+                previewMateria.getComponent(Components.Transform).localRotation.y = rotation;
+                previewMateria.update(dt);
+            }
+
+            renderer.render(previewScene, null, { editorCamera: editorCam, showGrid: false, clearAlpha: 1 });
+            animationId = requestAnimationFrame(loop);
+        };
+        animationId = requestAnimationFrame(loop);
+    };
+
+    startPreview();
+
+    // Cleanup on inspector clear
+    const observer = new MutationObserver((mutations) => {
+        if (!document.getElementById('model-preview-canvas')) {
+            if (animationId) cancelAnimationFrame(animationId);
+            observer.disconnect();
+        }
+    });
+    observer.observe(dom.inspectorContent, { childList: true });
 
     document.getElementById('btn-import-model-scene').onclick = async () => {
         const { createSkinnedMeshObject } = await import('../MateriaFactory.js');
@@ -5847,6 +5942,82 @@ async function renderModel3DInspector(assetName, assetPath) {
             if (window.updateHierarchy) window.updateHierarchy();
             if (window.updateScene) window.updateScene();
             if (window.selectMateria) window.selectMateria(m.id);
+        }
+    };
+
+    document.getElementById('btn-extract-animations').onclick = async () => {
+        if (!previewMateria) return;
+        const animator = previewMateria.getComponentByName('Animator3D');
+        if (!animator || !animator.animations || animator.animations.length === 0) {
+            showNotification(L.get('AVISO'), "Este modelo no contiene animaciones.");
+            return;
+        }
+
+        const dirHandle = currentDirectoryHandle();
+        let extractedCount = 0;
+
+        for (const anim of animator.animations) {
+            const fileName = `${assetName.split('.')[0]}_${anim.name}.cea`;
+            try {
+                const fileH = await dirHandle.getFileHandle(fileName, { create: true });
+                const writable = await fileH.createWritable();
+                await writable.write(JSON.stringify(anim, null, 2));
+                await writable.close();
+                extractedCount++;
+            } catch (e) {
+                console.warn(`Error al extraer animación ${anim.name}:`, e);
+            }
+        }
+
+        showNotification(L.get('EXITO'), `Se han extraído ${extractedCount} animaciones.`);
+
+        // Capture a thumbnail for the model after a short delay
+        setTimeout(async () => {
+            const thumbCanvas = document.createElement('canvas');
+            thumbCanvas.width = 128;
+            thumbCanvas.height = 128;
+            const thumbCtx = thumbCanvas.getContext('2d');
+            thumbCtx.drawImage(canvas, 0, 0, 128, 128);
+
+            thumbCanvas.toBlob(async (blob) => {
+                const thumbName = assetName + '.thumb.png';
+                try {
+                    const thumbHandle = await dirHandle.getFileHandle(thumbName, { create: true });
+                    const writable = await thumbHandle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    if (updateAssetBrowserCallback) await updateAssetBrowserCallback();
+                } catch (e) {
+                    console.warn("Error saving thumbnail:", e);
+                }
+            }, 'image/png');
+        }, 1000);
+
+        if (updateAssetBrowserCallback) await updateAssetBrowserCallback();
+    };
+
+    document.getElementById('btn-auto-rig').onclick = async () => {
+        const { createSkinnedMeshObject } = await import('../MateriaFactory.js');
+        const m = await createSkinnedMeshObject(assetPath, null);
+        if (m) {
+            let count = 0;
+            const addBones = (mtr) => {
+                if (mtr.children.length > 0 || mtr.getComponentByName('SkinnedMeshRenderer3D')) {
+                    if (!mtr.getComponentByName('Bone')) {
+                        const bone = new Components.Bone(mtr);
+                        mtr.addComponent(bone);
+                        count++;
+                    }
+                }
+                mtr.children.forEach(addBones);
+            };
+            addBones(m);
+
+            if (window.updateHierarchy) window.updateHierarchy();
+            if (window.updateScene) window.updateScene();
+            if (window.selectMateria) window.selectMateria(m.id);
+
+            showNotification(L.get('EXITO'), `Modelo importado con Rigging: se generaron ${count} huesos.`);
         }
     };
 }
