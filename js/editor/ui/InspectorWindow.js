@@ -5364,6 +5364,9 @@ export async function showAddComponentModal() {
             categoryHeader.querySelector('.category-toggle').classList.toggle('open', !isOpen);
         });
 
+        categoryWrapper.appendChild(categoryHeader);
+        categoryWrapper.appendChild(categoryContent);
+
         if (is3D) container3D.appendChild(categoryWrapper);
         else container2D.appendChild(categoryWrapper);
 
@@ -5385,9 +5388,12 @@ export async function showAddComponentModal() {
             else if (compTitle === 'BasicAI') compTitle = L.get('BASIC_AI', 'IA Básica');
 
             componentItem.innerHTML = `
+                <span class="component-icon">${getIconHTML(componentIcons[compName] || 'box')}</span>
                 <span>${compTitle}</span>
                 ${isPresent ? `<span class="component-item-indicator">${getIconHTML('check')}</span>` : ''}
             `;
+
+            categoryContent.appendChild(componentItem);
 
             componentItem.addEventListener('click', async () => {
                 if (isPresent) {
