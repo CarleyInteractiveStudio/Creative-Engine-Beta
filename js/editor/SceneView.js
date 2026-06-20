@@ -1513,6 +1513,16 @@ export function initialize(dependencies) {
         if (e.key === 'Escape' && isAddingLayer) {
             exitAddLayerMode();
         }
+
+        if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+
+        switch (e.key.toLowerCase()) {
+            case 'w': setActiveTool('move'); break;
+            case 'e': setActiveTool('rotate'); break;
+            case 'r': setActiveTool('scale'); break;
+            case 'v': setActiveTool('sculpt'); break;
+            case 'm': setActiveTool('multi'); break;
+        }
     });
 
     sceneCanvases.forEach(canvas => {

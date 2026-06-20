@@ -5846,6 +5846,10 @@ async function renderModel3DInspector(assetName, assetPath) {
 
         <div class="inspector-section">
              <label data-i18n="ANIMATIONS">${L.get('ANIMATIONS', 'Animaciones')}</label>
+             <div class="checkbox-field" style="margin: 8px 0;">
+                <input type="checkbox" id="lock-root-motion" checked>
+                <label for="lock-root-motion" style="font-size: 0.85em;">Bloquear Movimiento Raíz (In-Place)</label>
+             </div>
              <div id="model-animations-list" class="layer-list" style="margin-top: 8px; max-height: 120px; overflow-y: auto;">
                 <p class="field-description" style="opacity: 0.5;">Cargando animaciones...</p>
              </div>
@@ -5902,7 +5906,7 @@ async function renderModel3DInspector(assetName, assetPath) {
         previewScene.ambiente.skyMode = 'SolidColor';
         previewScene.ambiente.skyColor = '#111111';
 
-        previewMateria = await createSkinnedMeshObject(assetPath, null);
+        previewMateria = await createSkinnedMeshObject(assetPath, null, { addToScene: false });
         if (previewMateria) {
             previewScene.addMateria(previewMateria);
 
@@ -6004,13 +6008,28 @@ async function renderModel3DInspector(assetName, assetPath) {
 
         const dirHandle = currentDirectoryHandle();
         let extractedCount = 0;
+        const lockRoot = document.getElementById('lock-root-motion')?.checked;
 
         for (const anim of animator.animations) {
+            let processedAnim = JSON.parse(JSON.stringify(anim));
+
+            if (lockRoot) {
+                // Neutralize translation on the root node (assuming node 0 or node with specific name)
+                processedAnim.channels = processedAnim.channels.map(channel => {
+                    if (channel.path === 'translation') {
+                        // Set all translation values to zero
+                        const zeros = new Float32Array(channel.values.length).fill(0);
+                        return { ...channel, values: zeros };
+                    }
+                    return channel;
+                });
+            }
+
             const fileName = `${assetName.split('.')[0]}_${anim.name}.cea`;
             try {
                 const fileH = await dirHandle.getFileHandle(fileName, { create: true });
                 const writable = await fileH.createWritable();
-                await writable.write(JSON.stringify(anim, null, 2));
+                await writable.write(JSON.stringify(processedAnim, null, 2));
                 await writable.close();
                 extractedCount++;
             } catch (e) {
@@ -6047,12 +6066,18 @@ async function renderModel3DInspector(assetName, assetPath) {
     };
 
     document.getElementById('btn-auto-rig').onclick = async () => {
-        const { createSkinnedMeshObject } = await import('../MateriaFactory.js');
-        const m = await createSkinnedMeshObject(assetPath, null);
-        if (m) {
+        const selectedMateria = getSelectedMateria();
+        const target = selectedMateria || await (async () => {
+            const { createSkinnedMeshObject } = await import('../MateriaFactory.js');
+            return await createSkinnedMeshObject(assetPath, null);
+        })();
+
+        if (target) {
             let count = 0;
             const addBones = (mtr) => {
-                if (mtr.children.length > 0 || mtr.getComponentByName('SkinnedMeshRenderer3D')) {
+                // If it's a model node (has children or mesh) and doesn't have a bone
+                const hasSubstructure = mtr.children.length > 0 || mtr.getComponentByName('SkinnedMeshRenderer3D');
+                if (hasSubstructure) {
                     if (!mtr.getComponentByName('Bone')) {
                         const bone = new Components.Bone(mtr);
                         mtr.addComponent(bone);
@@ -6061,13 +6086,13 @@ async function renderModel3DInspector(assetName, assetPath) {
                 }
                 mtr.children.forEach(addBones);
             };
-            addBones(m);
+            addBones(target);
 
             if (window.updateHierarchy) window.updateHierarchy();
             if (window.updateScene) window.updateScene();
-            if (window.selectMateria) window.selectMateria(m.id);
+            if (window.selectMateria) window.selectMateria(target.id);
 
-            showNotification(L.get('EXITO'), `Modelo importado con Rigging: se generaron ${count} huesos.`);
+            showNotification(L.get('EXITO'), `Rigging generado: se añadieron ${count} componentes de Hueso.`);
         }
     };
 }

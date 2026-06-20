@@ -17,11 +17,11 @@ export function generateUniqueName(baseName) {
     return `${baseName} (${counter})`;
 }
 
-export function createBaseMateria(name, parent = null, useUITransform = false) {
+export function createBaseMateria(name, parent = null, useUITransform = false, addToScene = true) {
     const mtr = new Materia(name);
     mtr.addComponent(useUITransform ? new Components.UITransform(mtr) : new Components.Transform(mtr));
     if (parent) parent.addChild(mtr);
-    else SceneManager.currentScene.addMateria(mtr);
+    else if (addToScene) SceneManager.currentScene.addMateria(mtr);
     return mtr;
 }
 
@@ -112,14 +112,21 @@ export async function createSpotLight3D(parent = null) {
     return mtr;
 }
 
-export async function createSkinnedMeshObject(modelPath, parent = null) {
+export async function createSkinnedMeshObject(modelPath, parent = null, options = {}) {
     const C3D = await ensure3D();
     const { ModelLoader3D } = await import('../engine/ModelLoader3D.js');
     const modelData = await ModelLoader3D.loadModel(modelPath, window.projectsDirHandle);
     if (!modelData) return null;
 
     const rootName = modelPath.split('/').pop().split('.')[0];
-    const rootMateria = createBaseMateria(generateUniqueName(rootName), parent);
+    const rootMateria = createBaseMateria(generateUniqueName(rootName), parent, false, options.addToScene !== false);
+
+    // Rotate root to compensate for Y-down coordinate system if it's a new import
+    const rootTransform = rootMateria.getComponent(Components.Transform);
+    if (rootTransform && !options.noRotation) {
+        rootTransform.localRotation = { x: 180, y: 0, z: 0 };
+    }
+
     const nodeMaterias = [];
 
     if (modelData.nodes) {

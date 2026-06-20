@@ -51,15 +51,21 @@ export class ModelLoader3D {
                     vUvs.push([parseFloat(parts[1]), parseFloat(parts[2])]);
                     break;
                 case 'f':
+                    const faceIndices = [];
                     for (let i = 1; i < parts.length; i++) {
                         const vertexParts = parts[i].split('/');
                         const key = parts[i];
                         if (indexMap.has(key)) {
-                            indices.push(indexMap.get(key));
+                            faceIndices.push(indexMap.get(key));
                         } else {
-                            const vIdx = parseInt(vertexParts[0]) - 1;
-                            const uvIdx = vertexParts[1] ? parseInt(vertexParts[1]) - 1 : -1;
-                            const nIdx = vertexParts[2] ? parseInt(vertexParts[2]) - 1 : -1;
+                            let vIdx = parseInt(vertexParts[0]);
+                            vIdx = vIdx < 0 ? vertices.length + vIdx : vIdx - 1;
+
+                            let uvIdx = vertexParts[1] ? parseInt(vertexParts[1]) : 0;
+                            uvIdx = uvIdx < 0 ? vUvs.length + uvIdx : uvIdx - 1;
+
+                            let nIdx = vertexParts[2] ? parseInt(vertexParts[2]) : 0;
+                            nIdx = nIdx < 0 ? vNormals.length + nIdx : nIdx - 1;
 
                             positions.push(...vertices[vIdx]);
                             if (nIdx >= 0) normals.push(...vNormals[nIdx]);
@@ -69,9 +75,13 @@ export class ModelLoader3D {
                             else uvs.push(0, 0);
 
                             indexMap.set(key, nextIndex);
-                            indices.push(nextIndex);
+                            faceIndices.push(nextIndex);
                             nextIndex++;
                         }
+                    }
+                    // Triangulate polygons (Fan triangulation)
+                    for (let i = 1; i < faceIndices.length - 1; i++) {
+                        indices.push(faceIndices[0], faceIndices[i], faceIndices[i + 1]);
                     }
                     break;
             }
