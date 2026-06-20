@@ -6308,7 +6308,7 @@ body.mobile-mode .submenu li {
     border-radius: 0 4px 4px 0;
 }
 
-.inspector-2d-section {
+.inspector-section-fold {
     margin: 15px 0;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
@@ -6316,7 +6316,7 @@ body.mobile-mode .submenu li {
     overflow: hidden;
 }
 
-.inspector-2d-section summary {
+.inspector-section-fold summary {
     padding: 10px 15px;
     font-weight: bold;
     cursor: pointer;
@@ -6326,16 +6326,16 @@ body.mobile-mode .submenu li {
     color: var(--text-secondary);
 }
 
-.inspector-2d-section summary:hover {
+.inspector-section-fold summary:hover {
     background: rgba(255, 255, 255, 0.08);
     color: white;
 }
 
-.inspector-2d-section[open] summary {
+.inspector-section-fold[open] summary {
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.inspector-2d-section > div {
+.inspector-section-fold > div {
     padding: 10px;
 }
 
@@ -6478,13 +6478,13 @@ body.mobile-mode .submenu li {
     border-left: 3px solid #555;
 }
 
-.inspector-2d-section {
+.inspector-section-fold {
     margin-top: 15px;
     border: 1px solid #444;
     border-radius: 4px;
 }
 
-.inspector-2d-section summary {
+.inspector-section-fold summary {
     padding: 8px;
     cursor: pointer;
     background: #2a2a2a;

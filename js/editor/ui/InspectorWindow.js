@@ -4507,32 +4507,27 @@ async function updateInspectorForMateria(selectedMateria) {
 
     // --- Renderizado Organizado ---
 
-    // 1. Renderizar 3D primero (sueltos por defecto)
-    const order = ['basico', 'fisica', 'sonido', 'camara', 'otros'];
-    const sectionTitles = {
-        basico: L.get('CAT_BASICO', 'Básico'),
-        fisica: L.get('CAT_FISICAS', 'Física'),
-        sonido: L.get('CAT_AUDIO', 'Sonido'),
-        camara: L.get('CAT_CAMARA', 'Cámara'),
-        otros: L.get('CAT_OTROS_3D', 'Componentes 3D')
-    };
+    // 1. Renderizar 3D en una sección colapsada por defecto
+    const all3D = [].concat(...Object.values(components3D));
+    if (all3D.length > 0) {
+        const fold3D = document.createElement('details');
+        fold3D.className = 'inspector-section-fold'; // Usamos una clase común
+        fold3D.open = true; // 3D abierto por defecto
+        const summary = document.createElement('summary');
+        summary.textContent = L.get('LEYES_3D', 'Leyes 3D');
+        fold3D.appendChild(summary);
 
-    order.forEach(catId => {
-        const list = components3D[catId];
-        if (list.length > 0) {
-            const sectionHeader = document.createElement('div');
-            sectionHeader.className = 'inspector-category-title';
-            sectionHeader.textContent = sectionTitles[catId];
-            componentsWrapper.appendChild(sectionHeader);
-            renderComponentList(list, componentsWrapper);
-        }
-    });
+        const innerWrapper = document.createElement('div');
+        renderComponentList(all3D, innerWrapper);
+        fold3D.appendChild(innerWrapper);
+        componentsWrapper.appendChild(fold3D);
+    }
 
     // 2. Renderizar 2D en una sección colapsada por defecto
     if (components2D.length > 0) {
         const fold2D = document.createElement('details');
-        fold2D.className = 'inspector-2d-section';
-        // fold2D.open = false; // Closed by default
+        fold2D.className = 'inspector-section-fold';
+        // fold2D.open = false; // Cerrado por defecto
         const summary = document.createElement('summary');
         summary.textContent = L.get('LEYES_2D', 'Leyes 2D');
         fold2D.appendChild(summary);
@@ -5322,7 +5317,7 @@ export async function showAddComponentModal() {
     // View Mode determines the filtering (simulated 2D or full 3D)
     const viewMode = projectConfig.viewMode || '3d';
 
-    // Top-level containers for 2D and 3D
+    // Top-level containers
     const container3D = document.createElement('details');
     container3D.className = 'component-master-category';
     container3D.open = (viewMode === '3d');
@@ -5333,8 +5328,18 @@ export async function showAddComponentModal() {
     container2D.open = (viewMode === '2d');
     container2D.innerHTML = `<summary><h3>2D</h3></summary>`;
 
+    const containerScripts = document.createElement('details');
+    containerScripts.className = 'component-master-category';
+    containerScripts.innerHTML = `<summary><h3>${L.get('SCRIPTS', 'Scripts')}</h3></summary>`;
+
+    const containerLibraries = document.createElement('details');
+    containerLibraries.className = 'component-master-category';
+    containerLibraries.innerHTML = `<summary><h3>${L.get('LIBRERIAS', 'Librerías')}</h3></summary>`;
+
     dom.componentList.appendChild(container3D);
     dom.componentList.appendChild(container2D);
+    dom.componentList.appendChild(containerScripts);
+    dom.componentList.appendChild(containerLibraries);
 
     for (const category in availableComponents) {
         const is3D = category.endsWith('_3D');
@@ -5437,10 +5442,6 @@ export async function showAddComponentModal() {
             });
             categoryContent.appendChild(componentItem);
         });
-
-        categoryWrapper.appendChild(categoryHeader);
-        categoryWrapper.appendChild(categoryContent);
-        dom.componentList.appendChild(categoryWrapper);
     }
 
     // --- 2. Render Custom Components ---
@@ -5485,7 +5486,7 @@ export async function showAddComponentModal() {
         }
         categoryWrapper.appendChild(categoryHeader);
         categoryWrapper.appendChild(categoryContent);
-        dom.componentList.appendChild(categoryWrapper);
+        containerLibraries.appendChild(categoryWrapper);
     }
 
 
@@ -5511,7 +5512,7 @@ export async function showAddComponentModal() {
 
     scriptsCategoryWrapper.appendChild(scriptsHeader);
     scriptsCategoryWrapper.appendChild(scriptsContent);
-    dom.componentList.appendChild(scriptsCategoryWrapper);
+    containerScripts.appendChild(scriptsCategoryWrapper);
 
     const placeholder = document.createElement('p');
     placeholder.className = 'script-scan-status';
