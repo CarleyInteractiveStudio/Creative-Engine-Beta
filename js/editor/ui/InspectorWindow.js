@@ -1609,13 +1609,59 @@ async function updateInspectorForMateria(selectedMateria) {
         layerSelect.appendChild(addLayerOption);
     }
 
+    // --- REORGANIZACIÓN POR CATEGORÍAS ---
+    const components2D = [];
+    const components3D = {
+        fisica: [],
+        sonido: [],
+        camara: [],
+        basico: [],
+        otros: []
+    };
+
+    const catMap = {
+        // Física 3D
+        'Rigidbody3D': 'fisica', 'BoxCollider3D': 'fisica', 'SphereCollider3D': 'fisica', 'CapsuleCollider3D': 'fisica', 'PlaneCollider3D': 'fisica', 'TerrenoCollider3D': 'fisica', 'HumanoidPhysics3D': 'fisica', 'WheelCollider3D': 'fisica',
+        // Sonido (unificado o 3D)
+        'AudioSource': 'sonido',
+        // Cámara
+        'Camera': 'camara', 'CameraControl3D': 'camara',
+        // Básico 3D
+        'MovementControl3D': 'basico', 'ThirdPersonController3D': 'basico', 'HealthController3D': 'basico', 'VehicleController3D': 'basico',
+        // Otros 3D / Comunes
+        'MeshRenderer3D': 'otros', 'SkinnedMeshRenderer3D': 'otros', 'Animator3D': 'otros', 'DirectionalLight3D': 'otros', 'PointLight3D': 'otros', 'SpotLight3D': 'otros', 'Terreno3D': 'otros', 'DeformableMesh3D': 'otros', 'ProceduralChain3D': 'otros', 'ClothRenderer3D': 'otros',
+        'Transform': 'otros'
+    };
+
+    const is2DComponent = (ley) => {
+        const name = ley.constructor.name;
+        const known2D = [
+            'SpriteRenderer', 'Rigidbody2D', 'BoxCollider2D', 'CircleCollider2D', 'PolygonCollider2D', 'CapsuleCollider2D',
+            'Tilemap', 'TilemapRenderer', 'TilemapCollider2D', 'Grid', 'TextureRender', 'Parallax', 'Terreno2D', 'TerrenoCollider2D',
+            'PointLight2D', 'SpotLight2D', 'FreeformLight2D', 'SpriteLight2D', 'Movement', 'CameraFollow', 'ProjectileLauncher',
+            'Health', 'Attack', 'Patrol', 'ParticleSystem', 'RaycastSource', 'BasicAI', 'Water', 'LineCollider2D', 'Suspension',
+            'VehicleTopDown', 'PlaneController', 'HelicopterController', 'Bone', 'SkeletonRenderer', 'IKManager2D', 'Animator', 'AnimatorController',
+            'Canvas', 'UIImage', 'UIText', 'UITransform', 'Button', 'ProgressBar', 'UIScrollRect', 'UIMask', 'UICollider', 'UIController',
+            'VerticalLayoutGroup', 'HorizontalLayoutGroup', 'GridLayoutGroup', 'ContentSizeFitter'
+        ];
+        return known2D.includes(name);
+    };
 
     const componentsWrapper = document.createElement('div');
     componentsWrapper.className = 'inspector-components-wrapper';
 
     selectedMateria.leyes.forEach((ley, index) => {
-        try {
-        let componentHTML = '';
+        const name = ley.constructor.name;
+        if (is2DComponent(ley)) {
+            components2D.push({ ley, index });
+        } else {
+            const cat = catMap[name] || 'otros';
+            components3D[cat].push({ ley, index });
+        }
+    });
+
+    const renderComponentList = (list, container) => {
+        list.forEach(({ ley, index }) => {
         const componentName = ley.constructor.name;
         const icon = componentIcons[componentName] || 'settings';
         const iconHTML = `<span class="component-icon">${getIconHTML(icon)}</span>`;
@@ -4448,6 +4494,45 @@ async function updateInspectorForMateria(selectedMateria) {
             componentsWrapper.appendChild(errorWrapper);
         }
     });
+    };
+
+    // --- Renderizado Organizado ---
+
+    // 1. Renderizar 3D primero (sueltos por defecto)
+    const order = ['basico', 'fisica', 'sonido', 'camara', 'otros'];
+    const sectionTitles = {
+        basico: L.get('CAT_BASICO_3D', 'Básico 3D'),
+        fisica: L.get('CAT_FISICA_3D', 'Física 3D'),
+        sonido: L.get('CAT_SONIDO_3D', 'Sonido'),
+        camara: L.get('CAT_CAMARA_3D', 'Cámara'),
+        otros: L.get('CAT_OTROS_3D', 'Componentes 3D')
+    };
+
+    order.forEach(catId => {
+        const list = components3D[catId];
+        if (list.length > 0) {
+            const sectionHeader = document.createElement('div');
+            sectionHeader.className = 'inspector-category-title';
+            sectionHeader.textContent = sectionTitles[catId];
+            componentsWrapper.appendChild(sectionHeader);
+            renderComponentList(list, componentsWrapper);
+        }
+    });
+
+    // 2. Renderizar 2D en una sección colapsada por defecto
+    if (components2D.length > 0) {
+        const fold2D = document.createElement('details');
+        fold2D.className = 'inspector-2d-section';
+        // fold2D.open = false; // Closed by default
+        const summary = document.createElement('summary');
+        summary.textContent = L.get('LEYES_2D', 'Leyes 2D');
+        fold2D.appendChild(summary);
+
+        const innerWrapper = document.createElement('div');
+        renderComponentList(components2D, innerWrapper);
+        fold2D.appendChild(innerWrapper);
+        componentsWrapper.appendChild(fold2D);
+    }
 
     dom.inspectorContent.appendChild(componentsWrapper);
 

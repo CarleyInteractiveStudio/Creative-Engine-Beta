@@ -2346,6 +2346,8 @@ body.mobile-mode #editor-main-content.no-inspector {
     position: absolute;
     width: 60vw; /* Initial width */
     height: 70vh; /* Initial height */
+    max-width: 100vw;
+    max-height: 100vh;
     min-width: 250px; /* Reduced min-width for small screens */
     min-height: 200px; /* Reduced min-height for small screens */
     top: 100px;
@@ -6290,4 +6292,49 @@ body.mobile-mode .submenu li {
 .download-btn.downloaded {
     background: #2ecc71 !important;
     cursor: default;
+}
+
+/* --- Inspector Category & Section Styling --- */
+.inspector-category-title {
+    background: linear-gradient(90deg, rgba(14, 99, 156, 0.3), transparent);
+    color: var(--accent-color);
+    padding: 6px 12px;
+    font-weight: bold;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 15px 0 8px 0;
+    border-left: 3px solid var(--accent-color);
+    border-radius: 0 4px 4px 0;
+}
+
+.inspector-2d-section {
+    margin: 15px 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+}
+
+.inspector-2d-section summary {
+    padding: 10px 15px;
+    font-weight: bold;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.03);
+    user-select: none;
+    transition: background 0.2s;
+    color: var(--text-secondary);
+}
+
+.inspector-2d-section summary:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+}
+
+.inspector-2d-section[open] summary {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.inspector-2d-section > div {
+    padding: 10px;
 }
