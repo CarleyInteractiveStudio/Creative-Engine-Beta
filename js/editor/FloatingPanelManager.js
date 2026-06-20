@@ -126,12 +126,17 @@ function initializePanel(panel) {
 
                 if (direction.includes('e')) {
                     let newWidth = startWidth + dx;
+                    if (newWidth < 200) newWidth = 200;
                     if (startLeft + newWidth > viewportW) newWidth = viewportW - startLeft;
                     panel.style.width = `${newWidth}px`;
                 }
                 if (direction.includes('w')) {
                     let newWidth = startWidth - dx;
                     let newLeft = startLeft + dx;
+                    if (newWidth < 200) {
+                        newLeft = startLeft + (startWidth - 200);
+                        newWidth = 200;
+                    }
                     if (newLeft < 0) {
                         newWidth = startWidth + startLeft;
                         newLeft = 0;
@@ -141,12 +146,17 @@ function initializePanel(panel) {
                 }
                 if (direction.includes('s')) {
                     let newHeight = startHeight + dy;
+                    if (newHeight < 150) newHeight = 150;
                     if (startTop + newHeight > viewportH) newHeight = viewportH - startTop;
                     panel.style.height = `${newHeight}px`;
                 }
                 if (direction.includes('n')) {
                     let newHeight = startHeight - dy;
                     let newTop = startTop + dy;
+                    if (newHeight < 150) {
+                        newTop = startTop + (startHeight - 150);
+                        newHeight = 150;
+                    }
                     if (newTop < 0) {
                         newHeight = startHeight + startTop;
                         newTop = 0;

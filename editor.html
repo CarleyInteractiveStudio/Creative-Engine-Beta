@@ -1248,12 +1248,27 @@ public star() {
             <div id="sprite-selector-grid"></div>
         </div>
     </div>
-    <div id="add-component-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2 data-i18n="AÑADIR_LEY_TITULO">Añadir Ley (Componente)</h2>
+    <div id="add-component-modal" class="editor-panel floating-panel hidden" style="width: 400px; height: 500px;">
+        <div class="panel-header">
+            <span data-i18n="AÑADIR_LEY_TITULO">Añadir Ley (Componente)</span>
+            <div class="panel-header-controls">
+                <button class="panel-tool-btn minimize-btn" title="Minimizar"><img src="icons/minus.svg" class="ce-icon"></button>
+                <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar"><img src="icons/maximize-2.svg" class="ce-icon"></button>
+                <button class="panel-tool-btn fullscreen-btn" title="Pantalla Completa"><img src="icons/maximize.svg" class="ce-icon"></button>
+                <button class="close-panel-btn" data-panel="add-component-modal">&times;</button>
+            </div>
+        </div>
+        <div class="panel-content">
             <div id="component-list"></div>
         </div>
+        <div class="resize-handle" data-direction="n"></div>
+        <div class="resize-handle" data-direction="ne"></div>
+        <div class="resize-handle" data-direction="e"></div>
+        <div class="resize-handle" data-direction="se"></div>
+        <div class="resize-handle" data-direction="s"></div>
+        <div class="resize-handle" data-direction="sw"></div>
+        <div class="resize-handle" data-direction="w"></div>
+        <div class="resize-handle" data-direction="nw"></div>
     </div>
     <div id="culling-mask-dropdown" class="context-menu" style="display: none;">
         <!-- Layer checkboxes will be populated by JS -->

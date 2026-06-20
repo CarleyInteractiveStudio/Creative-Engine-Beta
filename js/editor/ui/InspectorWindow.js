@@ -37,9 +37,16 @@ const availableComponents = {
     'CAT_AUDIO': [Components.AudioSource],
     'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.PlatformEffector2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
     'CAT_CAMARA': [Components.Camera],
-    'CAT_3D': ['MeshRenderer3D', 'SkinnedMeshRenderer3D', 'Animator3D', 'Rigidbody3D', 'BoxCollider3D', 'SphereCollider3D', 'CapsuleCollider3D', 'PlaneCollider3D', 'Terreno3D', 'TerrenoCollider3D', 'DirectionalLight3D', 'PointLight3D', 'SpotLight3D'],
-    'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
     'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Attack, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.Suspension, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController, Components.SceneLoader, Components.Inventario, Components.SistemaDialogos, Components.GestorMisiones],
+    'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
+
+    // 3D Specific Categories
+    'CAT_BASICO_3D': ['MovementControl3D', 'ThirdPersonController3D', 'HealthController3D', 'CameraControl3D'],
+    'CAT_FISICA_3D': ['Rigidbody3D', 'BoxCollider3D', 'SphereCollider3D', 'CapsuleCollider3D', 'PlaneCollider3D', 'TerrenoCollider3D', 'HumanoidPhysics3D', 'WheelCollider3D', 'VehicleController3D'],
+    'CAT_AUDIO_3D': [Components.AudioSource],
+    'CAT_CAMARA_3D': [Components.Camera],
+    'CAT_OTROS_3D': ['MeshRenderer3D', 'SkinnedMeshRenderer3D', 'Animator3D', 'DirectionalLight3D', 'PointLight3D', 'SpotLight3D', 'Terreno3D', 'DeformableMesh3D', 'ProceduralChain3D', 'ClothRenderer3D'],
+
     'CAT_SCRIPTING': [Components.CreativeScript]
 };
 
@@ -5314,16 +5321,21 @@ export async function showAddComponentModal() {
     const viewMode = projectConfig.viewMode || '3d';
 
     for (const category in availableComponents) {
-        // --- Filtering based on View Mode ---
+        const is3D = category.endsWith('_3D');
+        const is2D = !is3D && category !== 'CAT_SCRIPTING';
+
+        // --- Filtering and Collapsing based on View Mode ---
+        let initiallyOpen = true;
+
         if (viewMode === '2d') {
-            // In 2D view mode, hide 3D specific primitives
-            if (category === 'CAT_3D') continue;
+            if (is3D) continue;
         } else {
-            // In 3D view mode, user wants a "from scratch" experience.
-            // We hide high-level 2D logic but keep low-level primitives if needed?
-            // Actually, per user request: "en el 3d ... que tampoco aparezcan nada del 2d"
-            const categories2D = ['CAT_RENDERIZADO', 'CAT_MAPA', 'CAT_ILUMINACION', 'CAT_FISICAS'];
-            if (categories2D.includes(category)) continue;
+            // In 3D mode
+            if (is2D) {
+                initiallyOpen = false; // Collapse 2D by default in 3D engine
+            } else {
+                initiallyOpen = true; // 3D categories open by default
+            }
         }
 
         if (category === 'CAT_SCRIPTING') continue;
@@ -5333,10 +5345,11 @@ export async function showAddComponentModal() {
 
         const categoryHeader = document.createElement('h4');
         categoryHeader.className = 'category-header';
-        categoryHeader.innerHTML = `<span class="category-toggle open"></span>${L.get(category, category)}`;
+        categoryHeader.innerHTML = `<span class="category-toggle ${initiallyOpen ? 'open' : ''}"></span>${L.get(category, category)}`;
 
         const categoryContent = document.createElement('div');
         categoryContent.className = 'category-content';
+        categoryContent.style.display = initiallyOpen ? 'block' : 'none';
 
         categoryHeader.addEventListener('click', () => {
             const isOpen = categoryContent.style.display !== 'none';
@@ -5403,7 +5416,7 @@ export async function showAddComponentModal() {
                     }
                 }
 
-                dom.addComponentModal.classList.remove('is-open');
+                dom.addComponentModal.classList.add('hidden');
                 updateInspector();
             });
             categoryContent.appendChild(componentItem);
@@ -5449,7 +5462,7 @@ export async function showAddComponentModal() {
                 }
                 const newComponent = new Components.CustomComponent(definition);
                 selectedMateria.addComponent(newComponent);
-                dom.addComponentModal.classList.remove('is-open');
+                dom.addComponentModal.classList.add('hidden');
                 updateInspector();
             });
             categoryContent.appendChild(componentItem);
@@ -5461,7 +5474,7 @@ export async function showAddComponentModal() {
 
 
     // --- 3. Show the modal Immediately ---
-    dom.addComponentModal.classList.add('is-open');
+    dom.addComponentModal.classList.remove('hidden'); if(window.bringToFront) window.bringToFront(dom.addComponentModal);
 
     // --- 3. Find and Render Custom Scripts Asynchronously ---
     const scriptsCategoryWrapper = document.createElement('div');
@@ -5544,7 +5557,7 @@ export async function showAddComponentModal() {
                     }
                     const newScript = new Components.CreativeScript(selectedMateria, fileHandle.name);
                     selectedMateria.addComponent(newScript);
-                    dom.addComponentModal.classList.remove('is-open');
+                    dom.addComponentModal.classList.add('hidden');
                     updateInspector();
                 });
                 scriptsContent.appendChild(componentItem);
