@@ -6491,3 +6491,92 @@ body.mobile-mode .submenu li {
     font-weight: bold;
     font-size: 12px;
 }
+
+/* --- Expandable 3D Model Styles in Asset Browser --- */
+.grid-item {
+    position: relative;
+}
+
+.model-expand-toggle {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 10;
+    transition: background 0.2s;
+}
+
+.model-expand-toggle:hover {
+    background: var(--accent-color);
+}
+
+.model-expanded {
+    grid-column: 1 / -1; /* Take full width of the grid row */
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    height: auto;
+    padding: 15px;
+    background: rgba(14, 99, 156, 0.05);
+    border: 1px solid var(--accent-color);
+}
+
+.model-expanded .icon {
+    display: none; /* Hide large icon when expanded */
+}
+
+.model-expanded .name {
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-bottom: 10px;
+    padding-left: 25px; /* Space for the toggle */
+}
+
+.model-sub-assets {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sub-asset-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    cursor: grab;
+    transition: all 0.2s;
+    font-size: 0.85em;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sub-asset-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--accent-color);
+    transform: translateX(2px);
+}
+
+.sub-asset-item:active {
+    cursor: grabbing;
+}
+
+.sub-asset-name {
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

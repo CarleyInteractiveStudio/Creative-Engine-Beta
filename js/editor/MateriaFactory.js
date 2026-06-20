@@ -118,13 +118,26 @@ export async function createSkinnedMeshObject(modelPath, parent = null, options 
     const modelData = await ModelLoader3D.loadModel(modelPath, window.projectsDirHandle);
     if (!modelData) return null;
 
+    // Load metadata if available
+    let modelMeta = { animationType: 'generic', avatar: {} };
+    try {
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        const projectHandle = await window.projectsDirHandle.getDirectoryHandle(projectName);
+        const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+        const fileName = modelPath.split('/').pop();
+        const metaFileHandle = await assetsHandle.getFileHandle(fileName + '.meta');
+        const metaFile = await metaFileHandle.getFile();
+        modelMeta = JSON.parse(await metaFile.text());
+    } catch (e) {}
+
     const rootName = modelPath.split('/').pop().split('.')[0];
     const rootMateria = createBaseMateria(generateUniqueName(rootName), parent, false, options.addToScene !== false);
 
-    // Rotate root to compensate for Y-down coordinate system if it's a new import
+    // Root orientation: Renderer3D already flips Y in projection, so models should stay as-is (Y-UP)
     const rootTransform = rootMateria.getComponent(Components.Transform);
     if (rootTransform && !options.noRotation) {
-        rootTransform.localRotation = { x: 180, y: 0, z: 0 };
+        // No rotation needed anymore as Renderer3D handles the coordinate system flip
+        rootTransform.localRotation = { x: 0, y: 0, z: 0 };
     }
 
     const nodeMaterias = [];
@@ -154,7 +167,10 @@ export async function createSkinnedMeshObject(modelPath, parent = null, options 
                 });
             }
 
-            if (node.mesh !== undefined) {
+            if (node.mesh !== undefined && !options.onlySkeleton) {
+                if (options.meshIndex !== undefined && node.mesh !== options.meshIndex) {
+                    // Skip if we only want a specific mesh (single mesh import from sub-assets)
+                } else {
                 const mesh = modelData.meshes[node.mesh];
                 mesh.primitives.forEach((primitive, pIdx) => {
                     // Create a separate Materia for each primitive if there are multiple,
@@ -195,6 +211,7 @@ export async function createSkinnedMeshObject(modelPath, parent = null, options 
                     renderer.isLoaded = true;
                     targetMtr.addComponent(renderer);
                 });
+                }
             }
         }
         nodeMaterias.forEach(m => {

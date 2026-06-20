@@ -782,21 +782,95 @@ function setupEventListeners() {
 
         // Helper for async asset logic
         const handleAssetDrop = async (data) => {
-            if (data.name.endsWith('.ceprefab')) {
+            const L = window.Localization;
+            const targetMateria = targetItem ? SceneManager.currentScene.findMateriaById(parseInt(targetItem.dataset.id, 10)) : null;
+
+            if (data.type === 'ModelMesh') {
+                const { createSkinnedMeshObject } = await import('../MateriaFactory.js');
+                const m = await createSkinnedMeshObject(data.modelPath, targetMateria, { meshIndex: data.meshIndex });
+                if (m) {
+                    updateHierarchy();
+                    selectMateriaCallback(m.id);
+                }
+                return;
+            }
+
+            if (data.type === 'ModelAnimation') {
+                const mtr = getSelectedMateria();
+                const animator = mtr ? mtr.getComponentByName('Animator3D') : null;
+                if (!animator) {
+                    alert(L.get('ERROR_ANIMATION_TARGET', 'Selecciona un objeto con Animator3D para asignar esta animación.'));
+                    return;
+                }
+
+                try {
+                    let anim = null;
+                    if (data.isEmbedded) {
+                        const { ModelLoader3D } = await import('../../engine/ModelLoader3D.js');
+                        const modelData = await ModelLoader3D.loadModel(data.modelPath, window.projectsDirHandle);
+                        if (modelData && modelData.animations) {
+                            anim = modelData.animations[data.animIndex];
+                        }
+                    } else if (data.isExtracted) {
+                        const dirHandle = getCurrentDirectoryHandle();
+                        const fileHandle = await dirHandle.getFileHandle(data.path);
+                        const file = await fileHandle.getFile();
+                        anim = JSON.parse(await file.text());
+                    }
+
+                    if (anim) {
+                        // Ensure animation name uniqueness in the animator
+                        let finalName = anim.name || 'Animation';
+                        let counter = 1;
+                        while (animator.animations.some(a => a.name === finalName)) {
+                            finalName = `${anim.name} (${counter++})`;
+                        }
+                        const animCopy = JSON.parse(JSON.stringify(anim));
+                        animCopy.name = finalName;
+
+                        animator.animations.push(animCopy);
+                        animator.play(finalName);
+                        updateInspector();
+                        window.Dialogs.showNotification(L.get('EXITO'), L.get('ANIMACION_ASIGNADA', 'Animación asignada correctamente.'));
+                    }
+                } catch (e) {
+                    console.error("Error assigned animation:", e);
+                }
+                return;
+            }
+
+            if (data.type === 'ModelSkeleton') {
+                const { createSkinnedMeshObject } = await import('../MateriaFactory.js');
+                const m = await createSkinnedMeshObject(data.modelPath, targetMateria, { onlySkeleton: true });
+                if (m) {
+                    updateHierarchy();
+                    selectMateriaCallback(m.id);
+                }
+                return;
+            }
+
+            if (data.name && data.name.endsWith('.ceprefab')) {
                 const newMateria = await SceneManager.instantiatePrefabFromPath(data.path);
                 if (newMateria) {
-                    if (targetItem) {
-                        const targetId = parseInt(targetItem.dataset.id, 10);
-                        const targetMateria = SceneManager.currentScene.findMateriaById(targetId);
-                        if (targetMateria) newMateria.setParent(targetMateria, true);
-                    }
+                    if (targetMateria) newMateria.setParent(targetMateria, true);
                     updateHierarchy();
                     selectMateriaCallback(newMateria.id);
                 }
                 return;
             }
 
-            const newMateria = new Materia(data.name.split('.')[0]);
+            const isModel = data.name && (data.name.endsWith('.glb') || data.name.endsWith('.gltf') || data.name.endsWith('.obj'));
+            if (isModel) {
+                const { createSkinnedMeshObject } = await import('../MateriaFactory.js');
+                const m = await createSkinnedMeshObject(data.path, targetMateria);
+                if (m) {
+                    updateHierarchy();
+                    selectMateriaCallback(m.id);
+                }
+                return;
+            }
+
+            const newMateria = new Materia(data.name ? data.name.split('.')[0] : 'New Object');
             newMateria.addComponent(new Components.Transform(newMateria));
             if (targetItem) {
                 const targetId = parseInt(targetItem.dataset.id, 10);

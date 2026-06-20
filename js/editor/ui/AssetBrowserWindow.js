@@ -15,6 +15,7 @@ let exportContext;
 let contextAsset = null; // Asset under the right-click context menu
 let dragCounter = 0; // For robust drag-over UI
 let collapsedFolders = new Set(); // Conjunto de rutas de carpetas contraídas
+let expandedModels = new Set(); // Modelos (glb, obj) expandidos en el grid
 
 // Callbacks to other modules/editor.js
 let onAssetSelected;
@@ -874,6 +875,25 @@ export async function updateAssetBrowser() {
                 iconContainer.innerHTML = `<img src="icons/file.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             }
 
+            // --- Model Expansion Toggle ---
+            if (entry.kind === 'file' && (lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.endsWith('.obj'))) {
+                const toggle = document.createElement('div');
+                toggle.className = 'model-expand-toggle';
+                toggle.innerHTML = `<img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; transition: transform 0.2s; ${expandedModels.has(fullPath) ? 'transform: rotate(90deg);' : ''}">`;
+                toggle.onclick = (e) => {
+                    e.stopPropagation();
+                    if (expandedModels.has(fullPath)) expandedModels.delete(fullPath);
+                    else expandedModels.add(fullPath);
+                    updateAssetBrowser();
+                };
+                item.appendChild(toggle);
+
+                if (expandedModels.has(fullPath)) {
+                    item.classList.add('model-expanded');
+                    await renderModelSubAssets(item, entry, fullPath);
+                }
+            }
+
             const name = document.createElement('div');
             name.className = 'name';
             if (entry.kind === 'file') {
@@ -1281,4 +1301,69 @@ export function getCurrentDirectoryHandle() {
 
 export function getCurrentDirectoryPath() {
     return currentDirectoryHandle.path;
+}
+
+async function renderModelSubAssets(parentItem, fileEntry, modelPath) {
+    const { ModelLoader3D: Loader } = await import('../../engine/ModelLoader3D.js');
+
+    const subContainer = document.createElement('div');
+    subContainer.className = 'model-sub-assets';
+    parentItem.appendChild(subContainer);
+
+    try {
+        const data = await Loader.loadModel(modelPath, window.projectsDirHandle);
+        if (!data) return;
+
+        // 1. Meshes
+        if (data.meshes) {
+            data.meshes.forEach((m, i) => {
+                createSubAssetItem(subContainer, m.name || `Mesh ${i}`, 'box', { type: 'ModelMesh', modelPath, meshIndex: i });
+            });
+        }
+
+        // 2. Animations (Embedded)
+        if (data.animations) {
+            data.animations.forEach((a, i) => {
+                createSubAssetItem(subContainer, a.name || `Anim ${i}`, 'route', { type: 'ModelAnimation', modelPath, animIndex: i, isEmbedded: true });
+            });
+        }
+
+        // 2.1 Animations (Extracted / Meta)
+        const dirHandle = currentDirectoryHandle.handle;
+        try {
+            const fileName = modelPath.split('/').pop();
+            const metaFileHandle = await dirHandle.getFileHandle(fileName + '.meta');
+            const metaFile = await metaFileHandle.getFile();
+            const meta = JSON.parse(await metaFile.text());
+            if (meta.extractedAnimations) {
+                meta.extractedAnimations.forEach(animPath => {
+                    const name = animPath.split('_').pop().replace('.ceanimclip', '');
+                    createSubAssetItem(subContainer, name, 'clapperboard', { type: 'ModelAnimation', path: animPath, isExtracted: true });
+                });
+            }
+        } catch (e) {}
+
+        // 3. Skeleton
+        if (data.skins && data.skins.length > 0) {
+            createSubAssetItem(subContainer, 'Skeleton', 'user', { type: 'ModelSkeleton', modelPath });
+        }
+
+    } catch (e) {
+        console.error("Error loading sub-assets for expansion:", e);
+    }
+}
+
+function createSubAssetItem(container, name, icon, dragData) {
+    const item = document.createElement('div');
+    item.className = 'sub-asset-item';
+    item.draggable = true;
+    item.innerHTML = `
+        <img src="icons/${icon}.svg" class="ce-icon" style="width: 14px; height: 14px;">
+        <span class="sub-asset-name">${name}</span>
+    `;
+    item.ondragstart = (e) => {
+        e.stopPropagation();
+        e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
+    };
+    container.appendChild(item);
 }
