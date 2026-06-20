@@ -449,6 +449,9 @@ export class Animator3D extends Leyes {
     applyAnimation(time) {
         const glm = window.glMatrix;
         if (!glm) return;
+
+        // Use the materia's own scene if assigned, otherwise fallback to the current active scene.
+        // Important: During preview in the Inspector, the materia should have its own previewScene.
         const scene = this.materia.scene || window.SceneManager?.currentScene;
         if (!scene) return;
 

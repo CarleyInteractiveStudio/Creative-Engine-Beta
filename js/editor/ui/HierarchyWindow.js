@@ -26,6 +26,7 @@ import {
     createInventoryUITemplate
 } from '../MateriaFactory.js';
 import { broadcastUpdate } from '../CollaborationSystem.js';
+import { getCurrentDirectoryHandle } from './AssetBrowserWindow.js';
 
 // Module-level state and dependencies
 let dom = {};
@@ -649,6 +650,31 @@ export async function handleContextMenuAction(action) {
 
                 // Set as the newMateria so it gets selected after creation
                 newMateria = newDuplicatedMateria;
+            }
+            break;
+        case 'save-branch-prefab':
+            if (contextMateria) {
+                const prefabName = prompt("Nombre para el nuevo Prefab:", contextMateria.name);
+                if (prefabName) {
+                    const fileName = prefabName.endsWith('.ceprefab') ? prefabName : `${prefabName}.ceprefab`;
+                    const prefabData = SceneManager.serializeMateria(contextMateria, true);
+                    const dirHandle = getCurrentDirectoryHandle();
+                    if (!dirHandle) {
+                        alert("Selecciona primero una carpeta en el navegador de assets.");
+                        return;
+                    }
+                    try {
+                        const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(JSON.stringify(prefabData, null, 2));
+                        await writable.close();
+                        alert(`Prefab '${fileName}' guardado correctamente.`);
+                        if (window.updateAssetBrowser) window.updateAssetBrowser();
+                    } catch (e) {
+                        console.error("Error al guardar prefab de rama:", e);
+                        alert("Error al guardar el prefab.");
+                    }
+                }
             }
             break;
     }

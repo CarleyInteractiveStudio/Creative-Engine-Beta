@@ -17,11 +17,11 @@ export function generateUniqueName(baseName) {
     return `${baseName} (${counter})`;
 }
 
-export function createBaseMateria(name, parent = null, useUITransform = false) {
+export function createBaseMateria(name, parent = null, useUITransform = false, addToScene = true) {
     const mtr = new Materia(name);
     mtr.addComponent(useUITransform ? new Components.UITransform(mtr) : new Components.Transform(mtr));
     if (parent) parent.addChild(mtr);
-    else SceneManager.currentScene.addMateria(mtr);
+    else if (addToScene) SceneManager.currentScene.addMateria(mtr);
     return mtr;
 }
 
@@ -112,14 +112,21 @@ export async function createSpotLight3D(parent = null) {
     return mtr;
 }
 
-export async function createSkinnedMeshObject(modelPath, parent = null) {
+export async function createSkinnedMeshObject(modelPath, parent = null, options = {}) {
     const C3D = await ensure3D();
     const { ModelLoader3D } = await import('../engine/ModelLoader3D.js');
     const modelData = await ModelLoader3D.loadModel(modelPath, window.projectsDirHandle);
     if (!modelData) return null;
 
     const rootName = modelPath.split('/').pop().split('.')[0];
-    const rootMateria = createBaseMateria(generateUniqueName(rootName), parent);
+    const rootMateria = createBaseMateria(generateUniqueName(rootName), parent, false, options.addToScene !== false);
+
+    // Rotate root to compensate for Y-down coordinate system if it's a new import
+    const rootTransform = rootMateria.getComponent(Components.Transform);
+    if (rootTransform && !options.noRotation) {
+        rootTransform.localRotation = { x: 180, y: 0, z: 0 };
+    }
+
     const nodeMaterias = [];
 
     if (modelData.nodes) {
@@ -128,36 +135,73 @@ export async function createSkinnedMeshObject(modelPath, parent = null) {
             nodeMtr.addComponent(new Components.Transform(nodeMtr));
             const t = nodeMtr.getComponent(Components.Transform);
             t.localPosition = { x: node.translation[0], y: node.translation[1], z: node.translation[2] };
+
+            // GLTF quaternions are [x, y, z, w]. Our engine currently uses Euler [x, y, z] in Transform.
+            // For now, we keep scale. A full quaternion to euler conversion might be needed later.
             t.localScale = { x: node.scale[0], y: node.scale[1], z: node.scale[2] };
+
             nodeMaterias.push(nodeMtr);
         }
 
         for (let i = 0; i < modelData.nodes.length; i++) {
             const node = modelData.nodes[i];
             const nodeMtr = nodeMaterias[i];
-            if (node.children) node.children.forEach(childIdx => nodeMaterias[childIdx].setParent(nodeMtr, false));
+
+            if (node.children) {
+                node.children.forEach(childIdx => {
+                    const childMtr = nodeMaterias[childIdx];
+                    childMtr.setParent(nodeMtr, false);
+                });
+            }
+
             if (node.mesh !== undefined) {
-                const primitive = modelData.meshes[node.mesh].primitives[0];
-                const renderer = new C3D.SkinnedMeshRenderer3D(nodeMtr);
-                renderer.modelPath = modelPath;
+                const mesh = modelData.meshes[node.mesh];
+                mesh.primitives.forEach((primitive, pIdx) => {
+                    // Create a separate Materia for each primitive if there are multiple,
+                    // or just use the nodeMtr for the first one.
+                    let targetMtr = nodeMtr;
+                    if (pIdx > 0) {
+                        targetMtr = new Materia(`${node.name}_part${pIdx}`);
+                        targetMtr.addComponent(new Components.Transform(targetMtr));
+                        targetMtr.setParent(nodeMtr, false);
+                    }
 
-                renderer.cpuPositions = primitive.positions;
-                renderer.cpuNormals = primitive.normals;
-                renderer.cpuUVs = primitive.uvs;
-                renderer.cpuIndices = primitive.indices;
-                renderer.cpuJoints = primitive.joints ? new Float32Array(primitive.joints) : null;
-                renderer.cpuWeights = primitive.weights ? new Float32Array(primitive.weights) : null;
-                renderer.indexCount = primitive.indices ? primitive.indices.length : primitive.positions.length / 3;
+                    const renderer = new C3D.SkinnedMeshRenderer3D(targetMtr);
+                    renderer.modelPath = modelPath;
 
-                if (node.skin !== undefined) {
-                    const skin = modelData.skins[node.skin];
-                    renderer.skeleton = { joints: skin.joints.map(idx => nodeMaterias[idx].id), inverseBindMatrices: skin.inverseBindMatrices };
-                }
-                renderer.isLoaded = true;
-                nodeMtr.addComponent(renderer);
+                    renderer.cpuPositions = primitive.positions;
+                    renderer.cpuNormals = primitive.normals;
+                    renderer.cpuUVs = primitive.uvs;
+                    renderer.cpuIndices = primitive.indices;
+                    renderer.cpuJoints = primitive.joints ? new Float32Array(primitive.joints) : null;
+                    renderer.cpuWeights = primitive.weights ? new Float32Array(primitive.weights) : null;
+                    renderer.indexCount = primitive.indices ? primitive.indices.length : primitive.positions.length / 3;
+
+                    if (node.skin !== undefined) {
+                        const skin = modelData.skins[node.skin];
+                        renderer.skeleton = { joints: skin.joints.map(idx => nodeMaterias[idx].id), inverseBindMatrices: skin.inverseBindMatrices };
+                    }
+
+                    if (primitive.material !== undefined && modelData.materials) {
+                        const mat = modelData.materials[primitive.material];
+                        if (mat && mat.baseColor) {
+                            const r = Math.floor(mat.baseColor[0] * 255).toString(16).padStart(2, '0');
+                            const g = Math.floor(mat.baseColor[1] * 255).toString(16).padStart(2, '0');
+                            const b = Math.floor(mat.baseColor[2] * 255).toString(16).padStart(2, '0');
+                            renderer.color = `#${r}${g}${b}`;
+                        }
+                    }
+
+                    renderer.isLoaded = true;
+                    targetMtr.addComponent(renderer);
+                });
             }
         }
-        nodeMaterias.forEach(m => { if (!m.parent) m.setParent(rootMateria, false); });
+        nodeMaterias.forEach(m => {
+            if (!m.parent) {
+                m.setParent(rootMateria, false);
+            }
+        });
     } else {
         const renderer = new C3D.SkinnedMeshRenderer3D(rootMateria);
         renderer.modelPath = modelPath;
