@@ -512,6 +512,7 @@ export class Renderer3D {
             mat4.invert(this.viewMatrix, this.viewMatrix);
         }
 
+
         mat4.scale(this.projectionMatrix, this.projectionMatrix, [1, -1, 1]);
         mat4.copy(this.lastProjectionMatrix, this.projectionMatrix);
         mat4.copy(this.lastViewMatrix, this.viewMatrix);
@@ -650,7 +651,9 @@ export class Renderer3D {
 
             gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
             gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
-            if (!mesh.isUnlit) gl.uniform3f(gl.getUniformLocation(program, 'uLightDir'), 0.5, 1.0, 0.3);
+            if (!mesh.isUnlit) gl.uniform3f(gl.getUniformLocation(program, "uLightDir"), 0.5, -1.0, 0.3);
+        gl.uniform1i(gl.getUniformLocation(program, "uUseMainTex"), 0);
+        gl.uniform1i(gl.getUniformLocation(program, "uUseNormalMap"), 0);
 
             const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
             const normLoc = !mesh.isUnlit ? gl.getAttribLocation(program, 'aVertexNormal') : -1;
@@ -659,7 +662,7 @@ export class Renderer3D {
             const modelLoc = gl.getUniformLocation(program, 'uModelMatrix');
 
             const transform = materia.getComponent(Components.Transform);
-            gl.uniformMatrix4fv(modelLoc, false, transform.worldMatrix);
+            gl.uniformMatrix4fv(modelLoc, false, transform.worldMatrix || mat4.create());
             const color = this.hexToRgb(mesh.color);
             gl.uniform4f(colorLoc, color[0], color[1], color[2], 1.0);
 
@@ -765,8 +768,10 @@ export class Renderer3D {
         const transform = materia.getComponent(Components.Transform);
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
-        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, transform.worldMatrix);
-        gl.uniform3f(gl.getUniformLocation(program, 'uLightDir'), 0.5, 1.0, 0.3);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, transform.worldMatrix || mat4.create());
+        gl.uniform3f(gl.getUniformLocation(program, "uLightDir"), 0.5, -1.0, 0.3);
+        gl.uniform1i(gl.getUniformLocation(program, "uUseMainTex"), 0);
+        gl.uniform1i(gl.getUniformLocation(program, "uUseNormalMap"), 0);
 
         const color = this.hexToRgb(terrain.color);
         gl.uniform4f(gl.getUniformLocation(program, 'uColor'), color[0], color[1], color[2], 1.0);
@@ -860,7 +865,9 @@ export class Renderer3D {
 
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
-        gl.uniform3f(gl.getUniformLocation(program, 'uLightDir'), 0.5, 1.0, 0.3);
+        gl.uniform3f(gl.getUniformLocation(program, "uLightDir"), 0.5, -1.0, 0.3);
+        gl.uniform1i(gl.getUniformLocation(program, "uUseMainTex"), 0);
+        gl.uniform1i(gl.getUniformLocation(program, "uUseNormalMap"), 0);
 
         // Identity for skinned meshes as bone matrices are in world space
         const identity = mat4.create();

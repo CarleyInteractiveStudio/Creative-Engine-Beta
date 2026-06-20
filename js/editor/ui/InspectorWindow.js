@@ -4510,10 +4510,10 @@ async function updateInspectorForMateria(selectedMateria) {
     // 1. Renderizar 3D primero (sueltos por defecto)
     const order = ['basico', 'fisica', 'sonido', 'camara', 'otros'];
     const sectionTitles = {
-        basico: L.get('CAT_BASICO_3D', 'Básico 3D'),
-        fisica: L.get('CAT_FISICA_3D', 'Física 3D'),
-        sonido: L.get('CAT_SONIDO_3D', 'Sonido'),
-        camara: L.get('CAT_CAMARA_3D', 'Cámara'),
+        basico: L.get('CAT_BASICO', 'Básico'),
+        fisica: L.get('CAT_FISICAS', 'Física'),
+        sonido: L.get('CAT_AUDIO', 'Sonido'),
+        camara: L.get('CAT_CAMARA', 'Cámara'),
         otros: L.get('CAT_OTROS_3D', 'Componentes 3D')
     };
 
@@ -5279,6 +5279,8 @@ async function updateInspectorForAsset(assetName, assetPath) {
             await renderAudioInspector(assetName, assetPath);
         } else if (lowerName.endsWith('.mp4') || lowerName.endsWith('.webm') || lowerName.endsWith('.ogv')) {
             await renderVideoInspector(assetName, assetPath);
+        } else if (lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.endsWith('.obj')) {
+            await renderModel3DInspector(assetName, assetPath);
         } else {
              dom.inspectorContent.innerHTML += `
                 <div class="unknown-file-info" style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
@@ -5320,24 +5322,25 @@ export async function showAddComponentModal() {
     // View Mode determines the filtering (simulated 2D or full 3D)
     const viewMode = projectConfig.viewMode || '3d';
 
+    // Top-level containers for 2D and 3D
+    const container3D = document.createElement('details');
+    container3D.className = 'component-master-category';
+    container3D.open = (viewMode === '3d');
+    container3D.innerHTML = `<summary><h3>3D</h3></summary>`;
+
+    const container2D = document.createElement('details');
+    container2D.className = 'component-master-category';
+    container2D.open = (viewMode === '2d');
+    container2D.innerHTML = `<summary><h3>2D</h3></summary>`;
+
+    dom.componentList.appendChild(container3D);
+    dom.componentList.appendChild(container2D);
+
     for (const category in availableComponents) {
         const is3D = category.endsWith('_3D');
         const is2D = !is3D && category !== 'CAT_SCRIPTING';
 
-        // --- Filtering and Collapsing based on View Mode ---
-        let initiallyOpen = true;
-
-        if (viewMode === '2d') {
-            if (is3D) continue;
-        } else {
-            // In 3D mode
-            if (is2D) {
-                initiallyOpen = false; // Collapse 2D by default in 3D engine
-            } else {
-                initiallyOpen = true; // 3D categories open by default
-            }
-        }
-
+        if (viewMode === '2d' && is3D) continue;
         if (category === 'CAT_SCRIPTING') continue;
 
         const categoryWrapper = document.createElement('div');
@@ -5345,17 +5348,24 @@ export async function showAddComponentModal() {
 
         const categoryHeader = document.createElement('h4');
         categoryHeader.className = 'category-header';
-        categoryHeader.innerHTML = `<span class="category-toggle ${initiallyOpen ? 'open' : ''}"></span>${L.get(category, category)}`;
+        let categoryLabel = L.get(category, category);
+        if (is3D && categoryLabel.endsWith(' 3D')) {
+            categoryLabel = categoryLabel.substring(0, categoryLabel.length - 3);
+        }
+        categoryHeader.innerHTML = `<span class="category-toggle"></span>${categoryLabel}`;
 
         const categoryContent = document.createElement('div');
         categoryContent.className = 'category-content';
-        categoryContent.style.display = initiallyOpen ? 'block' : 'none';
+        categoryContent.style.display = 'none'; // Everything closed inside by default
 
         categoryHeader.addEventListener('click', () => {
             const isOpen = categoryContent.style.display !== 'none';
             categoryContent.style.display = isOpen ? 'none' : 'block';
             categoryHeader.querySelector('.category-toggle').classList.toggle('open', !isOpen);
         });
+
+        if (is3D) container3D.appendChild(categoryWrapper);
+        else container2D.appendChild(categoryWrapper);
 
         availableComponents[category].forEach(ComponentClassOrName => {
             const L = window.Localization;
@@ -5799,6 +5809,39 @@ async function saveProjectConfig() {
         console.error("Error al guardar la configuración del proyecto desde el Inspector:", error);
         showNotification(window.Localization.get('ERROR', 'Error'), window.Localization.get('ERROR_GUARDAR_CONFIG', 'No se pudo guardar la configuración del proyecto.'));
     }
+}
+
+async function renderModel3DInspector(assetName, assetPath) {
+    const L = window.Localization;
+    const container = document.createElement('div');
+    container.className = 'asset-settings';
+    container.innerHTML = `
+        <div class="inspector-section">
+            <label data-i18n="MODEL_3D">Modelo 3D</label>
+            <div class="model-info-bubble" style="padding: 15px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; margin-top: 10px; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                <span class="asset-preview-icon" style="display: block; width: 48px; height: 48px;">${getIconHTML('box')}</span>
+                <span style="font-weight: bold;">${assetName}</span>
+                <span style="font-size: 0.8em; opacity: 0.6;">${assetName.split('.').pop().toUpperCase()} Format</span>
+            </div>
+        </div>
+        <div class="inspector-section">
+            <label data-i18n="ACTIONS">${L.get('ACTIONS', 'Acciones')}</label>
+            <button id="btn-import-model-scene" class="primary-btn" style="width: 100%; margin-top: 10px;">Importar a la Escena</button>
+            <p class="field-description" style="margin-top: 10px;">${L.get('HINT_ARRASTRAR_MODELO', 'Puedes arrastrar este archivo a la escena para importarlo.')}</p>
+        </div>
+    `;
+
+    dom.inspectorContent.appendChild(container);
+
+    document.getElementById('btn-import-model-scene').onclick = async () => {
+        const { createSkinnedMeshObject } = await import('../MateriaFactory.js');
+        const m = await createSkinnedMeshObject(assetPath, null);
+        if (m) {
+            if (window.updateHierarchy) window.updateHierarchy();
+            if (window.updateScene) window.updateScene();
+            if (window.selectMateria) window.selectMateria(m.id);
+        }
+    };
 }
 
 async function renderAudioInspector(assetName, assetPath) {
