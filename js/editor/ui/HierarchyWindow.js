@@ -789,6 +789,7 @@ function setupEventListeners() {
                 const { createSkinnedMeshObject } = await import('../MateriaFactory.js');
                 const m = await createSkinnedMeshObject(data.modelPath, targetMateria, { meshIndex: data.meshIndex });
                 if (m) {
+                    applyCreationPosition(m);
                     updateHierarchy();
                     selectMateriaCallback(m.id);
                 }
@@ -843,6 +844,7 @@ function setupEventListeners() {
                 const { createSkinnedMeshObject } = await import('../MateriaFactory.js');
                 const m = await createSkinnedMeshObject(data.modelPath, targetMateria, { onlySkeleton: true });
                 if (m) {
+                    applyCreationPosition(m);
                     updateHierarchy();
                     selectMateriaCallback(m.id);
                 }

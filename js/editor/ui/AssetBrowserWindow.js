@@ -887,11 +887,6 @@ export async function updateAssetBrowser() {
                     updateAssetBrowser();
                 };
                 item.appendChild(toggle);
-
-                if (expandedModels.has(fullPath)) {
-                    item.classList.add('model-expanded');
-                    await renderModelSubAssets(item, entry, fullPath);
-                }
             }
 
             const name = document.createElement('div');
@@ -906,6 +901,11 @@ export async function updateAssetBrowser() {
             item.appendChild(iconContainer);
             item.appendChild(name);
             gridViewContainer.appendChild(item);
+
+            if (expandedModels.has(fullPath)) {
+                item.classList.add('model-expanded-parent');
+                await renderModelSubAssets(gridViewContainer, entry, fullPath);
+            }
         }
     }
 
@@ -1303,12 +1303,8 @@ export function getCurrentDirectoryPath() {
     return currentDirectoryHandle.path;
 }
 
-async function renderModelSubAssets(parentItem, fileEntry, modelPath) {
+async function renderModelSubAssets(gridContainer, fileEntry, modelPath) {
     const { ModelLoader3D: Loader } = await import('../../engine/ModelLoader3D.js');
-
-    const subContainer = document.createElement('div');
-    subContainer.className = 'model-sub-assets';
-    parentItem.appendChild(subContainer);
 
     try {
         const data = await Loader.loadModel(modelPath, window.projectsDirHandle);
@@ -1317,14 +1313,14 @@ async function renderModelSubAssets(parentItem, fileEntry, modelPath) {
         // 1. Meshes
         if (data.meshes) {
             data.meshes.forEach((m, i) => {
-                createSubAssetItem(subContainer, m.name || `Mesh ${i}`, 'box', { type: 'ModelMesh', modelPath, meshIndex: i });
+                createSubAssetItem(gridContainer, m.name || `Mesh ${i}`, 'box', { type: 'ModelMesh', modelPath, meshIndex: i });
             });
         }
 
         // 2. Animations (Embedded)
         if (data.animations) {
             data.animations.forEach((a, i) => {
-                createSubAssetItem(subContainer, a.name || `Anim ${i}`, 'route', { type: 'ModelAnimation', modelPath, animIndex: i, isEmbedded: true });
+                createSubAssetItem(gridContainer, a.name || `Anim ${i}`, 'route', { type: 'ModelAnimation', modelPath, animIndex: i, isEmbedded: true });
             });
         }
 
@@ -1338,14 +1334,14 @@ async function renderModelSubAssets(parentItem, fileEntry, modelPath) {
             if (meta.extractedAnimations) {
                 meta.extractedAnimations.forEach(animPath => {
                     const name = animPath.split('_').pop().replace('.ceanimclip', '');
-                    createSubAssetItem(subContainer, name, 'clapperboard', { type: 'ModelAnimation', path: animPath, isExtracted: true });
+                    createSubAssetItem(gridContainer, name, 'clapperboard', { type: 'ModelAnimation', path: animPath, isExtracted: true });
                 });
             }
         } catch (e) {}
 
         // 3. Skeleton
         if (data.skins && data.skins.length > 0) {
-            createSubAssetItem(subContainer, 'Skeleton', 'user', { type: 'ModelSkeleton', modelPath });
+            createSubAssetItem(gridContainer, 'Skeleton', 'user', { type: 'ModelSkeleton', modelPath });
         }
 
     } catch (e) {
@@ -1355,12 +1351,20 @@ async function renderModelSubAssets(parentItem, fileEntry, modelPath) {
 
 function createSubAssetItem(container, name, icon, dragData) {
     const item = document.createElement('div');
-    item.className = 'sub-asset-item';
+    item.className = 'grid-item sub-asset-item';
     item.draggable = true;
-    item.innerHTML = `
-        <img src="icons/${icon}.svg" class="ce-icon" style="width: 14px; height: 14px;">
-        <span class="sub-asset-name">${name}</span>
-    `;
+
+    const iconContainer = document.createElement('div');
+    iconContainer.className = 'icon';
+    iconContainer.innerHTML = `<img src="icons/${icon}.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'name';
+    nameEl.textContent = name;
+
+    item.appendChild(iconContainer);
+    item.appendChild(nameEl);
+
     item.ondragstart = (e) => {
         e.stopPropagation();
         e.dataTransfer.setData('text/plain', JSON.stringify(dragData));

@@ -5957,7 +5957,11 @@ async function renderModel3DInspector(assetName, assetPath) {
         }
 
         let lastTime = performance.now();
-        const editorCam = { x: 0, y: -50, z: 400, rotation: { x: 0, y: 0, z: 0 } };
+        // Orbit camera state
+        let orbitYaw = 180;
+        let orbitPitch = 15;
+        let orbitDistance = 500;
+        let orbitTarget = [0, -50, 0];
 
         let isOrbiting = false;
         let isPanning = false;
@@ -5967,13 +5971,15 @@ async function renderModel3DInspector(assetName, assetPath) {
         canvas.onmousedown = (e) => {
             lastMouseX = e.clientX;
             lastMouseY = e.clientY;
-            if (e.button === 0) isPanning = true;
-            if (e.button === 2) isOrbiting = true;
+            if (e.button === 0) isPanning = true; // Left click pan
+            if (e.button === 2) isOrbiting = true; // Right click orbit
         };
         canvas.oncontextmenu = (e) => e.preventDefault();
 
-        window.onmouseup = () => { isOrbiting = false; isPanning = false; };
-        window.onmousemove = (e) => {
+        const handleGlobalMouseUp = () => { isOrbiting = false; isPanning = false; };
+        window.addEventListener('mouseup', handleGlobalMouseUp);
+
+        const handleGlobalMouseMove = (e) => {
             if (!isOrbiting && !isPanning) return;
             const dx = e.clientX - lastMouseX;
             const dy = e.clientY - lastMouseY;
@@ -5981,18 +5987,28 @@ async function renderModel3DInspector(assetName, assetPath) {
             lastMouseY = e.clientY;
 
             if (isOrbiting) {
-                editorCam.rotation.y += dx * 0.5;
-                editorCam.rotation.x += dy * 0.5;
+                orbitYaw += dx * 0.5;
+                orbitPitch += dy * 0.5;
+                orbitPitch = Math.max(-89, Math.min(89, orbitPitch));
             } else if (isPanning) {
-                editorCam.x -= dx * 0.5;
-                editorCam.y -= dy * 0.5;
+                const glm = window.glMatrix;
+                // Simple pan: Move target along camera Right and Up vectors
+                const radY = orbitYaw * Math.PI / 180;
+                const right = [Math.cos(radY), 0, -Math.sin(radY)];
+                const up = [0, 1, 0];
+
+                const factor = orbitDistance / 500;
+                orbitTarget[0] -= right[0] * dx * 0.5 * factor;
+                orbitTarget[1] -= dy * 0.5 * factor;
+                orbitTarget[2] -= right[2] * dx * 0.5 * factor;
             }
         };
+        window.addEventListener('mousemove', handleGlobalMouseMove);
 
         canvas.onwheel = (e) => {
             e.preventDefault();
-            editorCam.z += e.deltaY * 0.5;
-            editorCam.z = Math.max(10, editorCam.z);
+            orbitDistance += e.deltaY * 0.5;
+            orbitDistance = Math.max(20, orbitDistance);
         };
 
         const showMeshCheck = document.getElementById('show-preview-mesh');
@@ -6013,7 +6029,28 @@ async function renderModel3DInspector(assetName, assetPath) {
                 });
             }
 
-            renderer.render(previewScene, null, { editorCamera: editorCam, showGrid: true, clearAlpha: 1 });
+            const glm = window.glMatrix;
+            const viewMat = glm.mat4.create();
+            const radX = orbitPitch * Math.PI / 180;
+            const radY = orbitYaw * Math.PI / 180;
+
+            const camPos = [
+                orbitTarget[0] + Math.sin(radY) * Math.cos(radX) * orbitDistance,
+                orbitTarget[1] + Math.sin(radX) * orbitDistance,
+                orbitTarget[2] + Math.cos(radY) * Math.cos(radX) * orbitDistance
+            ];
+
+            glm.mat4.lookAt(viewMat, camPos, orbitTarget, [0, -1, 0]); // -Y is UP in engine
+
+            renderer.render(previewScene, null, { viewMatrix: viewMat, showGrid: true, clearAlpha: 1 });
+
+            // Draw bones wireframe if enabled
+            if (showBonesCheck.checked && previewMateria) {
+                const { Gizmos } = renderer.materia.scene || { Gizmos: null }; // Should be imported but let's check
+                // Actually we can use the global Gizmos if available or draw lines directly
+                drawSkeletonGizmos(renderer, previewMateria, viewMat);
+            }
+
             animationId = requestAnimationFrame(loop);
         };
         animationId = requestAnimationFrame(loop);
@@ -6060,6 +6097,8 @@ async function renderModel3DInspector(assetName, assetPath) {
     const observer = new MutationObserver((mutations) => {
         if (!document.getElementById('model-preview-canvas')) {
             if (animationId) cancelAnimationFrame(animationId);
+            window.removeEventListener('mouseup', handleGlobalMouseUp);
+            window.removeEventListener('mousemove', handleGlobalMouseMove);
             observer.disconnect();
         }
     });
@@ -6461,26 +6500,56 @@ async function openAvatarConfigurationModal(assetName, modelMateria, meta, onSav
     if (window.FloatingPanelManager) window.FloatingPanelManager.makeDraggable(modal);
 
     modal.querySelector('.close-panel-btn').onclick = () => modal.remove();
-    modal.querySelector('.cancel-btn').onclick = () => modal.remove();
+}
 
-    modal.querySelector('#btn-auto-map').onclick = () => {
-        const selects = modal.querySelectorAll('.bone-select');
-        selects.forEach(select => {
-            const stdBone = select.dataset.stdBone.toLowerCase();
-            const bestMatch = bones.find(b => {
-                const bLower = b.toLowerCase();
-                return bLower.includes(stdBone) || stdBone.includes(bLower);
-            });
-            if (bestMatch) select.value = bestMatch;
-        });
-    };
+function drawSkeletonGizmos(renderer, rootMateria, viewMatrix) {
+    const gl = renderer.gl;
+    const canvas = renderer.canvas;
+    const ctx = canvas.getContext('2d'); // This might not work if WebGL is active on the same canvas,
+    // but in CE the editor uses a 2D overlay.
+    // However, the inspector preview is a standalone canvas.
+    // Let's use the Renderer3D's internal line drawing if it has one, or draw via WebGL.
+    // Since Inspector doesn't have an overlay canvas, we must draw bones via WebGL lines.
 
-    modal.querySelector('.save-btn').onclick = () => {
-        const newMapping = {};
-        modal.querySelectorAll('.bone-select').forEach(select => {
-            if (select.value) newMapping[select.dataset.stdBone] = select.value;
-        });
-        onSave(newMapping);
-        modal.remove();
-    };
+    const program = renderer.programs.unlit;
+    gl.useProgram(program);
+    gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, renderer.projectionMatrix);
+    gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, viewMatrix);
+    gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, window.glMatrix.mat4.create());
+    gl.uniform4f(gl.getUniformLocation(program, 'uColor'), 0, 1, 1, 1);
+
+    const bonePositions = [];
+    rootMateria.traverse(mtr => {
+        if (mtr.getComponentByName('Bone') || mtr.getComponentByName('SkinnedMeshRenderer3D')) {
+            const trans = mtr.getComponent(window.Components.Transform);
+            if (!trans) return;
+            const wm = trans.worldMatrix;
+            const pos = [wm[12], wm[13], wm[14]];
+
+            if (mtr.parent) {
+                const pTrans = mtr.parent.getComponent(window.Components.Transform);
+                if (pTrans && (mtr.parent.getComponentByName('Bone') || mtr.parent === rootMateria)) {
+                    const pwm = pTrans.worldMatrix;
+                    bonePositions.push(pwm[12], pwm[13], pwm[14]);
+                    bonePositions.push(pos[0], pos[1], pos[2]);
+                }
+            }
+        }
+    });
+
+    if (bonePositions.length > 0) {
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(bonePositions), gl.STATIC_DRAW);
+
+        const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
+        gl.enableVertexAttribArray(posLoc);
+        gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+
+        gl.disable(gl.DEPTH_TEST);
+        gl.drawArrays(gl.LINES, 0, bonePositions.length / 3);
+        gl.enable(gl.DEPTH_TEST);
+
+        gl.deleteBuffer(buffer);
+    }
 }
