@@ -453,8 +453,8 @@ export class Renderer3D {
             for (let longNumber = 0; longNumber < longitudeBands; longNumber++) {
                 const first = (latNumber * (longitudeBands + 1)) + longNumber;
                 const second = first + longitudeBands + 1;
-                sphereIndices.push(first, first + 1, second);
-                sphereIndices.push(second, first + 1, second + 1);
+                sphereIndices.push(first, second, first + 1);
+                sphereIndices.push(second, second + 1, first + 1);
             }
         }
         this.buffers.sphere = gl.createBuffer();
@@ -895,8 +895,9 @@ export class Renderer3D {
         gl.uniform1i(gl.getUniformLocation(program, "uUseNormalMap"), 0);
 
         // Identity for skinned meshes as bone matrices are in world space
-        const identity = mat4.create();
-        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, identity);
+        // If not skinned, use the materia's world matrix
+        const modelMatrix = (mesh.skeleton) ? mat4.create() : (transform.worldMatrix || mat4.create());
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, modelMatrix);
         gl.uniform4f(gl.getUniformLocation(program, 'uColor'), color[0], color[1], color[2], 1.0);
 
         if (mesh.boneMatrices) gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uBoneMatrices'), false, mesh.boneMatrices);
@@ -1010,13 +1011,22 @@ export class Renderer3D {
                 gl.vertexAttrib4f(colorLoc, 0, 0, 0, 0);
             }
 
-            if (buffers.joints) {
+            if (buffers.joints && mesh.skeleton) {
                 gl.bindBuffer(gl.ARRAY_BUFFER, buffers.joints);
                 gl.vertexAttribPointer(jointLoc, 4, gl.FLOAT, false, 0, 0);
                 gl.enableVertexAttribArray(jointLoc);
                 gl.bindBuffer(gl.ARRAY_BUFFER, buffers.weights);
                 gl.vertexAttribPointer(weightLoc, 4, gl.FLOAT, false, 0, 0);
                 gl.enableVertexAttribArray(weightLoc);
+            } else {
+                if (jointLoc !== -1) {
+                    gl.disableVertexAttribArray(jointLoc);
+                    gl.vertexAttrib4f(jointLoc, 0, 0, 0, 0);
+                }
+                if (weightLoc !== -1) {
+                    gl.disableVertexAttribArray(weightLoc);
+                    gl.vertexAttrib4f(weightLoc, 1, 0, 0, 0); // Use first bone with weight 1
+                }
             }
 
             if (buffers.indices) {

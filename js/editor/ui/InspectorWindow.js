@@ -5289,7 +5289,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
         } else if (lowerName.endsWith('.mp4') || lowerName.endsWith('.webm') || lowerName.endsWith('.ogv')) {
             await renderVideoInspector(assetName, assetPath);
         } else if (lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.endsWith('.obj')) {
-            await renderModel3DInspector(assetName, assetPath);
+            await renderModel3DInspector(assetName, assetPath, currentId);
         } else {
              dom.inspectorContent.innerHTML += `
                 <div class="unknown-file-info" style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
@@ -5837,7 +5837,7 @@ async function saveProjectConfig() {
     }
 }
 
-async function renderModel3DInspector(assetName, assetPath) {
+async function renderModel3DInspector(assetName, assetPath, currentId) {
     const L = window.Localization;
     const container = document.createElement('div');
     container.className = 'asset-settings';
@@ -5900,7 +5900,10 @@ async function renderModel3DInspector(assetName, assetPath) {
         </div>
     `;
 
-    if (lastUpdateId !== currentId) return;
+    if (lastUpdateId !== currentId) {
+        console.log(`[Inspector] Abortando renderización de modelo ${assetName} (ID mismatch: ${lastUpdateId} vs ${currentId})`);
+        return;
+    }
     dom.inspectorContent.appendChild(container);
 
     const canvas = document.getElementById('model-preview-canvas');
@@ -5980,9 +5983,22 @@ async function renderModel3DInspector(assetName, assetPath) {
         previewScene.ambiente.skyMode = 'SolidColor';
         previewScene.ambiente.skyColor = '#111111';
 
+        console.log(`[Inspector] Iniciando carga de vista previa para: ${assetPath}`);
         previewMateria = await createSkinnedMeshObject(assetPath, null, { addToScene: false });
         if (previewMateria) {
             previewScene.addMateria(previewMateria);
+            console.log(`[Inspector] Modelo cargado en vista previa.`);
+
+            // Auto-frame for interactive preview as well
+            const { getAABB3D } = await import('../../engine/MathUtils.js');
+            const aabb = getAABB3D(previewMateria);
+            if (aabb) {
+                const glm = window.glMatrix;
+                const size = glm.vec3.distance(aabb.min, aabb.max);
+                orbitDistance = Math.max(size * 1.5, 50);
+                orbitTarget = [...aabb.center];
+                console.log(`[Inspector] Encuadre automático: distancia=${orbitDistance}, objetivo=[${orbitTarget}]`);
+            }
 
             // Populate animations list
             const animList = document.getElementById('model-animations-list');
@@ -6108,6 +6124,8 @@ async function renderModel3DInspector(assetName, assetPath) {
 
         // Auto-capture thumbnail after a delay to ensure model is loaded
         setTimeout(captureThumbnail, 2000);
+        // Also try once immediately after a short tick
+        setTimeout(captureThumbnail, 500);
     };
 
     startPreview();
