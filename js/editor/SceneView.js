@@ -2960,7 +2960,7 @@ function drawOrientationGizmo() {
 
     projected.forEach(a => {
         const endX = centerX + a.px * size;
-        const endY = centerY + a.py * size;
+        const endY = centerY - a.py * size; // Flip Y because screen space is Y-down
 
         const isNegative = a.label.startsWith('-');
 

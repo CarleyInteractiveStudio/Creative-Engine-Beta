@@ -63,7 +63,7 @@ export class Renderer3D {
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         gl.enable(gl.CULL_FACE);
-        gl.frontFace(gl.CW); // Revert to CW as internal geometry is wound this way
+        gl.frontFace(gl.CCW); // standard WebGL/GLTF winding
 
         this.initShaders();
         this.initBasicGeometry();
@@ -357,27 +357,39 @@ export class Renderer3D {
 
     initBasicGeometry() {
         const gl = this.gl;
-        // Quad for Full-screen effects / Sky (XY plane)
-        const quadPos = new Float32Array([-1,1,0, -1,-1,0, 1,1,0, 1,-1,0]);
+        // Quad for Full-screen effects / Sky (XY plane) - CCW winding: BL, BR, TR, BL, TR, TL
+        const quadPos = new Float32Array([
+            -1,-1,0,  1,-1,0,  1,1,0,
+            -1,-1,0,  1,1,0, -1,1,0
+        ]);
         this.buffers.quad = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.quad);
         gl.bufferData(gl.ARRAY_BUFFER, quadPos, gl.STATIC_DRAW);
 
-        // Plane for Floor (XZ plane) - Standard 1x1 unit
-        const planePos = new Float32Array([-0.5,0,-0.5, 0.5,0,-0.5, -0.5,0,0.5, 0.5,0,0.5]);
+        // Plane for Floor (XZ plane) - Standard 1x1 unit - CCW: BL(-0.5,0,0.5), BR(0.5,0,0.5), TR(0.5,0,-0.5)
+        const planePos = new Float32Array([
+            -0.5,0,0.5, 0.5,0,0.5, 0.5,0,-0.5,
+            -0.5,0,0.5, 0.5,0,-0.5, -0.5,0,-0.5
+        ]);
         this.buffers.plane = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.plane);
         gl.bufferData(gl.ARRAY_BUFFER, planePos, gl.STATIC_DRAW);
 
-        const planeUVs = new Float32Array([0,0, 1,0, 0,1, 1,1]);
+        const planeUVs = new Float32Array([
+            0,0, 1,0, 1,1,
+            0,0, 1,1, 0,1
+        ]);
         this.buffers.planeUV = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.planeUV);
         gl.bufferData(gl.ARRAY_BUFFER, planeUVs, gl.STATIC_DRAW);
 
         const cubePos = new Float32Array([
-            -0.5,-0.5,0.5, 0.5,-0.5,0.5, 0.5,0.5,0.5, -0.5,0.5,0.5, -0.5,-0.5,-0.5, -0.5,0.5,-0.5, 0.5,0.5,-0.5, 0.5,-0.5,-0.5,
-            -0.5,0.5,-0.5, -0.5,0.5,0.5, 0.5,0.5,0.5, 0.5,0.5,-0.5, -0.5,-0.5,-0.5, 0.5,-0.5,-0.5, 0.5,-0.5,0.5, -0.5,-0.5,0.5,
-            0.5,-0.5,-0.5, 0.5,0.5,-0.5, 0.5,0.5,0.5, 0.5,-0.5,0.5, -0.5,-0.5,-0.5, -0.5,-0.5,0.5, -0.5,0.5,0.5, -0.5,0.5,-0.5
+            -0.5,-0.5,0.5, 0.5,-0.5,0.5, 0.5,0.5,0.5, -0.5,0.5,0.5, // Front
+            -0.5,-0.5,-0.5, -0.5,0.5,-0.5, 0.5,0.5,-0.5, 0.5,-0.5,-0.5, // Back
+            -0.5,0.5,-0.5, -0.5,0.5,0.5, 0.5,0.5,0.5, 0.5,0.5,-0.5, // Top
+            -0.5,-0.5,-0.5, 0.5,-0.5,-0.5, 0.5,-0.5,0.5, -0.5,-0.5,0.5, // Bottom
+            0.5,-0.5,-0.5, 0.5,0.5,-0.5, 0.5,0.5,0.5, 0.5,-0.5,0.5, // Right
+            -0.5,-0.5,-0.5, -0.5,-0.5,0.5, -0.5,0.5,0.5, -0.5,0.5,-0.5 // Left
         ]);
         this.buffers.cube = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cube);
@@ -401,7 +413,14 @@ export class Renderer3D {
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cubeUV);
         gl.bufferData(gl.ARRAY_BUFFER, cubeUVs, gl.STATIC_DRAW);
 
-        const cubeIndices = new Uint16Array([0,1,2, 0,2,3, 4,5,6, 4,6,7, 8,9,10, 8,10,11, 12,13,14, 12,14,15, 16,17,18, 16,18,19, 20,21,22, 20,22,23]);
+        const cubeIndices = new Uint16Array([
+            0,1,2, 0,2,3, // Front
+            4,5,6, 4,6,7, // Back
+            8,9,10, 8,10,11, // Top
+            12,13,14, 12,14,15, // Bottom
+            16,17,18, 16,18,19, // Right
+            20,21,22, 20,22,23  // Left
+        ]);
         this.buffers.cubeIdx = gl.createBuffer();
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.cubeIdx);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, cubeIndices, gl.STATIC_DRAW);
@@ -434,8 +453,8 @@ export class Renderer3D {
             for (let longNumber = 0; longNumber < longitudeBands; longNumber++) {
                 const first = (latNumber * (longitudeBands + 1)) + longNumber;
                 const second = first + longitudeBands + 1;
-                sphereIndices.push(first, second, first + 1);
-                sphereIndices.push(second, second + 1, first + 1);
+                sphereIndices.push(first, first + 1, second);
+                sphereIndices.push(second, first + 1, second + 1);
             }
         }
         this.buffers.sphere = gl.createBuffer();
@@ -453,7 +472,7 @@ export class Renderer3D {
         this.sphereIndexCount = sphereIndices.length;
 
         // --- Triangle Geometry ---
-        const triPos = new Float32Array([0, 0.5, 0, -0.5, -0.5, 0, 0.5, -0.5, 0]);
+        const triPos = new Float32Array([0, 0.5, 0, 0.5, -0.5, 0, -0.5, -0.5, 0]);
         this.buffers.triangle = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.triangle);
         gl.bufferData(gl.ARRAY_BUFFER, triPos, gl.STATIC_DRAW);
@@ -564,7 +583,7 @@ export class Renderer3D {
 
         gl.disable(gl.DEPTH_TEST);
         gl.depthMask(false);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
         gl.depthMask(true);
         gl.enable(gl.DEPTH_TEST);
     }
@@ -588,7 +607,7 @@ export class Renderer3D {
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.quad);
         gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(posLoc);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
 
     drawOriginAxes() {
@@ -739,14 +758,16 @@ export class Renderer3D {
                 gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
                 gl.enableVertexAttribArray(posLoc);
                 // Simple normal for plane (pointing UP in world = +Y)
-                gl.disableVertexAttribArray(normLoc);
-                gl.vertexAttrib3f(normLoc, 0, 1, 0);
+                if (normLoc !== -1) {
+                    gl.disableVertexAttribArray(normLoc);
+                    gl.vertexAttrib3f(normLoc, 0, 1, 0);
+                }
                 if (uvLoc !== -1) {
                     gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.planeUV);
                     gl.vertexAttribPointer(uvLoc, 2, gl.FLOAT, false, 0, 0);
                     gl.enableVertexAttribArray(uvLoc);
                 }
-                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
             } else if (mesh.meshType === 'Triangle') {
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.triangle);
                 gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
@@ -854,7 +875,7 @@ export class Renderer3D {
 
                 gl.uniformMatrix4fv(uModelLoc, false, m);
                 gl.uniform4f(uColorLoc, 0.4, 0.8, 0.2, 1.0); // Grass green
-                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
             });
         }
     }
@@ -1141,7 +1162,7 @@ export class Renderer3D {
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.plane);
                 gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
                 gl.enableVertexAttribArray(posLoc);
-                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
             } else if (mesh.meshType === 'Triangle') {
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.triangle);
                 gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
