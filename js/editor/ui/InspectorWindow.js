@@ -5903,10 +5903,27 @@ async function renderModel3DInspector(assetName, assetPath) {
         thumbCanvas.height = 128;
         const thumbCtx = thumbCanvas.getContext('2d');
 
+        // Auto-frame the model for the thumbnail
+        const { getAABB3D } = await import('../../engine/MathUtils.js');
+        const aabb = getAABB3D(previewMateria);
+        let thumbViewMatrix = lastViewMatrix;
+
+        if (aabb) {
+            const glm = window.glMatrix;
+            const center = aabb.center;
+            const size = glm.vec3.distance(aabb.min, aabb.max);
+            const dist = Math.max(size * 1.2, 50);
+
+            thumbViewMatrix = glm.mat4.create();
+            // Upright view for thumbnail: slightly tilted from front
+            const camPos = [center[0], center[1] + size * 0.2, center[2] + dist];
+            glm.mat4.lookAt(thumbViewMatrix, camPos, center, [0, 1, 0]);
+        }
+
         // Draw only the model by using a temporary render with no grid and transparent bg
         if (renderer && previewScene) {
             renderer.render(previewScene, null, {
-                viewMatrix: lastViewMatrix,
+                viewMatrix: thumbViewMatrix,
                 showGrid: false,
                 clearAlpha: 0
             });
@@ -6053,7 +6070,7 @@ async function renderModel3DInspector(assetName, assetPath) {
                 orbitTarget[2] + Math.cos(radY) * Math.cos(radX) * orbitDistance
             ];
 
-            glm.mat4.lookAt(viewMat, camPos, orbitTarget, [0, -1, 0]); // -Y is UP in engine
+            glm.mat4.lookAt(viewMat, camPos, orbitTarget, [0, 1, 0]); // +Y is UP now
             glm.mat4.copy(lastViewMatrix, viewMat);
 
             renderer.render(previewScene, null, { viewMatrix: viewMat, showGrid: true, clearAlpha: 1 });
@@ -6182,9 +6199,23 @@ async function renderModel3DInspector(assetName, assetPath) {
             thumbCanvas.height = 128;
             const thumbCtx = thumbCanvas.getContext('2d');
 
+            const { getAABB3D } = await import('../../engine/MathUtils.js');
+            const aabb = getAABB3D(previewMateria);
+            let thumbViewMatrix = lastViewMatrix;
+
+            if (aabb) {
+                const glm = window.glMatrix;
+                const center = aabb.center;
+                const size = glm.vec3.distance(aabb.min, aabb.max);
+                const dist = Math.max(size * 1.2, 50);
+                thumbViewMatrix = glm.mat4.create();
+                const camPos = [center[0], center[1] + size * 0.2, center[2] + dist];
+                glm.mat4.lookAt(thumbViewMatrix, camPos, center, [0, 1, 0]);
+            }
+
             if (renderer && previewScene) {
                 renderer.render(previewScene, null, {
-                    viewMatrix: lastViewMatrix,
+                    viewMatrix: thumbViewMatrix,
                     showGrid: false,
                     clearAlpha: 0
                 });

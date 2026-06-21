@@ -829,8 +829,7 @@ export function initialize(dependencies) {
 
                         // 1. Determine world axis vector
                         const isY = dragState.handle === 'move-y';
-                        // Use [0,-1,0] for Y to match visual UP (-Y world)
-                        const localAxis = dragState.handle === 'move-x' ? [1,0,0] : (isY ? [0,-1,0] : [0,0,1]);
+                        const localAxis = dragState.handle === 'move-x' ? [1,0,0] : (isY ? [0,1,0] : [0,0,1]);
                         const q = glm.quat.create();
                         glm.quat.fromEuler(q, dragState.initialTransform.rotationX || 0, dragState.initialTransform.rotationY || 0, dragState.initialTransform.rotationZ || 0);
                         const worldAxis = glm.vec3.create();
@@ -2095,7 +2094,7 @@ function handle3DCameraNavigation() {
         const delta = InputManager.getMouseDelta();
         if (Math.abs(delta.x) < 200 && Math.abs(delta.y) < 200) {
             cam.rotation.y -= delta.x * rotSpeed;
-            cam.rotation.x += delta.y * rotSpeed;
+            cam.rotation.x -= delta.y * rotSpeed;
             cam.rotation.x = Math.max(-89.9, Math.min(89.9, cam.rotation.x));
         }
 
@@ -2109,8 +2108,8 @@ function handle3DCameraNavigation() {
         if (InputManager.getKey('d') || InputManager.getKey('ArrowRight')) { moveDir[0] += 1; hasMove = true; }
 
         // Q/E: World Vertical Movement
-        if (InputManager.getKey('e')) cam.y -= speed;
-        if (InputManager.getKey('q')) cam.y += speed;
+        if (InputManager.getKey('e')) cam.y += speed;
+        if (InputManager.getKey('q')) cam.y -= speed;
 
         if (hasMove) {
             glm.vec3.normalize(moveDir, moveDir);
@@ -2162,12 +2161,11 @@ export function focusOnSelectedMateria() {
         // Position camera at a distance relative to size
         const distance = Math.max(150, size * 3.0);
         cam.x = transform.x;
-        // CE-Y negative is "above" in 3D pass
-        cam.y = transform.y - (size * 0.4);
+        cam.y = transform.y + (size * 0.4);
         cam.z = (transform.z || 0) + distance;
 
         // Reset rotation to look at the object
-        cam.rotation.x = 15; // Pitch down 15 degrees
+        cam.rotation.x = -15; // Pitch down 15 degrees (+Y UP)
         cam.rotation.y = 0;
     } else {
         cam.x = transform.x;
@@ -2695,12 +2693,7 @@ function getMateriaAxes(materia) {
     glm.vec3.normalize(yAxis, yAxis);
     glm.vec3.normalize(zAxis, zAxis);
 
-    // In CE, +Y is DOWN. Therefore, the "natural" UP direction for gizmos
-    // should be the NEGATIVE Y axis of the object.
-    const upAxis = glm.vec3.create();
-    glm.vec3.scale(upAxis, yAxis, -1);
-
-    return { x: xAxis, y: upAxis, z: zAxis, worldCenter: [matrix[12], matrix[13], matrix[14]] };
+    return { x: xAxis, y: yAxis, z: zAxis, worldCenter: [matrix[12], matrix[13], matrix[14]] };
 }
 
 function check3DGizmoHit(canvasPos, materia) {
@@ -2944,13 +2937,13 @@ function drawOrientationGizmo() {
     glm.quat.fromEuler(q, camera.rotation.x, camera.rotation.y, 0);
     glm.quat.invert(q, q);
 
-    // Orientation Compass in CE (+Y is DOWN)
+    // Orientation Compass (+Y is UP)
     const axes = [
         { vec: [1, 0, 0], color: '#ff4444', label: 'X' },
-        { vec: [0, -1, 0], color: '#44ff44', label: 'Y' }, // Points to world -Y (UP)
+        { vec: [0, 1, 0], color: '#44ff44', label: 'Y' },
         { vec: [0, 0, 1], color: '#4444ff', label: 'Z' },
         { vec: [-1, 0, 0], color: '#882222', label: '-X' },
-        { vec: [0, 1, 0], color: '#228822', label: '-Y' }, // Points to world +Y (DOWN)
+        { vec: [0, -1, 0], color: '#228822', label: '-Y' },
         { vec: [0, 0, -1], color: '#222288', label: '-Z' }
     ];
 

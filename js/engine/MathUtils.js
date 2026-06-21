@@ -199,6 +199,63 @@ export function distance(x1, y1, x2, y2) { return Math.sqrt((x2 - x1)**2 + (y2 -
 export function sin(degrees) { return Math.sin(degrees * Math.PI / 180); }
 export function cos(degrees) { return Math.cos(degrees * Math.PI / 180); }
 
+/**
+ * Calculates the Axis-Aligned Bounding Box (AABB) for a Materia and its children in 3D.
+ */
+export function getAABB3D(materia) {
+    let minX = Infinity, minY = Infinity, minZ = Infinity;
+    let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+    let found = false;
+
+    const glm = window.glMatrix;
+
+    materia.traverse(mtr => {
+        const smr = mtr.getComponentByName('SkinnedMeshRenderer3D');
+        const mr = mtr.getComponentByName('MeshRenderer3D');
+        const transform = mtr.getComponentByName('Transform');
+
+        if ((smr || mr) && transform) {
+            const worldMatrix = transform.worldMatrix;
+            const positions = smr ? smr.cpuPositions : null;
+            // MeshRenderer3D uses primitive buffers, we can use their standard bounds
+
+            if (positions) {
+                for (let i = 0; i < positions.length; i += 3) {
+                    const v = glm.vec4.fromValues(positions[i], positions[i+1], positions[i+2], 1.0);
+                    // For skinned mesh, if it's the root and identity, positions are already world-ish in bind pose?
+                    // Actually MateriaFactory for characters uses world-ish positions.
+                    // But for GLB/GLTF, positions are local to node.
+
+                    const wp = glm.vec4.create();
+                    glm.vec4.transformMat4(wp, v, worldMatrix);
+
+                    minX = Math.min(minX, wp[0]); minY = Math.min(minY, wp[1]); minZ = Math.min(minZ, wp[2]);
+                    maxX = Math.max(maxX, wp[0]); maxY = Math.max(maxY, wp[1]); maxZ = Math.max(maxZ, wp[2]);
+                    found = true;
+                }
+            } else if (mr) {
+                // Primitives
+                const half = 50; // Standard size in CE is 100 (half 50)
+                const corners = [
+                    [-half, -half, -half], [half, -half, -half], [-half, half, -half], [half, half, -half],
+                    [-half, -half, half], [half, -half, half], [-half, half, half], [half, half, half]
+                ];
+                corners.forEach(c => {
+                    const v = glm.vec4.fromValues(c[0], c[1], c[2], 1.0);
+                    const wp = glm.vec4.create();
+                    glm.vec4.transformMat4(wp, v, worldMatrix);
+                    minX = Math.min(minX, wp[0]); minY = Math.min(minY, wp[1]); minZ = Math.min(minZ, wp[2]);
+                    maxX = Math.max(maxX, wp[0]); maxY = Math.max(maxY, wp[1]); maxZ = Math.max(maxZ, wp[2]);
+                });
+                found = true;
+            }
+        }
+    });
+
+    if (!found) return null;
+    return { min: [minX, minY, minZ], max: [maxX, maxY, maxZ], center: [(minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2] };
+}
+
 // --- 3D Projection Utilities ---
 
 /**
@@ -227,9 +284,7 @@ export function world3DToScreen(worldPos, customProj = null, customView = null, 
     const ndc = [clipPos[0] / clipPos[3], clipPos[1] / clipPos[3], clipPos[2] / clipPos[3]];
     if (Math.abs(ndc[0]) > 10.0 || Math.abs(ndc[1]) > 10.0) return null;
 
-    // NDC Y mapping for CE: World UP is -Y, World DOWN is +Y.
-    // Our Renderer3D uses a flipped projection matrix (scale [1, -1, 1]).
-    // This maps World-UP (-Y) to NDC +1 and World-DOWN (+Y) to NDC -1.
+    // NDC Y mapping: NDC +1 is UP, NDC -1 is DOWN.
     // Screen: TOP is 0. So NDC +1 (UP) -> 0.
     // Formula: (0.5 - ndcY * 0.5) * height
     return {

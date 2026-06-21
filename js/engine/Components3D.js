@@ -294,7 +294,7 @@ export class Terreno3D extends MeshRenderer3D {
                 let hr = this.getHeight(x + 1, z);
                 let hd = this.getHeight(x, z - 1);
                 let hu = this.getHeight(x, z + 1);
-                const normal = [hr - hl, -2.0, hu - hd];
+                const normal = [hl - hr, 2.0, hd - hu];
                 const mag = Math.sqrt(normal[0]**2 + normal[1]**2 + normal[2]**2);
                 normals[idx3] = normal[0] / mag;
                 normals[idx3 + 1] = normal[1] / mag;
@@ -641,9 +641,9 @@ export class ProceduralChain3D extends Leyes {
                 const prevBone = scene.findMateriaById(this.bones[i-1]);
                 if (prevBone) {
                     const prevTrans = prevBone.getComponent(window.Components.Transform);
-                    // In CE engine, -Y is UP, so to hang down we add to Y
+                    // To hang down we subtract from Y
                     const targetPos = { ...prevTrans.position };
-                    targetPos.y += 20 * this.gravity;
+                    targetPos.y -= 20 * this.gravity;
 
                     trans.position.x += (targetPos.x - trans.position.x) * this.stiffness;
                     trans.position.y += (targetPos.y - trans.position.y) * this.stiffness;
@@ -723,7 +723,7 @@ export class ThirdPersonController3D extends Leyes {
 
         if (input.isKeyJustPressed('space')) {
             const hp = this.materia.getComponent(HumanoidPhysics3D);
-            if (!hp || hp.isGrounded) rb.addForce(0, -this.jumpForce, 0);
+            if (!hp || hp.isGrounded) rb.addForce(0, this.jumpForce, 0);
         }
     }
     clone() { return new ThirdPersonController3D(null); }
@@ -768,7 +768,7 @@ export class CameraControl3D extends Leyes {
         const offsetY = Math.sin(pitchRad) * this.distance;
 
         const targetX = targetTrans.position.x + offsetX;
-        const targetY = targetTrans.position.y - offsetY - this.height;
+        const targetY = targetTrans.position.y + offsetY + this.height;
         const targetZ = targetTrans.position.z + offsetZ;
 
         const curPos = myTrans.position;
@@ -844,7 +844,7 @@ export class WheelCollider3D extends Leyes {
         // Runtime state
         this.isGrounded = false;
         this.contactPoint = { x: 0, y: 0, z: 0 };
-        this.contactNormal = { x: 0, y: -1, z: 0 };
+        this.contactNormal = { x: 0, y: 1, z: 0 };
         this.suspensionLength = 0;
         this.lastSuspensionLength = 0;
     }
@@ -903,7 +903,7 @@ export class VehicleController3D extends Leyes {
 
             const transform = wheelMtr.getComponent(window.Components.Transform);
             const worldPos = transform.position;
-            const downDir = { x: 0, y: 1, z: 0 }; // Engine Y-down, so 1 is world-down
+            const downDir = { x: 0, y: -1, z: 0 };
 
             // Raycast for suspension
             const hit = physics.raycast3D(worldPos, downDir, wheelCol.suspensionDistance + wheelCol.radius);
@@ -922,7 +922,7 @@ export class VehicleController3D extends Leyes {
                 const dampingForce = (currentDist - wheelCol.lastSuspensionLength) / deltaTime * wheelCol.suspensionDamping;
 
                 const totalSuspensionForce = springForce - dampingForce;
-                rb.addForce(0, -totalSuspensionForce, 0); // Push chassis UP (-Y)
+                rb.addForce(0, totalSuspensionForce, 0); // Push chassis UP (+Y)
 
                 wheelCol.lastSuspensionLength = currentDist;
 

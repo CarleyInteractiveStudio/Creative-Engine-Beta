@@ -133,13 +133,6 @@ export async function createSkinnedMeshObject(modelPath, parent = null, options 
     const rootName = modelPath.split('/').pop().split('.')[0];
     const rootMateria = createBaseMateria(generateUniqueName(rootName), parent, false, options.addToScene !== false);
 
-    // Root orientation: Standard models are Y-UP, but our engine is Y-DOWN.
-    // We rotate 180deg on X to align the model with the engine's coordinate system.
-    const rootTransform = rootMateria.getComponent(Components.Transform);
-    if (rootTransform && !options.noRotation) {
-        rootTransform.localRotation = { x: 180, y: 0, z: 0 };
-    }
-
     const nodeMaterias = [];
 
     if (modelData.nodes) {
@@ -372,25 +365,25 @@ export async function createDefaultCharacter(parent = null) {
     const C3D = await ensure3D();
     const root = createBaseMateria('Personaje Humanoide', parent);
     const transform = root.getComponent(Components.Transform);
-    transform.position = { x: 0, y: -90, z: 0 };
+    transform.position = { x: 0, y: 90, z: 0 };
 
     const hip = createBaseMateria('Cadera', root);
     const torso = createBaseMateria('Torso', hip);
-    torso.getComponent(Components.Transform).localPosition = { x: 0, y: -30, z: 0 };
+    torso.getComponent(Components.Transform).localPosition = { x: 0, y: 30, z: 0 };
     const neck = createBaseMateria('Cuello', torso);
-    neck.getComponent(Components.Transform).localPosition = { x: 0, y: -35, z: 0 };
+    neck.getComponent(Components.Transform).localPosition = { x: 0, y: 35, z: 0 };
     const head = createBaseMateria('Cabeza', neck);
-    head.getComponent(Components.Transform).localPosition = { x: 0, y: -15, z: 0 };
-    const eyeL = createBaseMateria('Ojo_I', head); eyeL.getComponent(Components.Transform).localPosition = { x: -8, y: -5, z: 12 };
-    const eyeR = createBaseMateria('Ojo_D', head); eyeR.getComponent(Components.Transform).localPosition = { x: 8, y: -5, z: 12 };
-    const armL = createBaseMateria('Brazo_I', torso); armL.getComponent(Components.Transform).localPosition = { x: -30, y: -5, z: 0 };
-    const handL = createBaseMateria('Mano_I', armL); handL.getComponent(Components.Transform).localPosition = { x: 0, y: 45, z: 0 };
-    const armR = createBaseMateria('Brazo_D', torso); armR.getComponent(Components.Transform).localPosition = { x: 30, y: -5, z: 0 };
-    const handR = createBaseMateria('Mano_D', armR); handR.getComponent(Components.Transform).localPosition = { x: 0, y: 45, z: 0 };
-    const legL = createBaseMateria('Pierna_I', hip); legL.getComponent(Components.Transform).localPosition = { x: -15, y: 10, z: 0 };
-    const footL = createBaseMateria('Pie_I', legL); footL.getComponent(Components.Transform).localPosition = { x: 0, y: 80, z: 0 };
-    const legR = createBaseMateria('Pierna_D', hip); legR.getComponent(Components.Transform).localPosition = { x: 15, y: 10, z: 0 };
-    const footR = createBaseMateria('Pie_D', legR); footR.getComponent(Components.Transform).localPosition = { x: 0, y: 80, z: 0 };
+    head.getComponent(Components.Transform).localPosition = { x: 0, y: 15, z: 0 };
+    const eyeL = createBaseMateria('Ojo_I', head); eyeL.getComponent(Components.Transform).localPosition = { x: -8, y: 5, z: 12 };
+    const eyeR = createBaseMateria('Ojo_D', head); eyeR.getComponent(Components.Transform).localPosition = { x: 8, y: 5, z: 12 };
+    const armL = createBaseMateria('Brazo_I', torso); armL.getComponent(Components.Transform).localPosition = { x: -30, y: 5, z: 0 };
+    const handL = createBaseMateria('Mano_I', armL); handL.getComponent(Components.Transform).localPosition = { x: 0, y: -45, z: 0 };
+    const armR = createBaseMateria('Brazo_D', torso); armR.getComponent(Components.Transform).localPosition = { x: 30, y: 5, z: 0 };
+    const handR = createBaseMateria('Mano_D', armR); handR.getComponent(Components.Transform).localPosition = { x: 0, y: -45, z: 0 };
+    const legL = createBaseMateria('Pierna_I', hip); legL.getComponent(Components.Transform).localPosition = { x: -15, y: -10, z: 0 };
+    const footL = createBaseMateria('Pie_I', legL); footL.getComponent(Components.Transform).localPosition = { x: 0, y: -80, z: 0 };
+    const legR = createBaseMateria('Pierna_D', hip); legR.getComponent(Components.Transform).localPosition = { x: 15, y: -10, z: 0 };
+    const footR = createBaseMateria('Pie_D', legR); footR.getComponent(Components.Transform).localPosition = { x: 0, y: -80, z: 0 };
 
     const jointsOrder = [hip, torso, neck, head, eyeL, eyeR, armL, handL, armR, handR, legL, footL, legR, footR];
     const meshData = { positions: [], normals: [], colors: [], joints: [], weights: [], indices: [] };
@@ -515,7 +508,7 @@ export async function createDefaultCharacter(parent = null) {
     root.addComponent(new C3D.MovementControl3D(root));
 
     const camMtr = createBaseMateria('Camara_3ra_Persona', root);
-    camMtr.getComponent(Components.Transform).localPosition = { x: 0, y: -150, z: 450 };
+    camMtr.getComponent(Components.Transform).localPosition = { x: 0, y: 150, z: 450 };
     camMtr.addComponent(new Components.Camera(camMtr));
     const cam = camMtr.getComponent(Components.Camera);
     cam.projection = 'Perspective';
@@ -540,8 +533,8 @@ export async function createAdvancedVehicle(parent = null) {
 
     const wheelNames = ['Rueda_Frontal_Izquierda', 'Rueda_Frontal_Derecha', 'Rueda_Trasera_Izquierda', 'Rueda_Trasera_Derecha'];
     const wheelPositions = [
-        { x: -120, y: 50, z: -160 }, { x: 120, y: 50, z: -160 },
-        { x: -120, y: 50, z: 160 }, { x: 120, y: 50, z: 160 }
+        { x: -120, y: -50, z: -160 }, { x: 120, y: -50, z: -160 },
+        { x: -120, y: -50, z: 160 }, { x: 120, y: -50, z: 160 }
     ];
 
     const wheelIds = [];
@@ -584,8 +577,8 @@ export async function createVehicleTemplate(parent = null) {
 
     const wheelNames = ['Rueda_DI', 'Rueda_DD', 'Rueda_TI', 'Rueda_TD'];
     const wheelPositions = [
-        { x: -110, y: 40, z: -150 }, { x: 110, y: 40, z: -150 },
-        { x: -110, y: 40, z: 150 }, { x: 110, y: 40, z: 150 }
+        { x: -110, y: -40, z: -150 }, { x: 110, y: -40, z: -150 },
+        { x: -110, y: -40, z: 150 }, { x: 110, y: -40, z: 150 }
     ];
 
     for (let i = 0; i < 4; i++) {
@@ -619,17 +612,17 @@ export async function createTestCircuit(parent = null) {
 
     // --- 2. Pista Refinada con Bordes de Seguridad ---
     const track = await createPlane3DObject(root);
-    track.getComponent(Components.Transform).localPosition = { x: 0, y: -2, z: 0 };
+    track.getComponent(Components.Transform).localPosition = { x: 0, y: 2, z: 0 };
     track.getComponent(Components.Transform).localScale = { x: 800, y: 1, z: 8000 };
     track.getComponent(C3D.MeshRenderer3D).color = darkMetal;
 
     // Bordes amarillos (Caution Stripes effect)
     const leftBorder = await createCubeObject(root, safetyYellow);
-    leftBorder.getComponent(Components.Transform).localPosition = { x: -410, y: -5, z: 0 };
+    leftBorder.getComponent(Components.Transform).localPosition = { x: -410, y: 5, z: 0 };
     leftBorder.getComponent(Components.Transform).localScale = { x: 20, y: 10, z: 8000 };
 
     const rightBorder = await createCubeObject(root, safetyYellow);
-    rightBorder.getComponent(Components.Transform).localPosition = { x: 410, y: -5, z: 0 };
+    rightBorder.getComponent(Components.Transform).localPosition = { x: 410, y: 5, z: 0 };
     rightBorder.getComponent(Components.Transform).localScale = { x: 20, y: 10, z: 8000 };
 
     // --- 3. Tuberías Industriales ---
@@ -644,43 +637,43 @@ export async function createTestCircuit(parent = null) {
         return pipe;
     };
 
-    await createPipe({x: 500, y: -100, z: 500}, {x: 90, y: 0, z: 0}, {x: 40, y: 1000, z: 40});
-    await createPipe({x: -500, y: -100, z: 1500}, {x: 90, y: 0, z: 0}, {x: 40, y: 1500, z: 40});
-    await createPipe({x: 0, y: -400, z: 2500}, {x: 0, y: 0, z: 90}, {x: 30, y: 1200, z: 30});
-    await createPipe({x: 450, y: -300, z: 1200}, {x: 0, y: 0, z: 45}, {x: 20, y: 800, z: 20}, neonCyan);
+    await createPipe({x: 500, y: 100, z: 500}, {x: 90, y: 0, z: 0}, {x: 40, y: 1000, z: 40});
+    await createPipe({x: -500, y: 100, z: 1500}, {x: 90, y: 0, z: 0}, {x: 40, y: 1500, z: 40});
+    await createPipe({x: 0, y: 400, z: 2500}, {x: 0, y: 0, z: 90}, {x: 30, y: 1200, z: 30});
+    await createPipe({x: 450, y: 300, z: 1200}, {x: 0, y: 0, z: 45}, {x: 20, y: 800, z: 20}, neonCyan);
 
     // --- 4. Escalera Metálica ---
     for (let i = 0; i < 10; i++) {
         const step = await createCubeObject(root, i % 2 === 0 ? darkMetal : lightMetal);
         const t = step.getComponent(Components.Transform);
-        t.localPosition = { x: -300, y: -i * 25, z: 1000 + i * 80 };
+        t.localPosition = { x: -300, y: i * 25, z: 1000 + i * 80 };
         t.localScale = { x: 250, y: 15, z: 80 };
         step.addComponent(new C3D.BoxCollider3D(step));
     }
 
     // --- 5. Estación de Energía (Obstáculo Complejo) ---
     const station = createBaseMateria("Estacion_Energia", root);
-    station.getComponent(Components.Transform).localPosition = { x: 0, y: -150, z: 3000 };
+    station.getComponent(Components.Transform).localPosition = { x: 0, y: 150, z: 3000 };
 
     const core = await createCubeObject(station, '#3498db');
     core.getComponent(Components.Transform).localScale = { x: 200, y: 300, z: 200 };
     core.addComponent(new C3D.BoxCollider3D(core));
 
     const light = await createPointLight3D(station);
-    light.getComponent(Components.Transform).localPosition = { x: 0, y: -350, z: 0 };
+    light.getComponent(Components.Transform).localPosition = { x: 0, y: 350, z: 0 };
     const pLight = light.getComponent(C3D.PointLight3D);
     pLight.color = neonCyan; pLight.intensity = 2.0; pLight.radius = 800;
 
     // --- 6. Rampa de Salto con Neones ---
     const ramp = await createCubeObject(root, industrialBlue);
     const rt = ramp.getComponent(Components.Transform);
-    rt.localPosition = { x: 250, y: -50, z: 4500 };
+    rt.localPosition = { x: 250, y: 50, z: 4500 };
     rt.localScale = { x: 400, y: 20, z: 1000 };
-    rt.localRotation = { x: -20, y: 0, z: 0 };
+    rt.localRotation = { x: 20, y: 0, z: 0 }; // Flipped rotation for +Y UP
     ramp.addComponent(new C3D.BoxCollider3D(ramp));
 
     const neon = await createCubeObject(ramp, neonRed);
-    neon.getComponent(Components.Transform).localPosition = { x: 0, y: -15, z: 0 };
+    neon.getComponent(Components.Transform).localPosition = { x: 0, y: 15, z: 0 };
     neon.getComponent(Components.Transform).localScale = { x: 380, y: 5, z: 980 };
     neon.getComponent(C3D.MeshRenderer3D).isUnlit = true;
 
@@ -688,51 +681,51 @@ export async function createTestCircuit(parent = null) {
     for (let i = 0; i < 5; i++) {
         const plat = await createCubeObject(root, i === 4 ? safetyYellow : darkMetal);
         const pt = plat.getComponent(Components.Transform);
-        pt.localPosition = { x: Math.cos(i) * 500, y: -400 - i * 50, z: 6000 + i * 600 };
+        pt.localPosition = { x: Math.cos(i) * 500, y: 400 + i * 50, z: 6000 + i * 600 };
         pt.localScale = { x: 300, y: 30, z: 300 };
         plat.addComponent(new C3D.BoxCollider3D(plat));
 
         // Add a support pillar visual
         const support = await createCubeObject(plat, '#333333');
-        support.getComponent(Components.Transform).localPosition = { x: 0, y: 1000, z: 0 };
+        support.getComponent(Components.Transform).localPosition = { x: 0, y: -1000, z: 0 };
         support.getComponent(Components.Transform).localScale = { x: 0.1, y: 100, z: 0.1 };
     }
 
     // --- 8. Túnel de Neón ---
     const tunnelRoot = createBaseMateria("Tunel_Neon", root);
-    tunnelRoot.getComponent(Components.Transform).localPosition = { x: 0, y: -100, z: 7500 };
+    tunnelRoot.getComponent(Components.Transform).localPosition = { x: 0, y: 100, z: 7500 };
     for(let i=0; i<8; i++) {
         const ring = createBaseMateria(`Anillo_${i}`, tunnelRoot);
         ring.getComponent(Components.Transform).localPosition = { x: 0, y: 0, z: i * 300 };
 
         const sideL = await createCubeObject(ring, '#2980b9');
-        sideL.getComponent(Components.Transform).localPosition = { x: -400, y: -150, z: 0 };
+        sideL.getComponent(Components.Transform).localPosition = { x: -400, y: 150, z: 0 };
         sideL.getComponent(Components.Transform).localScale = { x: 20, y: 400, z: 20 };
 
         const sideR = await createCubeObject(ring, '#2980b9');
-        sideR.getComponent(Components.Transform).localPosition = { x: 400, y: -150, z: 0 };
+        sideR.getComponent(Components.Transform).localPosition = { x: 400, y: 150, z: 0 };
         sideR.getComponent(Components.Transform).localScale = { x: 20, y: 400, z: 20 };
 
         const top = await createCubeObject(ring, neonCyan);
-        top.getComponent(Components.Transform).localPosition = { x: 0, y: -350, z: 0 };
+        top.getComponent(Components.Transform).localPosition = { x: 0, y: 350, z: 0 };
         top.getComponent(Components.Transform).localScale = { x: 800, y: 15, z: 15 };
         top.getComponent(C3D.MeshRenderer3D).isUnlit = true;
     }
 
     // --- 9. Meta Tecnológica ---
     const goal = await createBaseMateria("Meta_Final", root);
-    goal.getComponent(Components.Transform).localPosition = { x: 0, y: -100, z: 10500 };
+    goal.getComponent(Components.Transform).localPosition = { x: 0, y: 100, z: 10500 };
 
     const archL = await createCubeObject(goal, lightMetal);
-    archL.getComponent(Components.Transform).localPosition = { x: -400, y: -200, z: 0 };
+    archL.getComponent(Components.Transform).localPosition = { x: -400, y: 200, z: 0 };
     archL.getComponent(Components.Transform).localScale = { x: 50, y: 600, z: 50 };
 
     const archR = await createCubeObject(goal, lightMetal);
-    archR.getComponent(Components.Transform).localPosition = { x: 400, y: -200, z: 0 };
+    archR.getComponent(Components.Transform).localPosition = { x: 400, y: 200, z: 0 };
     archR.getComponent(Components.Transform).localScale = { x: 50, y: 600, z: 50 };
 
     const archTop = await createCubeObject(goal, safetyYellow);
-    archTop.getComponent(Components.Transform).localPosition = { x: 0, y: -500, z: 0 };
+    archTop.getComponent(Components.Transform).localPosition = { x: 0, y: 500, z: 0 };
     archTop.getComponent(Components.Transform).localScale = { x: 850, y: 60, z: 120 };
 
     return root;

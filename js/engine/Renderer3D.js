@@ -63,7 +63,7 @@ export class Renderer3D {
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         gl.enable(gl.CULL_FACE);
-        gl.frontFace(gl.CW); // Required for Y-flip projection
+        gl.frontFace(gl.CCW);
 
         this.initShaders();
         this.initBasicGeometry();
@@ -172,12 +172,12 @@ export class Renderer3D {
             uniform vec3 uGroundColor;
             void main() {
                 vec3 dir = normalize(vDir);
-                float y = dir.y; // In CE, -Y is UP
+                float y = dir.y;
                 vec3 color;
-                if (y < 0.0) {
-                    color = mix(uHorizonColor, uSkyColor, pow(clamp(-y, 0.0, 1.0), 0.5));
+                if (y > 0.0) {
+                    color = mix(uHorizonColor, uSkyColor, pow(clamp(y, 0.0, 1.0), 0.5));
                 } else {
-                    color = mix(uHorizonColor, uGroundColor, pow(clamp(y, 0.0, 1.0), 0.5));
+                    color = mix(uHorizonColor, uGroundColor, pow(clamp(-y, 0.0, 1.0), 0.5));
                 }
                 gl_FragColor = vec4(color, 1.0);
             }
@@ -508,7 +508,7 @@ export class Renderer3D {
             mat4.copy(this.viewMatrix, options.viewMatrix);
         } else {
             mat4.perspective(this.projectionMatrix, 45 * Math.PI / 180, aspect, near, far);
-            const cam = options.editorCamera || { x: 0, y: -200, z: 600, rotation: { x: 15, y: 0, z: 0 } };
+            const cam = options.editorCamera || { x: 0, y: 200, z: 600, rotation: { x: -15, y: 0, z: 0 } };
             const q = quat.create();
             quat.fromEuler(q, cam.rotation.x, cam.rotation.y, cam.rotation.z);
             mat4.fromRotationTranslation(this.viewMatrix, q, [cam.x, cam.y, cam.z]);
@@ -516,7 +516,6 @@ export class Renderer3D {
         }
 
 
-        mat4.scale(this.projectionMatrix, this.projectionMatrix, [1, -1, 1]);
         mat4.copy(this.lastProjectionMatrix, this.projectionMatrix);
         mat4.copy(this.lastViewMatrix, this.viewMatrix);
 
@@ -654,7 +653,7 @@ export class Renderer3D {
 
             gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
             gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
-            if (!mesh.isUnlit) gl.uniform3f(gl.getUniformLocation(program, "uLightDir"), 0.5, -1.0, 0.3);
+            if (!mesh.isUnlit) gl.uniform3f(gl.getUniformLocation(program, "uLightDir"), 0.5, 1.0, 0.3);
         gl.uniform1i(gl.getUniformLocation(program, "uUseMainTex"), 0);
         gl.uniform1i(gl.getUniformLocation(program, "uUseNormalMap"), 0);
 
@@ -737,9 +736,9 @@ export class Renderer3D {
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.plane);
                 gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
                 gl.enableVertexAttribArray(posLoc);
-                // Simple normal for plane (pointing UP in world = -Y)
+                // Simple normal for plane (pointing UP in world = +Y)
                 gl.disableVertexAttribArray(normLoc);
-                gl.vertexAttrib3f(normLoc, 0, -1, 0);
+                gl.vertexAttrib3f(normLoc, 0, 1, 0);
                 if (uvLoc !== -1) {
                     gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.planeUV);
                     gl.vertexAttribPointer(uvLoc, 2, gl.FLOAT, false, 0, 0);
@@ -772,7 +771,7 @@ export class Renderer3D {
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, transform.worldMatrix || mat4.create());
-        gl.uniform3f(gl.getUniformLocation(program, "uLightDir"), 0.5, -1.0, 0.3);
+        gl.uniform3f(gl.getUniformLocation(program, "uLightDir"), 0.5, 1.0, 0.3);
         gl.uniform1i(gl.getUniformLocation(program, "uUseMainTex"), 0);
         gl.uniform1i(gl.getUniformLocation(program, "uUseNormalMap"), 0);
 
@@ -868,7 +867,7 @@ export class Renderer3D {
 
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
-        gl.uniform3f(gl.getUniformLocation(program, "uLightDir"), 0.5, -1.0, 0.3);
+        gl.uniform3f(gl.getUniformLocation(program, "uLightDir"), 0.5, 1.0, 0.3);
         gl.uniform1i(gl.getUniformLocation(program, "uUseMainTex"), 0);
         gl.uniform1i(gl.getUniformLocation(program, "uUseNormalMap"), 0);
 
