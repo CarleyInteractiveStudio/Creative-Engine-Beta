@@ -894,9 +894,10 @@ export class Renderer3D {
         gl.uniform1i(gl.getUniformLocation(program, "uUseMainTex"), 0);
         gl.uniform1i(gl.getUniformLocation(program, "uUseNormalMap"), 0);
 
-        // Identity for skinned meshes as bone matrices are in world space
-        // If not skinned, use the materia's world matrix
-        const modelMatrix = (mesh.skeleton) ? mat4.create() : (transform.worldMatrix || mat4.create());
+        // Identity for skinned meshes as bone matrices are in world space.
+        // If it's a non-skinned primitive of a model, use the world matrix.
+        const hasSkeleton = !!(mesh.skeleton && mesh.skeleton.joints && mesh.skeleton.joints.length > 0);
+        const modelMatrix = hasSkeleton ? mat4.create() : (transform.worldMatrix || mat4.create());
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, modelMatrix);
         gl.uniform4f(gl.getUniformLocation(program, 'uColor'), color[0], color[1], color[2], 1.0);
 
@@ -1011,7 +1012,7 @@ export class Renderer3D {
                 gl.vertexAttrib4f(colorLoc, 0, 0, 0, 0);
             }
 
-            if (buffers.joints && mesh.skeleton) {
+            if (buffers.joints && hasSkeleton) {
                 gl.bindBuffer(gl.ARRAY_BUFFER, buffers.joints);
                 gl.vertexAttribPointer(jointLoc, 4, gl.FLOAT, false, 0, 0);
                 gl.enableVertexAttribArray(jointLoc);
