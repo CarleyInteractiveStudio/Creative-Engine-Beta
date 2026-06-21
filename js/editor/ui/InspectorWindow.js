@@ -13,6 +13,7 @@ import { broadcastUpdate } from '../CollaborationSystem.js';
 // --- Module State ---
 let dom;
 let projectsDirHandle;
+let lastUpdateId = 0;
 let getCurrentDirectoryHandleCallback;
 let getSelectedMateria;
 let getSelectedAsset;
@@ -1213,6 +1214,8 @@ export function refreshInspectorValues() {
 export async function updateInspector() {
     if (!dom.inspectorContent) return;
 
+    const updateId = ++lastUpdateId;
+
     // Guardar la posición del scroll antes de limpiar
     const savedScrollTop = dom.inspectorContent.scrollTop;
 
@@ -1226,8 +1229,11 @@ export async function updateInspector() {
     } else if (selectedAsset) {
         await updateInspectorForAsset(selectedAsset.name, selectedAsset.path);
     } else {
+        if (updateId !== lastUpdateId) return;
         dom.inspectorContent.innerHTML = `<p class="inspector-placeholder" data-i18n="NADA_SELECCIONADO">${window.Localization.get('NADA_SELECCIONADO', 'Nada seleccionado')}</p>`;
     }
+
+    if (updateId !== lastUpdateId) return;
 
     // Restaurar la posición del scroll con un pequeño retraso para asegurar que el DOM se haya renderizado
     requestAnimationFrame(() => {
@@ -1549,9 +1555,10 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
 async function updateInspectorForMateria(selectedMateria) {
     const config = getCurrentProjectConfig();
     const L = window.Localization;
+    const currentId = lastUpdateId;
 
     // Name input and active toggle
-    dom.inspectorContent.innerHTML = `
+    const headerHTML = `
         <div class="inspector-materia-header">
             <input type="checkbox" id="materia-active-toggle" title="${L.get('ACTIVAR_DESACTIVAR_MATERIA', 'Activar/Desactivar Materia')}" ${selectedMateria.isActive ? 'checked' : ''}>
             <input type="text" autocomplete="off" id="materia-name-input" value="${selectedMateria.name}">
@@ -1567,6 +1574,9 @@ async function updateInspectorForMateria(selectedMateria) {
             </div>
         </div>
     `;
+
+    if (currentId !== lastUpdateId) return;
+    dom.inspectorContent.innerHTML = headerHTML;
 
     // Populate Tags Dropdown
     const tagSelect = dom.inspectorContent.querySelector('#materia-tag-select');
@@ -4539,6 +4549,7 @@ async function updateInspectorForMateria(selectedMateria) {
         componentsWrapper.appendChild(fold2D);
     }
 
+    if (currentId !== lastUpdateId) return;
     dom.inspectorContent.appendChild(componentsWrapper);
 
     const addComponentBtn = document.createElement('button');
@@ -4551,8 +4562,9 @@ async function updateInspectorForMateria(selectedMateria) {
 
 
 async function updateInspectorForAsset(assetName, assetPath) {
+    const currentId = lastUpdateId;
     if (!assetName) {
-        dom.inspectorContent.innerHTML = `<p class="inspector-placeholder">Selecciona un asset</p>`;
+        if (currentId === lastUpdateId) dom.inspectorContent.innerHTML = `<p class="inspector-placeholder">Selecciona un asset</p>`;
         return;
     }
 
@@ -5888,6 +5900,7 @@ async function renderModel3DInspector(assetName, assetPath) {
         </div>
     `;
 
+    if (lastUpdateId !== currentId) return;
     dom.inspectorContent.appendChild(container);
 
     const canvas = document.getElementById('model-preview-canvas');
@@ -5895,9 +5908,10 @@ async function renderModel3DInspector(assetName, assetPath) {
     let previewScene = null;
     let animationId = null;
     let previewMateria = null;
+    let lastViewMatrix = window.glMatrix.mat4.create();
 
     const captureThumbnail = async () => {
-        if (!canvas) return;
+        if (!canvas || !previewMateria) return;
         const thumbCanvas = document.createElement('canvas');
         thumbCanvas.width = 128;
         thumbCanvas.height = 128;
@@ -5906,27 +5920,35 @@ async function renderModel3DInspector(assetName, assetPath) {
         // Auto-frame the model for the thumbnail
         const { getAABB3D } = await import('../../engine/MathUtils.js');
         const aabb = getAABB3D(previewMateria);
-        let thumbViewMatrix = lastViewMatrix;
+        const glm = window.glMatrix;
+        let thumbViewMatrix = glm.mat4.create();
+        glm.mat4.copy(thumbViewMatrix, lastViewMatrix);
 
         if (aabb) {
-            const glm = window.glMatrix;
             const center = aabb.center;
             const size = glm.vec3.distance(aabb.min, aabb.max);
-            const dist = Math.max(size * 1.2, 50);
+            const dist = Math.max(size * 1.5, 50);
 
             thumbViewMatrix = glm.mat4.create();
-            // Upright view for thumbnail: slightly tilted from front
-            const camPos = [center[0], center[1] + size * 0.2, center[2] + dist];
+            // Upright professional view: front-side slightly from above
+            const camPos = [center[0], center[1] + size * 0.3, center[2] + dist];
             glm.mat4.lookAt(thumbViewMatrix, camPos, center, [0, 1, 0]);
         }
 
         // Draw only the model by using a temporary render with no grid and transparent bg
         if (renderer && previewScene) {
+            // Save state
+            const oldSky = previewScene.ambiente.skyMode;
+            previewScene.ambiente.skyMode = 'None';
+
             renderer.render(previewScene, null, {
                 viewMatrix: thumbViewMatrix,
                 showGrid: false,
                 clearAlpha: 0
             });
+
+            // Restore state
+            previewScene.ambiente.skyMode = oldSky;
         }
         thumbCtx.drawImage(canvas, 0, 0, 128, 128);
 
@@ -5939,6 +5961,7 @@ async function renderModel3DInspector(assetName, assetPath) {
                 const writable = await thumbHandle.createWritable();
                 await writable.write(blob);
                 await writable.close();
+                console.log(`[Thumbnail] Guardada miniatura para ${assetName}`);
                 if (updateAssetBrowserCallback) await updateAssetBrowserCallback();
             } catch (e) {
                 console.warn("Error saving thumbnail:", e);
@@ -5983,7 +6006,6 @@ async function renderModel3DInspector(assetName, assetPath) {
         }
 
         let lastTime = performance.now();
-        let lastViewMatrix = window.glMatrix.mat4.create();
         // Orbit camera state
         let orbitYaw = 180;
         let orbitPitch = 15;
@@ -6193,51 +6215,7 @@ async function renderModel3DInspector(assetName, assetPath) {
         window.Dialogs.showNotification(L.get('EXITO'), `Se han extraído ${extractedCount} animaciones.`);
 
         // Capture a thumbnail for the model after a short delay
-        const captureAnimThumbnail = async () => {
-            const thumbCanvas = document.createElement('canvas');
-            thumbCanvas.width = 128;
-            thumbCanvas.height = 128;
-            const thumbCtx = thumbCanvas.getContext('2d');
-
-            const { getAABB3D } = await import('../../engine/MathUtils.js');
-            const aabb = getAABB3D(previewMateria);
-            let thumbViewMatrix = lastViewMatrix;
-
-            if (aabb) {
-                const glm = window.glMatrix;
-                const center = aabb.center;
-                const size = glm.vec3.distance(aabb.min, aabb.max);
-                const dist = Math.max(size * 1.2, 50);
-                thumbViewMatrix = glm.mat4.create();
-                const camPos = [center[0], center[1] + size * 0.2, center[2] + dist];
-                glm.mat4.lookAt(thumbViewMatrix, camPos, center, [0, 1, 0]);
-            }
-
-            if (renderer && previewScene) {
-                renderer.render(previewScene, null, {
-                    viewMatrix: thumbViewMatrix,
-                    showGrid: false,
-                    clearAlpha: 0
-                });
-            }
-            thumbCtx.drawImage(canvas, 0, 0, 128, 128);
-
-            thumbCanvas.toBlob(async (blob) => {
-                const thumbName = assetName + '.thumb.png';
-                const dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
-                if (!dirHandle) return;
-                try {
-                    const thumbHandle = await dirHandle.getFileHandle(thumbName, { create: true });
-                    const writable = await thumbHandle.createWritable();
-                    await writable.write(blob);
-                    await writable.close();
-                    if (updateAssetBrowserCallback) await updateAssetBrowserCallback();
-                } catch (e) {
-                    console.warn("Error saving thumbnail:", e);
-                }
-            }, 'image/png');
-        };
-        setTimeout(captureAnimThumbnail, 1000);
+        setTimeout(captureThumbnail, 1000);
 
         if (updateAssetBrowserCallback) await updateAssetBrowserCallback();
     };

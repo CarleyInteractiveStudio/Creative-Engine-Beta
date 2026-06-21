@@ -63,7 +63,7 @@ export class Renderer3D {
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         gl.enable(gl.CULL_FACE);
-        gl.frontFace(gl.CCW);
+        gl.frontFace(gl.CW); // Revert to CW as internal geometry is wound this way
 
         this.initShaders();
         this.initBasicGeometry();
@@ -358,7 +358,7 @@ export class Renderer3D {
     initBasicGeometry() {
         const gl = this.gl;
         // Quad for Full-screen effects / Sky (XY plane)
-        const quadPos = new Float32Array([-1,1,0, 1,1,0, -1,-1,0, 1,-1,0]);
+        const quadPos = new Float32Array([-1,1,0, -1,-1,0, 1,1,0, 1,-1,0]);
         this.buffers.quad = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.quad);
         gl.bufferData(gl.ARRAY_BUFFER, quadPos, gl.STATIC_DRAW);
@@ -524,9 +524,11 @@ export class Renderer3D {
             this.drawSky(scene?.ambiente || {});
         }
 
-        if (options.showGrid !== false) this.drawGrid(near, far);
+        if (options.showGrid !== false) {
+            this.drawGrid(near, far);
+            this.drawOriginAxes();
+        }
         this.drawScene(scene, cameraMateria);
-        this.drawOriginAxes();
         if (options.isGameView) {
             // console.log("[Renderer3D] Rendered scene for game view");
         }

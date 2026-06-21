@@ -1208,6 +1208,7 @@ export function initialize(dependencies) {
 
         lastMousePosition = { x: moveEvent.clientX, y: moveEvent.clientY };
         updateInspector();
+        if (updateScene) updateScene();
 
         // Broadcast movement
         broadcastUpdate({
