@@ -33,6 +33,7 @@ let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan', 'tile-brush', 'til
 let showGizmoIcons = true;
 let isAddingLayer = false;
 let isDragging = false;
+let isNavigating3D = false;
 let lastSelectedId = -1;
 let lastPaintedCoords = { col: -1, row: -1 };
 // isPanning is no longer needed as a module-level state
@@ -1224,6 +1225,10 @@ export function initialize(dependencies) {
         window.removeEventListener('mouseup', onGizmoDragEnd);
     };
 
+    window.addEventListener('mouseup', e => {
+        if (e.button === 2) isNavigating3D = false;
+    });
+
     let rightClickStartTime = 0;
     let rightClickStartPos = { x: 0, y: 0 };
 
@@ -1234,6 +1239,7 @@ export function initialize(dependencies) {
     sceneCanvases.forEach(canvas => {
         canvas.addEventListener('mousedown', e => {
             if (e.button === 2) {
+                isNavigating3D = true;
                 rightClickStartTime = performance.now();
                 rightClickStartPos = { x: e.clientX, y: e.clientY };
             }
@@ -2075,8 +2081,8 @@ function handle3DCameraNavigation() {
         return;
     }
 
-    // Fly Mode active when Right Click is held
-    const isFlying = InputManager.getMouseButton(2);
+    // Fly Mode active when Right Click is held (ONLY if interaction started on scene canvas)
+    const isFlying = InputManager.getMouseButton(2) && isNavigating3D;
 
     if (isFlying) {
         // Smooth Fly Navigation Speed

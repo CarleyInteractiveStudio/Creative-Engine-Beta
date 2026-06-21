@@ -133,11 +133,11 @@ export async function createSkinnedMeshObject(modelPath, parent = null, options 
     const rootName = modelPath.split('/').pop().split('.')[0];
     const rootMateria = createBaseMateria(generateUniqueName(rootName), parent, false, options.addToScene !== false);
 
-    // Root orientation: Renderer3D already flips Y in projection, so models should stay as-is (Y-UP)
+    // Root orientation: Standard models are Y-UP, but our engine is Y-DOWN.
+    // We rotate 180deg on X to align the model with the engine's coordinate system.
     const rootTransform = rootMateria.getComponent(Components.Transform);
     if (rootTransform && !options.noRotation) {
-        // No rotation needed anymore as Renderer3D handles the coordinate system flip
-        rootTransform.localRotation = { x: 0, y: 0, z: 0 };
+        rootTransform.localRotation = { x: 180, y: 0, z: 0 };
     }
 
     const nodeMaterias = [];

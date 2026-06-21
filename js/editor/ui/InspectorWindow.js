@@ -563,17 +563,17 @@ async function handleInspectorChange(e) {
     } else if (e.target.matches('#materia-tag-select')) {
         const selectedValue = e.target.value;
         if (selectedValue === 'add_new_tag') {
-            showPrompt(L.get('NUEVO_TAG', 'Nuevo Tag'), L.get('INTRODUCE_NOMBRE_TAG', 'Introduce el nombre para el nuevo tag:'), async (newTagName) => {
+            window.Dialogs.showPrompt(L.get('NUEVO_TAG', 'Nuevo Tag'), L.get('INTRODUCE_NOMBRE_TAG', 'Introduce el nombre para el nuevo tag:'), async (newTagName) => {
                 if (newTagName && newTagName.trim() !== '') {
                     const config = getCurrentProjectConfig();
                     if (!config.tags.includes(newTagName)) {
                         config.tags.push(newTagName);
                         await saveProjectConfig();
                         selectedMateria.tag = newTagName;
-                        showNotification(L.get('EXITO', 'Éxito'), `${L.get('TAG_ANADIDO', 'Tag "{tag}" añadido y seleccionado.').replace('{tag}', newTagName)}`);
+                        window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('TAG_ANADIDO', 'Tag "{tag}" añadido y seleccionado.').replace('{tag}', newTagName)}`);
                         updateInspector();
                     } else {
-                        showNotification(L.get('AVISO', 'Aviso'), `${L.get('TAG_EXISTE', 'El tag "{tag}" ya existe.').replace('{tag}', newTagName)}`);
+                        window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), `${L.get('TAG_EXISTE', 'El tag "{tag}" ya existe.').replace('{tag}', newTagName)}`);
                         // Revert selection in dropdown
                         e.target.value = selectedMateria.tag;
                     }
@@ -5045,7 +5045,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
                     const imageUrl = await getURLForAssetPath(assetPath, projectsDirHandle);
                     if (!imageUrl) {
-                    showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CARGAR_IMAGEN_ANIM', "No se pudo cargar la imagen para crear la animación."));
+                    window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CARGAR_IMAGEN_ANIM', "No se pudo cargar la imagen para crear la animación."));
                         return;
                     }
 
@@ -5064,7 +5064,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
                 const dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
                     await createAssetCallback(animAssetName, JSON.stringify(animData, null, 2), dirHandle);
-                showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_CREAR_ANIM_ASSET', 'Asset de animación "{name}" creado.').replace('{name}', animAssetName)}`);
+                window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_CREAR_ANIM_ASSET', 'Asset de animación "{name}" creado.').replace('{name}', animAssetName)}`);
                     if(updateAssetBrowserCallback) updateAssetBrowserCallback();
                 });
             }
@@ -5821,7 +5821,7 @@ async function saveProjectConfig() {
         console.log("Configuración del proyecto guardada desde el Inspector.");
     } catch (error) {
         console.error("Error al guardar la configuración del proyecto desde el Inspector:", error);
-        showNotification(window.Localization.get('ERROR', 'Error'), window.Localization.get('ERROR_GUARDAR_CONFIG', 'No se pudo guardar la configuración del proyecto.'));
+        window.Dialogs.showNotification(window.Localization.get('ERROR', 'Error'), window.Localization.get('ERROR_GUARDAR_CONFIG', 'No se pudo guardar la configuración del proyecto.'));
     }
 }
 
@@ -5902,6 +5902,15 @@ async function renderModel3DInspector(assetName, assetPath) {
         thumbCanvas.width = 128;
         thumbCanvas.height = 128;
         const thumbCtx = thumbCanvas.getContext('2d');
+
+        // Draw only the model by using a temporary render with no grid and transparent bg
+        if (renderer && previewScene) {
+            renderer.render(previewScene, null, {
+                viewMatrix: lastViewMatrix,
+                showGrid: false,
+                clearAlpha: 0
+            });
+        }
         thumbCtx.drawImage(canvas, 0, 0, 128, 128);
 
         thumbCanvas.toBlob(async (blob) => {
@@ -5957,6 +5966,7 @@ async function renderModel3DInspector(assetName, assetPath) {
         }
 
         let lastTime = performance.now();
+        let lastViewMatrix = window.glMatrix.mat4.create();
         // Orbit camera state
         let orbitYaw = 180;
         let orbitPitch = 15;
@@ -5969,6 +5979,7 @@ async function renderModel3DInspector(assetName, assetPath) {
         let lastMouseY = 0;
 
         canvas.onmousedown = (e) => {
+            e.stopPropagation();
             lastMouseX = e.clientX;
             lastMouseY = e.clientY;
             if (e.button === 0) isPanning = true; // Left click pan
@@ -5981,6 +5992,7 @@ async function renderModel3DInspector(assetName, assetPath) {
 
         const handleGlobalMouseMove = (e) => {
             if (!isOrbiting && !isPanning) return;
+            e.stopPropagation();
             const dx = e.clientX - lastMouseX;
             const dy = e.clientY - lastMouseY;
             lastMouseX = e.clientX;
@@ -6003,10 +6015,11 @@ async function renderModel3DInspector(assetName, assetPath) {
                 orbitTarget[2] -= right[2] * dx * 0.5 * factor;
             }
         };
-        window.addEventListener('mousemove', handleGlobalMouseMove);
+        window.addEventListener('mousemove', handleGlobalMouseMove, { capture: true });
 
         canvas.onwheel = (e) => {
             e.preventDefault();
+            e.stopPropagation();
             orbitDistance += e.deltaY * 0.5;
             orbitDistance = Math.max(20, orbitDistance);
         };
@@ -6041,13 +6054,12 @@ async function renderModel3DInspector(assetName, assetPath) {
             ];
 
             glm.mat4.lookAt(viewMat, camPos, orbitTarget, [0, -1, 0]); // -Y is UP in engine
+            glm.mat4.copy(lastViewMatrix, viewMat);
 
             renderer.render(previewScene, null, { viewMatrix: viewMat, showGrid: true, clearAlpha: 1 });
 
             // Draw bones wireframe if enabled
             if (showBonesCheck.checked && previewMateria) {
-                const { Gizmos } = renderer.materia.scene || { Gizmos: null }; // Should be imported but let's check
-                // Actually we can use the global Gizmos if available or draw lines directly
                 drawSkeletonGizmos(renderer, previewMateria, viewMat);
             }
 
@@ -6118,7 +6130,7 @@ async function renderModel3DInspector(assetName, assetPath) {
         if (!previewMateria) return;
         const animator = previewMateria.getComponentByName('Animator3D');
         if (!animator || !animator.animations || animator.animations.length === 0) {
-            showNotification(L.get('AVISO'), "Este modelo no contiene animaciones.");
+            window.Dialogs.showNotification(L.get('AVISO'), "Este modelo no contiene animaciones.");
             return;
         }
 
@@ -6161,7 +6173,7 @@ async function renderModel3DInspector(assetName, assetPath) {
             }
         }
 
-        showNotification(L.get('EXITO'), `Se han extraído ${extractedCount} animaciones.`);
+        window.Dialogs.showNotification(L.get('EXITO'), `Se han extraído ${extractedCount} animaciones.`);
 
         // Capture a thumbnail for the model after a short delay
         const captureAnimThumbnail = async () => {
@@ -6169,6 +6181,14 @@ async function renderModel3DInspector(assetName, assetPath) {
             thumbCanvas.width = 128;
             thumbCanvas.height = 128;
             const thumbCtx = thumbCanvas.getContext('2d');
+
+            if (renderer && previewScene) {
+                renderer.render(previewScene, null, {
+                    viewMatrix: lastViewMatrix,
+                    showGrid: false,
+                    clearAlpha: 0
+                });
+            }
             thumbCtx.drawImage(canvas, 0, 0, 128, 128);
 
             thumbCanvas.toBlob(async (blob) => {
@@ -6218,7 +6238,7 @@ async function renderModel3DInspector(assetName, assetPath) {
             if (window.updateScene) window.updateScene();
             if (window.selectMateria) window.selectMateria(target.id);
 
-            showNotification(L.get('EXITO'), `Rigging generado: se añadieron ${count} componentes de Hueso.`);
+            window.Dialogs.showNotification(L.get('EXITO'), `Rigging generado: se añadieron ${count} componentes de Hueso.`);
         }
     };
 }
@@ -6392,7 +6412,7 @@ async function renderVideoInspector(assetName, assetPath) {
         const quality = document.getElementById('video-quality-select').value;
         const meta = { quality };
         await saveAssetMetaCallback(assetName, meta, dirHandle);
-        showNotification(window.Localization.get('EXITO', 'Éxito'), window.Localization.get('CAMBIOS_APLICADOS', "Cambios aplicados correctamente."));
+        window.Dialogs.showNotification(window.Localization.get('EXITO', 'Éxito'), window.Localization.get('CAMBIOS_APLICADOS', "Cambios aplicados correctamente."));
     };
 }
 

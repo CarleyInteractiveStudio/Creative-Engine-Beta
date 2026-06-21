@@ -55,7 +55,7 @@ export function initialize(editorDom, editorProjectsDirHandle, config, getPrefsF
 
 export async function saveProjectConfig(showAlert = true) {
     if (!projectsDirHandle) {
-        if(showAlert) showNotification(
+        if(showAlert) window.Dialogs.showNotification(
             window.Localization?.get('ERROR') || 'Error',
             window.Localization?.get('ERROR_DIRECTORIO_NO_DISPONIBLE') || 'El directorio del proyecto no está disponible.'
         );
@@ -132,13 +132,13 @@ export async function saveProjectConfig(showAlert = true) {
         const writable = await configFileHandle.createWritable();
         await writable.write(JSON.stringify(currentProjectConfig, null, 2));
         await writable.close();
-        if(showAlert) showNotification(
+        if(showAlert) window.Dialogs.showNotification(
             window.Localization?.get('EXITO') || 'Éxito',
             window.Localization?.get('CONFIG_GUARDADA') || '¡Configuración guardada!'
         );
     } catch (error) {
         console.error("Error al guardar la configuración del proyecto:", error);
-        if(showAlert) showNotification(
+        if(showAlert) window.Dialogs.showNotification(
             window.Localization?.get('ERROR') || 'Error',
             window.Localization?.get('ERROR_GUARDAR_CONFIG') || 'No se pudo guardar la configuración.'
         );
@@ -293,7 +293,7 @@ function setupEventListeners() {
             try {
                 const deleted = await caches.delete('ce-asset-cache');
                 if (deleted) {
-                    showNotification("Caché", "La caché de activos ha sido limpiada con éxito.");
+                    window.Dialogs.showNotification("Caché", "La caché de activos ha sido limpiada con éxito.");
                     updateCacheStatus();
                 }
             } catch (e) {
