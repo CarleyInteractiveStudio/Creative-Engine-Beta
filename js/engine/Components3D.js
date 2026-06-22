@@ -371,6 +371,7 @@ export class SkinnedMeshRenderer3D extends MeshRenderer3D {
 
     update(deltaTime) {
         super.update(deltaTime);
+        // Force bone matrix update in both game and editor mode to allow live posing via the hierarchy
         this.updateBoneMatrices();
     }
 

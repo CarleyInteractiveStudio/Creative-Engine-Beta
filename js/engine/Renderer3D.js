@@ -241,7 +241,7 @@ export class Renderer3D {
                     normal = perturbNormal(normal, vWorldPos, vTextureCoord);
                 }
 
-                float diff = max(dot(normal, normalize(uLightDir)), 0.2);
+                float diff = max(dot(normal, normalize(uLightDir)), 0.35); // Slightly higher ambient for better visibility
                 vec4 texColor = uUseMainTex ? texture2D(uMainTex, vTextureCoord) : vec4(1.0);
                 vec4 baseColor = (vColor.a > 0.0) ? vColor : uColor;
                 gl_FragColor = vec4(baseColor.rgb * texColor.rgb * diff, baseColor.a * texColor.a);
@@ -319,7 +319,7 @@ export class Renderer3D {
                     normal = perturbNormal(normal, vWorldPos, vTextureCoord);
                 }
 
-                float diff = max(dot(normal, normalize(uLightDir)), 0.25);
+                float diff = max(dot(normal, normalize(uLightDir)), 0.4); // Higher ambient for skinned meshes
                 vec4 texColor = uUseMainTex ? texture2D(uMainTex, vTextureCoord) : vec4(1.0);
                 vec3 baseColor = (vColor.a > 0.05) ? vColor.rgb : uColor.rgb;
                 gl_FragColor = vec4(baseColor * texColor.rgb * diff, uColor.a * texColor.a);
@@ -489,7 +489,11 @@ export class Renderer3D {
         window._Renderer3D = this;
         const gl = this.gl;
 
-        this.resize();
+        if (options.customViewport) {
+            gl.viewport(options.customViewport.x, options.customViewport.y, options.customViewport.width, options.customViewport.height);
+        } else {
+            this.resize();
+        }
 
         let clearColor = [0.05, 0.05, 0.07];
         let clearFlags = 'SolidColor';
@@ -505,7 +509,7 @@ export class Renderer3D {
         gl.clearColor(clearColor[0], clearColor[1], clearColor[2], options.clearAlpha !== undefined ? options.clearAlpha : 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        const aspect = gl.canvas.width / gl.canvas.height;
+        const aspect = options.aspect || (gl.canvas.width / gl.canvas.height);
         let near = 0.1;
         let far = 20000.0;
 
@@ -882,6 +886,12 @@ export class Renderer3D {
 
     drawSkinnedMesh(materia, mesh) {
         const gl = this.gl;
+
+        // Ensure bone matrices are up to date, especially in the editor where component.update() might not be running
+        if (typeof mesh.updateBoneMatrices === 'function') {
+            mesh.updateBoneMatrices();
+        }
+
         const program = this.programs.skinned;
         gl.useProgram(program);
 
@@ -1150,14 +1160,33 @@ export class Renderer3D {
         scene.getAllMaterias().forEach((m, index) => {
             if (!m.isActive) return;
             const mesh = m.getComponent(Components3D.MeshRenderer3D);
-            if (!mesh) return;
+            const skinnedMesh = m.getComponent(Components3D.SkinnedMeshRenderer3D);
+            if (!mesh && !skinnedMesh) return;
 
             const id = index + 1;
             idMap.set(id, m.id);
             gl.uniform4f(pickColorLoc, (id & 0xFF)/255, ((id >> 8) & 0xFF)/255, ((id >> 16) & 0xFF)/255, 1.0);
             gl.uniformMatrix4fv(modelLoc, false, m.getComponent(Components.Transform).worldMatrix);
 
-            if (mesh.meshType === 'Cube' || !mesh.meshType) {
+            if (skinnedMesh) {
+                if (skinnedMesh.cpuIndices && skinnedMesh._glBuffers?.get(gl)) {
+                    const buffers = skinnedMesh._glBuffers.get(gl);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.positions);
+                    gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(posLoc);
+                    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+                    gl.drawElements(gl.TRIANGLES, skinnedMesh.indexCount, gl.UNSIGNED_SHORT, 0);
+                } else if (skinnedMesh.cpuPositions) {
+                    // Fallback for meshes without indices
+                    const posBuffer = gl.createBuffer();
+                    gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, skinnedMesh.cpuPositions, gl.STATIC_DRAW);
+                    gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(posLoc);
+                    gl.drawArrays(gl.TRIANGLES, 0, skinnedMesh.indexCount);
+                    gl.deleteBuffer(posBuffer);
+                }
+            } else if (mesh.meshType === 'Cube' || !mesh.meshType) {
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cube);
                 gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
                 gl.enableVertexAttribArray(posLoc);

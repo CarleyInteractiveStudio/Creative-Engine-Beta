@@ -5914,46 +5914,71 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
     let lastViewMatrix = window.glMatrix.mat4.create();
 
     const captureThumbnail = async () => {
-        if (!canvas || !previewMateria) return;
+        if (!canvas || !previewMateria || !renderer) return;
+
+        const thumbSize = 256; // Higher resolution for better quality
         const thumbCanvas = document.createElement('canvas');
-        thumbCanvas.width = 128;
-        thumbCanvas.height = 128;
+        thumbCanvas.width = thumbSize;
+        thumbCanvas.height = thumbSize;
         const thumbCtx = thumbCanvas.getContext('2d');
 
         // Auto-frame the model for the thumbnail
         const { getAABB3D } = await import('../../engine/MathUtils.js');
         const aabb = getAABB3D(previewMateria);
         const glm = window.glMatrix;
+
         let thumbViewMatrix = glm.mat4.create();
-        glm.mat4.copy(thumbViewMatrix, lastViewMatrix);
+        let thumbProjMatrix = glm.mat4.create();
 
         if (aabb) {
             const center = aabb.center;
-            const size = glm.vec3.distance(aabb.min, aabb.max);
+            const min = aabb.min;
+            const max = aabb.max;
+
+            const size = glm.vec3.distance(min, max);
             const dist = Math.max(size * 1.5, 50);
 
-            thumbViewMatrix = glm.mat4.create();
-            // Upright professional view: front-side slightly from above
-            const camPos = [center[0], center[1] + size * 0.3, center[2] + dist];
+            // Use perspective as requested, but perfectly framed
+            glm.mat4.perspective(thumbProjMatrix, 45 * Math.PI / 180, 1.0, 1.0, 10000);
+
+            // "Studio look": slight inclination (pitch) and side angle (yaw)
+            const pitch = 15 * Math.PI / 180;
+            const yaw = 30 * Math.PI / 180;
+
+            const camPos = [
+                center[0] + Math.sin(yaw) * Math.cos(pitch) * dist,
+                center[1] + Math.sin(pitch) * dist,
+                center[2] + Math.cos(yaw) * Math.cos(pitch) * dist
+            ];
+
             glm.mat4.lookAt(thumbViewMatrix, camPos, center, [0, 1, 0]);
+        } else {
+            glm.mat4.copy(thumbViewMatrix, lastViewMatrix);
+            glm.mat4.perspective(thumbProjMatrix, 45 * Math.PI / 180, 1, 0.1, 10000);
         }
 
         // Draw only the model by using a temporary render with no grid and transparent bg
         if (renderer && previewScene) {
-            // Save state
             const oldSky = previewScene.ambiente.skyMode;
             previewScene.ambiente.skyMode = 'None';
+
+            // We use a temporary projection matrix override for the thumbnail
+            const oldProj = glm.mat4.clone(renderer.projectionMatrix);
+            glm.mat4.copy(renderer.projectionMatrix, thumbProjMatrix);
 
             renderer.render(previewScene, null, {
                 viewMatrix: thumbViewMatrix,
                 showGrid: false,
-                clearAlpha: 0
+                clearAlpha: 0,
+                customViewport: { x: 0, y: 0, width: thumbSize, height: thumbSize },
+                aspect: 1.0
             });
 
-            // Restore state
             previewScene.ambiente.skyMode = oldSky;
+            glm.mat4.copy(renderer.projectionMatrix, oldProj);
         }
-        thumbCtx.drawImage(canvas, 0, 0, 128, 128);
+
+        thumbCtx.drawImage(canvas, 0, 0, thumbSize, thumbSize);
 
         thumbCanvas.toBlob(async (blob) => {
             const thumbName = assetName + '.thumb.png';
@@ -5981,7 +6006,7 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
 
         previewScene = new Scene();
         previewScene.ambiente.skyMode = 'SolidColor';
-        previewScene.ambiente.skyColor = '#111111';
+        previewScene.ambiente.skyColor = '#2a2a2a'; // Lighter background to avoid "too dark" feeling
 
         console.log(`[Inspector] Iniciando carga de vista previa para: ${assetPath}`);
         previewMateria = await createSkinnedMeshObject(assetPath, null, { addToScene: false });
