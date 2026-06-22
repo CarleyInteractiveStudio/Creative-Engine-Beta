@@ -221,6 +221,7 @@ export class Renderer3D {
             uniform sampler2D uNormalMap;
             uniform bool uUseMainTex;
             uniform bool uUseNormalMap;
+            uniform bool uUseVertexColor;
 
             vec3 perturbNormal(vec3 surf_norm, vec3 view_pos, vec2 uv) {
                 vec3 q1 = dFdx(view_pos);
@@ -241,10 +242,16 @@ export class Renderer3D {
                     normal = perturbNormal(normal, vWorldPos, vTextureCoord);
                 }
 
-                float diff = max(dot(normal, normalize(uLightDir)), 0.2);
+                vec3 mainLightDir = normalize(uLightDir);
+                float diff = max(dot(normal, mainLightDir), 0.0);
+                float fill = max(dot(normal, vec3(-0.5, -0.5, -0.2)), 0.0) * 0.3;
+                float ambient = 0.5;
+
+                float lighting = clamp(diff + fill + ambient, 0.0, 1.0);
+
                 vec4 texColor = uUseMainTex ? texture2D(uMainTex, vTextureCoord) : vec4(1.0);
-                vec4 baseColor = (vColor.a > 0.0) ? vColor : uColor;
-                gl_FragColor = vec4(baseColor.rgb * texColor.rgb * diff, baseColor.a * texColor.a);
+                vec4 baseColor = (uUseVertexColor && vColor.a > 0.01) ? vColor : uColor;
+                gl_FragColor = vec4(baseColor.rgb * texColor.rgb * lighting, baseColor.a * texColor.a);
             }
         `;
         this.programs.standard = this.createProgram(stdVs, stdFs);
@@ -299,6 +306,7 @@ export class Renderer3D {
             uniform sampler2D uNormalMap;
             uniform bool uUseMainTex;
             uniform bool uUseNormalMap;
+            uniform bool uUseVertexColor;
 
             vec3 perturbNormal(vec3 surf_norm, vec3 view_pos, vec2 uv) {
                 vec3 q1 = dFdx(view_pos);
@@ -319,10 +327,16 @@ export class Renderer3D {
                     normal = perturbNormal(normal, vWorldPos, vTextureCoord);
                 }
 
-                float diff = max(dot(normal, normalize(uLightDir)), 0.25);
+                vec3 mainLightDir = normalize(uLightDir);
+                float diff = max(dot(normal, mainLightDir), 0.0);
+                float fill = max(dot(normal, vec3(-0.5, -0.5, -0.2)), 0.0) * 0.3;
+                float ambient = 0.5;
+
+                float lighting = clamp(diff + fill + ambient, 0.0, 1.0);
+
                 vec4 texColor = uUseMainTex ? texture2D(uMainTex, vTextureCoord) : vec4(1.0);
-                vec3 baseColor = (vColor.a > 0.05) ? vColor.rgb : uColor.rgb;
-                gl_FragColor = vec4(baseColor * texColor.rgb * diff, uColor.a * texColor.a);
+                vec3 baseColor = (uUseVertexColor && vColor.a > 0.01) ? vColor.rgb : uColor.rgb;
+                gl_FragColor = vec4(baseColor * texColor.rgb * lighting, uColor.a * texColor.a);
             }
         `;
 
@@ -489,10 +503,15 @@ export class Renderer3D {
         window._Renderer3D = this;
         const gl = this.gl;
 
-        this.resize();
+        if (options.customViewport) {
+            gl.viewport(options.customViewport.x, options.customViewport.y, options.customViewport.width, options.customViewport.height);
+        } else {
+            this.resize();
+        }
 
         let clearColor = [0.05, 0.05, 0.07];
-        let clearFlags = 'SolidColor';
+        let clearFlags = scene?.ambiente?.skyMode || 'SolidColor';
+
         if (cameraMateria) {
             const cam = cameraMateria.getComponent(Components.Camera);
             clearFlags = cam.clearFlags;
@@ -500,12 +519,15 @@ export class Renderer3D {
                 const rgb = this.hexToRgb(cam.backgroundColor);
                 clearColor = [rgb[0], rgb[1], rgb[2]];
             }
+        } else if (scene?.ambiente?.skyColor && clearFlags === 'SolidColor') {
+            const rgb = this.hexToRgb(scene.ambiente.skyColor);
+            clearColor = [rgb[0], rgb[1], rgb[2]];
         }
 
         gl.clearColor(clearColor[0], clearColor[1], clearColor[2], options.clearAlpha !== undefined ? options.clearAlpha : 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        const aspect = gl.canvas.width / gl.canvas.height;
+        const aspect = options.aspect || (gl.canvas.width / gl.canvas.height);
         let near = 0.1;
         let far = 20000.0;
 
@@ -523,7 +545,11 @@ export class Renderer3D {
             }
             mat4.invert(this.viewMatrix, transform.worldMatrix);
         } else if (options.viewMatrix) {
-            mat4.perspective(this.projectionMatrix, 45 * Math.PI / 180, aspect, near, far);
+            if (options.projectionMatrix) {
+                mat4.copy(this.projectionMatrix, options.projectionMatrix);
+            } else {
+                mat4.perspective(this.projectionMatrix, 45 * Math.PI / 180, aspect, near, far);
+            }
             mat4.copy(this.viewMatrix, options.viewMatrix);
         } else {
             mat4.perspective(this.projectionMatrix, 45 * Math.PI / 180, aspect, near, far);
@@ -675,8 +701,9 @@ export class Renderer3D {
             gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
             gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
             if (!mesh.isUnlit) gl.uniform3f(gl.getUniformLocation(program, "uLightDir"), 0.5, 1.0, 0.3);
-        gl.uniform1i(gl.getUniformLocation(program, "uUseMainTex"), 0);
-        gl.uniform1i(gl.getUniformLocation(program, "uUseNormalMap"), 0);
+            gl.uniform1i(gl.getUniformLocation(program, "uUseMainTex"), 0);
+            gl.uniform1i(gl.getUniformLocation(program, "uUseNormalMap"), 0);
+            gl.uniform1i(gl.getUniformLocation(program, "uUseVertexColor"), 0);
 
             const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
             const normLoc = !mesh.isUnlit ? gl.getAttribLocation(program, 'aVertexNormal') : -1;
@@ -797,6 +824,7 @@ export class Renderer3D {
         gl.uniform3f(gl.getUniformLocation(program, "uLightDir"), 0.5, 1.0, 0.3);
         gl.uniform1i(gl.getUniformLocation(program, "uUseMainTex"), 0);
         gl.uniform1i(gl.getUniformLocation(program, "uUseNormalMap"), 0);
+        gl.uniform1i(gl.getUniformLocation(program, "uUseVertexColor"), 1);
 
         const color = this.hexToRgb(terrain.color);
         gl.uniform4f(gl.getUniformLocation(program, 'uColor'), color[0], color[1], color[2], 1.0);
@@ -882,6 +910,12 @@ export class Renderer3D {
 
     drawSkinnedMesh(materia, mesh) {
         const gl = this.gl;
+
+        // Ensure bone matrices are up to date, especially in the editor where component.update() might not be running
+        if (typeof mesh.updateBoneMatrices === 'function') {
+            mesh.updateBoneMatrices();
+        }
+
         const program = this.programs.skinned;
         gl.useProgram(program);
 
@@ -893,6 +927,7 @@ export class Renderer3D {
         gl.uniform3f(gl.getUniformLocation(program, "uLightDir"), 0.5, 1.0, 0.3);
         gl.uniform1i(gl.getUniformLocation(program, "uUseMainTex"), 0);
         gl.uniform1i(gl.getUniformLocation(program, "uUseNormalMap"), 0);
+        gl.uniform1i(gl.getUniformLocation(program, "uUseVertexColor"), mesh.cpuColors ? 1 : 0);
 
         // Identity for skinned meshes as bone matrices are in world space.
         // If it's a non-skinned primitive of a model, use the world matrix.
@@ -1150,14 +1185,33 @@ export class Renderer3D {
         scene.getAllMaterias().forEach((m, index) => {
             if (!m.isActive) return;
             const mesh = m.getComponent(Components3D.MeshRenderer3D);
-            if (!mesh) return;
+            const skinnedMesh = m.getComponent(Components3D.SkinnedMeshRenderer3D);
+            if (!mesh && !skinnedMesh) return;
 
             const id = index + 1;
             idMap.set(id, m.id);
             gl.uniform4f(pickColorLoc, (id & 0xFF)/255, ((id >> 8) & 0xFF)/255, ((id >> 16) & 0xFF)/255, 1.0);
             gl.uniformMatrix4fv(modelLoc, false, m.getComponent(Components.Transform).worldMatrix);
 
-            if (mesh.meshType === 'Cube' || !mesh.meshType) {
+            if (skinnedMesh) {
+                if (skinnedMesh.cpuIndices && skinnedMesh._glBuffers?.get(gl)) {
+                    const buffers = skinnedMesh._glBuffers.get(gl);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.positions);
+                    gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(posLoc);
+                    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+                    gl.drawElements(gl.TRIANGLES, skinnedMesh.indexCount, gl.UNSIGNED_SHORT, 0);
+                } else if (skinnedMesh.cpuPositions) {
+                    // Fallback for meshes without indices
+                    const posBuffer = gl.createBuffer();
+                    gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, skinnedMesh.cpuPositions, gl.STATIC_DRAW);
+                    gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(posLoc);
+                    gl.drawArrays(gl.TRIANGLES, 0, skinnedMesh.indexCount);
+                    gl.deleteBuffer(posBuffer);
+                }
+            } else if (mesh.meshType === 'Cube' || !mesh.meshType) {
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cube);
                 gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
                 gl.enableVertexAttribArray(posLoc);

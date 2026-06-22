@@ -5914,48 +5914,70 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
     let lastViewMatrix = window.glMatrix.mat4.create();
 
     const captureThumbnail = async () => {
-        if (!canvas || !previewMateria) return;
-        const thumbCanvas = document.createElement('canvas');
-        thumbCanvas.width = 128;
-        thumbCanvas.height = 128;
-        const thumbCtx = thumbCanvas.getContext('2d');
+        if (!canvas || !previewMateria || !renderer) return;
 
-        // Auto-frame the model for the thumbnail
+        // Use a hidden canvas for high-quality thumbnail generation to avoid interference
+        const thumbSize = 256;
+        const offscreenCanvas = document.createElement('canvas');
+        offscreenCanvas.width = thumbSize;
+        offscreenCanvas.height = thumbSize;
+
+        const offscreenRenderer = new Renderer3D(offscreenCanvas);
+        offscreenRenderer.init({ preserveDrawingBuffer: true });
+
         const { getAABB3D } = await import('../../engine/MathUtils.js');
         const aabb = getAABB3D(previewMateria);
         const glm = window.glMatrix;
+
         let thumbViewMatrix = glm.mat4.create();
-        glm.mat4.copy(thumbViewMatrix, lastViewMatrix);
+        let thumbProjMatrix = glm.mat4.create();
 
         if (aabb) {
             const center = aabb.center;
-            const size = glm.vec3.distance(aabb.min, aabb.max);
-            const dist = Math.max(size * 1.5, 50);
+            const min = aabb.min;
+            const max = aabb.max;
+            const modelHeight = max[1] - min[1];
+            const size = glm.vec3.distance(min, max);
 
-            thumbViewMatrix = glm.mat4.create();
-            // Upright professional view: front-side slightly from above
-            const camPos = [center[0], center[1] + size * 0.3, center[2] + dist];
+            // Adjust distance based on model size to fit head to toe
+            const dist = Math.max(size * 1.3, 50);
+
+            // "Studio look": slight inclination as requested
+            const pitch = 12 * Math.PI / 180;
+            const yaw = 25 * Math.PI / 180;
+
+            const camPos = [
+                center[0] + Math.sin(yaw) * Math.cos(pitch) * dist,
+                center[1] + Math.sin(pitch) * dist,
+                center[2] + Math.cos(yaw) * Math.cos(pitch) * dist
+            ];
+
+            glm.mat4.perspective(thumbProjMatrix, 40 * Math.PI / 180, 1.0, 1.0, 10000);
             glm.mat4.lookAt(thumbViewMatrix, camPos, center, [0, 1, 0]);
+        } else {
+            glm.mat4.copy(thumbViewMatrix, lastViewMatrix);
+            glm.mat4.perspective(thumbProjMatrix, 45 * Math.PI / 180, 1, 0.1, 10000);
         }
 
-        // Draw only the model by using a temporary render with no grid and transparent bg
-        if (renderer && previewScene) {
-            // Save state
-            const oldSky = previewScene.ambiente.skyMode;
-            previewScene.ambiente.skyMode = 'None';
+        // Render to offscreen canvas
+        const oldSkyMode = previewScene.ambiente.skyMode;
+        previewScene.ambiente.skyMode = 'None'; // Ensure transparent background
 
-            renderer.render(previewScene, null, {
-                viewMatrix: thumbViewMatrix,
-                showGrid: false,
-                clearAlpha: 0
-            });
+        // Ensure CULL_FACE is also disabled for thumbnails for consistency
+        offscreenRenderer.gl.disable(offscreenRenderer.gl.CULL_FACE);
 
-            // Restore state
-            previewScene.ambiente.skyMode = oldSky;
-        }
-        thumbCtx.drawImage(canvas, 0, 0, 128, 128);
+        offscreenRenderer.render(previewScene, null, {
+            viewMatrix: thumbViewMatrix,
+            projectionMatrix: thumbProjMatrix,
+            showGrid: false,
+            clearAlpha: 0, // ALPHA ZERO is essential for transparency
+            customViewport: { x: 0, y: 0, width: thumbSize, height: thumbSize },
+            aspect: 1.0
+        });
 
-        thumbCanvas.toBlob(async (blob) => {
+        previewScene.ambiente.skyMode = oldSkyMode;
+
+        offscreenCanvas.toBlob(async (blob) => {
             const thumbName = assetName + '.thumb.png';
             const dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
             if (!dirHandle) return;
@@ -5979,9 +6001,12 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
         renderer = new Renderer3D(canvas);
         renderer.init({ preserveDrawingBuffer: true });
 
+        // For the preview, we disable back-face culling to ensure internal parts and flat meshes are visible
+        renderer.gl.disable(renderer.gl.CULL_FACE);
+
         previewScene = new Scene();
         previewScene.ambiente.skyMode = 'SolidColor';
-        previewScene.ambiente.skyColor = '#111111';
+        previewScene.ambiente.skyColor = '#3a3a3a'; // Significantly lighter background
 
         console.log(`[Inspector] Iniciando carga de vista previa para: ${assetPath}`);
         previewMateria = await createSkinnedMeshObject(assetPath, null, { addToScene: false });
@@ -6027,6 +6052,19 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
         let orbitPitch = 15;
         let orbitDistance = 500;
         let orbitTarget = [0, -50, 0];
+
+        // Apply auto-framing if AABB was found
+        if (previewMateria) {
+            const { getAABB3D } = await import('../../engine/MathUtils.js');
+            const aabb = getAABB3D(previewMateria);
+            if (aabb) {
+                const glm = window.glMatrix;
+                const size = glm.vec3.distance(aabb.min, aabb.max);
+                orbitDistance = Math.max(size * 1.5, 50);
+                orbitTarget = [...aabb.center];
+                console.log(`[Inspector] Applying auto-frame: dist=${orbitDistance}, target=[${orbitTarget}]`);
+            }
+        }
 
         let isOrbiting = false;
         let isPanning = false;
