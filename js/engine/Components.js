@@ -6665,7 +6665,7 @@ export class Water extends Leyes {
             }
         }
 
-        const gravityY = 9.8 * 100;
+        const gravityY = -9.8 * 100;
         const h = this._spacing * 1.5;
         const hSq = h * h;
         const invH = 1 / h;
@@ -7602,7 +7602,7 @@ export class Suspension extends Leyes {
         this.dureza = 50;
         this.amortiguacion = 2;
         this.longitudReposo = 60;
-        this.eje = { x: 0, y: 1 }; // Dirección del muelle (normalmente hacia abajo)
+        this.eje = { x: 0, y: -1 }; // Dirección del muelle (normalmente hacia abajo)
         this.suspensionSound = ""; // Opcional: sonido al amortiguar
 
         // Estado interno
@@ -8034,7 +8034,7 @@ export class BasicAI extends Leyes {
 
         if (hit && hit.materia && !this.detectionTags.includes(hit.materia.tag)) {
             // Hay algo al frente, comprobar si hay espacio arriba para saltar
-            const up = { x: 0, y: -1 };
+            const up = { x: 0, y: 1 };
             const upClear = !engine.raycast(transform.position, up, 60, [this.materia.id]);
             return upClear;
         }
@@ -8045,7 +8045,7 @@ export class BasicAI extends Leyes {
         const rb = this.materia.getComponent(Rigidbody2D);
         if (rb) {
             if (rb.bodyType === 'Dynamic') {
-                rb.applyForce({ x: 0, y: -this.jumpForce * 50 });
+                rb.applyForce({ x: 0, y: this.jumpForce * 50 });
             }
         }
     }

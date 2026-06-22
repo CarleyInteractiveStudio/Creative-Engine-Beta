@@ -744,8 +744,8 @@ export async function updateAssetBrowser() {
         }
 
         for (const entry of entries) {
-            // Ocultar archivos .meta
-            if (entry.name.endsWith('.meta')) {
+            // Ocultar archivos .meta y miniaturas (.thumb.png)
+            if (entry.name.endsWith('.meta') || entry.name.endsWith('.thumb.png')) {
                 continue;
             }
 

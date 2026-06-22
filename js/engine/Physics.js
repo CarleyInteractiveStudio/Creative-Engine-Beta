@@ -62,7 +62,7 @@ export class PhysicsSystem {
      */
     constructor(scene) {
         this.scene = scene;
-        this.gravity = { x: 0, y: 9.8 }; // Reduced gravity to a more game-like value
+        this.gravity = { x: 0, y: -9.8 }; // Negative Y is now DOWN
         this.MAX_VELOCITY = 100; // Unidades por segundo (luego se multiplica por PHYSICS_SCALE)
 
         /**
@@ -120,7 +120,7 @@ export class PhysicsSystem {
             const transform = m.getComponent(Components.Transform);
 
             if (rb && !rb.isKinematic) {
-                if (rb.useGravity) rb.velocity.y += this.gravity.y * 10 * deltaTime; // Simplified 3D gravity
+                if (rb.useGravity) rb.velocity.y += this.gravity.y * 100 * deltaTime; // Simplified 3D gravity
 
                 // Drag
                 rb.velocity.x *= (1.0 - rb.drag);
@@ -207,12 +207,12 @@ export class PhysicsSystem {
 
         if (gridX >= 0 && gridX < terrain.resolution && gridZ >= 0 && gridZ < terrain.resolution) {
             const h = terrain.getHeight(Math.floor(gridX), Math.floor(gridZ));
-            const dist = localPos[1] - h; // CE: +Y is Down. localPos[1] > h means below surface.
+            const dist = localPos[1] - h; // +Y is UP. localPos[1] < h means below surface.
 
-            if (dist > -radius) {
-                const overlap = radius + dist;
-                let nx = 0, ny = -1, nz = 0;
-                if (isInverted) ny = 1;
+            if (dist < radius) {
+                const overlap = radius - dist;
+                let nx = 0, ny = 1, nz = 0;
+                if (isInverted) ny = -1;
                 return { normal: { x: nx, y: ny, z: nz }, overlap, point: { x: spherePosWorld[0], y: spherePosWorld[1], z: spherePosWorld[2] } };
             }
         }
@@ -248,7 +248,7 @@ export class PhysicsSystem {
 
             if (gridX >= 0 && gridX < terrain.resolution && gridZ >= 0 && gridZ < terrain.resolution) {
                 const h = terrain.getHeight(Math.floor(gridX), Math.floor(gridZ));
-                const overlap = localPos[1] - h;
+                const overlap = h - localPos[1];
                 if (overlap > maxOverlap) {
                     maxOverlap = overlap;
                     hitPoint = { x: worldCorner[0], y: worldCorner[1], z: worldCorner[2] };
@@ -257,7 +257,7 @@ export class PhysicsSystem {
         }
 
         if (maxOverlap > 0) {
-            let ny = -1; if (isInverted) ny = 1;
+            let ny = 1; if (isInverted) ny = -1;
             return { normal: { x: 0, y: ny, z: 0 }, overlap: maxOverlap, point: hitPoint };
         }
         return null;
@@ -281,7 +281,7 @@ export class PhysicsSystem {
 
             if (gridX >= 0 && gridX < terrain.resolution && gridZ >= 0 && gridZ < terrain.resolution) {
                 const h = terrain.getHeight(Math.floor(gridX), Math.floor(gridZ));
-                const overlap = (localPos[1] + cap.radius) - h;
+                const overlap = h - (localPos[1] - cap.radius);
                 if (overlap > maxOverlap) {
                     maxOverlap = overlap;
                     hitPoint = { x: p[0], y: p[1], z: p[2] };
@@ -290,7 +290,7 @@ export class PhysicsSystem {
         }
 
         if (maxOverlap > 0) {
-            let ny = -1; if (isInverted) ny = 1;
+            let ny = 1; if (isInverted) ny = -1;
             return { normal: { x: 0, y: ny, z: 0 }, overlap: maxOverlap, point: hitPoint };
         }
         return null;
@@ -553,7 +553,7 @@ export class PhysicsSystem {
         if (distSq < (capA.radius + capB.radius) * (capA.radius + capB.radius)) {
             const dist = Math.sqrt(distSq);
             const overlap = (capA.radius + capB.radius) - dist;
-            const normal = dist > 1e-6 ? { x: dx/dist, y: dy/dist, z: dz/dist } : { x: 0, y: -1, z: 0 };
+            const normal = dist > 1e-6 ? { x: dx/dist, y: dy/dist, z: dz/dist } : { x: 0, y: 1, z: 0 };
             return { normal, overlap, point: { x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2, z: (a[2] + b[2]) / 2 } };
         }
         return null;
@@ -645,7 +645,7 @@ export class PhysicsSystem {
 
         if (dist < rA + rB) {
             const overlap = (rA + rB) - dist;
-            const normal = dist > 0 ? { x: dx/dist, y: dy/dist, z: dz/dist } : { x: 0, y: -1, z: 0 };
+            const normal = dist > 0 ? { x: dx/dist, y: dy/dist, z: dz/dist } : { x: 0, y: 1, z: 0 };
             return { normal, overlap, point: { x: pB[0] + normal.x * rB, y: pB[1] + normal.y * rB, z: pB[2] + normal.z * rB } };
         }
         return null;
@@ -2617,7 +2617,7 @@ export class PhysicsSystem {
             if (inside) {
                 // Si estamos dentro, la normal apunta opuesta a la dirección para empujar "hacia afuera"
                 const mag = Math.hypot(localDirX, localDirY);
-                normalLocal = mag > 0 ? { x: -localDirX / mag, y: -localDirY / mag } : { x: 0, y: -1 };
+                normalLocal = mag > 0 ? { x: -localDirX / mag, y: -localDirY / mag } : { x: 0, y: 1 };
             } else {
                 const eps = 1e-4;
                 if (Math.abs(hitPointLocal.x - halfW) < eps) normalLocal.x = 1;
@@ -2926,8 +2926,8 @@ export class PhysicsSystem {
                 const iz = Math.floor(gridZ);
                 const h = terrain.getHeight(ix, iz);
 
-                // CE: +Y is Down. localPos[1] > h means below surface.
-                if (p[1] >= h) {
+                // +Y is Up. localPos[1] < h means below surface.
+                if (p[1] <= h) {
                     const worldHit = glm.vec3.transformMat4(glm.vec3.create(), p, transform.worldMatrix);
 
                     // Precise normal calculation at hit point
@@ -2936,8 +2936,7 @@ export class PhysicsSystem {
                     const hd = terrain.getHeight(ix, iz - 1);
                     const hu = terrain.getHeight(ix, iz + 1);
 
-                    // In CE +Y is Down, so -Y is UP.
-                    const localNormal = glm.vec3.normalize(glm.vec3.create(), [hr - hl, -2.0, hu - hd]);
+                    const localNormal = glm.vec3.normalize(glm.vec3.create(), [hl - hr, 2.0, hd - hu]);
                     const worldNormal = glm.vec3.transformMat3(glm.vec3.create(), localNormal, glm.mat3.fromMat4(glm.mat3.create(), transform.worldMatrix));
                     glm.vec3.normalize(worldNormal, worldNormal);
 
