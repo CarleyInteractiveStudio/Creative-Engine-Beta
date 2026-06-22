@@ -897,11 +897,16 @@ export class PhysicsSystem {
                         } else {
                             // Flota: lift depende de cuánto esté sumergido
                             const lift = buoyancyForce * Math.max(0.5, (2.0 - rigidbody.buoyancyWeight));
-                            rigidbody.velocity.y -= lift * deltaTime;
+                            // In Y-UP, lift is UP (+Y)
+                            rigidbody.velocity.y += lift * deltaTime;
 
-                            // Estabilización en superficie: si está muy arriba, lo atrae un poco hacia abajo
+                            // Estabilización en superficie: si está muy hundido, lo empuja un poco más arriba
                             if (transform.y < avgY - 20) {
                                 rigidbody.velocity.y += 10.0 * deltaTime;
+                            }
+                            // Si está muy arriba (saltando fuera), lo atrae un poco hacia abajo
+                            else if (transform.y > avgY + 5) {
+                                rigidbody.velocity.y -= 5.0 * deltaTime;
                             }
                         }
 
@@ -1275,7 +1280,10 @@ export class PhysicsSystem {
         // 2. Side Filtering
         const effectorTrans = effectorMtr.getComponent(Components.Transform);
         const effRotRad = (effectorTrans ? effectorTrans.rotation : 0) * Math.PI / 180;
-        const worldUp = { x: Math.sin(effRotRad), y: -Math.cos(effRotRad) };
+
+        // In the Y-UP coordinate system (+Y is up):
+        // Rotation 0 means the object's local up is world {0, 1}.
+        const worldUp = { x: -Math.sin(effRotRad), y: Math.cos(effRotRad) };
         const worldRight = { x: Math.cos(effRotRad), y: Math.sin(effRotRad) };
 
         const dotUp = this._dot(normal, worldUp);

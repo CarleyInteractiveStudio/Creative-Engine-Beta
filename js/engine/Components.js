@@ -4202,8 +4202,9 @@ export class Movement extends Leyes {
 
         if (input.isKeyPressed(this.rightKey)) moveX += 1;
         if (input.isKeyPressed(this.leftKey)) moveX -= 1;
-        if (input.isKeyPressed(this.upKey)) moveY -= 1;
-        if (input.isKeyPressed(this.downKey)) moveY += 1;
+        // In Y-UP, upKey increases Y.
+        if (input.isKeyPressed(this.upKey)) moveY += 1;
+        if (input.isKeyPressed(this.downKey)) moveY -= 1;
 
         // Normalize movement for diagonal speed consistency
         if (moveX !== 0 || moveY !== 0) {
@@ -4230,7 +4231,8 @@ export class Movement extends Leyes {
                 }
 
                 if (this.isGrounded && input.isKeyJustPressed(this.jumpKey)) {
-                    rb.addImpulse(0, -this.jumpForce / 10);
+                    // In Y-UP, jump impulse is positive Y.
+                    rb.addImpulse(0, this.jumpForce / 10);
 
                     // Stop running sound when jumping
                     const audio = this.materia.getComponent(AudioSource);
@@ -4289,8 +4291,9 @@ export class Movement extends Leyes {
         const transform = this.materia.getComponent(Transform);
 
         if (!this.isGrounded && rb) {
-            if (rb.velocity.y < -0.1) play(this.jumpAnim);
-            else if (rb.velocity.y > 0.1) play(this.fallAnim);
+            // In Y-UP, positive velocity means moving up.
+            if (rb.velocity.y > 0.1) play(this.jumpAnim);
+            else if (rb.velocity.y < -0.1) play(this.fallAnim);
         } else {
             if (Math.abs(moveX) > 0.01 || Math.abs(moveY) > 0.01) {
                 play(this.runAnim);
@@ -4939,7 +4942,8 @@ export class Terreno2D extends Leyes {
         }
 
         const localX = (worldX - transform.x) + (this.width / 2);
-        const localY = (worldY - transform.y) + (this.height / 2);
+        // In Y-UP coordinate system, world Y is flipped compared to canvas space.
+        const localY = (transform.y - worldY) + (this.height / 2);
 
         // Si es borrar, borramos de TODAS las capas para que el hueco sea total
         if (erase) {
@@ -6223,7 +6227,8 @@ export class ParticleSystem extends Leyes {
         if (!rb && this.gravityScale !== 0) {
             const trans = p.getComponent(Transform);
             if (trans) {
-                p._gravityVelocity = (p._gravityVelocity || 0) + (9.8 * this.gravityScale);
+                // In Y-UP, gravity pulls in negative Y.
+                p._gravityVelocity = (p._gravityVelocity || 0) - (9.8 * this.gravityScale);
                 trans.y += p._gravityVelocity;
             }
         }
@@ -6984,7 +6989,8 @@ export class HelicopterController extends Leyes {
         this.potenciaActual = thrustInput;
 
         const rad = transform.rotation * Math.PI / 180;
-        const up = { x: Math.sin(rad), y: -Math.cos(rad) }; // Dirección "arriba" relativa al helicóptero
+        // In Y-UP, local UP is { -sin(rad), cos(rad) }
+        const up = { x: -Math.sin(rad), y: Math.cos(rad) };
 
         // Fuerza de sustentación (Lift)
         // Combinamos la potencia de despegue (base) con el input del motor
@@ -7517,7 +7523,8 @@ export class PlaneController extends Leyes {
             const liftFactor = Math.min(1.5, (speedKmh - this.velocidadDespegue * 0.5) / 400) * stallFactor;
 
             // Fuerza hacia arriba relativa al avión (sustentación pura)
-            const liftDir = { x: forward.y, y: -forward.x };
+            // In Y-UP, local UP of forward {cos, sin} is {-sin, cos}
+            const liftDir = { x: -forward.y, y: forward.x };
             const liftMag = liftFactor * this.fuerzaSustentacion * 600 * deltaTime;
             rb.addForce(liftDir.x * liftMag, liftDir.y * liftMag);
 
@@ -7602,7 +7609,7 @@ export class Suspension extends Leyes {
         this.dureza = 50;
         this.amortiguacion = 2;
         this.longitudReposo = 60;
-        this.eje = { x: 0, y: -1 }; // Dirección del muelle (normalmente hacia abajo)
+        this.eje = { x: 0, y: -1 }; // In Y-UP, -1 is DOWN
         this.suspensionSound = ""; // Opcional: sonido al amortiguar
 
         // Estado interno
