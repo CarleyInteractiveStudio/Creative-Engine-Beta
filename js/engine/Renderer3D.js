@@ -380,6 +380,14 @@ export class Renderer3D {
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.quad);
         gl.bufferData(gl.ARRAY_BUFFER, quadPos, gl.STATIC_DRAW);
 
+        const quadUVs = new Float32Array([
+            0,0, 1,0, 1,1,
+            0,0, 1,1, 0,1
+        ]);
+        this.buffers.quadUV = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.quadUV);
+        gl.bufferData(gl.ARRAY_BUFFER, quadUVs, gl.STATIC_DRAW);
+
         // Plane for Floor (XZ plane) - Standard 1x1 unit - CCW: BL(-0.5,0,0.5), BR(0.5,0,0.5), TR(0.5,0,-0.5)
         const planePos = new Float32Array([
             -0.5,0,0.5, 0.5,0,0.5, 0.5,0,-0.5,
@@ -692,7 +700,31 @@ export class Renderer3D {
                 return;
             }
 
+            const sprite = materia.getComponent(Components.SpriteRenderer);
+            if (sprite && sprite.isActive) {
+                this.drawSprite3D(materia, sprite);
+                return;
+            }
+
+            const texRender = materia.getComponent(Components.TextureRender);
+            if (texRender && texRender.isActive) {
+                this.drawTextureRender3D(materia, texRender);
+                return;
+            }
+
             const mesh = materia.getComponent(Components3D.MeshRenderer3D);
+            const tilemap = materia.getComponent(Components.TilemapRenderer);
+            if (tilemap && tilemap.isActive) {
+                this.drawTilemap3D(materia, tilemap);
+                return;
+            }
+
+            const skeleton = materia.getComponent(Components.SkeletonRenderer);
+            if (skeleton && skeleton.isActive) {
+                this.drawSkeleton3D(materia, skeleton);
+                return;
+            }
+
             if (!mesh || !mesh.isActive) return;
 
             const program = mesh.isUnlit ? this.programs.unlit : this.programs.standard;
@@ -1241,6 +1273,372 @@ export class Renderer3D {
         gl.readPixels((x / rect.width) * w, (h - 1) - (y / rect.height) * h, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         return idMap.get(pixels[0] + (pixels[1] << 8) + (pixels[2] << 16)) || null;
+    }
+
+    drawSprite3D(materia, sprite) {
+        const gl = this.gl;
+        const program = this.programs.standard;
+        gl.useProgram(program);
+
+        const transform = materia.getComponent(Components.Transform);
+        const color = this.hexToRgb(sprite.color || '#ffffff');
+
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
+        gl.uniform3f(gl.getUniformLocation(program, "uLightDir"), 0.5, 1.0, 0.3);
+        gl.uniform1i(gl.getUniformLocation(program, "uUseVertexColor"), 0);
+        gl.uniform4f(gl.getUniformLocation(program, 'uColor'), color[0], color[1], color[2], sprite.opacity ?? 1.0);
+
+        const modelMatrix = mat4.create();
+        const worldPos = transform.position;
+        const worldScale = transform.scale;
+
+        const img = sprite.sprite;
+        const sw = (img && img.naturalWidth > 0) ? img.naturalWidth : 50;
+        const sh = (img && img.naturalHeight > 0) ? img.naturalHeight : 50;
+
+        // Quads are size 2 (-1 to 1). Scale by half dimensions.
+        const scaleX = (sw / 2) * worldScale.x;
+        const scaleY = (sh / 2) * worldScale.y;
+
+        if (sprite.billboard) {
+            mat4.fromTranslation(modelMatrix, [worldPos.x, worldPos.y, worldPos.z || 0]);
+            modelMatrix[0] = this.viewMatrix[0]; modelMatrix[1] = this.viewMatrix[4]; modelMatrix[2] = this.viewMatrix[8];
+            modelMatrix[4] = this.viewMatrix[1]; modelMatrix[5] = this.viewMatrix[5]; modelMatrix[6] = this.viewMatrix[9];
+            modelMatrix[8] = this.viewMatrix[2]; modelMatrix[9] = this.viewMatrix[6]; modelMatrix[10] = this.viewMatrix[10];
+            mat4.scale(modelMatrix, modelMatrix, [scaleX, scaleY, worldScale.z || 1]);
+        } else {
+            mat4.copy(modelMatrix, transform.worldMatrix);
+            mat4.scale(modelMatrix, modelMatrix, [sw / 2, sh / 2, 1]);
+        }
+
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, modelMatrix);
+
+        // Textures & UVs
+        const useMainTexLoc = gl.getUniformLocation(program, 'uUseMainTex');
+        const useNormalMapLoc = gl.getUniformLocation(program, 'uUseNormalMap');
+        const uvLoc = gl.getAttribLocation(program, 'aTextureCoord');
+
+        if (img && img.complete && img.naturalWidth > 0) {
+            let tex = this.textureCache.get(sprite.source || sprite.spriteAssetPath);
+            if (!tex) {
+                tex = gl.createTexture();
+                gl.bindTexture(gl.TEXTURE_2D, tex);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+                gl.generateMipmap(gl.TEXTURE_2D);
+                this.textureCache.set(sprite.source || sprite.spriteAssetPath, tex);
+            }
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, tex);
+            gl.uniform1i(gl.getUniformLocation(program, 'uMainTex'), 0);
+            gl.uniform1i(useMainTexLoc, 1);
+
+            // Sub-sprite UV clipping
+            let uMin = 0, vMin = 0, uMax = 1, vMax = 1;
+            if (sprite.spriteSheet && sprite.spriteName && sprite.spriteSheet.sprites[sprite.spriteName]) {
+                const rect = sprite.spriteSheet.sprites[sprite.spriteName].rect;
+                uMin = rect.x / img.naturalWidth;
+                vMin = rect.y / img.naturalHeight;
+                uMax = (rect.x + rect.width) / img.naturalWidth;
+                vMax = (rect.y + rect.height) / img.naturalHeight;
+            }
+
+            if (!this._tempSpriteUV) this._tempSpriteUV = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, this._tempSpriteUV);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([uMin,vMin, uMax,vMin, uMax,vMax, uMin,vMin, uMax,vMax, uMin,vMax]), gl.DYNAMIC_DRAW);
+            gl.vertexAttribPointer(uvLoc, 2, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(uvLoc);
+        } else {
+            gl.uniform1i(useMainTexLoc, 0);
+        }
+        gl.uniform1i(useNormalMapLoc, 0);
+
+        const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
+        const normLoc = gl.getAttribLocation(program, 'aVertexNormal');
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.quad);
+        gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(posLoc);
+
+        if (normLoc !== -1) {
+            gl.disableVertexAttribArray(normLoc);
+            gl.vertexAttrib3f(normLoc, 0, 0, 1);
+        }
+
+        gl.disable(gl.CULL_FACE);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        gl.enable(gl.CULL_FACE);
+    }
+
+    drawTilemap3D(materia, tilemap) {
+        const gl = this.gl;
+        const program = this.programs.standard;
+        gl.useProgram(program);
+
+        const transform = materia.getComponent(Components.Transform);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
+        gl.uniform3f(gl.getUniformLocation(program, "uLightDir"), 0.5, 1.0, 0.3);
+        gl.uniform1i(gl.getUniformLocation(program, "uUseVertexColor"), 0);
+        gl.uniform1i(gl.getUniformLocation(program, "uUseNormalMap"), 0);
+        gl.uniform4f(gl.getUniformLocation(program, 'uColor'), 1, 1, 1, 1);
+
+        const grid = materia.parent?.getComponent(Components.Grid);
+        if (!grid) return;
+
+        const tilemapComp = materia.getComponent(Components.Tilemap);
+        if (!tilemapComp) return;
+
+        const layerWidth = tilemapComp.width * grid.cellSize.x;
+        const layerHeight = tilemapComp.height * grid.cellSize.y;
+
+        // Draw each layer
+        for (const layer of tilemapComp.layers) {
+            const localX = layer.position.x * layerWidth;
+            const localY = layer.position.y * layerHeight;
+
+            // Simple approximation: Draw a quad for each tile
+            // In a real optimized engine we would batch this.
+            // For now, let's just draw tiles that are actually set.
+
+            for (const [coord, tile] of layer.tileData) {
+                const [col, row] = coord.split(',').map(Number);
+
+                // Position relative to layer top-left
+                const tx = (col * grid.cellSize.x) - (layerWidth / 2) + (grid.cellSize.x / 2);
+                const ty = (row * grid.cellSize.y) - (layerHeight / 2) + (grid.cellSize.y / 2);
+
+                const modelMatrix = mat4.create();
+                mat4.copy(modelMatrix, transform.worldMatrix);
+                mat4.translate(modelMatrix, modelMatrix, [localX + tx, localY + ty, 0]);
+                // Quad is size 2. Scale by half cell size.
+                mat4.scale(modelMatrix, modelMatrix, [grid.cellSize.x / 2, grid.cellSize.y / 2, 1]);
+
+                gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, modelMatrix);
+
+                // Load tile texture
+                if (tile.imageData) {
+                    let tex = this.textureCache.get(tile.imageData);
+                    if (!tex) {
+                        tex = gl.createTexture();
+                        const img = new Image();
+                        img.onload = () => {
+                            gl.bindTexture(gl.TEXTURE_2D, tex);
+                            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+                            gl.generateMipmap(gl.TEXTURE_2D);
+                        };
+                        img.src = tile.imageData;
+                        this.textureCache.set(tile.imageData, tex);
+                    }
+                    gl.activeTexture(gl.TEXTURE0);
+                    gl.bindTexture(gl.TEXTURE_2D, tex);
+                    gl.uniform1i(gl.getUniformLocation(program, 'uUseMainTex'), 1);
+                } else {
+                    gl.uniform1i(gl.getUniformLocation(program, 'uUseMainTex'), 0);
+                }
+
+                const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
+                const uvLoc = gl.getAttribLocation(program, 'aTextureCoord');
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.quad);
+                gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(posLoc);
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.quadUV);
+                gl.vertexAttribPointer(uvLoc, 2, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(uvLoc);
+
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+            }
+        }
+    }
+
+    drawTextureRender3D(materia, texRender) {
+        const gl = this.gl;
+        const program = this.programs.standard;
+        gl.useProgram(program);
+
+        const transform = materia.getComponent(Components.Transform);
+        const color = this.hexToRgb(texRender.color || '#ffffff');
+
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
+        gl.uniform3f(gl.getUniformLocation(program, "uLightDir"), 0.5, 1.0, 0.3);
+        gl.uniform1i(gl.getUniformLocation(program, "uUseVertexColor"), 0);
+        gl.uniform4f(gl.getUniformLocation(program, 'uColor'), color[0], color[1], color[2], 1.0);
+
+        const modelMatrix = mat4.create();
+        const worldPos = transform.position;
+        const worldScale = transform.scale;
+
+        if (texRender.billboard) {
+            mat4.fromTranslation(modelMatrix, [worldPos.x, worldPos.y, worldPos.z || 0]);
+            modelMatrix[0] = this.viewMatrix[0]; modelMatrix[1] = this.viewMatrix[4]; modelMatrix[2] = this.viewMatrix[8];
+            modelMatrix[4] = this.viewMatrix[1]; modelMatrix[5] = this.viewMatrix[5]; modelMatrix[6] = this.viewMatrix[9];
+            modelMatrix[8] = this.viewMatrix[2]; modelMatrix[9] = this.viewMatrix[6]; modelMatrix[10] = this.viewMatrix[10];
+            mat4.scale(modelMatrix, modelMatrix, [worldScale.x, worldScale.y, worldScale.z || 1]);
+        } else {
+            mat4.copy(modelMatrix, transform.worldMatrix);
+        }
+
+        const sizeX = texRender.shape === 'Circle' ? texRender.radius * 2 : texRender.width;
+        const sizeY = texRender.shape === 'Circle' ? texRender.radius * 2 : texRender.height;
+        // Quad is size 2.
+        mat4.scale(modelMatrix, modelMatrix, [sizeX / 2, sizeY / 2, 1]);
+
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, modelMatrix);
+
+        if (texRender.texturePath) {
+            const tex = this.getTexture(texRender.texturePath);
+            if (tex) {
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, tex);
+                gl.uniform1i(gl.getUniformLocation(program, 'uUseMainTex'), 1);
+            } else {
+                gl.uniform1i(gl.getUniformLocation(program, 'uUseMainTex'), 0);
+            }
+        } else {
+            gl.uniform1i(gl.getUniformLocation(program, 'uUseMainTex'), 0);
+        }
+
+        const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
+        const uvLoc = gl.getAttribLocation(program, 'aTextureCoord');
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.quad);
+        gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(posLoc);
+
+        if (uvLoc !== -1) {
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.quadUV);
+            gl.vertexAttribPointer(uvLoc, 2, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(uvLoc);
+        }
+
+        gl.disable(gl.CULL_FACE);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        gl.enable(gl.CULL_FACE);
+    }
+
+    drawSkeleton3D(materia, skeleton) {
+        const gl = this.gl;
+        const program = this.programs.standard; // Use standard for simplicity
+        gl.useProgram(program);
+
+        const transform = materia.getComponent(Components.Transform);
+        if (!transform || !skeleton.mesh || !skeleton.bones.length) return;
+
+        // 1. Prepare Bone Transforms (similar to Renderer.js drawSkeleton)
+        if (!skeleton._boneMateriaCache || skeleton._boneMateriaCache.length !== skeleton.bones.length) {
+            skeleton._updateBoneCache();
+        }
+        const boneTransforms = skeleton._boneMateriaCache.map(mtr => mtr ? mtr.getComponent(Components.Transform) : null);
+        const bindPoses = skeleton.bindPoses;
+
+        // 2. Compute deformed vertices in WORLD space (CPU Skinning for 2D skeleton in 3D)
+        const mesh = skeleton.mesh;
+        const deformedVertices = new Float32Array(mesh.vertices.length * 3 / 2); // [x,y,z, x,y,z, ...]
+
+        for (let i = 0; i < mesh.vertices.length; i += 2) {
+            const vx = mesh.vertices[i];
+            const vy = mesh.vertices[i+1];
+            const weights = mesh.weights[i/2] || [];
+
+            let finalX = 0, finalY = 0, finalZ = transform.z || 0;
+            let totalWeight = 0;
+
+            for (const w of weights) {
+                const boneTrans = boneTransforms[w.boneIndex];
+                const bindPose = bindPoses[w.boneIndex];
+                if (!boneTrans || !bindPose) continue;
+
+                // local to bone
+                const dx = vx - (bindPose.x - transform.x);
+                const dy = vy - (bindPose.y - transform.y);
+                const radBind = -bindPose.rotation * Math.PI / 180;
+                const cosB = Math.cos(radBind), sinB = Math.sin(radBind);
+                const lx = (dx * cosB - dy * sinB) / (bindPose.scale?.x || 1);
+                const ly = (dx * sinB + dy * cosB) / (bindPose.scale?.y || 1);
+
+                // bone to world
+                const radBone = boneTrans.rotation * Math.PI / 180;
+                const cosA = Math.cos(radBone), sinA = Math.sin(radBone);
+                const tx = (lx * (boneTrans.scale?.x || 1) * cosA - ly * (boneTrans.scale?.y || 1) * sinA) + boneTrans.x;
+                const ty = (lx * (boneTrans.scale?.x || 1) * sinA + ly * (boneTrans.scale?.y || 1) * cosA) + boneTrans.y;
+
+                finalX += tx * w.weight;
+                finalY += ty * w.weight;
+                totalWeight += w.weight;
+            }
+
+            const idx = (i / 2) * 3;
+            if (totalWeight === 0) {
+                const radSkel = transform.rotation * Math.PI / 180;
+                const cosS = Math.cos(radSkel), sinS = Math.sin(radSkel);
+                deformedVertices[idx] = (vx * transform.scale.x * cosS - vy * transform.scale.y * sinS) + transform.x;
+                deformedVertices[idx+1] = (vx * transform.scale.x * sinS + vy * transform.scale.y * cosS) + transform.y;
+                deformedVertices[idx+2] = finalZ;
+            } else {
+                deformedVertices[idx] = finalX / totalWeight;
+                deformedVertices[idx+1] = finalY / totalWeight;
+                deformedVertices[idx+2] = finalZ;
+            }
+        }
+
+        // 3. Render setup
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, mat4.create()); // World space vertices
+        gl.uniform3f(gl.getUniformLocation(program, "uLightDir"), 0.5, 1.0, 0.3);
+        gl.uniform1i(gl.getUniformLocation(program, "uUseVertexColor"), 0);
+
+        const color = this.hexToRgb(skeleton.color || '#ffffff');
+        gl.uniform4f(gl.getUniformLocation(program, 'uColor'), color[0], color[1], color[2], skeleton.opacity ?? 1.0);
+
+        // Texture
+        const useMainTexLoc = gl.getUniformLocation(program, 'uUseMainTex');
+        if (skeleton.source) {
+            const img = skeleton._texture;
+            if (img && img.complete && img.naturalWidth > 0) {
+                let tex = this.textureCache.get(skeleton.source);
+                if (!tex) {
+                    tex = gl.createTexture();
+                    gl.bindTexture(gl.TEXTURE_2D, tex);
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+                    gl.generateMipmap(gl.TEXTURE_2D);
+                    this.textureCache.set(skeleton.source, tex);
+                }
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, tex);
+                gl.uniform1i(gl.getUniformLocation(program, 'uMainTex'), 0);
+                gl.uniform1i(useMainTexLoc, 1);
+            } else {
+                gl.uniform1i(useMainTexLoc, 0);
+            }
+        } else {
+            gl.uniform1i(useMainTexLoc, 0);
+        }
+        gl.uniform1i(gl.getUniformLocation(program, 'uUseNormalMap'), 0);
+
+        // 4. Buffers
+        if (!skeleton._gl3DBuffers) skeleton._gl3DBuffers = { positions: gl.createBuffer(), uvs: gl.createBuffer(), indices: gl.createBuffer() };
+        const b = skeleton._gl3DBuffers;
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, b.positions);
+        gl.bufferData(gl.ARRAY_BUFFER, deformedVertices, gl.STREAM_DRAW);
+        gl.vertexAttribPointer(gl.getAttribLocation(program, 'aVertexPosition'), 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(gl.getAttribLocation(program, 'aVertexPosition'));
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, b.uvs);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(mesh.uvs), gl.STATIC_DRAW);
+        gl.vertexAttribPointer(gl.getAttribLocation(program, 'aTextureCoord'), 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(gl.getAttribLocation(program, 'aTextureCoord'));
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, b.indices);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(mesh.indices), gl.STATIC_DRAW);
+
+        gl.disable(gl.CULL_FACE);
+        gl.drawElements(gl.TRIANGLES, mesh.indices.length, gl.UNSIGNED_SHORT, 0);
+        gl.enable(gl.CULL_FACE);
     }
 
     hexToRgb(hex) {
