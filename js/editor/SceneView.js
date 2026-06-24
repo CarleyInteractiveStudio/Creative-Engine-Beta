@@ -247,14 +247,14 @@ function checkGizmoHit(canvasPos) {
 
         // Axis arrows hit detection
         if (Math.abs(worldMouse.y - centerY) < handleHitboxSize / 2 && worldMouse.x > centerX && worldMouse.x < centerX + gizmoSize) return 'move-x';
-        if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y < centerY && worldMouse.y > centerY - gizmoSize) return 'move-y';
+    if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y > centerY && worldMouse.y < centerY + gizmoSize) return 'move-y';
     }
 
     if (activeTool === 'scale-axis') {
         // X-Axis square head
         if (Math.abs(worldMouse.y - centerY) < handleHitboxSize / 2 && worldMouse.x > centerX + gizmoSize - handleHitboxSize / 2 && worldMouse.x < centerX + gizmoSize + handleHitboxSize / 2) return 'scale-axis-x';
         // Y-Axis square head
-        if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y < centerY - gizmoSize + handleHitboxSize / 2 && worldMouse.y > centerY - gizmoSize - handleHitboxSize / 2) return 'scale-axis-y';
+    if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y > centerY + gizmoSize - handleHitboxSize / 2 && worldMouse.y < centerY + gizmoSize + handleHitboxSize / 2) return 'scale-axis-y';
     }
 
     return null;
@@ -400,13 +400,13 @@ function drawMoveGizmo(ctx, centerX, centerY, zoom, GIZMO_SIZE, HANDLE_THICKNESS
     ctx.strokeStyle = '#00ff00';
     ctx.beginPath();
     ctx.moveTo(centerX, centerY);
-    ctx.lineTo(centerX, centerY - GIZMO_SIZE);
+    ctx.lineTo(centerX, centerY + GIZMO_SIZE);
     ctx.stroke();
     // Arrow head for Y
     ctx.beginPath();
-    ctx.moveTo(centerX, centerY - GIZMO_SIZE);
-    ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
-    ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
+    ctx.moveTo(centerX, centerY + GIZMO_SIZE);
+    ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY + GIZMO_SIZE - ARROW_HEAD_SIZE);
+    ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY + GIZMO_SIZE - ARROW_HEAD_SIZE);
     ctx.closePath();
     ctx.fillStyle = '#00ff00';
     ctx.fill();
@@ -506,11 +506,11 @@ function drawScaleAxisGizmo(ctx, centerX, centerY, zoom, GIZMO_SIZE, HANDLE_THIC
     ctx.strokeStyle = '#00ff00';
     ctx.beginPath();
     ctx.moveTo(centerX, centerY);
-    ctx.lineTo(centerX, centerY - GIZMO_SIZE);
+    ctx.lineTo(centerX, centerY + GIZMO_SIZE);
     ctx.stroke();
     // Square head for Y
     ctx.fillStyle = '#00ff00';
-    ctx.fillRect(centerX - SCALE_BOX_SIZE / 2, centerY - GIZMO_SIZE - SCALE_BOX_SIZE / 2, SCALE_BOX_SIZE, SCALE_BOX_SIZE);
+    ctx.fillRect(centerX - SCALE_BOX_SIZE / 2, centerY + GIZMO_SIZE - SCALE_BOX_SIZE / 2, SCALE_BOX_SIZE, SCALE_BOX_SIZE);
 
     // X-Axis (Red)
     ctx.strokeStyle = '#ff0000';
@@ -555,8 +555,8 @@ function checkUIGizmoHit(canvasPos) {
     switch (activeTool) {
         case 'move':
             if (Math.abs(worldMouse.y - centerY) < handleHitboxSize / 2 && worldMouse.x > centerX && worldMouse.x < centerX + gizmoSize) return 'ui-move-x';
-            // Corrected Y-axis hit detection to be in the negative world Y direction (upwards on screen)
-            if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y < centerY && worldMouse.y > centerY - gizmoSize) return 'ui-move-y';
+            // Y-axis hit detection points upwards on screen (+world Y)
+            if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y > centerY && worldMouse.y < centerY + gizmoSize) return 'ui-move-y';
              // Central square hit detection
             const squareHitboxSize = 10 / zoom;
             if (Math.abs(worldMouse.x - centerX) < squareHitboxSize / 2 && Math.abs(worldMouse.y - centerY) < squareHitboxSize / 2) {
@@ -629,12 +629,12 @@ function drawUIGizmos(renderer, materia) {
             ctx.strokeStyle = '#00ff00';
             ctx.beginPath();
             ctx.moveTo(centerX, centerY);
-            ctx.lineTo(centerX, centerY - GIZMO_SIZE);
+            ctx.lineTo(centerX, centerY + GIZMO_SIZE);
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(centerX, centerY - GIZMO_SIZE);
-            ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
-            ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
+            ctx.moveTo(centerX, centerY + GIZMO_SIZE);
+            ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY + GIZMO_SIZE - ARROW_HEAD_SIZE);
+            ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY + GIZMO_SIZE - ARROW_HEAD_SIZE);
             ctx.closePath();
             ctx.fillStyle = '#00ff00';
             ctx.fill();
