@@ -197,7 +197,7 @@ export async function openUiAsset(fileHandle) {
 
     } catch (error) {
         console.error(`Error al abrir el asset UI '${fileHandle.name}':`, error);
-        showNotification(
+        window.Dialogs.showNotification(
             window.Localization?.get('ERROR') || 'Error',
             window.Localization?.get('ERROR_ABRIR_UI_ASSET') || 'No se pudo abrir el asset de UI.'
         );
@@ -232,7 +232,7 @@ export async function createUiSystemFile(dirHandle, updateAssetBrowser) {
         console.log(`Creado archivo de UI: ${fileName}`);
     } catch (err) {
         console.error("Error al crear el archivo de UI:", err);
-        showNotification(
+        window.Dialogs.showNotification(
             window.Localization?.get('ERROR') || 'Error',
             window.Localization?.get('ERROR_CREAR_UI_FILE') || 'No se pudo crear el archivo de UI.'
         );
@@ -243,7 +243,7 @@ function setupEventListeners() {
     if (dom.uiEditorSaveBtn) {
         dom.uiEditorSaveBtn.addEventListener('click', async () => {
             if (!uiEditorFileHandle || !currentUiAsset) {
-                showNotification(
+                window.Dialogs.showNotification(
                     window.Localization?.get('ERROR') || 'Error',
                     window.Localization?.get('ERROR_SIN_UI_ABIERTO') || 'No hay ningún asset de UI abierto para guardar.'
                 );
@@ -253,14 +253,14 @@ function setupEventListeners() {
                 const writable = await uiEditorFileHandle.createWritable();
                 await writable.write(JSON.stringify(currentUiAsset, null, 2));
                 await writable.close();
-                showNotification(
+                window.Dialogs.showNotification(
                     window.Localization?.get('EXITO') || 'Éxito',
                     (window.Localization?.get('EXITO_ASSET_GUARDADO') || "Asset '{name}' guardado.")
                         .replace('{name}', uiEditorFileHandle.name)
                 );
             } catch (error) {
                 console.error("Error al guardar el asset de UI:", error);
-                showNotification(
+                window.Dialogs.showNotification(
                     window.Localization?.get('ERROR') || 'Error',
                     window.Localization?.get('ERROR_GUARDAR_UI_ASSET') || 'No se pudo guardar el asset de UI.'
                 );

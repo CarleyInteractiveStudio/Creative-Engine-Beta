@@ -503,6 +503,9 @@ export class Renderer3D {
                 mat4.perspective(this.projectionMatrix, (cam.fov || 60) * Math.PI / 180, aspect, near, far);
             }
             mat4.invert(this.viewMatrix, transform.worldMatrix);
+        } else if (options.viewMatrix) {
+            mat4.perspective(this.projectionMatrix, 45 * Math.PI / 180, aspect, near, far);
+            mat4.copy(this.viewMatrix, options.viewMatrix);
         } else {
             mat4.perspective(this.projectionMatrix, 45 * Math.PI / 180, aspect, near, far);
             const cam = options.editorCamera || { x: 0, y: -200, z: 600, rotation: { x: 15, y: 0, z: 0 } };
@@ -638,13 +641,13 @@ export class Renderer3D {
             }
 
             const skinnedMesh = materia.getComponent(Components3D.SkinnedMeshRenderer3D);
-            if (skinnedMesh && skinnedMesh.isLoaded) {
+            if (skinnedMesh && skinnedMesh.isLoaded && skinnedMesh.isActive) {
                 this.drawSkinnedMesh(materia, skinnedMesh);
                 return;
             }
 
             const mesh = materia.getComponent(Components3D.MeshRenderer3D);
-            if (!mesh) return;
+            if (!mesh || !mesh.isActive) return;
 
             const program = mesh.isUnlit ? this.programs.unlit : this.programs.standard;
             gl.useProgram(program);

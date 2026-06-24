@@ -6491,3 +6491,59 @@ body.mobile-mode .submenu li {
     font-weight: bold;
     font-size: 12px;
 }
+
+/* --- Expandable 3D Model Styles in Asset Browser --- */
+.grid-item {
+    position: relative;
+}
+
+.model-expand-toggle {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 10;
+    transition: background 0.2s;
+}
+
+.model-expand-toggle:hover {
+    background: var(--accent-color);
+}
+
+.model-expanded-parent {
+    border-color: var(--accent-color);
+    background: rgba(14, 99, 156, 0.15) !important;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+}
+
+.sub-asset-item {
+    background: rgba(14, 99, 156, 0.05) !important;
+    border: 1px dashed rgba(255, 255, 255, 0.15) !important;
+    opacity: 0.9;
+    transform: scale(0.95);
+}
+
+.sub-asset-item:hover {
+    opacity: 1;
+    border-style: solid;
+    background: rgba(14, 99, 156, 0.1) !important;
+    transform: scale(1);
+}
+
+/* Add a visual indicator for sub-assets */
+.sub-asset-item::after {
+    content: 'Sub-Asset';
+    position: absolute;
+    bottom: 2px;
+    right: 5px;
+    font-size: 8px;
+    opacity: 0.5;
+    text-transform: uppercase;
+}

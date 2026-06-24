@@ -13,7 +13,7 @@ import { broadcastUpdate } from '../CollaborationSystem.js';
 // --- Module State ---
 let dom;
 let projectsDirHandle;
-let currentDirectoryHandle;
+let getCurrentDirectoryHandleCallback;
 let getSelectedMateria;
 let getSelectedAsset;
 let openAssetSelectorCallback;
@@ -124,7 +124,7 @@ export function initialize(dependencies) {
     dom = dependencies.dom;
     dom.cullingMaskDropdown = document.getElementById('culling-mask-dropdown');
     projectsDirHandle = dependencies.projectsDirHandle;
-    currentDirectoryHandle = dependencies.currentDirectoryHandle;
+    getCurrentDirectoryHandleCallback = dependencies.currentDirectoryHandle;
     getSelectedMateria = dependencies.getSelectedMateria;
     getSelectedAsset = dependencies.getSelectedAsset;
     openAssetSelectorCallback = dependencies.openAssetSelectorCallback;
@@ -563,17 +563,17 @@ async function handleInspectorChange(e) {
     } else if (e.target.matches('#materia-tag-select')) {
         const selectedValue = e.target.value;
         if (selectedValue === 'add_new_tag') {
-            showPrompt(L.get('NUEVO_TAG', 'Nuevo Tag'), L.get('INTRODUCE_NOMBRE_TAG', 'Introduce el nombre para el nuevo tag:'), async (newTagName) => {
+            window.Dialogs.showPrompt(L.get('NUEVO_TAG', 'Nuevo Tag'), L.get('INTRODUCE_NOMBRE_TAG', 'Introduce el nombre para el nuevo tag:'), async (newTagName) => {
                 if (newTagName && newTagName.trim() !== '') {
                     const config = getCurrentProjectConfig();
                     if (!config.tags.includes(newTagName)) {
                         config.tags.push(newTagName);
                         await saveProjectConfig();
                         selectedMateria.tag = newTagName;
-                        showNotification(L.get('EXITO', 'Éxito'), `${L.get('TAG_ANADIDO', 'Tag "{tag}" añadido y seleccionado.').replace('{tag}', newTagName)}`);
+                        window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('TAG_ANADIDO', 'Tag "{tag}" añadido y seleccionado.').replace('{tag}', newTagName)}`);
                         updateInspector();
                     } else {
-                        showNotification(L.get('AVISO', 'Aviso'), `${L.get('TAG_EXISTE', 'El tag "{tag}" ya existe.').replace('{tag}', newTagName)}`);
+                        window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), `${L.get('TAG_EXISTE', 'El tag "{tag}" ya existe.').replace('{tag}', newTagName)}`);
                         // Revert selection in dropdown
                         e.target.value = selectedMateria.tag;
                     }
@@ -4566,7 +4566,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
     try {
         const L = window.Localization;
-        const dirHandle = currentDirectoryHandle();
+        const dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
         if (!dirHandle) {
             dom.inspectorContent.innerHTML = `<p class="inspector-placeholder error-message">Directorio de assets no disponible</p>`;
             return;
@@ -4840,7 +4840,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             const spriteEditorBtn = document.getElementById('sprite-editor-btn');
             if (spriteEditorBtn) {
                 spriteEditorBtn.addEventListener('click', () => {
-                    const dirHandle = currentDirectoryHandle();
+                    const dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
                     if (dirHandle) {
                         dirHandle.getFileHandle(assetName).then(fileHandle => {
                             SpriteSlicer.open(fileHandle, dirHandle, saveAssetMetaCallback);
@@ -5045,7 +5045,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
                     const imageUrl = await getURLForAssetPath(assetPath, projectsDirHandle);
                     if (!imageUrl) {
-                        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CARGAR_IMAGEN_ANIM', "No se pudo cargar la imagen para crear la animación."));
+                    window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CARGAR_IMAGEN_ANIM', "No se pudo cargar la imagen para crear la animación."));
                         return;
                     }
 
@@ -5062,8 +5062,9 @@ async function updateInspectorForAsset(assetName, assetPath) {
                         }]
                     };
 
+                const dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
                     await createAssetCallback(animAssetName, JSON.stringify(animData, null, 2), dirHandle);
-                    window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_CREAR_ANIM_ASSET', 'Asset de animación "{name}" creado.').replace('{name}', animAssetName)}`);
+                window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_CREAR_ANIM_ASSET', 'Asset de animación "{name}" creado.').replace('{name}', animAssetName)}`);
                     if(updateAssetBrowserCallback) updateAssetBrowserCallback();
                 });
             }
@@ -5781,7 +5782,7 @@ function openAnimationCreatorModal(spriteAsset, sourceImageUrl) {
         };
 
         const assetName = `${animName}.ceanimclip`;
-        const dirHandle = currentDirectoryHandle();
+        const dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
         await createAssetCallback(assetName, JSON.stringify(animClipAsset, null, 2), dirHandle);
         updateAssetBrowserCallback();
         modal.classList.add('hidden');
@@ -5820,7 +5821,7 @@ async function saveProjectConfig() {
         console.log("Configuración del proyecto guardada desde el Inspector.");
     } catch (error) {
         console.error("Error al guardar la configuración del proyecto desde el Inspector:", error);
-        showNotification(window.Localization.get('ERROR', 'Error'), window.Localization.get('ERROR_GUARDAR_CONFIG', 'No se pudo guardar la configuración del proyecto.'));
+        window.Dialogs.showNotification(window.Localization.get('ERROR', 'Error'), window.Localization.get('ERROR_GUARDAR_CONFIG', 'No se pudo guardar la configuración del proyecto.'));
     }
 }
 
@@ -5831,8 +5832,18 @@ async function renderModel3DInspector(assetName, assetPath) {
     container.innerHTML = `
         <div class="inspector-section">
             <label data-i18n="MODEL_3D">Modelo 3D</label>
-            <div class="model-preview-container" style="width: 100%; height: 250px; background: #000; border-radius: 8px; overflow: hidden; position: relative; margin-top: 10px;">
-                <canvas id="model-preview-canvas" style="width: 100%; height: 100%; display: block;"></canvas>
+            <div class="model-preview-container" style="width: 100%; height: 300px; background: #000; border-radius: 8px; overflow: hidden; position: relative; margin-top: 10px;">
+                <canvas id="model-preview-canvas" style="width: 100%; height: 100%; display: block; cursor: move;"></canvas>
+                <div class="preview-overlay" style="position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 5px;">
+                    <div class="checkbox-field" style="background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 4px;">
+                        <input type="checkbox" id="show-preview-mesh" checked>
+                        <label for="show-preview-mesh" style="font-size: 0.75em; color: #fff;">Malla</label>
+                    </div>
+                    <div class="checkbox-field" style="background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 4px;">
+                        <input type="checkbox" id="show-preview-bones">
+                        <label for="show-preview-bones" style="font-size: 0.75em; color: #fff;">Huesos</label>
+                    </div>
+                </div>
                 <div class="preview-overlay" style="position: absolute; bottom: 10px; right: 10px; pointer-events: none; opacity: 0.6;">
                     <span style="font-size: 0.8em; background: rgba(0,0,0,0.5); padding: 2px 6px; border-radius: 4px;">3D Preview</span>
                 </div>
@@ -5842,6 +5853,19 @@ async function renderModel3DInspector(assetName, assetPath) {
                 <span style="font-weight: bold; flex-grow: 1; font-size: 0.9em;">${assetName}</span>
                 <span style="font-size: 0.75em; opacity: 0.6;">${assetName.split('.').pop().toUpperCase()}</span>
             </div>
+        </div>
+
+        <div class="inspector-section">
+            <label data-i18n="IMPORT_SETTINGS">Configuración de Importación</label>
+            <div class="prop-row-multi" style="margin-top: 8px;">
+                <label>Tipo de Animación</label>
+                <select id="model-animation-type" class="prop-input" style="flex-grow: 1;">
+                    <option value="none">Ninguna</option>
+                    <option value="generic" selected>Generativo (Generic)</option>
+                    <option value="humanoid">Personaje (Humanoid)</option>
+                </select>
+            </div>
+            <button id="btn-configure-avatar" class="panel-tool-btn hidden" style="width: 100%; margin-top: 8px;">Configurar Avatar...</button>
         </div>
 
         <div class="inspector-section">
@@ -5878,11 +5902,21 @@ async function renderModel3DInspector(assetName, assetPath) {
         thumbCanvas.width = 128;
         thumbCanvas.height = 128;
         const thumbCtx = thumbCanvas.getContext('2d');
+
+        // Draw only the model by using a temporary render with no grid and transparent bg
+        if (renderer && previewScene) {
+            renderer.render(previewScene, null, {
+                viewMatrix: lastViewMatrix,
+                showGrid: false,
+                clearAlpha: 0
+            });
+        }
         thumbCtx.drawImage(canvas, 0, 0, 128, 128);
 
         thumbCanvas.toBlob(async (blob) => {
             const thumbName = assetName + '.thumb.png';
-            const dirHandle = currentDirectoryHandle();
+            const dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
+            if (!dirHandle) return;
             try {
                 const thumbHandle = await dirHandle.getFileHandle(thumbName, { create: true });
                 const writable = await thumbHandle.createWritable();
@@ -5931,44 +5965,104 @@ async function renderModel3DInspector(assetName, assetPath) {
             }
         }
 
-        let rotation = 0;
         let lastTime = performance.now();
-        const editorCam = { x: 0, y: -50, z: 300, rotation: { x: 10, y: 0, z: 0 } };
+        let lastViewMatrix = window.glMatrix.mat4.create();
+        // Orbit camera state
+        let orbitYaw = 180;
+        let orbitPitch = 15;
+        let orbitDistance = 500;
+        let orbitTarget = [0, -50, 0];
 
-        let isDragging = false;
+        let isOrbiting = false;
+        let isPanning = false;
         let lastMouseX = 0;
         let lastMouseY = 0;
 
-        canvas.onmousedown = (e) => { isDragging = true; lastMouseX = e.clientX; lastMouseY = e.clientY; };
-        window.onmouseup = () => { isDragging = false; };
-        window.onmousemove = (e) => {
-            if (!isDragging) return;
+        canvas.onmousedown = (e) => {
+            e.stopPropagation();
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+            if (e.button === 0) isPanning = true; // Left click pan
+            if (e.button === 2) isOrbiting = true; // Right click orbit
+        };
+        canvas.oncontextmenu = (e) => e.preventDefault();
+
+        const handleGlobalMouseUp = () => { isOrbiting = false; isPanning = false; };
+        window.addEventListener('mouseup', handleGlobalMouseUp);
+
+        const handleGlobalMouseMove = (e) => {
+            if (!isOrbiting && !isPanning) return;
+            e.stopPropagation();
             const dx = e.clientX - lastMouseX;
             const dy = e.clientY - lastMouseY;
             lastMouseX = e.clientX;
             lastMouseY = e.clientY;
 
-            if (previewMateria) {
-                const t = previewMateria.getComponent(Components.Transform);
-                t.localRotation.y += dx * 0.5;
-                t.localRotation.x += dy * 0.5;
+            if (isOrbiting) {
+                orbitYaw += dx * 0.5;
+                orbitPitch += dy * 0.5;
+                orbitPitch = Math.max(-89, Math.min(89, orbitPitch));
+            } else if (isPanning) {
+                const glm = window.glMatrix;
+                // Simple pan: Move target along camera Right and Up vectors
+                const radY = orbitYaw * Math.PI / 180;
+                const right = [Math.cos(radY), 0, -Math.sin(radY)];
+                const up = [0, 1, 0];
+
+                const factor = orbitDistance / 500;
+                orbitTarget[0] -= right[0] * dx * 0.5 * factor;
+                orbitTarget[1] -= dy * 0.5 * factor;
+                orbitTarget[2] -= right[2] * dx * 0.5 * factor;
             }
         };
+        window.addEventListener('mousemove', handleGlobalMouseMove, { capture: true });
+
+        canvas.onwheel = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            orbitDistance += e.deltaY * 0.5;
+            orbitDistance = Math.max(20, orbitDistance);
+        };
+
+        const showMeshCheck = document.getElementById('show-preview-mesh');
+        const showBonesCheck = document.getElementById('show-preview-bones');
 
         const loop = (time) => {
             const dt = (time - lastTime) / 1000;
             lastTime = time;
 
-            if (!isDragging) {
-                rotation += dt * 30;
-                if (previewMateria) {
-                    previewMateria.getComponent(Components.Transform).localRotation.y = rotation;
-                }
+            if (previewMateria) {
+                previewMateria.update(dt);
+                // Toggle mesh/bones visibility
+                previewMateria.traverse(mtr => {
+                    const smr = mtr.getComponentByName('SkinnedMeshRenderer3D');
+                    if (smr) smr.isActive = showMeshCheck.checked;
+                    const bone = mtr.getComponentByName('Bone');
+                    if (bone) bone.isActive = showBonesCheck.checked;
+                });
             }
 
-            if (previewMateria) previewMateria.update(dt);
+            const glm = window.glMatrix;
+            const viewMat = glm.mat4.create();
+            const radX = orbitPitch * Math.PI / 180;
+            const radY = orbitYaw * Math.PI / 180;
 
-            renderer.render(previewScene, null, { editorCamera: editorCam, showGrid: false, clearAlpha: 1 });
+            const camPos = [
+                orbitTarget[0] + Math.sin(radY) * Math.cos(radX) * orbitDistance,
+                orbitTarget[1] + Math.sin(radX) * orbitDistance,
+                orbitTarget[2] + Math.cos(radY) * Math.cos(radX) * orbitDistance
+            ];
+
+            glm.mat4.lookAt(viewMat, camPos, orbitTarget, [0, -1, 0]); // -Y is UP in engine
+            glm.mat4.copy(lastViewMatrix, viewMat);
+
+            renderer.render(previewScene, null, { viewMatrix: viewMat, showGrid: true, clearAlpha: 1 });
+
+            // Draw bones wireframe if enabled
+            if (showBonesCheck.checked && previewMateria) {
+                drawSkeletonGizmos(renderer, previewMateria, viewMat);
+            }
+
             animationId = requestAnimationFrame(loop);
         };
         animationId = requestAnimationFrame(loop);
@@ -5979,10 +6073,44 @@ async function renderModel3DInspector(assetName, assetPath) {
 
     startPreview();
 
+    // --- Load and Apply Model Metadata ---
+    const dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
+    let modelMeta = { animationType: 'generic', avatar: {} };
+    try {
+        const metaFileHandle = await dirHandle.getFileHandle(assetName + '.meta');
+        const metaFile = await metaFileHandle.getFile();
+        modelMeta = JSON.parse(await metaFile.text());
+    } catch (e) { /* Defaults used */ }
+
+    const animTypeSelect = document.getElementById('model-animation-type');
+    const btnConfigureAvatar = document.getElementById('btn-configure-avatar');
+
+    if (animTypeSelect) {
+        animTypeSelect.value = modelMeta.animationType || 'generic';
+        btnConfigureAvatar.classList.toggle('hidden', animTypeSelect.value !== 'humanoid');
+
+        animTypeSelect.onchange = async () => {
+            modelMeta.animationType = animTypeSelect.value;
+            btnConfigureAvatar.classList.toggle('hidden', modelMeta.animationType !== 'humanoid');
+            await saveAssetMetaCallback(assetName, modelMeta, dirHandle);
+        };
+    }
+
+    if (btnConfigureAvatar) {
+        btnConfigureAvatar.onclick = () => {
+            openAvatarConfigurationModal(assetName, previewMateria, modelMeta, async (newAvatar) => {
+                modelMeta.avatar = newAvatar;
+                await saveAssetMetaCallback(assetName, modelMeta, dirHandle);
+            });
+        };
+    }
+
     // Cleanup on inspector clear
     const observer = new MutationObserver((mutations) => {
         if (!document.getElementById('model-preview-canvas')) {
             if (animationId) cancelAnimationFrame(animationId);
+            window.removeEventListener('mouseup', handleGlobalMouseUp);
+            window.removeEventListener('mousemove', handleGlobalMouseMove);
             observer.disconnect();
         }
     });
@@ -6002,11 +6130,11 @@ async function renderModel3DInspector(assetName, assetPath) {
         if (!previewMateria) return;
         const animator = previewMateria.getComponentByName('Animator3D');
         if (!animator || !animator.animations || animator.animations.length === 0) {
-            showNotification(L.get('AVISO'), "Este modelo no contiene animaciones.");
+            window.Dialogs.showNotification(L.get('AVISO'), "Este modelo no contiene animaciones.");
             return;
         }
 
-        const dirHandle = currentDirectoryHandle();
+        const dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
         let extractedCount = 0;
         const lockRoot = document.getElementById('lock-root-motion')?.checked;
 
@@ -6025,30 +6153,48 @@ async function renderModel3DInspector(assetName, assetPath) {
                 });
             }
 
-            const fileName = `${assetName.split('.')[0]}_${anim.name}.cea`;
+            const fileName = `${assetName.split('.')[0]}_${anim.name}.ceanimclip`; // Use .ceanimclip for 3D clips
             try {
                 const fileH = await dirHandle.getFileHandle(fileName, { create: true });
                 const writable = await fileH.createWritable();
                 await writable.write(JSON.stringify(processedAnim, null, 2));
                 await writable.close();
+
+                // Store reference in model metadata
+                if (!modelMeta.extractedAnimations) modelMeta.extractedAnimations = [];
+                if (!modelMeta.extractedAnimations.includes(fileName)) {
+                    modelMeta.extractedAnimations.push(fileName);
+                    await saveAssetMetaCallback(assetName, modelMeta, dirHandle);
+                }
+
                 extractedCount++;
             } catch (e) {
                 console.warn(`Error al extraer animación ${anim.name}:`, e);
             }
         }
 
-        showNotification(L.get('EXITO'), `Se han extraído ${extractedCount} animaciones.`);
+        window.Dialogs.showNotification(L.get('EXITO'), `Se han extraído ${extractedCount} animaciones.`);
 
         // Capture a thumbnail for the model after a short delay
-        const captureThumbnail = async () => {
+        const captureAnimThumbnail = async () => {
             const thumbCanvas = document.createElement('canvas');
             thumbCanvas.width = 128;
             thumbCanvas.height = 128;
             const thumbCtx = thumbCanvas.getContext('2d');
+
+            if (renderer && previewScene) {
+                renderer.render(previewScene, null, {
+                    viewMatrix: lastViewMatrix,
+                    showGrid: false,
+                    clearAlpha: 0
+                });
+            }
             thumbCtx.drawImage(canvas, 0, 0, 128, 128);
 
             thumbCanvas.toBlob(async (blob) => {
                 const thumbName = assetName + '.thumb.png';
+                const dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
+                if (!dirHandle) return;
                 try {
                     const thumbHandle = await dirHandle.getFileHandle(thumbName, { create: true });
                     const writable = await thumbHandle.createWritable();
@@ -6060,7 +6206,7 @@ async function renderModel3DInspector(assetName, assetPath) {
                 }
             }, 'image/png');
         };
-        setTimeout(captureThumbnail, 1000);
+        setTimeout(captureAnimThumbnail, 1000);
 
         if (updateAssetBrowserCallback) await updateAssetBrowserCallback();
     };
@@ -6092,7 +6238,7 @@ async function renderModel3DInspector(assetName, assetPath) {
             if (window.updateScene) window.updateScene();
             if (window.selectMateria) window.selectMateria(target.id);
 
-            showNotification(L.get('EXITO'), `Rigging generado: se añadieron ${count} componentes de Hueso.`);
+            window.Dialogs.showNotification(L.get('EXITO'), `Rigging generado: se añadieron ${count} componentes de Hueso.`);
         }
     };
 }
@@ -6254,7 +6400,7 @@ async function renderVideoInspector(assetName, assetPath) {
     };
 
     // Load existing metadata
-    const dirHandle = currentDirectoryHandle();
+    const dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
     try {
         const metaFileHandle = await dirHandle.getFileHandle(assetName + '.meta');
         const metaFile = await metaFileHandle.getFile();
@@ -6266,7 +6412,7 @@ async function renderVideoInspector(assetName, assetPath) {
         const quality = document.getElementById('video-quality-select').value;
         const meta = { quality };
         await saveAssetMetaCallback(assetName, meta, dirHandle);
-        showNotification(window.Localization.get('EXITO', 'Éxito'), window.Localization.get('CAMBIOS_APLICADOS', "Cambios aplicados correctamente."));
+        window.Dialogs.showNotification(window.Localization.get('EXITO', 'Éxito'), window.Localization.get('CAMBIOS_APLICADOS', "Cambios aplicados correctamente."));
     };
 }
 
@@ -6311,4 +6457,119 @@ function calculateAutoPivot(image) {
         x: parseFloat((centerX / width).toFixed(4)),
         y: parseFloat((centerY / height).toFixed(4))
     };
+}
+
+async function openAvatarConfigurationModal(assetName, modelMateria, meta, onSave) {
+    const L = window.Localization;
+    const bones = [];
+    modelMateria.traverse(mtr => {
+        if (mtr.getComponentByName('Bone') || mtr.children.length > 0) {
+            bones.push(mtr.name);
+        }
+    });
+
+    const standardHumanoidBones = [
+        'Hips', 'Spine', 'Chest', 'Neck', 'Head',
+        'LeftUpperArm', 'LeftLowerArm', 'LeftHand',
+        'RightUpperArm', 'RightLowerArm', 'RightHand',
+        'LeftUpperLeg', 'LeftLowerLeg', 'LeftFoot',
+        'RightUpperLeg', 'RightLowerLeg', 'RightFoot'
+    ];
+
+    const currentMapping = meta.avatar || {};
+
+    const modal = document.createElement('div');
+    modal.className = 'editor-panel floating-panel avatar-config-modal';
+    modal.style.width = '400px';
+    modal.style.height = '500px';
+    modal.style.left = '50%';
+    modal.style.top = '50%';
+    modal.style.transform = 'translate(-50%, -50%)';
+    modal.style.zIndex = '10000';
+
+    let mappingRows = standardHumanoidBones.map(stdBone => {
+        const mappedBone = currentMapping[stdBone] || '';
+        return `
+            <div class="inspector-row" style="margin-bottom: 8px;">
+                <label style="width: 120px; font-size: 0.85em;">${stdBone}</label>
+                <select class="bone-select" data-std-bone="${stdBone}" style="flex-grow: 1;">
+                    <option value="">-- None --</option>
+                    ${bones.map(b => `<option value="${b}" ${mappedBone === b ? 'selected' : ''}>${b}</option>`).join('')}
+                </select>
+            </div>
+        `;
+    }).join('');
+
+    modal.innerHTML = `
+        <div class="panel-header">
+            <span>Configurar Avatar: ${assetName}</span>
+            <button class="close-panel-btn">&times;</button>
+        </div>
+        <div class="panel-content" style="padding: 15px; overflow-y: auto; height: calc(100% - 80px);">
+            <p class="field-description" style="margin-bottom: 15px;">Mapea los huesos del modelo a los nombres estándar de humanoide.</p>
+            <button id="btn-auto-map" class="panel-tool-btn" style="width: 100%; margin-bottom: 15px;">Mapeo Automático</button>
+            ${mappingRows}
+        </div>
+        <div class="panel-footer" style="padding: 10px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border-color);">
+            <button class="panel-tool-btn cancel-btn">Cancelar</button>
+            <button class="primary-btn save-btn">Guardar</button>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    if (window.FloatingPanelManager) window.FloatingPanelManager.makeDraggable(modal);
+
+    modal.querySelector('.close-panel-btn').onclick = () => modal.remove();
+}
+
+function drawSkeletonGizmos(renderer, rootMateria, viewMatrix) {
+    const gl = renderer.gl;
+    const canvas = renderer.canvas;
+    const ctx = canvas.getContext('2d'); // This might not work if WebGL is active on the same canvas,
+    // but in CE the editor uses a 2D overlay.
+    // However, the inspector preview is a standalone canvas.
+    // Let's use the Renderer3D's internal line drawing if it has one, or draw via WebGL.
+    // Since Inspector doesn't have an overlay canvas, we must draw bones via WebGL lines.
+
+    const program = renderer.programs.unlit;
+    gl.useProgram(program);
+    gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, renderer.projectionMatrix);
+    gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, viewMatrix);
+    gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, window.glMatrix.mat4.create());
+    gl.uniform4f(gl.getUniformLocation(program, 'uColor'), 0, 1, 1, 1);
+
+    const bonePositions = [];
+    rootMateria.traverse(mtr => {
+        if (mtr.getComponentByName('Bone') || mtr.getComponentByName('SkinnedMeshRenderer3D')) {
+            const trans = mtr.getComponent(window.Components.Transform);
+            if (!trans) return;
+            const wm = trans.worldMatrix;
+            const pos = [wm[12], wm[13], wm[14]];
+
+            if (mtr.parent) {
+                const pTrans = mtr.parent.getComponent(window.Components.Transform);
+                if (pTrans && (mtr.parent.getComponentByName('Bone') || mtr.parent === rootMateria)) {
+                    const pwm = pTrans.worldMatrix;
+                    bonePositions.push(pwm[12], pwm[13], pwm[14]);
+                    bonePositions.push(pos[0], pos[1], pos[2]);
+                }
+            }
+        }
+    });
+
+    if (bonePositions.length > 0) {
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(bonePositions), gl.STATIC_DRAW);
+
+        const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
+        gl.enableVertexAttribArray(posLoc);
+        gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+
+        gl.disable(gl.DEPTH_TEST);
+        gl.drawArrays(gl.LINES, 0, bonePositions.length / 3);
+        gl.enable(gl.DEPTH_TEST);
+
+        gl.deleteBuffer(buffer);
+    }
 }

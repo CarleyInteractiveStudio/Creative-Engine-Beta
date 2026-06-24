@@ -354,6 +354,13 @@ export class Materia {
         this.scene = null;
     }
 
+    traverse(callback) {
+        callback(this);
+        for (const child of this.children) {
+            child.traverse(callback);
+        }
+    }
+
     update(deltaTime = 0) {
         for (const ley of this.leyes) {
             if (ley.isActive && typeof ley.update === 'function') {

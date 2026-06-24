@@ -55,7 +55,7 @@ async function populateFileTree(container, dirHandle, pathPrefix = '') {
 async function exportPackage(filesToExport, manifest) {
     const L = window.Localization;
     if (!filesToExport || filesToExport.length === 0) {
-        showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SIN_FILES_EXPORT', 'No se seleccionaron archivos para exportar.'));
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SIN_FILES_EXPORT', 'No se seleccionaron archivos para exportar.'));
         return;
     }
     console.log(`Exportando paquete con ${filesToExport.length} entradas.`);
@@ -73,12 +73,12 @@ async function exportPackage(filesToExport, manifest) {
         const content = await zip.generateAsync({type: 'blob'});
         downloadBlob(content, exportContext.fileName);
         console.log("Paquete exportado con éxito.");
-        showNotification(L.get('EXITO', 'Éxito'), L.get('EXITO_PAQUETE_EXPORTADO', 'Paquete exportado con éxito.'));
+        window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), L.get('EXITO_PAQUETE_EXPORTADO', 'Paquete exportado con éxito.'));
         dom.packageFileTreeModal.classList.remove('is-open');
 
     } catch(error) {
         console.error(`Error al exportar el paquete:`, error);
-        showNotification(L.get('ERROR', 'Error'), L.get('ERROR_EXPORT_PAQUETE', 'No se pudo exportar el paquete.'));
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_EXPORT_PAQUETE', 'No se pudo exportar el paquete.'));
     }
 };
 
@@ -118,14 +118,14 @@ async function confirmImport(zip, dirHandle) {
             progress.update(percent, `${L.get('IMPORTANDO', 'Importando')}: ${percent}% (${importedCount}/${checkedItems.length})`);
         }
         progress.close();
-        showNotification(L.get('EXITO', 'Éxito'), L.get('EXITO_IMPORT_COMPLETO', '¡Importación completada con éxito!'));
+        window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), L.get('EXITO_IMPORT_COMPLETO', '¡Importación completada con éxito!'));
         dom.packageFileTreeModal.classList.remove('is-open');
         await updateAssetBrowser();
 
     } catch (error) {
         progress.close();
         console.error("Error durante la importación de archivos:", error);
-        showNotification(L.get('ERROR', 'Error'), L.get('ERROR_IMPORT_PAQUETE', 'Ocurrió un error al importar los archivos. Revisa la consola.'));
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_IMPORT_PAQUETE', 'Ocurrió un error al importar los archivos. Revisa la consola.'));
     }
 }
 
@@ -142,7 +142,7 @@ async function handleImport() {
         const manifestFile = zip.file('manifest.json');
 
         if (!manifestFile) {
-            showNotification(L.get('PAQUETE_INVALIDO', 'Paquete Inválido'), L.get('ERROR_PAQUETE_INVALIDO', 'Este no es un paquete válido. Falta el archivo manifest.json.'));
+            window.Dialogs.showNotification(L.get('PAQUETE_INVALIDO', 'Paquete Inválido'), L.get('ERROR_PAQUETE_INVALIDO', 'Este no es un paquete válido. Falta el archivo manifest.json.'));
             return;
         }
 
@@ -211,7 +211,7 @@ function setupEventListeners() {
         const L = window.Localization;
         const selectedAsset = dom.assetGridView.querySelector('.grid-item.active');
         if (!selectedAsset || selectedAsset.dataset.kind !== 'directory') {
-            showNotification(L.get('ERROR', 'Error'), L.get('AVISO_SELECCION_CARPETA_EXPORT', 'Por favor, selecciona una carpeta en el Navegador de Assets para exportar.'));
+            window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('AVISO_SELECCION_CARPETA_EXPORT', 'Por favor, selecciona una carpeta en el Navegador de Assets para exportar.'));
             return;
         }
         onExportPackage(selectedAsset.dataset.name);
@@ -259,7 +259,7 @@ function setupEventListeners() {
         const L = window.Localization;
         const defaultFilename = dom.exportFilename.value || 'package.cep';
 
-        showPrompt(
+        window.Dialogs.showPrompt(
             L.get('TITULO_EXPORTAR_PAQUETE', 'Exportar Paquete'),
             L.get('PROMPT_NOMBRE_PAQUETE', 'Introduce el nombre del archivo para el paquete:'),
             async (fileName) => {
@@ -294,7 +294,7 @@ function setupEventListeners() {
 async function exportLibrariesAsPackage(libraryNames) {
     const L = window.Localization;
     if (!libraryNames || libraryNames.length === 0) {
-        showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SIN_LIBS_EXPORT', 'No se seleccionaron librerías para exportar.'));
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SIN_LIBS_EXPORT', 'No se seleccionaron librerías para exportar.'));
         return;
     }
 
@@ -335,11 +335,11 @@ async function exportLibrariesAsPackage(libraryNames) {
         const defaultFilename = `librerias_${new Date().toISOString().slice(0, 10)}.cep`;
         downloadBlob(content, defaultFilename);
         console.log("Paquete de librerías exportado con éxito.");
-        showNotification(L.get('EXITO', 'Éxito'), L.get('EXITO_LIBS_EXPORTADAS', 'Paquete de librerías exportado con éxito.'));
+        window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), L.get('EXITO_LIBS_EXPORTADAS', 'Paquete de librerías exportado con éxito.'));
 
     } catch (error) {
         console.error(`Error al exportar el paquete de librerías:`, error);
-        showNotification(L.get('ERROR', 'Error'), L.get('ERROR_EXPORT_LIBS', 'No se pudo exportar el paquete de librerías.'));
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_EXPORT_LIBS', 'No se pudo exportar el paquete de librerías.'));
     }
 }
 

@@ -122,7 +122,7 @@ async function instantiateTemplate(tpl, btn) {
                     for (const asset of ext.assets) {
                         const ok = await ExtensionsManager.downloadExtension(asset.path, asset.url);
                         if (!ok) {
-                            showNotification(L.get('ERROR'), L.get('ERROR_DESCARGA', 'Error al descargar assets necesarios.'));
+                            window.Dialogs.showNotification(L.get('ERROR'), L.get('ERROR_DESCARGA', 'Error al descargar assets necesarios.'));
                             if (btn) { btn.disabled = false; btn.textContent = L.get('REINTENTAR', 'Reintentar'); }
                             return;
                         }
@@ -205,11 +205,11 @@ async function instantiateTemplate(tpl, btn) {
         await writable.write(JSON.stringify(sceneData, null, 2));
         await writable.close();
 
-        showNotification(L.get('EXITO', 'Éxito'), L.get('ESCENA_CREADA', 'Escena de plantilla creada en Assets. Ábrela para empezar.'));
+        window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), L.get('ESCENA_CREADA', 'Escena de plantilla creada en Assets. Ábrela para empezar.'));
         if (window.updateAssetBrowser) window.updateAssetBrowser();
     } catch (e) {
         console.error(e);
-        showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_ESCENA', 'No se pudo crear la escena.'));
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_ESCENA', 'No se pudo crear la escena.'));
     }
 }
 

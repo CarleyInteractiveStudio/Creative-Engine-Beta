@@ -15,6 +15,7 @@ let exportContext;
 let contextAsset = null; // Asset under the right-click context menu
 let dragCounter = 0; // For robust drag-over UI
 let collapsedFolders = new Set(); // Conjunto de rutas de carpetas contraídas
+let expandedModels = new Set(); // Modelos (glb, obj) expandidos en el grid
 
 // Callbacks to other modules/editor.js
 let onAssetSelected;
@@ -109,7 +110,7 @@ export async function handleContextMenuAction(action) {
 
     switch(action) {
         case 'create-folder': {
-            showPrompt(
+            window.Dialogs.showPrompt(
                 L.get('CREAR_CARPETA', 'Crear Carpeta'),
                 L.get('NOMBRE_CARPETA_PROMPT', 'Introduce el nombre de la nueva carpeta:'),
                 async (folderName) => {
@@ -119,7 +120,7 @@ export async function handleContextMenuAction(action) {
                             await updateAssetBrowserCallback();
                         } catch (err) {
                             console.error("Error al crear la carpeta:", err);
-                            showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_CARPETA', 'No se pudo crear la carpeta.'));
+                            window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_CARPETA', 'No se pudo crear la carpeta.'));
                         }
                     }
                 }
@@ -127,7 +128,7 @@ export async function handleContextMenuAction(action) {
             break;
         }
         case 'create-animator-controller': {
-            showPrompt(
+            window.Dialogs.showPrompt(
                 L.get('CREAR_CONTROLADOR_ANIMACION', 'Crear Controlador de Animación'),
                 L.get('NOMBRE_CONTROLADOR_PROMPT', 'Introduce el nombre del nuevo controlador (.ceanim):'),
                 async (ctrlName) => {
@@ -164,7 +165,7 @@ export async function handleContextMenuAction(action) {
                             }, 100);
                         } catch (err) {
                             console.error("Error al crear el controlador de animación:", err);
-                            showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_CONTROLADOR', 'No se pudo crear el controlador.'));
+                            window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_CONTROLADOR', 'No se pudo crear el controlador.'));
                         }
                     }
                 }
@@ -172,7 +173,7 @@ export async function handleContextMenuAction(action) {
             break;
         }
         case 'create-prefab': {
-            showPrompt(
+            window.Dialogs.showPrompt(
                 L.get('CREAR_PREFAB', 'Crear Prefab'),
                 L.get('NOMBRE_PREFAB_PROMPT', 'Introduce el nombre del nuevo prefab (.ceprefab):'),
                 async (prefabName) => {
@@ -212,7 +213,7 @@ export async function handleContextMenuAction(action) {
                             }, 100);
                         } catch (err) {
                             console.error("Error al crear el prefab:", err);
-                            showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_PREFAB', 'No se pudo crear el prefab.'));
+                            window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_PREFAB', 'No se pudo crear el prefab.'));
                         }
                     }
                 }
@@ -220,7 +221,7 @@ export async function handleContextMenuAction(action) {
             break;
         }
         case 'create-chc-script': {
-            showPrompt(
+            window.Dialogs.showPrompt(
                 L.get('CREAR_SCRIPT_CHC', 'Crear Script H-Code'),
                 L.get('NOMBRE_SCRIPT_PROMPT', 'Introduce el nombre del nuevo script:'),
                 async (scriptName) => {
@@ -245,7 +246,7 @@ export async function handleContextMenuAction(action) {
                             }, 100);
                         } catch (err) {
                             console.error("Error al crear el script CHC:", err);
-                            showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_SCRIPT', 'No se pudo crear el script.'));
+                            window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_SCRIPT', 'No se pudo crear el script.'));
                         }
                     }
                 }
@@ -253,7 +254,7 @@ export async function handleContextMenuAction(action) {
             break;
         }
         case 'create-script': {
-            showPrompt(
+            window.Dialogs.showPrompt(
                 L.get('CREAR_SCRIPT', 'Crear Script'),
                 L.get('NOMBRE_SCRIPT_PROMPT', 'Introduce el nombre del nuevo script:'),
                 async (scriptName) => {
@@ -278,7 +279,7 @@ export async function handleContextMenuAction(action) {
                             }, 100);
                         } catch (err) {
                             console.error("Error al crear el script:", err);
-                            showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_SCRIPT', 'No se pudo crear el script.'));
+                            window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_SCRIPT', 'No se pudo crear el script.'));
                         }
                     }
                 }
@@ -286,7 +287,7 @@ export async function handleContextMenuAction(action) {
             break;
         }
         case 'create-scene': {
-            showPrompt(
+            window.Dialogs.showPrompt(
                 L.get('CREAR_ESCENA', 'Crear Escena'),
                 L.get('NOMBRE_ESCENA_PROMPT', 'Introduce el nombre de la nueva escena (.ceScene):'),
                 async (sceneName) => {
@@ -324,7 +325,7 @@ export async function handleContextMenuAction(action) {
                             }, 100);
                         } catch (err) {
                             console.error("Error al crear la escena:", err);
-                            showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_ESCENA', 'No se pudo crear la escena.'));
+                            window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_ESCENA', 'No se pudo crear la escena.'));
                         }
                     } else {
                         console.log("[AssetBrowser] La creación de la escena fue cancelada o el nombre estaba vacío.");
@@ -334,7 +335,7 @@ export async function handleContextMenuAction(action) {
             break;
         }
         case 'create-animation': {
-            showPrompt(
+            window.Dialogs.showPrompt(
                 L.get('CREAR_ANIMACION', 'Crear Asset de Animación'),
                 L.get('NOMBRE_ANIMACION_PROMPT', 'Introduce el nombre del nuevo asset (.cea):'),
                 async (animName) => {
@@ -368,7 +369,7 @@ export async function handleContextMenuAction(action) {
                             }, 100);
                         } catch (err) {
                             console.error("Error al crear el asset de animación:", err);
-                            showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_ANIMACION', 'No se pudo crear el asset de animación.'));
+                            window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_ANIMACION', 'No se pudo crear el asset de animación.'));
                         }
                     }
                 }
@@ -376,7 +377,7 @@ export async function handleContextMenuAction(action) {
             break;
         }
         case 'create-readme': {
-            showPrompt(
+            window.Dialogs.showPrompt(
                 L.get('CREAR_README', 'Crear Archivo Léame'),
                 L.get('NOMBRE_ARCHIVO_PROMPT', 'Introduce el nombre del archivo:'),
                 async (readmeName) => {
@@ -401,7 +402,7 @@ export async function handleContextMenuAction(action) {
                             }, 100);
                         } catch (err) {
                             console.error("Error al crear el archivo Léame:", err);
-                            showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_ARCHIVO', 'No se pudo crear el archivo.'));
+                            window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_ARCHIVO', 'No se pudo crear el archivo.'));
                         }
                     }
                 },
@@ -410,7 +411,7 @@ export async function handleContextMenuAction(action) {
             break;
         }
         case 'create-tile-palette': {
-            showPrompt(
+            window.Dialogs.showPrompt(
                 L.get('CREAR_PALETA_TILES', 'Crear Paleta de Tiles'),
                 L.get('NOMBRE_PALETA_PROMPT', 'Introduce el nombre de la nueva paleta (.cepalette):'),
                 async (paletteName) => {
@@ -431,7 +432,7 @@ export async function handleContextMenuAction(action) {
                             }, 100);
                         } catch (err) {
                             console.error("Error al crear la paleta:", err);
-                            showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_PALETA', 'No se pudo crear la paleta.'));
+                            window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CREAR_PALETA', 'No se pudo crear la paleta.'));
                         }
                     }
                 }
@@ -441,7 +442,7 @@ export async function handleContextMenuAction(action) {
         // Add other cases for create-scene, create-animation, etc.
         case 'delete': {
             if (selectedAsset) {
-                showConfirmation(
+                window.Dialogs.showConfirmation(
                     L.get('CONFIRMAR_BORRADO', 'Confirmar Borrado'),
                     `${L.get('BORRAR_ASSET_CONFIRM', '¿Estás seguro de que quieres borrar')} '${selectedAsset.name}'? ${L.get('ACCION_IRREVERSIBLE', 'Esta acción no se puede deshacer.')}`,
                     async () => {
@@ -462,12 +463,12 @@ export async function handleContextMenuAction(action) {
                             await updateAssetBrowserCallback();
                         } catch (err) {
                             console.error(`Error al borrar '${selectedAsset.name}':`, err);
-                            showNotification(L.get('ERROR', 'Error'), L.get('ERROR_BORRAR_ASSET', 'No se pudo borrar el asset.'));
+                            window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_BORRAR_ASSET', 'No se pudo borrar el asset.'));
                         }
                     }
                 );
             } else {
-                showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SELECCION_BORRAR', 'Por favor, selecciona un archivo o carpeta para borrar.'));
+                window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SELECCION_BORRAR', 'Por favor, selecciona un archivo o carpeta para borrar.'));
             }
             break;
         }
@@ -484,14 +485,14 @@ export async function handleContextMenuAction(action) {
         case 'rename': {
             if (selectedAsset) {
                 const oldName = selectedAsset.name;
-                showPrompt(
+                window.Dialogs.showPrompt(
                     L.get('RENOMBRAR_ASSET', 'Renombrar Asset'),
                     `${L.get('INTRODUCE_NUEVO_NOMBRE', 'Introduce el nuevo nombre para')} '${oldName}':`,
                     async (newName) => {
                         if (newName && newName !== oldName) {
                             try {
                                 if (selectedAsset.kind === 'directory') {
-                                    showNotification(L.get('NO_IMPLEMENTADO', 'No Implementado'), L.get('ERROR_RENOMBRAR_CARPETA', 'El renombrado de carpetas aún no está implementado.'));
+                                    window.Dialogs.showNotification(L.get('NO_IMPLEMENTADO', 'No Implementado'), L.get('ERROR_RENOMBRAR_CARPETA', 'El renombrado de carpetas aún no está implementado.'));
                                     return;
                                 }
                                 const oldFileHandle = await currentDirectoryHandle.handle.getFileHandle(oldName);
@@ -508,14 +509,14 @@ export async function handleContextMenuAction(action) {
                                 await updateAssetBrowserCallback();
                             } catch (err) {
                                 console.error(`Error al renombrar '${oldName}':`, err);
-                                showNotification(L.get('ERROR', 'Error'), L.get('ERROR_RENOMBRAR_ASSET', 'No se pudo renombrar el asset.'));
+                                window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_RENOMBRAR_ASSET', 'No se pudo renombrar el asset.'));
                             }
                         }
                     },
                     oldName
                 );
             } else {
-                showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SELECCION_RENOMBRAR', 'Por favor, selecciona un archivo para renombrar.'));
+                window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SELECCION_RENOMBRAR', 'Por favor, selecciona un archivo para renombrar.'));
             }
             break;
         }
@@ -523,7 +524,7 @@ export async function handleContextMenuAction(action) {
              if (selectedAsset && selectedAsset.kind === 'directory') {
                 onExportPackage(selectedAsset.name);
              } else {
-                showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SELECCION_EXPORTAR', 'Por favor, selecciona una carpeta para exportar.'));
+                window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SELECCION_EXPORTAR', 'Por favor, selecciona una carpeta para exportar.'));
              }
             break;
         }
@@ -540,7 +541,7 @@ async function handleImportSpine(item) {
     const L = window.Localization;
     const selectedMateria = window.getSelectedMateria ? window.getSelectedMateria() : null;
     if (!selectedMateria) {
-        showNotification(L.get('AVISO'), "Selecciona una Materia en la jerarquía para ser la raíz del esqueleto.");
+        window.Dialogs.showNotification(L.get('AVISO'), "Selecciona una Materia en la jerarquía para ser la raíz del esqueleto.");
         return;
     }
 
@@ -550,7 +551,7 @@ async function handleImportSpine(item) {
         const content = await fileObj.text();
         const result = await SkeletonImporter.importSpineJSON(content, selectedMateria, projectsDirHandle);
 
-        showNotification(L.get('EXITO'), `Esqueleto importado con ${result.boneMap.size} huesos.`);
+        window.Dialogs.showNotification(L.get('EXITO'), `Esqueleto importado con ${result.boneMap.size} huesos.`);
 
         if (result.animations.length > 0) {
             for (const anim of result.animations) {
@@ -570,7 +571,7 @@ async function handleImportSpine(item) {
         if (updateAssetBrowserCallback) await updateAssetBrowserCallback();
     } catch (e) {
         console.error("Error importando Spine:", e);
-        showNotification(L.get('ERROR'), "No se pudo importar el archivo como Spine JSON.");
+        window.Dialogs.showNotification(L.get('ERROR'), "No se pudo importar el archivo como Spine JSON.");
     }
 }
 
@@ -631,10 +632,10 @@ export async function updateAssetBrowser() {
                     if (updateAssetBrowserCallback) {
                         await updateAssetBrowserCallback();
                     }
-                    showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_CREAR_PREFAB', "Prefab creado correctamente")}: ${materia.name}`);
+                    window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_CREAR_PREFAB', "Prefab creado correctamente")}: ${materia.name}`);
                 } catch (err) {
                     console.error("[AssetBrowser] Error crítico al crear el prefab:", err);
-                    showNotification(L.get('ERROR', 'Error'), `${L.get('ERROR_CREAR_PREFAB', "No se pudo crear el prefab")}: ${err.message}`);
+                    window.Dialogs.showNotification(L.get('ERROR', 'Error'), `${L.get('ERROR_CREAR_PREFAB', "No se pudo crear el prefab")}: ${err.message}`);
                 }
             } else {
                 console.warn(`[AssetBrowser] No se encontró la materia con ID ${materiaId} en la escena.`);
@@ -691,7 +692,7 @@ export async function updateAssetBrowser() {
 
             } catch (error) {
                 console.error("[AssetBrowser] Error al mover el archivo:", error);
-                showNotification(L.get('ERROR', 'Error'), L.get('ERROR_MOVER_ARCHIVO', 'No se pudo mover el archivo.'));
+                window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_MOVER_ARCHIVO', 'No se pudo mover el archivo.'));
             }
         }
     }
@@ -874,6 +875,20 @@ export async function updateAssetBrowser() {
                 iconContainer.innerHTML = `<img src="icons/file.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             }
 
+            // --- Model Expansion Toggle ---
+            if (entry.kind === 'file' && (lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.endsWith('.obj'))) {
+                const toggle = document.createElement('div');
+                toggle.className = 'model-expand-toggle';
+                toggle.innerHTML = `<img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; transition: transform 0.2s; ${expandedModels.has(fullPath) ? 'transform: rotate(90deg);' : ''}">`;
+                toggle.onclick = (e) => {
+                    e.stopPropagation();
+                    if (expandedModels.has(fullPath)) expandedModels.delete(fullPath);
+                    else expandedModels.add(fullPath);
+                    updateAssetBrowser();
+                };
+                item.appendChild(toggle);
+            }
+
             const name = document.createElement('div');
             name.className = 'name';
             if (entry.kind === 'file') {
@@ -886,6 +901,11 @@ export async function updateAssetBrowser() {
             item.appendChild(iconContainer);
             item.appendChild(name);
             gridViewContainer.appendChild(item);
+
+            if (expandedModels.has(fullPath)) {
+                item.classList.add('model-expanded-parent');
+                await renderModelSubAssets(gridViewContainer, entry, fullPath);
+            }
         }
     }
 
@@ -1161,7 +1181,7 @@ async function processEntry(entry, targetHandle, stats) {
                 stats.libs++;
             } catch (err) {
                 console.error(`Error al importar la librería '${file.name}':`, err);
-                showNotification(L.get('ERROR_IMPORTACION', 'Error de Importación'), `${L.get('ERROR_IMPORTAR_LIB', "No se pudo importar la librería")}: '${file.name}'.`);
+                window.Dialogs.showNotification(L.get('ERROR_IMPORTACION', 'Error de Importación'), `${L.get('ERROR_IMPORTAR_LIB', "No se pudo importar la librería")}: '${file.name}'.`);
             }
         } else {
             try {
@@ -1172,7 +1192,7 @@ async function processEntry(entry, targetHandle, stats) {
                 stats.files++;
             } catch (err) {
                 console.error(`Error al importar el archivo '${file.name}':`, err);
-                showNotification(L.get('ERROR_IMPORTACION', 'Error de Importación'), `${L.get('ERROR_IMPORTAR_ARCHIVO', "No se pudo importar el archivo")}: '${file.name}'.`);
+                window.Dialogs.showNotification(L.get('ERROR_IMPORTACION', 'Error de Importación'), `${L.get('ERROR_IMPORTAR_ARCHIVO', "No se pudo importar el archivo")}: '${file.name}'.`);
             }
         }
     } else if (entry.isDirectory) {
@@ -1206,7 +1226,7 @@ async function processEntry(entry, targetHandle, stats) {
 async function importZipFile(file, targetHandle, stats) {
     const L = window.Localization;
     if (typeof JSZip === 'undefined') {
-        showNotification(L.get('ERROR'), "JSZip no está cargado. No se pueden procesar archivos ZIP.");
+        window.Dialogs.showNotification(L.get('ERROR'), "JSZip no está cargado. No se pueden procesar archivos ZIP.");
         return;
     }
     try {
@@ -1232,7 +1252,7 @@ async function importZipFile(file, targetHandle, stats) {
         console.log(`ZIP '${file.name}' descomprimido con éxito.`);
     } catch (err) {
         console.error(`Error al descomprimir ZIP '${file.name}':`, err);
-        showNotification(L.get('ERROR', 'Error'), `No se pudo descomprimir el archivo ZIP: ${file.name}`);
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), `No se pudo descomprimir el archivo ZIP: ${file.name}`);
     }
 }
 
@@ -1249,7 +1269,7 @@ async function handleExternalFileDrop(e) {
 
     if (!currentDirectoryHandle.handle) {
         console.error("[AssetBrowser] No directory handle available for import.");
-        showNotification(L.get('ERROR'), L.get('SELECCIONAR_CARPETA_IMPORTAR', 'Selecciona una carpeta para importar.'));
+        window.Dialogs.showNotification(L.get('ERROR'), L.get('SELECCIONAR_CARPETA_IMPORTAR', 'Selecciona una carpeta para importar.'));
         return;
     }
 
@@ -1281,4 +1301,73 @@ export function getCurrentDirectoryHandle() {
 
 export function getCurrentDirectoryPath() {
     return currentDirectoryHandle.path;
+}
+
+async function renderModelSubAssets(gridContainer, fileEntry, modelPath) {
+    const { ModelLoader3D: Loader } = await import('../../engine/ModelLoader3D.js');
+
+    try {
+        const data = await Loader.loadModel(modelPath, window.projectsDirHandle);
+        if (!data) return;
+
+        // 1. Meshes
+        if (data.meshes) {
+            data.meshes.forEach((m, i) => {
+                createSubAssetItem(gridContainer, m.name || `Mesh ${i}`, 'box', { type: 'ModelMesh', modelPath, meshIndex: i });
+            });
+        }
+
+        // 2. Animations (Embedded)
+        if (data.animations) {
+            data.animations.forEach((a, i) => {
+                createSubAssetItem(gridContainer, a.name || `Anim ${i}`, 'route', { type: 'ModelAnimation', modelPath, animIndex: i, isEmbedded: true });
+            });
+        }
+
+        // 2.1 Animations (Extracted / Meta)
+        const dirHandle = currentDirectoryHandle.handle;
+        try {
+            const fileName = modelPath.split('/').pop();
+            const metaFileHandle = await dirHandle.getFileHandle(fileName + '.meta');
+            const metaFile = await metaFileHandle.getFile();
+            const meta = JSON.parse(await metaFile.text());
+            if (meta.extractedAnimations) {
+                meta.extractedAnimations.forEach(animPath => {
+                    const name = animPath.split('_').pop().replace('.ceanimclip', '');
+                    createSubAssetItem(gridContainer, name, 'clapperboard', { type: 'ModelAnimation', path: animPath, isExtracted: true });
+                });
+            }
+        } catch (e) {}
+
+        // 3. Skeleton
+        if (data.skins && data.skins.length > 0) {
+            createSubAssetItem(gridContainer, 'Skeleton', 'user', { type: 'ModelSkeleton', modelPath });
+        }
+
+    } catch (e) {
+        console.error("Error loading sub-assets for expansion:", e);
+    }
+}
+
+function createSubAssetItem(container, name, icon, dragData) {
+    const item = document.createElement('div');
+    item.className = 'grid-item sub-asset-item';
+    item.draggable = true;
+
+    const iconContainer = document.createElement('div');
+    iconContainer.className = 'icon';
+    iconContainer.innerHTML = `<img src="icons/${icon}.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'name';
+    nameEl.textContent = name;
+
+    item.appendChild(iconContainer);
+    item.appendChild(nameEl);
+
+    item.ondragstart = (e) => {
+        e.stopPropagation();
+        e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
+    };
+    container.appendChild(item);
 }

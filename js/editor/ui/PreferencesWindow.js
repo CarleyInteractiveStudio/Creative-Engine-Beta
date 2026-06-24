@@ -199,14 +199,14 @@ async function savePreferences() {
     }
 
     applyPreferences();
-    showNotification(
+    window.Dialogs.showNotification(
         window.Localization?.get('EXITO') || 'Éxito',
         window.Localization?.get('PREFERENCIAS_GUARDADAS') || 'Preferencias guardadas.'
     );
     _dom.preferencesModal.classList.add('hidden');
     } catch (e) {
         console.error("Error in savePreferences:", e);
-        showNotification(
+        window.Dialogs.showNotification(
             window.Localization?.get('ERROR') || 'Error',
             (window.Localization?.get('ERROR_GUARDAR_PREFERENCIAS') || 'Error al guardar preferencias: ') + e.message
         );
@@ -323,14 +323,14 @@ function setupEventListeners() {
             const apiKey = _dom.prefsAiApiKey.value;
 
             if (!provider || provider === 'none') {
-                showNotification(
+                window.Dialogs.showNotification(
                     window.Localization?.get('ERROR') || 'Error',
                     window.Localization?.get('SELECCIONA_IA_VALIDO') || 'Por favor, selecciona un proveedor de IA válido.'
                 );
                 return;
             }
             if (!apiKey) {
-                showNotification(
+                window.Dialogs.showNotification(
                     window.Localization?.get('ERROR') || 'Error',
                     window.Localization?.get('INTRODUCE_API_KEY_NOTIFICATION') || 'Por favor, introduce una API Key.'
                 );
@@ -338,7 +338,7 @@ function setupEventListeners() {
             }
 
             localStorage.setItem(`creativeEngine_${provider}_apiKey`, apiKey);
-            showNotification(
+            window.Dialogs.showNotification(
                 window.Localization?.get('EXITO') || 'Éxito',
                 (window.Localization?.get('API_KEY_GUARDADA') || "API Key para {provider} guardada.")
                     .replace('{provider}', provider)
@@ -350,13 +350,13 @@ function setupEventListeners() {
     if (_dom.prefsAiDeleteKeyBtn) {
         _dom.prefsAiDeleteKeyBtn.addEventListener('click', () => {
             const provider = _dom.prefsAiProvider.value;
-            showConfirmation(
+            window.Dialogs.showConfirmation(
                 window.Localization?.get('CONFIRMAR_BORRADO') || 'Confirmar Borrado',
                 (window.Localization?.get('BORRAR_API_KEY_CONFIRM') || "¿Estás seguro de que quieres borrar la API Key para {provider}?")
                     .replace('{provider}', provider),
                 () => {
                     localStorage.removeItem(`creativeEngine_${provider}_apiKey`);
-                    showNotification(
+                    window.Dialogs.showNotification(
                         window.Localization?.get('EXITO') || 'Éxito',
                         (window.Localization?.get('API_KEY_BORRADA') || "API Key para {provider} borrada.")
                             .replace('{provider}', provider)
