@@ -1627,51 +1627,20 @@ async function updateInspectorForMateria(selectedMateria) {
         layerSelect.appendChild(addLayerOption);
     }
 
-    // --- REORGANIZACIÓN POR CATEGORÍAS ---
-    const components2D = [];
-    const components3D = {
-        fisica: [],
-        sonido: [],
-        camara: [],
-        basico: [],
-        otros: []
-    };
-
-    const catMap = {
-        // Física 3D
-        'Rigidbody3D': 'fisica', 'BoxCollider3D': 'fisica', 'SphereCollider3D': 'fisica', 'CapsuleCollider3D': 'fisica', 'PlaneCollider3D': 'fisica', 'TerrenoCollider3D': 'fisica', 'HumanoidPhysics3D': 'fisica', 'WheelCollider3D': 'fisica',
-        // Sonido (unificado o 3D)
-        'AudioSource': 'sonido',
-        // Cámara
-        'Camera': 'camara', 'CameraControl3D': 'camara',
-        // Básico 3D
-        'MovementControl3D': 'basico', 'ThirdPersonController3D': 'basico', 'HealthController3D': 'basico', 'VehicleController3D': 'basico',
-        // Otros 3D / Comunes
-        'MeshRenderer3D': 'otros', 'SkinnedMeshRenderer3D': 'otros', 'Animator3D': 'otros', 'DirectionalLight3D': 'otros', 'PointLight3D': 'otros', 'SpotLight3D': 'otros', 'Terreno3D': 'otros', 'DeformableMesh3D': 'otros', 'ProceduralChain3D': 'otros', 'ClothRenderer3D': 'otros',
-        'Transform': 'otros'
-    };
+    const componentsWrapper = document.createElement('div');
+    componentsWrapper.className = 'inspector-components-wrapper';
 
     const is2DComponent = (ley) => {
         const name = ley.constructor.name;
-        // Basically everything except explicit 3D engine components
         if (name.endsWith('3D')) return false;
         const specific3D = ['MeshRenderer3D', 'SkinnedMeshRenderer3D', 'Animator3D', 'Rigidbody3D', 'BoxCollider3D', 'SphereCollider3D', 'CapsuleCollider3D', 'PlaneCollider3D', 'Terreno3D', 'TerrenoCollider3D', 'DirectionalLight3D', 'PointLight3D', 'SpotLight3D', 'DeformableMesh3D', 'ProceduralChain3D', 'ClothRenderer3D'];
         if (specific3D.includes(name)) return false;
         return true;
     };
 
-    const componentsWrapper = document.createElement('div');
-    componentsWrapper.className = 'inspector-components-wrapper';
-
-    selectedMateria.leyes.forEach((ley, index) => {
-        const name = ley.constructor.name;
-        if (is2DComponent(ley)) {
-            components2D.push({ ley, index });
-        } else {
-            const cat = catMap[name] || 'otros';
-            components3D[cat].push({ ley, index });
-        }
-    });
+    const componentsToRender = selectedMateria.leyes
+        .map((ley, index) => ({ ley, index }))
+        .filter(item => is2DComponent(item.ley));
 
     const renderComponentList = (list, container) => {
         list.forEach(({ ley, index }) => {
@@ -4512,7 +4481,7 @@ async function updateInspectorForMateria(selectedMateria) {
     };
 
     // --- Flat Rendered List (No categories, 3D hidden) ---
-    renderComponentList(components2D, componentsWrapper);
+    renderComponentList(componentsToRender, componentsWrapper);
 
     if (currentId !== lastUpdateId) return;
     dom.inspectorContent.appendChild(componentsWrapper);
@@ -5296,55 +5265,18 @@ export async function showAddComponentModal() {
     // View Mode determines the filtering (simulated 2D or full 3D)
     const viewMode = projectConfig.viewMode || '3d';
 
-    // Top-level containers (3D Category Hidden)
-    const container2D = document.createElement('div');
-    container2D.className = 'component-master-category-flat';
+    const componentGrid = document.createElement('div');
+    componentGrid.className = 'component-grid-flat';
+    dom.componentList.appendChild(componentGrid);
 
-    const containerScripts = document.createElement('details');
-    containerScripts.className = 'component-master-category';
-    containerScripts.innerHTML = `<summary><h3>${L.get('SCRIPTS', 'Scripts')}</h3></summary>`;
-
-    const containerLibraries = document.createElement('details');
-    containerLibraries.className = 'component-master-category';
-    containerLibraries.innerHTML = `<summary><h3>${L.get('LIBRERIAS', 'Librerías')}</h3></summary>`;
-
-    dom.componentList.appendChild(container2D);
-    dom.componentList.appendChild(containerScripts);
-    dom.componentList.appendChild(containerLibraries);
-
+    // Filter and collect all 2D components into a single list
+    const all2DComponents = [];
     for (const category in availableComponents) {
-        const is3D = category.endsWith('_3D');
-        if (is3D) continue; // Hide 3D Categories
-        if (category === 'CAT_SCRIPTING') continue;
+        if (category.endsWith('_3D') || category === 'CAT_SCRIPTING') continue;
+        availableComponents[category].forEach(comp => all2DComponents.push(comp));
+    }
 
-        const categoryWrapper = document.createElement('div');
-        categoryWrapper.className = 'component-category-wrapper';
-
-        const categoryHeader = document.createElement('h4');
-        categoryHeader.className = 'category-header';
-        let categoryLabel = L.get(category);
-        if (categoryLabel === category) {
-            categoryLabel = category.replace('CAT_', '').replace(/_/g, ' ').toLowerCase();
-            categoryLabel = categoryLabel.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-        }
-        categoryHeader.innerHTML = `<span class="category-toggle"></span>${categoryLabel}`;
-
-        const categoryContent = document.createElement('div');
-        categoryContent.className = 'category-content';
-        categoryContent.style.display = 'none';
-
-        categoryHeader.addEventListener('click', () => {
-            const isOpen = categoryContent.style.display !== 'none';
-            categoryContent.style.display = isOpen ? 'none' : 'block';
-            categoryHeader.querySelector('.category-toggle').classList.toggle('open', !isOpen);
-        });
-
-        categoryWrapper.appendChild(categoryHeader);
-        categoryWrapper.appendChild(categoryContent);
-
-        container2D.appendChild(categoryWrapper);
-
-        availableComponents[category].forEach(ComponentClassOrName => {
+    all2DComponents.forEach(ComponentClassOrName => {
             const L = window.Localization;
             const is3D = typeof ComponentClassOrName === 'string';
             const ComponentClass = is3D ? null : ComponentClassOrName;
@@ -5367,7 +5299,7 @@ export async function showAddComponentModal() {
                 ${isPresent ? `<span class="component-item-indicator">${getIconHTML('check')}</span>` : ''}
             `;
 
-            categoryContent.appendChild(componentItem);
+            componentGrid.appendChild(componentItem);
 
             componentItem.addEventListener('click', async () => {
                 if (isPresent) {
@@ -5416,27 +5348,17 @@ export async function showAddComponentModal() {
     // --- 2. Render Custom Components ---
     const customComponentDefinitions = getCustomComponentDefinitions();
     if (customComponentDefinitions.size > 0) {
-        const categoryWrapper = document.createElement('div');
-        categoryWrapper.className = 'component-category-wrapper';
-
-        const categoryHeader = document.createElement('h4');
-        categoryHeader.className = 'category-header';
-        categoryHeader.innerHTML = `<span class="category-toggle open"></span>${L.get('COMPONENTES_PERSONALIZADOS', 'Componentes Personalizados')}`;
-
-        const categoryContent = document.createElement('div');
-        categoryContent.className = 'category-content';
-
-        categoryHeader.addEventListener('click', () => {
-            const isOpen = categoryContent.style.display !== 'none';
-            categoryContent.style.display = isOpen ? 'none' : 'block';
-            categoryHeader.querySelector('.category-toggle').classList.toggle('open', !isOpen);
-        });
+        const header = document.createElement('h3');
+        header.className = 'category-master-header';
+        header.textContent = L.get('LIBRERIAS', 'Librerías');
+        dom.componentList.appendChild(header);
 
         for (const [name, definition] of customComponentDefinitions.entries()) {
             const isPresent = existingCustomComponents.has(name);
             const componentItem = document.createElement('div');
             componentItem.className = `component-item ${isPresent ? 'already-added' : ''}`;
             componentItem.innerHTML = `
+                <span class="component-icon">${getIconHTML('package')}</span>
                 <span>${name}</span>
                 ${isPresent ? `<span class="component-item-indicator">${getIconHTML('check')}</span>` : ''}
             `;
@@ -5451,11 +5373,8 @@ export async function showAddComponentModal() {
                 dom.addComponentModal.classList.add('hidden');
                 updateInspector();
             });
-            categoryContent.appendChild(componentItem);
+            componentGrid.appendChild(componentItem); // Add to the same flat grid
         }
-        categoryWrapper.appendChild(categoryHeader);
-        categoryWrapper.appendChild(categoryContent);
-        containerLibraries.appendChild(categoryWrapper);
     }
 
 
@@ -5463,29 +5382,18 @@ export async function showAddComponentModal() {
     dom.addComponentModal.classList.remove('hidden'); if(window.bringToFront) window.bringToFront(dom.addComponentModal);
 
     // --- 3. Find and Render Custom Scripts Asynchronously ---
-    const scriptsCategoryWrapper = document.createElement('div');
-    scriptsCategoryWrapper.className = 'component-category-wrapper';
+    const scriptsHeader = document.createElement('h3');
+    scriptsHeader.className = 'category-master-header';
+    scriptsHeader.textContent = L.get('SCRIPTS', 'Scripts');
+    dom.componentList.appendChild(scriptsHeader);
 
-    const scriptsHeader = document.createElement('h4');
-    scriptsHeader.className = 'category-header';
-    scriptsHeader.innerHTML = `<span class="category-toggle open"></span>${L.get('SCRIPTS', 'Scripts')}`;
-
-    const scriptsContent = document.createElement('div');
-    scriptsContent.className = 'category-content';
-
-    scriptsHeader.addEventListener('click', () => {
-        const isOpen = scriptsContent.style.display !== 'none';
-        scriptsContent.style.display = isOpen ? 'none' : 'block';
-        scriptsHeader.querySelector('.category-toggle').classList.toggle('open', !isOpen);
-    });
-
-    scriptsCategoryWrapper.appendChild(scriptsHeader);
-    scriptsCategoryWrapper.appendChild(scriptsContent);
-    containerScripts.appendChild(scriptsCategoryWrapper);
+    const scriptsGrid = document.createElement('div');
+    scriptsGrid.className = 'component-grid-flat';
+    dom.componentList.appendChild(scriptsGrid);
 
     const placeholder = document.createElement('p');
     placeholder.className = 'script-scan-status';
-    scriptsContent.appendChild(placeholder);
+    scriptsGrid.appendChild(placeholder);
 
     if (!projectsDirHandle) {
         placeholder.textContent = "No se ha seleccionado un directorio de proyecto.";
@@ -5523,13 +5431,14 @@ export async function showAddComponentModal() {
         placeholder.remove();
 
         if (scriptFiles.length === 0) {
-            scriptsContent.appendChild(Object.assign(document.createElement('p'), { textContent: L.get('SIN_SCRIPTS_HINT', "No se encontraron scripts (.ces) en la carpeta Assets.") }));
+            scriptsGrid.appendChild(Object.assign(document.createElement('p'), { textContent: L.get('SIN_SCRIPTS_HINT', "No se encontraron scripts (.ces) en la carpeta Assets.") }));
         } else {
             scriptFiles.forEach(fileHandle => {
                 const isPresent = existingScripts.has(fileHandle.name);
                 const componentItem = document.createElement('div');
                 componentItem.className = `component-item ${isPresent ? 'already-added' : ''}`;
                 componentItem.innerHTML = `
+                    <span class="component-icon">${getIconHTML('scroll')}</span>
                     <span>${fileHandle.name}</span>
                 ${isPresent ? `<span class="component-item-indicator">${getIconHTML('check')}</span>` : ''}
                 `;
@@ -5546,7 +5455,7 @@ export async function showAddComponentModal() {
                     dom.addComponentModal.classList.add('hidden');
                     updateInspector();
                 });
-                scriptsContent.appendChild(componentItem);
+                scriptsGrid.appendChild(componentItem);
             });
         }
     } catch (error) {

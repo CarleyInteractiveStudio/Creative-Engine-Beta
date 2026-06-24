@@ -591,8 +591,7 @@ export class StandaloneRuntime {
 
                     ctx.save();
                     ctx.translate(worldPosition.x, worldPosition.y);
-                    ctx.scale(1, -1); // Counter global coordinate flip
-                    ctx.rotate(transform.rotation * Math.PI / 180);
+                    ctx.rotate(-transform.rotation * Math.PI / 180);
                     this.renderer.drawVideoPlayer(vp, -dWidth / 2, -dHeight / 2, dWidth, dHeight);
                     ctx.restore();
                 } else if (sr && sr.sprite && sr.sprite.complete && sr.sprite.naturalWidth > 0) {
@@ -631,8 +630,8 @@ export class StandaloneRuntime {
                     ctx.save();
                     ctx.globalAlpha = isNaN(opacity) ? 1.0 : opacity;
                     ctx.translate(worldPosition.x, worldPosition.y);
-                    ctx.scale(1, -1); // Counter global coordinate flip
-                    ctx.rotate(worldRotation * Math.PI / 180);
+                    if (this.renderer.isYFlipped) ctx.scale(1, -1);
+                    ctx.rotate(-worldRotation * Math.PI / 180);
                     ctx.scale(worldScale.x, worldScale.y);
                     ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, -sWidth * pivotX, -sHeight * pivotY, sWidth, sHeight);
                     ctx.restore();
@@ -644,8 +643,8 @@ export class StandaloneRuntime {
                     const drawTex = (tx = 0, ty = 0) => {
                         ctx.save();
                         ctx.translate(worldPosition.x + tx, worldPosition.y + ty);
-                        ctx.scale(1, -1); // Counter global coordinate flip
-                        ctx.rotate(worldRotation * Math.PI / 180);
+                        if (this.renderer.isYFlipped) ctx.scale(1, -1);
+                        ctx.rotate(-worldRotation * Math.PI / 180);
                         ctx.scale(worldScale.x, worldScale.y);
                         if (tr.texture && tr.texture.complete) {
                             ctx.fillStyle = ctx.createPattern(tr.texture, 'repeat');

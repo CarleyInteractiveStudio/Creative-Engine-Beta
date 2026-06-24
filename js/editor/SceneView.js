@@ -165,7 +165,7 @@ function checkGizmoHit(canvasPos) {
     if (activeTool === 'scale' || activeTool === 'universal') {
         // In +Y UP world, CW rotation is negative world angle.
         // To get local coords, we rotate by +theta.
-        const rad = transform.rotation * Math.PI / 180;
+        const rad = -transform.rotation * Math.PI / 180;
         const cos = Math.cos(rad);
         const sin = Math.sin(rad);
         const lx = (worldMouse.x - centerX) * cos - (worldMouse.y - centerY) * sin;
@@ -274,7 +274,7 @@ function checkCameraGizmoHit(canvasPos) {
     }
 
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
-    const rad = transform.rotation * Math.PI / 180;
+    const rad = -transform.rotation * Math.PI / 180;
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
     const localMouseX = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
@@ -2039,7 +2039,7 @@ function pick2D(canvasPos) {
         const h = dims.height * Math.abs(transform.scale.y);
 
         // Simple hit detection for 2D
-        const rad = transform.rotation * Math.PI / 180;
+        const rad = -transform.rotation * Math.PI / 180;
         const cos = Math.cos(rad);
         const sin = Math.sin(rad);
         const lx = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
@@ -2448,12 +2448,13 @@ function drawTileCursor() {
         const mouseInLayerY = localMouseY - layerTopLeftY;
 
         const col = Math.floor(mouseInLayerX / cellSize.x);
+        // Row 0 is at the top (+Y). mouseInLayerY is world height relative to the layer's bottom.
         const row = Math.floor((layerHeight - mouseInLayerY) / cellSize.y);
 
         if (col >= 0 && col < width && row >= 0 && row < height) {
             ctx.save();
             ctx.translate(transform.x, transform.y);
-            ctx.rotate(transform.rotation * Math.PI / 180);
+            ctx.rotate(-transform.rotation * Math.PI / 180);
             ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
 
             if (activeTool === 'tile-brush' || activeTool === 'tile-rectangle-fill') {
@@ -2464,13 +2465,14 @@ function drawTileCursor() {
                 if (selectedTiles && selectedTiles.length > 0) {
                     for (const tile of selectedTiles) {
                         const tx = layerTopLeftX + (col + tile.offsetX) * cellSize.x;
-                        const ty = layerTopLeftY + (layerHeight - (row + tile.offsetY + 1) * cellSize.y);
+                        // In +Y UP world, Row 0 is at Top. ctx.fillRect draws downwards.
+                        const ty = layerTopLeftY + (layerHeight - (row + tile.offsetY) * cellSize.y);
                         ctx.fillRect(tx, ty, cellSize.x, cellSize.y);
                         ctx.strokeRect(tx, ty, cellSize.x, cellSize.y);
                     }
                 } else {
                     const cursorX = layerTopLeftX + col * cellSize.x;
-                    const cursorY = layerTopLeftY + (layerHeight - (row + 1) * cellSize.y);
+                    const cursorY = layerTopLeftY + (layerHeight - row * cellSize.y);
                     ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
                     ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
                 }
@@ -2478,14 +2480,14 @@ function drawTileCursor() {
                 ctx.strokeStyle = 'rgba(100, 255, 100, 0.8)';
                 ctx.fillStyle = 'rgba(100, 255, 100, 0.2)';
                 const cursorX = layerTopLeftX + col * cellSize.x;
-                const cursorY = layerTopLeftY + (layerHeight - (row + 1) * cellSize.y);
+                const cursorY = layerTopLeftY + (layerHeight - row * cellSize.y);
                 ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
                 ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
             } else { // eraser
                 ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
                 ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
                 const cursorX = layerTopLeftX + col * cellSize.x;
-                const cursorY = layerTopLeftY + (layerHeight - (row + 1) * cellSize.y);
+                const cursorY = layerTopLeftY + (layerHeight - row * cellSize.y);
                 ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
                 ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
             }
@@ -3287,7 +3289,7 @@ function checkCircleColliderGizmoHit(canvasPos) {
 
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
 
-    const rad = transform.rotation * Math.PI / 180;
+    const rad = -transform.rotation * Math.PI / 180;
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
     const localMouseX = (worldMouse.x - (transform.x + circleCollider.offset.x)) * cos - (worldMouse.y - (transform.y + circleCollider.offset.y)) * sin;
@@ -3320,7 +3322,7 @@ function checkBoxColliderGizmoHit(canvasPos) {
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
 
     // Transform mouse position to the collider's local space
-    const rad = transform.rotation * Math.PI / 180;
+    const rad = -transform.rotation * Math.PI / 180;
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
     const localMouseX = (worldMouse.x - (transform.x + boxCollider.offset.x)) * cos - (worldMouse.y - (transform.y + boxCollider.offset.y)) * sin;
@@ -3366,7 +3368,7 @@ function checkCapsuleColliderGizmoHit(canvasPos) {
 
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
 
-    const rad = transform.rotation * Math.PI / 180;
+    const rad = -transform.rotation * Math.PI / 180;
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
     const localMouseX = (worldMouse.x - (transform.x + capsuleCollider.offset.x)) * cos - (worldMouse.y - (transform.y + capsuleCollider.offset.y)) * sin;
@@ -3589,7 +3591,7 @@ function drawPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
 
         ctx.save();
         ctx.translate(centerX, centerY);
-        ctx.rotate(transform.rotation * Math.PI / 180);
+        ctx.rotate(-transform.rotation * Math.PI / 180);
 
         ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
         ctx.lineWidth = 2 / camera.effectiveZoom;
@@ -4039,6 +4041,7 @@ function paintTile(event) {
         const layerTopLeftY = layerOffsetY - layerHeight / 2;
         return {
             col: Math.floor((localMouseX - layerTopLeftX) / cellSize.x),
+            // Row 0 is at the top (+Y). localMouseY - layerTopLeftY is height from the layer's bottom.
             row: Math.floor((layerHeight - (localMouseY - layerTopLeftY)) / cellSize.y)
         };
     };
