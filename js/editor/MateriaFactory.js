@@ -475,7 +475,7 @@ export async function createAdvancedVehicle(parent = null) {
 
     const body = await createCubeObject(root, '#e74c3c');
     body.name = 'Carroceria';
-    body.getComponent(C3D.Transform).localScale = { x: 220, y: 90, z: 450 };
+    body.getComponent(Components.Transform).localScale = { x: 220, y: 90, z: 450 };
 
     const wheelNames = ['Rueda_Frontal_Izquierda', 'Rueda_Frontal_Derecha', 'Rueda_Trasera_Izquierda', 'Rueda_Trasera_Derecha'];
     const wheelPositions = [
@@ -487,7 +487,7 @@ export async function createAdvancedVehicle(parent = null) {
     for (let i = 0; i < 4; i++) {
         const wheel = await createSphereObject(root);
         wheel.name = wheelNames[i];
-        const t = wheel.getComponent(C3D.Transform);
+        const t = wheel.getComponent(Components.Transform);
         t.localPosition = wheelPositions[i];
         t.localScale = { x: 60, y: 60, z: 60 };
 

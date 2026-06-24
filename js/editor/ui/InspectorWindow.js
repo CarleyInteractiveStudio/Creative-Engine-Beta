@@ -37,9 +37,16 @@ const availableComponents = {
     'CAT_AUDIO': [Components.AudioSource],
     'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.PlatformEffector2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
     'CAT_CAMARA': [Components.Camera],
-    'CAT_3D': ['MeshRenderer3D', 'SkinnedMeshRenderer3D', 'Animator3D', 'Rigidbody3D', 'BoxCollider3D', 'SphereCollider3D', 'CapsuleCollider3D', 'PlaneCollider3D', 'Terreno3D', 'TerrenoCollider3D', 'DirectionalLight3D', 'PointLight3D', 'SpotLight3D'],
-    'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
     'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Attack, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.Suspension, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController, Components.SceneLoader, Components.Inventario, Components.SistemaDialogos, Components.GestorMisiones],
+    'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
+
+    // 3D Specific Categories
+    'CAT_BASICO_3D': ['MovementControl3D', 'ThirdPersonController3D', 'HealthController3D', 'CameraControl3D'],
+    'CAT_FISICA_3D': ['Rigidbody3D', 'BoxCollider3D', 'SphereCollider3D', 'CapsuleCollider3D', 'PlaneCollider3D', 'TerrenoCollider3D', 'HumanoidPhysics3D', 'WheelCollider3D', 'VehicleController3D'],
+    'CAT_AUDIO_3D': [Components.AudioSource],
+    'CAT_CAMARA_3D': [Components.Camera],
+    'CAT_OTROS_3D': ['MeshRenderer3D', 'SkinnedMeshRenderer3D', 'Animator3D', 'DirectionalLight3D', 'PointLight3D', 'SpotLight3D', 'Terreno3D', 'DeformableMesh3D', 'ProceduralChain3D', 'ClothRenderer3D'],
+
     'CAT_SCRIPTING': [Components.CreativeScript]
 };
 
@@ -1609,15 +1616,63 @@ async function updateInspectorForMateria(selectedMateria) {
         layerSelect.appendChild(addLayerOption);
     }
 
+    // --- REORGANIZACIÓN POR CATEGORÍAS ---
+    const components2D = [];
+    const components3D = {
+        fisica: [],
+        sonido: [],
+        camara: [],
+        basico: [],
+        otros: []
+    };
+
+    const catMap = {
+        // Física 3D
+        'Rigidbody3D': 'fisica', 'BoxCollider3D': 'fisica', 'SphereCollider3D': 'fisica', 'CapsuleCollider3D': 'fisica', 'PlaneCollider3D': 'fisica', 'TerrenoCollider3D': 'fisica', 'HumanoidPhysics3D': 'fisica', 'WheelCollider3D': 'fisica',
+        // Sonido (unificado o 3D)
+        'AudioSource': 'sonido',
+        // Cámara
+        'Camera': 'camara', 'CameraControl3D': 'camara',
+        // Básico 3D
+        'MovementControl3D': 'basico', 'ThirdPersonController3D': 'basico', 'HealthController3D': 'basico', 'VehicleController3D': 'basico',
+        // Otros 3D / Comunes
+        'MeshRenderer3D': 'otros', 'SkinnedMeshRenderer3D': 'otros', 'Animator3D': 'otros', 'DirectionalLight3D': 'otros', 'PointLight3D': 'otros', 'SpotLight3D': 'otros', 'Terreno3D': 'otros', 'DeformableMesh3D': 'otros', 'ProceduralChain3D': 'otros', 'ClothRenderer3D': 'otros',
+        'Transform': 'otros'
+    };
+
+    const is2DComponent = (ley) => {
+        const name = ley.constructor.name;
+        const known2D = [
+            'SpriteRenderer', 'Rigidbody2D', 'BoxCollider2D', 'CircleCollider2D', 'PolygonCollider2D', 'CapsuleCollider2D',
+            'Tilemap', 'TilemapRenderer', 'TilemapCollider2D', 'Grid', 'TextureRender', 'Parallax', 'Terreno2D', 'TerrenoCollider2D',
+            'PointLight2D', 'SpotLight2D', 'FreeformLight2D', 'SpriteLight2D', 'Movement', 'CameraFollow', 'ProjectileLauncher',
+            'Health', 'Attack', 'Patrol', 'ParticleSystem', 'RaycastSource', 'BasicAI', 'Water', 'LineCollider2D', 'Suspension',
+            'VehicleTopDown', 'PlaneController', 'HelicopterController', 'Bone', 'SkeletonRenderer', 'IKManager2D', 'Animator', 'AnimatorController',
+            'Canvas', 'UIImage', 'UIText', 'UITransform', 'Button', 'ProgressBar', 'UIScrollRect', 'UIMask', 'UICollider', 'UIController',
+            'VerticalLayoutGroup', 'HorizontalLayoutGroup', 'GridLayoutGroup', 'ContentSizeFitter'
+        ];
+        return known2D.includes(name);
+    };
 
     const componentsWrapper = document.createElement('div');
     componentsWrapper.className = 'inspector-components-wrapper';
 
     selectedMateria.leyes.forEach((ley, index) => {
-        try {
-        let componentHTML = '';
-        const componentName = ley.constructor.name;
-        const icon = componentIcons[componentName] || 'settings';
+        const name = ley.constructor.name;
+        if (is2DComponent(ley)) {
+            components2D.push({ ley, index });
+        } else {
+            const cat = catMap[name] || 'otros';
+            components3D[cat].push({ ley, index });
+        }
+    });
+
+    const renderComponentList = (list, container) => {
+        list.forEach(({ ley, index }) => {
+            try {
+                let componentHTML = '';
+                const componentName = ley.constructor.name;
+                const icon = componentIcons[componentName] || 'settings';
         const iconHTML = `<span class="component-icon">${getIconHTML(icon)}</span>`;
 
         if (ley instanceof Components.TextureRender) {
@@ -4437,7 +4492,7 @@ async function updateInspectorForMateria(selectedMateria) {
 
             // This is a robust way to append the contents of the wrapper
             while(componentWrapper.firstChild) {
-                componentsWrapper.appendChild(componentWrapper.firstChild);
+                container.appendChild(componentWrapper.firstChild);
             }
         }
         } catch (e) {
@@ -4448,6 +4503,45 @@ async function updateInspectorForMateria(selectedMateria) {
             componentsWrapper.appendChild(errorWrapper);
         }
     });
+    };
+
+    // --- Renderizado Organizado ---
+
+    // 1. Renderizar 3D primero (sueltos por defecto)
+    const order = ['basico', 'fisica', 'sonido', 'camara', 'otros'];
+    const sectionTitles = {
+        basico: L.get('CAT_BASICO', 'Básico'),
+        fisica: L.get('CAT_FISICAS', 'Física'),
+        sonido: L.get('CAT_AUDIO', 'Sonido'),
+        camara: L.get('CAT_CAMARA', 'Cámara'),
+        otros: L.get('CAT_OTROS_3D', 'Componentes 3D')
+    };
+
+    order.forEach(catId => {
+        const list = components3D[catId];
+        if (list.length > 0) {
+            const sectionHeader = document.createElement('div');
+            sectionHeader.className = 'inspector-category-title';
+            sectionHeader.textContent = sectionTitles[catId];
+            componentsWrapper.appendChild(sectionHeader);
+            renderComponentList(list, componentsWrapper);
+        }
+    });
+
+    // 2. Renderizar 2D en una sección colapsada por defecto
+    if (components2D.length > 0) {
+        const fold2D = document.createElement('details');
+        fold2D.className = 'inspector-2d-section';
+        // fold2D.open = false; // Closed by default
+        const summary = document.createElement('summary');
+        summary.textContent = L.get('LEYES_2D', 'Leyes 2D');
+        fold2D.appendChild(summary);
+
+        const innerWrapper = document.createElement('div');
+        renderComponentList(components2D, innerWrapper);
+        fold2D.appendChild(innerWrapper);
+        componentsWrapper.appendChild(fold2D);
+    }
 
     dom.inspectorContent.appendChild(componentsWrapper);
 
@@ -5185,6 +5279,8 @@ async function updateInspectorForAsset(assetName, assetPath) {
             await renderAudioInspector(assetName, assetPath);
         } else if (lowerName.endsWith('.mp4') || lowerName.endsWith('.webm') || lowerName.endsWith('.ogv')) {
             await renderVideoInspector(assetName, assetPath);
+        } else if (lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.endsWith('.obj')) {
+            await renderModel3DInspector(assetName, assetPath);
         } else {
              dom.inspectorContent.innerHTML += `
                 <div class="unknown-file-info" style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
@@ -5226,19 +5322,25 @@ export async function showAddComponentModal() {
     // View Mode determines the filtering (simulated 2D or full 3D)
     const viewMode = projectConfig.viewMode || '3d';
 
-    for (const category in availableComponents) {
-        // --- Filtering based on View Mode ---
-        if (viewMode === '2d') {
-            // In 2D view mode, hide 3D specific primitives
-            if (category === 'CAT_3D') continue;
-        } else {
-            // In 3D view mode, user wants a "from scratch" experience.
-            // We hide high-level 2D logic but keep low-level primitives if needed?
-            // Actually, per user request: "en el 3d ... que tampoco aparezcan nada del 2d"
-            const categories2D = ['CAT_RENDERIZADO', 'CAT_MAPA', 'CAT_ILUMINACION', 'CAT_FISICAS'];
-            if (categories2D.includes(category)) continue;
-        }
+    // Top-level containers for 2D and 3D
+    const container3D = document.createElement('details');
+    container3D.className = 'component-master-category';
+    container3D.open = (viewMode === '3d');
+    container3D.innerHTML = `<summary><h3>3D</h3></summary>`;
 
+    const container2D = document.createElement('details');
+    container2D.className = 'component-master-category';
+    container2D.open = (viewMode === '2d');
+    container2D.innerHTML = `<summary><h3>2D</h3></summary>`;
+
+    dom.componentList.appendChild(container3D);
+    dom.componentList.appendChild(container2D);
+
+    for (const category in availableComponents) {
+        const is3D = category.endsWith('_3D');
+        const is2D = !is3D && category !== 'CAT_SCRIPTING';
+
+        if (viewMode === '2d' && is3D) continue;
         if (category === 'CAT_SCRIPTING') continue;
 
         const categoryWrapper = document.createElement('div');
@@ -5246,16 +5348,27 @@ export async function showAddComponentModal() {
 
         const categoryHeader = document.createElement('h4');
         categoryHeader.className = 'category-header';
-        categoryHeader.innerHTML = `<span class="category-toggle open"></span>${L.get(category, category)}`;
+        let categoryLabel = L.get(category, category);
+        if (is3D && categoryLabel.endsWith(' 3D')) {
+            categoryLabel = categoryLabel.substring(0, categoryLabel.length - 3);
+        }
+        categoryHeader.innerHTML = `<span class="category-toggle"></span>${categoryLabel}`;
 
         const categoryContent = document.createElement('div');
         categoryContent.className = 'category-content';
+        categoryContent.style.display = 'none'; // Everything closed inside by default
 
         categoryHeader.addEventListener('click', () => {
             const isOpen = categoryContent.style.display !== 'none';
             categoryContent.style.display = isOpen ? 'none' : 'block';
             categoryHeader.querySelector('.category-toggle').classList.toggle('open', !isOpen);
         });
+
+        categoryWrapper.appendChild(categoryHeader);
+        categoryWrapper.appendChild(categoryContent);
+
+        if (is3D) container3D.appendChild(categoryWrapper);
+        else container2D.appendChild(categoryWrapper);
 
         availableComponents[category].forEach(ComponentClassOrName => {
             const L = window.Localization;
@@ -5275,9 +5388,12 @@ export async function showAddComponentModal() {
             else if (compTitle === 'BasicAI') compTitle = L.get('BASIC_AI', 'IA Básica');
 
             componentItem.innerHTML = `
+                <span class="component-icon">${getIconHTML(componentIcons[compName] || 'box')}</span>
                 <span>${compTitle}</span>
                 ${isPresent ? `<span class="component-item-indicator">${getIconHTML('check')}</span>` : ''}
             `;
+
+            categoryContent.appendChild(componentItem);
 
             componentItem.addEventListener('click', async () => {
                 if (isPresent) {
@@ -5316,7 +5432,7 @@ export async function showAddComponentModal() {
                     }
                 }
 
-                dom.addComponentModal.classList.remove('is-open');
+                dom.addComponentModal.classList.add('hidden');
                 updateInspector();
             });
             categoryContent.appendChild(componentItem);
@@ -5362,7 +5478,7 @@ export async function showAddComponentModal() {
                 }
                 const newComponent = new Components.CustomComponent(definition);
                 selectedMateria.addComponent(newComponent);
-                dom.addComponentModal.classList.remove('is-open');
+                dom.addComponentModal.classList.add('hidden');
                 updateInspector();
             });
             categoryContent.appendChild(componentItem);
@@ -5374,7 +5490,7 @@ export async function showAddComponentModal() {
 
 
     // --- 3. Show the modal Immediately ---
-    dom.addComponentModal.classList.add('is-open');
+    dom.addComponentModal.classList.remove('hidden'); if(window.bringToFront) window.bringToFront(dom.addComponentModal);
 
     // --- 3. Find and Render Custom Scripts Asynchronously ---
     const scriptsCategoryWrapper = document.createElement('div');
@@ -5457,7 +5573,7 @@ export async function showAddComponentModal() {
                     }
                     const newScript = new Components.CreativeScript(selectedMateria, fileHandle.name);
                     selectedMateria.addComponent(newScript);
-                    dom.addComponentModal.classList.remove('is-open');
+                    dom.addComponentModal.classList.add('hidden');
                     updateInspector();
                 });
                 scriptsContent.appendChild(componentItem);
@@ -5699,6 +5815,39 @@ async function saveProjectConfig() {
         console.error("Error al guardar la configuración del proyecto desde el Inspector:", error);
         showNotification(window.Localization.get('ERROR', 'Error'), window.Localization.get('ERROR_GUARDAR_CONFIG', 'No se pudo guardar la configuración del proyecto.'));
     }
+}
+
+async function renderModel3DInspector(assetName, assetPath) {
+    const L = window.Localization;
+    const container = document.createElement('div');
+    container.className = 'asset-settings';
+    container.innerHTML = `
+        <div class="inspector-section">
+            <label data-i18n="MODEL_3D">Modelo 3D</label>
+            <div class="model-info-bubble" style="padding: 15px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; margin-top: 10px; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                <span class="asset-preview-icon" style="display: block; width: 48px; height: 48px;">${getIconHTML('box')}</span>
+                <span style="font-weight: bold;">${assetName}</span>
+                <span style="font-size: 0.8em; opacity: 0.6;">${assetName.split('.').pop().toUpperCase()} Format</span>
+            </div>
+        </div>
+        <div class="inspector-section">
+            <label data-i18n="ACTIONS">${L.get('ACTIONS', 'Acciones')}</label>
+            <button id="btn-import-model-scene" class="primary-btn" style="width: 100%; margin-top: 10px;">Importar a la Escena</button>
+            <p class="field-description" style="margin-top: 10px;">${L.get('HINT_ARRASTRAR_MODELO', 'Puedes arrastrar este archivo a la escena para importarlo.')}</p>
+        </div>
+    `;
+
+    dom.inspectorContent.appendChild(container);
+
+    document.getElementById('btn-import-model-scene').onclick = async () => {
+        const { createSkinnedMeshObject } = await import('../MateriaFactory.js');
+        const m = await createSkinnedMeshObject(assetPath, null);
+        if (m) {
+            if (window.updateHierarchy) window.updateHierarchy();
+            if (window.updateScene) window.updateScene();
+            if (window.selectMateria) window.selectMateria(m.id);
+        }
+    };
 }
 
 async function renderAudioInspector(assetName, assetPath) {

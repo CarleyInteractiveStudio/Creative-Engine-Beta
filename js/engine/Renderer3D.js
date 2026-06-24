@@ -405,6 +405,64 @@ export class Renderer3D {
         this.buffers.cubeIdx = gl.createBuffer();
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.cubeIdx);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, cubeIndices, gl.STATIC_DRAW);
+
+        // --- Sphere Geometry (UV Sphere) ---
+        const latitudeBands = 20;
+        const longitudeBands = 20;
+        const radius = 0.5;
+        const spherePositions = [];
+        const sphereNormals = [];
+        const sphereUVs = [];
+        for (let latNumber = 0; latNumber <= latitudeBands; latNumber++) {
+            const theta = latNumber * Math.PI / latitudeBands;
+            const sinTheta = Math.sin(theta);
+            const cosTheta = Math.cos(theta);
+            for (let longNumber = 0; longNumber <= longitudeBands; longNumber++) {
+                const phi = longNumber * 2 * Math.PI / longitudeBands;
+                const sinPhi = Math.sin(phi);
+                const cosPhi = Math.cos(phi);
+                const x = cosPhi * sinTheta;
+                const y = cosTheta;
+                const z = sinPhi * sinTheta;
+                sphereNormals.push(x, y, z);
+                sphereUVs.push(1 - (longNumber / longitudeBands), 1 - (latNumber / latitudeBands));
+                spherePositions.push(radius * x, radius * y, radius * z);
+            }
+        }
+        const sphereIndices = [];
+        for (let latNumber = 0; latNumber < latitudeBands; latNumber++) {
+            for (let longNumber = 0; longNumber < longitudeBands; longNumber++) {
+                const first = (latNumber * (longitudeBands + 1)) + longNumber;
+                const second = first + longitudeBands + 1;
+                sphereIndices.push(first, second, first + 1);
+                sphereIndices.push(second, second + 1, first + 1);
+            }
+        }
+        this.buffers.sphere = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.sphere);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(spherePositions), gl.STATIC_DRAW);
+        this.buffers.sphereNorm = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.sphereNorm);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereNormals), gl.STATIC_DRAW);
+        this.buffers.sphereUV = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.sphereUV);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereUVs), gl.STATIC_DRAW);
+        this.buffers.sphereIdx = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.sphereIdx);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(sphereIndices), gl.STATIC_DRAW);
+        this.sphereIndexCount = sphereIndices.length;
+
+        // --- Triangle Geometry ---
+        const triPos = new Float32Array([0, 0.5, 0, -0.5, -0.5, 0, 0.5, -0.5, 0]);
+        this.buffers.triangle = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.triangle);
+        gl.bufferData(gl.ARRAY_BUFFER, triPos, gl.STATIC_DRAW);
+        this.buffers.triangleNorm = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.triangleNorm);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0,0,1, 0,0,1, 0,0,1]), gl.STATIC_DRAW);
+        this.buffers.triangleUV = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.triangleUV);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0.5,0, 0,1, 1,1]), gl.STATIC_DRAW);
     }
 
     render(scene, cameraMateria, options = {}) {
@@ -453,6 +511,7 @@ export class Renderer3D {
             mat4.fromRotationTranslation(this.viewMatrix, q, [cam.x, cam.y, cam.z]);
             mat4.invert(this.viewMatrix, this.viewMatrix);
         }
+
 
         mat4.scale(this.projectionMatrix, this.projectionMatrix, [1, -1, 1]);
         mat4.copy(this.lastProjectionMatrix, this.projectionMatrix);
@@ -592,7 +651,9 @@ export class Renderer3D {
 
             gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
             gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
-            if (!mesh.isUnlit) gl.uniform3f(gl.getUniformLocation(program, 'uLightDir'), 0.5, 1.0, 0.3);
+            if (!mesh.isUnlit) gl.uniform3f(gl.getUniformLocation(program, "uLightDir"), 0.5, -1.0, 0.3);
+        gl.uniform1i(gl.getUniformLocation(program, "uUseMainTex"), 0);
+        gl.uniform1i(gl.getUniformLocation(program, "uUseNormalMap"), 0);
 
             const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
             const normLoc = !mesh.isUnlit ? gl.getAttribLocation(program, 'aVertexNormal') : -1;
@@ -601,7 +662,7 @@ export class Renderer3D {
             const modelLoc = gl.getUniformLocation(program, 'uModelMatrix');
 
             const transform = materia.getComponent(Components.Transform);
-            gl.uniformMatrix4fv(modelLoc, false, transform.worldMatrix);
+            gl.uniformMatrix4fv(modelLoc, false, transform.worldMatrix || mat4.create());
             const color = this.hexToRgb(mesh.color);
             gl.uniform4f(colorLoc, color[0], color[1], color[2], 1.0);
 
@@ -654,6 +715,21 @@ export class Renderer3D {
                 }
                 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.cubeIdx);
                 gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+            } else if (mesh.meshType === 'Sphere' || mesh.meshType === 'Capsule') {
+                // Approximate capsule with sphere for now if needed, but we used sphere for wheels
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.sphere);
+                gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(posLoc);
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.sphereNorm);
+                gl.vertexAttribPointer(normLoc, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(normLoc);
+                if (uvLoc !== -1) {
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.sphereUV);
+                    gl.vertexAttribPointer(uvLoc, 2, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(uvLoc);
+                }
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.sphereIdx);
+                gl.drawElements(gl.TRIANGLES, this.sphereIndexCount, gl.UNSIGNED_SHORT, 0);
             } else if (mesh.meshType === 'Plane') {
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.plane);
                 gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
@@ -667,8 +743,20 @@ export class Renderer3D {
                     gl.enableVertexAttribArray(uvLoc);
                 }
                 gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            } else if (mesh.meshType === 'Triangle') {
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.triangle);
+                gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(posLoc);
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.triangleNorm);
+                gl.vertexAttribPointer(normLoc, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(normLoc);
+                if (uvLoc !== -1) {
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.triangleUV);
+                    gl.vertexAttribPointer(uvLoc, 2, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(uvLoc);
+                }
+                gl.drawArrays(gl.TRIANGLES, 0, 3);
             }
-            // Add more primitives here as needed
         });
     }
 
@@ -680,8 +768,10 @@ export class Renderer3D {
         const transform = materia.getComponent(Components.Transform);
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
-        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, transform.worldMatrix);
-        gl.uniform3f(gl.getUniformLocation(program, 'uLightDir'), 0.5, 1.0, 0.3);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, transform.worldMatrix || mat4.create());
+        gl.uniform3f(gl.getUniformLocation(program, "uLightDir"), 0.5, -1.0, 0.3);
+        gl.uniform1i(gl.getUniformLocation(program, "uUseMainTex"), 0);
+        gl.uniform1i(gl.getUniformLocation(program, "uUseNormalMap"), 0);
 
         const color = this.hexToRgb(terrain.color);
         gl.uniform4f(gl.getUniformLocation(program, 'uColor'), color[0], color[1], color[2], 1.0);
@@ -775,7 +865,9 @@ export class Renderer3D {
 
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
-        gl.uniform3f(gl.getUniformLocation(program, 'uLightDir'), 0.5, 1.0, 0.3);
+        gl.uniform3f(gl.getUniformLocation(program, "uLightDir"), 0.5, -1.0, 0.3);
+        gl.uniform1i(gl.getUniformLocation(program, "uUseMainTex"), 0);
+        gl.uniform1i(gl.getUniformLocation(program, "uUseNormalMap"), 0);
 
         // Identity for skinned meshes as bone matrices are in world space
         const identity = mat4.create();
@@ -1035,11 +1127,22 @@ export class Renderer3D {
                 gl.enableVertexAttribArray(posLoc);
                 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.cubeIdx);
                 gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+            } else if (mesh.meshType === 'Sphere' || mesh.meshType === 'Capsule') {
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.sphere);
+                gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(posLoc);
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.sphereIdx);
+                gl.drawElements(gl.TRIANGLES, this.sphereIndexCount, gl.UNSIGNED_SHORT, 0);
             } else if (mesh.meshType === 'Plane') {
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.plane);
                 gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
                 gl.enableVertexAttribArray(posLoc);
                 gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            } else if (mesh.meshType === 'Triangle') {
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.triangle);
+                gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(posLoc);
+                gl.drawArrays(gl.TRIANGLES, 0, 3);
             }
         });
 

@@ -19,6 +19,8 @@ import {
     createCubeObject, createSphereObject, createCapsule3DObject, createPlane3DObject, createTriangle3DObject,
     createDirectionalLight3D, createPointLight3D, createSpotLight3D,
     createDefaultCharacter,
+    createAdvancedVehicle,
+    createVehicleTemplate,
     createTestCircuit,
     createMovementUITemplate, createMainMenuTemplate, createLevelManagerTemplate,
     createInventoryUITemplate
@@ -286,8 +288,10 @@ export async function handleContextMenuAction(action) {
             newMateria = await createDefaultCharacter(selectedMateria);
             break;
         case 'create-advanced-vehicle':
-            const { createAdvancedVehicle } = await import('../MateriaFactory.js');
             newMateria = await createAdvancedVehicle(selectedMateria);
+            break;
+        case 'create-vehicle':
+            newMateria = await createVehicleTemplate(selectedMateria);
             break;
         case 'create-test-circuit':
             newMateria = await createTestCircuit(selectedMateria);
@@ -666,6 +670,8 @@ export async function handleContextMenuAction(action) {
         // A timeout is used to prevent a race condition where the Inspector tries
         // to render the new object before the editor state is fully updated.
         updateHierarchy();
+        if (typeof window.updateScene === 'function') window.updateScene();
+
         setTimeout(() => {
             selectMateriaCallback(newMateria.id);
         }, 0);

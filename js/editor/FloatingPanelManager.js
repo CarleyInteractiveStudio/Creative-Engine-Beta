@@ -34,8 +34,18 @@ function initializePanel(panel) {
 
             const onPointerMove = (moveEvent) => {
                 if (isDragging) {
-                    panel.style.left = `${moveEvent.clientX - offsetX}px`;
-                    panel.style.top = `${moveEvent.clientY - offsetY}px`;
+                    let left = moveEvent.clientX - offsetX;
+                    let top = moveEvent.clientY - offsetY;
+
+                    // Clamp to viewport
+                    const maxLeft = window.innerWidth - panel.offsetWidth;
+                    const maxTop = window.innerHeight - panel.offsetHeight;
+
+                    left = Math.max(0, Math.min(left, maxLeft));
+                    top = Math.max(0, Math.min(top, maxTop));
+
+                    panel.style.left = `${left}px`;
+                    panel.style.top = `${top}px`;
                 }
             };
 
@@ -111,19 +121,48 @@ function initializePanel(panel) {
                 const dx = moveEvent.clientX - startX;
                 const dy = moveEvent.clientY - startY;
 
+                const viewportW = window.innerWidth;
+                const viewportH = window.innerHeight;
+
                 if (direction.includes('e')) {
-                    panel.style.width = `${startWidth + dx}px`;
+                    let newWidth = startWidth + dx;
+                    if (newWidth < 200) newWidth = 200;
+                    if (startLeft + newWidth > viewportW) newWidth = viewportW - startLeft;
+                    panel.style.width = `${newWidth}px`;
                 }
                 if (direction.includes('w')) {
-                    panel.style.width = `${startWidth - dx}px`;
-                    panel.style.left = `${startLeft + dx}px`;
+                    let newWidth = startWidth - dx;
+                    let newLeft = startLeft + dx;
+                    if (newWidth < 200) {
+                        newLeft = startLeft + (startWidth - 200);
+                        newWidth = 200;
+                    }
+                    if (newLeft < 0) {
+                        newWidth = startWidth + startLeft;
+                        newLeft = 0;
+                    }
+                    panel.style.width = `${newWidth}px`;
+                    panel.style.left = `${newLeft}px`;
                 }
                 if (direction.includes('s')) {
-                    panel.style.height = `${startHeight + dy}px`;
+                    let newHeight = startHeight + dy;
+                    if (newHeight < 150) newHeight = 150;
+                    if (startTop + newHeight > viewportH) newHeight = viewportH - startTop;
+                    panel.style.height = `${newHeight}px`;
                 }
                 if (direction.includes('n')) {
-                    panel.style.height = `${startHeight - dy}px`;
-                    panel.style.top = `${startTop + dy}px`;
+                    let newHeight = startHeight - dy;
+                    let newTop = startTop + dy;
+                    if (newHeight < 150) {
+                        newTop = startTop + (startHeight - 150);
+                        newHeight = 150;
+                    }
+                    if (newTop < 0) {
+                        newHeight = startHeight + startTop;
+                        newTop = 0;
+                    }
+                    panel.style.height = `${newHeight}px`;
+                    panel.style.top = `${newTop}px`;
                 }
 
                 // Trigger a local event for components inside that need to react to resize
