@@ -1653,16 +1653,11 @@ async function updateInspectorForMateria(selectedMateria) {
 
     const is2DComponent = (ley) => {
         const name = ley.constructor.name;
-        const known2D = [
-            'SpriteRenderer', 'Rigidbody2D', 'BoxCollider2D', 'CircleCollider2D', 'PolygonCollider2D', 'CapsuleCollider2D',
-            'Tilemap', 'TilemapRenderer', 'TilemapCollider2D', 'Grid', 'TextureRender', 'Parallax', 'Terreno2D', 'TerrenoCollider2D',
-            'PointLight2D', 'SpotLight2D', 'FreeformLight2D', 'SpriteLight2D', 'Movement', 'CameraFollow', 'ProjectileLauncher',
-            'Health', 'Attack', 'Patrol', 'ParticleSystem', 'RaycastSource', 'BasicAI', 'Water', 'LineCollider2D', 'Suspension',
-            'VehicleTopDown', 'PlaneController', 'HelicopterController', 'Bone', 'SkeletonRenderer', 'IKManager2D', 'Animator', 'AnimatorController',
-            'Canvas', 'UIImage', 'UIText', 'UITransform', 'Button', 'ProgressBar', 'UIScrollRect', 'UIMask', 'UICollider', 'UIController',
-            'VerticalLayoutGroup', 'HorizontalLayoutGroup', 'GridLayoutGroup', 'ContentSizeFitter'
-        ];
-        return known2D.includes(name);
+        // Basically everything except explicit 3D engine components
+        if (name.endsWith('3D')) return false;
+        const specific3D = ['MeshRenderer3D', 'SkinnedMeshRenderer3D', 'Animator3D', 'Rigidbody3D', 'BoxCollider3D', 'SphereCollider3D', 'CapsuleCollider3D', 'PlaneCollider3D', 'Terreno3D', 'TerrenoCollider3D', 'DirectionalLight3D', 'PointLight3D', 'SpotLight3D', 'DeformableMesh3D', 'ProceduralChain3D', 'ClothRenderer3D'];
+        if (specific3D.includes(name)) return false;
+        return true;
     };
 
     const componentsWrapper = document.createElement('div');
@@ -4516,38 +4511,8 @@ async function updateInspectorForMateria(selectedMateria) {
     });
     };
 
-    // --- Renderizado Organizado ---
-
-    // 1. Renderizar 3D en una sección colapsada por defecto
-    const all3D = [].concat(...Object.values(components3D));
-    if (all3D.length > 0) {
-        const fold3D = document.createElement('details');
-        fold3D.className = 'inspector-section-fold'; // Usamos una clase común
-        fold3D.open = true; // 3D abierto por defecto
-        const summary = document.createElement('summary');
-        summary.textContent = L.get('LEYES_3D', 'Leyes 3D');
-        fold3D.appendChild(summary);
-
-        const innerWrapper = document.createElement('div');
-        renderComponentList(all3D, innerWrapper);
-        fold3D.appendChild(innerWrapper);
-        componentsWrapper.appendChild(fold3D);
-    }
-
-    // 2. Renderizar 2D en una sección colapsada por defecto
-    if (components2D.length > 0) {
-        const fold2D = document.createElement('details');
-        fold2D.className = 'inspector-section-fold';
-        // fold2D.open = false; // Cerrado por defecto
-        const summary = document.createElement('summary');
-        summary.textContent = L.get('LEYES_2D', 'Leyes 2D');
-        fold2D.appendChild(summary);
-
-        const innerWrapper = document.createElement('div');
-        renderComponentList(components2D, innerWrapper);
-        fold2D.appendChild(innerWrapper);
-        componentsWrapper.appendChild(fold2D);
-    }
+    // --- Flat Rendered List (No categories, 3D hidden) ---
+    renderComponentList(components2D, componentsWrapper);
 
     if (currentId !== lastUpdateId) return;
     dom.inspectorContent.appendChild(componentsWrapper);
@@ -5331,16 +5296,9 @@ export async function showAddComponentModal() {
     // View Mode determines the filtering (simulated 2D or full 3D)
     const viewMode = projectConfig.viewMode || '3d';
 
-    // Top-level containers
-    const container3D = document.createElement('details');
-    container3D.className = 'component-master-category';
-    container3D.open = (viewMode === '3d');
-    container3D.innerHTML = `<summary><h3>3D</h3></summary>`;
-
-    const container2D = document.createElement('details');
-    container2D.className = 'component-master-category';
-    container2D.open = (viewMode === '2d');
-    container2D.innerHTML = `<summary><h3>2D</h3></summary>`;
+    // Top-level containers (3D Category Hidden)
+    const container2D = document.createElement('div');
+    container2D.className = 'component-master-category-flat';
 
     const containerScripts = document.createElement('details');
     containerScripts.className = 'component-master-category';
@@ -5350,16 +5308,13 @@ export async function showAddComponentModal() {
     containerLibraries.className = 'component-master-category';
     containerLibraries.innerHTML = `<summary><h3>${L.get('LIBRERIAS', 'Librerías')}</h3></summary>`;
 
-    dom.componentList.appendChild(container3D);
     dom.componentList.appendChild(container2D);
     dom.componentList.appendChild(containerScripts);
     dom.componentList.appendChild(containerLibraries);
 
     for (const category in availableComponents) {
         const is3D = category.endsWith('_3D');
-        const is2D = !is3D && category !== 'CAT_SCRIPTING';
-
-        if (viewMode === '2d' && is3D) continue;
+        if (is3D) continue; // Hide 3D Categories
         if (category === 'CAT_SCRIPTING') continue;
 
         const categoryWrapper = document.createElement('div');
@@ -5369,18 +5324,14 @@ export async function showAddComponentModal() {
         categoryHeader.className = 'category-header';
         let categoryLabel = L.get(category);
         if (categoryLabel === category) {
-            // Si no hay traducción, limpiar el prefijo CAT_ y formatear
             categoryLabel = category.replace('CAT_', '').replace(/_/g, ' ').toLowerCase();
             categoryLabel = categoryLabel.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-        }
-        if (is3D && categoryLabel.toLowerCase().endsWith(' 3d')) {
-            categoryLabel = categoryLabel.substring(0, categoryLabel.length - 3);
         }
         categoryHeader.innerHTML = `<span class="category-toggle"></span>${categoryLabel}`;
 
         const categoryContent = document.createElement('div');
         categoryContent.className = 'category-content';
-        categoryContent.style.display = 'none'; // Everything closed inside by default
+        categoryContent.style.display = 'none';
 
         categoryHeader.addEventListener('click', () => {
             const isOpen = categoryContent.style.display !== 'none';
@@ -5391,8 +5342,7 @@ export async function showAddComponentModal() {
         categoryWrapper.appendChild(categoryHeader);
         categoryWrapper.appendChild(categoryContent);
 
-        if (is3D) container3D.appendChild(categoryWrapper);
-        else container2D.appendChild(categoryWrapper);
+        container2D.appendChild(categoryWrapper);
 
         availableComponents[category].forEach(ComponentClassOrName => {
             const L = window.Localization;

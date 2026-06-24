@@ -172,7 +172,7 @@ export class Renderer {
         } else {
             this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
         }
-        this.ctx.scale(activeCamera.effectiveZoom, activeCamera.effectiveZoom);
+        this.ctx.scale(activeCamera.effectiveZoom, -activeCamera.effectiveZoom);
         const rotationInRadians = (transform.rotation || 0) * Math.PI / 180;
         this.ctx.rotate(-rotationInRadians);
         this.ctx.translate(-activeCamera.x, -activeCamera.y);
@@ -192,26 +192,31 @@ export class Renderer {
     }
 
     drawRect(x, y, width, height, color) {
+        this.ctx.save();
+        this.ctx.translate(x, y);
+        this.ctx.scale(1, -1);
         this.ctx.fillStyle = color;
-        this.ctx.fillRect(x - width / 2, y - height / 2, width, height);
+        this.ctx.fillRect(-width / 2, -height / 2, width, height);
+        this.ctx.restore();
     }
 
     drawImage(image, x, y, width, height) {
-        // Safe check for negative dimensions
         if (width === 0 || height === 0) return;
 
-        if (width < 0 || height < 0) {
-            this.ctx.save();
-            this.ctx.translate(x, y);
-            this.ctx.scale(width < 0 ? -1 : 1, height < 0 ? -1 : 1);
-            this.ctx.drawImage(image, -Math.abs(width) / 2, -Math.abs(height) / 2, Math.abs(width), Math.abs(height));
-            this.ctx.restore();
-        } else {
-            this.ctx.drawImage(image, x - width / 2, y - height / 2, width, height);
-        }
+        this.ctx.save();
+        this.ctx.translate(x, y);
+        this.ctx.scale(1, -1); // Counter global coordinate flip
+        this.ctx.scale(width < 0 ? -1 : 1, height < 0 ? -1 : 1);
+        const absW = Math.abs(width);
+        const absH = Math.abs(height);
+        this.ctx.drawImage(image, -absW / 2, -absH / 2, absW, absH);
+        this.ctx.restore();
     }
 
     drawText(text, x, y, color, fontSize, fontFamily, textTransform) {
+        this.ctx.save();
+        this.ctx.translate(x, y);
+        this.ctx.scale(1, -1);
         this.ctx.fillStyle = color;
         this.ctx.font = `${fontSize}px ${fontFamily || 'sans-serif'}`;
         this.ctx.textAlign = 'center';
@@ -223,7 +228,8 @@ export class Renderer {
         } else if (textTransform === 'lowercase') {
             transformedText = text.toLowerCase();
         }
-        this.ctx.fillText(transformedText, x, y);
+        this.ctx.fillText(transformedText, 0, 0);
+        this.ctx.restore();
     }
 
     drawGyzmo(gyzmo) {
@@ -235,7 +241,8 @@ export class Renderer {
 
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
-        this.ctx.rotate(transform.rotation * Math.PI / 180);
+        this.ctx.scale(1, -1); // Counter-flip for the whole gyzmo group
+        this.ctx.rotate(-transform.rotation * Math.PI / 180);
         this.ctx.scale(transform.scale.x, transform.scale.y);
 
         const zoom = this.camera?.effectiveZoom || 1;
@@ -258,11 +265,15 @@ export class Renderer {
 
             if (isEditor) {
                 // Draw name tag
+                this.ctx.save();
+                this.ctx.translate(x, y - height / 2 - (5 / zoom));
+                this.ctx.scale(1, -1); // Counter-flip text again
                 this.ctx.globalAlpha = 1.0;
                 this.ctx.fillStyle = '#ffffff';
                 this.ctx.font = `${12 / zoom}px sans-serif`;
                 this.ctx.textAlign = 'center';
-                this.ctx.fillText(name || "Área", x, y - height / 2 - (5 / zoom));
+                this.ctx.fillText(name || "Área", 0, 0);
+                this.ctx.restore();
             }
         }
 
@@ -281,7 +292,8 @@ export class Renderer {
 
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
-        this.ctx.rotate(transform.rotation * Math.PI / 180);
+        this.ctx.scale(1, -1); // Counter-flip
+        this.ctx.rotate(-transform.rotation * Math.PI / 180);
 
         // Draw bone shape (a diamond/triangle starting from origin)
         this.ctx.beginPath();
@@ -404,7 +416,8 @@ export class Renderer {
              const drawX = x !== null ? x : transform.x;
              const drawY = y !== null ? y : transform.y;
              ctx.translate(drawX, drawY);
-             ctx.rotate(transform.rotation * Math.PI / 180);
+             ctx.scale(1, -1);
+             ctx.rotate(-transform.rotation * Math.PI / 180);
              ctx.scale(transform.scale.x, transform.scale.y);
              ctx.fillStyle = water.color || 'rgba(52, 152, 219, 0.5)';
              ctx.fillRect(-water.width/2, -water.height/2, water.width, water.height);
@@ -421,7 +434,7 @@ export class Renderer {
             const viewH = (this.canvas.height / ez);
             const viewW = viewH * aspect;
 
-            // Check if bounds overlap with camera viewport
+            // Adjusted for +Y UP
             if (b.maxX < cam.x - viewW/2 || b.minX > cam.x + viewW/2 ||
                 b.maxY < cam.y - viewH/2 || b.minY > cam.y + viewH/2) {
                 return;
@@ -436,7 +449,8 @@ export class Renderer {
             const drawX = x !== null ? x : transform.x;
             const drawY = y !== null ? y : transform.y;
             ctx.translate(drawX, drawY);
-            ctx.rotate(transform.rotation * Math.PI / 180);
+            ctx.scale(1, -1);
+            ctx.rotate(-transform.rotation * Math.PI / 180);
             ctx.scale(transform.scale.x, transform.scale.y);
         }
 
@@ -577,7 +591,8 @@ export class Renderer {
 
         ctx.save();
         ctx.translate(drawX, drawY);
-        ctx.rotate(transform.rotation * Math.PI / 180);
+        ctx.scale(1, -1);
+        ctx.rotate(-transform.rotation * Math.PI / 180);
         ctx.scale(transform.scale.x, transform.scale.y);
 
         ctx.beginPath();
@@ -611,7 +626,8 @@ export class Renderer {
 
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
-        this.ctx.rotate(transform.rotation * Math.PI / 180);
+        this.ctx.scale(1, -1);
+        this.ctx.rotate(-transform.rotation * Math.PI / 180);
         this.ctx.scale(transform.scale.x, transform.scale.y);
 
         const w = terreno.width;
@@ -722,7 +738,8 @@ export class Renderer {
 
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
-        this.ctx.rotate(transform.rotation * Math.PI / 180);
+        this.ctx.scale(1, -1);
+        this.ctx.rotate(-transform.rotation * Math.PI / 180);
         this.ctx.scale(transform.scale.x, transform.scale.y);
 
         const mapTotalWidth = tilemap.width * grid.cellSize.x;
@@ -1167,12 +1184,9 @@ export class Renderer {
         const canvasTransform = canvasMateria.getComponent(Transform);
         if (!canvasComponent || !canvasTransform) return;
 
-        // DEBUG LOG - Important to see when WorldSpace is called for Screen Space canvas
-        if (canvasComponent.renderMode === 'Screen Space' && !this.isEditor) {
-            console.warn(`%c[WARNING] drawWorldSpaceUI called for Screen Space canvas "${canvasMateria.name}" in GAME!`, 'color: #FF0000; font-weight: bold;');
-        }
-
         this.ctx.save();
+        // UI is traditionally Y-Down, so counter-flip the world flip
+        this.ctx.scale(1, -1);
 
         // The rectCache will get the initial rect from the canvas itself via getAbsoluteRect.
         const rectCache = new Map();
