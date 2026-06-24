@@ -106,7 +106,13 @@ export class PhysicsSystem {
 
     _step3D(deltaTime) {
         const allMaterias = this.scene.getAllMaterias();
-        const collidables = allMaterias.filter(m => m.isActive && (m.getComponent(window.Components3D?.BoxCollider3D) || m.getComponent(window.Components3D?.SphereCollider3D)));
+        const collidables = allMaterias.filter(m => m.isActive && (
+            m.getComponent(window.Components3D?.BoxCollider3D) ||
+            m.getComponent(window.Components3D?.SphereCollider3D) ||
+            m.getComponent(window.Components3D?.CapsuleCollider3D) ||
+            m.getComponent(window.Components3D?.PlaneCollider3D) ||
+            m.getComponent(window.Components3D?.TerrenoCollider3D)
+        ));
 
         for (let i = 0; i < collidables.length; i++) {
             const m = collidables[i];
@@ -126,24 +132,602 @@ export class PhysicsSystem {
                 if (transform.z !== undefined) transform.z += rb.velocity.z * deltaTime;
             }
 
-            // Very basic 3D collision check for deformation
+            // 3D Collision Detection & Resolution
             for (let j = i + 1; j < collidables.length; j++) {
                 const other = collidables[j];
-                const t1 = transform;
-                const t2 = other.getComponent(Components.Transform);
+                const collision = this.checkCollision3D(m, other);
+                if (collision) {
+                    this.resolveCollision3D(m, other, collision);
 
-                const dist = Math.hypot(t1.x - t2.x, t1.y - t2.y, (t1.z || 0) - (t2.z || 0));
-                if (dist < 100) { // Simple overlap
-                    const hitPoint = { x: (t1.x + t2.x)/2, y: (t1.y + t2.y)/2, z: ((t1.z||0) + (t2.z||0))/2 };
-                    const force = 50; // Arbitrary
-
+                    // Trigger deformation if component exists
+                    const hitPoint = collision.point || { x: transform.x, y: transform.y, z: transform.z || 0 };
+                    const force = 50; // Simplified force
                     const dm1 = m.getComponent(window.Components3D?.DeformableMesh3D);
                     if (dm1) dm1.onCollision(hitPoint, force);
-
                     const dm2 = other.getComponent(window.Components3D?.DeformableMesh3D);
                     if (dm2) dm2.onCollision(hitPoint, force);
                 }
             }
+        }
+    }
+
+    checkCollision3D(mA, mB) {
+        const C3D = window.Components3D;
+        const cA = mA.getComponent(C3D.BoxCollider3D) || mA.getComponent(C3D.SphereCollider3D) || mA.getComponent(C3D.CapsuleCollider3D) || mA.getComponent(C3D.PlaneCollider3D) || mA.getComponent(C3D.TerrenoCollider3D);
+        const cB = mB.getComponent(C3D.BoxCollider3D) || mB.getComponent(C3D.SphereCollider3D) || mB.getComponent(C3D.CapsuleCollider3D) || mB.getComponent(C3D.PlaneCollider3D) || mB.getComponent(C3D.TerrenoCollider3D);
+
+        if (!cA || !cB) return null;
+
+        // Dispatcher
+        if (cA instanceof C3D.BoxCollider3D) {
+            if (cB instanceof C3D.BoxCollider3D) return this.isBoxVsBox(mA, mB);
+            if (cB instanceof C3D.SphereCollider3D) return this.isSphereVsBox(mB, mA, true);
+            if (cB instanceof C3D.PlaneCollider3D) return this.isBoxVsPlane(mA, mB);
+            if (cB instanceof C3D.CapsuleCollider3D) return this.isCapsuleVsBox(mB, mA, true);
+            if (cB instanceof C3D.TerrenoCollider3D) return this.isBoxVsTerrain(mA, mB);
+        } else if (cA instanceof C3D.SphereCollider3D) {
+            if (cB instanceof C3D.BoxCollider3D) return this.isSphereVsBox(mA, mB);
+            if (cB instanceof C3D.SphereCollider3D) return this.isSphereVsSphere(mA, mB);
+            if (cB instanceof C3D.PlaneCollider3D) return this.isSphereVsPlane(mA, mB);
+            if (cB instanceof C3D.CapsuleCollider3D) return this.isCapsuleVsSphere(mB, mA, true);
+            if (cB instanceof C3D.TerrenoCollider3D) return this.isSphereVsTerrain(mA, mB);
+        } else if (cA instanceof C3D.PlaneCollider3D) {
+            if (cB instanceof C3D.BoxCollider3D) return this.isBoxVsPlane(mB, mA, true);
+            if (cB instanceof C3D.SphereCollider3D) return this.isSphereVsPlane(mB, mA, true);
+            if (cB instanceof C3D.CapsuleCollider3D) return this.isCapsuleVsPlane(mB, mA, true);
+        } else if (cA instanceof C3D.CapsuleCollider3D) {
+            if (cB instanceof C3D.SphereCollider3D) return this.isCapsuleVsSphere(mA, mB);
+            if (cB instanceof C3D.PlaneCollider3D) return this.isCapsuleVsPlane(mA, mB);
+            if (cB instanceof C3D.CapsuleCollider3D) return this.isCapsuleVsCapsule(mA, mB);
+            if (cB instanceof C3D.BoxCollider3D) return this.isCapsuleVsBox(mA, mB);
+            if (cB instanceof C3D.TerrenoCollider3D) return this.isCapsuleVsTerrain(mA, mB);
+        } else if (cA instanceof C3D.TerrenoCollider3D) {
+            if (cB instanceof C3D.BoxCollider3D) return this.isBoxVsTerrain(mB, mA, true);
+            if (cB instanceof C3D.SphereCollider3D) return this.isSphereVsTerrain(mB, mA, true);
+            if (cB instanceof C3D.CapsuleCollider3D) return this.isCapsuleVsTerrain(mB, mA, true);
+        }
+
+        return null;
+    }
+
+    isSphereVsTerrain(mSphere, mTerrain, isInverted = false) {
+        const tS = mSphere.getComponent(Components.Transform);
+        const cS = mSphere.getComponent(window.Components3D.SphereCollider3D);
+        const tT = mTerrain.getComponent(Components.Transform);
+        const terrain = mTerrain.getComponent(window.Components3D.Terreno3D);
+        const glm = window.glMatrix;
+
+        const spherePosWorld = [tS.x + cS.offset.x, tS.y + cS.offset.y, (tS.z || 0) + cS.offset.z];
+        const invMat = glm.mat4.invert(glm.mat4.create(), tT.worldMatrix);
+        const localPos = glm.vec3.transformMat4(glm.vec3.create(), spherePosWorld, invMat);
+        const radius = cS.radius * Math.max(Math.abs(tS.scale.x), Math.abs(tS.scale.y), Math.abs(tS.scale.z || 1));
+
+        const gridX = ((localPos[0] + terrain.size.x / 2) / terrain.size.x) * terrain.resolution;
+        const gridZ = ((localPos[2] + terrain.size.z / 2) / terrain.size.z) * terrain.resolution;
+
+        if (gridX >= 0 && gridX < terrain.resolution && gridZ >= 0 && gridZ < terrain.resolution) {
+            const h = terrain.getHeight(Math.floor(gridX), Math.floor(gridZ));
+            const dist = localPos[1] - h; // CE: +Y is Down. localPos[1] > h means below surface.
+
+            if (dist > -radius) {
+                const overlap = radius + dist;
+                let nx = 0, ny = -1, nz = 0;
+                if (isInverted) ny = 1;
+                return { normal: { x: nx, y: ny, z: nz }, overlap, point: { x: spherePosWorld[0], y: spherePosWorld[1], z: spherePosWorld[2] } };
+            }
+        }
+        return null;
+    }
+
+    isBoxVsTerrain(mBox, mTerrain, isInverted = false) {
+        const obb = this._getOBBData(mBox);
+        const tT = mTerrain.getComponent(Components.Transform);
+        const terrain = mTerrain.getComponent(window.Components3D.Terreno3D);
+        const glm = window.glMatrix;
+        const invMat = glm.mat4.invert(glm.mat4.create(), tT.worldMatrix);
+
+        // Check lowest vertex of OBB
+        let maxOverlap = -1;
+        let hitPoint = null;
+
+        const half = obb.halfExtents;
+        const corners = [
+            [-half[0], -half[1], -half[2]], [half[0], -half[1], -half[2]],
+            [-half[0], half[1], -half[2]], [half[0], half[1], -half[2]],
+            [-half[0], -half[1], half[2]], [half[0], -half[1], half[2]],
+            [-half[0], half[1], half[2]], [half[0], half[1], half[2]]
+        ];
+
+        for (const c of corners) {
+            const worldCorner = glm.vec3.clone(obb.center);
+            for (let i = 0; i < 3; i++) glm.vec3.scaleAndAdd(worldCorner, worldCorner, obb.axes[i], c[i]);
+
+            const localPos = glm.vec3.transformMat4(glm.vec3.create(), worldCorner, invMat);
+            const gridX = ((localPos[0] + terrain.size.x / 2) / terrain.size.x) * terrain.resolution;
+            const gridZ = ((localPos[2] + terrain.size.z / 2) / terrain.size.z) * terrain.resolution;
+
+            if (gridX >= 0 && gridX < terrain.resolution && gridZ >= 0 && gridZ < terrain.resolution) {
+                const h = terrain.getHeight(Math.floor(gridX), Math.floor(gridZ));
+                const overlap = localPos[1] - h;
+                if (overlap > maxOverlap) {
+                    maxOverlap = overlap;
+                    hitPoint = { x: worldCorner[0], y: worldCorner[1], z: worldCorner[2] };
+                }
+            }
+        }
+
+        if (maxOverlap > 0) {
+            let ny = -1; if (isInverted) ny = 1;
+            return { normal: { x: 0, y: ny, z: 0 }, overlap: maxOverlap, point: hitPoint };
+        }
+        return null;
+    }
+
+    isCapsuleVsTerrain(mCap, mTerrain, isInverted = false) {
+        const cap = this._getCapsuleData3D(mCap);
+        const tT = mTerrain.getComponent(Components.Transform);
+        const terrain = mTerrain.getComponent(window.Components3D.Terreno3D);
+        const glm = window.glMatrix;
+        const invMat = glm.mat4.invert(glm.mat4.create(), tT.worldMatrix);
+
+        // Check p1 and p2 of capsule
+        let maxOverlap = -1;
+        let hitPoint = null;
+
+        for (const p of [cap.p1, cap.p2]) {
+            const localPos = glm.vec3.transformMat4(glm.vec3.create(), p, invMat);
+            const gridX = ((localPos[0] + terrain.size.x / 2) / terrain.size.x) * terrain.resolution;
+            const gridZ = ((localPos[2] + terrain.size.z / 2) / terrain.size.z) * terrain.resolution;
+
+            if (gridX >= 0 && gridX < terrain.resolution && gridZ >= 0 && gridZ < terrain.resolution) {
+                const h = terrain.getHeight(Math.floor(gridX), Math.floor(gridZ));
+                const overlap = (localPos[1] + cap.radius) - h;
+                if (overlap > maxOverlap) {
+                    maxOverlap = overlap;
+                    hitPoint = { x: p[0], y: p[1], z: p[2] };
+                }
+            }
+        }
+
+        if (maxOverlap > 0) {
+            let ny = -1; if (isInverted) ny = 1;
+            return { normal: { x: 0, y: ny, z: 0 }, overlap: maxOverlap, point: hitPoint };
+        }
+        return null;
+    }
+
+    _getOBBData(materia) {
+        const transform = materia.getComponent(Components.Transform);
+        const collider = materia.getComponent(window.Components3D.BoxCollider3D);
+        const glm = window.glMatrix;
+
+        const center = [
+            transform.x + collider.offset.x,
+            transform.y + collider.offset.y,
+            (transform.z || 0) + collider.offset.z
+        ];
+
+        const matrix = transform.worldMatrix;
+        const axes = [
+            glm.vec3.fromValues(matrix[0], matrix[1], matrix[2]),
+            glm.vec3.fromValues(matrix[4], matrix[5], matrix[6]),
+            glm.vec3.fromValues(matrix[8], matrix[9], matrix[10])
+        ];
+        glm.vec3.normalize(axes[0], axes[0]);
+        glm.vec3.normalize(axes[1], axes[1]);
+        glm.vec3.normalize(axes[2], axes[2]);
+
+        const halfExtents = [
+            (collider.size.x * Math.abs(transform.scale.x)) / 2,
+            (collider.size.y * Math.abs(transform.scale.y)) / 2,
+            (collider.size.z * Math.abs(transform.scale.z)) / 2
+        ];
+
+        return { center, axes, halfExtents };
+    }
+
+    isSphereVsBox(mSphere, mBox, isInverted = false) {
+        const tS = mSphere.getComponent(Components.Transform);
+        const cS = mSphere.getComponent(window.Components3D.SphereCollider3D);
+        const obb = this._getOBBData(mBox);
+        const glm = window.glMatrix;
+
+        const spherePos = glm.vec3.fromValues(
+            tS.x + cS.offset.x,
+            tS.y + cS.offset.y,
+            (tS.z || 0) + cS.offset.z
+        );
+        const radius = cS.radius * Math.max(Math.abs(tS.scale.x), Math.abs(tS.scale.y), Math.abs(tS.scale.z || 1));
+
+        // Vector from box center to sphere center
+        const d = glm.vec3.subtract(glm.vec3.create(), spherePos, obb.center);
+
+        // Project d onto box axes to find the closest point inside the box
+        const closestPoint = glm.vec3.clone(obb.center);
+        for (let i = 0; i < 3; i++) {
+            let dist = glm.vec3.dot(d, obb.axes[i]);
+            dist = this._clamp(dist, -obb.halfExtents[i], obb.halfExtents[i]);
+            glm.vec3.scaleAndAdd(closestPoint, closestPoint, obb.axes[i], dist);
+        }
+
+        const diff = glm.vec3.subtract(glm.vec3.create(), spherePos, closestPoint);
+        const distSq = glm.vec3.sqrLen(diff);
+
+        if (distSq < radius * radius) {
+            const dist = Math.sqrt(distSq);
+            const overlap = radius - dist;
+            let nx, ny, nz;
+            if (dist > 1e-6) {
+                nx = diff[0] / dist; ny = diff[1] / dist; nz = diff[2] / dist;
+            } else {
+                nx = 0; ny = -1; nz = 0;
+            }
+            if (isInverted) { nx *= -1; ny *= -1; nz *= -1; }
+            return { normal: { x: nx, y: ny, z: nz }, overlap, point: { x: closestPoint[0], y: closestPoint[1], z: closestPoint[2] } };
+        }
+        return null;
+    }
+
+    isBoxVsBox(mA, mB) {
+        const obbA = this._getOBBData(mA);
+        const obbB = this._getOBBData(mB);
+        const glm = window.glMatrix;
+
+        // SAT test for OBB vs OBB (15 axes)
+        // For brevity and engine performance, we'll start with a simplified AABB check in world space
+        // then evolve to full OBB if needed.
+        // Let's implement full OBB axes for accuracy.
+
+        const axes = [
+            obbA.axes[0], obbA.axes[1], obbA.axes[2],
+            obbB.axes[0], obbB.axes[1], obbB.axes[2]
+        ];
+
+        // Add 9 cross product axes
+        for (let i = 0; i < 3; i++) {
+            for (let j = 0; j < 3; j++) {
+                const cross = glm.vec3.cross(glm.vec3.create(), obbA.axes[i], obbB.axes[j]);
+                if (glm.vec3.sqrLen(cross) > 1e-6) {
+                    glm.vec3.normalize(cross, cross);
+                    axes.push(cross);
+                }
+            }
+        }
+
+        let minOverlap = Infinity;
+        let mtv = null;
+
+        const centerDiff = glm.vec3.subtract(glm.vec3.create(), obbA.center, obbB.center);
+
+        for (const axis of axes) {
+            // Project both boxes onto the axis
+            const rA = obbA.halfExtents[0] * Math.abs(glm.vec3.dot(obbA.axes[0], axis)) +
+                       obbA.halfExtents[1] * Math.abs(glm.vec3.dot(obbA.axes[1], axis)) +
+                       obbA.halfExtents[2] * Math.abs(glm.vec3.dot(obbA.axes[2], axis));
+
+            const rB = obbB.halfExtents[0] * Math.abs(glm.vec3.dot(obbB.axes[0], axis)) +
+                       obbB.halfExtents[1] * Math.abs(glm.vec3.dot(obbB.axes[1], axis)) +
+                       obbB.halfExtents[2] * Math.abs(glm.vec3.dot(obbB.axes[2], axis));
+
+            const dist = Math.abs(glm.vec3.dot(centerDiff, axis));
+
+            if (dist > rA + rB) return null; // Separating axis found
+
+            const overlap = (rA + rB) - dist;
+            if (overlap < minOverlap) {
+                minOverlap = overlap;
+                mtv = axis;
+            }
+        }
+
+        // Ensure MTV points from B to A
+        if (glm.vec3.dot(centerDiff, mtv) < 0) {
+            mtv = glm.vec3.scale(glm.vec3.create(), mtv, -1);
+        }
+
+        return {
+            normal: { x: mtv[0], y: mtv[1], z: mtv[2] },
+            overlap: minOverlap,
+            point: { x: (obbA.center[0] + obbB.center[0]) / 2, y: (obbA.center[1] + obbB.center[1]) / 2, z: (obbA.center[2] + obbB.center[2]) / 2 }
+        };
+    }
+
+    isBoxVsPlane(mBox, mPlane, isInverted = false) {
+        const obb = this._getOBBData(mBox);
+        const tP = mPlane.getComponent(Components.Transform);
+        const cP = mPlane.getComponent(window.Components3D.PlaneCollider3D);
+        const glm = window.glMatrix;
+
+        const planeNormal = glm.vec3.fromValues(tP.worldMatrix[4], tP.worldMatrix[5], tP.worldMatrix[6]);
+        glm.vec3.normalize(planeNormal, planeNormal);
+        const planePos = [tP.x + cP.offset.x, tP.y + cP.offset.y, (tP.z || 0) + cP.offset.z];
+
+        // Find the vertex of the box farthest in the direction of -planeNormal
+        const r = obb.halfExtents[0] * Math.abs(glm.vec3.dot(obb.axes[0], planeNormal)) +
+                  obb.halfExtents[1] * Math.abs(glm.vec3.dot(obb.axes[1], planeNormal)) +
+                  obb.halfExtents[2] * Math.abs(glm.vec3.dot(obb.axes[2], planeNormal));
+
+        const boxToPlane = glm.vec3.subtract(glm.vec3.create(), obb.center, planePos);
+        const dist = glm.vec3.dot(boxToPlane, planeNormal);
+
+        if (Math.abs(dist) < r) {
+            const overlap = r - Math.abs(dist);
+            let nx = planeNormal[0], ny = planeNormal[1], nz = planeNormal[2];
+            if (dist < 0) { nx *= -1; ny *= -1; nz *= -1; }
+            if (isInverted) { nx *= -1; ny *= -1; nz *= -1; }
+            return { normal: { x: nx, y: ny, z: nz }, overlap, point: { x: obb.center[0], y: obb.center[1], z: obb.center[2] } };
+        }
+        return null;
+    }
+
+    _getCapsuleData3D(materia) {
+        const transform = materia.getComponent(Components.Transform);
+        const collider = materia.getComponent(window.Components3D.CapsuleCollider3D);
+        const glm = window.glMatrix;
+
+        const center = [
+            transform.x + collider.offset.x,
+            transform.y + collider.offset.y,
+            (transform.z || 0) + collider.offset.z
+        ];
+
+        const matrix = transform.worldMatrix;
+        const axisIdx = collider.direction === 'X' ? 0 : (collider.direction === 'Y' ? 4 : 8);
+        const dir = glm.vec3.fromValues(matrix[axisIdx], matrix[axisIdx+1], matrix[axisIdx+2]);
+        glm.vec3.normalize(dir, dir);
+
+        const radius = collider.radius * Math.max(Math.abs(transform.scale.x), Math.abs(transform.scale.z || 1));
+        const height = collider.height * Math.abs(transform.scale.y);
+        const hh = Math.max(0, (height / 2) - radius);
+
+        const p1 = glm.vec3.scaleAndAdd(glm.vec3.create(), center, dir, -hh);
+        const p2 = glm.vec3.scaleAndAdd(glm.vec3.create(), center, dir, hh);
+
+        return { p1, p2, radius, center, dir };
+    }
+
+    isCapsuleVsSphere(mCap, mSphere, isInverted = false) {
+        const cap = this._getCapsuleData3D(mCap);
+        const tS = mSphere.getComponent(Components.Transform);
+        const cS = mSphere.getComponent(window.Components3D.SphereCollider3D);
+        const glm = window.glMatrix;
+
+        const sPos = [tS.x + cS.offset.x, tS.y + cS.offset.y, (tS.z || 0) + cS.offset.z];
+        const sRadius = cS.radius * Math.max(Math.abs(tS.scale.x), Math.abs(tS.scale.y), Math.abs(tS.scale.z || 1));
+
+        const closest = this._closestPointOnSegment3D(sPos, cap.p1, cap.p2);
+        const dx = sPos[0] - closest[0], dy = sPos[1] - closest[1], dz = sPos[2] - closest[2];
+        const distSq = dx*dx + dy*dy + dz*dz;
+
+        if (distSq < (cap.radius + sRadius) * (cap.radius + sRadius)) {
+            const dist = Math.sqrt(distSq);
+            const overlap = (cap.radius + sRadius) - dist;
+            let nx, ny, nz;
+            if (dist > 1e-6) {
+                nx = dx/dist; ny = dy/dist; nz = dz/dist;
+            } else {
+                nx = 0; ny = -1; nz = 0;
+            }
+            if (isInverted) { nx *= -1; ny *= -1; nz *= -1; }
+            return { normal: { x: nx, y: ny, z: nz }, overlap, point: { x: closest[0] + nx * cap.radius, y: closest[1] + ny * cap.radius, z: closest[2] + nz * cap.radius } };
+        }
+        return null;
+    }
+
+    isCapsuleVsPlane(mCap, mPlane, isInverted = false) {
+        const cap = this._getCapsuleData3D(mCap);
+        const tP = mPlane.getComponent(Components.Transform);
+        const cP = mPlane.getComponent(window.Components3D.PlaneCollider3D);
+        const glm = window.glMatrix;
+
+        const normal = glm.vec3.fromValues(tP.worldMatrix[4], tP.worldMatrix[5], tP.worldMatrix[6]);
+        glm.vec3.normalize(normal, normal);
+        const pPos = [tP.x + cP.offset.x, tP.y + cP.offset.y, (tP.z || 0) + cP.offset.z];
+
+        const d1 = glm.vec3.dot(glm.vec3.subtract(glm.vec3.create(), cap.p1, pPos), normal);
+        const d2 = glm.vec3.dot(glm.vec3.subtract(glm.vec3.create(), cap.p2, pPos), normal);
+
+        const minDist = Math.min(d1, d2);
+        if (minDist < cap.radius) {
+            const overlap = cap.radius - minDist;
+            let nx = normal[0], ny = normal[1], nz = normal[2];
+            if (isInverted) { nx *= -1; ny *= -1; nz *= -1; }
+            return {
+                normal: { x: nx, y: ny, z: nz },
+                overlap,
+                point: { x: cap.center[0], y: cap.center[1], z: cap.center[2] }
+            };
+        }
+        return null;
+    }
+
+    isCapsuleVsCapsule(mA, mB) {
+        const capA = this._getCapsuleData3D(mA);
+        const capB = this._getCapsuleData3D(mB);
+        const glm = window.glMatrix;
+
+        const { a, b } = this._closestPointsOnTwoSegments3D(capA.p1, capA.p2, capB.p1, capB.p2);
+        const dx = a[0] - b[0], dy = a[1] - b[1], dz = a[2] - b[2];
+        const distSq = dx*dx + dy*dy + dz*dz;
+
+        if (distSq < (capA.radius + capB.radius) * (capA.radius + capB.radius)) {
+            const dist = Math.sqrt(distSq);
+            const overlap = (capA.radius + capB.radius) - dist;
+            const normal = dist > 1e-6 ? { x: dx/dist, y: dy/dist, z: dz/dist } : { x: 0, y: -1, z: 0 };
+            return { normal, overlap, point: { x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2, z: (a[2] + b[2]) / 2 } };
+        }
+        return null;
+    }
+
+    isCapsuleVsBox(mCap, mBox, isInverted = false) {
+        const cap = this._getCapsuleData3D(mCap);
+        const obb = this._getOBBData(mBox);
+        const glm = window.glMatrix;
+
+        // Simplified: find closest point on OBB to the capsule segment center
+        const boxCenter = obb.center;
+        const closestOnCap = this._closestPointOnSegment3D(boxCenter, cap.p1, cap.p2);
+
+        // Sphere vs Box using closest point on segment
+        const d = glm.vec3.subtract(glm.vec3.create(), closestOnCap, boxCenter);
+        const closestOnBox = glm.vec3.clone(boxCenter);
+        for (let i = 0; i < 3; i++) {
+            let dist = glm.vec3.dot(d, obb.axes[i]);
+            dist = this._clamp(dist, -obb.halfExtents[i], obb.halfExtents[i]);
+            glm.vec3.scaleAndAdd(closestOnBox, closestOnBox, obb.axes[i], dist);
+        }
+
+        const diff = glm.vec3.subtract(glm.vec3.create(), closestOnCap, closestOnBox);
+        const distSq = glm.vec3.sqrLen(diff);
+
+        if (distSq < cap.radius * cap.radius) {
+            const dist = Math.sqrt(distSq);
+            const overlap = cap.radius - dist;
+            let nx, ny, nz;
+            if (dist > 1e-6) {
+                nx = diff[0] / dist; ny = diff[1] / dist; nz = diff[2] / dist;
+            } else {
+                nx = 0; ny = -1; nz = 0;
+            }
+            if (isInverted) { nx *= -1; ny *= -1; nz *= -1; }
+            return { normal: { x: nx, y: ny, z: nz }, overlap, point: { x: closestOnBox[0], y: closestOnBox[1], z: closestOnBox[2] } };
+        }
+        return null;
+    }
+
+    _closestPointOnSegment3D(p, a, b) {
+        const glm = window.glMatrix;
+        const ab = glm.vec3.subtract(glm.vec3.create(), b, a);
+        const ap = glm.vec3.subtract(glm.vec3.create(), p, a);
+        let t = glm.vec3.dot(ap, ab) / glm.vec3.sqrLen(ab);
+        t = this._clamp(t, 0, 1);
+        return glm.vec3.scaleAndAdd(glm.vec3.create(), a, ab, t);
+    }
+
+    _closestPointsOnTwoSegments3D(p1, q1, p2, q2) {
+        const glm = window.glMatrix;
+        const d1 = glm.vec3.subtract(glm.vec3.create(), q1, p1);
+        const d2 = glm.vec3.subtract(glm.vec3.create(), q2, p2);
+        const r = glm.vec3.subtract(glm.vec3.create(), p1, p2);
+        const a = glm.vec3.sqrLen(d1), e = glm.vec3.sqrLen(d2), f = glm.vec3.dot(d2, r);
+        let s = 0, t = 0;
+        if (a <= 1e-6 && e <= 1e-6) return { a: p1, b: p2 };
+        if (a <= 1e-6) { s = 0; t = this._clamp(f / e, 0, 1); }
+        else {
+            const c = glm.vec3.dot(d1, r);
+            if (e <= 1e-6) { t = 0; s = this._clamp(-c / a, 0, 1); }
+            else {
+                const b = glm.vec3.dot(d1, d2);
+                const denom = a * e - b * b;
+                s = denom !== 0 ? this._clamp((b * f - c * e) / denom, 0, 1) : 0;
+                t = (b * s + f) / e;
+                if (t < 0) { t = 0; s = this._clamp(-c / a, 0, 1); }
+                else if (t > 1) { t = 1; s = this._clamp((b - c) / a, 0, 1); }
+            }
+        }
+        return { a: glm.vec3.scaleAndAdd(glm.vec3.create(), p1, d1, s), b: glm.vec3.scaleAndAdd(glm.vec3.create(), p2, d2, t) };
+    }
+
+    isSphereVsSphere(mA, mB) {
+        const tA = mA.getComponent(Components.Transform);
+        const cA = mA.getComponent(window.Components3D.SphereCollider3D);
+        const tB = mB.getComponent(Components.Transform);
+        const cB = mB.getComponent(window.Components3D.SphereCollider3D);
+
+        const rA = cA.radius * Math.max(Math.abs(tA.scale.x), Math.abs(tA.scale.y), Math.abs(tA.scale.z || 1));
+        const rB = cB.radius * Math.max(Math.abs(tB.scale.x), Math.abs(tB.scale.y), Math.abs(tB.scale.z || 1));
+
+        const pA = [tA.x + cA.offset.x, tA.y + cA.offset.y, (tA.z || 0) + cA.offset.z];
+        const pB = [tB.x + cB.offset.x, tB.y + cB.offset.y, (tB.z || 0) + cB.offset.z];
+
+        const dx = pA[0] - pB[0], dy = pA[1] - pB[1], dz = pA[2] - pB[2];
+        const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+        if (dist < rA + rB) {
+            const overlap = (rA + rB) - dist;
+            const normal = dist > 0 ? { x: dx/dist, y: dy/dist, z: dz/dist } : { x: 0, y: -1, z: 0 };
+            return { normal, overlap, point: { x: pB[0] + normal.x * rB, y: pB[1] + normal.y * rB, z: pB[2] + normal.z * rB } };
+        }
+        return null;
+    }
+
+    isSphereVsPlane(mSphere, mPlane, isInverted = false) {
+        const tS = mSphere.getComponent(Components.Transform);
+        const cS = mSphere.getComponent(window.Components3D.SphereCollider3D);
+        const tP = mPlane.getComponent(Components.Transform);
+        const cP = mPlane.getComponent(window.Components3D.PlaneCollider3D);
+        const glm = window.glMatrix;
+
+        const radius = cS.radius * Math.max(Math.abs(tS.scale.x), Math.abs(tS.scale.y), Math.abs(tS.scale.z || 1));
+        const spherePos = [tS.x + cS.offset.x, tS.y + cS.offset.y, (tS.z || 0) + cS.offset.z];
+
+        // Plane is infinite in XZ, centered at tP. Normal is Y-axis of tP world matrix
+        const normal = glm.vec3.fromValues(tP.worldMatrix[4], tP.worldMatrix[5], tP.worldMatrix[6]);
+        glm.vec3.normalize(normal, normal);
+
+        const planePos = [tP.x + cP.offset.x, tP.y + cP.offset.y, (tP.z || 0) + cP.offset.z];
+        const v = [spherePos[0] - planePos[0], spherePos[1] - planePos[1], spherePos[2] - planePos[2]];
+        const dist = v[0] * normal[0] + v[1] * normal[1] + v[2] * normal[2];
+
+        if (Math.abs(dist) < radius) {
+            const overlap = radius - Math.abs(dist);
+            let nx = normal[0], ny = normal[1], nz = normal[2];
+            if (dist < 0) { nx *= -1; ny *= -1; nz *= -1; }
+            if (isInverted) { nx *= -1; ny *= -1; nz *= -1; }
+            return {
+                normal: { x: nx, y: ny, z: nz },
+                overlap,
+                point: { x: spherePos[0] - nx * radius, y: spherePos[1] - ny * radius, z: spherePos[2] - nz * radius }
+            };
+        }
+        return null;
+    }
+
+    resolveCollision3D(mA, mB, hit) {
+        const tA = mA.getComponent(Components.Transform);
+        const tB = mB.getComponent(Components.Transform);
+        const rbA = mA.getComponent(window.Components3D.Rigidbody3D);
+        const rbB = mB.getComponent(window.Components3D.Rigidbody3D);
+
+        const isADyn = rbA && !rbA.isKinematic;
+        const isBDyn = rbB && !rbB.isKinematic;
+
+        if (!isADyn && !isBDyn) return;
+
+        // 1. Positional correction
+        const mtv = { x: hit.normal.x * hit.overlap, y: hit.normal.y * hit.overlap, z: hit.normal.z * hit.overlap };
+        if (isADyn && !isBDyn) {
+            tA.x += mtv.x; tA.y += mtv.y; tA.z = (tA.z || 0) + mtv.z;
+        } else if (!isADyn && isBDyn) {
+            tB.x -= mtv.x; tB.y -= mtv.y; tB.z = (tB.z || 0) - mtv.z;
+        } else if (isADyn && isBDyn) {
+            tA.x += mtv.x * 0.5; tA.y += mtv.y * 0.5; tA.z = (tA.z || 0) + mtv.z * 0.5;
+            tB.x -= mtv.x * 0.5; tB.y -= mtv.y * 0.5; tB.z = (tB.z || 0) - mtv.z * 0.5;
+        }
+
+        // 2. Impulse resolution
+        const relVel = {
+            x: (rbA ? rbA.velocity.x : 0) - (rbB ? rbB.velocity.x : 0),
+            y: (rbA ? rbA.velocity.y : 0) - (rbB ? rbB.velocity.y : 0),
+            z: (rbA ? rbA.velocity.z : 0) - (rbB ? rbB.velocity.z : 0)
+        };
+        const velAlongNorm = relVel.x * hit.normal.x + relVel.y * hit.normal.y + relVel.z * hit.normal.z;
+        if (velAlongNorm > 0) return;
+
+        const e = 0.2; // Bounciness
+        let j = -(1 + e) * velAlongNorm;
+        j /= (isADyn ? 1/rbA.mass : 0) + (isBDyn ? 1/rbB.mass : 0);
+
+        const impulse = { x: j * hit.normal.x, y: j * hit.normal.y, z: j * hit.normal.z };
+        if (isADyn) {
+            rbA.velocity.x += impulse.x / rbA.mass;
+            rbA.velocity.y += impulse.y / rbA.mass;
+            rbA.velocity.z += impulse.z / rbA.mass;
+        }
+        if (isBDyn) {
+            rbB.velocity.x -= impulse.x / rbB.mass;
+            rbB.velocity.y -= impulse.y / rbB.mass;
+            rbB.velocity.z -= impulse.z / rbB.mass;
         }
     }
 
@@ -2187,72 +2771,272 @@ export class PhysicsSystem {
     }
 
     /**
-     * Lanza un rayo en el espacio 3D y devuelve información sobre el primer objeto que impacta.
+     * Lanza un rayo en el espacio 3D y devuelve información precisa sobre el primer colisionador que impacta.
      * @param {{x: number, y: number, z: number}} origin
      * @param {{x: number, y: number, z: number}} direction
      * @param {number} maxDistance
      */
     raycast3D(origin, direction, maxDistance = Infinity) {
         const glm = window.glMatrix;
-        if (!glm) return null;
+        const C3D = window.Components3D;
+        if (!glm || !C3D) return null;
 
         let closestHit = null;
         let minDistance = maxDistance;
 
         const collidables = this.scene.getAllMaterias().filter(m =>
-            m.isActive && (m.getComponent(window.Components3D?.MeshRenderer3D) || m.getComponent(window.Components3D?.SkinnedMeshRenderer3D))
+            m.isActive && (m.getComponent(C3D.BoxCollider3D) || m.getComponent(C3D.SphereCollider3D) || m.getComponent(C3D.CapsuleCollider3D) || m.getComponent(C3D.PlaneCollider3D) || m.getComponent(C3D.Terreno3D))
         );
 
         for (const materia of collidables) {
             const transform = materia.getComponent(Components.Transform);
-            const renderer = materia.getComponent(window.Components3D.MeshRenderer3D) || materia.getComponent(window.Components3D.SkinnedMeshRenderer3D);
+            const box = materia.getComponent(C3D.BoxCollider3D);
+            const sphere = materia.getComponent(C3D.SphereCollider3D);
+            const capsule = materia.getComponent(C3D.CapsuleCollider3D);
+            const plane = materia.getComponent(C3D.PlaneCollider3D);
+            const terrain = materia.getComponent(C3D.Terreno3D);
 
-            // Simplified: Treat all 3D objects as AABBs for raycasting
-            const worldMatrix = transform.worldMatrix;
-            const invWorldMatrix = glm.mat4.create();
-            glm.mat4.invert(invWorldMatrix, worldMatrix);
+            let hit = null;
 
-            // Transform ray to local space
-            const localOrigin = glm.vec3.transformMat4(glm.vec3.create(), [origin.x, origin.y, origin.z], invWorldMatrix);
-            const localRayEnd = glm.vec3.transformMat4(glm.vec3.create(), [origin.x + direction.x * 1000, origin.y + direction.y * 1000, origin.z + direction.z * 1000], invWorldMatrix);
-            const localDir = glm.vec3.subtract(glm.vec3.create(), localRayEnd, localOrigin);
-            glm.vec3.normalize(localDir, localDir);
+            if (box) hit = this._rayVsBox3D(origin, direction, materia, box);
+            else if (sphere) hit = this._rayVsSphere3D(origin, direction, materia, sphere);
+            else if (capsule) hit = this._rayVsCapsule3D(origin, direction, materia, capsule);
+            else if (plane) hit = this._rayVsPlane3D(origin, direction, materia, plane);
+            else if (terrain) hit = this._rayVsTerrain3D(origin, direction, materia, terrain);
 
-            // Ray vs Unit Cube (-0.5 to 0.5)
-            let tmin = -Infinity, tmax = Infinity;
-            for (let i = 0; i < 3; i++) {
-                if (localDir[i] !== 0) {
-                    let t1 = (-0.5 - localOrigin[i]) / localDir[i];
-                    let t2 = (0.5 - localOrigin[i]) / localDir[i];
-                    tmin = Math.max(tmin, Math.min(t1, t2));
-                    tmax = Math.min(tmax, Math.max(t1, t2));
-                } else if (localOrigin[i] < -0.5 || localOrigin[i] > 0.5) {
-                    tmax = -1; break;
-                }
+            if (hit && hit.distance < minDistance) {
+                minDistance = hit.distance;
+                closestHit = {
+                    materia,
+                    point: hit.point,
+                    normal: hit.normal,
+                    distance: hit.distance,
+                    localPoint: hit.localPoint
+                };
             }
+        }
+        return closestHit;
+    }
 
-            if (tmax >= tmin && tmax >= 0) {
-                const distance = tmin > 0 ? tmin : 0;
-                const worldScale = glm.vec3.length([worldMatrix[0], worldMatrix[1], worldMatrix[2]]);
-                const worldDistance = distance * worldScale;
+    _rayVsSphere3D(origin, direction, materia, collider) {
+        const glm = window.glMatrix;
+        const transform = materia.getComponent(Components.Transform);
+        const radius = collider.radius * Math.max(Math.abs(transform.scale.x), Math.abs(transform.scale.y), Math.abs(transform.scale.z || 1));
+        const center = [transform.x + collider.offset.x, transform.y + collider.offset.y, (transform.z || 0) + collider.offset.z];
 
-                if (worldDistance < minDistance) {
-                    minDistance = worldDistance;
-                    const hitPoint = {
-                        x: origin.x + direction.x * worldDistance,
-                        y: origin.y + direction.y * worldDistance,
-                        z: origin.z + direction.z * worldDistance
-                    };
-                    closestHit = {
-                        materia,
-                        point: hitPoint,
-                        distance: worldDistance,
-                        localPoint: [localOrigin[0] + localDir[0] * distance, localOrigin[1] + localDir[1] * distance, localOrigin[2] + localDir[2] * distance]
+        const L = glm.vec3.subtract(glm.vec3.create(), center, [origin.x, origin.y, origin.z]);
+        const tca = glm.vec3.dot(L, [direction.x, direction.y, direction.z]);
+        if (tca < 0) return null;
+
+        const d2 = glm.vec3.dot(L, L) - tca * tca;
+        if (d2 > radius * radius) return null;
+
+        const thc = Math.sqrt(radius * radius - d2);
+        const t0 = tca - thc;
+        const t1 = tca + thc;
+
+        const t = t0 < 0 ? t1 : t0;
+        if (t < 0) return null;
+
+        const hitPoint = { x: origin.x + direction.x * t, y: origin.y + direction.y * t, z: (origin.z || 0) + direction.z * t };
+        const normalVec = glm.vec3.normalize(glm.vec3.create(), [hitPoint.x - center[0], hitPoint.y - center[1], hitPoint.z - center[2]]);
+
+        const invMat = glm.mat4.invert(glm.mat4.create(), transform.worldMatrix);
+        const lp = glm.vec3.transformMat4(glm.vec3.create(), [hitPoint.x, hitPoint.y, hitPoint.z], invMat);
+
+        return {
+            distance: t,
+            point: hitPoint,
+            normal: { x: normalVec[0], y: normalVec[1], z: normalVec[2] },
+            localPoint: lp
+        };
+    }
+
+    _rayVsBox3D(origin, direction, materia, collider) {
+        const glm = window.glMatrix;
+        const transform = materia.getComponent(Components.Transform);
+        const obb = this._getOBBData(materia);
+
+        // Transform ray to OBB local space
+        const invWorld = glm.mat4.invert(glm.mat4.create(), transform.worldMatrix);
+        const localOrigin = glm.vec3.transformMat4(glm.vec3.create(), [origin.x, origin.y, origin.z], invWorld);
+
+        // Offset is in local space relative to transform center, so subtract it
+        glm.vec3.subtract(localOrigin, localOrigin, [collider.offset.x, collider.offset.y, collider.offset.z]);
+
+        const localDir = glm.vec3.transformMat3(glm.vec3.create(), [direction.x, direction.y, direction.z], glm.mat3.fromMat4(glm.mat3.create(), invWorld));
+        glm.vec3.normalize(localDir, localDir);
+
+        const half = [collider.size.x / 2, collider.size.y / 2, collider.size.z / 2];
+        let tmin = -Infinity, tmax = Infinity;
+        let normalIdx = -1;
+
+        for (let i = 0; i < 3; i++) {
+            if (Math.abs(localDir[i]) > 1e-6) {
+                let t1 = (-half[i] - localOrigin[i]) / localDir[i];
+                let t2 = (half[i] - localOrigin[i]) / localDir[i];
+
+                if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
+                if (t1 > tmin) { tmin = t1; normalIdx = i; }
+                tmax = Math.min(tmax, t2);
+            } else if (localOrigin[i] < -half[i] || localOrigin[i] > half[i]) return null;
+        }
+
+        if (tmax >= tmin && tmax >= 0) {
+            const t = tmin > 0 ? tmin : 0;
+            const hitPoint = { x: origin.x + direction.x * t, y: origin.y + direction.y * t, z: (origin.z || 0) + direction.z * t };
+
+            // Calculate normal in world space
+            const localNormal = [0, 0, 0];
+            localNormal[normalIdx] = localOrigin[normalIdx] < 0 ? -1 : 1;
+            const worldNormal = glm.vec3.transformMat3(glm.vec3.create(), localNormal, glm.mat3.fromMat4(glm.mat3.create(), transform.worldMatrix));
+            glm.vec3.normalize(worldNormal, worldNormal);
+
+            const lp = [localOrigin[0] + localDir[0] * t, localOrigin[1] + localDir[1] * t, localOrigin[2] + localDir[2] * t];
+
+            return {
+                distance: t,
+                point: hitPoint,
+                normal: { x: worldNormal[0], y: worldNormal[1], z: worldNormal[2] },
+                localPoint: lp
+            };
+        }
+        return null;
+    }
+
+    _rayVsTerrain3D(origin, direction, materia, terrain, maxDistance = 10000) {
+        const glm = window.glMatrix;
+        const transform = materia.getComponent(Components.Transform);
+        const invMat = glm.mat4.invert(glm.mat4.create(), transform.worldMatrix);
+
+        const localOrigin = glm.vec3.transformMat4(glm.vec3.create(), [origin.x, origin.y, origin.z], invMat);
+        const localDir = glm.vec3.transformMat3(glm.vec3.create(), [direction.x, direction.y, direction.z], glm.mat3.fromMat4(glm.mat3.create(), invMat));
+        glm.vec3.normalize(localDir, localDir);
+
+        // Grid-based raycasting
+        const step = (terrain.size.x / terrain.resolution) * 0.5;
+        for (let d = 0; d < maxDistance; d += step) {
+            const p = [localOrigin[0] + localDir[0] * d, localOrigin[1] + localDir[1] * d, localOrigin[2] + localDir[2] * d];
+
+            const gridX = ((p[0] + terrain.size.x / 2) / terrain.size.x) * terrain.resolution;
+            const gridZ = ((p[2] + terrain.size.z / 2) / terrain.size.z) * terrain.resolution;
+
+            if (gridX >= 0 && gridX < terrain.resolution && gridZ >= 0 && gridZ < terrain.resolution) {
+                const ix = Math.floor(gridX);
+                const iz = Math.floor(gridZ);
+                const h = terrain.getHeight(ix, iz);
+
+                // CE: +Y is Down. localPos[1] > h means below surface.
+                if (p[1] >= h) {
+                    const worldHit = glm.vec3.transformMat4(glm.vec3.create(), p, transform.worldMatrix);
+
+                    // Precise normal calculation at hit point
+                    const hl = terrain.getHeight(ix - 1, iz);
+                    const hr = terrain.getHeight(ix + 1, iz);
+                    const hd = terrain.getHeight(ix, iz - 1);
+                    const hu = terrain.getHeight(ix, iz + 1);
+
+                    // In CE +Y is Down, so -Y is UP.
+                    const localNormal = glm.vec3.normalize(glm.vec3.create(), [hr - hl, -2.0, hu - hd]);
+                    const worldNormal = glm.vec3.transformMat3(glm.vec3.create(), localNormal, glm.mat3.fromMat4(glm.mat3.create(), transform.worldMatrix));
+                    glm.vec3.normalize(worldNormal, worldNormal);
+
+                    return {
+                        point: { x: worldHit[0], y: worldHit[1], z: worldHit[2] },
+                        normal: { x: worldNormal[0], y: worldNormal[1], z: worldNormal[2] },
+                        distance: d,
+                        localPoint: p
                     };
                 }
             }
         }
-        return closestHit;
+        return null;
+    }
+
+    _rayVsPlane3D(origin, direction, materia, collider) {
+        const glm = window.glMatrix;
+        const transform = materia.getComponent(Components.Transform);
+
+        const normal = glm.vec3.fromValues(transform.worldMatrix[4], transform.worldMatrix[5], transform.worldMatrix[6]);
+        glm.vec3.normalize(normal, normal);
+        const center = [transform.x + collider.offset.x, transform.y + collider.offset.y, (transform.z || 0) + collider.offset.z];
+
+        const denom = glm.vec3.dot(normal, [direction.x, direction.y, direction.z]);
+        if (Math.abs(denom) > 1e-6) {
+            const t = glm.vec3.dot(glm.vec3.subtract(glm.vec3.create(), center, [origin.x, origin.y, origin.z]), normal) / denom;
+            if (t >= 0) {
+                const hitPoint = { x: origin.x + direction.x * t, y: origin.y + direction.y * t, z: (origin.z || 0) + direction.z * t };
+                const invMat = glm.mat4.invert(glm.mat4.create(), transform.worldMatrix);
+                const lp = glm.vec3.transformMat4(glm.vec3.create(), [hitPoint.x, hitPoint.y, hitPoint.z], invMat);
+
+                return {
+                    distance: t,
+                    point: hitPoint,
+                    normal: { x: normal[0], y: normal[1], z: normal[2] },
+                    localPoint: lp
+                };
+            }
+        }
+        return null;
+    }
+
+    _rayVsCapsule3D(origin, direction, materia, collider) {
+        const cap = this._getCapsuleData3D(materia);
+        const glm = window.glMatrix;
+        const ro = glm.vec3.fromValues(origin.x, origin.y, origin.z);
+        const rd = glm.vec3.fromValues(direction.x, direction.y, direction.z);
+
+        const ba = glm.vec3.subtract(glm.vec3.create(), cap.p2, cap.p1);
+        const oa = glm.vec3.subtract(glm.vec3.create(), ro, cap.p1);
+
+        const baba = glm.vec3.dot(ba, ba);
+        const bard = glm.vec3.dot(ba, rd);
+        const baoa = glm.vec3.dot(ba, oa);
+        const r2 = cap.radius * cap.radius;
+
+        const k2 = baba - bard * bard;
+        const k1 = baba * glm.vec3.dot(oa, rd) - baoa * bard;
+        const k0 = baba * glm.vec3.dot(oa, oa) - baoa * baoa - r2 * baba;
+
+        const h = k1 * k1 - k2 * k0;
+        if (h < 0.0) return null;
+
+        let t = (-k1 - Math.sqrt(h)) / k2;
+        const y = baoa + t * bard;
+
+        // Body intersection
+        if (y > 0.0 && y < baba) {
+            const hitPoint = { x: origin.x + direction.x * t, y: origin.y + direction.y * t, z: (origin.z || 0) + direction.z * t };
+            const n = glm.vec3.subtract(glm.vec3.create(), [hitPoint.x, hitPoint.y, hitPoint.z], cap.p1);
+            glm.vec3.scaleAndAdd(n, n, ba, -y / baba);
+            glm.vec3.normalize(n, n);
+
+            const transform = materia.getComponent(Components.Transform);
+            const invMat = glm.mat4.invert(glm.mat4.create(), transform.worldMatrix);
+            const lp = glm.vec3.transformMat4(glm.vec3.create(), [hitPoint.x, hitPoint.y, hitPoint.z], invMat);
+
+            return {
+                distance: t,
+                point: hitPoint,
+                normal: { x: n[0], y: n[1], z: n[2] },
+                localPoint: lp
+            };
+        }
+
+        // Caps intersection
+        const hit1 = this._rayVsSphere3D(origin, direction, {
+            getComponent: (t) => t === Components.Transform ? { x: cap.p1[0], y: cap.p1[1], z: cap.p1[2], scale: {x:1,y:1,z:1} } : { radius: cap.radius, offset: {x:0,y:0,z:0} }
+        }, { radius: cap.radius, offset: {x:0,y:0,z:0} });
+
+        const hit2 = this._rayVsSphere3D(origin, direction, {
+            getComponent: (t) => t === Components.Transform ? { x: cap.p2[0], y: cap.p2[1], z: cap.p2[2], scale: {x:1,y:1,z:1} } : { radius: cap.radius, offset: {x:0,y:0,z:0} }
+        }, { radius: cap.radius, offset: {x:0,y:0,z:0} });
+
+        let closest = null;
+        if (hit1) closest = hit1;
+        if (hit2 && (!closest || hit2.distance < closest.distance)) closest = hit2;
+
+        return closest;
     }
 
     _rayVsSegment(origin, direction, p1, p2) {

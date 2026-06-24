@@ -133,6 +133,20 @@ HERRAMIENTA_CUBO: Cubo
 HERRAMIENTA_MULTI: Multi
 HERRAMIENTA_GOMA: Borrar
 
+# Terrain Editor
+TERRENO_ESCULPIR: Esculpir
+TERRENO_PINTAR: Pintar
+TERRENO_ARBOLES: Árboles
+TERRENO_VEGETACION: Vegetación
+BRUSH_SIZE: Tamaño de Pincel
+BRUSH_STRENGTH: Fuerza
+TERRENO_ELEV_BAJAR: Elevar/Bajar
+TERRENO_SUAVIZAR: Suavizar
+TERRENO_APLANAR: Aplanar
+TERRENO_HUECO: Hueco (Cueva)
+COLOR_PINTURA: Color / Pintura 3D
+SOLTAR_PREFAB_ARBOL: Suelta un Prefab de Árbol aquí
+
 # Launcher
 PLANTILLA: Plantilla
 PLANTILLA_VACIA: Vacío
@@ -269,6 +283,7 @@ ARCHIVO_LEAME: Archivo Léame (.md)
 ASSET_ANIMACION: Asset de Animación (.cea)
 IMAGE: Imagen
 TERRENO: Terreno
+TERRENO_3D: Terreno 3D
 CANVAS: Canvas
 PANEL: Panel
 COMBATANT: Combatiente
@@ -777,6 +792,20 @@ HERRAMIENTA_CUBO: Bucket
 HERRAMIENTA_MULTI: Multi
 HERRAMIENTA_GOMA: Erase
 
+# Terrain Editor
+TERRENO_ESCULPIR: Sculpt
+TERRENO_PINTAR: Paint
+TERRENO_ARBOLES: Trees
+TERRENO_VEGETACION: Vegetation
+BRUSH_SIZE: Brush Size
+BRUSH_STRENGTH: Strength
+TERRENO_ELEV_BAJAR: Elevate/Lower
+TERRENO_SUAVIZAR: Smooth
+TERRENO_APLANAR: Flatten
+TERRENO_HUECO: Hole (Cave)
+COLOR_PINTURA: Paint Color / 3D Paint
+SOLTAR_PREFAB_ARBOL: Drop Tree Prefab here
+
 # Launcher
 PLANTILLA: Template
 PLANTILLA_VACIA: Empty
@@ -913,6 +942,7 @@ ARCHIVO_LEAME: Readme File (.md)
 ASSET_ANIMACION: Animation Asset (.cea)
 IMAGE: Image
 TERRENO: Terrain
+TERRENO_3D: 3D Terrain
 CANVAS: Canvas
 PANEL: Panel
 COMBATANT: Combatant
@@ -1494,6 +1524,7 @@ ARCHIVO_LEAME: Arquivo Leia-me (.md)
 ASSET_ANIMACION: Asset de Animação (.cea)
 IMAGE: Imagem
 TERRENO: Terreno
+TERRENO_3D: Terreno 3D
 CANVAS: Canvas
 PANEL: Painel
 
@@ -2013,6 +2044,7 @@ ARCHIVO_LEAME: Файл Readme (.md)
 ASSET_ANIMACION: Ассет анимации (.cea)
 IMAGE: Изображение
 TERRENO: Террейн
+TERRENO_3D: 3D Террейн
 CANVAS: Канвас
 PANEL: Панель
 
@@ -2514,6 +2546,7 @@ ARCHIVO_LEAME: Readme 文件 (.md)
 ASSET_ANIMACION: 动画资源 (.cea)
 IMAGE: 图像
 TERRENO: 地形
+TERRENO_3D: 3D 地形
 CANVAS: 画布
 PANEL: 面板
 

@@ -14,7 +14,7 @@ import * as Components from '../../engine/Components.js';
 import { showConfirmation } from './DialogWindow.js';
 import {
     createBaseMateria, generateUniqueName, createPanelObject, createTextObject, createButtonObject,
-    createTerrenoObject, createAudioObject, createVideoObject, createWaterObject,
+    createTerrenoObject, createTerreno3DObject, createAudioObject, createVideoObject, createWaterObject,
     createLineColliderObject, createProgressBarObject, createCombatantObject, createScrollViewObject,
     createCubeObject, createSphereObject, createCapsule3DObject, createPlane3DObject, createTriangle3DObject,
     createDirectionalLight3D, createPointLight3D, createSpotLight3D,
@@ -203,7 +203,7 @@ function applyCreationPosition(m) {
     }
 }
 
-export function handleContextMenuAction(action) {
+export async function handleContextMenuAction(action) {
     const selectedMateria = getSelectedMateria();
     const L = window.Localization;
     // For actions on existing items, we MUST use the materia that was under the cursor
@@ -268,10 +268,10 @@ export function handleContextMenuAction(action) {
             newMateria = createCameraObject(selectedMateria);
             break;
         case 'create-humanoid-character':
-            newMateria = createDefaultCharacter(selectedMateria);
+            newMateria = await createDefaultCharacter(selectedMateria);
             break;
         case 'create-test-circuit':
-            newMateria = createTestCircuit(selectedMateria);
+            newMateria = await createTestCircuit(selectedMateria);
             break;
         case 'create-bone':
 
@@ -328,6 +328,9 @@ export function handleContextMenuAction(action) {
 
             console.log("[Hierarchy] Iniciando creación de terreno...");
             newMateria = createTerrenoObject(selectedMateria);
+            break;
+        case 'create-terrain-3d':
+            newMateria = await createTerreno3DObject(selectedMateria);
             break;
         case 'create-parallax':
 
@@ -473,28 +476,28 @@ export function handleContextMenuAction(action) {
             break;
         // --- 3D Creation Actions ---
         case 'create-cube':
-            newMateria = createCubeObject(selectedMateria);
+            newMateria = await createCubeObject(selectedMateria);
             break;
         case 'create-sphere':
-            newMateria = createSphereObject(selectedMateria);
+            newMateria = await createSphereObject(selectedMateria);
             break;
         case 'create-capsule-3d':
-            newMateria = createCapsule3DObject(selectedMateria);
+            newMateria = await createCapsule3DObject(selectedMateria);
             break;
         case 'create-plane-3d':
-            newMateria = createPlane3DObject(selectedMateria);
+            newMateria = await createPlane3DObject(selectedMateria);
             break;
         case 'create-triangle-3d':
-            newMateria = createTriangle3DObject(selectedMateria);
+            newMateria = await createTriangle3DObject(selectedMateria);
             break;
         case 'create-dir-light-3d':
-            newMateria = createDirectionalLight3D(selectedMateria);
+            newMateria = await createDirectionalLight3D(selectedMateria);
             break;
         case 'create-point-light-3d':
-            newMateria = createPointLight3D(selectedMateria);
+            newMateria = await createPointLight3D(selectedMateria);
             break;
         case 'create-spot-light-3d':
-            newMateria = createSpotLight3D(selectedMateria);
+            newMateria = await createSpotLight3D(selectedMateria);
             break;
         case 'import-model-3d':
             {
@@ -628,22 +631,6 @@ export function handleContextMenuAction(action) {
     }
 
     // Centralized update for creation and rename actions
-    if (newMateria instanceof Promise) {
-        newMateria.then(m => {
-            if (m) {
-                 // Apply creation position if available
-                 if (isCreationAction) {
-                     applyCreationPosition(m);
-                 }
-
-                 broadcastUpdate({ op: 'CREATE', data: SceneManager.serializeMateria(m, true) });
-                 updateHierarchy();
-                 setTimeout(() => selectMateriaCallback(m.id), 0);
-            }
-        });
-        return;
-    }
-
     if (newMateria) {
         // Apply creation position if available
         if (isCreationAction) {

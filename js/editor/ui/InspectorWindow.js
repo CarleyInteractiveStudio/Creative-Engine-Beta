@@ -37,14 +37,14 @@ const availableComponents = {
     'CAT_AUDIO': [Components.AudioSource],
     'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.PlatformEffector2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
     'CAT_CAMARA': [Components.Camera],
-    'CAT_3D': ['MeshRenderer3D', 'SkinnedMeshRenderer3D', 'Animator3D', 'Rigidbody3D', 'BoxCollider3D', 'SphereCollider3D', 'DirectionalLight3D', 'PointLight3D', 'SpotLight3D'],
+    'CAT_3D': ['MeshRenderer3D', 'SkinnedMeshRenderer3D', 'Animator3D', 'Rigidbody3D', 'BoxCollider3D', 'SphereCollider3D', 'CapsuleCollider3D', 'PlaneCollider3D', 'Terreno3D', 'TerrenoCollider3D', 'DirectionalLight3D', 'PointLight3D', 'SpotLight3D'],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
     'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Attack, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.Suspension, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController, Components.SceneLoader, Components.Inventario, Components.SistemaDialogos, Components.GestorMisiones],
     'CAT_SCRIPTING': [Components.CreativeScript]
 };
 
 const componentIcons = {
-    MeshRenderer3D: 'box', SkinnedMeshRenderer3D: 'user', Animator3D: 'play', Rigidbody3D: 'weight', BoxCollider3D: 'square', SphereCollider3D: 'disc', DirectionalLight3D: 'sun', PointLight3D: 'lightbulb', SpotLight3D: 'flashlight',
+    MeshRenderer3D: 'box', SkinnedMeshRenderer3D: 'user', Animator3D: 'play', Rigidbody3D: 'weight', BoxCollider3D: 'square', SphereCollider3D: 'disc', CapsuleCollider3D: 'pill', PlaneCollider3D: 'square', Terreno3D: 'mountain', TerrenoCollider3D: 'mountain', DirectionalLight3D: 'sun', PointLight3D: 'lightbulb', SpotLight3D: 'flashlight',
     Transform: 'move', Rigidbody2D: 'weight', BoxCollider2D: 'square', PlatformEffector2D: 'square', CapsuleCollider2D: 'pill', CircleCollider2D: 'disc', PolygonCollider2D: 'hexagon', SpriteRenderer: 'image',
     Animator: 'run', AnimatorController: 'gamepad', AudioSource: 'music', VideoPlayer: 'video', Camera: 'camera', CreativeScript: 'scroll', SceneLoader: 'clapperboard',
     UITransform: 'box', UICanvas: 'image', UIImage: 'image', PointLight2D: 'lightbulb', SpotLight2D: 'flashlight', FreeformLight2D: 'pencil', SpriteLight2D: 'sparkles',
@@ -4312,6 +4312,76 @@ async function updateInspectorForMateria(selectedMateria) {
                             <input type="number" autocomplete="off" class="prop-input" step="1" data-component="SphereCollider3D" data-prop="offset.z" value="${ley.offset.z}" title="Z">
                         </div>
                     </div>
+                </div>
+            `;
+        } else if (ley.constructor.name === 'CapsuleCollider3D') {
+            componentHTML = `
+                ${renderComponentHeader(L.get('CAPSULE_COLLIDER_3D', "Capsule Collider 3D"), icon, index)}
+                <div class="component-content">
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="CapsuleCollider3D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
+                        <label data-i18n="IS_TRIGGER">Es Gatillo (Trigger)</label>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="RADIUS">Radio</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="CapsuleCollider3D" data-prop="radius" value="${ley.radius}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="HEIGHT">Altura</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="CapsuleCollider3D" data-prop="height" value="${ley.height}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="ORIENTATION">Orientación</label>
+                        <select class="prop-input" data-component="CapsuleCollider3D" data-prop="direction">
+                            <option value="X" ${ley.direction === 'X' ? 'selected' : ''}>X</option>
+                            <option value="Y" ${ley.direction === 'Y' ? 'selected' : ''}>Y</option>
+                            <option value="Z" ${ley.direction === 'Z' ? 'selected' : ''}>Z</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+        } else if (ley.constructor.name === 'PlaneCollider3D') {
+            componentHTML = `
+                ${renderComponentHeader(L.get('PLANE_COLLIDER_3D', "Plane Collider 3D"), icon, index)}
+                <div class="component-content">
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="PlaneCollider3D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
+                        <label data-i18n="IS_TRIGGER">Es Gatillo (Trigger)</label>
+                    </div>
+                    <p class="field-description">El colisionador de plano es infinito y se sitúa en el plano XZ local.</p>
+                </div>
+            `;
+        } else if (ley.constructor.name === 'Terreno3D') {
+            componentHTML = `
+                ${renderComponentHeader(L.get('TERRENO_3D', "Terreno 3D"), icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label data-i18n="COLOR">Color</label>
+                        <input type="color" class="prop-input" data-component="Terreno3D" data-prop="color" value="${ley.color}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="SIZE">Tamaño</label>
+                        <div class="prop-inputs">
+                            <input type="number" autocomplete="off" class="prop-input" step="10" data-component="Terreno3D" data-prop="size.x" value="${ley.size.x}" title="X">
+                            <input type="number" autocomplete="off" class="prop-input" step="10" data-component="Terreno3D" data-prop="size.z" value="${ley.size.z}" title="Z">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="RESOLUTION">Resolución</label>
+                        <input type="number" autocomplete="off" class="prop-input inspector-re-render" data-component="Terreno3D" data-prop="resolution" value="${ley.resolution}" readonly>
+                    </div>
+                    <hr>
+                    <div id="terreno-editor-container" class="terrain-editor-embedded"></div>
+                    <button class="primary-btn" style="width:100%; margin-top:10px;" onclick="window.SceneView.setActiveTool('sculpt')">Activar Pincel 3D (V)</button>
+                </div>
+            `;
+            // Trigger setup after HTML is inserted (will happen after the loop)
+            setTimeout(() => TerrenoEditorWindow.setupUI(), 10);
+        } else if (ley.constructor.name === 'TerrenoCollider3D') {
+            componentHTML = `
+                ${renderComponentHeader(L.get('TERRENO_COLLIDER_3D', "Terreno Collider 3D"), icon, index)}
+                <div class="component-content">
+                    <p class="field-description">Genera colisiones automáticamente basadas en la malla del terreno.</p>
                 </div>
             `;
         } else if (ley.constructor.name === 'DirectionalLight3D' || ley.constructor.name === 'PointLight3D' || ley.constructor.name === 'SpotLight3D') {

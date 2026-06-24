@@ -1612,54 +1612,133 @@ export function initialize(dependencies) {
 
         // --- Sculpting Logic ---
         if (activeTool === 'sculpt' && e.button === 0 && is3D) {
-            e.preventDefault();
-            const sculpt = (event) => {
-                const ray = getMouseRay3D(event.clientX, event.clientY);
-                if (!ray) return;
+            const ray = getMouseRay3D(e.clientX, e.clientY);
+            const hit = ray ? SceneManager.currentScene.physicsSystem.raycast3D(ray.origin, ray.direction) : null;
 
-                const hit = SceneManager.currentScene.physicsSystem.raycast3D(ray.origin, ray.direction);
-                if (hit && hit.materia) {
-                    const renderer = hit.materia.getComponent(Components3D.MeshRenderer3D) || hit.materia.getComponent(Components3D.SkinnedMeshRenderer3D);
-                    if (renderer && renderer.cpuPositions) {
-                        const strength = 5.0;
-                        const radius = 30.0;
-                        const localHit = hit.localPoint;
+            // Only proceed with sculpting if we hit a mesh or terrain
+            const isSculptable = hit && hit.materia && (
+                hit.materia.getComponent(Components3D.Terreno3D) ||
+                hit.materia.getComponent(Components3D.MeshRenderer3D) ||
+                hit.materia.getComponent(Components3D.SkinnedMeshRenderer3D)
+            );
 
-                        let changed = false;
-                        for (let i = 0; i < renderer.cpuPositions.length; i += 3) {
-                            const vx = renderer.cpuPositions[i];
-                            const vy = renderer.cpuPositions[i+1];
-                            const vz = renderer.cpuPositions[i+2];
+            if (isSculptable) {
+                e.preventDefault();
+                e.stopPropagation();
 
-                            const dx = vx - localHit[0];
-                            const dy = vy - localHit[1];
-                            const dz = vz - localHit[2];
-                            const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                const sculpt = (event) => {
+                    const r = getMouseRay3D(event.clientX, event.clientY);
+                    if (!r) return;
 
-                            if (dist < radius) {
-                                const falloff = 1.0 - (dist / radius);
-                                // Pull towards camera/normal
-                                renderer.cpuPositions[i] -= ray.direction.x * strength * falloff;
-                                renderer.cpuPositions[i+1] -= ray.direction.y * strength * falloff;
-                                renderer.cpuPositions[i+2] -= ray.direction.z * strength * falloff;
-                                changed = true;
+                    const h = SceneManager.currentScene.physicsSystem.raycast3D(r.origin, r.direction);
+                    if (h && h.materia) {
+                        const terrain = h.materia.getComponent(Components3D.Terreno3D);
+                        if (terrain) {
+                            const localHit = h.localPoint;
+                            const tSettings = window.TerrenoEditorWindow?.settings || {};
+                            const brushSize = tSettings.brushSize || 50;
+                            const brushStrength = tSettings.brushStrength || 50;
+                            const activeTab = tSettings.activeTab || 'sculpt';
+
+                            const gridX = ((localHit[0] + terrain.size.x / 2) / terrain.size.x) * terrain.resolution;
+                            const gridZ = ((localHit[2] + terrain.size.z / 2) / terrain.size.z) * terrain.resolution;
+                            const radius = (brushSize / terrain.size.x) * terrain.resolution;
+
+                            for (let z = Math.floor(gridZ - radius); z <= Math.ceil(gridZ + radius); z++) {
+                                for (let x = Math.floor(gridX - radius); x <= Math.ceil(gridX + radius); x++) {
+                                    if (x < 0 || x > terrain.resolution || z < 0 || z > terrain.resolution) continue;
+                                    const dx = x - gridX; const dz = z - gridZ;
+
+                                    // Shape Check
+                                    let dist = 0;
+                                    if (tSettings.brushShape === 'square') dist = Math.max(Math.abs(dx), Math.abs(dz));
+                                    else dist = Math.sqrt(dx * dx + dz * dz);
+
+                                    if (dist < radius) {
+                                        const falloff = tSettings.brushShape === 'mountain' ? Math.pow(1.0 - (dist / radius), 2.0) : (1.0 - (dist / radius));
+                                        const power = (brushStrength / 10) * falloff;
+
+                                        if (activeTab === 'sculpt') {
+                                            const mode = tSettings.sculptMode;
+                                            if (mode === 'elevate') {
+                                                const sign = event.shiftKey ? 1 : -1; // Shift to lower
+                                                terrain.setHeight(x, z, terrain.getHeight(x, z) + sign * power);
+                                            } else if (mode === 'smooth') {
+                                                terrain.smoothHeight(x, z, power * 0.1);
+                                            } else if (mode === 'hole') {
+                                                terrain.setHole(Math.floor(x), Math.floor(z), !event.shiftKey);
+                                            }
+                                        } else if (activeTab === 'paint') {
+                                            const rgb = renderer.hexToRgb(tSettings.paintColor);
+                                            terrain.setPaintColor(x, z, rgb[0], rgb[1], rgb[2]);
+                                        }
+                                    }
+                                }
                             }
+
+                            if (activeTab === 'trees' && event.type === 'mousedown') {
+                                // Simple Tree Placement
+                                const treePrefab = tSettings.treePrefab || 'Assets/DefaultTree.ceprefab';
+                                SceneManager.instantiatePrefabFromPath(treePrefab).then(tree => {
+                                    if (tree) {
+                                        tree.getComponent(Components.Transform).position = hit.point;
+                                        tree.setParent(hit.materia, true);
+                                    }
+                                });
+                            } else if (activeTab === 'vegetation') {
+                                // Add to grass list
+                                terrain.grass.push({
+                                    type: tSettings.grassType,
+                                    pos: hit.localPoint,
+                                    rot: { x: 0, y: Math.random() * 360, z: 0 },
+                                    scale: 1.0 + Math.random() * 0.5
+                                });
+                            }
+
+                            terrain.isDirty = true;
+                            return;
                         }
-                        if (changed) renderer.isDirty = true;
+
+                        const renderer = h.materia.getComponent(Components3D.MeshRenderer3D) || h.materia.getComponent(Components3D.SkinnedMeshRenderer3D);
+                        if (renderer && renderer.cpuPositions) {
+                            const brushSize = window.TerrenoEditorWindow?.settings?.brushSize || 50;
+                            const brushStrength = window.TerrenoEditorWindow?.settings?.brushStrength || 50;
+                            const strength = brushStrength / 10;
+                            const radius = brushSize;
+                            const localHit = h.localPoint;
+
+                            let changed = false;
+                            for (let i = 0; i < renderer.cpuPositions.length; i += 3) {
+                                const vx = renderer.cpuPositions[i];
+                                const vy = renderer.cpuPositions[i+1];
+                                const vz = renderer.cpuPositions[i+2];
+                                const dx = vx - localHit[0]; const dy = vy - localHit[1]; const dz = vz - localHit[2];
+                                const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+                                if (dist < radius) {
+                                    const falloff = 1.0 - (dist / radius);
+                                    renderer.cpuPositions[i] -= r.direction.x * strength * falloff;
+                                    renderer.cpuPositions[i+1] -= r.direction.y * strength * falloff;
+                                    renderer.cpuPositions[i+2] -= r.direction.z * strength * falloff;
+                                    changed = true;
+                                }
+                            }
+                            if (changed) renderer.isDirty = true;
+                        }
                     }
-                }
-            };
+                };
 
-            const onSculptMove = (moveEvent) => sculpt(moveEvent);
-            const onSculptEnd = () => {
-                window.removeEventListener('mousemove', onSculptMove);
-                window.removeEventListener('mouseup', onSculptEnd);
-            };
+                const onSculptMove = (moveEvent) => sculpt(moveEvent);
+                const onSculptEnd = () => {
+                    window.removeEventListener('mousemove', onSculptMove);
+                    window.removeEventListener('mouseup', onSculptEnd);
+                };
 
-            window.addEventListener('mousemove', onSculptMove);
-            window.addEventListener('mouseup', onSculptEnd);
-            sculpt(e);
-            return;
+                window.addEventListener('mousemove', onSculptMove);
+                window.addEventListener('mouseup', onSculptEnd);
+                sculpt(e);
+                return;
+            }
         }
 
         if (e.button === 1 || (e.button === 2 && !is3D)) {
@@ -2960,8 +3039,14 @@ function drawGizmoIcons(proj = null, view = null, cw = null, ch = null) {
             const iconImg = getCachedIcon(iconPath);
             if (iconImg.complete && iconImg.naturalWidth > 0) {
                 let screenPos;
+                let scale = 1.0;
                 if (is3D) {
-                    screenPos = world3DToScreen({ x: transform.x, y: transform.y, z: transform.z || 0 }, proj, view, cw, ch);
+                    const worldPos = { x: transform.x, y: transform.y, z: transform.z || 0 };
+                    screenPos = world3DToScreen(worldPos, proj, view, cw, ch);
+                    // Use standard gizmo scale logic to make icons smaller at distance
+                    scale = 1.0 / getGizmoScale(worldPos, proj, view, cw, ch);
+                    // Limit max size
+                    scale = Math.min(1.0, scale);
                 } else {
                     screenPos = {
                         x: transform.x,
@@ -2971,13 +3056,9 @@ function drawGizmoIcons(proj = null, view = null, cw = null, ch = null) {
 
                 if (screenPos) {
                     ctx.save();
-                    if (!is3D) {
-                        ctx.translate(screenPos.x, screenPos.y);
-                    } else {
-                        ctx.translate(screenPos.x, screenPos.y);
-                    }
+                    ctx.translate(screenPos.x, screenPos.y);
                     ctx.globalAlpha = 0.8;
-                    const size = is3D ? BASE_ICON_SIZE : BASE_ICON_SIZE / zoom;
+                    const size = (is3D ? BASE_ICON_SIZE * scale : BASE_ICON_SIZE / zoom);
                     ctx.drawImage(iconImg, -size / 2, -size / 2, size, size);
                     ctx.restore();
                 }
@@ -3337,6 +3418,8 @@ function draw3DPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
     const center = { x: transform.x, y: transform.y, z: transform.z || 0 };
 
     const box = selectedMateria.getComponent(C3D.BoxCollider3D);
+    const rotation = { x: transform.rotationX || 0, y: transform.rotationY || 0, z: transform.rotationZ || 0 };
+
     if (box) {
         const worldSize = {
             x: box.size.x * Math.abs(transform.scale.x),
@@ -3348,7 +3431,7 @@ function draw3DPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
             y: center.y + box.offset.y,
             z: center.z + box.offset.z
         };
-        Gizmos.drawWireCube(ctx, worldCenter, worldSize, { x: 0, y: 0, z: 0 }, 'rgba(0, 255, 0, 0.8)', proj, view, cw, ch);
+        Gizmos.drawWireCube(ctx, worldCenter, worldSize, rotation, 'rgba(0, 255, 0, 0.8)', proj, view, cw, ch);
     }
 
     const sphere = selectedMateria.getComponent(C3D.SphereCollider3D);
@@ -3359,7 +3442,29 @@ function draw3DPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
             y: center.y + sphere.offset.y,
             z: center.z + sphere.offset.z
         };
-        Gizmos.drawWireSphere(ctx, worldCenter, worldRadius, { x: 0, y: 0, z: 0 }, 'rgba(0, 255, 0, 0.8)', proj, view, cw, ch);
+        Gizmos.drawWireSphere(ctx, worldCenter, worldRadius, rotation, 'rgba(0, 255, 0, 0.8)', proj, view, cw, ch);
+    }
+
+    const capsule = selectedMateria.getComponent(C3D.CapsuleCollider3D);
+    if (capsule) {
+        const worldRadius = capsule.radius * Math.max(Math.abs(transform.scale.x), Math.abs(transform.scale.z));
+        const worldHeight = capsule.height * Math.abs(transform.scale.y);
+        const worldCenter = {
+            x: center.x + capsule.offset.x,
+            y: center.y + capsule.offset.y,
+            z: center.z + capsule.offset.z
+        };
+        Gizmos.drawWireCapsule(ctx, worldCenter, worldRadius, worldHeight, rotation, 'rgba(0, 255, 0, 0.8)', proj, view, cw, ch);
+    }
+
+    const plane = selectedMateria.getComponent(C3D.PlaneCollider3D);
+    if (plane) {
+        const worldCenter = {
+            x: center.x + plane.offset.x,
+            y: center.y + plane.offset.y,
+            z: center.z + plane.offset.z
+        };
+        Gizmos.drawWirePlane(ctx, worldCenter, { x: 500, z: 500 }, rotation, 'rgba(0, 255, 0, 0.5)', proj, view, cw, ch);
     }
 }
 

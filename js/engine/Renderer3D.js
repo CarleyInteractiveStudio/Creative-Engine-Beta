@@ -184,28 +184,33 @@ export class Renderer3D {
         `;
         this.programs.sky = this.createProgram(skyVs, skyFs);
 
-        // 2. Simple Standard Shader
+        // 2. Simple Standard Shader (supports Vertex Colors)
         const stdVs = `
             attribute vec4 aVertexPosition;
             attribute vec3 aVertexNormal;
+            attribute vec4 aVertexColor;
             uniform mat4 uModelMatrix;
             uniform mat4 uViewMatrix;
             uniform mat4 uProjectionMatrix;
             varying vec3 vNormal;
+            varying vec4 vColor;
             void main() {
                 gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrix * aVertexPosition;
                 vNormal = (uModelMatrix * vec4(aVertexNormal, 0.0)).xyz;
+                vColor = aVertexColor;
             }
         `;
         const stdFs = `
             precision mediump float;
             varying vec3 vNormal;
+            varying vec4 vColor;
             uniform vec4 uColor;
             uniform vec3 uLightDir;
             void main() {
                 vec3 normal = normalize(vNormal);
                 float diff = max(dot(normal, normalize(uLightDir)), 0.2);
-                gl_FragColor = vec4(uColor.rgb * diff, uColor.a);
+                vec4 baseColor = (vColor.a > 0.0) ? vColor : uColor;
+                gl_FragColor = vec4(baseColor.rgb * diff, baseColor.a);
             }
         `;
         this.programs.standard = this.createProgram(stdVs, stdFs);
@@ -488,6 +493,12 @@ export class Renderer3D {
             if (!materia.isActive) return;
             if (cullingMask !== -1 && !(cullingMask & (1 << materia.layer))) return;
 
+            const terrain = materia.getComponent(Components3D.Terreno3D);
+            if (terrain) {
+                this.drawTerreno3D(materia, terrain);
+                return;
+            }
+
             const skinnedMesh = materia.getComponent(Components3D.SkinnedMeshRenderer3D);
             if (skinnedMesh && skinnedMesh.isLoaded) {
                 this.drawSkinnedMesh(materia, skinnedMesh);
@@ -535,6 +546,99 @@ export class Renderer3D {
             }
             // Add more primitives here as needed
         });
+    }
+
+    drawTerreno3D(materia, terrain) {
+        const gl = this.gl;
+        const program = this.programs.standard;
+        gl.useProgram(program);
+
+        const transform = materia.getComponent(Components.Transform);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, transform.worldMatrix);
+        gl.uniform3f(gl.getUniformLocation(program, 'uLightDir'), 0.5, 1.0, 0.3);
+
+        const color = this.hexToRgb(terrain.color);
+        gl.uniform4f(gl.getUniformLocation(program, 'uColor'), color[0], color[1], color[2], 1.0);
+
+        if (!terrain._glBuffers) terrain._glBuffers = new Map();
+        let buffers = terrain._glBuffers.get(gl);
+
+        if (!buffers && terrain.cpuPositions) {
+            buffers = {
+                positions: gl.createBuffer(),
+                normals: gl.createBuffer(),
+                colors: gl.createBuffer(),
+                indices: gl.createBuffer()
+            };
+            terrain._glBuffers.set(gl, buffers);
+            terrain.isBuffersDirty = true;
+        }
+
+        if (terrain.isBuffersDirty && buffers) {
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.positions);
+            gl.bufferData(gl.ARRAY_BUFFER, terrain.cpuPositions, gl.STATIC_DRAW);
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normals);
+            gl.bufferData(gl.ARRAY_BUFFER, terrain.cpuNormals, gl.STATIC_DRAW);
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.colors);
+            gl.bufferData(gl.ARRAY_BUFFER, terrain.cpuColors, gl.STATIC_DRAW);
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, terrain.cpuIndices, gl.STATIC_DRAW);
+            terrain.isBuffersDirty = false;
+        }
+
+        if (buffers) {
+            const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
+            const normLoc = gl.getAttribLocation(program, 'aVertexNormal');
+            const colorLoc = gl.getAttribLocation(program, 'aVertexColor');
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.positions);
+            gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(posLoc);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normals);
+            gl.vertexAttribPointer(normLoc, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(normLoc);
+
+            if (colorLoc !== -1) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.colors);
+                gl.vertexAttribPointer(colorLoc, 4, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(colorLoc);
+            }
+
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+            gl.drawElements(gl.TRIANGLES, terrain.indexCount, gl.UNSIGNED_SHORT, 0);
+        }
+
+        // --- Draw Foliage (Grass/Flowers) ---
+        if (terrain.grass && terrain.grass.length > 0) {
+            const unlitProg = this.programs.unlit;
+            gl.useProgram(unlitProg);
+            gl.uniformMatrix4fv(gl.getUniformLocation(unlitProg, 'uProjectionMatrix'), false, this.projectionMatrix);
+            gl.uniformMatrix4fv(gl.getUniformLocation(unlitProg, 'uViewMatrix'), false, this.viewMatrix);
+            const uModelLoc = gl.getUniformLocation(unlitProg, 'uModelMatrix');
+            const uColorLoc = gl.getUniformLocation(unlitProg, 'uColor');
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.quad);
+            gl.vertexAttribPointer(gl.getAttribLocation(unlitProg, 'aVertexPosition'), 3, gl.FLOAT, false, 0, 0);
+
+            // Simple billboarded cross-quads for grass
+            terrain.grass.forEach(g => {
+                const m = mat4.create();
+                const worldPos = vec3.transformMat4(vec3.create(), g.pos, transform.worldMatrix);
+                mat4.fromRotationTranslationScale(m, quat.fromEuler(quat.create(), g.rot.x, g.rot.y, g.rot.z), worldPos, [g.scale * 20, g.scale * 20, g.scale * 20]);
+
+                // Align to camera (Billboard)
+                m[0] = this.viewMatrix[0]; m[1] = this.viewMatrix[4]; m[2] = this.viewMatrix[8];
+                m[4] = this.viewMatrix[1]; m[5] = this.viewMatrix[5]; m[6] = this.viewMatrix[9];
+                m[8] = this.viewMatrix[2]; m[9] = this.viewMatrix[6]; m[10] = this.viewMatrix[10];
+
+                gl.uniformMatrix4fv(uModelLoc, false, m);
+                gl.uniform4f(uColorLoc, 0.4, 0.8, 0.2, 1.0); // Grass green
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            });
+        }
     }
 
     drawSkinnedMesh(materia, mesh) {
