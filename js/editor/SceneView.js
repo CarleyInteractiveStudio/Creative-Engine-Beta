@@ -47,7 +47,8 @@ let dragState = {}; // To hold info about the current drag operation
 export function screenToWorld(screenX, screenY) {
     if (!renderer || !renderer.camera) return { x: 0, y: 0 };
     const worldX = (screenX - renderer.canvas.width / 2) / renderer.camera.effectiveZoom + renderer.camera.x;
-    const worldY = (screenY - renderer.canvas.height / 2) / renderer.camera.effectiveZoom + renderer.camera.y;
+    // In +Y UP coordinate system, screen Y increases downwards while world Y increases upwards.
+    const worldY = (renderer.canvas.height / 2 - screenY) / renderer.camera.effectiveZoom + renderer.camera.y;
     return { x: worldX, y: worldY };
 }
 
@@ -162,7 +163,9 @@ function checkGizmoHit(canvasPos) {
 
     // 1. Check SCALE HANDLES (High Priority in Universal mode)
     if (activeTool === 'scale' || activeTool === 'universal') {
-        const rad = -transform.rotation * Math.PI / 180;
+        // In +Y UP world, CW rotation is negative world angle.
+        // To get local coords, we rotate by +theta.
+        const rad = transform.rotation * Math.PI / 180;
         const cos = Math.cos(rad);
         const sin = Math.sin(rad);
         const lx = (worldMouse.x - centerX) * cos - (worldMouse.y - centerY) * sin;
@@ -271,7 +274,7 @@ function checkCameraGizmoHit(canvasPos) {
     }
 
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
-    const rad = -transform.rotation * Math.PI / 180;
+    const rad = transform.rotation * Math.PI / 180;
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
     const localMouseX = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
@@ -342,8 +345,9 @@ function drawEditorGrid() {
     // --- Drawing Logic ---
     const viewLeft = camera.x - (canvas.width / 2 / zoom);
     const viewRight = camera.x + (canvas.width / 2 / zoom);
-    const viewTop = camera.y - (canvas.height / 2 / zoom);
-    const viewBottom = camera.y + (canvas.height / 2 / zoom);
+    // In +Y UP, viewTop (screen top) is at a HIGHER world Y, viewBottom (screen bottom) is at a LOWER world Y.
+    const viewTop = camera.y + (canvas.height / 2 / zoom);
+    const viewBottom = camera.y - (canvas.height / 2 / zoom);
 
     ctx.save();
     ctx.lineWidth = 1 / zoom;
@@ -380,8 +384,8 @@ function drawEditorGrid() {
     // Y-Axis (Green)
     ctx.strokeStyle = 'rgba(0, 255, 0, 0.4)';
     ctx.beginPath();
-    ctx.moveTo(0, viewTop);
-    ctx.lineTo(0, viewBottom);
+    ctx.moveTo(0, viewBottom);
+    ctx.lineTo(0, viewTop);
     ctx.stroke();
     // X-Axis (Red)
     ctx.strokeStyle = 'rgba(255, 0, 0, 0.4)';
@@ -447,7 +451,8 @@ function drawScaleGizmo(ctx, materia, transform, zoom, SCALE_BOX_SIZE, HANDLE_TH
     const dims = getMateriaDimensions(materia);
     const w = dims.width * Math.abs(transform.scale.x);
     const h = dims.height * Math.abs(transform.scale.y);
-    const rad = transform.rotation * Math.PI / 180;
+    // In +Y UP world, CW rotation is negative world angle.
+    const rad = -transform.rotation * Math.PI / 180;
 
     const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
     let pivotX = 0.5;
@@ -1768,6 +1773,7 @@ export function initialize(dependencies) {
                 const dy = moveEvent.clientY - lastPos.y;
                 if (renderer && renderer.camera) {
                     renderer.camera.x -= dx / renderer.camera.effectiveZoom;
+                    // Reverted as requested: moving mouse DOWN decreases camera Y (moving scene UP)
                     renderer.camera.y -= dy / renderer.camera.effectiveZoom;
                 }
                 lastPos = { x: moveEvent.clientX, y: moveEvent.clientY };
@@ -2032,8 +2038,8 @@ function pick2D(canvasPos) {
         const w = dims.width * Math.abs(transform.scale.x);
         const h = dims.height * Math.abs(transform.scale.y);
 
-        // Simple AABB hit detection for 2D
-        const rad = -transform.rotation * Math.PI / 180;
+        // Simple hit detection for 2D
+        const rad = transform.rotation * Math.PI / 180;
         const cos = Math.cos(rad);
         const sin = Math.sin(rad);
         const lx = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
@@ -2076,7 +2082,8 @@ function handle3DCameraNavigation() {
             const delta = InputManager.getMouseDelta();
             const moveScale = (cam.z || 500) / 800;
             cam.x -= delta.x * moveScale;
-            cam.y += delta.y * moveScale;
+            // Reverted as requested: mouse DOWN decreases camera Y
+            cam.y -= delta.y * moveScale;
         }
         return;
     }
@@ -2301,7 +2308,7 @@ function drawCameraGizmos(renderer, proj = null, view = null, cw = null, ch = nu
 
         if (!is3D) {
             ctx.translate(transform.x, transform.y);
-            ctx.rotate(transform.rotation * Math.PI / 180);
+            ctx.rotate(-transform.rotation * Math.PI / 180);
         }
 
         const r3d = window._Renderer3D;
@@ -2432,10 +2439,16 @@ function drawTileCursor() {
         const layerTopLeftY = layerOffsetY - layerHeight / 2;
 
         const mouseInLayerX = localMouseX - layerTopLeftX;
+        // In +Y UP, Row 0 is at the top of the layer.
+        // layerTopLeftY is the bottom edge if we consider it world-relative?
+        // mapTotalHeight = height * cellSize.y;
+        // layerTopLeftY = layerOffsetY - mapTotalHeight / 2;
+        // mouseInLayerY is world relative to the bottom edge.
+        // row index = (mapTotalHeight - mouseInLayerY) / cellSize.y
         const mouseInLayerY = localMouseY - layerTopLeftY;
 
         const col = Math.floor(mouseInLayerX / cellSize.x);
-        const row = Math.floor(mouseInLayerY / cellSize.y);
+        const row = Math.floor((layerHeight - mouseInLayerY) / cellSize.y);
 
         if (col >= 0 && col < width && row >= 0 && row < height) {
             ctx.save();
@@ -2451,13 +2464,13 @@ function drawTileCursor() {
                 if (selectedTiles && selectedTiles.length > 0) {
                     for (const tile of selectedTiles) {
                         const tx = layerTopLeftX + (col + tile.offsetX) * cellSize.x;
-                        const ty = layerTopLeftY + (row + tile.offsetY) * cellSize.y;
+                        const ty = layerTopLeftY + (layerHeight - (row + tile.offsetY + 1) * cellSize.y);
                         ctx.fillRect(tx, ty, cellSize.x, cellSize.y);
                         ctx.strokeRect(tx, ty, cellSize.x, cellSize.y);
                     }
                 } else {
                     const cursorX = layerTopLeftX + col * cellSize.x;
-                    const cursorY = layerTopLeftY + row * cellSize.y;
+                    const cursorY = layerTopLeftY + (layerHeight - (row + 1) * cellSize.y);
                     ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
                     ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
                 }
@@ -2465,14 +2478,14 @@ function drawTileCursor() {
                 ctx.strokeStyle = 'rgba(100, 255, 100, 0.8)';
                 ctx.fillStyle = 'rgba(100, 255, 100, 0.2)';
                 const cursorX = layerTopLeftX + col * cellSize.x;
-                const cursorY = layerTopLeftY + row * cellSize.y;
+                const cursorY = layerTopLeftY + (layerHeight - (row + 1) * cellSize.y);
                 ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
                 ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
             } else { // eraser
                 ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
                 ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
                 const cursorX = layerTopLeftX + col * cellSize.x;
-                const cursorY = layerTopLeftY + row * cellSize.y;
+                const cursorY = layerTopLeftY + (layerHeight - (row + 1) * cellSize.y);
                 ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
                 ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
             }
@@ -2560,8 +2573,8 @@ function drawComponentGrids() {
     } else {
         const viewLeft = camera.x - (canvas.width / 2 / zoom);
         const viewRight = camera.x + (canvas.width / 2 / zoom);
-        const viewTop = camera.y - (canvas.height / 2 / zoom);
-        const viewBottom = camera.y + (canvas.height / 2 / zoom);
+        const viewTop = camera.y + (canvas.height / 2 / zoom);
+        const viewBottom = camera.y - (canvas.height / 2 / zoom);
 
         ctx.lineWidth = 1 / zoom;
         ctx.strokeStyle = isSceneGridVisible ? 'rgba(0, 100, 255, 0.5)' : 'rgba(255, 255, 255, 0.1)';
@@ -3090,7 +3103,7 @@ function drawRaycastGizmos() {
 
     ctx.save();
     ctx.translate(transform.x, transform.y);
-    ctx.rotate(transform.rotation * Math.PI / 180);
+    ctx.rotate(-transform.rotation * Math.PI / 180);
 
     ctx.lineWidth = 1.5 / zoom;
 
@@ -3214,7 +3227,7 @@ function drawBasicAIGizmos() {
     // Draw steering rays
     if (ai.obstacleAvoidance) {
         // En el editor, los rayos salen en la dirección de rotación actual
-        ctx.rotate(transform.rotation * Math.PI / 180);
+        ctx.rotate(-transform.rotation * Math.PI / 180);
         const startAngle = -ai.raySpread / 2;
         const step = ai.rayCount > 1 ? ai.raySpread / (ai.rayCount - 1) : 0;
 
@@ -3274,7 +3287,7 @@ function checkCircleColliderGizmoHit(canvasPos) {
 
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
 
-    const rad = -transform.rotation * Math.PI / 180;
+    const rad = transform.rotation * Math.PI / 180;
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
     const localMouseX = (worldMouse.x - (transform.x + circleCollider.offset.x)) * cos - (worldMouse.y - (transform.y + circleCollider.offset.y)) * sin;
@@ -3307,7 +3320,7 @@ function checkBoxColliderGizmoHit(canvasPos) {
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
 
     // Transform mouse position to the collider's local space
-    const rad = -transform.rotation * Math.PI / 180;
+    const rad = transform.rotation * Math.PI / 180;
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
     const localMouseX = (worldMouse.x - (transform.x + boxCollider.offset.x)) * cos - (worldMouse.y - (transform.y + boxCollider.offset.y)) * sin;
@@ -3353,7 +3366,7 @@ function checkCapsuleColliderGizmoHit(canvasPos) {
 
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
 
-    const rad = -transform.rotation * Math.PI / 180;
+    const rad = transform.rotation * Math.PI / 180;
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
     const localMouseX = (worldMouse.x - (transform.x + capsuleCollider.offset.x)) * cos - (worldMouse.y - (transform.y + capsuleCollider.offset.y)) * sin;
@@ -3529,7 +3542,7 @@ function drawPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
             strokeRect3D(centerX, centerY, width, height, transform.z || 0, transform.rotation);
         } else {
             ctx.translate(centerX, centerY);
-            ctx.rotate(transform.rotation * Math.PI / 180);
+            ctx.rotate(-transform.rotation * Math.PI / 180);
             ctx.strokeRect(-width / 2, -height / 2, width, height);
         }
         ctx.restore();
@@ -3545,7 +3558,7 @@ function drawPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
 
         ctx.save();
         ctx.translate(centerX, centerY);
-        ctx.rotate(transform.rotation * Math.PI / 180);
+        ctx.rotate(-transform.rotation * Math.PI / 180);
 
         ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
         ctx.lineWidth = 2 / camera.effectiveZoom;
@@ -3676,7 +3689,7 @@ function drawTilemapOutline(proj = null, view = null, cw = null, ch = null) {
     } else {
         ctx.save();
         ctx.translate(transform.x, transform.y);
-        ctx.rotate(transform.rotation * Math.PI / 180);
+        ctx.rotate(-transform.rotation * Math.PI / 180);
 
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
         ctx.lineWidth = 2 / camera.effectiveZoom;
@@ -3734,7 +3747,7 @@ function drawTerrenoColliders(proj = null, view = null, cw = null, ch = null) {
     ctx.save();
     if (!is3D) {
         ctx.translate(transform.x, transform.y);
-        ctx.rotate(transform.rotation * Math.PI / 180);
+        ctx.rotate(-transform.rotation * Math.PI / 180);
         ctx.scale(transform.scale.x, transform.scale.y);
     }
 
@@ -3853,7 +3866,7 @@ function drawTilemapColliders(proj = null, view = null, cw = null, ch = null) {
     ctx.save();
     if (!is3D) {
         ctx.translate(transform.x, transform.y);
-        ctx.rotate(transform.rotation * Math.PI / 180);
+        ctx.rotate(-transform.rotation * Math.PI / 180);
         ctx.scale(transform.scale.x, transform.scale.y);
     }
 
@@ -3988,7 +4001,7 @@ function paintTile(event) {
             const mInLX = localMouseX - lTopLeftX;
             const mInLY = localMouseY - lTopLeftY;
             const c = Math.floor(mInLX / cellSize.x);
-            const r = Math.floor(mInLY / cellSize.y);
+            const r = Math.floor((layerHeight - mInLY) / cellSize.y);
 
             if (c >= 0 && c < width && r >= 0 && r < height) {
                 const key = `${c},${r}`;
@@ -4026,7 +4039,7 @@ function paintTile(event) {
         const layerTopLeftY = layerOffsetY - layerHeight / 2;
         return {
             col: Math.floor((localMouseX - layerTopLeftX) / cellSize.x),
-            row: Math.floor((localMouseY - layerTopLeftY) / cellSize.y)
+            row: Math.floor((layerHeight - (localMouseY - layerTopLeftY)) / cellSize.y)
         };
     };
 

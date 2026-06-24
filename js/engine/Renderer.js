@@ -174,7 +174,9 @@ export class Renderer {
         }
         this.ctx.scale(activeCamera.effectiveZoom, -activeCamera.effectiveZoom);
         const rotationInRadians = (transform.rotation || 0) * Math.PI / 180;
-        this.ctx.rotate(-rotationInRadians);
+        // In +Y UP, a CW camera rotation of 'theta' should rotate the world CCW by 'theta'.
+        // CCW is positive in Y-up.
+        this.ctx.rotate(rotationInRadians);
         this.ctx.translate(-activeCamera.x, -activeCamera.y);
     }
 
@@ -241,7 +243,8 @@ export class Renderer {
 
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
-        this.ctx.rotate(-transform.rotation * Math.PI / 180); // Negate for CW
+        this.ctx.scale(1, -1); // Counter-flip for upright drawing
+        this.ctx.rotate(transform.rotation * Math.PI / 180); // Standard CW rotation in Y-down context
         this.ctx.scale(transform.scale.x, transform.scale.y);
 
         const zoom = this.camera?.effectiveZoom || 1;
@@ -265,9 +268,8 @@ export class Renderer {
             if (isEditor) {
                 // Draw name tag
                 this.ctx.save();
-                // Move tag above the area in +Y UP world
-                this.ctx.translate(x, y + height / 2 + (15 / zoom));
-                this.ctx.scale(1, -1); // Counter-flip text to be upright
+                // Local coordinate system is Y-down here.
+                this.ctx.translate(x, y - height / 2 - (5 / zoom));
                 this.ctx.globalAlpha = 1.0;
                 this.ctx.fillStyle = '#ffffff';
                 this.ctx.font = `${12 / zoom}px sans-serif`;
@@ -293,7 +295,7 @@ export class Renderer {
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
         this.ctx.scale(1, -1); // Counter-flip for upright bones
-        this.ctx.rotate(-transform.rotation * Math.PI / 180);
+        this.ctx.rotate(transform.rotation * Math.PI / 180);
 
         // Draw bone shape (a diamond/triangle starting from origin)
         this.ctx.beginPath();
@@ -398,9 +400,13 @@ export class Renderer {
         // But the current implementation calculates world vertices.
         // Let's negate deformed Y in the triangle draw if the context is flipped.
 
-        const isFlipped = this.ctx.getTransform().d < 0;
+        const isFlipped = Math.abs(this.ctx.getTransform().d + this.camera.effectiveZoom) < 0.01;
 
         // Render Mesh
+        if (isFlipped) {
+            this.ctx.scale(1, -1);
+        }
+
         for (let i = 0; i < mesh.indices.length; i += 3) {
             const i0 = mesh.indices[i];
             const i1 = mesh.indices[i+1];
@@ -410,24 +416,12 @@ export class Renderer {
             const v1 = { x: deformedVertices[i1*2], y: deformedVertices[i1*2+1], u: mesh.uvs[i1*2], v: mesh.uvs[i1*2+1] };
             const v2 = { x: deformedVertices[i2*2], y: deformedVertices[i2*2+1], u: mesh.uvs[i2*2], v: mesh.uvs[i2*2+1] };
 
-            if (isFlipped) {
-                // If we flip the context now, we can draw the world-space vertices correctly
-                this.ctx.save();
-                this.ctx.scale(1, -1);
-                // Adjust vertices to the new flipped world
-                const flipV = (v) => ({ ...v, y: -v.y });
-                if (hasTexture) {
-                    this._drawTexturedTriangle(img, flipV(v0), flipV(v1), flipV(v2));
-                } else {
-                    this._drawSolidTriangle(flipV(v0), flipV(v1), flipV(v2), skeleton.color || '#ffffff');
-                }
-                this.ctx.restore();
+            const adjustV = (v) => isFlipped ? { ...v, y: -v.y } : v;
+
+            if (hasTexture) {
+                this._drawTexturedTriangle(img, adjustV(v0), adjustV(v1), adjustV(v2));
             } else {
-                if (hasTexture) {
-                    this._drawTexturedTriangle(img, v0, v1, v2);
-                } else {
-                    this._drawSolidTriangle(v0, v1, v2, skeleton.color || '#ffffff');
-                }
+                this._drawSolidTriangle(adjustV(v0), adjustV(v1), adjustV(v2), skeleton.color || '#ffffff');
             }
         }
         this.ctx.restore();
@@ -477,7 +471,8 @@ export class Renderer {
             const drawX = x !== null ? x : transform.x;
             const drawY = y !== null ? y : transform.y;
             ctx.translate(drawX, drawY);
-            ctx.rotate(-transform.rotation * Math.PI / 180);
+            ctx.scale(1, -1);
+            ctx.rotate(transform.rotation * Math.PI / 180);
             ctx.scale(transform.scale.x, transform.scale.y);
         }
 
@@ -621,7 +616,8 @@ export class Renderer {
 
         ctx.save();
         ctx.translate(drawX, drawY);
-        ctx.rotate(-transform.rotation * Math.PI / 180);
+        ctx.scale(1, -1);
+        ctx.rotate(transform.rotation * Math.PI / 180);
         ctx.scale(transform.scale.x, transform.scale.y);
 
         ctx.beginPath();
@@ -655,7 +651,8 @@ export class Renderer {
 
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
-        this.ctx.rotate(-transform.rotation * Math.PI / 180);
+        this.ctx.scale(1, -1);
+        this.ctx.rotate(transform.rotation * Math.PI / 180);
         this.ctx.scale(transform.scale.x, transform.scale.y);
 
         const w = terreno.width;
@@ -770,7 +767,8 @@ export class Renderer {
 
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
-        this.ctx.rotate(-transform.rotation * Math.PI / 180);
+        this.ctx.scale(1, -1);
+        this.ctx.rotate(transform.rotation * Math.PI / 180);
         this.ctx.scale(transform.scale.x, transform.scale.y);
 
         const mapTotalWidth = tilemap.width * grid.cellSize.x;
@@ -812,7 +810,9 @@ export class Renderer {
                     if (x < 0 || x >= tilemap.width || y < 0 || y >= tilemap.height) continue;
 
                     const dx = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2);
-                    const dy = layerOffsetY + (y * grid.cellSize.y) - (mapTotalHeight / 2);
+                    // In +Y UP, Row 0 is at the TOP (positive Y).
+                    // So tiles with higher 'y' index are drawn at LOWER world Y.
+                    const dy = layerOffsetY + (mapTotalHeight / 2) - ((y + 1) * grid.cellSize.y);
 
                     // Counter-flip each tile individually
                     this.ctx.save();
