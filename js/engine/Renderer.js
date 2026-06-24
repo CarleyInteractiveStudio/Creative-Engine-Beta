@@ -16,6 +16,7 @@ export class Renderer {
         this.lightBufferCanvas = document.createElement('canvas');
         this.lightBufferCtx = this.lightBufferCanvas.getContext('2d');
         this.ambientLight = '#1a1a2a'; // A dark blue/purple for ambient light
+        this.isWorld = false;
 
         if (this.isEditor) {
             this.camera = { x: 0, y: 0, z: 1000, rotation: { x: 0, y: 0, z: 0 }, zoom: 1.0, effectiveZoom: 1.0 };
@@ -166,13 +167,18 @@ export class Renderer {
         }
 
         this.camera = activeCamera;
+        this.isWorld = true;
 
         if (activeCamera.rect) {
             this.ctx.translate(activeCamera.rect.cx + activeCamera.rect.cw / 2, activeCamera.rect.cy + activeCamera.rect.ch / 2);
         } else {
             this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
         }
-        this.ctx.scale(activeCamera.effectiveZoom, activeCamera.effectiveZoom);
+
+        // --- COORDINATE SYSTEM CHANGE: +Y IS UP ---
+        // We scale Y by -1 to flip the standard web Y-down to Y-up.
+        this.ctx.scale(activeCamera.effectiveZoom, -activeCamera.effectiveZoom);
+
         const rotationInRadians = (transform.rotation || 0) * Math.PI / 180;
         this.ctx.rotate(-rotationInRadians);
         this.ctx.translate(-activeCamera.x, -activeCamera.y);
@@ -180,6 +186,7 @@ export class Renderer {
 
     beginUI() {
         this.ctx.save();
+        this.isWorld = false;
         // Restablecer transformaciones para evitar que el zoom de la cámara afecte la UI
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         // Aplicar un escalado uniforme para la UI si es necesario
@@ -197,13 +204,24 @@ export class Renderer {
     }
 
     drawImage(image, x, y, width, height) {
-        // Safe check for negative dimensions
+        // Support for 3-argument call and default dimensions
+        if (width === undefined) width = image.width || image.naturalWidth || 100;
+        if (height === undefined) height = image.height || image.naturalHeight || 100;
+
+        // Safe check for negative or zero dimensions
         if (width === 0 || height === 0) return;
 
-        if (width < 0 || height < 0) {
+        // If we are in world space (Y-UP), we must flip the image vertically
+        // because the context is already flipped by beginWorld's negative Y scale.
+        const shouldFlipY = this.isWorld;
+
+        if (width < 0 || height < 0 || shouldFlipY) {
             this.ctx.save();
             this.ctx.translate(x, y);
-            this.ctx.scale(width < 0 ? -1 : 1, height < 0 ? -1 : 1);
+            // Flip back vertically (and/or horizontally if width/height are negative)
+            const sx = width < 0 ? -1 : 1;
+            const sy = shouldFlipY ? - (height < 0 ? -1 : 1) : (height < 0 ? -1 : 1);
+            this.ctx.scale(sx, sy);
             this.ctx.drawImage(image, -Math.abs(width) / 2, -Math.abs(height) / 2, Math.abs(width), Math.abs(height));
             this.ctx.restore();
         } else {
@@ -212,6 +230,13 @@ export class Renderer {
     }
 
     drawText(text, x, y, color, fontSize, fontFamily, textTransform) {
+        this.ctx.save();
+        if (this.isWorld) {
+            this.ctx.translate(x, y);
+            this.ctx.scale(1, -1);
+            this.ctx.translate(-x, -y);
+        }
+
         this.ctx.fillStyle = color;
         this.ctx.font = `${fontSize}px ${fontFamily || 'sans-serif'}`;
         this.ctx.textAlign = 'center';
@@ -224,6 +249,7 @@ export class Renderer {
             transformedText = text.toLowerCase();
         }
         this.ctx.fillText(transformedText, x, y);
+        this.ctx.restore();
     }
 
     drawGyzmo(gyzmo) {
@@ -236,6 +262,7 @@ export class Renderer {
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
         this.ctx.rotate(transform.rotation * Math.PI / 180);
+        if (this.isWorld) this.ctx.scale(1, -1);
         this.ctx.scale(transform.scale.x, transform.scale.y);
 
         const zoom = this.camera?.effectiveZoom || 1;
@@ -258,11 +285,26 @@ export class Renderer {
 
             if (isEditor) {
                 // Draw name tag
-                this.ctx.globalAlpha = 1.0;
-                this.ctx.fillStyle = '#ffffff';
-                this.ctx.font = `${12 / zoom}px sans-serif`;
-                this.ctx.textAlign = 'center';
-                this.ctx.fillText(name || "Área", x, y - height / 2 - (5 / zoom));
+                this.ctx.save();
+                if (this.isWorld) {
+                    // Context is already flipped and translated to materia center.
+                    // Flip back text locally around its insertion point.
+                    const textY = y - height / 2 - (5 / zoom);
+                    this.ctx.translate(x, textY);
+                    this.ctx.scale(1, -1);
+                    this.ctx.globalAlpha = 1.0;
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.font = `${12 / zoom}px sans-serif`;
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(name || "Área", 0, 0);
+                } else {
+                    this.ctx.globalAlpha = 1.0;
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.font = `${12 / zoom}px sans-serif`;
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(name || "Área", x, y - height / 2 - (5 / zoom));
+                }
+                this.ctx.restore();
             }
         }
 
@@ -282,6 +324,7 @@ export class Renderer {
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
         this.ctx.rotate(transform.rotation * Math.PI / 180);
+        if (this.isWorld) this.ctx.scale(1, -1);
 
         // Draw bone shape (a diamond/triangle starting from origin)
         this.ctx.beginPath();
@@ -522,10 +565,26 @@ export class Renderer {
         else ctx.globalAlpha = 0.8;
 
         if (isWorld) {
-            ctx.drawImage(this._waterBuffer, bounds.minX, bounds.minY, bufferW, bufferH);
+            if (this.isWorld) {
+                ctx.save();
+                ctx.translate(0, bounds.minY + bufferH / 2);
+                ctx.scale(1, -1);
+                ctx.translate(0, -(bounds.minY + bufferH / 2));
+                ctx.drawImage(this._waterBuffer, bounds.minX, bounds.minY, bufferW, bufferH);
+                ctx.restore();
+            } else {
+                ctx.drawImage(this._waterBuffer, bounds.minX, bounds.minY, bufferW, bufferH);
+            }
         } else {
             // Local space draw
-            ctx.drawImage(this._waterBuffer, bounds.minX, bounds.minY, bufferW, bufferH);
+            if (this.isWorld) {
+                ctx.save();
+                ctx.scale(1, -1);
+                ctx.drawImage(this._waterBuffer, bounds.minX, -bounds.minY - bufferH, bufferW, bufferH);
+                ctx.restore();
+            } else {
+                ctx.drawImage(this._waterBuffer, bounds.minX, bounds.minY, bufferW, bufferH);
+            }
         }
         ctx.restore();
 
@@ -578,6 +637,7 @@ export class Renderer {
         ctx.save();
         ctx.translate(drawX, drawY);
         ctx.rotate(transform.rotation * Math.PI / 180);
+        if (this.isWorld) ctx.scale(1, -1);
         ctx.scale(transform.scale.x, transform.scale.y);
 
         ctx.beginPath();
@@ -612,6 +672,7 @@ export class Renderer {
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
         this.ctx.rotate(transform.rotation * Math.PI / 180);
+        if (this.isWorld) this.ctx.scale(1, -1);
         this.ctx.scale(transform.scale.x, transform.scale.y);
 
         const w = terreno.width;
@@ -652,7 +713,15 @@ export class Renderer {
             bCtx.globalCompositeOperation = 'source-over';
 
             this.ctx.globalAlpha = layer.opacity !== undefined ? layer.opacity : 1.0;
-            this.ctx.drawImage(this._terrainBuffer, x, y, w, h);
+            if (this.isWorld) {
+                this.ctx.save();
+                this.ctx.translate(x + w / 2, y + h / 2);
+                this.ctx.scale(1, -1);
+                this.ctx.drawImage(this._terrainBuffer, -w / 2, -h / 2, w, h);
+                this.ctx.restore();
+            } else {
+                this.ctx.drawImage(this._terrainBuffer, x, y, w, h);
+            }
         }
         this.ctx.globalAlpha = 1.0;
 
@@ -723,6 +792,7 @@ export class Renderer {
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
         this.ctx.rotate(transform.rotation * Math.PI / 180);
+        if (this.isWorld) this.ctx.scale(1, -1);
         this.ctx.scale(transform.scale.x, transform.scale.y);
 
         const mapTotalWidth = tilemap.width * grid.cellSize.x;
@@ -765,8 +835,8 @@ export class Renderer {
 
                     const dx = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2);
                     const dy = layerOffsetY + (y * grid.cellSize.y) - (mapTotalHeight / 2);
-                    // Add 0.5px to width and height to prevent gaps between tiles
-                    this.ctx.drawImage(image, dx, dy, grid.cellSize.x + 0.5, grid.cellSize.y + 0.5);
+                    // Use internal drawImage helper to handle Y-UP flip
+                    this.drawImage(image, dx + grid.cellSize.x / 2, dy + grid.cellSize.y / 2, grid.cellSize.x + 0.5, grid.cellSize.y + 0.5);
                 }
             }
         }
@@ -992,7 +1062,15 @@ export class Renderer {
         }
 
         try {
-            this.ctx.drawImage(video, drawX, drawY, drawWidth, drawHeight);
+            if (this.isWorld) {
+                this.ctx.save();
+                this.ctx.translate(drawX + drawWidth / 2, drawY + drawHeight / 2);
+                this.ctx.scale(1, -1);
+                this.ctx.drawImage(video, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+                this.ctx.restore();
+            } else {
+                this.ctx.drawImage(video, drawX, drawY, drawWidth, drawHeight);
+            }
         } catch (e) {
             // El video puede no estar listo para drawImage
             if (this.isEditor) {
@@ -1190,8 +1268,15 @@ export class Renderer {
 
             this.ctx.save();
             // We apply the letterbox transform relative to the canvas's world position.
-            this.ctx.translate(canvasWorldRect.x + offsetX, canvasWorldRect.y + offsetY); // Y-Down
-            this.ctx.scale(scale, scale);
+            this.ctx.translate(canvasWorldRect.x + offsetX, canvasWorldRect.y + offsetY);
+
+            // UI within world space expects Y-DOWN.
+            // Since world is Y-UP (flipped Y), we must flip it back for UI.
+            if (this.isWorld) {
+                this.ctx.scale(scale, -scale);
+            } else {
+                this.ctx.scale(scale, scale);
+            }
 
             // We need a new cache here because the coordinate system has changed.
             const screenSpaceCache = new Map();
@@ -1206,9 +1291,17 @@ export class Renderer {
             this.ctx.restore();
         } else {
             // For 'World Space' canvases, the logic is direct.
+            this.ctx.save();
+            if (this.isWorld) {
+                // Flip UI to Y-DOWN locally
+                this.ctx.translate(canvasWorldRect.x, canvasWorldRect.y);
+                this.ctx.scale(1, -1);
+                this.ctx.translate(-canvasWorldRect.x, -canvasWorldRect.y);
+            }
             for (const child of canvasMateria.children) {
                 this._drawUIElementAndChildren(child, rectCache, 1, 1, true);
             }
+            this.ctx.restore();
         }
 
         this.ctx.restore();

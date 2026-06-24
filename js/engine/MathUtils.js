@@ -287,6 +287,8 @@ export function world3DToScreen(worldPos, customProj = null, customView = null, 
     // NDC Y mapping: NDC +1 is UP, NDC -1 is DOWN.
     // Screen: TOP is 0. So NDC +1 (UP) -> 0.
     // Formula: (0.5 - ndcY * 0.5) * height
+
+    // For 2D world space (Y-UP), the mapping is consistent with 3D.
     return {
         x: (ndc[0] * 0.5 + 0.5) * width,
         y: (0.5 - ndc[1] * 0.5) * height

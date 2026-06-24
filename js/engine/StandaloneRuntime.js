@@ -530,7 +530,11 @@ export class StandaloneRuntime {
 
                 const transformA = a.getComponent(Components.Transform);
                 const transformB = b.getComponent(Components.Transform);
-                return (transformA ? transformA.y : 0) - (transformB ? transformB.y : 0);
+                // In Y-UP coordinate system, higher Y means further back (behind).
+                // We want larger Y to be drawn first (negative result in sort).
+                const ay = transformA ? transformA.y : 0;
+                const by = transformB ? transformB.y : 0;
+                return by - ay;
             });
 
         const canvasesToRender = materias.filter(m => m.getComponent(Components.Canvas));

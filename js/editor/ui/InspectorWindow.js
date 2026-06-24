@@ -31,23 +31,22 @@ let enterAddTilemapLayerMode = () => {}; // Callback to notify SceneView
 const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
-    'CAT_RENDERIZADO': [Components.SpriteRenderer, Components.TextureRender, Components.DrawingOrder],
+    'CAT_RENDERIZADO': [Components.SpriteRenderer, Components.TextureRender, Components.DrawingOrder, 'MeshRenderer3D', 'SkinnedMeshRenderer3D', 'Terreno3D', 'DeformableMesh3D', 'ClothRenderer3D'],
     'CAT_MAPA': [Components.Grid, Components.Tilemap, Components.TilemapRenderer, Components.Parallax, Components.Terreno2D],
-    'CAT_ILUMINACION': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
+    'CAT_ILUMINACION': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D, 'DirectionalLight3D', 'PointLight3D', 'SpotLight3D'],
     'CAT_UTILIDADES': [Components.Gyzmo],
-    'CAT_ANIMACION': [Components.Animator, Components.AnimatorController, Components.Bone, Components.SkeletonRenderer, Components.IKManager2D],
+    'CAT_ANIMACION': [Components.Animator, Components.AnimatorController, Components.Bone, Components.SkeletonRenderer, Components.IKManager2D, 'Animator3D', 'ProceduralChain3D'],
     'CAT_AUDIO': [Components.AudioSource],
-    'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.PlatformEffector2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
-    'CAT_CAMARA': [Components.Camera],
-    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Attack, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.Suspension, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController, Components.SceneLoader, Components.Inventario, Components.SistemaDialogos, Components.GestorMisiones],
+    'CAT_FISICAS': [
+        Components.Rigidbody2D, Components.BoxCollider2D, Components.PlatformEffector2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D,
+        'Rigidbody3D', 'BoxCollider3D', 'SphereCollider3D', 'CapsuleCollider3D', 'PlaneCollider3D', 'TerrenoCollider3D', 'HumanoidPhysics3D', 'WheelCollider3D'
+    ],
+    'CAT_CAMARA': [Components.Camera, 'CameraControl3D'],
+    'CAT_BASICO': [
+        Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Attack, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.Suspension, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController, Components.SceneLoader, Components.Inventario, Components.SistemaDialogos, Components.GestorMisiones,
+        'MovementControl3D', 'ThirdPersonController3D', 'HealthController3D', 'VehicleController3D'
+    ],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
-
-    // 3D Specific Categories
-    'CAT_BASICO_3D': ['MovementControl3D', 'ThirdPersonController3D', 'HealthController3D', 'CameraControl3D'],
-    'CAT_FISICA_3D': ['Rigidbody3D', 'BoxCollider3D', 'SphereCollider3D', 'CapsuleCollider3D', 'PlaneCollider3D', 'TerrenoCollider3D', 'HumanoidPhysics3D', 'WheelCollider3D', 'VehicleController3D'],
-    'CAT_AUDIO_3D': [Components.AudioSource],
-    'CAT_CAMARA_3D': [Components.Camera],
-    'CAT_OTROS_3D': ['MeshRenderer3D', 'SkinnedMeshRenderer3D', 'Animator3D', 'DirectionalLight3D', 'PointLight3D', 'SpotLight3D', 'Terreno3D', 'DeformableMesh3D', 'ProceduralChain3D', 'ClothRenderer3D'],
 
     'CAT_SCRIPTING': [Components.CreativeScript]
 };
@@ -1627,56 +1626,11 @@ async function updateInspectorForMateria(selectedMateria) {
         layerSelect.appendChild(addLayerOption);
     }
 
-    // --- REORGANIZACIÓN POR CATEGORÍAS ---
-    const components2D = [];
-    const components3D = {
-        fisica: [],
-        sonido: [],
-        camara: [],
-        basico: [],
-        otros: []
-    };
-
-    const catMap = {
-        // Física 3D
-        'Rigidbody3D': 'fisica', 'BoxCollider3D': 'fisica', 'SphereCollider3D': 'fisica', 'CapsuleCollider3D': 'fisica', 'PlaneCollider3D': 'fisica', 'TerrenoCollider3D': 'fisica', 'HumanoidPhysics3D': 'fisica', 'WheelCollider3D': 'fisica',
-        // Sonido (unificado o 3D)
-        'AudioSource': 'sonido',
-        // Cámara
-        'Camera': 'camara', 'CameraControl3D': 'camara',
-        // Básico 3D
-        'MovementControl3D': 'basico', 'ThirdPersonController3D': 'basico', 'HealthController3D': 'basico', 'VehicleController3D': 'basico',
-        // Otros 3D / Comunes
-        'MeshRenderer3D': 'otros', 'SkinnedMeshRenderer3D': 'otros', 'Animator3D': 'otros', 'DirectionalLight3D': 'otros', 'PointLight3D': 'otros', 'SpotLight3D': 'otros', 'Terreno3D': 'otros', 'DeformableMesh3D': 'otros', 'ProceduralChain3D': 'otros', 'ClothRenderer3D': 'otros',
-        'Transform': 'otros'
-    };
-
-    const is2DComponent = (ley) => {
-        const name = ley.constructor.name;
-        const known2D = [
-            'SpriteRenderer', 'Rigidbody2D', 'BoxCollider2D', 'CircleCollider2D', 'PolygonCollider2D', 'CapsuleCollider2D',
-            'Tilemap', 'TilemapRenderer', 'TilemapCollider2D', 'Grid', 'TextureRender', 'Parallax', 'Terreno2D', 'TerrenoCollider2D',
-            'PointLight2D', 'SpotLight2D', 'FreeformLight2D', 'SpriteLight2D', 'Movement', 'CameraFollow', 'ProjectileLauncher',
-            'Health', 'Attack', 'Patrol', 'ParticleSystem', 'RaycastSource', 'BasicAI', 'Water', 'LineCollider2D', 'Suspension',
-            'VehicleTopDown', 'PlaneController', 'HelicopterController', 'Bone', 'SkeletonRenderer', 'IKManager2D', 'Animator', 'AnimatorController',
-            'Canvas', 'UIImage', 'UIText', 'UITransform', 'Button', 'ProgressBar', 'UIScrollRect', 'UIMask', 'UICollider', 'UIController',
-            'VerticalLayoutGroup', 'HorizontalLayoutGroup', 'GridLayoutGroup', 'ContentSizeFitter'
-        ];
-        return known2D.includes(name);
-    };
-
     const componentsWrapper = document.createElement('div');
     componentsWrapper.className = 'inspector-components-wrapper';
 
-    selectedMateria.leyes.forEach((ley, index) => {
-        const name = ley.constructor.name;
-        if (is2DComponent(ley)) {
-            components2D.push({ ley, index });
-        } else {
-            const cat = catMap[name] || 'otros';
-            components3D[cat].push({ ley, index });
-        }
-    });
+    // Se eliminó la clasificación 2D/3D. Ahora se muestran todos los componentes en orden.
+    const allComponents = selectedMateria.leyes.map((ley, index) => ({ ley, index }));
 
     const renderComponentList = (list, container) => {
         list.forEach(({ ley, index }) => {
@@ -4516,38 +4470,8 @@ async function updateInspectorForMateria(selectedMateria) {
     });
     };
 
-    // --- Renderizado Organizado ---
-
-    // 1. Renderizar 3D en una sección colapsada por defecto
-    const all3D = [].concat(...Object.values(components3D));
-    if (all3D.length > 0) {
-        const fold3D = document.createElement('details');
-        fold3D.className = 'inspector-section-fold'; // Usamos una clase común
-        fold3D.open = true; // 3D abierto por defecto
-        const summary = document.createElement('summary');
-        summary.textContent = L.get('LEYES_3D', 'Leyes 3D');
-        fold3D.appendChild(summary);
-
-        const innerWrapper = document.createElement('div');
-        renderComponentList(all3D, innerWrapper);
-        fold3D.appendChild(innerWrapper);
-        componentsWrapper.appendChild(fold3D);
-    }
-
-    // 2. Renderizar 2D en una sección colapsada por defecto
-    if (components2D.length > 0) {
-        const fold2D = document.createElement('details');
-        fold2D.className = 'inspector-section-fold';
-        // fold2D.open = false; // Cerrado por defecto
-        const summary = document.createElement('summary');
-        summary.textContent = L.get('LEYES_2D', 'Leyes 2D');
-        fold2D.appendChild(summary);
-
-        const innerWrapper = document.createElement('div');
-        renderComponentList(components2D, innerWrapper);
-        fold2D.appendChild(innerWrapper);
-        componentsWrapper.appendChild(fold2D);
-    }
+    // --- Renderizado Directo ---
+    renderComponentList(allComponents, componentsWrapper);
 
     if (currentId !== lastUpdateId) return;
     dom.inspectorContent.appendChild(componentsWrapper);
@@ -5330,36 +5254,10 @@ export async function showAddComponentModal() {
 
     // View Mode determines the filtering (simulated 2D or full 3D)
     const viewMode = projectConfig.viewMode || '3d';
+    const is3DProject = projectConfig.projectType !== '2d';
 
-    // Top-level containers
-    const container3D = document.createElement('details');
-    container3D.className = 'component-master-category';
-    container3D.open = (viewMode === '3d');
-    container3D.innerHTML = `<summary><h3>3D</h3></summary>`;
-
-    const container2D = document.createElement('details');
-    container2D.className = 'component-master-category';
-    container2D.open = (viewMode === '2d');
-    container2D.innerHTML = `<summary><h3>2D</h3></summary>`;
-
-    const containerScripts = document.createElement('details');
-    containerScripts.className = 'component-master-category';
-    containerScripts.innerHTML = `<summary><h3>${L.get('SCRIPTS', 'Scripts')}</h3></summary>`;
-
-    const containerLibraries = document.createElement('details');
-    containerLibraries.className = 'component-master-category';
-    containerLibraries.innerHTML = `<summary><h3>${L.get('LIBRERIAS', 'Librerías')}</h3></summary>`;
-
-    dom.componentList.appendChild(container3D);
-    dom.componentList.appendChild(container2D);
-    dom.componentList.appendChild(containerScripts);
-    dom.componentList.appendChild(containerLibraries);
-
+    // Se eliminaron los contenedores maestros 3D/2D para mostrar todas las categorías directamente.
     for (const category in availableComponents) {
-        const is3D = category.endsWith('_3D');
-        const is2D = !is3D && category !== 'CAT_SCRIPTING';
-
-        if (viewMode === '2d' && is3D) continue;
         if (category === 'CAT_SCRIPTING') continue;
 
         const categoryWrapper = document.createElement('div');
@@ -5372,9 +5270,6 @@ export async function showAddComponentModal() {
             // Si no hay traducción, limpiar el prefijo CAT_ y formatear
             categoryLabel = category.replace('CAT_', '').replace(/_/g, ' ').toLowerCase();
             categoryLabel = categoryLabel.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-        }
-        if (is3D && categoryLabel.toLowerCase().endsWith(' 3d')) {
-            categoryLabel = categoryLabel.substring(0, categoryLabel.length - 3);
         }
         categoryHeader.innerHTML = `<span class="category-toggle"></span>${categoryLabel}`;
 
@@ -5391,8 +5286,7 @@ export async function showAddComponentModal() {
         categoryWrapper.appendChild(categoryHeader);
         categoryWrapper.appendChild(categoryContent);
 
-        if (is3D) container3D.appendChild(categoryWrapper);
-        else container2D.appendChild(categoryWrapper);
+        dom.componentList.appendChild(categoryWrapper);
 
         availableComponents[category].forEach(ComponentClassOrName => {
             const L = window.Localization;
@@ -5505,7 +5399,7 @@ export async function showAddComponentModal() {
         }
         categoryWrapper.appendChild(categoryHeader);
         categoryWrapper.appendChild(categoryContent);
-        containerLibraries.appendChild(categoryWrapper);
+        dom.componentList.appendChild(categoryWrapper);
     }
 
 
@@ -5531,7 +5425,7 @@ export async function showAddComponentModal() {
 
     scriptsCategoryWrapper.appendChild(scriptsHeader);
     scriptsCategoryWrapper.appendChild(scriptsContent);
-    containerScripts.appendChild(scriptsCategoryWrapper);
+    dom.componentList.appendChild(scriptsCategoryWrapper);
 
     const placeholder = document.createElement('p');
     placeholder.className = 'script-scan-status';

@@ -47,7 +47,8 @@ let dragState = {}; // To hold info about the current drag operation
 export function screenToWorld(screenX, screenY) {
     if (!renderer || !renderer.camera) return { x: 0, y: 0 };
     const worldX = (screenX - renderer.canvas.width / 2) / renderer.camera.effectiveZoom + renderer.camera.x;
-    const worldY = (screenY - renderer.canvas.height / 2) / renderer.camera.effectiveZoom + renderer.camera.y;
+    // In Y-UP coordinate system, smaller screenY (top) means larger worldY.
+    const worldY = (renderer.canvas.height / 2 - screenY) / renderer.camera.effectiveZoom + renderer.camera.y;
     return { x: worldX, y: worldY };
 }
 
@@ -247,14 +248,15 @@ function checkGizmoHit(canvasPos) {
 
         // Axis arrows hit detection
         if (Math.abs(worldMouse.y - centerY) < handleHitboxSize / 2 && worldMouse.x > centerX && worldMouse.x < centerX + gizmoSize) return 'move-x';
-        if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y < centerY && worldMouse.y > centerY - gizmoSize) return 'move-y';
+        // In Y-UP world, +Y axis points UP.
+        if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y > centerY && worldMouse.y < centerY + gizmoSize) return 'move-y';
     }
 
     if (activeTool === 'scale-axis') {
         // X-Axis square head
         if (Math.abs(worldMouse.y - centerY) < handleHitboxSize / 2 && worldMouse.x > centerX + gizmoSize - handleHitboxSize / 2 && worldMouse.x < centerX + gizmoSize + handleHitboxSize / 2) return 'scale-axis-x';
-        // Y-Axis square head
-        if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y < centerY - gizmoSize + handleHitboxSize / 2 && worldMouse.y > centerY - gizmoSize - handleHitboxSize / 2) return 'scale-axis-y';
+        // Y-Axis square head (points UP in Y-UP world)
+        if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y > centerY + gizmoSize - handleHitboxSize / 2 && worldMouse.y < centerY + gizmoSize + handleHitboxSize / 2) return 'scale-axis-y';
     }
 
     return null;
@@ -380,6 +382,8 @@ function drawEditorGrid() {
     // Y-Axis (Green)
     ctx.strokeStyle = 'rgba(0, 255, 0, 0.4)';
     ctx.beginPath();
+    // In Y-UP, viewTop might be greater than viewBottom if viewTop is higher world Y.
+    // But moveTo/lineTo don't care about order.
     ctx.moveTo(0, viewTop);
     ctx.lineTo(0, viewBottom);
     ctx.stroke();
@@ -396,17 +400,17 @@ function drawEditorGrid() {
 function drawMoveGizmo(ctx, centerX, centerY, zoom, GIZMO_SIZE, HANDLE_THICKNESS, ARROW_HEAD_SIZE) {
     ctx.lineWidth = HANDLE_THICKNESS;
 
-    // Y-Axis (Green)
+    // Y-Axis (Green) - Points UP in Y-UP world
     ctx.strokeStyle = '#00ff00';
     ctx.beginPath();
     ctx.moveTo(centerX, centerY);
-    ctx.lineTo(centerX, centerY - GIZMO_SIZE);
+    ctx.lineTo(centerX, centerY + GIZMO_SIZE);
     ctx.stroke();
     // Arrow head for Y
     ctx.beginPath();
-    ctx.moveTo(centerX, centerY - GIZMO_SIZE);
-    ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
-    ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
+    ctx.moveTo(centerX, centerY + GIZMO_SIZE);
+    ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY + GIZMO_SIZE - ARROW_HEAD_SIZE);
+    ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY + GIZMO_SIZE - ARROW_HEAD_SIZE);
     ctx.closePath();
     ctx.fillStyle = '#00ff00';
     ctx.fill();
@@ -502,15 +506,15 @@ function drawScaleGizmo(ctx, materia, transform, zoom, SCALE_BOX_SIZE, HANDLE_TH
 function drawScaleAxisGizmo(ctx, centerX, centerY, zoom, GIZMO_SIZE, HANDLE_THICKNESS, SCALE_BOX_SIZE) {
      ctx.lineWidth = HANDLE_THICKNESS;
 
-    // Y-Axis (Green)
+    // Y-Axis (Green) - Points UP in Y-UP world
     ctx.strokeStyle = '#00ff00';
     ctx.beginPath();
     ctx.moveTo(centerX, centerY);
-    ctx.lineTo(centerX, centerY - GIZMO_SIZE);
+    ctx.lineTo(centerX, centerY + GIZMO_SIZE);
     ctx.stroke();
     // Square head for Y
     ctx.fillStyle = '#00ff00';
-    ctx.fillRect(centerX - SCALE_BOX_SIZE / 2, centerY - GIZMO_SIZE - SCALE_BOX_SIZE / 2, SCALE_BOX_SIZE, SCALE_BOX_SIZE);
+    ctx.fillRect(centerX - SCALE_BOX_SIZE / 2, centerY + GIZMO_SIZE - SCALE_BOX_SIZE / 2, SCALE_BOX_SIZE, SCALE_BOX_SIZE);
 
     // X-Axis (Red)
     ctx.strokeStyle = '#ff0000';
@@ -555,8 +559,8 @@ function checkUIGizmoHit(canvasPos) {
     switch (activeTool) {
         case 'move':
             if (Math.abs(worldMouse.y - centerY) < handleHitboxSize / 2 && worldMouse.x > centerX && worldMouse.x < centerX + gizmoSize) return 'ui-move-x';
-            // Corrected Y-axis hit detection to be in the negative world Y direction (upwards on screen)
-            if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y < centerY && worldMouse.y > centerY - gizmoSize) return 'ui-move-y';
+            // In Y-UP world, +Y axis points UP.
+            if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y > centerY && worldMouse.y < centerY + gizmoSize) return 'ui-move-y';
              // Central square hit detection
             const squareHitboxSize = 10 / zoom;
             if (Math.abs(worldMouse.x - centerX) < squareHitboxSize / 2 && Math.abs(worldMouse.y - centerY) < squareHitboxSize / 2) {
@@ -625,16 +629,16 @@ function drawUIGizmos(renderer, materia) {
         case 'move':
             ctx.lineWidth = HANDLE_THICKNESS;
 
-            // Y-Axis (Green)
+            // Y-Axis (Green) - Points UP in Y-UP world
             ctx.strokeStyle = '#00ff00';
             ctx.beginPath();
             ctx.moveTo(centerX, centerY);
-            ctx.lineTo(centerX, centerY - GIZMO_SIZE);
+            ctx.lineTo(centerX, centerY + GIZMO_SIZE);
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(centerX, centerY - GIZMO_SIZE);
-            ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
-            ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
+            ctx.moveTo(centerX, centerY + GIZMO_SIZE);
+            ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY + GIZMO_SIZE - ARROW_HEAD_SIZE);
+            ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY + GIZMO_SIZE - ARROW_HEAD_SIZE);
             ctx.closePath();
             ctx.fillStyle = '#00ff00';
             ctx.fill();
@@ -1593,8 +1597,8 @@ export function initialize(dependencies) {
 
                     for (const layer of tilemap.layers) {
                         const snapPositions = [
-                            { x: layer.position.x, y: layer.position.y - 1 },
-                            { x: layer.position.x, y: layer.position.y + 1 },
+                            { x: layer.position.x, y: layer.position.y + 1 }, // Top (+Y is UP)
+                            { x: layer.position.x, y: layer.position.y - 1 }, // Bottom
                             { x: layer.position.x - 1, y: layer.position.y },
                             { x: layer.position.x + 1, y: layer.position.y }
                         ];
@@ -2617,8 +2621,8 @@ function drawLayerPlacementPreview() {
         const layerCenterY = transform.y + layer.position.y * layerHeight;
 
         const snapPositions = [
-            { x: layer.position.x, y: layer.position.y - 1 }, // Top
-            { x: layer.position.x, y: layer.position.y + 1 }, // Bottom
+            { x: layer.position.x, y: layer.position.y + 1 }, // Top (+Y is UP)
+            { x: layer.position.x, y: layer.position.y - 1 }, // Bottom
             { x: layer.position.x - 1, y: layer.position.y }, // Left
             { x: layer.position.x + 1, y: layer.position.y }  // Right
         ];

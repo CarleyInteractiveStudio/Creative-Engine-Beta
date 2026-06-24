@@ -106,33 +106,47 @@ export class PhysicsSystem {
 
     _step3D(deltaTime) {
         const allMaterias = this.scene.getAllMaterias();
+        const C3D = window.Components3D;
+
+        // 1. Update Physics for all materias with Rigidbody3D
+        for (let i = 0; i < allMaterias.length; i++) {
+            const m = allMaterias[i];
+            if (!m.isActive) continue;
+
+            const rb = m.getComponent(C3D?.Rigidbody3D);
+            const transform = m.getComponent(Components.Transform);
+
+            if (rb && transform && !rb.isKinematic) {
+                // Apply Gravity (Consistent with 2D engine)
+                if (rb.useGravity) rb.velocity.y += this.gravity.y * deltaTime;
+
+                // Drag application (exponential decay for stability)
+                const dragFactor = Math.pow(1.0 - rb.drag, deltaTime * 60);
+                rb.velocity.x *= dragFactor;
+                rb.velocity.y *= dragFactor;
+                rb.velocity.z *= dragFactor;
+
+                // Update position (Physics Scale 100 for consistency)
+                const PHYSICS_SCALE = 100;
+                transform.x += rb.velocity.x * PHYSICS_SCALE * deltaTime;
+                transform.y += rb.velocity.y * PHYSICS_SCALE * deltaTime;
+                if (transform.z !== undefined) transform.z += rb.velocity.z * PHYSICS_SCALE * deltaTime;
+            }
+        }
+
+        // 2. 3D Collision Detection & Resolution
         const collidables = allMaterias.filter(m => m.isActive && (
-            m.getComponent(window.Components3D?.BoxCollider3D) ||
-            m.getComponent(window.Components3D?.SphereCollider3D) ||
-            m.getComponent(window.Components3D?.CapsuleCollider3D) ||
-            m.getComponent(window.Components3D?.PlaneCollider3D) ||
-            m.getComponent(window.Components3D?.TerrenoCollider3D)
+            m.getComponent(C3D?.BoxCollider3D) ||
+            m.getComponent(C3D?.SphereCollider3D) ||
+            m.getComponent(C3D?.CapsuleCollider3D) ||
+            m.getComponent(C3D?.PlaneCollider3D) ||
+            m.getComponent(C3D?.TerrenoCollider3D)
         ));
 
         for (let i = 0; i < collidables.length; i++) {
             const m = collidables[i];
-            const rb = m.getComponent(window.Components3D?.Rigidbody3D);
             const transform = m.getComponent(Components.Transform);
 
-            if (rb && !rb.isKinematic) {
-                if (rb.useGravity) rb.velocity.y += this.gravity.y * 100 * deltaTime; // Simplified 3D gravity
-
-                // Drag
-                rb.velocity.x *= (1.0 - rb.drag);
-                rb.velocity.y *= (1.0 - rb.drag);
-                rb.velocity.z *= (1.0 - rb.drag);
-
-                transform.x += rb.velocity.x * deltaTime;
-                transform.y += rb.velocity.y * deltaTime;
-                if (transform.z !== undefined) transform.z += rb.velocity.z * deltaTime;
-            }
-
-            // 3D Collision Detection & Resolution
             for (let j = i + 1; j < collidables.length; j++) {
                 const other = collidables[j];
                 const collision = this.checkCollision3D(m, other);
@@ -897,11 +911,16 @@ export class PhysicsSystem {
                         } else {
                             // Flota: lift depende de cuánto esté sumergido
                             const lift = buoyancyForce * Math.max(0.5, (2.0 - rigidbody.buoyancyWeight));
-                            rigidbody.velocity.y -= lift * deltaTime;
+                            // In Y-UP, lift is UP (+Y)
+                            rigidbody.velocity.y += lift * deltaTime;
 
-                            // Estabilización en superficie: si está muy arriba, lo atrae un poco hacia abajo
+                            // Estabilización en superficie: si está muy hundido, lo empuja un poco más arriba
                             if (transform.y < avgY - 20) {
                                 rigidbody.velocity.y += 10.0 * deltaTime;
+                            }
+                            // Si está muy arriba (saltando fuera), lo atrae un poco hacia abajo
+                            else if (transform.y > avgY + 5) {
+                                rigidbody.velocity.y -= 5.0 * deltaTime;
                             }
                         }
 
@@ -1275,7 +1294,10 @@ export class PhysicsSystem {
         // 2. Side Filtering
         const effectorTrans = effectorMtr.getComponent(Components.Transform);
         const effRotRad = (effectorTrans ? effectorTrans.rotation : 0) * Math.PI / 180;
-        const worldUp = { x: Math.sin(effRotRad), y: -Math.cos(effRotRad) };
+
+        // In the Y-UP coordinate system (+Y is up):
+        // Rotation 0 means the object's local up is world {0, 1}.
+        const worldUp = { x: -Math.sin(effRotRad), y: Math.cos(effRotRad) };
         const worldRight = { x: Math.cos(effRotRad), y: Math.sin(effRotRad) };
 
         const dotUp = this._dot(normal, worldUp);
