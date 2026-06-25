@@ -1,7 +1,7 @@
 // Gizmos.js
 // A collection of utility functions to draw gizmos in both 2D and 3D scenes.
 
-import { world3DToScreen, drawLineClipped } from './MathUtils.js';
+import { world3DToScreen, drawLineClipped } from './3d/MathUtils3D.js';
 
 export const Gizmos = {
     /**

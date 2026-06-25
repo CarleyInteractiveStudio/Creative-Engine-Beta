@@ -3,7 +3,7 @@
  * (c) 2024 Carley Interactive Studio
  */
 
-import { getURLForAssetPath } from './AssetUtils.js';
+import { getURLForAssetPath } from '../AssetUtils.js';
 
 export class ModelLoader3D {
     static async loadModel(path, projectsDirHandle) {
@@ -79,7 +79,6 @@ export class ModelLoader3D {
                             nextIndex++;
                         }
                     }
-                    // Triangulate polygons (Fan triangulation)
                     for (let i = 1; i < faceIndices.length - 1; i++) {
                         indices.push(faceIndices[0], faceIndices[i], faceIndices[i + 1]);
                     }

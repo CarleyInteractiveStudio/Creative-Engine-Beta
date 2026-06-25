@@ -6,6 +6,7 @@ import { PhysicsSystem } from './engine/Physics.js';
 import * as UISystem from './engine/ui/UISystem.js';
 import * as Components from './engine/Components.js';
 import { Materia } from './engine/Materia.js';
+import { Materia3D } from './engine/3d/Materia3D.js';
 import { getURLForAssetPath } from './engine/AssetUtils.js';
 import * as AnimationEditorWindow from './editor/ui/AnimationEditorWindow.js';
 import { initialize as initializePreferences, getPreferences, loadExternalPreferences } from './editor/ui/PreferencesWindow.js';
@@ -74,6 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const scratchCtx = scratchCanvas.getContext('2d');
     let renderer = null, gameRenderer = null;
     let renderer3D = null, gameRenderer3D = null;
+    let physicsSystem3D = null;
     let activeView = 'scene-content'; // 'scene-content', 'game-content', or 'code-editor-content'
     const panelVisibility = {
         hierarchy: true,
@@ -612,7 +614,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`[CHC] Hot-reloading script: ${scriptName}`);
         for (const materia of SceneManager.currentScene.getAllMaterias()) {
             if (!materia.isActive) continue;
-            const scripts = materia.getComponents(Components.CreativeScript).filter(s => s.scriptName === scriptName);
+            const scripts = materia.getComponents(Components.CreativeScript).concat(window.Components3D ? materia.getComponents(window.Components3D.CreativeScript3D) : []).filter(s => s.scriptName === scriptName);
             for (const script of scripts) {
                 // Notificar desactivacion antes de reiniciar
                 try { script.onDisable(); } catch(e) {}
@@ -1242,12 +1244,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            const comp3DModule = await import('./engine/Components3D.js');
+            const comp3DModule = await import('./engine/3d/Components3D.js');
             window.Components3D = comp3DModule;
         }
 
         if (!renderer3D) {
-            const { Renderer3D } = await import('./engine/Renderer3D.js');
+            const { Renderer3D } = await import('./engine/3d/Renderer3D.js');
             console.log("[Creative 3D Render] Instantiating Creative 3D core...");
             renderer3D = new Renderer3D(dom.sceneCanvas3d);
             gameRenderer3D = new Renderer3D(dom.gameCanvas3d);
@@ -1816,6 +1818,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (physicsSystem) {
             physicsSystem.update(deltaTime, subSteps);
         }
+        if (physicsSystem3D) {
+            physicsSystem3D.update(deltaTime);
+        }
 
         // Update all game objects scripts (frame-dependent)
         for (const materia of SceneManager.currentScene.getAllMaterias()) {
@@ -1840,7 +1845,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const materiasToRender = SceneManager.currentScene.getAllMaterias()
             .filter(m => {
-                if (!m.getComponent(Components.Transform)) return false;
+                if (!(m.transform || m.getComponent(Components.Transform))) return false;
 
                 // In 3D/Hybrid mode, the 2D renderer (Renderer.js) should NOT draw objects
                 // that are already handled by the 3D renderer (Renderer3D.js).
@@ -1866,7 +1871,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const tilemapsToRender = SceneManager.currentScene.getAllMaterias()
             .filter(m => {
-                if (!m.getComponent(Components.Transform) || !m.getComponent(Components.TilemapRenderer)) return false;
+                if (!(m.transform || m.getComponent(Components.Transform)) || !m.getComponent(Components.TilemapRenderer)) return false;
                 if (is3D) return false; // Already handled by 3D renderer
                 return true;
             })
@@ -1877,15 +1882,15 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
         const pointLights = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.PointLight2D));
+            .filter(m => (m.transform || m.getComponent(Components.Transform)) && m.getComponent(Components.PointLight2D));
         const spotLights = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpotLight2D));
+            .filter(m => (m.transform || m.getComponent(Components.Transform)) && m.getComponent(Components.SpotLight2D));
         const freeformLights = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.FreeformLight2D));
+            .filter(m => (m.transform || m.getComponent(Components.Transform)) && m.getComponent(Components.FreeformLight2D));
         const spriteLights = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteLight2D));
+            .filter(m => (m.transform || m.getComponent(Components.Transform)) && m.getComponent(Components.SpriteLight2D));
         const canvasesToRender = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.Canvas));
+            .filter(m => (m.transform || m.getComponent(Components.Transform)) && m.getComponent(Components.Canvas));
 
         const drawObjects = (ctx, cameraForCulling, objectsToRender, tilemapsToDraw, canvasesToDraw) => {
             const aspect = rendererInstance.canvas.width / rendererInstance.canvas.height;
@@ -1919,8 +1924,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isParallaxA !== isParallaxB) return isParallaxA ? -1 : 1;
 
                 // 5. Y position (Isometric/Depth)
-                const transformA = a.getComponent(Components.Transform);
-                const transformB = b.getComponent(Components.Transform);
+                const transformA = a.transform || a.getComponent(Components.Transform);
+                const transformB = b.transform || b.getComponent(Components.Transform);
                 return (transformA ? transformA.y : 0) - (transformB ? transformB.y : 0);
             });
 
@@ -1947,7 +1952,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const videoPlayer = materia.getComponent(Components.VideoPlayer);
                 const gyzmo = materia.getComponent(Components.Gyzmo);
                 const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
-                const transform = materia.getComponent(Components.Transform);
+                const transform = materia.transform || materia.getComponent(Components.Transform);
                 const parallax = materia.getComponent(Components.Parallax);
 
                 // --- Parallax Displacement ---
@@ -2257,6 +2262,11 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const handleRender = (camera) => {
+            if (is3D && window._Renderer3D) {
+                // Ensure 3D matrices are up to date for projection
+                window._Renderer3D.projectionMatrix = renderer3D.projectionMatrix;
+                window._Renderer3D.viewMatrix = renderer3D.viewMatrix;
+            }
             rendererInstance.beginWorld(camera);
 
             const isRealista = currentProjectConfig.rendererMode === 'realista';
@@ -2478,7 +2488,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (renderer3D.initialized) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1, showGrid });
                     if (renderer) updateScene(renderer, false);
                 } else if (activeView === 'game-content' && gameRenderer3D) {
-                    const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth)[0];
+                const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => (a.getComponent(Components.Camera) || a.getComponentByName('Camera3D')).depth - (b.getComponent(Components.Camera) || b.getComponentByName('Camera3D')).depth)[0];
                     if (mainCam) {
                         if (!gameRenderer3D.initialized) gameRenderer3D.init();
                         gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1, isGameView: true });
@@ -2593,6 +2603,11 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Creating new PhysicsSystem instance for the game session.");
         physicsSystem = new PhysicsSystem(SceneManager.currentScene);
         SceneManager.currentScene.physicsSystem = physicsSystem; // Link for components
+
+        const { PhysicsSystem3D } = await import('./engine/3d/Physics3D.js');
+        physicsSystem3D = new PhysicsSystem3D(SceneManager.currentScene);
+        SceneManager.currentScene.physicsSystem3D = physicsSystem3D;
+
         uiSystem = UISystem;
         uiSystem.initialize(SceneManager.currentScene);
         EngineAPI.CEEngine.initialize({ physicsSystem }); // Re-initialize the API with the new instance
@@ -2639,7 +2654,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (materia.isActive) {
                         for (const ley of materia.leyes) {
                             // 1. Script Initialization
-                            if (ley instanceof Components.CreativeScript) {
+                                if (ley instanceof Components.CreativeScript || (window.Components3D && ley instanceof window.Components3D.CreativeScript3D)) {
                                 await ley.initializeInstance();
                                 if (ley.isInitialized) {
                                     try {
@@ -2667,7 +2682,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
 
                             // 3. Generic start for all non-script components (including AnimatorController)
-                            if (!(ley instanceof Components.CreativeScript) && typeof ley.start === 'function') {
+                            if (!(ley instanceof Components.CreativeScript) && !(window.Components3D && ley instanceof window.Components3D.CreativeScript3D) && typeof ley.start === 'function') {
                                 try {
                                     await ley.start();
                                 } catch (e) {
@@ -2717,7 +2732,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             for (const materia of SceneManager.currentScene.getAllMaterias()) {
                 if (!materia.isActive) continue;
-                const scripts = materia.getComponents(Components.CreativeScript);
+                const scripts = materia.getComponents(Components.CreativeScript).concat(window.Components3D ? materia.getComponents(window.Components3D.CreativeScript3D) : []);
                 for (const script of scripts) {
                     try { script.onDisable(); } catch (e) { console.error(`Error en onDisable() del script '${script.scriptName}' en el objeto '${materia.name}':`, e); }
                     try { script.onDestroy(); } catch (e) { console.error(`Error en onDestroy() del script '${script.scriptName}' en el objeto '${materia.name}':`, e); }
@@ -3714,21 +3729,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 currentProjectConfig.viewMode = newMode;
 
-                // Simulation: In a 3D project, we just lock camera/change grid
-                // In a 2D project, this button might not even show or be disabled.
-
                 // Sync 3D Camera for 2D Simulation
                 if (newMode === '2d' && renderer && renderer.camera) {
                     renderer.camera.rotation.x = 0;
                     renderer.camera.rotation.y = 0;
                     renderer.camera.rotation.z = 0;
-                    // Keep camera centered on current X,Y but set a comfortable Z distance
                     if (renderer.camera.z === 0) renderer.camera.z = 1000;
                 }
 
-                updateCanvasInteractivity();
+                await updateCanvasInteractivity();
 
-                // Save config (viewMode is persistent)
                 if (typeof saveProjectConfigFromModule === 'function') {
                     await saveProjectConfigFromModule(false);
                 }
@@ -4791,6 +4801,11 @@ public start() {
             updateLoadingProgress(40, "Activando sistema de fisicas...");
             physicsSystem = new PhysicsSystem(SceneManager.currentScene);
             SceneManager.currentScene.physicsSystem = physicsSystem; // Link for components
+
+            const { PhysicsSystem3D } = await import('./engine/3d/Physics3D.js');
+            physicsSystem3D = new PhysicsSystem3D(SceneManager.currentScene);
+            SceneManager.currentScene.physicsSystem3D = physicsSystem3D;
+
             EngineAPI.CEEngine.initialize({ physicsSystem }); // Pass physics system to the API
             InputManager.initialize(dom.sceneCanvas, dom.gameCanvas);
             if (dom.sceneCanvas3d) InputManager.attachCanvas(dom.sceneCanvas3d);
@@ -5077,7 +5092,7 @@ public start() {
             }
 
             updateLoadingProgress(85, "Actualizando paneles...");
-            updateCanvasInteractivity();
+            await updateCanvasInteractivity();
 
             // Sync 2D/3D toggle button on load
             if (currentProjectConfig) {

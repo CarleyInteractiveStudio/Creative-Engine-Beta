@@ -82,18 +82,6 @@ const componentAliases = {
     'ProgressBar': 'barraDeProgreso',
     'SceneLoader': 'cargarEscena',
     'PlatformEffector2D': 'efectorPlataforma2D',
-    'Rigidbody3D': 'fisica3D',
-    'BoxCollider3D': 'colisionadorCaja3D',
-    'SphereCollider3D': 'colisionadorEsfera3D',
-    'MeshRenderer3D': 'renderizadorDeMalla3D',
-    'SkinnedMeshRenderer3D': 'renderizadorDeMallaConHuesos3D',
-    'Animator3D': 'animador3D',
-    'HumanoidPhysics3D': 'fisicaHumanoide3D',
-    'MovementControl3D': 'controlMovimiento3D',
-    'HealthController3D': 'controladorSalud3D',
-    'ThirdPersonController3D': 'controladorTerceraPersona3D',
-    'CameraControl3D': 'controlCamara3D',
-    'DeformableMesh3D': 'mallaDeformable3D',
 };
 
 
@@ -417,30 +405,6 @@ export class CreativeScriptBehavior {
     get fisica() { return this.obtenerComponente('Rigidbody2D') || this._missingComponentProxy('fisica', 'Rigidbody2D'); }
     get rigidbody2D() { return this.fisica; }
 
-    get fisica3D() { return this.obtenerComponente('Rigidbody3D') || this._missingComponentProxy('fisica3D', 'Rigidbody3D'); }
-    get rigidbody3D() { return this.fisica3D; }
-
-    get animacion3D() { return this.obtenerComponente('Animator3D') || this._missingComponentProxy('animacion3D', 'Animator3D'); }
-    get animador3D() { return this.animacion3D; }
-    get animator3D() { return this.animacion3D; }
-
-    get fisicaHumanoide3D() { return this.obtenerComponente('HumanoidPhysics3D') || this._missingComponentProxy('fisicaHumanoide3D', 'HumanoidPhysics3D'); }
-    get humanoidPhysics3D() { return this.fisicaHumanoide3D; }
-
-    get controlMovimiento3D() { return this.obtenerComponente('MovementControl3D') || this._missingComponentProxy('controlMovimiento3D', 'MovementControl3D'); }
-    get movementControl3D() { return this.controlMovimiento3D; }
-
-    get controladorSalud3D() { return this.obtenerComponente('HealthController3D') || this._missingComponentProxy('controladorSalud3D', 'HealthController3D'); }
-    get healthController3D() { return this.controladorSalud3D; }
-
-    get controladorTerceraPersona3D() { return this.obtenerComponente('ThirdPersonController3D') || this._missingComponentProxy('controladorTerceraPersona3D', 'ThirdPersonController3D'); }
-    get thirdPersonController3D() { return this.controladorTerceraPersona3D; }
-
-    get controlCamara3D() { return this.obtenerComponente('CameraControl3D') || this._missingComponentProxy('controlCamara3D', 'CameraControl3D'); }
-    get cameraControl3D() { return this.controlCamara3D; }
-
-    get mallaDeformable3D() { return this.obtenerComponente('DeformableMesh3D') || this._missingComponentProxy('mallaDeformable3D', 'DeformableMesh3D'); }
-    get deformableMesh3D() { return this.mallaDeformable3D; }
 
     get vida() { return this.obtenerComponente('Health') || this._missingComponentProxy('vida', 'Health'); }
     get salud() { return this.vida; }
@@ -901,84 +865,65 @@ export class CreativeScriptBehavior {
 export class Transform extends Leyes {
     constructor(materia) {
         super(materia);
-        // Propiedades locales relativas al padre
-        this.localPosition = { x: 0, y: 0, z: 0 };
-        this.localRotation = { x: 0, y: 0, z: 0 }; // Euler angles
-        this.localScale = { x: 1, y: 1, z: 1 };
+        this.localPosition = { x: 0, y: 0 };
+        this.localRotation = 0; // Rotation in degrees (2D)
+        this.localScale = { x: 1, y: 1 };
         this.flipX = false;
         this.flipY = false;
     }
 
     // --- Posición Global (World Position) ---
     get position() {
-        const is3D = window.currentProjectConfig?.projectType === '3d';
-
         if (!this.materia || !this.materia.parent) {
-            const pos = { ...this.localPosition };
-            if (!is3D) pos.z = 0;
-            return pos;
+            return { ...this.localPosition };
         }
 
         const parentTransform = this.materia.parent.getComponent(Transform);
         if (!parentTransform) {
-            const pos = { ...this.localPosition };
-            if (!is3D) pos.z = 0;
-            return pos;
+            return { ...this.localPosition };
         }
 
         const parentMatrix = parentTransform.worldMatrix;
-        const localVec = vec4.fromValues(this.localPosition.x, this.localPosition.y, this.localPosition.z || 0, 1.0);
+        const localVec = vec4.fromValues(this.localPosition.x, this.localPosition.y, 0, 1.0);
         const worldVec = vec4.create();
         vec4.transformMat4(worldVec, localVec, parentMatrix);
 
-        return {
-            x: worldVec[0],
-            y: worldVec[1],
-            z: is3D ? worldVec[2] : 0
-        };
+        return { x: worldVec[0], y: worldVec[1] };
     }
 
     set position(worldPosition) {
         if (!this.materia || !this.materia.parent) {
-            this.localPosition = { ...worldPosition };
-            if (this.localPosition.z === undefined) this.localPosition.z = 0;
+            this.localPosition = { x: worldPosition.x, y: worldPosition.y };
             return;
         }
         const parentTransform = this.materia.parent.getComponent(Transform);
         if (!parentTransform) {
-            this.localPosition = { ...worldPosition };
-            if (this.localPosition.z === undefined) this.localPosition.z = 0;
+            this.localPosition = { x: worldPosition.x, y: worldPosition.y };
             return;
         }
 
         const invParentMatrix = mat4.create();
         mat4.invert(invParentMatrix, parentTransform.worldMatrix);
 
-        const worldVec = vec4.fromValues(worldPosition.x, worldPosition.y, worldPosition.z || 0, 1.0);
+        const worldVec = vec4.fromValues(worldPosition.x, worldPosition.y, 0, 1.0);
         const localVec = vec4.create();
         vec4.transformMat4(localVec, worldVec, invParentMatrix);
 
-        this.localPosition = {
-            x: localVec[0],
-            y: localVec[1],
-            z: localVec[2]
-        };
+        this.localPosition = { x: localVec[0], y: localVec[1] };
     }
 
     get worldMatrix() {
         const m = mat4.create();
         const q = quat.create();
-        quat.fromEuler(q, this.localRotation.x || 0, this.localRotation.y || 0, this.localRotation.z || 0);
+        quat.fromEuler(q, 0, 0, this.localRotation || 0);
 
-        const pos = [this.localPosition.x, this.localPosition.y, this.localPosition.z || 0];
-        const scale = [this.localScale.x, this.localScale.y, this.localScale.z || 1];
+        const pos = [this.localPosition.x, this.localPosition.y, 0];
+        const scale = [this.localScale.x, this.localScale.y, 1];
 
-        // Proper order: Scale -> Rotate -> Translate
         mat4.fromRotationTranslationScale(m, q, pos, scale);
 
         if (this.materia && this.materia.parent) {
             let parentMateria = this.materia.parent;
-            // Resolve parent if it's an ID
             if (typeof parentMateria === 'number') {
                 parentMateria = (this.materia.scene || window.SceneManager?.currentScene)?.findMateriaById(parentMateria);
             }
@@ -991,98 +936,32 @@ export class Transform extends Leyes {
         return m;
     }
 
-    // --- Rotación Global (World Rotation - Z axis only for legacy compatibility) ---
-    get rotation() { return this.rotationZ; }
-    set rotation(v) { this.rotationZ = v; }
-
-    get rotationX() {
-        const q = quat.create();
-        mat4.getRotation(q, this.worldMatrix);
-        const euler = vec3.create();
-        MathUtils.quatToEuler(euler, q);
-        return euler[0];
-    }
-    set rotationX(v) {
-        if (!this.materia || !this.materia.parent) { this.localRotation.x = v; return; }
-        const parentTransform = this.materia.parent.getComponent(Transform);
-        if (!parentTransform) { this.localRotation.x = v; return; }
-
-        const invParentMatrix = mat4.create();
-        mat4.invert(invParentMatrix, parentTransform.worldMatrix);
-
-        const worldQ = quat.create();
-        quat.fromEuler(worldQ, v, this.rotationY, this.rotationZ);
-
-        const parentQ = quat.create();
-        mat4.getRotation(parentQ, parentTransform.worldMatrix);
-        quat.invert(parentQ, parentQ);
-
-        const localQ = quat.create();
-        quat.multiply(localQ, parentQ, worldQ);
-
-        const localEuler = vec3.create();
-        MathUtils.quatToEuler(localEuler, localQ);
-        this.localRotation.x = localEuler[0];
-    }
-
-    get rotationY() {
-        const q = quat.create();
-        mat4.getRotation(q, this.worldMatrix);
-        const euler = vec3.create();
-        MathUtils.quatToEuler(euler, q);
-        return euler[1];
-    }
-    set rotationY(v) {
-        if (!this.materia || !this.materia.parent) { this.localRotation.y = v; return; }
-        const parentTransform = this.materia.parent.getComponent(Transform);
-        if (!parentTransform) { this.localRotation.y = v; return; }
-
-        const invParentMatrix = mat4.create();
-        mat4.invert(invParentMatrix, parentTransform.worldMatrix);
-
-        const worldQ = quat.create();
-        quat.fromEuler(worldQ, this.rotationX, v, this.rotationZ);
-
-        const parentQ = quat.create();
-        mat4.getRotation(parentQ, parentTransform.worldMatrix);
-        quat.invert(parentQ, parentQ);
-
-        const localQ = quat.create();
-        quat.multiply(localQ, parentQ, worldQ);
-
-        const localEuler = vec3.create();
-        MathUtils.quatToEuler(localEuler, localQ);
-        this.localRotation.y = localEuler[1];
-    }
-
-    get rotationZ() {
+    get rotation() {
         const q = quat.create();
         mat4.getRotation(q, this.worldMatrix);
         const euler = vec3.create();
         MathUtils.quatToEuler(euler, q);
         return euler[2];
     }
-    set rotationZ(v) {
-        if (!this.materia || !this.materia.parent) { this.localRotation.z = v; return; }
+
+    set rotation(v) {
+        if (!this.materia || !this.materia.parent) { this.localRotation = v; return; }
         const parentTransform = this.materia.parent.getComponent(Transform);
-        if (!parentTransform) { this.localRotation.z = v; return; }
-
-        const invParentMatrix = mat4.create();
-        mat4.invert(invParentMatrix, parentTransform.worldMatrix);
-
-        const worldQ = quat.create();
-        quat.fromEuler(worldQ, this.rotationX, this.rotationY, v);
+        if (!parentTransform) { this.localRotation = v; return; }
 
         const parentQ = quat.create();
         mat4.getRotation(parentQ, parentTransform.worldMatrix);
         quat.invert(parentQ, parentQ);
+
+        const worldQ = quat.create();
+        quat.fromEuler(worldQ, 0, 0, v);
 
         const localQ = quat.create();
         quat.multiply(localQ, parentQ, worldQ);
 
         const localEuler = vec3.create();
         MathUtils.quatToEuler(localEuler, localQ);
-        this.localRotation.z = localEuler[2];
+        this.localRotation = localEuler[2];
     }
 
     // --- Escala Global (World Scale) ---
@@ -1098,45 +977,38 @@ export class Transform extends Leyes {
                 const parentScale = parentTransform.scale;
                 baseScale = {
                     x: parentScale.x * this.localScale.x,
-                    y: parentScale.y * this.localScale.y,
-                    z: parentScale.z * this.localScale.z
+                    y: parentScale.y * this.localScale.y
                 };
             }
         }
         return {
             x: baseScale.x * (this.flipX ? -1 : 1),
-            y: baseScale.y * (this.flipY ? -1 : 1),
-            z: baseScale.z
+            y: baseScale.y * (this.flipY ? -1 : 1)
         };
     }
 
     set scale(worldScale) {
         if (!this.materia || !this.materia.parent) {
             this.localScale = { ...worldScale };
-            if (this.localScale.z === undefined) this.localScale.z = 1;
             return;
         }
         const parentTransform = this.materia.parent.getComponent(Transform);
         if (!parentTransform) {
              this.localScale = { ...worldScale };
-             if (this.localScale.z === undefined) this.localScale.z = 1;
              return;
         }
         const parentScale = parentTransform.scale;
         this.localScale = {
             x: parentScale.x !== 0 ? worldScale.x / parentScale.x : 0,
-            y: parentScale.y !== 0 ? worldScale.y / parentScale.y : 0,
-            z: parentScale.z !== 0 ? (worldScale.z !== undefined ? worldScale.z / parentScale.z : this.localScale.z) : 0
+            y: parentScale.y !== 0 ? worldScale.y / parentScale.y : 0
         };
     }
 
-    // --- Acceso directo a x/y/z para compatibilidad y conveniencia ---
+    // --- Acceso directo a x/y para compatibilidad y conveniencia ---
     get x() { return this.position.x; }
     set x(value) { this.position = { ...this.position, x: value }; }
     get y() { return this.position.y; }
     set y(value) { this.position = { ...this.position, y: value }; }
-    get z() { return this.position.z; }
-    set z(value) { this.position = { ...this.position, z: value }; }
 
     /**
      * Hace que el objeto mire hacia una posición específica.
@@ -1177,9 +1049,8 @@ export class Transform extends Leyes {
 export class Camera extends Leyes {
     constructor(materia) {
         super(materia);
-        const is3D = window.currentProjectConfig?.projectType === '3d';
         this.depth = 0; // Rendering order. Higher is drawn on top.
-        this.projection = is3D ? 'Perspective' : 'Orthographic';
+        this.projection = 'Orthographic';
         this.orthographicSize = 5; // Size for Orthographic
         this.fov = 60; // Field of view for Perspective
         this.nearClipPlane = 0.1;
@@ -1776,7 +1647,6 @@ export class SpriteRenderer extends Leyes {
         this.isLoading = false;
         this._lastLoadedSource = '';
         this.pivot = { x: 0.5, y: 0.5 };
-        this.billboard = false; // For 3D mode
     }
 
     get spriteName() { return this._spriteName; }
@@ -2424,16 +2294,14 @@ export class Animator extends Leyes {
                     while (r2_blend - r1 > 180) r2_blend -= 360;
                     while (r2_blend - r1 < -180) r2_blend += 360;
                     const finalRotZ = r1 + (r2_blend - r1) * blendFactor;
-                    if (typeof trans.localRotation === 'object') trans.localRotation.z = finalRotZ;
-                    else trans.localRotation = finalRotZ;
+                    trans.localRotation = finalRotZ;
 
                     trans.localScale.x = prev.scale.x + (targetScale.x - prev.scale.x) * blendFactor;
                     trans.localScale.y = prev.scale.y + (targetScale.y - prev.scale.y) * blendFactor;
                 } else {
                     trans.localPosition.x = targetPos.x;
                     trans.localPosition.y = targetPos.y;
-                    if (typeof trans.localRotation === 'object') trans.localRotation.z = targetRot;
-                    else trans.localRotation = targetRot;
+                    trans.localRotation = targetRot;
                     trans.localScale.x = targetScale.x;
                     trans.localScale.y = targetScale.y;
                 }
@@ -3129,7 +2997,6 @@ export class TextureRender extends Leyes {
         this._lastLoadedPath = '';
         this.isLoading = false;
         this.isError = false;
-        this.billboard = false; // For 3D mode
     }
 
     update(deltaTime) {

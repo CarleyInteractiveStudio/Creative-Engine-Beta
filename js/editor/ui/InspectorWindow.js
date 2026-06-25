@@ -7,7 +7,7 @@ import { getCustomComponentDefinitions } from '../EngineAPIExtension.js';
 import * as CES_Transpiler from '../../editor/CES_Transpiler.js';
 import { showPrompt, showNotification } from './DialogWindow.js';
 import { TerrenoEditorWindow } from './TerrenoEditorWindow.js';
-import { Renderer3D } from '../../engine/Renderer3D.js';
+import { Renderer3D } from '../../engine/3d/Renderer3D.js';
 import { broadcastUpdate } from '../CollaborationSystem.js';
 
 // --- Module State ---
@@ -30,7 +30,7 @@ let enterAddTilemapLayerMode = () => {}; // Callback to notify SceneView
 
 const markdownConverter = new showdown.Converter();
 
-const availableComponents = {
+const availableComponents2D = {
     'CAT_RENDERIZADO': [Components.SpriteRenderer, Components.TextureRender, Components.DrawingOrder],
     'CAT_MAPA': [Components.Grid, Components.Tilemap, Components.TilemapRenderer, Components.Parallax, Components.Terreno2D],
     'CAT_ILUMINACION': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
@@ -41,15 +41,16 @@ const availableComponents = {
     'CAT_CAMARA': [Components.Camera],
     'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Attack, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.Suspension, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController, Components.SceneLoader, Components.Inventario, Components.SistemaDialogos, Components.GestorMisiones],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
-
-    // 3D Specific Categories
-    'CAT_BASICO_3D': ['MovementControl3D', 'ThirdPersonController3D', 'HealthController3D', 'CameraControl3D'],
-    'CAT_FISICA_3D': ['Rigidbody3D', 'BoxCollider3D', 'SphereCollider3D', 'CapsuleCollider3D', 'PlaneCollider3D', 'TerrenoCollider3D', 'HumanoidPhysics3D', 'WheelCollider3D', 'VehicleController3D'],
-    'CAT_AUDIO_3D': [Components.AudioSource],
-    'CAT_CAMARA_3D': [Components.Camera],
-    'CAT_OTROS_3D': ['MeshRenderer3D', 'SkinnedMeshRenderer3D', 'Animator3D', 'DirectionalLight3D', 'PointLight3D', 'SpotLight3D', 'Terreno3D', 'DeformableMesh3D', 'ProceduralChain3D', 'ClothRenderer3D'],
-
     'CAT_SCRIPTING': [Components.CreativeScript]
+};
+
+const availableComponents3D = {
+    'CAT_BASICO_3D': ['MovementControl3D', 'ThirdPersonController3D', 'HealthController3D', 'CameraControl3D'],
+    'CAT_FISICA_3D': ['Rigidbody3D', 'BoxCollider3D', 'SphereCollider3D', 'CapsuleCollider3D', 'PlaneCollider3D', 'Terreno3D', 'TerrenoCollider3D', 'HumanoidPhysics3D', 'WheelCollider3D', 'VehicleController3D'],
+    'CAT_AUDIO_3D': ['AudioSource3D'],
+    'CAT_CAMARA_3D': ['Camera3D'],
+    'CAT_OTROS_3D': ['MeshRenderer3D', 'SkinnedMeshRenderer3D', 'Animator3D', 'DirectionalLight3D', 'PointLight3D', 'SpotLight3D', 'Terreno3D', 'DeformableMesh3D', 'ProceduralChain3D', 'ClothRenderer3D'],
+    'CAT_SCRIPTING': ['CreativeScript3D']
 };
 
 const componentIcons = {
@@ -1556,6 +1557,7 @@ async function updateInspectorForMateria(selectedMateria) {
     const config = getCurrentProjectConfig();
     const L = window.Localization;
     const currentId = lastUpdateId;
+    const is3D = config.projectType === '3d';
 
     // Name input and active toggle
     const headerHTML = `
@@ -1628,54 +1630,13 @@ async function updateInspectorForMateria(selectedMateria) {
     }
 
     // --- REORGANIZACIÓN POR CATEGORÍAS ---
-    const components2D = [];
-    const components3D = {
-        fisica: [],
-        sonido: [],
-        camara: [],
-        basico: [],
-        otros: []
-    };
-
-    const catMap = {
-        // Física 3D
-        'Rigidbody3D': 'fisica', 'BoxCollider3D': 'fisica', 'SphereCollider3D': 'fisica', 'CapsuleCollider3D': 'fisica', 'PlaneCollider3D': 'fisica', 'TerrenoCollider3D': 'fisica', 'HumanoidPhysics3D': 'fisica', 'WheelCollider3D': 'fisica',
-        // Sonido (unificado o 3D)
-        'AudioSource': 'sonido',
-        // Cámara
-        'Camera': 'camara', 'CameraControl3D': 'camara',
-        // Básico 3D
-        'MovementControl3D': 'basico', 'ThirdPersonController3D': 'basico', 'HealthController3D': 'basico', 'VehicleController3D': 'basico',
-        // Otros 3D / Comunes
-        'MeshRenderer3D': 'otros', 'SkinnedMeshRenderer3D': 'otros', 'Animator3D': 'otros', 'DirectionalLight3D': 'otros', 'PointLight3D': 'otros', 'SpotLight3D': 'otros', 'Terreno3D': 'otros', 'DeformableMesh3D': 'otros', 'ProceduralChain3D': 'otros', 'ClothRenderer3D': 'otros',
-        'Transform': 'otros'
-    };
-
-    const is2DComponent = (ley) => {
-        const name = ley.constructor.name;
-        const known2D = [
-            'SpriteRenderer', 'Rigidbody2D', 'BoxCollider2D', 'CircleCollider2D', 'PolygonCollider2D', 'CapsuleCollider2D',
-            'Tilemap', 'TilemapRenderer', 'TilemapCollider2D', 'Grid', 'TextureRender', 'Parallax', 'Terreno2D', 'TerrenoCollider2D',
-            'PointLight2D', 'SpotLight2D', 'FreeformLight2D', 'SpriteLight2D', 'Movement', 'CameraFollow', 'ProjectileLauncher',
-            'Health', 'Attack', 'Patrol', 'ParticleSystem', 'RaycastSource', 'BasicAI', 'Water', 'LineCollider2D', 'Suspension',
-            'VehicleTopDown', 'PlaneController', 'HelicopterController', 'Bone', 'SkeletonRenderer', 'IKManager2D', 'Animator', 'AnimatorController',
-            'Canvas', 'UIImage', 'UIText', 'UITransform', 'Button', 'ProgressBar', 'UIScrollRect', 'UIMask', 'UICollider', 'UIController',
-            'VerticalLayoutGroup', 'HorizontalLayoutGroup', 'GridLayoutGroup', 'ContentSizeFitter'
-        ];
-        return known2D.includes(name);
-    };
+    const componentsList = [];
 
     const componentsWrapper = document.createElement('div');
     componentsWrapper.className = 'inspector-components-wrapper';
 
     selectedMateria.leyes.forEach((ley, index) => {
-        const name = ley.constructor.name;
-        if (is2DComponent(ley)) {
-            components2D.push({ ley, index });
-        } else {
-            const cat = catMap[name] || 'otros';
-            components3D[cat].push({ ley, index });
-        }
+        componentsList.push({ ley, index });
     });
 
     const renderComponentList = (list, container) => {
@@ -4516,38 +4477,8 @@ async function updateInspectorForMateria(selectedMateria) {
     });
     };
 
-    // --- Renderizado Organizado ---
-
-    // 1. Renderizar 3D en una sección colapsada por defecto
-    const all3D = [].concat(...Object.values(components3D));
-    if (all3D.length > 0) {
-        const fold3D = document.createElement('details');
-        fold3D.className = 'inspector-section-fold'; // Usamos una clase común
-        fold3D.open = true; // 3D abierto por defecto
-        const summary = document.createElement('summary');
-        summary.textContent = L.get('LEYES_3D', 'Leyes 3D');
-        fold3D.appendChild(summary);
-
-        const innerWrapper = document.createElement('div');
-        renderComponentList(all3D, innerWrapper);
-        fold3D.appendChild(innerWrapper);
-        componentsWrapper.appendChild(fold3D);
-    }
-
-    // 2. Renderizar 2D en una sección colapsada por defecto
-    if (components2D.length > 0) {
-        const fold2D = document.createElement('details');
-        fold2D.className = 'inspector-section-fold';
-        // fold2D.open = false; // Cerrado por defecto
-        const summary = document.createElement('summary');
-        summary.textContent = L.get('LEYES_2D', 'Leyes 2D');
-        fold2D.appendChild(summary);
-
-        const innerWrapper = document.createElement('div');
-        renderComponentList(components2D, innerWrapper);
-        fold2D.appendChild(innerWrapper);
-        componentsWrapper.appendChild(fold2D);
-    }
+    // --- Renderizado Directo ---
+    renderComponentList(componentsList, componentsWrapper);
 
     if (currentId !== lastUpdateId) return;
     dom.inspectorContent.appendChild(componentsWrapper);
@@ -5317,30 +5248,24 @@ export async function showAddComponentModal() {
     if (!selectedMateria) return;
 
     dom.componentList.innerHTML = '';
+    const config = getCurrentProjectConfig();
+    const is3DProject = config.projectType === '3d';
+    const L = window.Localization;
+
     const existingComponents = new Set(selectedMateria.leyes.map(ley => ley.constructor));
     const existingCustomComponents = new Set(selectedMateria.leyes
         .filter(ley => ley instanceof Components.CustomComponent)
         .map(ley => ley.definition.nombre)
     );
-    const existingScripts = new Set(selectedMateria.leyes.filter(ley => ley instanceof Components.CreativeScript).map(ley => ley.scriptName));
+    const existingScripts = new Set(selectedMateria.leyes.filter(ley => ley.constructor.name === (is3DProject ? 'CreativeScript3D' : 'CreativeScript')).map(ley => ley.scriptName));
 
-    // --- 1. Render Built-in Components ---
-    const L = window.Localization;
-    const projectConfig = getCurrentProjectConfig();
-
-    // View Mode determines the filtering (simulated 2D or full 3D)
-    const viewMode = projectConfig.viewMode || '3d';
+    const componentsSource = is3DProject ? availableComponents3D : availableComponents2D;
 
     // Top-level containers
-    const container3D = document.createElement('details');
-    container3D.className = 'component-master-category';
-    container3D.open = (viewMode === '3d');
-    container3D.innerHTML = `<summary><h3>3D</h3></summary>`;
-
-    const container2D = document.createElement('details');
-    container2D.className = 'component-master-category';
-    container2D.open = (viewMode === '2d');
-    container2D.innerHTML = `<summary><h3>2D</h3></summary>`;
+    const containerMain = document.createElement('details');
+    containerMain.className = 'component-master-category';
+    containerMain.open = true;
+    containerMain.innerHTML = `<summary><h3>${is3DProject ? '3D' : '2D'}</h3></summary>`;
 
     const containerScripts = document.createElement('details');
     containerScripts.className = 'component-master-category';
@@ -5350,16 +5275,11 @@ export async function showAddComponentModal() {
     containerLibraries.className = 'component-master-category';
     containerLibraries.innerHTML = `<summary><h3>${L.get('LIBRERIAS', 'Librerías')}</h3></summary>`;
 
-    dom.componentList.appendChild(container3D);
-    dom.componentList.appendChild(container2D);
+    dom.componentList.appendChild(containerMain);
     dom.componentList.appendChild(containerScripts);
     dom.componentList.appendChild(containerLibraries);
 
-    for (const category in availableComponents) {
-        const is3D = category.endsWith('_3D');
-        const is2D = !is3D && category !== 'CAT_SCRIPTING';
-
-        if (viewMode === '2d' && is3D) continue;
+    for (const category in componentsSource) {
         if (category === 'CAT_SCRIPTING') continue;
 
         const categoryWrapper = document.createElement('div');
@@ -5369,18 +5289,14 @@ export async function showAddComponentModal() {
         categoryHeader.className = 'category-header';
         let categoryLabel = L.get(category);
         if (categoryLabel === category) {
-            // Si no hay traducción, limpiar el prefijo CAT_ y formatear
             categoryLabel = category.replace('CAT_', '').replace(/_/g, ' ').toLowerCase();
             categoryLabel = categoryLabel.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-        }
-        if (is3D && categoryLabel.toLowerCase().endsWith(' 3d')) {
-            categoryLabel = categoryLabel.substring(0, categoryLabel.length - 3);
         }
         categoryHeader.innerHTML = `<span class="category-toggle"></span>${categoryLabel}`;
 
         const categoryContent = document.createElement('div');
         categoryContent.className = 'category-content';
-        categoryContent.style.display = 'none'; // Everything closed inside by default
+        categoryContent.style.display = 'none';
 
         categoryHeader.addEventListener('click', () => {
             const isOpen = categoryContent.style.display !== 'none';
@@ -5390,34 +5306,27 @@ export async function showAddComponentModal() {
 
         categoryWrapper.appendChild(categoryHeader);
         categoryWrapper.appendChild(categoryContent);
+        containerMain.appendChild(categoryWrapper);
 
-        if (is3D) container3D.appendChild(categoryWrapper);
-        else container2D.appendChild(categoryWrapper);
+        componentsSource[category].forEach(ComponentClassOrName => {
+            const is3DComp = typeof ComponentClassOrName === 'string';
+            const ComponentClass = is3DComp ? null : ComponentClassOrName;
+            const compName = is3DComp ? ComponentClassOrName : ComponentClass.name;
 
-        availableComponents[category].forEach(ComponentClassOrName => {
-            const L = window.Localization;
-            const is3D = typeof ComponentClassOrName === 'string';
-            const ComponentClass = is3D ? null : ComponentClassOrName;
-            const compName = is3D ? ComponentClassOrName : ComponentClass.name;
-
-            const isPresent = is3D ? selectedMateria.getComponentByName(compName) : existingComponents.has(ComponentClass);
+            const isPresent = is3DComp ? selectedMateria.getComponentByName(compName) : existingComponents.has(ComponentClass);
             const componentItem = document.createElement('div');
             componentItem.className = `component-item ${isPresent ? 'already-added' : ''}`;
+
             let compTitle = compName;
             if (compTitle === 'Transform') compTitle = L.get('TRANSFORM', 'Posición (Transform)');
             else if (compTitle === 'UITransform') compTitle = L.get('UI_TRANSFORM', 'Transformación UI');
             else if (L.get(compTitle.toUpperCase()) !== compTitle.toUpperCase()) compTitle = L.get(compTitle.toUpperCase());
-            else if (compTitle === 'Rigidbody2D') compTitle = L.get('RIGIDBODY_2D', 'Rigidbody 2D');
-            else if (compTitle === 'SceneLoader') compTitle = L.get('SCENE_LOADER', 'Cargar Escena');
-            else if (compTitle === 'BasicAI') compTitle = L.get('BASIC_AI', 'IA Básica');
 
             componentItem.innerHTML = `
                 <span class="component-icon">${getIconHTML(componentIcons[compName] || 'box')}</span>
                 <span>${compTitle}</span>
                 ${isPresent ? `<span class="component-item-indicator">${getIconHTML('check')}</span>` : ''}
             `;
-
-            categoryContent.appendChild(componentItem);
 
             componentItem.addEventListener('click', async () => {
                 if (isPresent) {
@@ -5426,9 +5335,9 @@ export async function showAddComponentModal() {
                 }
 
                 let FinalClass = ComponentClass;
-                if (is3D) {
+                if (is3DComp) {
                     if (!window.Components3D) {
-                        window.Components3D = await import('../../engine/Components3D.js');
+                        window.Components3D = await import('../../engine/3d/Components3D.js');
                     }
                     FinalClass = window.Components3D[compName];
                 }
@@ -5438,22 +5347,9 @@ export async function showAddComponentModal() {
                 const newComponent = new FinalClass(selectedMateria);
                 selectedMateria.addComponent(newComponent);
 
-                // Initialization for specific components
                 if (newComponent instanceof Components.AnimatorController) {
                     const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
                     newComponent.initialize(currentDirHandle);
-                }
-
-                // If a UI component is added, ensure it has a UITransform
-                // and remove the standard Transform to avoid conflicts.
-                if (newComponent instanceof Components.UIImage || newComponent instanceof Components.UIText || newComponent instanceof Components.Button) {
-                    if (!selectedMateria.getComponent(Components.UITransform)) {
-                        const existingTransform = selectedMateria.getComponent(Components.Transform);
-                        if (existingTransform) {
-                            selectedMateria.removeComponent(Components.Transform);
-                        }
-                        selectedMateria.addComponent(new Components.UITransform(selectedMateria));
-                    }
                 }
 
                 dom.addComponentModal.classList.add('hidden');
