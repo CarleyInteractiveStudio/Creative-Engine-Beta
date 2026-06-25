@@ -22,6 +22,7 @@ export class Renderer {
         } else {
             this.camera = null;
         }
+        this.isYFlipped = false;
         this.resize();
     }
 
@@ -172,9 +173,13 @@ export class Renderer {
         } else {
             this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
         }
-        this.ctx.scale(activeCamera.effectiveZoom, activeCamera.effectiveZoom);
+        this.ctx.scale(activeCamera.effectiveZoom, -activeCamera.effectiveZoom);
+        this.isYFlipped = true;
+
         const rotationInRadians = (transform.rotation || 0) * Math.PI / 180;
-        this.ctx.rotate(-rotationInRadians);
+        // In +Y UP, a CW camera rotation of 'theta' should rotate the world CCW by 'theta'.
+        // CCW is positive in Y-up.
+        this.ctx.rotate(rotationInRadians);
         this.ctx.translate(-activeCamera.x, -activeCamera.y);
     }
 
@@ -182,6 +187,7 @@ export class Renderer {
         this.ctx.save();
         // Restablecer transformaciones para evitar que el zoom de la cámara afecte la UI
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        this.isYFlipped = false;
         // Aplicar un escalado uniforme para la UI si es necesario
         const uiScale = 1; // Ajustar este valor según sea necesario
         this.ctx.scale(uiScale, uiScale);
@@ -189,29 +195,37 @@ export class Renderer {
 
     end() {
         this.ctx.restore();
+        // Track flip status based on current matrix to keep state safe
+        const d = this.ctx.getTransform().d;
+        this.isYFlipped = d < 0;
     }
 
     drawRect(x, y, width, height, color) {
+        this.ctx.save();
+        this.ctx.translate(x, y);
+        if (this.isYFlipped) this.ctx.scale(1, -1);
         this.ctx.fillStyle = color;
-        this.ctx.fillRect(x - width / 2, y - height / 2, width, height);
+        this.ctx.fillRect(-width / 2, -height / 2, width, height);
+        this.ctx.restore();
     }
 
     drawImage(image, x, y, width, height) {
-        // Safe check for negative dimensions
         if (width === 0 || height === 0) return;
 
-        if (width < 0 || height < 0) {
-            this.ctx.save();
-            this.ctx.translate(x, y);
-            this.ctx.scale(width < 0 ? -1 : 1, height < 0 ? -1 : 1);
-            this.ctx.drawImage(image, -Math.abs(width) / 2, -Math.abs(height) / 2, Math.abs(width), Math.abs(height));
-            this.ctx.restore();
-        } else {
-            this.ctx.drawImage(image, x - width / 2, y - height / 2, width, height);
-        }
+        this.ctx.save();
+        this.ctx.translate(x, y);
+        if (this.isYFlipped) this.ctx.scale(1, -1); // Counter global coordinate flip
+        this.ctx.scale(width < 0 ? -1 : 1, height < 0 ? -1 : 1);
+        const absW = Math.abs(width);
+        const absH = Math.abs(height);
+        this.ctx.drawImage(image, -absW / 2, -absH / 2, absW, absH);
+        this.ctx.restore();
     }
 
     drawText(text, x, y, color, fontSize, fontFamily, textTransform) {
+        this.ctx.save();
+        this.ctx.translate(x, y);
+        if (this.isYFlipped) this.ctx.scale(1, -1);
         this.ctx.fillStyle = color;
         this.ctx.font = `${fontSize}px ${fontFamily || 'sans-serif'}`;
         this.ctx.textAlign = 'center';
@@ -223,7 +237,8 @@ export class Renderer {
         } else if (textTransform === 'lowercase') {
             transformedText = text.toLowerCase();
         }
-        this.ctx.fillText(transformedText, x, y);
+        this.ctx.fillText(transformedText, 0, 0);
+        this.ctx.restore();
     }
 
     drawGyzmo(gyzmo) {
@@ -235,7 +250,7 @@ export class Renderer {
 
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
-        this.ctx.rotate(transform.rotation * Math.PI / 180);
+        this.ctx.rotate(-transform.rotation * Math.PI / 180);
         this.ctx.scale(transform.scale.x, transform.scale.y);
 
         const zoom = this.camera?.effectiveZoom || 1;
@@ -258,11 +273,17 @@ export class Renderer {
 
             if (isEditor) {
                 // Draw name tag
+                this.ctx.save();
+                // In +Y UP, label is above the top edge.
+                // Since ctx is flipped globally, we counter-flip to draw text upright.
+                this.ctx.translate(x, y + height / 2 + (5 / zoom));
+                if (this.isYFlipped) this.ctx.scale(1, -1);
                 this.ctx.globalAlpha = 1.0;
                 this.ctx.fillStyle = '#ffffff';
                 this.ctx.font = `${12 / zoom}px sans-serif`;
                 this.ctx.textAlign = 'center';
-                this.ctx.fillText(name || "Área", x, y - height / 2 - (5 / zoom));
+                this.ctx.fillText(name || "Área", 0, 0);
+                this.ctx.restore();
             }
         }
 
@@ -281,7 +302,7 @@ export class Renderer {
 
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
-        this.ctx.rotate(transform.rotation * Math.PI / 180);
+        this.ctx.rotate(-transform.rotation * Math.PI / 180);
 
         // Draw bone shape (a diamond/triangle starting from origin)
         this.ctx.beginPath();
@@ -374,7 +395,25 @@ export class Renderer {
         const img = skeleton._texture;
         const hasTexture = img && img.complete && img.naturalWidth > 0;
 
-        // Render Mesh - Context is already in World Space (via beginWorld)
+        this.ctx.save();
+        // Skeleton vertices are calculated in world space.
+        // To counter-flip the visual without affecting world-space positions,
+        // we can't just scale the context at the origin.
+        // However, Renderer3D doesn't flip, only 2D does.
+        // Since deformedVertices are already in world space, they will be drawn flipped by the global scale(1, -1).
+        // To keep them upright, we must negate their Y relative to something, or flip the context and transform.
+
+        // Actually, the simplest way is to flip the context at the skeleton's position and draw local vertices.
+        // But the current implementation calculates world vertices.
+        // Let's negate deformed Y in the triangle draw if the context is flipped.
+
+        const isFlipped = this.isYFlipped;
+
+        // Render Mesh
+        if (isFlipped) {
+            this.ctx.scale(1, -1);
+        }
+
         for (let i = 0; i < mesh.indices.length; i += 3) {
             const i0 = mesh.indices[i];
             const i1 = mesh.indices[i+1];
@@ -384,12 +423,15 @@ export class Renderer {
             const v1 = { x: deformedVertices[i1*2], y: deformedVertices[i1*2+1], u: mesh.uvs[i1*2], v: mesh.uvs[i1*2+1] };
             const v2 = { x: deformedVertices[i2*2], y: deformedVertices[i2*2+1], u: mesh.uvs[i2*2], v: mesh.uvs[i2*2+1] };
 
+            const adjustV = (v) => isFlipped ? { ...v, y: -v.y } : v;
+
             if (hasTexture) {
-                this._drawTexturedTriangle(img, v0, v1, v2);
+                this._drawTexturedTriangle(img, adjustV(v0), adjustV(v1), adjustV(v2));
             } else {
-                this._drawSolidTriangle(v0, v1, v2, skeleton.color || '#ffffff');
+                this._drawSolidTriangle(adjustV(v0), adjustV(v1), adjustV(v2), skeleton.color || '#ffffff');
             }
         }
+        this.ctx.restore();
     }
 
     drawWater(water, x = null, y = null) {
@@ -421,7 +463,7 @@ export class Renderer {
             const viewH = (this.canvas.height / ez);
             const viewW = viewH * aspect;
 
-            // Check if bounds overlap with camera viewport
+            // Adjusted for +Y UP
             if (b.maxX < cam.x - viewW/2 || b.minX > cam.x + viewW/2 ||
                 b.maxY < cam.y - viewH/2 || b.minY > cam.y + viewH/2) {
                 return;
@@ -436,7 +478,7 @@ export class Renderer {
             const drawX = x !== null ? x : transform.x;
             const drawY = y !== null ? y : transform.y;
             ctx.translate(drawX, drawY);
-            ctx.rotate(transform.rotation * Math.PI / 180);
+            ctx.rotate(-transform.rotation * Math.PI / 180);
             ctx.scale(transform.scale.x, transform.scale.y);
         }
 
@@ -521,12 +563,11 @@ export class Renderer {
         if (canUseFilter) ctx.filter = `contrast(${contrastVal}) brightness(1.1) saturate(1.2)`;
         else ctx.globalAlpha = 0.8;
 
-        if (isWorld) {
-            ctx.drawImage(this._waterBuffer, bounds.minX, bounds.minY, bufferW, bufferH);
-        } else {
-            // Local space draw
-            ctx.drawImage(this._waterBuffer, bounds.minX, bounds.minY, bufferW, bufferH);
-        }
+        ctx.save();
+        ctx.translate(bounds.minX + bufferW / 2, bounds.minY + bufferH / 2);
+        if (this.isYFlipped) ctx.scale(1, -1);
+        ctx.drawImage(this._waterBuffer, -bufferW / 2, -bufferH / 2, bufferW, bufferH);
+        ctx.restore();
         ctx.restore();
 
         if (this.isEditor) {
@@ -557,9 +598,13 @@ export class Renderer {
             ctx.arc(dotX, dotY, 5 / zoom, 0, Math.PI * 2);
             ctx.fill();
 
+            this.ctx.save();
+            this.ctx.translate(dotX, dotY - 10 / zoom);
+            if (this.isYFlipped) this.ctx.scale(1, -1);
             ctx.font = `${10 / zoom}px sans-serif`;
             ctx.textAlign = 'center';
-            ctx.fillText("Water Source", dotX, dotY - 10 / zoom);
+            this.ctx.fillText("Water Source", 0, 0);
+            this.ctx.restore();
         }
 
         ctx.restore();
@@ -577,7 +622,7 @@ export class Renderer {
 
         ctx.save();
         ctx.translate(drawX, drawY);
-        ctx.rotate(transform.rotation * Math.PI / 180);
+        ctx.rotate(-transform.rotation * Math.PI / 180);
         ctx.scale(transform.scale.x, transform.scale.y);
 
         ctx.beginPath();
@@ -611,7 +656,7 @@ export class Renderer {
 
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
-        this.ctx.rotate(transform.rotation * Math.PI / 180);
+        this.ctx.rotate(-transform.rotation * Math.PI / 180);
         this.ctx.scale(transform.scale.x, transform.scale.y);
 
         const w = terreno.width;
@@ -651,8 +696,12 @@ export class Renderer {
             bCtx.drawImage(layer.maskCanvas, 0, 0);
             bCtx.globalCompositeOperation = 'source-over';
 
+            this.ctx.save();
+            this.ctx.translate(x + w / 2, y + h / 2);
+            if (this.isYFlipped) this.ctx.scale(1, -1);
             this.ctx.globalAlpha = layer.opacity !== undefined ? layer.opacity : 1.0;
-            this.ctx.drawImage(this._terrainBuffer, x, y, w, h);
+            this.ctx.drawImage(this._terrainBuffer, -w / 2, -h / 2, w, h);
+            this.ctx.restore();
         }
         this.ctx.globalAlpha = 1.0;
 
@@ -722,7 +771,7 @@ export class Renderer {
 
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
-        this.ctx.rotate(transform.rotation * Math.PI / 180);
+        this.ctx.rotate(-transform.rotation * Math.PI / 180);
         this.ctx.scale(transform.scale.x, transform.scale.y);
 
         const mapTotalWidth = tilemap.width * grid.cellSize.x;
@@ -764,9 +813,16 @@ export class Renderer {
                     if (x < 0 || x >= tilemap.width || y < 0 || y >= tilemap.height) continue;
 
                     const dx = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2);
-                    const dy = layerOffsetY + (y * grid.cellSize.y) - (mapTotalHeight / 2);
-                    // Add 0.5px to width and height to prevent gaps between tiles
-                    this.ctx.drawImage(image, dx, dy, grid.cellSize.x + 0.5, grid.cellSize.y + 0.5);
+                    // In +Y UP, Row 0 is at the TOP (positive Y).
+                    // So tiles with higher 'y' index are drawn at LOWER world Y.
+                    const dy = layerOffsetY + (mapTotalHeight / 2) - ((y + 1) * grid.cellSize.y);
+
+                    // Counter-flip each tile individually
+                    this.ctx.save();
+                    this.ctx.translate(dx + grid.cellSize.x / 2, dy + grid.cellSize.y / 2);
+                    if (this.isYFlipped) this.ctx.scale(1, -1);
+                    this.ctx.drawImage(image, -grid.cellSize.x / 2, -grid.cellSize.y / 2, grid.cellSize.x + 0.5, grid.cellSize.y + 0.5);
+                    this.ctx.restore();
                 }
             }
         }
@@ -957,6 +1013,12 @@ export class Renderer {
         }
 
         this.ctx.save();
+        // Counter-flip if in world space and not already flipped by UI
+        if (this.isYFlipped) {
+            this.ctx.translate(x + width / 2, y + height / 2);
+            this.ctx.scale(1, -1);
+            this.ctx.translate(-(x + width / 2), -(y + height / 2));
+        }
 
         let drawX = x;
         let drawY = y;
@@ -992,7 +1054,11 @@ export class Renderer {
         }
 
         try {
-            this.ctx.drawImage(video, drawX, drawY, drawWidth, drawHeight);
+            this.ctx.save();
+            this.ctx.translate(drawX + drawWidth / 2, drawY + drawHeight / 2);
+            if (this.isYFlipped) this.ctx.scale(1, -1);
+            this.ctx.drawImage(video, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+            this.ctx.restore();
         } catch (e) {
             // El video puede no estar listo para drawImage
             if (this.isEditor) {
@@ -1015,6 +1081,14 @@ export class Renderer {
         if (uiTransform) { // Only draw elements that have a UITransform
             const absoluteRect = getAbsoluteRect(element, rectCache);
             let { x, y, width, height } = absoluteRect;
+
+            this.ctx.save();
+            // Counter-flip if we are in a Y-up world space
+            if (this.isYFlipped) {
+                this.ctx.translate(x + width / 2, y + height / 2);
+                this.ctx.scale(1, -1);
+                this.ctx.translate(-(x + width / 2), -(y + height / 2));
+            }
 
             // If scaleChildren is false, apply inverse scale locally to compensate for global canvas scale
             if (!scaleChildren && (scaleX !== 1 || scaleY !== 1)) {
@@ -1122,6 +1196,7 @@ export class Renderer {
         if (uiTransform && (element.getComponent(UIMask) || element.getComponent(UIScrollRect))) {
             this.ctx.restore(); // Restore clip
         }
+        this.ctx.restore(); // Restore counter-flip / translate
     }
 
     drawScreenSpaceUI(canvasMateria) {
@@ -1167,12 +1242,8 @@ export class Renderer {
         const canvasTransform = canvasMateria.getComponent(Transform);
         if (!canvasComponent || !canvasTransform) return;
 
-        // DEBUG LOG - Important to see when WorldSpace is called for Screen Space canvas
-        if (canvasComponent.renderMode === 'Screen Space' && !this.isEditor) {
-            console.warn(`%c[WARNING] drawWorldSpaceUI called for Screen Space canvas "${canvasMateria.name}" in GAME!`, 'color: #FF0000; font-weight: bold;');
-        }
-
         this.ctx.save();
+        // We stay in the world's +Y UP space. _drawUIElementAndChildren will handle counter-flipping elements.
 
         // The rectCache will get the initial rect from the canvas itself via getAbsoluteRect.
         const rectCache = new Map();

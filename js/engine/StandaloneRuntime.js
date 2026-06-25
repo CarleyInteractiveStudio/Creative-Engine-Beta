@@ -505,7 +505,9 @@ export class StandaloneRuntime {
                 m.getComponent(Components.TilemapRenderer) ||
                 m.getComponent(Components.VideoPlayer) ||
                 m.getComponent(Components.Water) ||
-                m.getComponent(Components.LineCollider2D)
+                m.getComponent(Components.LineCollider2D) ||
+                m.getComponent(Components.SkeletonRenderer) ||
+                m.getComponent(Components.Bone)
             ))
             .sort((a, b) => {
                 const drawingOrderA = a.getComponent(Components.DrawingOrder);
@@ -530,7 +532,8 @@ export class StandaloneRuntime {
 
                 const transformA = a.getComponent(Components.Transform);
                 const transformB = b.getComponent(Components.Transform);
-                return (transformA ? transformA.y : 0) - (transformB ? transformB.y : 0);
+                // In +Y UP, higher Y objects are further "back" and should be drawn first
+                return (transformB ? transformB.y : 0) - (transformA ? transformA.y : 0);
             });
 
         const canvasesToRender = materias.filter(m => m.getComponent(Components.Canvas));
@@ -588,7 +591,7 @@ export class StandaloneRuntime {
 
                     ctx.save();
                     ctx.translate(worldPosition.x, worldPosition.y);
-                    ctx.rotate(transform.rotation * Math.PI / 180);
+                    ctx.rotate(-transform.rotation * Math.PI / 180);
                     this.renderer.drawVideoPlayer(vp, -dWidth / 2, -dHeight / 2, dWidth, dHeight);
                     ctx.restore();
                 } else if (sr && sr.sprite && sr.sprite.complete && sr.sprite.naturalWidth > 0) {
@@ -627,7 +630,8 @@ export class StandaloneRuntime {
                     ctx.save();
                     ctx.globalAlpha = isNaN(opacity) ? 1.0 : opacity;
                     ctx.translate(worldPosition.x, worldPosition.y);
-                    ctx.rotate(worldRotation * Math.PI / 180);
+                    if (this.renderer.isYFlipped) ctx.scale(1, -1);
+                    ctx.rotate(-worldRotation * Math.PI / 180);
                     ctx.scale(worldScale.x, worldScale.y);
                     ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, -sWidth * pivotX, -sHeight * pivotY, sWidth, sHeight);
                     ctx.restore();
@@ -639,7 +643,8 @@ export class StandaloneRuntime {
                     const drawTex = (tx = 0, ty = 0) => {
                         ctx.save();
                         ctx.translate(worldPosition.x + tx, worldPosition.y + ty);
-                        ctx.rotate(worldRotation * Math.PI / 180);
+                        if (this.renderer.isYFlipped) ctx.scale(1, -1);
+                        ctx.rotate(-worldRotation * Math.PI / 180);
                         ctx.scale(worldScale.x, worldScale.y);
                         if (tr.texture && tr.texture.complete) {
                             ctx.fillStyle = ctx.createPattern(tr.texture, 'repeat');
