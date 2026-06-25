@@ -250,7 +250,8 @@ export class Renderer {
 
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
-        this.ctx.rotate(-transform.rotation * Math.PI / 180);
+        if (this.isYFlipped) this.ctx.scale(1, -1);
+        this.ctx.rotate(transform.rotation * Math.PI / 180);
         this.ctx.scale(transform.scale.x, transform.scale.y);
 
         const zoom = this.camera?.effectiveZoom || 1;
@@ -302,7 +303,8 @@ export class Renderer {
 
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
-        this.ctx.rotate(-transform.rotation * Math.PI / 180);
+        if (this.isYFlipped) this.ctx.scale(1, -1);
+        this.ctx.rotate(transform.rotation * Math.PI / 180);
 
         // Draw bone shape (a diamond/triangle starting from origin)
         this.ctx.beginPath();
@@ -478,7 +480,8 @@ export class Renderer {
             const drawX = x !== null ? x : transform.x;
             const drawY = y !== null ? y : transform.y;
             ctx.translate(drawX, drawY);
-            ctx.rotate(-transform.rotation * Math.PI / 180);
+            if (this.isYFlipped) ctx.scale(1, -1);
+            ctx.rotate(transform.rotation * Math.PI / 180);
             ctx.scale(transform.scale.x, transform.scale.y);
         }
 
@@ -622,7 +625,8 @@ export class Renderer {
 
         ctx.save();
         ctx.translate(drawX, drawY);
-        ctx.rotate(-transform.rotation * Math.PI / 180);
+        if (this.isYFlipped) ctx.scale(1, -1);
+        ctx.rotate(transform.rotation * Math.PI / 180);
         ctx.scale(transform.scale.x, transform.scale.y);
 
         ctx.beginPath();
@@ -656,7 +660,8 @@ export class Renderer {
 
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
-        this.ctx.rotate(-transform.rotation * Math.PI / 180);
+        if (this.isYFlipped) this.ctx.scale(1, -1);
+        this.ctx.rotate(transform.rotation * Math.PI / 180);
         this.ctx.scale(transform.scale.x, transform.scale.y);
 
         const w = terreno.width;
@@ -771,7 +776,8 @@ export class Renderer {
 
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
-        this.ctx.rotate(-transform.rotation * Math.PI / 180);
+        if (this.isYFlipped) this.ctx.scale(1, -1);
+        this.ctx.rotate(transform.rotation * Math.PI / 180);
         this.ctx.scale(transform.scale.x, transform.scale.y);
 
         const mapTotalWidth = tilemap.width * grid.cellSize.x;
