@@ -5341,9 +5341,8 @@ export async function showAddComponentModal() {
                 dom.addComponentModal.classList.add('hidden');
                 updateInspector();
             });
-            categoryContent.appendChild(componentItem);
+            componentGrid.appendChild(componentItem);
         });
-    }
 
     // --- 2. Render Custom Components ---
     const customComponentDefinitions = getCustomComponentDefinitions();
