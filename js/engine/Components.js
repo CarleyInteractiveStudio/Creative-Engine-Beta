@@ -4202,8 +4202,8 @@ export class Movement extends Leyes {
 
         if (input.isKeyPressed(this.rightKey)) moveX += 1;
         if (input.isKeyPressed(this.leftKey)) moveX -= 1;
-        if (input.isKeyPressed(this.upKey)) moveY -= 1;
-        if (input.isKeyPressed(this.downKey)) moveY += 1;
+        if (input.isKeyPressed(this.upKey)) moveY += 1;
+        if (input.isKeyPressed(this.downKey)) moveY -= 1;
 
         // Normalize movement for diagonal speed consistency
         if (moveX !== 0 || moveY !== 0) {
@@ -4230,7 +4230,8 @@ export class Movement extends Leyes {
                 }
 
                 if (this.isGrounded && input.isKeyJustPressed(this.jumpKey)) {
-                    rb.addImpulse(0, -this.jumpForce / 10);
+                    // In +Y UP, jump impulse is positive.
+                    rb.addImpulse(0, this.jumpForce / 10);
 
                     // Stop running sound when jumping
                     const audio = this.materia.getComponent(AudioSource);
@@ -5211,7 +5212,8 @@ export class TerrenoCollider2D extends Leyes {
                     const rectWidth = w * res;
                     const rectHeight = h * res;
                     const centerX = (c * res + rectWidth / 2) - (width / 2);
-                    const centerY = (r * res + rectHeight / 2) - (height / 2);
+                    // In +Y UP, Row 0 is at Top. localY in canvas is 0 at top.
+                    const centerY = (height / 2) - (r * res + rectHeight / 2);
                     this.generatedColliders.push({ x: centerX, y: centerY, width: rectWidth, height: rectHeight });
                 }
             }
@@ -5250,10 +5252,10 @@ export class TerrenoCollider2D extends Leyes {
                         // Simplificar el contorno
                         const simplified = this._ramerDouglasPeucker(contour, this._simplifyTolerance);
                         if (simplified.length > 2) {
-                            // Centrar vértices respecto al terreno
+                            // Centrar vértices respecto al terreno (+Y UP)
                             const centered = simplified.map(v => ({
                                 x: v.x - width / 2,
-                                y: v.y - height / 2
+                                y: height / 2 - v.y
                             }));
 
                             // Comprobar si es una isla o un hueco
@@ -6223,7 +6225,8 @@ export class ParticleSystem extends Leyes {
         if (!rb && this.gravityScale !== 0) {
             const trans = p.getComponent(Transform);
             if (trans) {
-                p._gravityVelocity = (p._gravityVelocity || 0) + (9.8 * this.gravityScale);
+                // In +Y UP, gravity is negative.
+                p._gravityVelocity = (p._gravityVelocity || 0) - (9.8 * this.gravityScale);
                 trans.y += p._gravityVelocity;
             }
         }
@@ -6984,7 +6987,8 @@ export class HelicopterController extends Leyes {
         this.potenciaActual = thrustInput;
 
         const rad = transform.rotation * Math.PI / 180;
-        const up = { x: Math.sin(rad), y: -Math.cos(rad) }; // Dirección "arriba" relativa al helicóptero
+        // In +Y UP, rotation 0 means up is [0, 1].
+        const up = { x: -Math.sin(rad), y: Math.cos(rad) }; // Dirección "arriba" relativa al helicóptero
 
         // Fuerza de sustentación (Lift)
         // Combinamos la potencia de despegue (base) con el input del motor
@@ -7516,8 +7520,8 @@ export class PlaneController extends Leyes {
 
             const liftFactor = Math.min(1.5, (speedKmh - this.velocidadDespegue * 0.5) / 400) * stallFactor;
 
-            // Fuerza hacia arriba relativa al avión (sustentación pura)
-            const liftDir = { x: forward.y, y: -forward.x };
+            // Fuerza hacia arriba relativa al avión (sustentación pura, +Y UP)
+            const liftDir = { x: -forward.y, y: forward.x };
             const liftMag = liftFactor * this.fuerzaSustentacion * 600 * deltaTime;
             rb.addForce(liftDir.x * liftMag, liftDir.y * liftMag);
 

@@ -892,16 +892,16 @@ export class PhysicsSystem {
                         const buoyancyForce = immersion * water.density * 45.0;
 
                         if (rigidbody.buoyancyWeight > rigidbody.sinkThreshold) {
-                            // Se hunde, pero con resistencia
+                            // Se hunde, pero con resistencia (+Y UP, sink is negative)
                             rigidbody.velocity.y -= buoyancyForce * 0.2 * deltaTime;
                         } else {
-                            // Flota: lift depende de cuánto esté sumergido
+                            // Flota: lift depende de cuánto esté sumergido (+Y UP, lift is positive)
                             const lift = buoyancyForce * Math.max(0.5, (2.0 - rigidbody.buoyancyWeight));
-                            rigidbody.velocity.y -= lift * deltaTime;
+                            rigidbody.velocity.y += lift * deltaTime;
 
                             // Estabilización en superficie: si está muy arriba, lo atrae un poco hacia abajo
-                            if (transform.y < avgY - 20) {
-                                rigidbody.velocity.y += 10.0 * deltaTime;
+                            if (transform.y > avgY + 20) {
+                                rigidbody.velocity.y -= 10.0 * deltaTime;
                             }
                         }
 
@@ -913,7 +913,8 @@ export class PhysicsSystem {
                         rigidbody.velocity.y *= finalDrag;
 
                         // Amortiguación de impacto (Splash damping)
-                        if (rigidbody.velocity.y > 5) {
+                        // In +Y UP, hitting water while falling means negative Y velocity
+                        if (rigidbody.velocity.y < -5) {
                              rigidbody.velocity.y *= Math.pow(0.8, deltaTime * 60);
                         }
                     }
@@ -1272,10 +1273,11 @@ export class PhysicsSystem {
         // We use a small threshold to allow for resting on platforms.
         if (velAlongNormal > 0.05) return false;
 
-        // 2. Side Filtering
+        // 2. Side Filtering (+Y is UP)
         const effectorTrans = effectorMtr.getComponent(Components.Transform);
         const effRotRad = (effectorTrans ? effectorTrans.rotation : 0) * Math.PI / 180;
-        const worldUp = { x: Math.sin(effRotRad), y: -Math.cos(effRotRad) };
+        // In +Y UP, a 0-degree rotation means UP is [0, 1].
+        const worldUp = { x: -Math.sin(effRotRad), y: Math.cos(effRotRad) };
         const worldRight = { x: Math.cos(effRotRad), y: Math.sin(effRotRad) };
 
         const dotUp = this._dot(normal, worldUp);

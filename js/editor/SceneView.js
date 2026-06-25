@@ -250,14 +250,15 @@ function checkGizmoHit(canvasPos) {
 
         // Axis arrows hit detection
         if (Math.abs(worldMouse.y - centerY) < handleHitboxSize / 2 && worldMouse.x > centerX && worldMouse.x < centerX + gizmoSize) return 'move-x';
-    if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y > centerY && worldMouse.y < centerY + gizmoSize) return 'move-y';
+        // In +Y UP, the Y handle is at World Y > centerY
+        if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y > centerY && worldMouse.y < centerY + gizmoSize) return 'move-y';
     }
 
     if (activeTool === 'scale-axis') {
         // X-Axis square head
         if (Math.abs(worldMouse.y - centerY) < handleHitboxSize / 2 && worldMouse.x > centerX + gizmoSize - handleHitboxSize / 2 && worldMouse.x < centerX + gizmoSize + handleHitboxSize / 2) return 'scale-axis-x';
         // Y-Axis square head
-    if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y > centerY + gizmoSize - handleHitboxSize / 2 && worldMouse.y < centerY + gizmoSize + handleHitboxSize / 2) return 'scale-axis-y';
+        if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y > centerY + gizmoSize - handleHitboxSize / 2 && worldMouse.y < centerY + gizmoSize + handleHitboxSize / 2) return 'scale-axis-y';
     }
 
     return null;
@@ -404,6 +405,7 @@ function drawMoveGizmo(ctx, centerX, centerY, zoom, GIZMO_SIZE, HANDLE_THICKNESS
     ctx.strokeStyle = '#00ff00';
     ctx.beginPath();
     ctx.moveTo(centerX, centerY);
+    // In +Y UP world (which ctx is flipped to), centerY + GIZMO_SIZE is UP.
     ctx.lineTo(centerX, centerY + GIZMO_SIZE);
     ctx.stroke();
     // Arrow head for Y
@@ -2082,8 +2084,9 @@ function handle3DCameraNavigation() {
             const delta = InputManager.getMouseDelta();
             const moveScale = (cam.z || 500) / 800;
             cam.x -= delta.x * moveScale;
-            // Reverted as requested: mouse DOWN decreases camera Y
-            cam.y -= delta.y * moveScale;
+            // In 2D, mouse DOWN (positive delta.y) should move the camera UP (positive cam.y)
+            // so the scene follows the mouse direction (classic panning).
+            cam.y += delta.y * moveScale;
         }
         return;
     }
@@ -2308,7 +2311,8 @@ function drawCameraGizmos(renderer, proj = null, view = null, cw = null, ch = nu
 
         if (!is3D) {
             ctx.translate(transform.x, transform.y);
-            ctx.rotate(-transform.rotation * Math.PI / 180);
+            if (renderer.isYFlipped) ctx.scale(1, -1);
+            ctx.rotate(transform.rotation * Math.PI / 180);
         }
 
         const r3d = window._Renderer3D;
@@ -2454,7 +2458,8 @@ function drawTileCursor() {
         if (col >= 0 && col < width && row >= 0 && row < height) {
             ctx.save();
             ctx.translate(transform.x, transform.y);
-            ctx.rotate(-transform.rotation * Math.PI / 180);
+            if (renderer.isYFlipped) ctx.scale(1, -1);
+            ctx.rotate(transform.rotation * Math.PI / 180);
             ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
 
             if (activeTool === 'tile-brush' || activeTool === 'tile-rectangle-fill') {
@@ -3105,7 +3110,8 @@ function drawRaycastGizmos() {
 
     ctx.save();
     ctx.translate(transform.x, transform.y);
-    ctx.rotate(-transform.rotation * Math.PI / 180);
+    if (renderer.isYFlipped) ctx.scale(1, -1);
+    ctx.rotate(transform.rotation * Math.PI / 180);
 
     ctx.lineWidth = 1.5 / zoom;
 
@@ -3210,6 +3216,7 @@ function drawBasicAIGizmos() {
 
     ctx.save();
     ctx.translate(transform.x, transform.y);
+    if (renderer.isYFlipped) ctx.scale(1, -1);
 
     // Draw detection distance
     ctx.beginPath();
@@ -3229,7 +3236,7 @@ function drawBasicAIGizmos() {
     // Draw steering rays
     if (ai.obstacleAvoidance) {
         // En el editor, los rayos salen en la dirección de rotación actual
-        ctx.rotate(-transform.rotation * Math.PI / 180);
+        ctx.rotate(transform.rotation * Math.PI / 180);
         const startAngle = -ai.raySpread / 2;
         const step = ai.rayCount > 1 ? ai.raySpread / (ai.rayCount - 1) : 0;
 
@@ -3544,7 +3551,8 @@ function drawPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
             strokeRect3D(centerX, centerY, width, height, transform.z || 0, transform.rotation);
         } else {
             ctx.translate(centerX, centerY);
-            ctx.rotate(-transform.rotation * Math.PI / 180);
+            if (renderer.isYFlipped) ctx.scale(1, -1);
+            ctx.rotate(transform.rotation * Math.PI / 180);
             ctx.strokeRect(-width / 2, -height / 2, width, height);
         }
         ctx.restore();
@@ -3560,7 +3568,8 @@ function drawPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
 
         ctx.save();
         ctx.translate(centerX, centerY);
-        ctx.rotate(-transform.rotation * Math.PI / 180);
+        if (renderer.isYFlipped) ctx.scale(1, -1);
+        ctx.rotate(transform.rotation * Math.PI / 180);
 
         ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
         ctx.lineWidth = 2 / camera.effectiveZoom;
@@ -3591,7 +3600,8 @@ function drawPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
 
         ctx.save();
         ctx.translate(centerX, centerY);
-        ctx.rotate(-transform.rotation * Math.PI / 180);
+        if (renderer.isYFlipped) ctx.scale(1, -1);
+        ctx.rotate(transform.rotation * Math.PI / 180);
 
         ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
         ctx.lineWidth = 2 / camera.effectiveZoom;
@@ -3691,7 +3701,8 @@ function drawTilemapOutline(proj = null, view = null, cw = null, ch = null) {
     } else {
         ctx.save();
         ctx.translate(transform.x, transform.y);
-        ctx.rotate(-transform.rotation * Math.PI / 180);
+        if (renderer.isYFlipped) ctx.scale(1, -1);
+        ctx.rotate(transform.rotation * Math.PI / 180);
 
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
         ctx.lineWidth = 2 / camera.effectiveZoom;
@@ -3749,7 +3760,8 @@ function drawTerrenoColliders(proj = null, view = null, cw = null, ch = null) {
     ctx.save();
     if (!is3D) {
         ctx.translate(transform.x, transform.y);
-        ctx.rotate(-transform.rotation * Math.PI / 180);
+        if (renderer.isYFlipped) ctx.scale(1, -1);
+        ctx.rotate(transform.rotation * Math.PI / 180);
         ctx.scale(transform.scale.x, transform.scale.y);
     }
 
@@ -3868,7 +3880,8 @@ function drawTilemapColliders(proj = null, view = null, cw = null, ch = null) {
     ctx.save();
     if (!is3D) {
         ctx.translate(transform.x, transform.y);
-        ctx.rotate(-transform.rotation * Math.PI / 180);
+        if (renderer.isYFlipped) ctx.scale(1, -1);
+        ctx.rotate(transform.rotation * Math.PI / 180);
         ctx.scale(transform.scale.x, transform.scale.y);
     }
 
@@ -3886,13 +3899,16 @@ function drawTilemapColliders(proj = null, view = null, cw = null, ch = null) {
         const rects = collider.getMeshForLayer(i);
         const layerOffsetX = layer.position.x * layerWidth;
         const layerOffsetY = layer.position.y * layerHeight;
-        const layerTopLeftX = layerOffsetX - layerWidth / 2;
-        const layerTopLeftY = layerOffsetY - layerHeight / 2;
+
+        // In +Y UP, Row 0 is at the top.
+        // In local flipped space (scale(1,-1)), Top is -layerHeight/2.
+        const localTopY = -layerHeight / 2;
+        const localLeftX = -layerWidth / 2;
 
         for (const rect of rects) {
             // rect coordinates are relative to the Tilemap center (local)
-            const rectX = layerTopLeftX + rect.col * cellSize.x;
-            const rectY = layerTopLeftY + rect.row * cellSize.y;
+            const rectX = layerOffsetX + localLeftX + rect.col * cellSize.x;
+            const rectY = layerOffsetY + localTopY + rect.row * cellSize.y;
             const rectWidth = rect.width * cellSize.x;
             const rectHeight = rect.height * cellSize.y;
             drawColliderRect(rectX, rectY, rectWidth, rectHeight);

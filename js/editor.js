@@ -1994,6 +1994,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     ctx.save();
                     ctx.translate(worldPosition.x, worldPosition.y);
+                    if (rendererInstance.isYFlipped) ctx.scale(1, -1);
                     ctx.rotate(transform.rotation * Math.PI / 180);
                     rendererInstance.drawVideoPlayer(videoPlayer, -dWidth / 2, -dHeight / 2, dWidth, dHeight);
                     ctx.restore();
@@ -2055,6 +2056,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const dy = -dHeight * pivotY;
 
                         ctx.translate(worldPosition.x, worldPosition.y);
+                        if (rendererInstance.isYFlipped) ctx.scale(1, -1);
                         ctx.rotate(worldRotation * Math.PI / 180);
                         ctx.scale(worldScale.x, worldScale.y);
 
@@ -2078,6 +2080,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         ctx.save();
                         ctx.translate(worldPosition.x, worldPosition.y);
+                        if (rendererInstance.isYFlipped) ctx.scale(1, -1);
                         ctx.rotate(transform.rotation * Math.PI / 180);
                         ctx.scale(worldScale.x, worldScale.y);
 
@@ -2119,6 +2122,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const drawTex = (tx = 0, ty = 0) => {
                         ctx.save();
                         ctx.translate(worldPosition.x + tx, worldPosition.y + ty);
+                        if (rendererInstance.isYFlipped) ctx.scale(1, -1);
                         ctx.rotate(worldRotation * Math.PI / 180);
                         ctx.scale(worldScale.x, worldScale.y);
                         if (textureRender.texture && textureRender.texture.complete) {
