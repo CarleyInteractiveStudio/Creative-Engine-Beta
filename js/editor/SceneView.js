@@ -2763,9 +2763,11 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
     if (!C3D) return;
 
     const transform = materia.transform || materia.getComponent(Components.Transform);
+    if (!transform) return;
+
     const meshRenderer = materia.getComponent(C3D.MeshRenderer3D);
     if (meshRenderer) {
-        const scale = { x: transform.scale.x, y: transform.scale.y, z: transform.scale.z || 1 };
+        const scale = transform.scale || { x: 1, y: 1, z: 1 };
         const rotation = { x: transform.rotationX || 0, y: transform.rotationY || 0, z: transform.rotationZ || 0 };
         if (meshRenderer.meshType === 'Cube') Gizmos.drawWireCube(ctx, center, scale, rotation, 'rgba(0, 255, 255, 0.8)', proj, view, cw, ch);
         else if (meshRenderer.meshType === 'Sphere') Gizmos.drawWireSphere(ctx, center, Math.max(scale.x, scale.y, scale.z) * 0.5, rotation, 'rgba(0, 255, 255, 0.8)', proj, view, cw, ch);

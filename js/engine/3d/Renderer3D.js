@@ -662,12 +662,109 @@ export class Renderer3D {
         drawAxis([0.2, 0.2, 500], [0, 0, 1]); // Z
     }
 
+    updateMatrices(scene, cameraMateria, options = {}) {
+        const gl = this.gl;
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+        const aspect = width / height;
+
+        if (options.editorCamera) {
+            const cam = options.editorCamera;
+            mat4.perspective(this.projectionMatrix, cam.fov * Math.PI / 180, aspect, cam.near, cam.far);
+            mat4.identity(this.viewMatrix);
+            mat4.translate(this.viewMatrix, this.viewMatrix, [-cam.x, -cam.y, -cam.z]);
+            mat4.rotateX(this.viewMatrix, this.viewMatrix, cam.rotationX * Math.PI / 180);
+            mat4.rotateY(this.viewMatrix, this.viewMatrix, cam.rotationY * Math.PI / 180);
+        } else if (cameraMateria) {
+            const camComp = cameraMateria.getComponent(Components3D.Camera);
+            const transform = cameraMateria.getComponent(Components3D.Transform);
+            mat4.perspective(this.projectionMatrix, camComp.fov * Math.PI / 180, aspect, camComp.near, camComp.far);
+            mat4.invert(this.viewMatrix, transform.worldMatrix);
+        }
+
+        mat4.copy(this.lastProjectionMatrix, this.projectionMatrix);
+        mat4.copy(this.lastViewMatrix, this.viewMatrix);
+    }
+
+    pick(scene, cameraMateria, x, y, options = {}) {
+        const gl = this.gl;
+        if (!gl || !scene) return null;
+
+        if (!this.buffers.pickFb) {
+            this.buffers.pickFb = gl.createFramebuffer();
+            this.buffers.pickTex = gl.createTexture();
+            this.buffers.pickDepth = gl.createRenderbuffer();
+            gl.bindTexture(gl.TEXTURE_2D, this.buffers.pickTex);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1024, 1024, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+            gl.bindRenderbuffer(gl.RENDERBUFFER, this.buffers.pickDepth);
+            gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, 1024, 1024);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, this.buffers.pickFb);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.buffers.pickTex, 0);
+            gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, this.buffers.pickDepth);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        }
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.buffers.pickFb);
+        gl.viewport(0, 0, 1024, 1024);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        const program = this.programs.picking;
+        gl.useProgram(program);
+        this.updateMatrices(scene, cameraMateria, options);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
+
+        const modelLoc = gl.getUniformLocation(program, 'uModelMatrix');
+        const colorLoc = gl.getUniformLocation(program, 'uPickColor');
+        const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
+
+        const materias = scene.getAllMaterias();
+        materias.forEach(materia => {
+            if (!materia.isActive) return;
+            const mesh = materia.getComponent(Components3D.MeshRenderer3D);
+            if (!mesh || !mesh.isActive) return;
+
+            const id = materia.id;
+            gl.uniform4f(colorLoc, ((id >> 16) & 0xFF) / 255, ((id >> 8) & 0xFF) / 255, (id & 0xFF) / 255, 1.0);
+            gl.uniformMatrix4fv(modelLoc, false, materia.getComponent(Components3D.Transform).worldMatrix);
+
+            let buffer = this.buffers.cube;
+            let count = 36;
+            if (mesh.meshType === 'Sphere' || mesh.meshType === 'Capsule') { buffer = this.buffers.sphere; count = this.sphereIndexCount; }
+            else if (mesh.meshType === 'Plane') { buffer = this.buffers.plane; count = 6; }
+            else if (mesh.meshType === 'Triangle') { buffer = this.buffers.triangle; count = 3; }
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+            gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(posLoc);
+
+            if (mesh.meshType === 'Sphere' || mesh.meshType === 'Capsule' || mesh.meshType === 'Cube') {
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.meshType === 'Cube' ? this.buffers.cubeIdx : this.buffers.sphereIdx);
+                gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
+            } else {
+                gl.drawArrays(gl.TRIANGLES, 0, count);
+            }
+        });
+
+        const pixelX = x * (1024 / this.canvas.width);
+        const pixelY = (this.canvas.height - y) * (1024 / this.canvas.height);
+        const data = new Uint8Array(4);
+        gl.readPixels(pixelX, pixelY, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, data);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+
+        return data[3] === 0 ? null : (data[0] << 16) | (data[1] << 8) | data[2];
+    }
+
     drawScene(scene, cameraMateria = null) {
         if (!scene) return;
         const gl = this.gl;
 
         gl.enable(gl.DEPTH_TEST);
         gl.enable(gl.CULL_FACE);
+
+        this.updateMatrices(scene, cameraMateria);
 
         const cullingMask = cameraMateria ? cameraMateria.getComponent(Components3D.Camera).cullingMask : -1;
         const materias = scene.getAllMaterias();

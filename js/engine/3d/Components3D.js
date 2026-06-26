@@ -57,6 +57,15 @@ export class Transform extends BaseComponent3D {
         this.localPosition = { x: localVec[0], y: localVec[1], z: localVec[2] };
     }
 
+    get scale() {
+        if (!this.materia || !this.materia.parent) return { ...this.localScale };
+        const parentTransform = this.materia.parent.getComponent(Transform);
+        if (!parentTransform) return { ...this.localScale };
+        const parentScale = parentTransform.scale;
+        return { x: this.localScale.x * parentScale.x, y: this.localScale.y * parentScale.y, z: this.localScale.z * parentScale.z };
+    }
+    set scale(v) { this.localScale = { ...v }; }
+
     get worldMatrix() {
         const m = mat4.create();
         const q = quat.create();

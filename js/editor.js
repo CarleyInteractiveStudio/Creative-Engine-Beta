@@ -1995,13 +1995,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     const w = (video && video.videoWidth > 0) ? video.videoWidth : 100;
                     const h = (video && video.videoHeight > 0) ? video.videoHeight : 100;
 
-                    const worldScale = transform.scale;
+                    const worldScale = transform.scale || { x: 1, y: 1 };
+                    const worldRotation = typeof transform.rotation === 'number' ? transform.rotation : 0;
                     const dWidth = w * Math.abs(worldScale.x);
                     const dHeight = h * Math.abs(worldScale.y);
 
                     ctx.save();
                     ctx.translate(worldPosition.x, worldPosition.y);
-                    ctx.rotate(transform.rotation * Math.PI / 180);
+                    ctx.rotate(worldRotation * Math.PI / 180);
                     rendererInstance.drawVideoPlayer(videoPlayer, -dWidth / 2, -dHeight / 2, dWidth, dHeight);
                     ctx.restore();
                 } else if (spriteRenderer) {
@@ -2028,8 +2029,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         }
 
-                        const worldScale = transform.scale;
-                        const worldRotation = transform.rotation;
+                        const worldScale = transform.scale || { x: 1, y: 1 };
+                        const worldRotation = typeof transform.rotation === 'number' ? transform.rotation : 0;
 
                         ctx.save();
                         const opacity = typeof spriteRenderer.opacity === 'number' ? spriteRenderer.opacity : parseFloat(spriteRenderer.opacity || 1);
@@ -2075,7 +2076,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         ctx.restore();
                     } else {
                         // If there's a renderer but no sprite, draw a placeholder
-                        const worldScale = transform.scale;
+                        const worldScale = transform.scale || { x: 1, y: 1 };
+                        const worldRotation = typeof transform.rotation === 'number' ? transform.rotation : 0;
                         const dWidth = 50;
                         const dHeight = 50;
                         const pivotX = spriteRenderer.pivot?.x ?? 0.5;
@@ -2085,7 +2087,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         ctx.save();
                         ctx.translate(worldPosition.x, worldPosition.y);
-                        ctx.rotate(transform.rotation * Math.PI / 180);
+                        ctx.rotate(worldRotation * Math.PI / 180);
                         ctx.scale(worldScale.x, worldScale.y);
 
                         const opacity = typeof spriteRenderer.opacity === 'number' ? spriteRenderer.opacity : parseFloat(spriteRenderer.opacity || 1);

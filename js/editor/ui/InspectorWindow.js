@@ -5911,7 +5911,7 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
             console.log(`[Inspector] Modelo cargado en vista previa.`);
 
             // Auto-frame for interactive preview as well
-            const { getAABB3D } = await import('../../engine/MathUtils.js');
+            const { getAABB3D } = await import('../../engine/3d/MathUtils3D.js');
             const aabb = getAABB3D(previewMateria);
             if (aabb) {
                 const glm = window.glMatrix;
@@ -5967,18 +5967,7 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
         let lastMouseX = 0;
         let lastMouseY = 0;
 
-        canvas.onmousedown = (e) => {
-            e.stopPropagation();
-            lastMouseX = e.clientX;
-            lastMouseY = e.clientY;
-            if (e.button === 0) isPanning = true; // Left click pan
-            if (e.button === 2) isOrbiting = true; // Right click orbit
-        };
-        canvas.oncontextmenu = (e) => e.preventDefault();
-
         const handleGlobalMouseUp = () => { isOrbiting = false; isPanning = false; };
-        window.addEventListener('mouseup', handleGlobalMouseUp);
-
         const handleGlobalMouseMove = (e) => {
             if (!isOrbiting && !isPanning) return;
             e.stopPropagation();
@@ -6004,7 +5993,18 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
                 orbitTarget[2] -= right[2] * dx * 0.5 * factor;
             }
         };
+
+        window.addEventListener('mouseup', handleGlobalMouseUp);
         window.addEventListener('mousemove', handleGlobalMouseMove, { capture: true });
+
+        canvas.onmousedown = (e) => {
+            e.stopPropagation();
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+            if (e.button === 0) isPanning = true; // Left click pan
+            if (e.button === 2) isOrbiting = true; // Right click orbit
+        };
+        canvas.oncontextmenu = (e) => e.preventDefault();
 
         canvas.onwheel = (e) => {
             e.preventDefault();

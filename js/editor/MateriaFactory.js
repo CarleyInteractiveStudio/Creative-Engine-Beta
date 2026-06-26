@@ -62,6 +62,17 @@ export async function createCubeObject(parent = null, color = '#ffffff') {
     return mtr;
 }
 
+export async function create3DPrimitive(type, parent = null) {
+    switch (type.toLowerCase()) {
+        case 'cube': return await createCubeObject(parent);
+        case 'sphere': return await createSphereObject(parent);
+        case 'triangle': return await createTriangle3DObject(parent);
+        case 'capsule': return await createCapsule3DObject(parent);
+        case 'plane': return await createPlane3DObject(parent);
+        default: return await createCubeObject(parent);
+    }
+}
+
 export async function createSphereObject(parent = null) {
     const C3D = await ensure3D();
     const mtr = createBaseMateria(generateUniqueName('Esfera'), parent);
@@ -161,7 +172,7 @@ export async function createSkinnedMeshObject(modelPath, parent = null, options 
             } else {
                 nodeMtr.addComponent(new Components.Transform(nodeMtr));
             }
-            const t = nodeMtr.transform || nodeMtr.getComponent(Components.Transform);
+            const t = nodeMtr.transform || nodeMtr.getComponent(Components.Transform) || nodeMtr.getComponent(C3D.Transform);
             t.localPosition = { x: node.translation[0], y: node.translation[1], z: node.translation[2] };
 
             // GLTF quaternions are [x, y, z, w]. Our engine currently uses Euler [x, y, z] in Transform.
@@ -251,10 +262,12 @@ export async function createSkinnedMeshObject(modelPath, parent = null, options 
     }
 
     if (modelData.animations?.length > 0) {
-        const animator = new C3D.Animator3D(rootMateria);
-        animator.animations = modelData.animations.map(a => ({ ...a, channels: a.channels.map(c => ({ ...c, node: nodeMaterias[c.node]?.id || rootMateria.id })) }));
+        const animator = is3D ? new C3D.Animator3D(rootMateria) : new Components.Animator(rootMateria);
+        if (is3D) {
+            animator.animations = modelData.animations.map(a => ({ ...a, channels: a.channels.map(c => ({ ...c, node: nodeMaterias[c.node]?.id || rootMateria.id })) }));
+        }
         rootMateria.addComponent(animator);
-        animator.play();
+        if (is3D && animator.play) animator.play();
     }
     return rootMateria;
 }
