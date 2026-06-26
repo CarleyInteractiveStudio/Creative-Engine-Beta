@@ -4,6 +4,7 @@ import { Camera } from './Components3D.js';
 
 export class Scene3D {
     constructor() {
+        this.is3D = true;
         this.materias = [];
         this.ambiente = {
             skyMode: 'Gradient',
@@ -18,10 +19,8 @@ export class Scene3D {
     }
 
     addMateria(materia) {
-        if (materia instanceof Materia3D) {
-            this.materias.push(materia);
-            this._setMateriaSceneRecursive(materia);
-        }
+        this.materias.push(materia);
+        this._setMateriaSceneRecursive(materia);
     }
 
     _setMateriaSceneRecursive(materia) {

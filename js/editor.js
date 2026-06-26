@@ -1955,6 +1955,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const transform = materia.transform || materia.getComponent(Components.Transform);
                 const parallax = materia.getComponent(Components.Parallax);
 
+                if (!transform) continue;
+
                 // --- Parallax Displacement ---
                 let worldPosition = transform.position;
 

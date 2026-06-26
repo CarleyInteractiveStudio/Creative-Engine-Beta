@@ -15,6 +15,7 @@ export function setCustomComponentProvider(provider) {
 
 export class Scene {
     constructor() {
+        this.is3D = false;
         this.materias = [];
         this.ambiente = {
             luzAmbiental: '#1a1a2a',
@@ -35,10 +36,8 @@ export class Scene {
     }
 
     addMateria(materia) {
-        if (materia instanceof Materia) {
-            this.materias.push(materia);
-            this._setMateriaSceneRecursive(materia);
-        }
+        this.materias.push(materia);
+        this._setMateriaSceneRecursive(materia);
     }
 
     _setMateriaSceneRecursive(materia) {
@@ -148,7 +147,7 @@ export class Scene {
     }
 
     clone() {
-        const newScene = new Scene();
+        const newScene = this.is3D ? new Scene3DClass() : new Scene();
         newScene.ambiente = JSON.parse(JSON.stringify(this.ambiente));
 
         // Clone all root materias. The Materia.clone method is recursive.
