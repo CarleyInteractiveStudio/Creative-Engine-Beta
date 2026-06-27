@@ -1463,24 +1463,24 @@ export function initialize(dependencies) {
                         console.log(`[SceneView] Inicializando scripts para nuevo objeto '${newMateria.name}' en tiempo de ejecución.`);
                         const initScriptsRecursive = async (mtr) => {
                             for (const ley of mtr.leyes) {
-                                if (ley instanceof Components.CreativeScript) {
+                                if (ley.constructor.name === 'CreativeScript') {
                                     await ley.initializeInstance();
                                     if (ley.isInitialized) {
                                         try { ley.start(); } catch(e) {}
                                         try { ley.onEnable(); } catch(e) {}
                                     }
-                                } else if (ley instanceof Components.AnimatorController) {
+                                } else if (ley.constructor.name === 'AnimatorController') {
                                     await ley.initialize(window.projectsDirHandle);
-                                } else if (ley instanceof Components.Animator) {
+                                } else if (ley.constructor.name === 'Animator') {
                                     if (!mtr.getComponent(Components.AnimatorController)) {
                                         await ley.loadAnimationClip(window.projectsDirHandle);
                                         if (ley.playOnAwake) ley.play();
                                     }
-                                } else if (ley instanceof Components.Terreno2D) {
+                                } else if (ley.constructor.name === 'Terreno2D') {
                                     await ley.loadTextures(window.projectsDirHandle);
                                 }
 
-                                if (!(ley instanceof Components.CreativeScript) && typeof ley.start === 'function') {
+                                if (!(ley.constructor.name === 'CreativeScript') && typeof ley.start === 'function') {
                                     try { await ley.start(); } catch(e) {}
                                 }
                             }

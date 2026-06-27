@@ -293,7 +293,7 @@ async function handleInspectorDrop(e) {
         if (componentName === 'CreativeScript') {
              targetComponent = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === scriptName);
         } else if (componentName === 'CustomComponent') {
-             targetComponent = selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == componentId);
+             targetComponent = selectedMateria.leyes.find(ley => ley.constructor.name === 'CustomComponent' && ley.id == componentId);
         } else if (componentName) {
              targetComponent = selectedMateria.getComponent(Components[componentName]);
         } else {
@@ -409,7 +409,7 @@ function handleInspectorInput(e) {
 
     if (componentName === 'CustomComponent') {
         const componentId = e.target.dataset.componentId; // Unique identifier if multiple custom components
-        const component = selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == componentId);
+        const component = selectedMateria.leyes.find(ley => ley.constructor.name === 'CustomComponent' && ley.id == componentId);
         if (component) {
             component.publicVars[propPath] = value;
         }
@@ -634,7 +634,7 @@ function handleInspectorClick(e) {
             if (componentName === 'CreativeScript') {
                  targetComponent = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === scriptName);
             } else if (componentName === 'CustomComponent') {
-                 targetComponent = selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == componentId);
+                 targetComponent = selectedMateria.leyes.find(ley => ley.constructor.name === 'CustomComponent' && ley.id == componentId);
             } else if (componentName) {
                  targetComponent = selectedMateria.getComponent(Components[componentName]);
             }
@@ -1169,7 +1169,7 @@ export function refreshInspectorValues() {
         if (componentName === 'CreativeScript') {
              targetComponent = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === scriptName);
         } else if (componentName === 'CustomComponent') {
-             targetComponent = selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == componentId);
+             targetComponent = selectedMateria.leyes.find(ley => ley.constructor.name === 'CustomComponent' && ley.id == componentId);
         } else if (componentName) {
              targetComponent = selectedMateria.getComponent(Components[componentName]);
         }
@@ -1647,7 +1647,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 const icon = componentIcons[componentName] || 'settings';
         const iconHTML = `<span class="component-icon">${getIconHTML(icon)}</span>`;
 
-        if (ley instanceof Components.TextureRender) {
+        if (ley.constructor.name === 'TextureRender') {
             let dimensionsHTML = '';
             if (ley.shape === 'Rectangle' || ley.shape === 'Triangle' || ley.shape === 'Capsule') {
                 dimensionsHTML = `
@@ -1707,8 +1707,8 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.VerticalLayoutGroup || ley instanceof Components.HorizontalLayoutGroup) {
-            const isVertical = ley instanceof Components.VerticalLayoutGroup;
+        } else if (ley.constructor.name === 'VerticalLayoutGroup' || ley.constructor.name === 'HorizontalLayoutGroup') {
+            const isVertical = ley.constructor.name === 'VerticalLayoutGroup';
             const compName = isVertical ? 'VerticalLayoutGroup' : 'HorizontalLayoutGroup';
             const title = isVertical ? L.get('VERTICAL_LAYOUT', "Vertical Layout") : L.get('HORIZONTAL_LAYOUT', "Horizontal Layout");
             componentHTML = `
@@ -1729,7 +1729,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.GridLayoutGroup) {
+        } else if (ley.constructor.name === 'GridLayoutGroup') {
             componentHTML = `
                 ${renderComponentHeader(L.get('GRID_LAYOUT', "Grid Layout"), icon, index)}
                 <div class="component-content">
@@ -1754,7 +1754,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.ContentSizeFitter) {
+        } else if (ley.constructor.name === 'ContentSizeFitter') {
              componentHTML = `
                 ${renderComponentHeader(L.get('SIZE_FITTER', "Size Fitter"), icon, index)}
                 <div class="component-content">
@@ -1774,7 +1774,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.VideoPlayer) {
+        } else if (ley.constructor.name === 'VideoPlayer') {
             componentHTML = `
                 ${renderComponentHeader(L.get('VIDEO_PLAYER', "Video Player"), icon, index)}
                 <div class="component-content">
@@ -1824,7 +1824,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <button class="primary-btn inspector-action-btn" data-action="sync-video-size" data-ley-index="${index}" style="width: 100%; margin-top: 10px; font-weight: bold; border-radius: 4px;" title="${L.get('AJUSTAR_TAMANO_VIDEO_DESC', 'Ajusta el tamaño del objeto UI para que coincida con la resolución nativa del video.')}">${L.get('AJUSTAR_TAMANO_AL_VIDEO', 'Ajustar Tamaño al Video')}</button>
                 </div>
             `;
-        } else if (ley instanceof Components.Health) {
+        } else if (ley.constructor.name === 'Health') {
             let warningHTML = '';
             if (ley.deathAnimation && !selectedMateria.getComponentByName('Animator')) {
                 warningHTML = renderDependencyWarning('Health', 'Animator');
@@ -1864,7 +1864,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.Attack) {
+        } else if (ley.constructor.name === 'Attack') {
             let warningHTML = '';
             if (ley.attacks.some(atk => atk.sound) && !selectedMateria.getComponentByName('AudioSource')) {
                 warningHTML = renderDependencyWarning('Attack', 'AudioSource');
@@ -1926,7 +1926,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <button class="add-event-btn" onclick="const atk = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.Attack); atk.attacks.push({key: 'j', animation: '', damage: 10, pushForce: 5, duration: 0.2}); window.updateInspector();">+</button>
                 </div>
             `;
-        } else if (ley instanceof Components.ProgressBar) {
+        } else if (ley.constructor.name === 'ProgressBar') {
             componentHTML = `
                 ${renderComponentHeader(L.get('PROGRESS_BAR', "Barra de Progreso"), icon, index)}
                 <div class="component-content">
@@ -1968,7 +1968,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.UIScrollRect) {
+        } else if (ley.constructor.name === 'UIScrollRect') {
             componentHTML = `
                 ${renderComponentHeader(L.get('SCROLL_RECT', "Rect de Desplazamiento"), icon, index)}
                 <div class="component-content">
@@ -2002,7 +2002,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.UIMask) {
+        } else if (ley.constructor.name === 'UIMask') {
             componentHTML = `
                 ${renderComponentHeader(L.get('UI_MASK', "Máscara UI"), icon, index)}
                 <div class="component-content">
@@ -2013,7 +2013,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <p class="info-text">${L.get('MASK_INFO', 'Recorta los elementos hijos dentro del área de este objeto.')}</p>
                 </div>
             `;
-        } else if (ley instanceof Components.UICollider) {
+        } else if (ley.constructor.name === 'UICollider') {
             componentHTML = `
                 ${renderComponentHeader(L.get('UI_COLLIDER', "Colisionador UI"), icon, index)}
                 <div class="component-content">
@@ -2023,7 +2023,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.Patrol) {
+        } else if (ley.constructor.name === 'Patrol') {
             componentHTML = `
                 ${renderComponentHeader(L.get('PATROL_COMPONENT', "Patrulla (Patrol)"), icon, index)}
                 <div class="component-content">
@@ -2055,7 +2055,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.Transform) {
+        } else if (ley.constructor.name === 'Transform') {
             if (selectedMateria.getComponent(Components.UITransform)) {
                 return;
             }
@@ -2098,7 +2098,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.PolygonCollider2D) {
+        } else if (ley.constructor.name === 'PolygonCollider2D') {
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader(L.get('POLYGON_COLLIDER_2D', "Polygon Collider 2D"), icon, index)}
@@ -2121,7 +2121,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.UITransform) {
+        } else if (ley.constructor.name === 'UITransform') {
             let anchorGridHTML = '';
             const anchorTitles = [
                 L.get('TOP_LEFT', 'Top Left'), L.get('TOP_CENTER', 'Top Center'), L.get('TOP_RIGHT', 'Top Right'),
@@ -2170,7 +2170,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.UIImage) {
+        } else if (ley.constructor.name === 'UIImage') {
             componentHTML = `${renderComponentHeader(L.get('UI_IMAGE', "UI Image"), icon, index)}
             <div class="component-content">
                 <div class="inspector-row">
@@ -2189,7 +2189,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="range" class="prop-input" min="0" max="1" step="0.01" data-component="UIImage" data-prop="opacity" value="${ley.opacity !== undefined ? ley.opacity : 1.0}">
                     </div>
             </div>`;
-        } else if (ley instanceof Components.UIText) {
+        } else if (ley.constructor.name === 'UIText') {
             const fontName = ley.fontAssetPath ? ley.fontAssetPath.split('/').pop() : L.get('DEFAULT', 'Default');
             componentHTML = `
                 ${renderComponentHeader(L.get('UI_TEXT', "UI Text"), "type", index)}
@@ -2231,7 +2231,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.Canvas) {
+        } else if (ley.constructor.name === 'Canvas') {
             const isWorldSpace = ley.renderMode === 'World Space';
             const ssResolution = ley.referenceResolution || { width: 800, height: 600 };
 
@@ -2278,7 +2278,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="SCALE_CHILDREN">${L.get('SCALE_CHILDREN', 'Scale Children')}</label>
                     </div>
                 </div>`;
-        } else if (ley instanceof Components.Button) {
+        } else if (ley.constructor.name === 'Button') {
             const isColorTint = ley.transition === 'Color Tint';
             const isSpriteSwap = ley.transition === 'Sprite Swap';
             const isAnimation = ley.transition === 'Animation';
@@ -2370,7 +2370,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         }
-        else if (ley instanceof Components.CircleCollider2D) {
+        else if (ley.constructor.name === 'CircleCollider2D') {
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader(L.get('CIRCLE_COLLIDER_2D', "Circle Collider 2D"), 'disc', index)}
@@ -2395,7 +2395,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.SpriteRenderer) {
+        } else if (ley.constructor.name === 'SpriteRenderer') {
             let spriteSelectorHTML = '';
             // If a .ceSprite asset is loaded, show the dropdown to select a specific sprite
             if (ley.spriteSheet && ley.spriteSheet.sprites && Object.keys(ley.spriteSheet.sprites).length > 0) {
@@ -2459,7 +2459,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>`;
         }
-        else if (ley instanceof Components.CreativeScript) {
+        else if (ley.constructor.name === 'CreativeScript') {
             let publicVarsHTML = '';
             const metadata = CES_Transpiler.getScriptMetadata(ley.scriptName);
 
@@ -2481,7 +2481,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     ${publicVarsHTML || '<p class="field-description">Este script no tiene variables públicas.</p>'}
                 </div>
             `;
-        } else if (ley instanceof Components.Animator) {
+        } else if (ley.constructor.name === 'Animator') {
             componentHTML = `
                 ${renderComponentHeader(L.get('ANIMATOR', "Animator"), icon, index)}
                 <div class="component-content">
@@ -2502,7 +2502,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="REPRODUCIR_AL_EMPEZAR">${L.get('REPRODUCIR_AL_EMPEZAR', 'Play On Awake')}</label>
                     </div>
                 </div>`;
-        } else if (ley instanceof Components.AnimatorController) {
+        } else if (ley.constructor.name === 'AnimatorController') {
             let statesListHTML = `<p class="field-description">${L.get('HINT_ASIGNAR_CONTROLADOR', 'Asigna un Controller para ver sus estados.')}</p>`;
             if (ley.controller && ley.states.size > 0) {
                 statesListHTML = '<ul>';
@@ -2550,7 +2550,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         ${statesListHTML}
                     </div>
                 </div>`;
-        } else if (ley instanceof Components.Camera) {
+        } else if (ley.constructor.name === 'Camera') {
             const projection = ley.projection || 'Perspective';
             const clearFlags = ley.clearFlags || 'SolidColor';
 
@@ -2613,7 +2613,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.PointLight2D) {
+        } else if (ley.constructor.name === 'PointLight2D') {
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader(L.get('POINT_LIGHT_2D', "Point Light 2D"), icon, index)}
@@ -2648,7 +2648,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.SpotLight2D) {
+        } else if (ley.constructor.name === 'SpotLight2D') {
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader(L.get('SPOT_LIGHT_2D', "Spot Light 2D"), icon, index)}
@@ -2689,7 +2689,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.FreeformLight2D) {
+        } else if (ley.constructor.name === 'FreeformLight2D') {
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader(L.get('FREEFORM_LIGHT_2D', "Freeform Light 2D"), icon, index)}
@@ -2719,7 +2719,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <p class="field-description" data-i18n="VERTICES_EDIT_FUTURE">${L.get('VERTICES_EDIT_FUTURE', 'La edición de vértices se implementará en una futura actualización.')}</p>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.Tilemap) {
+        } else if (ley.constructor.name === 'Tilemap') {
             // Safeguard against corrupted layer data from old scene files
             if (!ley.layers || !Array.isArray(ley.layers)) {
                 componentHTML = `
@@ -2790,7 +2790,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 `;
             }
-        } else if (ley instanceof Components.TilemapRenderer) {
+        } else if (ley.constructor.name === 'TilemapRenderer') {
             componentHTML = `
                 ${renderComponentHeader(L.get('TILEMAP_RENDERER', 'Tilemap Renderer'), 'brush', index)}
                 <div class="component-content">
@@ -2800,7 +2800,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.TilemapCollider2D) {
+        } else if (ley.constructor.name === 'TilemapCollider2D') {
             const tilemap = selectedMateria.getComponent(Components.Tilemap);
             let layerOptions = `<option value="-1">${L.get('NINGUNA', 'Ninguna')}</option>`;
             if (tilemap) {
@@ -2827,7 +2827,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <p class="field-description" style="margin-top: 8px;">${L.get('COLLIDERS_GENERATED', 'Colisionadores generados')}: ${ley.generatedColliders.length}</p>
                 </div>
             `;
-        } else if (ley instanceof Components.Grid) {
+        } else if (ley.constructor.name === 'Grid') {
             // Ensure cellSize exists before trying to access its properties
             const cellSize = ley.cellSize || { x: 32, y: 32 };
 
@@ -2869,7 +2869,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     ${sizeInputHTML}
                 </div>
             </div>`;
-        } else if (ley instanceof Components.CapsuleCollider2D) {
+        } else if (ley.constructor.name === 'CapsuleCollider2D') {
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader(L.get('CAPSULE_COLLIDER_2D', "Capsule Collider 2D"), icon, index)}
@@ -2904,7 +2904,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.SpriteLight2D) {
+        } else if (ley.constructor.name === 'SpriteLight2D') {
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader(L.get('SPRITE_LIGHT_2D', "Sprite Light 2D"), icon, index)}
@@ -2936,7 +2936,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.Rigidbody2D) {
+        } else if (ley.constructor.name === 'Rigidbody2D') {
             let warningHTML = '';
             if (ley.bodyType !== 'Static' && !selectedMateria.leyes.some(l => l.constructor.name.includes('Collider2D'))) {
                 warningHTML = `
@@ -2995,7 +2995,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.CustomComponent) {
+        } else if (ley.constructor.name === 'CustomComponent') {
             let publicVarsHTML = '';
             if (ley.definition && ley.definition.metadata && ley.definition.metadata.publicVars) {
                 for (const pv of ley.definition.metadata.publicVars) {
@@ -3014,7 +3014,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     ${publicVarsHTML || '<p class="field-description">Este componente no tiene propiedades públicas.</p>'}
                 </div>
             `;
-        } else if (ley instanceof Components.DrawingOrder) {
+        } else if (ley.constructor.name === 'DrawingOrder') {
             componentHTML = `
                 ${renderComponentHeader(L.get('DRAWING_ORDER_COMPONENT', "Orden de Dibujo"), icon, index)}
                 <div class="component-content">
@@ -3025,7 +3025,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <p class="field-description" data-i18n="DRAWING_ORDER_DESC">${L.get('DRAWING_ORDER_DESC', 'Valores altos delante, bajos detrás. Sobrescribe el orden por defecto.')}</p>
                 </div>
             `;
-        } else if (ley instanceof Components.BoxCollider2D) {
+        } else if (ley.constructor.name === 'BoxCollider2D') {
             let warningHTML = '';
             if (!selectedMateria.getComponentByName('Rigidbody2D')) {
                 warningHTML = renderDependencyWarning('BoxCollider2D', 'Rigidbody2D');
@@ -3057,7 +3057,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.Movement) {
+        } else if (ley.constructor.name === 'Movement') {
             let warningHTML = '';
             if (ley.useRigidbody && !selectedMateria.getComponentByName('Rigidbody2D')) {
                 warningHTML = renderDependencyWarning('Movement', 'Rigidbody2D');
@@ -3134,7 +3134,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.ProjectileLauncher) {
+        } else if (ley.constructor.name === 'ProjectileLauncher') {
             let warningHTML = '';
             if (ley.fireSound && !selectedMateria.getComponentByName('AudioSource')) {
                 warningHTML = renderDependencyWarning('ProjectileLauncher', 'AudioSource');
@@ -3183,7 +3183,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.AutoDestroy) {
+        } else if (ley.constructor.name === 'AutoDestroy') {
             componentHTML = `
                 ${renderComponentHeader(L.get('AUTO_DESTROY_COMPONENT', "Destrucción Automática"), icon, index)}
                 <div class="component-content">
@@ -3193,7 +3193,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.CameraFollow) {
+        } else if (ley.constructor.name === 'CameraFollow') {
              componentHTML = `
                 ${renderComponentHeader(L.get('CAMERA_FOLLOW_COMPONENT', "Seguimiento Cámara"), icon, index)}
                 <div class="component-content">
@@ -3222,7 +3222,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.ParticleSystem) {
+        } else if (ley.constructor.name === 'ParticleSystem') {
             componentHTML = `
                 ${renderComponentHeader(L.get('PARTICLE_SYSTEM', "Sistema de Partículas"), icon, index)}
                 <div class="component-content">
@@ -3260,7 +3260,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.Parallax) {
+        } else if (ley.constructor.name === 'Parallax') {
             componentHTML = `
                 ${renderComponentHeader(L.get('PARALLAX_COMPONENT', "Parallax (Avanzado)"), icon, index)}
                 <div class="component-content">
@@ -3309,7 +3309,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <p class="field-description">${L.get('PARALLAX_DESC', 'Scroll Factor: 0 = Pegado a cámara. 1 = Mundo real.<br>Mirroring: Tamaño de repetición (0 = no repite).')}</p>
                 </div>
             `;
-        } else if (ley instanceof Components.Terreno2D) {
+        } else if (ley.constructor.name === 'Terreno2D') {
             const settings = TerrenoEditorWindow.settings;
             componentHTML = `
                 ${renderComponentHeader(L.get('TERRAIN_2D_COMPONENT', "Terreno 2D (Píxeles)"), icon, index)}
@@ -3366,7 +3366,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <p class="field-description">${L.get('TERRAIN_BRUSH_DESC', 'Dibuja libremente en la escena con la herramienta de pincel de terreno activada. Las texturas rellenarán las zonas pintadas.')}</p>
                 </div>
             `;
-        } else if (ley instanceof Components.TerrenoCollider2D) {
+        } else if (ley.constructor.name === 'TerrenoCollider2D') {
             const isPolygon = ley.mode === 'Polygon';
             componentHTML = `
                 ${renderComponentHeader(L.get('TERRAIN_COLLIDER_2D', "Terreno Collider 2D"), icon, index)}
@@ -3398,7 +3398,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </p>
                 </div>
             `;
-        } else if (ley instanceof Components.Gyzmo) {
+        } else if (ley.constructor.name === 'Gyzmo') {
             componentHTML = `
                 ${renderComponentHeader(L.get('GYZMO_AREAS', "Gyzmo (Áreas)"), icon, index)}
                 <div class="component-content">
@@ -3453,7 +3453,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.RaycastSource) {
+        } else if (ley.constructor.name === 'RaycastSource') {
             componentHTML = `
                 ${renderComponentHeader(L.get('RAYCAST_SOURCE', "Raycast Source (Rallo)"), icon, index)}
                 <div class="component-content">
@@ -3485,7 +3485,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.Water) {
+        } else if (ley.constructor.name === 'Water') {
             componentHTML = `
                 ${renderComponentHeader(L.get('WATER', "Water (Agua)"), icon, index)}
                 <div class="component-content">
@@ -3520,7 +3520,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <button class="primary-btn" onclick="const w = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.Water); w.generateParticles(); window.updateScene();" style="width: 100%; margin-top: 10px;" data-i18n="REGENERAR_PARTICULAS">${L.get('REGENERAR_PARTICULAS', 'Regenerar Partículas')}</button>
                 </div>
             `;
-        } else if (ley instanceof Components.LineCollider2D) {
+        } else if (ley.constructor.name === 'LineCollider2D') {
             componentHTML = `
                 ${renderComponentHeader(L.get('LINE_COLLIDER', "Line Collider 2D"), icon, index)}
                 <div class="component-content">
@@ -3546,7 +3546,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.PlatformEffector2D) {
+        } else if (ley.constructor.name === 'PlatformEffector2D') {
             componentHTML = `
                 ${renderComponentHeader(L.get('PLATFORM_EFFECTOR', "Platform Effector 2D"), 'square', index)}
                 <div class="component-content">
@@ -3592,7 +3592,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     .effector-edge:hover { opacity: 1 !important; filter: brightness(1.2); }
                 </style>
             `;
-        } else if (ley instanceof Components.AudioSource) {
+        } else if (ley.constructor.name === 'AudioSource') {
             componentHTML = `
                 ${renderComponentHeader(L.get('AUDIO_SOURCE', "Audio Source"), icon, index)}
                 <div class="component-content">
@@ -3641,7 +3641,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.Suspension) {
+        } else if (ley.constructor.name === 'Suspension') {
             componentHTML = `
                 ${renderComponentHeader(L.get('SUSPENSION', "Suspensión"), icon, index)}
                 <div class="component-content">
@@ -3675,7 +3675,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.VehicleSideView2D) {
+        } else if (ley.constructor.name === 'VehicleSideView2D') {
             componentHTML = `
                 ${renderComponentHeader(L.get('VEHICLE_SIDE_VIEW_2D', "Vehículo Lateral 2D"), icon, index)}
                 <div class="component-content">
@@ -3728,7 +3728,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.VehicleTopDown) {
+        } else if (ley.constructor.name === 'VehicleTopDown') {
             let warningHTML = '';
             if ((ley.engineSound || ley.brakeSound) && !selectedMateria.getComponentByName('AudioSource')) {
                 warningHTML = renderDependencyWarning('VehicleTopDown', 'AudioSource');
@@ -3808,7 +3808,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.PlaneController) {
+        } else if (ley.constructor.name === 'PlaneController') {
             let warningHTML = '';
             if ((ley.engineSound || ley.takeoffSound) && !selectedMateria.getComponentByName('AudioSource')) {
                 warningHTML = renderDependencyWarning('PlaneController', 'AudioSource');
@@ -3890,7 +3890,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.HelicopterController) {
+        } else if (ley.constructor.name === 'HelicopterController') {
             let warningHTML = '';
             if (ley.engineSound && !selectedMateria.getComponentByName('AudioSource')) {
                 warningHTML = renderDependencyWarning('HelicopterController', 'AudioSource');
@@ -3964,7 +3964,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.Bone) {
+        } else if (ley.constructor.name === 'Bone') {
             componentHTML = `
                 ${renderComponentHeader(L.get('BONE', "Hueso"), icon, index)}
                 <div class="component-content">
@@ -3985,7 +3985,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.SkeletonRenderer) {
+        } else if (ley.constructor.name === 'SkeletonRenderer') {
             componentHTML = `
                 ${renderComponentHeader(L.get('SKELETON_RENDERER', "Esqueleto"), icon, index)}
                 <div class="component-content">
@@ -4041,7 +4041,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.IKManager2D) {
+        } else if (ley.constructor.name === 'IKManager2D') {
             componentHTML = `
                 ${renderComponentHeader(L.get('IK_MANAGER_2D', "IK Manager 2D"), icon, index)}
                 <div class="component-content">
@@ -4063,7 +4063,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.SceneLoader) {
+        } else if (ley.constructor.name === 'SceneLoader') {
             componentHTML = `
                 ${renderComponentHeader(L.get('SCENE_LOADER', "Cargar Escena"), icon, index)}
                 <div class="component-content">
@@ -4086,7 +4086,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <p class="field-description">${L.get('SCENE_LOADER_DESC', 'Carga una escena cuando el jugador colisiona, se presiona una tecla o se clica en el botón asignado.')}</p>
                 </div>
             `;
-        } else if (ley instanceof Components.BasicAI) {
+        } else if (ley.constructor.name === 'BasicAI') {
             const renderAIFuncInput = (propName, label) => {
                 let inputHTML = `<input type="text" autocomplete="off" class="prop-input" data-component="BasicAI" data-prop="${propName}" value="${ley[propName] || ''}" placeholder="${L.get('EXAMPLE_AI_FUNC', 'ej: alDetectarEnemigo')}">`;
 
@@ -5254,7 +5254,7 @@ export async function showAddComponentModal() {
 
     const existingComponents = new Set(selectedMateria.leyes.map(ley => ley.constructor));
     const existingCustomComponents = new Set(selectedMateria.leyes
-        .filter(ley => ley instanceof Components.CustomComponent)
+        .filter(ley => ley.constructor.name === 'CustomComponent')
         .map(ley => ley.definition.nombre)
     );
     const existingScripts = new Set(selectedMateria.leyes.filter(ley => ley.constructor.name === (is3DProject ? 'CreativeScript3D' : 'CreativeScript')).map(ley => ley.scriptName));

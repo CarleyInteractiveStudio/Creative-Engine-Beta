@@ -2658,7 +2658,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (materia.isActive) {
                         for (const ley of materia.leyes) {
                             // 1. Script Initialization
-                                if (ley instanceof Components.CreativeScript || (window.Components3D && ley instanceof window.Components3D.CreativeScript3D)) {
+                                if (ley.constructor.name === 'CreativeScript' || (window.Components3D && ley instanceof window.Components3D.CreativeScript3D)) {
                                 await ley.initializeInstance();
                                 if (ley.isInitialized) {
                                     try {
@@ -2674,19 +2674,19 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }
                             }
                             // 2. Specific Component Initialization
-                            else if (ley instanceof Components.AnimatorController) {
+                            else if (ley.constructor.name === 'AnimatorController') {
                                 await ley.initialize(projectsDirHandle);
-                            } else if (ley instanceof Components.Animator) {
+                            } else if (ley.constructor.name === 'Animator') {
                                 if (!materia.getComponent(Components.AnimatorController)) {
                                     await ley.loadAnimationClip(projectsDirHandle);
                                     if (ley.playOnAwake) ley.play();
                                 }
-                            } else if (ley instanceof Components.Terreno2D) {
+                            } else if (ley.constructor.name === 'Terreno2D') {
                                 await ley.loadTextures(projectsDirHandle);
                             }
 
                             // 3. Generic start for all non-script components (including AnimatorController)
-                            if (!(ley instanceof Components.CreativeScript) && !(window.Components3D && ley instanceof window.Components3D.CreativeScript3D) && typeof ley.start === 'function') {
+                            if (!(ley.constructor.name === 'CreativeScript') && !(window.Components3D && ley instanceof window.Components3D.CreativeScript3D) && typeof ley.start === 'function') {
                                 try {
                                     await ley.start();
                                 } catch (e) {
