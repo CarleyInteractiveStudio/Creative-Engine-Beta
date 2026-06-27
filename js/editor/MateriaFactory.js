@@ -1,11 +1,12 @@
 // js/editor/MateriaFactory.js
 
 import { Materia } from '../engine/Materia.js';
+import { Materia3D } from '../engine/3d/Materia3D.js';
 import * as Components from '../engine/Components.js';
 import * as SceneManager from '../engine/SceneManager.js';
 
 async function ensure3D() {
-    if (!window.Components3D) window.Components3D = await import('../engine/Components3D.js');
+    if (!window.Components3D) window.Components3D = await import('../engine/3d/Components3D.js');
     return window.Components3D;
 }
 
@@ -18,8 +19,17 @@ export function generateUniqueName(baseName) {
 }
 
 export function createBaseMateria(name, parent = null, useUITransform = false, addToScene = true) {
-    const mtr = new Materia(name);
-    mtr.addComponent(useUITransform ? new Components.UITransform(mtr) : new Components.Transform(mtr));
+    const config = window.currentProjectConfig || {};
+    const is3D = config.projectType === '3d';
+
+    const mtr = is3D ? new Materia3D(name) : new Materia(name);
+
+    if (is3D) {
+        if (window.Components3D) mtr.addComponent(new window.Components3D.Transform(mtr));
+    } else {
+        mtr.addComponent(useUITransform ? new Components.UITransform(mtr) : new Components.Transform(mtr));
+    }
+
     if (parent) parent.addChild(mtr);
     else if (addToScene) SceneManager.currentScene.addMateria(mtr);
     return mtr;
@@ -44,17 +54,30 @@ export function createImageObject(parent) {
 export async function createCubeObject(parent = null, color = '#ffffff') {
     const C3D = await ensure3D();
     const mtr = createBaseMateria(generateUniqueName('Cubo'), parent);
-    mtr.getComponent(Components.Transform).localScale = { x: 100, y: 100, z: 100 };
+    const transform = mtr.transform || mtr.getComponent(Components.Transform);
+    if (transform) transform.localScale = { x: 100, y: 100, z: 100 };
     const renderer = new C3D.MeshRenderer3D(mtr);
     renderer.color = color;
     mtr.addComponent(renderer);
     return mtr;
 }
 
+export async function create3DPrimitive(type, parent = null) {
+    switch (type.toLowerCase()) {
+        case 'cube': return await createCubeObject(parent);
+        case 'sphere': return await createSphereObject(parent);
+        case 'triangle': return await createTriangle3DObject(parent);
+        case 'capsule': return await createCapsule3DObject(parent);
+        case 'plane': return await createPlane3DObject(parent);
+        default: return await createCubeObject(parent);
+    }
+}
+
 export async function createSphereObject(parent = null) {
     const C3D = await ensure3D();
     const mtr = createBaseMateria(generateUniqueName('Esfera'), parent);
-    mtr.getComponent(Components.Transform).localScale = { x: 100, y: 100, z: 100 };
+    const transform = mtr.transform || mtr.getComponent(Components.Transform);
+    if (transform) transform.localScale = { x: 100, y: 100, z: 100 };
     const renderer = new C3D.MeshRenderer3D(mtr);
     renderer.meshType = 'Sphere';
     mtr.addComponent(renderer);
@@ -64,7 +87,8 @@ export async function createSphereObject(parent = null) {
 export async function createTriangle3DObject(parent = null) {
     const C3D = await ensure3D();
     const mtr = createBaseMateria(generateUniqueName('Triángulo'), parent);
-    mtr.getComponent(Components.Transform).localScale = { x: 100, y: 100, z: 100 };
+    const transform = mtr.transform || mtr.getComponent(Components.Transform);
+    if (transform) transform.localScale = { x: 100, y: 100, z: 100 };
     const renderer = new C3D.MeshRenderer3D(mtr);
     renderer.meshType = 'Triangle';
     mtr.addComponent(renderer);
@@ -74,7 +98,8 @@ export async function createTriangle3DObject(parent = null) {
 export async function createCapsule3DObject(parent = null) {
     const C3D = await ensure3D();
     const mtr = createBaseMateria(generateUniqueName('Cápsula'), parent);
-    mtr.getComponent(Components.Transform).localScale = { x: 100, y: 100, z: 100 };
+    const transform = mtr.transform || mtr.getComponent(Components.Transform);
+    if (transform) transform.localScale = { x: 100, y: 100, z: 100 };
     const renderer = new C3D.MeshRenderer3D(mtr);
     renderer.meshType = 'Capsule';
     mtr.addComponent(renderer);
@@ -84,7 +109,8 @@ export async function createCapsule3DObject(parent = null) {
 export async function createPlane3DObject(parent = null) {
     const C3D = await ensure3D();
     const mtr = createBaseMateria(generateUniqueName('Plano'), parent);
-    mtr.getComponent(Components.Transform).localScale = { x: 100, y: 1, z: 100 };
+    const transform = mtr.transform || mtr.getComponent(Components.Transform);
+    if (transform) transform.localScale = { x: 100, y: 1, z: 100 };
     const renderer = new C3D.MeshRenderer3D(mtr);
     renderer.meshType = 'Plane';
     mtr.addComponent(renderer);
@@ -114,7 +140,7 @@ export async function createSpotLight3D(parent = null) {
 
 export async function createSkinnedMeshObject(modelPath, parent = null, options = {}) {
     const C3D = await ensure3D();
-    const { ModelLoader3D } = await import('../engine/ModelLoader3D.js');
+    const { ModelLoader3D } = await import('../engine/3d/ModelLoader3D.js');
     const modelData = await ModelLoader3D.loadModel(modelPath, window.projectsDirHandle);
     if (!modelData) return null;
 
@@ -136,10 +162,17 @@ export async function createSkinnedMeshObject(modelPath, parent = null, options 
     const nodeMaterias = [];
 
     if (modelData.nodes) {
+        const config = window.currentProjectConfig || {};
+        const is3D = config.projectType === '3d';
+
         for (const node of modelData.nodes) {
-            const nodeMtr = new Materia(node.name);
-            nodeMtr.addComponent(new Components.Transform(nodeMtr));
-            const t = nodeMtr.getComponent(Components.Transform);
+            const nodeMtr = is3D ? new Materia3D(node.name) : new Materia(node.name);
+            if (is3D) {
+                nodeMtr.addComponent(new C3D.Transform(nodeMtr));
+            } else {
+                nodeMtr.addComponent(new Components.Transform(nodeMtr));
+            }
+            const t = nodeMtr.transform || nodeMtr.getComponent(Components.Transform) || nodeMtr.getComponent(C3D.Transform);
             t.localPosition = { x: node.translation[0], y: node.translation[1], z: node.translation[2] };
 
             // GLTF quaternions are [x, y, z, w]. Our engine currently uses Euler [x, y, z] in Transform.
@@ -170,8 +203,12 @@ export async function createSkinnedMeshObject(modelPath, parent = null, options 
                     // or just use the nodeMtr for the first one.
                     let targetMtr = nodeMtr;
                     if (pIdx > 0) {
-                        targetMtr = new Materia(`${node.name}_part${pIdx}`);
-                        targetMtr.addComponent(new Components.Transform(targetMtr));
+                        targetMtr = is3D ? new Materia3D(`${node.name}_part${pIdx}`) : new Materia(`${node.name}_part${pIdx}`);
+                        if (is3D) {
+                            targetMtr.addComponent(new C3D.Transform(targetMtr));
+                        } else {
+                            targetMtr.addComponent(new Components.Transform(targetMtr));
+                        }
                         targetMtr.setParent(nodeMtr, false);
                     }
 
@@ -225,10 +262,12 @@ export async function createSkinnedMeshObject(modelPath, parent = null, options 
     }
 
     if (modelData.animations?.length > 0) {
-        const animator = new C3D.Animator3D(rootMateria);
-        animator.animations = modelData.animations.map(a => ({ ...a, channels: a.channels.map(c => ({ ...c, node: nodeMaterias[c.node]?.id || rootMateria.id })) }));
+        const animator = is3D ? new C3D.Animator3D(rootMateria) : new Components.Animator(rootMateria);
+        if (is3D) {
+            animator.animations = modelData.animations.map(a => ({ ...a, channels: a.channels.map(c => ({ ...c, node: nodeMaterias[c.node]?.id || rootMateria.id })) }));
+        }
         rootMateria.addComponent(animator);
-        animator.play();
+        if (is3D && animator.play) animator.play();
     }
     return rootMateria;
 }
@@ -364,26 +403,29 @@ export function createInventoryUITemplate() {
 export async function createDefaultCharacter(parent = null) {
     const C3D = await ensure3D();
     const root = createBaseMateria('Personaje Humanoide', parent);
-    const transform = root.getComponent(Components.Transform);
+    const transform = root.transform || root.getComponent(Components.Transform);
     transform.position = { x: 0, y: 90, z: 0 };
 
     const hip = createBaseMateria('Cadera', root);
     const torso = createBaseMateria('Torso', hip);
-    torso.getComponent(Components.Transform).localPosition = { x: 0, y: 30, z: 0 };
+    const torsoT = torso.transform || torso.getComponent(Components.Transform);
+    torsoT.localPosition = { x: 0, y: 30, z: 0 };
     const neck = createBaseMateria('Cuello', torso);
-    neck.getComponent(Components.Transform).localPosition = { x: 0, y: 35, z: 0 };
+    const neckT = neck.transform || neck.getComponent(Components.Transform);
+    neckT.localPosition = { x: 0, y: 35, z: 0 };
     const head = createBaseMateria('Cabeza', neck);
-    head.getComponent(Components.Transform).localPosition = { x: 0, y: 15, z: 0 };
-    const eyeL = createBaseMateria('Ojo_I', head); eyeL.getComponent(Components.Transform).localPosition = { x: -8, y: 5, z: 12 };
-    const eyeR = createBaseMateria('Ojo_D', head); eyeR.getComponent(Components.Transform).localPosition = { x: 8, y: 5, z: 12 };
-    const armL = createBaseMateria('Brazo_I', torso); armL.getComponent(Components.Transform).localPosition = { x: -30, y: 5, z: 0 };
-    const handL = createBaseMateria('Mano_I', armL); handL.getComponent(Components.Transform).localPosition = { x: 0, y: -45, z: 0 };
-    const armR = createBaseMateria('Brazo_D', torso); armR.getComponent(Components.Transform).localPosition = { x: 30, y: 5, z: 0 };
-    const handR = createBaseMateria('Mano_D', armR); handR.getComponent(Components.Transform).localPosition = { x: 0, y: -45, z: 0 };
-    const legL = createBaseMateria('Pierna_I', hip); legL.getComponent(Components.Transform).localPosition = { x: -15, y: -10, z: 0 };
-    const footL = createBaseMateria('Pie_I', legL); footL.getComponent(Components.Transform).localPosition = { x: 0, y: -80, z: 0 };
-    const legR = createBaseMateria('Pierna_D', hip); legR.getComponent(Components.Transform).localPosition = { x: 15, y: -10, z: 0 };
-    const footR = createBaseMateria('Pie_D', legR); footR.getComponent(Components.Transform).localPosition = { x: 0, y: -80, z: 0 };
+    const headT = head.transform || head.getComponent(Components.Transform);
+    headT.localPosition = { x: 0, y: 15, z: 0 };
+    const eyeL = createBaseMateria('Ojo_I', head); (eyeL.transform || eyeL.getComponent(Components.Transform)).localPosition = { x: -8, y: 5, z: 12 };
+    const eyeR = createBaseMateria('Ojo_D', head); (eyeR.transform || eyeR.getComponent(Components.Transform)).localPosition = { x: 8, y: 5, z: 12 };
+    const armL = createBaseMateria('Brazo_I', torso); (armL.transform || armL.getComponent(Components.Transform)).localPosition = { x: -30, y: 5, z: 0 };
+    const handL = createBaseMateria('Mano_I', armL); (handL.transform || handL.getComponent(Components.Transform)).localPosition = { x: 0, y: -45, z: 0 };
+    const armR = createBaseMateria('Brazo_D', torso); (armR.transform || armR.getComponent(Components.Transform)).localPosition = { x: 30, y: 5, z: 0 };
+    const handR = createBaseMateria('Mano_D', armR); (handR.transform || handR.getComponent(Components.Transform)).localPosition = { x: 0, y: -45, z: 0 };
+    const legL = createBaseMateria('Pierna_I', hip); (legL.transform || legL.getComponent(Components.Transform)).localPosition = { x: -15, y: -10, z: 0 };
+    const footL = createBaseMateria('Pie_I', legL); (footL.transform || footL.getComponent(Components.Transform)).localPosition = { x: 0, y: -80, z: 0 };
+    const legR = createBaseMateria('Pierna_D', hip); (legR.transform || legR.getComponent(Components.Transform)).localPosition = { x: 15, y: -10, z: 0 };
+    const footR = createBaseMateria('Pie_D', legR); (footR.transform || footR.getComponent(Components.Transform)).localPosition = { x: 0, y: -80, z: 0 };
 
     const jointsOrder = [hip, torso, neck, head, eyeL, eyeR, armL, handL, armR, handR, legL, footL, legR, footR];
     const meshData = { positions: [], normals: [], colors: [], joints: [], weights: [], indices: [] };
@@ -449,8 +491,8 @@ export async function createDefaultCharacter(parent = null) {
 
     // Helper to get world position of a joint for vertex alignment
     const getJointWorldPos = (joint) => {
-        const pos = joint.getComponent(Components.Transform).position;
-        return pos;
+        const t = joint.transform || joint.getComponent(Components.Transform);
+        return t.position;
     };
 
     // Hip
@@ -490,7 +532,7 @@ export async function createDefaultCharacter(parent = null) {
     // hierarchy recursion. We simply invert them to get the InverseBindMatrices.
     const glm = window.glMatrix;
     jointsOrder.forEach((m, i) => {
-        const t = m.getComponent(Components.Transform);
+        const t = m.transform || m.getComponent(Components.Transform);
         const inv = glm.mat4.create();
         // Accessing the worldMatrix getter triggers the necessary calculations
         glm.mat4.invert(inv, t.worldMatrix);
@@ -508,9 +550,9 @@ export async function createDefaultCharacter(parent = null) {
     root.addComponent(new C3D.MovementControl3D(root));
 
     const camMtr = createBaseMateria('Camara_3ra_Persona', root);
-    camMtr.getComponent(Components.Transform).localPosition = { x: 0, y: 150, z: 450 };
-    camMtr.addComponent(new Components.Camera(camMtr));
-    const cam = camMtr.getComponent(Components.Camera);
+    (camMtr.transform || camMtr.getComponent(Components.Transform)).localPosition = { x: 0, y: 150, z: 450 };
+    camMtr.addComponent(new C3D.Camera(camMtr));
+    const cam = camMtr.getComponent(C3D.Camera);
     cam.projection = 'Perspective';
     cam.fov = 65;
     cam.clearFlags = 'Skybox';
@@ -529,7 +571,7 @@ export async function createAdvancedVehicle(parent = null) {
 
     const body = await createCubeObject(root, '#e74c3c');
     body.name = 'Carroceria';
-    body.getComponent(Components.Transform).localScale = { x: 220, y: 90, z: 450 };
+    (body.transform || body.getComponent(Components.Transform)).localScale = { x: 220, y: 90, z: 450 };
 
     const wheelNames = ['Rueda_Frontal_Izquierda', 'Rueda_Frontal_Derecha', 'Rueda_Trasera_Izquierda', 'Rueda_Trasera_Derecha'];
     const wheelPositions = [
@@ -541,7 +583,7 @@ export async function createAdvancedVehicle(parent = null) {
     for (let i = 0; i < 4; i++) {
         const wheel = await createSphereObject(root);
         wheel.name = wheelNames[i];
-        const t = wheel.getComponent(Components.Transform);
+        const t = wheel.transform || wheel.getComponent(Components.Transform);
         t.localPosition = wheelPositions[i];
         t.localScale = { x: 60, y: 60, z: 60 };
 
@@ -573,7 +615,7 @@ export async function createVehicleTemplate(parent = null) {
 
     const body = await createCubeObject(root, '#3498db');
     body.name = 'Chasis';
-    body.getComponent(Components.Transform).localScale = { x: 200, y: 80, z: 400 };
+    (body.transform || body.getComponent(Components.Transform)).localScale = { x: 200, y: 80, z: 400 };
 
     const wheelNames = ['Rueda_DI', 'Rueda_DD', 'Rueda_TI', 'Rueda_TD'];
     const wheelPositions = [
@@ -584,7 +626,7 @@ export async function createVehicleTemplate(parent = null) {
     for (let i = 0; i < 4; i++) {
         const wheel = await createSphereObject(root);
         wheel.name = wheelNames[i];
-        const t = wheel.getComponent(Components.Transform);
+        const t = wheel.transform || wheel.getComponent(Components.Transform);
         t.localPosition = wheelPositions[i];
         t.localScale = { x: 40, y: 40, z: 40 };
     }
@@ -607,29 +649,32 @@ export async function createTestCircuit(parent = null) {
 
     // --- 1. Base Gran Plataforma ---
     const ground = await createPlane3DObject(root);
-    ground.getComponent(Components.Transform).localScale = { x: 10000, y: 1, z: 10000 };
+    (ground.transform || ground.getComponent(Components.Transform)).localScale = { x: 10000, y: 1, z: 10000 };
     ground.getComponent(C3D.MeshRenderer3D).color = '#0d0d0f';
 
     // --- 2. Pista Refinada con Bordes de Seguridad ---
     const track = await createPlane3DObject(root);
-    track.getComponent(Components.Transform).localPosition = { x: 0, y: 2, z: 0 };
-    track.getComponent(Components.Transform).localScale = { x: 800, y: 1, z: 8000 };
+    const trackT = track.transform || track.getComponent(Components.Transform);
+    trackT.localPosition = { x: 0, y: 2, z: 0 };
+    trackT.localScale = { x: 800, y: 1, z: 8000 };
     track.getComponent(C3D.MeshRenderer3D).color = darkMetal;
 
     // Bordes amarillos (Caution Stripes effect)
     const leftBorder = await createCubeObject(root, safetyYellow);
-    leftBorder.getComponent(Components.Transform).localPosition = { x: -410, y: 5, z: 0 };
-    leftBorder.getComponent(Components.Transform).localScale = { x: 20, y: 10, z: 8000 };
+    const lbT = leftBorder.transform || leftBorder.getComponent(Components.Transform);
+    lbT.localPosition = { x: -410, y: 5, z: 0 };
+    lbT.localScale = { x: 20, y: 10, z: 8000 };
 
     const rightBorder = await createCubeObject(root, safetyYellow);
-    rightBorder.getComponent(Components.Transform).localPosition = { x: 410, y: 5, z: 0 };
-    rightBorder.getComponent(Components.Transform).localScale = { x: 20, y: 10, z: 8000 };
+    const rbT = rightBorder.transform || rightBorder.getComponent(Components.Transform);
+    rbT.localPosition = { x: 410, y: 5, z: 0 };
+    rbT.localScale = { x: 20, y: 10, z: 8000 };
 
     // --- 3. Tuberías Industriales ---
     const createPipe = async (pos, rot, scale, color = '#7f8c8d') => {
         const pipe = await createCapsule3DObject(root);
         pipe.name = "Tuberia_Industrial";
-        const t = pipe.getComponent(Components.Transform);
+        const t = pipe.transform || pipe.getComponent(Components.Transform);
         t.localPosition = pos;
         t.localRotation = rot;
         t.localScale = scale;
@@ -645,7 +690,7 @@ export async function createTestCircuit(parent = null) {
     // --- 4. Escalera Metálica ---
     for (let i = 0; i < 10; i++) {
         const step = await createCubeObject(root, i % 2 === 0 ? darkMetal : lightMetal);
-        const t = step.getComponent(Components.Transform);
+        const t = step.transform || step.getComponent(Components.Transform);
         t.localPosition = { x: -300, y: i * 25, z: 1000 + i * 80 };
         t.localScale = { x: 250, y: 15, z: 80 };
         step.addComponent(new C3D.BoxCollider3D(step));
@@ -653,80 +698,88 @@ export async function createTestCircuit(parent = null) {
 
     // --- 5. Estación de Energía (Obstáculo Complejo) ---
     const station = createBaseMateria("Estacion_Energia", root);
-    station.getComponent(Components.Transform).localPosition = { x: 0, y: 150, z: 3000 };
+    (station.transform || station.getComponent(Components.Transform)).localPosition = { x: 0, y: 150, z: 3000 };
 
     const core = await createCubeObject(station, '#3498db');
-    core.getComponent(Components.Transform).localScale = { x: 200, y: 300, z: 200 };
+    (core.transform || core.getComponent(Components.Transform)).localScale = { x: 200, y: 300, z: 200 };
     core.addComponent(new C3D.BoxCollider3D(core));
 
     const light = await createPointLight3D(station);
-    light.getComponent(Components.Transform).localPosition = { x: 0, y: 350, z: 0 };
+    (light.transform || light.getComponent(Components.Transform)).localPosition = { x: 0, y: 350, z: 0 };
     const pLight = light.getComponent(C3D.PointLight3D);
     pLight.color = neonCyan; pLight.intensity = 2.0; pLight.radius = 800;
 
     // --- 6. Rampa de Salto con Neones ---
     const ramp = await createCubeObject(root, industrialBlue);
-    const rt = ramp.getComponent(Components.Transform);
+    const rt = ramp.transform || ramp.getComponent(Components.Transform);
     rt.localPosition = { x: 250, y: 50, z: 4500 };
     rt.localScale = { x: 400, y: 20, z: 1000 };
     rt.localRotation = { x: 20, y: 0, z: 0 }; // Flipped rotation for +Y UP
     ramp.addComponent(new C3D.BoxCollider3D(ramp));
 
     const neon = await createCubeObject(ramp, neonRed);
-    neon.getComponent(Components.Transform).localPosition = { x: 0, y: 15, z: 0 };
-    neon.getComponent(Components.Transform).localScale = { x: 380, y: 5, z: 980 };
+    const nt = neon.transform || neon.getComponent(Components.Transform);
+    nt.localPosition = { x: 0, y: 15, z: 0 };
+    nt.localScale = { x: 380, y: 5, z: 980 };
     neon.getComponent(C3D.MeshRenderer3D).isUnlit = true;
 
     // --- 7. Plataformas de Vértigo (Flotantes) ---
     for (let i = 0; i < 5; i++) {
         const plat = await createCubeObject(root, i === 4 ? safetyYellow : darkMetal);
-        const pt = plat.getComponent(Components.Transform);
+        const pt = plat.transform || plat.getComponent(Components.Transform);
         pt.localPosition = { x: Math.cos(i) * 500, y: 400 + i * 50, z: 6000 + i * 600 };
         pt.localScale = { x: 300, y: 30, z: 300 };
         plat.addComponent(new C3D.BoxCollider3D(plat));
 
         // Add a support pillar visual
         const support = await createCubeObject(plat, '#333333');
-        support.getComponent(Components.Transform).localPosition = { x: 0, y: -1000, z: 0 };
-        support.getComponent(Components.Transform).localScale = { x: 0.1, y: 100, z: 0.1 };
+        const st = support.transform || support.getComponent(Components.Transform);
+        st.localPosition = { x: 0, y: -1000, z: 0 };
+        st.localScale = { x: 0.1, y: 100, z: 0.1 };
     }
 
     // --- 8. Túnel de Neón ---
     const tunnelRoot = createBaseMateria("Tunel_Neon", root);
-    tunnelRoot.getComponent(Components.Transform).localPosition = { x: 0, y: 100, z: 7500 };
+    (tunnelRoot.transform || tunnelRoot.getComponent(Components.Transform)).localPosition = { x: 0, y: 100, z: 7500 };
     for(let i=0; i<8; i++) {
         const ring = createBaseMateria(`Anillo_${i}`, tunnelRoot);
-        ring.getComponent(Components.Transform).localPosition = { x: 0, y: 0, z: i * 300 };
+        (ring.transform || ring.getComponent(Components.Transform)).localPosition = { x: 0, y: 0, z: i * 300 };
 
         const sideL = await createCubeObject(ring, '#2980b9');
-        sideL.getComponent(Components.Transform).localPosition = { x: -400, y: 150, z: 0 };
-        sideL.getComponent(Components.Transform).localScale = { x: 20, y: 400, z: 20 };
+        const slT = sideL.transform || sideL.getComponent(Components.Transform);
+        slT.localPosition = { x: -400, y: 150, z: 0 };
+        slT.localScale = { x: 20, y: 400, z: 20 };
 
         const sideR = await createCubeObject(ring, '#2980b9');
-        sideR.getComponent(Components.Transform).localPosition = { x: 400, y: 150, z: 0 };
-        sideR.getComponent(Components.Transform).localScale = { x: 20, y: 400, z: 20 };
+        const srT = sideR.transform || sideR.getComponent(Components.Transform);
+        srT.localPosition = { x: 400, y: 150, z: 0 };
+        srT.localScale = { x: 20, y: 400, z: 20 };
 
         const top = await createCubeObject(ring, neonCyan);
-        top.getComponent(Components.Transform).localPosition = { x: 0, y: 350, z: 0 };
-        top.getComponent(Components.Transform).localScale = { x: 800, y: 15, z: 15 };
+        const topT = top.transform || top.getComponent(Components.Transform);
+        topT.localPosition = { x: 0, y: 350, z: 0 };
+        topT.localScale = { x: 800, y: 15, z: 15 };
         top.getComponent(C3D.MeshRenderer3D).isUnlit = true;
     }
 
     // --- 9. Meta Tecnológica ---
     const goal = await createBaseMateria("Meta_Final", root);
-    goal.getComponent(Components.Transform).localPosition = { x: 0, y: 100, z: 10500 };
+    (goal.transform || goal.getComponent(Components.Transform)).localPosition = { x: 0, y: 100, z: 10500 };
 
     const archL = await createCubeObject(goal, lightMetal);
-    archL.getComponent(Components.Transform).localPosition = { x: -400, y: 200, z: 0 };
-    archL.getComponent(Components.Transform).localScale = { x: 50, y: 600, z: 50 };
+    const alT = archL.transform || archL.getComponent(Components.Transform);
+    alT.localPosition = { x: -400, y: 200, z: 0 };
+    alT.localScale = { x: 50, y: 600, z: 50 };
 
     const archR = await createCubeObject(goal, lightMetal);
-    archR.getComponent(Components.Transform).localPosition = { x: 400, y: 200, z: 0 };
-    archR.getComponent(Components.Transform).localScale = { x: 50, y: 600, z: 50 };
+    const arT = archR.transform || archR.getComponent(Components.Transform);
+    arT.localPosition = { x: 400, y: 200, z: 0 };
+    arT.localScale = { x: 50, y: 600, z: 50 };
 
     const archTop = await createCubeObject(goal, safetyYellow);
-    archTop.getComponent(Components.Transform).localPosition = { x: 0, y: 500, z: 0 };
-    archTop.getComponent(Components.Transform).localScale = { x: 850, y: 60, z: 120 };
+    const atT = archTop.transform || archTop.getComponent(Components.Transform);
+    atT.localPosition = { x: 0, y: 500, z: 0 };
+    atT.localScale = { x: 850, y: 60, z: 120 };
 
     return root;
 }

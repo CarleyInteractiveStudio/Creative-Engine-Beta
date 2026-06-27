@@ -1,4 +1,4 @@
-import { world3DToScreen, drawLineClipped } from '../engine/MathUtils.js';
+import { world3DToScreen, drawLineClipped } from '../engine/3d/MathUtils3D.js';
 // --- Module for Scene View Interactions and Gizmos ---
 
 import { getAbsoluteRect, getClosestAnchorPoint, getAnchorPosition } from '../engine/UITransformUtils.js';
@@ -686,7 +686,7 @@ function drawUIGizmos(renderer, materia) {
 function drawGizmos(renderer, materia, proj = null, view = null, cw = null, ch = null) {
     if (!materia || !renderer) return;
 
-    const transform = materia.getComponent(Components.Transform);
+    const transform = materia.transform || materia.getComponent(Components.Transform);
     if (!transform) return;
 
     const config = getCurrentProjectConfig();
@@ -1418,11 +1418,12 @@ export function initialize(dependencies) {
 
                 if (data.type === 'sprite') {
                     // Create a new Materia at the drop position
-                    newMateria = new Materia(data.spriteName);
-                    newMateria.addComponent(new Components.Transform(newMateria));
-                    const transform = newMateria.getComponent(Components.Transform);
-                    transform.x = worldPos.x;
-                    transform.y = worldPos.y;
+                    newMateria = MateriaFactory.createBaseMateria(data.spriteName, null, false, false);
+                    const transform = newMateria.transform || newMateria.getComponent(Components.Transform);
+                    if (transform) {
+                        transform.x = worldPos.x;
+                        transform.y = worldPos.y;
+                    }
 
                     // Add and configure the SpriteRenderer
                     const spriteRenderer = new Components.SpriteRenderer(newMateria);
@@ -1462,24 +1463,24 @@ export function initialize(dependencies) {
                         console.log(`[SceneView] Inicializando scripts para nuevo objeto '${newMateria.name}' en tiempo de ejecución.`);
                         const initScriptsRecursive = async (mtr) => {
                             for (const ley of mtr.leyes) {
-                                if (ley instanceof Components.CreativeScript) {
+                                if (ley.constructor.name === 'CreativeScript') {
                                     await ley.initializeInstance();
                                     if (ley.isInitialized) {
                                         try { ley.start(); } catch(e) {}
                                         try { ley.onEnable(); } catch(e) {}
                                     }
-                                } else if (ley instanceof Components.AnimatorController) {
+                                } else if (ley.constructor.name === 'AnimatorController') {
                                     await ley.initialize(window.projectsDirHandle);
-                                } else if (ley instanceof Components.Animator) {
+                                } else if (ley.constructor.name === 'Animator') {
                                     if (!mtr.getComponent(Components.AnimatorController)) {
                                         await ley.loadAnimationClip(window.projectsDirHandle);
                                         if (ley.playOnAwake) ley.play();
                                     }
-                                } else if (ley instanceof Components.Terreno2D) {
+                                } else if (ley.constructor.name === 'Terreno2D') {
                                     await ley.loadTextures(window.projectsDirHandle);
                                 }
 
-                                if (!(ley instanceof Components.CreativeScript) && typeof ley.start === 'function') {
+                                if (!(ley.constructor.name === 'CreativeScript') && typeof ley.start === 'function') {
                                     try { await ley.start(); } catch(e) {}
                                 }
                             }
@@ -2233,10 +2234,10 @@ function drawFrustumCullingGizmos(proj = null, view = null, cw = null, ch = null
 
     allMaterias.forEach(materia => {
         if (!materia.isActive) return;
-        const cameraComponent = materia.getComponent(Components.Camera);
+        const cameraComponent = materia.getComponent(Components.Camera) || materia.getComponentByName('Camera3D');
         if (!cameraComponent) return;
 
-        const transform = materia.getComponent(Components.Transform);
+        const transform = materia.transform || materia.getComponent(Components.Transform);
         if (!transform) return;
 
         // Draw visual "culling distance" sphere or box
@@ -2681,7 +2682,7 @@ function getGizmoScale(center, customProj = null, customView = null, cw = null, 
 }
 
 function getMateriaAxes(materia) {
-    const transform = materia.getComponent(Components.Transform);
+    const transform = materia.transform || materia.getComponent(Components.Transform);
     const matrix = transform.worldMatrix;
     const glm = window.glMatrix;
 
@@ -2761,10 +2762,12 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
     const C3D = window.Components3D || Components3D;
     if (!C3D) return;
 
-    const transform = materia.getComponent(Components.Transform);
+    const transform = materia.transform || materia.getComponent(Components.Transform);
+    if (!transform) return;
+
     const meshRenderer = materia.getComponent(C3D.MeshRenderer3D);
     if (meshRenderer) {
-        const scale = { x: transform.scale.x, y: transform.scale.y, z: transform.scale.z || 1 };
+        const scale = transform.scale || { x: 1, y: 1, z: 1 };
         const rotation = { x: transform.rotationX || 0, y: transform.rotationY || 0, z: transform.rotationZ || 0 };
         if (meshRenderer.meshType === 'Cube') Gizmos.drawWireCube(ctx, center, scale, rotation, 'rgba(0, 255, 255, 0.8)', proj, view, cw, ch);
         else if (meshRenderer.meshType === 'Sphere') Gizmos.drawWireSphere(ctx, center, Math.max(scale.x, scale.y, scale.z) * 0.5, rotation, 'rgba(0, 255, 255, 0.8)', proj, view, cw, ch);
@@ -3027,13 +3030,13 @@ function drawGizmoIcons(proj = null, view = null, cw = null, ch = null) {
     allMaterias.forEach(materia => {
         if (!materia.isActive) return;
 
-        const transform = materia.getComponent(Components.Transform);
+        const transform = materia.transform || materia.getComponent(Components.Transform);
         if (!transform) return;
 
         let iconPath = null;
-        if (materia.getComponent(Components.AudioSource)) {
+        if (materia.getComponent(Components.AudioSource) || materia.getComponentByName('AudioSource3D')) {
             iconPath = 'icons/music.svg';
-        } else if (materia.getComponent(Components.Camera)) {
+        } else if (materia.getComponent(Components.Camera) || materia.getComponentByName('Camera3D')) {
             iconPath = 'icons/camera.svg';
         } else if (materia.getComponent(Components.VideoPlayer)) {
             iconPath = 'icons/video.svg';

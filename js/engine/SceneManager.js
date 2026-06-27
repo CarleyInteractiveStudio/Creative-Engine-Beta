@@ -7,6 +7,7 @@ import { Transform, SpriteRenderer, CreativeScript, Camera, Animator, AnimatorCo
 import { Materia } from './Materia.js';
 
 let customComponentProvider = null;
+let Scene3DClass, Materia3DClass, Components3DModule;
 
 export function setCustomComponentProvider(provider) {
     customComponentProvider = provider;
@@ -14,6 +15,7 @@ export function setCustomComponentProvider(provider) {
 
 export class Scene {
     constructor() {
+        this.is3D = false;
         this.materias = [];
         this.ambiente = {
             luzAmbiental: '#1a1a2a',
@@ -34,10 +36,8 @@ export class Scene {
     }
 
     addMateria(materia) {
-        if (materia instanceof Materia) {
-            this.materias.push(materia);
-            this._setMateriaSceneRecursive(materia);
-        }
+        this.materias.push(materia);
+        this._setMateriaSceneRecursive(materia);
     }
 
     _setMateriaSceneRecursive(materia) {
@@ -147,7 +147,7 @@ export class Scene {
     }
 
     clone() {
-        const newScene = new Scene();
+        const newScene = this.is3D ? new Scene3DClass() : new Scene();
         newScene.ambiente = JSON.parse(JSON.stringify(this.ambiente));
 
         // Clone all root materias. The Materia.clone method is recursive.
@@ -315,7 +315,7 @@ export function serializeMateria(materia, recursive = false) {
                     } else if (key.startsWith('_')) {
                         // Skip "private" or internal state properties
                         continue;
-                    } else if (ley[key] instanceof Materia) {
+                    } else if (ley[key] instanceof Materia || (Materia3DClass && ley[key] instanceof Materia3DClass)) {
                         leyData.properties[key] = { __materiaId: ley[key].id };
                     } else {
                         leyData.properties[key] = ley[key];
@@ -361,8 +361,9 @@ export function serializeScene(scene, dom) {
 
 import { getComponent } from './ComponentRegistry.js';
 
-async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, materiaMap) {
-    const newMateria = new Materia(materiaData.name);
+async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, materiaMap, is3D = false) {
+    if (is3D && !Materia3DClass) Materia3DClass = (await import('./3d/Materia3D.js')).Materia3D;
+    const newMateria = is3D ? new Materia3DClass(materiaData.name) : new Materia(materiaData.name);
     // Note: Do not override ID here if we are instantiating a prefab in an existing scene,
     // unless we are loading a full scene.
 
@@ -428,16 +429,6 @@ async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, mate
                     Object.assign(newLey, leyData.properties);
                     newLey.states = new Map();
                 } else if (leyData.type === 'Transform') {
-                    // Upgrade legacy 2D transforms to 3D object format if needed
-                    if (leyData.properties.localPosition && leyData.properties.localPosition.z === undefined) {
-                        leyData.properties.localPosition.z = 0;
-                    }
-                    if (typeof leyData.properties.localRotation === 'number') {
-                        leyData.properties.localRotation = { x: 0, y: 0, z: leyData.properties.localRotation };
-                    }
-                    if (leyData.properties.localScale && leyData.properties.localScale.z === undefined) {
-                        leyData.properties.localScale.z = 1;
-                    }
                     Object.assign(newLey, leyData.properties);
                 } else {
                     Object.assign(newLey, leyData.properties);
@@ -452,11 +443,7 @@ async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, mate
                 if (newLey instanceof Terreno2D) await newLey.loadTextures(projectsDirHandle);
                 if (newLey instanceof AudioSource) { /* AudioSource handles its own loading on play or start */ }
 
-                // Dynamic loading of 3D modules for deserialized 3D components
-                const is3DComp = (leyData.type === 'MeshRenderer3D' || leyData.type === 'DirectionalLight3D' || leyData.type === 'PointLight3D' || leyData.type === 'SpotLight3D');
-                if (is3DComp && !window.Components3D) {
-                    window.Components3D = await import('./Components3D.js');
-                }
+                // 3D modules are now handled via dynamic import in is3D branches
             }
         }
     }
@@ -474,7 +461,11 @@ async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, mate
 }
 
 export async function deserializeScene(sceneData, projectsDirHandle) {
-    const newScene = new Scene();
+    const config = window.currentProjectConfig || {};
+    const is3D = config.projectType === '3d';
+
+    if (is3D && !Scene3DClass) Scene3DClass = (await import('./3d/Scene3D.js')).Scene3D;
+    const newScene = is3D ? new Scene3DClass() : new Scene();
     const materiaMap = new Map();
 
     if (sceneData.ambiente) {
@@ -482,7 +473,7 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
     }
 
     for (const materiaData of sceneData.materias) {
-        const newMateria = await _deserializeMateriaRecursive(materiaData, projectsDirHandle, materiaMap);
+        const newMateria = await _deserializeMateriaRecursive(materiaData, projectsDirHandle, materiaMap, is3D);
         newMateria.id = materiaData.id; // Preserve ID for scene load
         if (materiaData.parentId === null) {
             newScene.addMateria(newMateria);
@@ -637,7 +628,7 @@ export async function loadSceneByPath(path) {
  * @returns {Materia} La nueva instancia creada.
  */
 export function instanciar(original, x, y) {
-    if (!original || !(original instanceof Materia)) {
+    if (!original || (!(original instanceof Materia) && !(Materia3DClass && original instanceof Materia3DClass))) {
         console.error("instanciar: Se requiere una Materia válida para copiar.");
         return null;
     }
@@ -659,10 +650,13 @@ export const instantiate = instanciar;
 export async function instanciarPrefab(prefabData, x, y) {
     if (!prefabData) return null;
 
+    const config = window.currentProjectConfig || {};
+    const is3D = config.projectType === '3d';
+
     // A prefab can be a single materia object or a mini-scene structure
     const materiaData = prefabData.materias ? prefabData.materias[0] : prefabData;
 
-    const newMateria = await _deserializeMateriaRecursive(materiaData, window.projectsDirHandle);
+    const newMateria = await _deserializeMateriaRecursive(materiaData, window.projectsDirHandle, null, is3D);
 
     if (x !== undefined && y !== undefined) {
         const transform = newMateria.getComponent(Transform);
@@ -673,50 +667,57 @@ export async function instanciarPrefab(prefabData, x, y) {
     return newMateria;
 }
 
-function createDefaultScene() {
-    const scene = new Scene();
+async function createDefaultScene() {
     const config = window.currentProjectConfig || {};
     const is3D = config.projectType === '3d';
 
-    // Create the root node
-    const rootNode = new Materia('Scene');
-    scene.addMateria(rootNode);
-
-    // Create the camera
-    const cameraNode = new Materia('Main Camera');
-    const cameraComponent = new Camera(cameraNode);
-
     if (is3D) {
+        if (!Scene3DClass) Scene3DClass = (await import('./3d/Scene3D.js')).Scene3D;
+        if (!Materia3DClass) Materia3DClass = (await import('./3d/Materia3D.js')).Materia3D;
+        if (!Components3DModule) Components3DModule = await import('./3d/Components3D.js');
+
+        const scene = new Scene3DClass();
+        const rootNode = new Materia3DClass('Scene');
+        scene.addMateria(rootNode);
+
+        const cameraNode = new Materia3DClass('Main Camera');
+        const cameraComponent = new Components3DModule.Camera(cameraNode);
         cameraComponent.projection = 'Perspective';
-        cameraComponent.clearFlags = 'Skybox'; // Default to show procedural sky
-        const trans = cameraNode.getComponent(Transform);
-        // Better default view for 3D
-        trans.localPosition = { x: 0, y: 150, z: 500 };
-        trans.localRotation = { x: 15, y: 0, z: 0 };
-    }
+        cameraComponent.clearFlags = 'Skybox';
+        cameraNode.addComponent(cameraComponent);
 
-    cameraNode.addComponent(cameraComponent);
+        const trans = cameraNode.transform || cameraNode.getComponent(Components3DModule.Transform);
+        if (trans) {
+            trans.localPosition = { x: 0, y: 150, z: 500 };
+            trans.localRotation = { x: 15, y: 0, z: 0 };
+        }
 
-    rootNode.addChild(cameraNode);
-    scene.addMateria(cameraNode);
+        rootNode.addChild(cameraNode);
+        scene.addMateria(cameraNode);
 
-    if (is3D) {
-        // Create a directional light for 3D projects
-        const lightNode = new Materia('Directional Light');
-        (async () => {
-            if (!window.Components3D) {
-                window.Components3D = await import('./Components3D.js');
-            }
-            lightNode.addComponent(new window.Components3D.DirectionalLight3D(lightNode));
-        })();
-        const lightTrans = lightNode.getComponent(Transform);
-        lightTrans.localRotation = { x: 50, y: -30, z: 0 };
+        const lightNode = new Materia3DClass('Directional Light');
+        lightNode.addComponent(new Components3DModule.DirectionalLight3D(lightNode));
+        const lightTrans = lightNode.transform || lightNode.getComponent(Components3DModule.Transform);
+        if (lightTrans) {
+            lightTrans.localRotation = { x: 50, y: -30, z: 0 };
+        }
 
         rootNode.addChild(lightNode);
         scene.addMateria(lightNode);
-    }
+        return scene;
+    } else {
+        const scene = new Scene();
+        const rootNode = new Materia('Scene');
+        scene.addMateria(rootNode);
 
-    return scene;
+        const cameraNode = new Materia('Main Camera');
+        const cameraComponent = new Camera(cameraNode);
+        cameraNode.addComponent(cameraComponent);
+
+        rootNode.addChild(cameraNode);
+        scene.addMateria(cameraNode);
+        return scene;
+    }
 }
 
 export async function initialize(projectsDirHandle) {
@@ -756,7 +757,7 @@ export async function initialize(projectsDirHandle) {
             const fileHandle = await assetsHandle.getFileHandle(defaultSceneName, { create: true });
             const writable = await fileHandle.createWritable();
 
-            const defaultScene = createDefaultScene();
+            const defaultScene = await createDefaultScene();
             // Pass a null DOM object for default scene creation
             const sceneData = serializeScene(defaultScene, null);
 

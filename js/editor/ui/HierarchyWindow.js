@@ -10,6 +10,7 @@
  */
 
 import { Materia } from '../../engine/Materia.js';
+import { Materia3D } from '../../engine/3d/Materia3D.js';
 import * as Components from '../../engine/Components.js';
 import { showConfirmation } from './DialogWindow.js';
 import {
@@ -807,7 +808,7 @@ function setupEventListeners() {
                 try {
                     let anim = null;
                     if (data.isEmbedded) {
-                        const { ModelLoader3D } = await import('../../engine/ModelLoader3D.js');
+                        const { ModelLoader3D } = await import('../../engine/3d/ModelLoader3D.js');
                         const modelData = await ModelLoader3D.loadModel(data.modelPath, window.projectsDirHandle);
                         if (modelData && modelData.animations) {
                             anim = modelData.animations[data.animIndex];
@@ -872,8 +873,7 @@ function setupEventListeners() {
                 return;
             }
 
-            const newMateria = new Materia(data.name ? data.name.split('.')[0] : 'New Object');
-            newMateria.addComponent(new Components.Transform(newMateria));
+            const newMateria = createBaseMateria(data.name ? data.name.split('.')[0] : 'New Object', null, false, false);
             if (targetItem) {
                 const targetId = parseInt(targetItem.dataset.id, 10);
                 const targetMateria = SceneManager.currentScene.findMateriaById(targetId);

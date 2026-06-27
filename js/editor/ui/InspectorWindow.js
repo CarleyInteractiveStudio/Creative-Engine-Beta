@@ -7,7 +7,7 @@ import { getCustomComponentDefinitions } from '../EngineAPIExtension.js';
 import * as CES_Transpiler from '../../editor/CES_Transpiler.js';
 import { showPrompt, showNotification } from './DialogWindow.js';
 import { TerrenoEditorWindow } from './TerrenoEditorWindow.js';
-import { Renderer3D } from '../../engine/Renderer3D.js';
+import { Renderer3D } from '../../engine/3d/Renderer3D.js';
 import { broadcastUpdate } from '../CollaborationSystem.js';
 
 // --- Module State ---
@@ -30,7 +30,7 @@ let enterAddTilemapLayerMode = () => {}; // Callback to notify SceneView
 
 const markdownConverter = new showdown.Converter();
 
-const availableComponents = {
+const availableComponents2D = {
     'CAT_RENDERIZADO': [Components.SpriteRenderer, Components.TextureRender, Components.DrawingOrder],
     'CAT_MAPA': [Components.Grid, Components.Tilemap, Components.TilemapRenderer, Components.Parallax, Components.Terreno2D],
     'CAT_ILUMINACION': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
@@ -41,15 +41,16 @@ const availableComponents = {
     'CAT_CAMARA': [Components.Camera],
     'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Attack, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.Suspension, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController, Components.SceneLoader, Components.Inventario, Components.SistemaDialogos, Components.GestorMisiones],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
-
-    // 3D Specific Categories
-    'CAT_BASICO_3D': ['MovementControl3D', 'ThirdPersonController3D', 'HealthController3D', 'CameraControl3D'],
-    'CAT_FISICA_3D': ['Rigidbody3D', 'BoxCollider3D', 'SphereCollider3D', 'CapsuleCollider3D', 'PlaneCollider3D', 'TerrenoCollider3D', 'HumanoidPhysics3D', 'WheelCollider3D', 'VehicleController3D'],
-    'CAT_AUDIO_3D': [Components.AudioSource],
-    'CAT_CAMARA_3D': [Components.Camera],
-    'CAT_OTROS_3D': ['MeshRenderer3D', 'SkinnedMeshRenderer3D', 'Animator3D', 'DirectionalLight3D', 'PointLight3D', 'SpotLight3D', 'Terreno3D', 'DeformableMesh3D', 'ProceduralChain3D', 'ClothRenderer3D'],
-
     'CAT_SCRIPTING': [Components.CreativeScript]
+};
+
+const availableComponents3D = {
+    'CAT_BASICO_3D': ['MovementControl3D', 'ThirdPersonController3D', 'HealthController3D', 'CameraControl3D'],
+    'CAT_FISICA_3D': ['Rigidbody3D', 'BoxCollider3D', 'SphereCollider3D', 'CapsuleCollider3D', 'PlaneCollider3D', 'Terreno3D', 'TerrenoCollider3D', 'HumanoidPhysics3D', 'WheelCollider3D', 'VehicleController3D'],
+    'CAT_AUDIO_3D': ['AudioSource3D'],
+    'CAT_CAMARA_3D': ['Camera3D'],
+    'CAT_OTROS_3D': ['MeshRenderer3D', 'SkinnedMeshRenderer3D', 'Animator3D', 'DirectionalLight3D', 'PointLight3D', 'SpotLight3D', 'Terreno3D', 'DeformableMesh3D', 'ProceduralChain3D', 'ClothRenderer3D'],
+    'CAT_SCRIPTING': ['CreativeScript3D']
 };
 
 const componentIcons = {
@@ -292,7 +293,7 @@ async function handleInspectorDrop(e) {
         if (componentName === 'CreativeScript') {
              targetComponent = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === scriptName);
         } else if (componentName === 'CustomComponent') {
-             targetComponent = selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == componentId);
+             targetComponent = selectedMateria.leyes.find(ley => ley.constructor.name === 'CustomComponent' && ley.id == componentId);
         } else if (componentName) {
              targetComponent = selectedMateria.getComponent(Components[componentName]);
         } else {
@@ -408,7 +409,7 @@ function handleInspectorInput(e) {
 
     if (componentName === 'CustomComponent') {
         const componentId = e.target.dataset.componentId; // Unique identifier if multiple custom components
-        const component = selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == componentId);
+        const component = selectedMateria.leyes.find(ley => ley.constructor.name === 'CustomComponent' && ley.id == componentId);
         if (component) {
             component.publicVars[propPath] = value;
         }
@@ -633,7 +634,7 @@ function handleInspectorClick(e) {
             if (componentName === 'CreativeScript') {
                  targetComponent = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === scriptName);
             } else if (componentName === 'CustomComponent') {
-                 targetComponent = selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == componentId);
+                 targetComponent = selectedMateria.leyes.find(ley => ley.constructor.name === 'CustomComponent' && ley.id == componentId);
             } else if (componentName) {
                  targetComponent = selectedMateria.getComponent(Components[componentName]);
             }
@@ -1168,7 +1169,7 @@ export function refreshInspectorValues() {
         if (componentName === 'CreativeScript') {
              targetComponent = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === scriptName);
         } else if (componentName === 'CustomComponent') {
-             targetComponent = selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == componentId);
+             targetComponent = selectedMateria.leyes.find(ley => ley.constructor.name === 'CustomComponent' && ley.id == componentId);
         } else if (componentName) {
              targetComponent = selectedMateria.getComponent(Components[componentName]);
         }
@@ -1556,6 +1557,7 @@ async function updateInspectorForMateria(selectedMateria) {
     const config = getCurrentProjectConfig();
     const L = window.Localization;
     const currentId = lastUpdateId;
+    const is3D = config.projectType === '3d';
 
     // Name input and active toggle
     const headerHTML = `
@@ -1628,54 +1630,13 @@ async function updateInspectorForMateria(selectedMateria) {
     }
 
     // --- REORGANIZACIÓN POR CATEGORÍAS ---
-    const components2D = [];
-    const components3D = {
-        fisica: [],
-        sonido: [],
-        camara: [],
-        basico: [],
-        otros: []
-    };
-
-    const catMap = {
-        // Física 3D
-        'Rigidbody3D': 'fisica', 'BoxCollider3D': 'fisica', 'SphereCollider3D': 'fisica', 'CapsuleCollider3D': 'fisica', 'PlaneCollider3D': 'fisica', 'TerrenoCollider3D': 'fisica', 'HumanoidPhysics3D': 'fisica', 'WheelCollider3D': 'fisica',
-        // Sonido (unificado o 3D)
-        'AudioSource': 'sonido',
-        // Cámara
-        'Camera': 'camara', 'CameraControl3D': 'camara',
-        // Básico 3D
-        'MovementControl3D': 'basico', 'ThirdPersonController3D': 'basico', 'HealthController3D': 'basico', 'VehicleController3D': 'basico',
-        // Otros 3D / Comunes
-        'MeshRenderer3D': 'otros', 'SkinnedMeshRenderer3D': 'otros', 'Animator3D': 'otros', 'DirectionalLight3D': 'otros', 'PointLight3D': 'otros', 'SpotLight3D': 'otros', 'Terreno3D': 'otros', 'DeformableMesh3D': 'otros', 'ProceduralChain3D': 'otros', 'ClothRenderer3D': 'otros',
-        'Transform': 'otros'
-    };
-
-    const is2DComponent = (ley) => {
-        const name = ley.constructor.name;
-        const known2D = [
-            'SpriteRenderer', 'Rigidbody2D', 'BoxCollider2D', 'CircleCollider2D', 'PolygonCollider2D', 'CapsuleCollider2D',
-            'Tilemap', 'TilemapRenderer', 'TilemapCollider2D', 'Grid', 'TextureRender', 'Parallax', 'Terreno2D', 'TerrenoCollider2D',
-            'PointLight2D', 'SpotLight2D', 'FreeformLight2D', 'SpriteLight2D', 'Movement', 'CameraFollow', 'ProjectileLauncher',
-            'Health', 'Attack', 'Patrol', 'ParticleSystem', 'RaycastSource', 'BasicAI', 'Water', 'LineCollider2D', 'Suspension',
-            'VehicleTopDown', 'PlaneController', 'HelicopterController', 'Bone', 'SkeletonRenderer', 'IKManager2D', 'Animator', 'AnimatorController',
-            'Canvas', 'UIImage', 'UIText', 'UITransform', 'Button', 'ProgressBar', 'UIScrollRect', 'UIMask', 'UICollider', 'UIController',
-            'VerticalLayoutGroup', 'HorizontalLayoutGroup', 'GridLayoutGroup', 'ContentSizeFitter'
-        ];
-        return known2D.includes(name);
-    };
+    const componentsList = [];
 
     const componentsWrapper = document.createElement('div');
     componentsWrapper.className = 'inspector-components-wrapper';
 
     selectedMateria.leyes.forEach((ley, index) => {
-        const name = ley.constructor.name;
-        if (is2DComponent(ley)) {
-            components2D.push({ ley, index });
-        } else {
-            const cat = catMap[name] || 'otros';
-            components3D[cat].push({ ley, index });
-        }
+        componentsList.push({ ley, index });
     });
 
     const renderComponentList = (list, container) => {
@@ -1686,7 +1647,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 const icon = componentIcons[componentName] || 'settings';
         const iconHTML = `<span class="component-icon">${getIconHTML(icon)}</span>`;
 
-        if (ley instanceof Components.TextureRender) {
+        if (ley.constructor.name === 'TextureRender') {
             let dimensionsHTML = '';
             if (ley.shape === 'Rectangle' || ley.shape === 'Triangle' || ley.shape === 'Capsule') {
                 dimensionsHTML = `
@@ -1746,8 +1707,8 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.VerticalLayoutGroup || ley instanceof Components.HorizontalLayoutGroup) {
-            const isVertical = ley instanceof Components.VerticalLayoutGroup;
+        } else if (ley.constructor.name === 'VerticalLayoutGroup' || ley.constructor.name === 'HorizontalLayoutGroup') {
+            const isVertical = ley.constructor.name === 'VerticalLayoutGroup';
             const compName = isVertical ? 'VerticalLayoutGroup' : 'HorizontalLayoutGroup';
             const title = isVertical ? L.get('VERTICAL_LAYOUT', "Vertical Layout") : L.get('HORIZONTAL_LAYOUT', "Horizontal Layout");
             componentHTML = `
@@ -1768,7 +1729,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.GridLayoutGroup) {
+        } else if (ley.constructor.name === 'GridLayoutGroup') {
             componentHTML = `
                 ${renderComponentHeader(L.get('GRID_LAYOUT', "Grid Layout"), icon, index)}
                 <div class="component-content">
@@ -1793,7 +1754,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.ContentSizeFitter) {
+        } else if (ley.constructor.name === 'ContentSizeFitter') {
              componentHTML = `
                 ${renderComponentHeader(L.get('SIZE_FITTER', "Size Fitter"), icon, index)}
                 <div class="component-content">
@@ -1813,7 +1774,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.VideoPlayer) {
+        } else if (ley.constructor.name === 'VideoPlayer') {
             componentHTML = `
                 ${renderComponentHeader(L.get('VIDEO_PLAYER', "Video Player"), icon, index)}
                 <div class="component-content">
@@ -1863,7 +1824,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <button class="primary-btn inspector-action-btn" data-action="sync-video-size" data-ley-index="${index}" style="width: 100%; margin-top: 10px; font-weight: bold; border-radius: 4px;" title="${L.get('AJUSTAR_TAMANO_VIDEO_DESC', 'Ajusta el tamaño del objeto UI para que coincida con la resolución nativa del video.')}">${L.get('AJUSTAR_TAMANO_AL_VIDEO', 'Ajustar Tamaño al Video')}</button>
                 </div>
             `;
-        } else if (ley instanceof Components.Health) {
+        } else if (ley.constructor.name === 'Health') {
             let warningHTML = '';
             if (ley.deathAnimation && !selectedMateria.getComponentByName('Animator')) {
                 warningHTML = renderDependencyWarning('Health', 'Animator');
@@ -1903,7 +1864,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.Attack) {
+        } else if (ley.constructor.name === 'Attack') {
             let warningHTML = '';
             if (ley.attacks.some(atk => atk.sound) && !selectedMateria.getComponentByName('AudioSource')) {
                 warningHTML = renderDependencyWarning('Attack', 'AudioSource');
@@ -1965,7 +1926,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <button class="add-event-btn" onclick="const atk = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.Attack); atk.attacks.push({key: 'j', animation: '', damage: 10, pushForce: 5, duration: 0.2}); window.updateInspector();">+</button>
                 </div>
             `;
-        } else if (ley instanceof Components.ProgressBar) {
+        } else if (ley.constructor.name === 'ProgressBar') {
             componentHTML = `
                 ${renderComponentHeader(L.get('PROGRESS_BAR', "Barra de Progreso"), icon, index)}
                 <div class="component-content">
@@ -2007,7 +1968,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.UIScrollRect) {
+        } else if (ley.constructor.name === 'UIScrollRect') {
             componentHTML = `
                 ${renderComponentHeader(L.get('SCROLL_RECT', "Rect de Desplazamiento"), icon, index)}
                 <div class="component-content">
@@ -2041,7 +2002,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.UIMask) {
+        } else if (ley.constructor.name === 'UIMask') {
             componentHTML = `
                 ${renderComponentHeader(L.get('UI_MASK', "Máscara UI"), icon, index)}
                 <div class="component-content">
@@ -2052,7 +2013,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <p class="info-text">${L.get('MASK_INFO', 'Recorta los elementos hijos dentro del área de este objeto.')}</p>
                 </div>
             `;
-        } else if (ley instanceof Components.UICollider) {
+        } else if (ley.constructor.name === 'UICollider') {
             componentHTML = `
                 ${renderComponentHeader(L.get('UI_COLLIDER', "Colisionador UI"), icon, index)}
                 <div class="component-content">
@@ -2062,7 +2023,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.Patrol) {
+        } else if (ley.constructor.name === 'Patrol') {
             componentHTML = `
                 ${renderComponentHeader(L.get('PATROL_COMPONENT', "Patrulla (Patrol)"), icon, index)}
                 <div class="component-content">
@@ -2094,7 +2055,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.Transform) {
+        } else if (ley.constructor.name === 'Transform') {
             if (selectedMateria.getComponent(Components.UITransform)) {
                 return;
             }
@@ -2137,7 +2098,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.PolygonCollider2D) {
+        } else if (ley.constructor.name === 'PolygonCollider2D') {
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader(L.get('POLYGON_COLLIDER_2D', "Polygon Collider 2D"), icon, index)}
@@ -2160,7 +2121,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.UITransform) {
+        } else if (ley.constructor.name === 'UITransform') {
             let anchorGridHTML = '';
             const anchorTitles = [
                 L.get('TOP_LEFT', 'Top Left'), L.get('TOP_CENTER', 'Top Center'), L.get('TOP_RIGHT', 'Top Right'),
@@ -2209,7 +2170,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.UIImage) {
+        } else if (ley.constructor.name === 'UIImage') {
             componentHTML = `${renderComponentHeader(L.get('UI_IMAGE', "UI Image"), icon, index)}
             <div class="component-content">
                 <div class="inspector-row">
@@ -2228,7 +2189,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="range" class="prop-input" min="0" max="1" step="0.01" data-component="UIImage" data-prop="opacity" value="${ley.opacity !== undefined ? ley.opacity : 1.0}">
                     </div>
             </div>`;
-        } else if (ley instanceof Components.UIText) {
+        } else if (ley.constructor.name === 'UIText') {
             const fontName = ley.fontAssetPath ? ley.fontAssetPath.split('/').pop() : L.get('DEFAULT', 'Default');
             componentHTML = `
                 ${renderComponentHeader(L.get('UI_TEXT', "UI Text"), "type", index)}
@@ -2270,7 +2231,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.Canvas) {
+        } else if (ley.constructor.name === 'Canvas') {
             const isWorldSpace = ley.renderMode === 'World Space';
             const ssResolution = ley.referenceResolution || { width: 800, height: 600 };
 
@@ -2317,7 +2278,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="SCALE_CHILDREN">${L.get('SCALE_CHILDREN', 'Scale Children')}</label>
                     </div>
                 </div>`;
-        } else if (ley instanceof Components.Button) {
+        } else if (ley.constructor.name === 'Button') {
             const isColorTint = ley.transition === 'Color Tint';
             const isSpriteSwap = ley.transition === 'Sprite Swap';
             const isAnimation = ley.transition === 'Animation';
@@ -2409,7 +2370,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         }
-        else if (ley instanceof Components.CircleCollider2D) {
+        else if (ley.constructor.name === 'CircleCollider2D') {
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader(L.get('CIRCLE_COLLIDER_2D', "Circle Collider 2D"), 'disc', index)}
@@ -2434,7 +2395,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.SpriteRenderer) {
+        } else if (ley.constructor.name === 'SpriteRenderer') {
             let spriteSelectorHTML = '';
             // If a .ceSprite asset is loaded, show the dropdown to select a specific sprite
             if (ley.spriteSheet && ley.spriteSheet.sprites && Object.keys(ley.spriteSheet.sprites).length > 0) {
@@ -2498,7 +2459,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>`;
         }
-        else if (ley instanceof Components.CreativeScript) {
+        else if (ley.constructor.name === 'CreativeScript') {
             let publicVarsHTML = '';
             const metadata = CES_Transpiler.getScriptMetadata(ley.scriptName);
 
@@ -2520,7 +2481,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     ${publicVarsHTML || '<p class="field-description">Este script no tiene variables públicas.</p>'}
                 </div>
             `;
-        } else if (ley instanceof Components.Animator) {
+        } else if (ley.constructor.name === 'Animator') {
             componentHTML = `
                 ${renderComponentHeader(L.get('ANIMATOR', "Animator"), icon, index)}
                 <div class="component-content">
@@ -2541,7 +2502,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="REPRODUCIR_AL_EMPEZAR">${L.get('REPRODUCIR_AL_EMPEZAR', 'Play On Awake')}</label>
                     </div>
                 </div>`;
-        } else if (ley instanceof Components.AnimatorController) {
+        } else if (ley.constructor.name === 'AnimatorController') {
             let statesListHTML = `<p class="field-description">${L.get('HINT_ASIGNAR_CONTROLADOR', 'Asigna un Controller para ver sus estados.')}</p>`;
             if (ley.controller && ley.states.size > 0) {
                 statesListHTML = '<ul>';
@@ -2589,7 +2550,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         ${statesListHTML}
                     </div>
                 </div>`;
-        } else if (ley instanceof Components.Camera) {
+        } else if (ley.constructor.name === 'Camera') {
             const projection = ley.projection || 'Perspective';
             const clearFlags = ley.clearFlags || 'SolidColor';
 
@@ -2652,7 +2613,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.PointLight2D) {
+        } else if (ley.constructor.name === 'PointLight2D') {
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader(L.get('POINT_LIGHT_2D', "Point Light 2D"), icon, index)}
@@ -2687,7 +2648,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.SpotLight2D) {
+        } else if (ley.constructor.name === 'SpotLight2D') {
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader(L.get('SPOT_LIGHT_2D', "Spot Light 2D"), icon, index)}
@@ -2728,7 +2689,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.FreeformLight2D) {
+        } else if (ley.constructor.name === 'FreeformLight2D') {
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader(L.get('FREEFORM_LIGHT_2D', "Freeform Light 2D"), icon, index)}
@@ -2758,7 +2719,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <p class="field-description" data-i18n="VERTICES_EDIT_FUTURE">${L.get('VERTICES_EDIT_FUTURE', 'La edición de vértices se implementará en una futura actualización.')}</p>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.Tilemap) {
+        } else if (ley.constructor.name === 'Tilemap') {
             // Safeguard against corrupted layer data from old scene files
             if (!ley.layers || !Array.isArray(ley.layers)) {
                 componentHTML = `
@@ -2829,7 +2790,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 `;
             }
-        } else if (ley instanceof Components.TilemapRenderer) {
+        } else if (ley.constructor.name === 'TilemapRenderer') {
             componentHTML = `
                 ${renderComponentHeader(L.get('TILEMAP_RENDERER', 'Tilemap Renderer'), 'brush', index)}
                 <div class="component-content">
@@ -2839,7 +2800,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.TilemapCollider2D) {
+        } else if (ley.constructor.name === 'TilemapCollider2D') {
             const tilemap = selectedMateria.getComponent(Components.Tilemap);
             let layerOptions = `<option value="-1">${L.get('NINGUNA', 'Ninguna')}</option>`;
             if (tilemap) {
@@ -2866,7 +2827,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <p class="field-description" style="margin-top: 8px;">${L.get('COLLIDERS_GENERATED', 'Colisionadores generados')}: ${ley.generatedColliders.length}</p>
                 </div>
             `;
-        } else if (ley instanceof Components.Grid) {
+        } else if (ley.constructor.name === 'Grid') {
             // Ensure cellSize exists before trying to access its properties
             const cellSize = ley.cellSize || { x: 32, y: 32 };
 
@@ -2908,7 +2869,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     ${sizeInputHTML}
                 </div>
             </div>`;
-        } else if (ley instanceof Components.CapsuleCollider2D) {
+        } else if (ley.constructor.name === 'CapsuleCollider2D') {
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader(L.get('CAPSULE_COLLIDER_2D', "Capsule Collider 2D"), icon, index)}
@@ -2943,7 +2904,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.SpriteLight2D) {
+        } else if (ley.constructor.name === 'SpriteLight2D') {
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader(L.get('SPRITE_LIGHT_2D', "Sprite Light 2D"), icon, index)}
@@ -2975,7 +2936,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.Rigidbody2D) {
+        } else if (ley.constructor.name === 'Rigidbody2D') {
             let warningHTML = '';
             if (ley.bodyType !== 'Static' && !selectedMateria.leyes.some(l => l.constructor.name.includes('Collider2D'))) {
                 warningHTML = `
@@ -3034,7 +2995,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.CustomComponent) {
+        } else if (ley.constructor.name === 'CustomComponent') {
             let publicVarsHTML = '';
             if (ley.definition && ley.definition.metadata && ley.definition.metadata.publicVars) {
                 for (const pv of ley.definition.metadata.publicVars) {
@@ -3053,7 +3014,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     ${publicVarsHTML || '<p class="field-description">Este componente no tiene propiedades públicas.</p>'}
                 </div>
             `;
-        } else if (ley instanceof Components.DrawingOrder) {
+        } else if (ley.constructor.name === 'DrawingOrder') {
             componentHTML = `
                 ${renderComponentHeader(L.get('DRAWING_ORDER_COMPONENT', "Orden de Dibujo"), icon, index)}
                 <div class="component-content">
@@ -3064,7 +3025,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <p class="field-description" data-i18n="DRAWING_ORDER_DESC">${L.get('DRAWING_ORDER_DESC', 'Valores altos delante, bajos detrás. Sobrescribe el orden por defecto.')}</p>
                 </div>
             `;
-        } else if (ley instanceof Components.BoxCollider2D) {
+        } else if (ley.constructor.name === 'BoxCollider2D') {
             let warningHTML = '';
             if (!selectedMateria.getComponentByName('Rigidbody2D')) {
                 warningHTML = renderDependencyWarning('BoxCollider2D', 'Rigidbody2D');
@@ -3096,7 +3057,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.Movement) {
+        } else if (ley.constructor.name === 'Movement') {
             let warningHTML = '';
             if (ley.useRigidbody && !selectedMateria.getComponentByName('Rigidbody2D')) {
                 warningHTML = renderDependencyWarning('Movement', 'Rigidbody2D');
@@ -3173,7 +3134,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.ProjectileLauncher) {
+        } else if (ley.constructor.name === 'ProjectileLauncher') {
             let warningHTML = '';
             if (ley.fireSound && !selectedMateria.getComponentByName('AudioSource')) {
                 warningHTML = renderDependencyWarning('ProjectileLauncher', 'AudioSource');
@@ -3222,7 +3183,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.AutoDestroy) {
+        } else if (ley.constructor.name === 'AutoDestroy') {
             componentHTML = `
                 ${renderComponentHeader(L.get('AUTO_DESTROY_COMPONENT', "Destrucción Automática"), icon, index)}
                 <div class="component-content">
@@ -3232,7 +3193,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.CameraFollow) {
+        } else if (ley.constructor.name === 'CameraFollow') {
              componentHTML = `
                 ${renderComponentHeader(L.get('CAMERA_FOLLOW_COMPONENT', "Seguimiento Cámara"), icon, index)}
                 <div class="component-content">
@@ -3261,7 +3222,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.ParticleSystem) {
+        } else if (ley.constructor.name === 'ParticleSystem') {
             componentHTML = `
                 ${renderComponentHeader(L.get('PARTICLE_SYSTEM', "Sistema de Partículas"), icon, index)}
                 <div class="component-content">
@@ -3299,7 +3260,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.Parallax) {
+        } else if (ley.constructor.name === 'Parallax') {
             componentHTML = `
                 ${renderComponentHeader(L.get('PARALLAX_COMPONENT', "Parallax (Avanzado)"), icon, index)}
                 <div class="component-content">
@@ -3348,7 +3309,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <p class="field-description">${L.get('PARALLAX_DESC', 'Scroll Factor: 0 = Pegado a cámara. 1 = Mundo real.<br>Mirroring: Tamaño de repetición (0 = no repite).')}</p>
                 </div>
             `;
-        } else if (ley instanceof Components.Terreno2D) {
+        } else if (ley.constructor.name === 'Terreno2D') {
             const settings = TerrenoEditorWindow.settings;
             componentHTML = `
                 ${renderComponentHeader(L.get('TERRAIN_2D_COMPONENT', "Terreno 2D (Píxeles)"), icon, index)}
@@ -3405,7 +3366,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <p class="field-description">${L.get('TERRAIN_BRUSH_DESC', 'Dibuja libremente en la escena con la herramienta de pincel de terreno activada. Las texturas rellenarán las zonas pintadas.')}</p>
                 </div>
             `;
-        } else if (ley instanceof Components.TerrenoCollider2D) {
+        } else if (ley.constructor.name === 'TerrenoCollider2D') {
             const isPolygon = ley.mode === 'Polygon';
             componentHTML = `
                 ${renderComponentHeader(L.get('TERRAIN_COLLIDER_2D', "Terreno Collider 2D"), icon, index)}
@@ -3437,7 +3398,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </p>
                 </div>
             `;
-        } else if (ley instanceof Components.Gyzmo) {
+        } else if (ley.constructor.name === 'Gyzmo') {
             componentHTML = `
                 ${renderComponentHeader(L.get('GYZMO_AREAS', "Gyzmo (Áreas)"), icon, index)}
                 <div class="component-content">
@@ -3492,7 +3453,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.RaycastSource) {
+        } else if (ley.constructor.name === 'RaycastSource') {
             componentHTML = `
                 ${renderComponentHeader(L.get('RAYCAST_SOURCE', "Raycast Source (Rallo)"), icon, index)}
                 <div class="component-content">
@@ -3524,7 +3485,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.Water) {
+        } else if (ley.constructor.name === 'Water') {
             componentHTML = `
                 ${renderComponentHeader(L.get('WATER', "Water (Agua)"), icon, index)}
                 <div class="component-content">
@@ -3559,7 +3520,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <button class="primary-btn" onclick="const w = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.Water); w.generateParticles(); window.updateScene();" style="width: 100%; margin-top: 10px;" data-i18n="REGENERAR_PARTICULAS">${L.get('REGENERAR_PARTICULAS', 'Regenerar Partículas')}</button>
                 </div>
             `;
-        } else if (ley instanceof Components.LineCollider2D) {
+        } else if (ley.constructor.name === 'LineCollider2D') {
             componentHTML = `
                 ${renderComponentHeader(L.get('LINE_COLLIDER', "Line Collider 2D"), icon, index)}
                 <div class="component-content">
@@ -3585,7 +3546,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.PlatformEffector2D) {
+        } else if (ley.constructor.name === 'PlatformEffector2D') {
             componentHTML = `
                 ${renderComponentHeader(L.get('PLATFORM_EFFECTOR', "Platform Effector 2D"), 'square', index)}
                 <div class="component-content">
@@ -3631,7 +3592,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     .effector-edge:hover { opacity: 1 !important; filter: brightness(1.2); }
                 </style>
             `;
-        } else if (ley instanceof Components.AudioSource) {
+        } else if (ley.constructor.name === 'AudioSource') {
             componentHTML = `
                 ${renderComponentHeader(L.get('AUDIO_SOURCE', "Audio Source"), icon, index)}
                 <div class="component-content">
@@ -3680,7 +3641,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.Suspension) {
+        } else if (ley.constructor.name === 'Suspension') {
             componentHTML = `
                 ${renderComponentHeader(L.get('SUSPENSION', "Suspensión"), icon, index)}
                 <div class="component-content">
@@ -3714,7 +3675,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.VehicleSideView2D) {
+        } else if (ley.constructor.name === 'VehicleSideView2D') {
             componentHTML = `
                 ${renderComponentHeader(L.get('VEHICLE_SIDE_VIEW_2D', "Vehículo Lateral 2D"), icon, index)}
                 <div class="component-content">
@@ -3767,7 +3728,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.VehicleTopDown) {
+        } else if (ley.constructor.name === 'VehicleTopDown') {
             let warningHTML = '';
             if ((ley.engineSound || ley.brakeSound) && !selectedMateria.getComponentByName('AudioSource')) {
                 warningHTML = renderDependencyWarning('VehicleTopDown', 'AudioSource');
@@ -3847,7 +3808,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.PlaneController) {
+        } else if (ley.constructor.name === 'PlaneController') {
             let warningHTML = '';
             if ((ley.engineSound || ley.takeoffSound) && !selectedMateria.getComponentByName('AudioSource')) {
                 warningHTML = renderDependencyWarning('PlaneController', 'AudioSource');
@@ -3929,7 +3890,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.HelicopterController) {
+        } else if (ley.constructor.name === 'HelicopterController') {
             let warningHTML = '';
             if (ley.engineSound && !selectedMateria.getComponentByName('AudioSource')) {
                 warningHTML = renderDependencyWarning('HelicopterController', 'AudioSource');
@@ -4003,7 +3964,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.Bone) {
+        } else if (ley.constructor.name === 'Bone') {
             componentHTML = `
                 ${renderComponentHeader(L.get('BONE', "Hueso"), icon, index)}
                 <div class="component-content">
@@ -4024,7 +3985,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.SkeletonRenderer) {
+        } else if (ley.constructor.name === 'SkeletonRenderer') {
             componentHTML = `
                 ${renderComponentHeader(L.get('SKELETON_RENDERER', "Esqueleto"), icon, index)}
                 <div class="component-content">
@@ -4080,7 +4041,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.IKManager2D) {
+        } else if (ley.constructor.name === 'IKManager2D') {
             componentHTML = `
                 ${renderComponentHeader(L.get('IK_MANAGER_2D', "IK Manager 2D"), icon, index)}
                 <div class="component-content">
@@ -4102,7 +4063,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.SceneLoader) {
+        } else if (ley.constructor.name === 'SceneLoader') {
             componentHTML = `
                 ${renderComponentHeader(L.get('SCENE_LOADER', "Cargar Escena"), icon, index)}
                 <div class="component-content">
@@ -4125,7 +4086,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <p class="field-description">${L.get('SCENE_LOADER_DESC', 'Carga una escena cuando el jugador colisiona, se presiona una tecla o se clica en el botón asignado.')}</p>
                 </div>
             `;
-        } else if (ley instanceof Components.BasicAI) {
+        } else if (ley.constructor.name === 'BasicAI') {
             const renderAIFuncInput = (propName, label) => {
                 let inputHTML = `<input type="text" autocomplete="off" class="prop-input" data-component="BasicAI" data-prop="${propName}" value="${ley[propName] || ''}" placeholder="${L.get('EXAMPLE_AI_FUNC', 'ej: alDetectarEnemigo')}">`;
 
@@ -4516,38 +4477,8 @@ async function updateInspectorForMateria(selectedMateria) {
     });
     };
 
-    // --- Renderizado Organizado ---
-
-    // 1. Renderizar 3D en una sección colapsada por defecto
-    const all3D = [].concat(...Object.values(components3D));
-    if (all3D.length > 0) {
-        const fold3D = document.createElement('details');
-        fold3D.className = 'inspector-section-fold'; // Usamos una clase común
-        fold3D.open = true; // 3D abierto por defecto
-        const summary = document.createElement('summary');
-        summary.textContent = L.get('LEYES_3D', 'Leyes 3D');
-        fold3D.appendChild(summary);
-
-        const innerWrapper = document.createElement('div');
-        renderComponentList(all3D, innerWrapper);
-        fold3D.appendChild(innerWrapper);
-        componentsWrapper.appendChild(fold3D);
-    }
-
-    // 2. Renderizar 2D en una sección colapsada por defecto
-    if (components2D.length > 0) {
-        const fold2D = document.createElement('details');
-        fold2D.className = 'inspector-section-fold';
-        // fold2D.open = false; // Cerrado por defecto
-        const summary = document.createElement('summary');
-        summary.textContent = L.get('LEYES_2D', 'Leyes 2D');
-        fold2D.appendChild(summary);
-
-        const innerWrapper = document.createElement('div');
-        renderComponentList(components2D, innerWrapper);
-        fold2D.appendChild(innerWrapper);
-        componentsWrapper.appendChild(fold2D);
-    }
+    // --- Renderizado Directo ---
+    renderComponentList(componentsList, componentsWrapper);
 
     if (currentId !== lastUpdateId) return;
     dom.inspectorContent.appendChild(componentsWrapper);
@@ -5317,30 +5248,24 @@ export async function showAddComponentModal() {
     if (!selectedMateria) return;
 
     dom.componentList.innerHTML = '';
+    const config = getCurrentProjectConfig();
+    const is3DProject = config.projectType === '3d';
+    const L = window.Localization;
+
     const existingComponents = new Set(selectedMateria.leyes.map(ley => ley.constructor));
     const existingCustomComponents = new Set(selectedMateria.leyes
-        .filter(ley => ley instanceof Components.CustomComponent)
+        .filter(ley => ley.constructor.name === 'CustomComponent')
         .map(ley => ley.definition.nombre)
     );
-    const existingScripts = new Set(selectedMateria.leyes.filter(ley => ley instanceof Components.CreativeScript).map(ley => ley.scriptName));
+    const existingScripts = new Set(selectedMateria.leyes.filter(ley => ley.constructor.name === (is3DProject ? 'CreativeScript3D' : 'CreativeScript')).map(ley => ley.scriptName));
 
-    // --- 1. Render Built-in Components ---
-    const L = window.Localization;
-    const projectConfig = getCurrentProjectConfig();
-
-    // View Mode determines the filtering (simulated 2D or full 3D)
-    const viewMode = projectConfig.viewMode || '3d';
+    const componentsSource = is3DProject ? availableComponents3D : availableComponents2D;
 
     // Top-level containers
-    const container3D = document.createElement('details');
-    container3D.className = 'component-master-category';
-    container3D.open = (viewMode === '3d');
-    container3D.innerHTML = `<summary><h3>3D</h3></summary>`;
-
-    const container2D = document.createElement('details');
-    container2D.className = 'component-master-category';
-    container2D.open = (viewMode === '2d');
-    container2D.innerHTML = `<summary><h3>2D</h3></summary>`;
+    const containerMain = document.createElement('details');
+    containerMain.className = 'component-master-category';
+    containerMain.open = true;
+    containerMain.innerHTML = `<summary><h3>${is3DProject ? '3D' : '2D'}</h3></summary>`;
 
     const containerScripts = document.createElement('details');
     containerScripts.className = 'component-master-category';
@@ -5350,16 +5275,11 @@ export async function showAddComponentModal() {
     containerLibraries.className = 'component-master-category';
     containerLibraries.innerHTML = `<summary><h3>${L.get('LIBRERIAS', 'Librerías')}</h3></summary>`;
 
-    dom.componentList.appendChild(container3D);
-    dom.componentList.appendChild(container2D);
+    dom.componentList.appendChild(containerMain);
     dom.componentList.appendChild(containerScripts);
     dom.componentList.appendChild(containerLibraries);
 
-    for (const category in availableComponents) {
-        const is3D = category.endsWith('_3D');
-        const is2D = !is3D && category !== 'CAT_SCRIPTING';
-
-        if (viewMode === '2d' && is3D) continue;
+    for (const category in componentsSource) {
         if (category === 'CAT_SCRIPTING') continue;
 
         const categoryWrapper = document.createElement('div');
@@ -5369,18 +5289,14 @@ export async function showAddComponentModal() {
         categoryHeader.className = 'category-header';
         let categoryLabel = L.get(category);
         if (categoryLabel === category) {
-            // Si no hay traducción, limpiar el prefijo CAT_ y formatear
             categoryLabel = category.replace('CAT_', '').replace(/_/g, ' ').toLowerCase();
             categoryLabel = categoryLabel.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-        }
-        if (is3D && categoryLabel.toLowerCase().endsWith(' 3d')) {
-            categoryLabel = categoryLabel.substring(0, categoryLabel.length - 3);
         }
         categoryHeader.innerHTML = `<span class="category-toggle"></span>${categoryLabel}`;
 
         const categoryContent = document.createElement('div');
         categoryContent.className = 'category-content';
-        categoryContent.style.display = 'none'; // Everything closed inside by default
+        categoryContent.style.display = 'none';
 
         categoryHeader.addEventListener('click', () => {
             const isOpen = categoryContent.style.display !== 'none';
@@ -5390,34 +5306,27 @@ export async function showAddComponentModal() {
 
         categoryWrapper.appendChild(categoryHeader);
         categoryWrapper.appendChild(categoryContent);
+        containerMain.appendChild(categoryWrapper);
 
-        if (is3D) container3D.appendChild(categoryWrapper);
-        else container2D.appendChild(categoryWrapper);
+        componentsSource[category].forEach(ComponentClassOrName => {
+            const is3DComp = typeof ComponentClassOrName === 'string';
+            const ComponentClass = is3DComp ? null : ComponentClassOrName;
+            const compName = is3DComp ? ComponentClassOrName : ComponentClass.name;
 
-        availableComponents[category].forEach(ComponentClassOrName => {
-            const L = window.Localization;
-            const is3D = typeof ComponentClassOrName === 'string';
-            const ComponentClass = is3D ? null : ComponentClassOrName;
-            const compName = is3D ? ComponentClassOrName : ComponentClass.name;
-
-            const isPresent = is3D ? selectedMateria.getComponentByName(compName) : existingComponents.has(ComponentClass);
+            const isPresent = is3DComp ? selectedMateria.getComponentByName(compName) : existingComponents.has(ComponentClass);
             const componentItem = document.createElement('div');
             componentItem.className = `component-item ${isPresent ? 'already-added' : ''}`;
+
             let compTitle = compName;
             if (compTitle === 'Transform') compTitle = L.get('TRANSFORM', 'Posición (Transform)');
             else if (compTitle === 'UITransform') compTitle = L.get('UI_TRANSFORM', 'Transformación UI');
             else if (L.get(compTitle.toUpperCase()) !== compTitle.toUpperCase()) compTitle = L.get(compTitle.toUpperCase());
-            else if (compTitle === 'Rigidbody2D') compTitle = L.get('RIGIDBODY_2D', 'Rigidbody 2D');
-            else if (compTitle === 'SceneLoader') compTitle = L.get('SCENE_LOADER', 'Cargar Escena');
-            else if (compTitle === 'BasicAI') compTitle = L.get('BASIC_AI', 'IA Básica');
 
             componentItem.innerHTML = `
                 <span class="component-icon">${getIconHTML(componentIcons[compName] || 'box')}</span>
                 <span>${compTitle}</span>
                 ${isPresent ? `<span class="component-item-indicator">${getIconHTML('check')}</span>` : ''}
             `;
-
-            categoryContent.appendChild(componentItem);
 
             componentItem.addEventListener('click', async () => {
                 if (isPresent) {
@@ -5426,9 +5335,9 @@ export async function showAddComponentModal() {
                 }
 
                 let FinalClass = ComponentClass;
-                if (is3D) {
+                if (is3DComp) {
                     if (!window.Components3D) {
-                        window.Components3D = await import('../../engine/Components3D.js');
+                        window.Components3D = await import('../../engine/3d/Components3D.js');
                     }
                     FinalClass = window.Components3D[compName];
                 }
@@ -5438,22 +5347,9 @@ export async function showAddComponentModal() {
                 const newComponent = new FinalClass(selectedMateria);
                 selectedMateria.addComponent(newComponent);
 
-                // Initialization for specific components
                 if (newComponent instanceof Components.AnimatorController) {
                     const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
                     newComponent.initialize(currentDirHandle);
-                }
-
-                // If a UI component is added, ensure it has a UITransform
-                // and remove the standard Transform to avoid conflicts.
-                if (newComponent instanceof Components.UIImage || newComponent instanceof Components.UIText || newComponent instanceof Components.Button) {
-                    if (!selectedMateria.getComponent(Components.UITransform)) {
-                        const existingTransform = selectedMateria.getComponent(Components.Transform);
-                        if (existingTransform) {
-                            selectedMateria.removeComponent(Components.Transform);
-                        }
-                        selectedMateria.addComponent(new Components.UITransform(selectedMateria));
-                    }
                 }
 
                 dom.addComponentModal.classList.add('hidden');
@@ -6015,7 +5911,7 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
             console.log(`[Inspector] Modelo cargado en vista previa.`);
 
             // Auto-frame for interactive preview as well
-            const { getAABB3D } = await import('../../engine/MathUtils.js');
+            const { getAABB3D } = await import('../../engine/3d/MathUtils3D.js');
             const aabb = getAABB3D(previewMateria);
             if (aabb) {
                 const glm = window.glMatrix;
@@ -6071,18 +5967,7 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
         let lastMouseX = 0;
         let lastMouseY = 0;
 
-        canvas.onmousedown = (e) => {
-            e.stopPropagation();
-            lastMouseX = e.clientX;
-            lastMouseY = e.clientY;
-            if (e.button === 0) isPanning = true; // Left click pan
-            if (e.button === 2) isOrbiting = true; // Right click orbit
-        };
-        canvas.oncontextmenu = (e) => e.preventDefault();
-
         const handleGlobalMouseUp = () => { isOrbiting = false; isPanning = false; };
-        window.addEventListener('mouseup', handleGlobalMouseUp);
-
         const handleGlobalMouseMove = (e) => {
             if (!isOrbiting && !isPanning) return;
             e.stopPropagation();
@@ -6108,7 +5993,18 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
                 orbitTarget[2] -= right[2] * dx * 0.5 * factor;
             }
         };
+
+        window.addEventListener('mouseup', handleGlobalMouseUp);
         window.addEventListener('mousemove', handleGlobalMouseMove, { capture: true });
+
+        canvas.onmousedown = (e) => {
+            e.stopPropagation();
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+            if (e.button === 0) isPanning = true; // Left click pan
+            if (e.button === 2) isOrbiting = true; // Right click orbit
+        };
+        canvas.oncontextmenu = (e) => e.preventDefault();
 
         canvas.onwheel = (e) => {
             e.preventDefault();

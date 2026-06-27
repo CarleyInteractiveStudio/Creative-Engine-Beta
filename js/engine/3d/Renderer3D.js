@@ -4,7 +4,6 @@
  * (c) 2024 Carley Interactive Studio
  */
 
-import * as Components from './Components.js';
 import * as Components3D from './Components3D.js';
 
 // Import gl-matrix for 3D math
@@ -513,7 +512,7 @@ export class Renderer3D {
         let clearFlags = scene?.ambiente?.skyMode || 'SolidColor';
 
         if (cameraMateria) {
-            const cam = cameraMateria.getComponent(Components.Camera);
+            const cam = cameraMateria.getComponent(Components3D.Camera);
             clearFlags = cam.clearFlags;
             if (cam.clearFlags === 'SolidColor') {
                 const rgb = this.hexToRgb(cam.backgroundColor);
@@ -532,8 +531,8 @@ export class Renderer3D {
         let far = 20000.0;
 
         if (cameraMateria) {
-            const cam = cameraMateria.getComponent(Components.Camera);
-            const transform = cameraMateria.getComponent(Components.Transform);
+            const cam = cameraMateria.getComponent(Components3D.Camera);
+            const transform = cameraMateria.getComponent(Components3D.Transform);
             near = cam.nearClipPlane || 0.1;
             far = cam.farClipPlane || 20000.0;
 
@@ -574,9 +573,6 @@ export class Renderer3D {
             this.drawOriginAxes();
         }
         this.drawScene(scene, cameraMateria);
-        if (options.isGameView) {
-            // console.log("[Renderer3D] Rendered scene for game view");
-        }
     }
 
     drawSky(ambiente) {
@@ -666,6 +662,101 @@ export class Renderer3D {
         drawAxis([0.2, 0.2, 500], [0, 0, 1]); // Z
     }
 
+    updateMatrices(scene, cameraMateria, options = {}) {
+        const gl = this.gl;
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+        const aspect = width / height;
+
+        if (options.editorCamera) {
+            const cam = options.editorCamera;
+            mat4.perspective(this.projectionMatrix, cam.fov * Math.PI / 180, aspect, cam.near, cam.far);
+            mat4.identity(this.viewMatrix);
+            mat4.translate(this.viewMatrix, this.viewMatrix, [-cam.x, -cam.y, -cam.z]);
+            mat4.rotateX(this.viewMatrix, this.viewMatrix, cam.rotationX * Math.PI / 180);
+            mat4.rotateY(this.viewMatrix, this.viewMatrix, cam.rotationY * Math.PI / 180);
+        } else if (cameraMateria) {
+            const camComp = cameraMateria.getComponent(Components3D.Camera);
+            const transform = cameraMateria.getComponent(Components3D.Transform);
+            mat4.perspective(this.projectionMatrix, camComp.fov * Math.PI / 180, aspect, camComp.near, camComp.far);
+            mat4.invert(this.viewMatrix, transform.worldMatrix);
+        }
+
+        mat4.copy(this.lastProjectionMatrix, this.projectionMatrix);
+        mat4.copy(this.lastViewMatrix, this.viewMatrix);
+    }
+
+    pick(scene, cameraMateria, x, y, options = {}) {
+        const gl = this.gl;
+        if (!gl || !scene) return null;
+
+        if (!this.buffers.pickFb) {
+            this.buffers.pickFb = gl.createFramebuffer();
+            this.buffers.pickTex = gl.createTexture();
+            this.buffers.pickDepth = gl.createRenderbuffer();
+            gl.bindTexture(gl.TEXTURE_2D, this.buffers.pickTex);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1024, 1024, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+            gl.bindRenderbuffer(gl.RENDERBUFFER, this.buffers.pickDepth);
+            gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, 1024, 1024);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, this.buffers.pickFb);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.buffers.pickTex, 0);
+            gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, this.buffers.pickDepth);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        }
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.buffers.pickFb);
+        gl.viewport(0, 0, 1024, 1024);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        const program = this.programs.picking;
+        gl.useProgram(program);
+        this.updateMatrices(scene, cameraMateria, options);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
+
+        const modelLoc = gl.getUniformLocation(program, 'uModelMatrix');
+        const colorLoc = gl.getUniformLocation(program, 'uPickColor');
+        const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
+
+        const materias = scene.getAllMaterias();
+        materias.forEach(materia => {
+            if (!materia.isActive) return;
+            const mesh = materia.getComponent(Components3D.MeshRenderer3D);
+            if (!mesh || !mesh.isActive) return;
+
+            const id = materia.id;
+            gl.uniform4f(colorLoc, ((id >> 16) & 0xFF) / 255, ((id >> 8) & 0xFF) / 255, (id & 0xFF) / 255, 1.0);
+            gl.uniformMatrix4fv(modelLoc, false, materia.getComponent(Components3D.Transform).worldMatrix);
+
+            let buffer = this.buffers.cube;
+            let count = 36;
+            if (mesh.meshType === 'Sphere' || mesh.meshType === 'Capsule') { buffer = this.buffers.sphere; count = this.sphereIndexCount; }
+            else if (mesh.meshType === 'Plane') { buffer = this.buffers.plane; count = 6; }
+            else if (mesh.meshType === 'Triangle') { buffer = this.buffers.triangle; count = 3; }
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+            gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(posLoc);
+
+            if (mesh.meshType === 'Sphere' || mesh.meshType === 'Capsule' || mesh.meshType === 'Cube') {
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.meshType === 'Cube' ? this.buffers.cubeIdx : this.buffers.sphereIdx);
+                gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
+            } else {
+                gl.drawArrays(gl.TRIANGLES, 0, count);
+            }
+        });
+
+        const pixelX = x * (1024 / this.canvas.width);
+        const pixelY = (this.canvas.height - y) * (1024 / this.canvas.height);
+        const data = new Uint8Array(4);
+        gl.readPixels(pixelX, pixelY, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, data);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+
+        return data[3] === 0 ? null : (data[0] << 16) | (data[1] << 8) | data[2];
+    }
+
     drawScene(scene, cameraMateria = null) {
         if (!scene) return;
         const gl = this.gl;
@@ -673,7 +764,9 @@ export class Renderer3D {
         gl.enable(gl.DEPTH_TEST);
         gl.enable(gl.CULL_FACE);
 
-        const cullingMask = cameraMateria ? cameraMateria.getComponent(Components.Camera).cullingMask : -1;
+        this.updateMatrices(scene, cameraMateria);
+
+        const cullingMask = cameraMateria ? cameraMateria.getComponent(Components3D.Camera).cullingMask : -1;
         const materias = scene.getAllMaterias();
 
         materias.forEach(materia => {
@@ -711,7 +804,7 @@ export class Renderer3D {
             const colorLoc = gl.getUniformLocation(program, 'uColor');
             const modelLoc = gl.getUniformLocation(program, 'uModelMatrix');
 
-            const transform = materia.getComponent(Components.Transform);
+            const transform = materia.getComponent(Components3D.Transform);
             gl.uniformMatrix4fv(modelLoc, false, transform.worldMatrix || mat4.create());
             const color = this.hexToRgb(mesh.color);
             gl.uniform4f(colorLoc, color[0], color[1], color[2], 1.0);
@@ -766,7 +859,6 @@ export class Renderer3D {
                 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.cubeIdx);
                 gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
             } else if (mesh.meshType === 'Sphere' || mesh.meshType === 'Capsule') {
-                // Approximate capsule with sphere for now if needed, but we used sphere for wheels
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.sphere);
                 gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
                 gl.enableVertexAttribArray(posLoc);
@@ -784,7 +876,6 @@ export class Renderer3D {
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.plane);
                 gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
                 gl.enableVertexAttribArray(posLoc);
-                // Simple normal for plane (pointing UP in world = +Y)
                 if (normLoc !== -1) {
                     gl.disableVertexAttribArray(normLoc);
                     gl.vertexAttrib3f(normLoc, 0, 1, 0);
@@ -817,7 +908,7 @@ export class Renderer3D {
         const program = this.programs.standard;
         gl.useProgram(program);
 
-        const transform = materia.getComponent(Components.Transform);
+        const transform = materia.getComponent(Components3D.Transform);
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, transform.worldMatrix || mat4.create());
@@ -877,41 +968,10 @@ export class Renderer3D {
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
             gl.drawElements(gl.TRIANGLES, terrain.indexCount, gl.UNSIGNED_SHORT, 0);
         }
-
-        // --- Draw Foliage (Grass/Flowers) ---
-        if (terrain.grass && terrain.grass.length > 0) {
-            const unlitProg = this.programs.unlit;
-            gl.useProgram(unlitProg);
-            gl.uniformMatrix4fv(gl.getUniformLocation(unlitProg, 'uProjectionMatrix'), false, this.projectionMatrix);
-            gl.uniformMatrix4fv(gl.getUniformLocation(unlitProg, 'uViewMatrix'), false, this.viewMatrix);
-            const uModelLoc = gl.getUniformLocation(unlitProg, 'uModelMatrix');
-            const uColorLoc = gl.getUniformLocation(unlitProg, 'uColor');
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.quad);
-            gl.vertexAttribPointer(gl.getAttribLocation(unlitProg, 'aVertexPosition'), 3, gl.FLOAT, false, 0, 0);
-
-            // Simple billboarded cross-quads for grass
-            terrain.grass.forEach(g => {
-                const m = mat4.create();
-                const worldPos = vec3.transformMat4(vec3.create(), g.pos, transform.worldMatrix);
-                mat4.fromRotationTranslationScale(m, quat.fromEuler(quat.create(), g.rot.x, g.rot.y, g.rot.z), worldPos, [g.scale * 20, g.scale * 20, g.scale * 20]);
-
-                // Align to camera (Billboard)
-                m[0] = this.viewMatrix[0]; m[1] = this.viewMatrix[4]; m[2] = this.viewMatrix[8];
-                m[4] = this.viewMatrix[1]; m[5] = this.viewMatrix[5]; m[6] = this.viewMatrix[9];
-                m[8] = this.viewMatrix[2]; m[9] = this.viewMatrix[6]; m[10] = this.viewMatrix[10];
-
-                gl.uniformMatrix4fv(uModelLoc, false, m);
-                gl.uniform4f(uColorLoc, 0.4, 0.8, 0.2, 1.0); // Grass green
-                gl.drawArrays(gl.TRIANGLES, 0, 6);
-            });
-        }
     }
 
     drawSkinnedMesh(materia, mesh) {
         const gl = this.gl;
-
-        // Ensure bone matrices are up to date, especially in the editor where component.update() might not be running
         if (typeof mesh.updateBoneMatrices === 'function') {
             mesh.updateBoneMatrices();
         }
@@ -919,7 +979,7 @@ export class Renderer3D {
         const program = this.programs.skinned;
         gl.useProgram(program);
 
-        const transform = materia.getComponent(Components.Transform);
+        const transform = materia.getComponent(Components3D.Transform);
         const color = this.hexToRgb(mesh.color);
 
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
@@ -929,16 +989,12 @@ export class Renderer3D {
         gl.uniform1i(gl.getUniformLocation(program, "uUseNormalMap"), 0);
         gl.uniform1i(gl.getUniformLocation(program, "uUseVertexColor"), mesh.cpuColors ? 1 : 0);
 
-        // Identity for skinned meshes as bone matrices are in world space.
-        // If it's a non-skinned primitive of a model, use the world matrix.
-        const hasSkeleton = !!(mesh.skeleton && mesh.skeleton.joints && mesh.skeleton.joints.length > 0);
-        const modelMatrix = hasSkeleton ? mat4.create() : (transform.worldMatrix || mat4.create());
+        const modelMatrix = (mesh.skeleton && mesh.skeleton.joints && mesh.skeleton.joints.length > 0) ? mat4.create() : (transform.worldMatrix || mat4.create());
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, modelMatrix);
         gl.uniform4f(gl.getUniformLocation(program, 'uColor'), color[0], color[1], color[2], 1.0);
 
         if (mesh.boneMatrices) gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uBoneMatrices'), false, mesh.boneMatrices);
 
-        // Textures
         const useMainTexLoc = gl.getUniformLocation(program, 'uUseMainTex');
         const useNormalMapLoc = gl.getUniformLocation(program, 'uUseNormalMap');
 
@@ -949,12 +1005,8 @@ export class Renderer3D {
                 gl.bindTexture(gl.TEXTURE_2D, tex);
                 gl.uniform1i(gl.getUniformLocation(program, 'uMainTex'), 0);
                 gl.uniform1i(useMainTexLoc, 1);
-            } else {
-                gl.uniform1i(useMainTexLoc, 0);
-            }
-        } else {
-            gl.uniform1i(useMainTexLoc, 0);
-        }
+            } else { gl.uniform1i(useMainTexLoc, 0); }
+        } else { gl.uniform1i(useMainTexLoc, 0); }
 
         if (mesh.normalMapPath) {
             const norm = this.getTexture(mesh.normalMapPath);
@@ -963,14 +1015,9 @@ export class Renderer3D {
                 gl.bindTexture(gl.TEXTURE_2D, norm);
                 gl.uniform1i(gl.getUniformLocation(program, 'uNormalMap'), 1);
                 gl.uniform1i(useNormalMapLoc, 1);
-            } else {
-                gl.uniform1i(useNormalMapLoc, 0);
-            }
-        } else {
-            gl.uniform1i(useNormalMapLoc, 0);
-        }
+            } else { gl.uniform1i(useNormalMapLoc, 0); }
+        } else { gl.uniform1i(useNormalMapLoc, 0); }
 
-        // --- Multi-context Buffer Management ---
         if (!mesh._glBuffers) mesh._glBuffers = new Map();
         let buffers = mesh._glBuffers.get(gl);
 
@@ -995,25 +1042,6 @@ export class Renderer3D {
             mesh._glBuffers.set(gl, buffers);
         }
 
-        if (mesh.isDirty && mesh.cpuPositions && buffers?.positions) {
-            if (!mesh._glDirtyFlags) mesh._glDirtyFlags = new Map();
-            if (!mesh._glDirtyFlags.get(gl)) {
-                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.positions);
-                gl.bufferSubData(gl.ARRAY_BUFFER, 0, mesh.cpuPositions);
-                mesh._glDirtyFlags.set(gl, true);
-
-                // If all active renderers have updated, reset the main isDirty
-                // This is a bit simplified, but works for Scene/Game view
-                let allDone = true;
-                if (window._Renderer3D && window._Renderer3D.gl !== gl) allDone = false;
-                // Since we usually only have 2 renderers max, we can just check if this is the last one
-                if (mesh._glDirtyFlags.size >= 2) {
-                    mesh.isDirty = false;
-                    mesh._glDirtyFlags.clear();
-                }
-            }
-        }
-
         const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
         const normLoc = gl.getAttribLocation(program, 'aVertexNormal');
         const uvLoc = gl.getAttribLocation(program, 'aTextureCoord');
@@ -1025,52 +1053,14 @@ export class Renderer3D {
             gl.bindBuffer(gl.ARRAY_BUFFER, buffers.positions);
             gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
             gl.enableVertexAttribArray(posLoc);
-
-            if (buffers.normals) {
-                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normals);
-                gl.vertexAttribPointer(normLoc, 3, gl.FLOAT, false, 0, 0);
-                gl.enableVertexAttribArray(normLoc);
+            if (buffers.normals) { gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normals); gl.vertexAttribPointer(normLoc, 3, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(normLoc); }
+            if (buffers.uvs) { gl.bindBuffer(gl.ARRAY_BUFFER, buffers.uvs); gl.vertexAttribPointer(uvLoc, 2, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(uvLoc); }
+            if (buffers.colors) { gl.bindBuffer(gl.ARRAY_BUFFER, buffers.colors); gl.vertexAttribPointer(colorLoc, 4, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(colorLoc); }
+            if (buffers.joints) { gl.bindBuffer(gl.ARRAY_BUFFER, buffers.joints); gl.vertexAttribPointer(jointLoc, 4, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(jointLoc);
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.weights); gl.vertexAttribPointer(weightLoc, 4, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(weightLoc);
             }
-
-            if (buffers.uvs) {
-                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.uvs);
-                gl.vertexAttribPointer(uvLoc, 2, gl.FLOAT, false, 0, 0);
-                gl.enableVertexAttribArray(uvLoc);
-            }
-
-            if (buffers.colors) {
-                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.colors);
-                gl.vertexAttribPointer(colorLoc, 4, gl.FLOAT, false, 0, 0);
-                gl.enableVertexAttribArray(colorLoc);
-            } else if (colorLoc !== -1) {
-                gl.disableVertexAttribArray(colorLoc);
-                gl.vertexAttrib4f(colorLoc, 0, 0, 0, 0);
-            }
-
-            if (buffers.joints && hasSkeleton) {
-                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.joints);
-                gl.vertexAttribPointer(jointLoc, 4, gl.FLOAT, false, 0, 0);
-                gl.enableVertexAttribArray(jointLoc);
-                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.weights);
-                gl.vertexAttribPointer(weightLoc, 4, gl.FLOAT, false, 0, 0);
-                gl.enableVertexAttribArray(weightLoc);
-            } else {
-                if (jointLoc !== -1) {
-                    gl.disableVertexAttribArray(jointLoc);
-                    gl.vertexAttrib4f(jointLoc, 0, 0, 0, 0);
-                }
-                if (weightLoc !== -1) {
-                    gl.disableVertexAttribArray(weightLoc);
-                    gl.vertexAttrib4f(weightLoc, 1, 0, 0, 0); // Use first bone with weight 1
-                }
-            }
-
-            if (buffers.indices) {
-                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
-                gl.drawElements(gl.TRIANGLES, mesh.indexCount, gl.UNSIGNED_SHORT, 0);
-            } else {
-                gl.drawArrays(gl.TRIANGLES, 0, mesh.indexCount);
-            }
+            if (buffers.indices) { gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices); gl.drawElements(gl.TRIANGLES, mesh.indexCount, gl.UNSIGNED_SHORT, 0);
+            } else { gl.drawArrays(gl.TRIANGLES, 0, mesh.indexCount); }
         }
     }
 
@@ -1088,28 +1078,20 @@ export class Renderer3D {
     getTexture(path) {
         if (!path) return null;
         if (this.textureCache.has(path)) return this.textureCache.get(path);
-
         const gl = this.gl;
         const texture = gl.createTexture();
         this.textureCache.set(path, texture);
-
-        // Fill with a 1x1 white pixel while loading
         gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
-
         (async () => {
-            const { getURLForAssetPath } = await import('./AssetUtils.js');
+            const { getURLForAssetPath } = await import('../AssetUtils.js');
             const url = await getURLForAssetPath(path, window.projectsDirHandle);
             if (!url) return;
-
             const img = new Image();
             img.onload = () => {
                 gl.bindTexture(gl.TEXTURE_2D, texture);
                 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
-
-                // Check if dimensions are power of 2
-                if ((img.width & (img.width - 1)) === 0 && (img.height & (img.height - 1)) === 0) {
-                    gl.generateMipmap(gl.TEXTURE_2D);
+                if ((img.width & (img.width - 1)) === 0 && (img.height & (img.height - 1)) === 0) { gl.generateMipmap(gl.TEXTURE_2D);
                 } else {
                     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
                     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -1118,7 +1100,6 @@ export class Renderer3D {
             };
             img.src = url;
         })();
-
         return texture;
     }
 
@@ -1145,102 +1126,6 @@ export class Renderer3D {
             return null;
         }
         return shader;
-    }
-
-    pick(scene, cameraMateria, x, y, options = {}) {
-        if (!this.initialized || !this.gl) return null;
-        const gl = this.gl;
-        const w = gl.canvas.width, h = gl.canvas.height;
-
-        if (!this.pickFB || this._pickW !== w || this._pickH !== h) {
-            if (this.pickFB) { gl.deleteFramebuffer(this.pickFB); gl.deleteTexture(this.pickTex); gl.deleteRenderbuffer(this.pickDepth); }
-            this.pickFB = gl.createFramebuffer();
-            this.pickTex = gl.createTexture();
-            gl.bindTexture(gl.TEXTURE_2D, this.pickTex);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-            this.pickDepth = gl.createRenderbuffer();
-            gl.bindRenderbuffer(gl.RENDERBUFFER, this.pickDepth);
-            gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, this.pickFB);
-            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.pickTex, 0);
-            gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, this.pickDepth);
-            this._pickW = w; this._pickH = h;
-        }
-
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.pickFB);
-        gl.viewport(0, 0, w, h);
-        gl.clearColor(0, 0, 0, 0);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-        const program = this.programs.picking;
-        gl.useProgram(program);
-        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.lastViewMatrix);
-        gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.lastProjectionMatrix);
-
-        const posLoc = gl.getAttribLocation(program, 'aVertexPosition');
-        const modelLoc = gl.getUniformLocation(program, 'uModelMatrix');
-        const pickColorLoc = gl.getUniformLocation(program, 'uPickColor');
-
-        const idMap = new Map();
-        scene.getAllMaterias().forEach((m, index) => {
-            if (!m.isActive) return;
-            const mesh = m.getComponent(Components3D.MeshRenderer3D);
-            const skinnedMesh = m.getComponent(Components3D.SkinnedMeshRenderer3D);
-            if (!mesh && !skinnedMesh) return;
-
-            const id = index + 1;
-            idMap.set(id, m.id);
-            gl.uniform4f(pickColorLoc, (id & 0xFF)/255, ((id >> 8) & 0xFF)/255, ((id >> 16) & 0xFF)/255, 1.0);
-            gl.uniformMatrix4fv(modelLoc, false, m.getComponent(Components.Transform).worldMatrix);
-
-            if (skinnedMesh) {
-                if (skinnedMesh.cpuIndices && skinnedMesh._glBuffers?.get(gl)) {
-                    const buffers = skinnedMesh._glBuffers.get(gl);
-                    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.positions);
-                    gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
-                    gl.enableVertexAttribArray(posLoc);
-                    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
-                    gl.drawElements(gl.TRIANGLES, skinnedMesh.indexCount, gl.UNSIGNED_SHORT, 0);
-                } else if (skinnedMesh.cpuPositions) {
-                    // Fallback for meshes without indices
-                    const posBuffer = gl.createBuffer();
-                    gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
-                    gl.bufferData(gl.ARRAY_BUFFER, skinnedMesh.cpuPositions, gl.STATIC_DRAW);
-                    gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
-                    gl.enableVertexAttribArray(posLoc);
-                    gl.drawArrays(gl.TRIANGLES, 0, skinnedMesh.indexCount);
-                    gl.deleteBuffer(posBuffer);
-                }
-            } else if (mesh.meshType === 'Cube' || !mesh.meshType) {
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cube);
-                gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
-                gl.enableVertexAttribArray(posLoc);
-                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.cubeIdx);
-                gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
-            } else if (mesh.meshType === 'Sphere' || mesh.meshType === 'Capsule') {
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.sphere);
-                gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
-                gl.enableVertexAttribArray(posLoc);
-                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.sphereIdx);
-                gl.drawElements(gl.TRIANGLES, this.sphereIndexCount, gl.UNSIGNED_SHORT, 0);
-            } else if (mesh.meshType === 'Plane') {
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.plane);
-                gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
-                gl.enableVertexAttribArray(posLoc);
-                gl.drawArrays(gl.TRIANGLES, 0, 6);
-            } else if (mesh.meshType === 'Triangle') {
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.triangle);
-                gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
-                gl.enableVertexAttribArray(posLoc);
-                gl.drawArrays(gl.TRIANGLES, 0, 3);
-            }
-        });
-
-        const pixels = new Uint8Array(4);
-        const rect = gl.canvas.getBoundingClientRect();
-        gl.readPixels((x / rect.width) * w, (h - 1) - (y / rect.height) * h, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        return idMap.get(pixels[0] + (pixels[1] << 8) + (pixels[2] << 16)) || null;
     }
 
     hexToRgb(hex) {

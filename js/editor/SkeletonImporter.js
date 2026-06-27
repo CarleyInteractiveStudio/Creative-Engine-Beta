@@ -7,19 +7,30 @@ export async function importSpineJSON(jsonContent, targetMateria, projectsDirHan
     const scene = targetMateria.scene || window.SceneManager.currentScene;
     const skeletonRenderers = [];
 
+    const config = window.currentProjectConfig || {};
+    const is3D = config.projectType === '3d';
+
     // 1. Create Bones
     const boneMap = new Map(); // name -> Materia
     if (data.bones) {
         for (const boneData of data.bones) {
-            const boneMtr = new Materia(boneData.name);
-            boneMtr.addComponent(new Components.Transform(boneMtr));
+            const boneMtr = is3D ? new Materia3D(boneData.name) : new Materia(boneData.name);
+            if (is3D) {
+                if (window.Components3D) boneMtr.addComponent(new window.Components3D.Transform(boneMtr));
+            } else {
+                boneMtr.addComponent(new Components.Transform(boneMtr));
+            }
+
             const boneComp = new Components.Bone(boneMtr);
             boneComp.length = boneData.length || 50;
             boneMtr.addComponent(boneComp);
 
-            const trans = boneMtr.getComponentByName('Transform');
-            trans.localPosition = { x: boneData.x || 0, y: -(boneData.y || 0) }; // Spine Y is up
-            trans.rotationZ = -(boneData.rotation || 0);
+            const trans = boneMtr.transform || boneMtr.getComponentByName('Transform');
+            if (trans) {
+                trans.localPosition = { x: boneData.x || 0, y: -(boneData.y || 0) }; // Spine Y is up
+                if (is3D) trans.localRotation = { x: 0, y: 0, z: -(boneData.rotation || 0) };
+                else trans.rotationZ = -(boneData.rotation || 0);
+            }
 
             boneMap.set(boneData.name, boneMtr);
         }
@@ -109,8 +120,13 @@ export async function importSpineJSON(jsonContent, targetMateria, projectsDirHan
                 for (const attName in attachments) {
                     const att = attachments[attName];
                     if (att.type === 'region' || !att.type) {
-                        const spriteMtr = new Materia(att.name || attName);
-                        spriteMtr.addComponent(new Components.Transform(spriteMtr));
+                        const spriteMtr = is3D ? new Materia3D(att.name || attName) : new Materia(att.name || attName);
+                        if (is3D) {
+                            if (window.Components3D) spriteMtr.addComponent(new window.Components3D.Transform(spriteMtr));
+                        } else {
+                            spriteMtr.addComponent(new Components.Transform(spriteMtr));
+                        }
+
                         const sr = new Components.SpriteRenderer(spriteMtr);
 
                         // We assume the image file matches the attachment name/path
@@ -119,15 +135,22 @@ export async function importSpineJSON(jsonContent, targetMateria, projectsDirHan
 
                         spriteMtr.addComponent(sr);
 
-                        const sTrans = spriteMtr.getComponentByName('Transform');
-                        sTrans.localPosition = { x: att.x || 0, y: -(att.y || 0) };
-                        sTrans.rotationZ = -(att.rotation || 0);
-                        sTrans.localScale = { x: att.scaleX || 1, y: att.scaleY || 1 };
+                        const sTrans = spriteMtr.transform || spriteMtr.getComponentByName('Transform');
+                        if (sTrans) {
+                            sTrans.localPosition = { x: att.x || 0, y: -(att.y || 0) };
+                            if (is3D) sTrans.localRotation = { x: 0, y: 0, z: -(att.rotation || 0) };
+                            else sTrans.rotationZ = -(att.rotation || 0);
+                            sTrans.localScale = { x: att.scaleX || 1, y: att.scaleY || 1 };
+                        }
 
                         spriteMtr.setParent(parentMtr, false);
                     } else if (att.type === 'mesh') {
-                        const meshMtr = new Materia(att.name || attName);
-                        meshMtr.addComponent(new Components.Transform(meshMtr));
+                        const meshMtr = is3D ? new Materia3D(att.name || attName) : new Materia(att.name || attName);
+                        if (is3D) {
+                            if (window.Components3D) meshMtr.addComponent(new window.Components3D.Transform(meshMtr));
+                        } else {
+                            meshMtr.addComponent(new Components.Transform(meshMtr));
+                        }
                         const skel = new Components.SkeletonRenderer(meshMtr);
 
                         // Parse Spine Mesh Data

@@ -53,10 +53,6 @@ export class Materia {
     get controlador() { return this.animatorController; }
     get controladorAnimacion() { return this.animatorController; }
 
-    get animador3D() { return this.getComponentByName('Animator3D'); }
-    get animacion3D() { return this.animador3D; }
-
-    get renderizadorDeMallaConHuesos3D() { return this.getComponentByName('SkinnedMeshRenderer3D'); }
 
     get uiTransform() { return this.getComponentByName('UITransform'); }
     get posicionUI() { return this.uiTransform; }
