@@ -740,7 +740,8 @@ class InputManager {
         const canvasPos = this._mousePositionInCanvas;
 
         const worldX = (canvasPos.x - canvas.width / 2) / camera.effectiveZoom + camera.x;
-        const worldY = (canvasPos.y - canvas.height / 2) / camera.effectiveZoom + camera.y;
+        // World Y increases upwards (+Y UP)
+        const worldY = (canvas.height / 2 - canvasPos.y) / camera.effectiveZoom + camera.y;
 
         return { x: worldX, y: worldY };
     }

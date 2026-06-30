@@ -885,23 +885,24 @@ export class PhysicsSystem {
                     if (nearbyParticles > 3) {
                         avgY /= nearbyParticles;
                         // immersion basado en densidad local y profundidad
+                        // In +Y UP, depth is positive if water surface (avgY) is above object (transform.y)
                         const depth = Math.max(0, avgY - transform.y);
                         const immersion = Math.min(1.2, (nearbyParticles / 12) + (depth / 50));
 
-                        // Fuerza de flotación suavizada
+                        // Fuerza de flotación suavizada (hacia arriba, +Y)
                         const buoyancyForce = immersion * water.density * 45.0;
 
                         if (rigidbody.buoyancyWeight > rigidbody.sinkThreshold) {
-                            // Se hunde, pero con resistencia
-                            rigidbody.velocity.y -= buoyancyForce * 0.2 * deltaTime;
+                            // Se hunde, pero con resistencia (empuje hacia arriba opuesto a gravedad)
+                            rigidbody.velocity.y += buoyancyForce * 0.2 * deltaTime;
                         } else {
-                            // Flota: lift depende de cuánto esté sumergido
+                            // Flota: lift es empuje hacia arriba (+Y)
                             const lift = buoyancyForce * Math.max(0.5, (2.0 - rigidbody.buoyancyWeight));
-                            rigidbody.velocity.y -= lift * deltaTime;
+                            rigidbody.velocity.y += lift * deltaTime;
 
-                            // Estabilización en superficie: si está muy arriba, lo atrae un poco hacia abajo
-                            if (transform.y < avgY - 20) {
-                                rigidbody.velocity.y += 10.0 * deltaTime;
+                            // Estabilización en superficie: si está muy ARRIBA (fuera del agua), lo atrae un poco hacia abajo
+                            if (transform.y > avgY + 20) {
+                                rigidbody.velocity.y -= 10.0 * deltaTime;
                             }
                         }
 
@@ -912,8 +913,8 @@ export class PhysicsSystem {
                         rigidbody.velocity.x *= finalDrag;
                         rigidbody.velocity.y *= finalDrag;
 
-                        // Amortiguación de impacto (Splash damping)
-                        if (rigidbody.velocity.y > 5) {
+                        // Amortiguación de impacto (Splash damping) - In +Y UP, falling is negative velocity
+                        if (rigidbody.velocity.y < -5) {
                              rigidbody.velocity.y *= Math.pow(0.8, deltaTime * 60);
                         }
                     }
@@ -1275,7 +1276,8 @@ export class PhysicsSystem {
         // 2. Side Filtering
         const effectorTrans = effectorMtr.getComponent(Components.Transform);
         const effRotRad = (effectorTrans ? effectorTrans.rotation : 0) * Math.PI / 180;
-        const worldUp = { x: Math.sin(effRotRad), y: -Math.cos(effRotRad) };
+        // In +Y UP, angle 0 with sin/cos gives Right=(1,0) and Up=(0,1)
+        const worldUp = { x: -Math.sin(effRotRad), y: Math.cos(effRotRad) };
         const worldRight = { x: Math.cos(effRotRad), y: Math.sin(effRotRad) };
 
         const dotUp = this._dot(normal, worldUp);
