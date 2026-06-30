@@ -47,7 +47,8 @@ let dragState = {}; // To hold info about the current drag operation
 export function screenToWorld(screenX, screenY) {
     if (!renderer || !renderer.camera) return { x: 0, y: 0 };
     const worldX = (screenX - renderer.canvas.width / 2) / renderer.camera.effectiveZoom + renderer.camera.x;
-    const worldY = (screenY - renderer.canvas.height / 2) / renderer.camera.effectiveZoom + renderer.camera.y;
+    // World Y increases upwards (+Y UP)
+    const worldY = (renderer.canvas.height / 2 - screenY) / renderer.camera.effectiveZoom + renderer.camera.y;
     return { x: worldX, y: worldY };
 }
 
@@ -247,14 +248,15 @@ function checkGizmoHit(canvasPos) {
 
         // Axis arrows hit detection
         if (Math.abs(worldMouse.y - centerY) < handleHitboxSize / 2 && worldMouse.x > centerX && worldMouse.x < centerX + gizmoSize) return 'move-x';
-        if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y < centerY && worldMouse.y > centerY - gizmoSize) return 'move-y';
+        // Y-Axis handle is now upwards (+Y)
+        if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y > centerY && worldMouse.y < centerY + gizmoSize) return 'move-y';
     }
 
     if (activeTool === 'scale-axis') {
         // X-Axis square head
         if (Math.abs(worldMouse.y - centerY) < handleHitboxSize / 2 && worldMouse.x > centerX + gizmoSize - handleHitboxSize / 2 && worldMouse.x < centerX + gizmoSize + handleHitboxSize / 2) return 'scale-axis-x';
-        // Y-Axis square head
-        if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y < centerY - gizmoSize + handleHitboxSize / 2 && worldMouse.y > centerY - gizmoSize - handleHitboxSize / 2) return 'scale-axis-y';
+        // Y-Axis square head (+Y is UP)
+        if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y > centerY + gizmoSize - handleHitboxSize / 2 && worldMouse.y < centerY + gizmoSize + handleHitboxSize / 2) return 'scale-axis-y';
     }
 
     return null;
@@ -342,8 +344,9 @@ function drawEditorGrid() {
     // --- Drawing Logic ---
     const viewLeft = camera.x - (canvas.width / 2 / zoom);
     const viewRight = camera.x + (canvas.width / 2 / zoom);
-    const viewTop = camera.y - (canvas.height / 2 / zoom);
-    const viewBottom = camera.y + (canvas.height / 2 / zoom);
+    // In +Y UP, top has higher Y
+    const viewTop = camera.y + (canvas.height / 2 / zoom);
+    const viewBottom = camera.y - (canvas.height / 2 / zoom);
 
     ctx.save();
     ctx.lineWidth = 1 / zoom;
@@ -358,8 +361,8 @@ function drawEditorGrid() {
             ctx.moveTo(x, viewTop);
             ctx.lineTo(x, viewBottom);
         }
-        const startY = Math.floor(viewTop / step) * step;
-        const endY = Math.ceil(viewBottom / step) * step;
+        const startY = Math.floor(viewBottom / step) * step;
+        const endY = Math.ceil(viewTop / step) * step;
         for (let y = startY; y <= endY; y += step) {
             ctx.moveTo(viewLeft, y);
             ctx.lineTo(viewRight, y);
@@ -396,17 +399,17 @@ function drawEditorGrid() {
 function drawMoveGizmo(ctx, centerX, centerY, zoom, GIZMO_SIZE, HANDLE_THICKNESS, ARROW_HEAD_SIZE) {
     ctx.lineWidth = HANDLE_THICKNESS;
 
-    // Y-Axis (Green)
+    // Y-Axis (Green) - Pointing UP (+Y)
     ctx.strokeStyle = '#00ff00';
     ctx.beginPath();
     ctx.moveTo(centerX, centerY);
-    ctx.lineTo(centerX, centerY - GIZMO_SIZE);
+    ctx.lineTo(centerX, centerY + GIZMO_SIZE);
     ctx.stroke();
     // Arrow head for Y
     ctx.beginPath();
-    ctx.moveTo(centerX, centerY - GIZMO_SIZE);
-    ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
-    ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
+    ctx.moveTo(centerX, centerY + GIZMO_SIZE);
+    ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY + GIZMO_SIZE - ARROW_HEAD_SIZE);
+    ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY + GIZMO_SIZE - ARROW_HEAD_SIZE);
     ctx.closePath();
     ctx.fillStyle = '#00ff00';
     ctx.fill();
@@ -502,15 +505,15 @@ function drawScaleGizmo(ctx, materia, transform, zoom, SCALE_BOX_SIZE, HANDLE_TH
 function drawScaleAxisGizmo(ctx, centerX, centerY, zoom, GIZMO_SIZE, HANDLE_THICKNESS, SCALE_BOX_SIZE) {
      ctx.lineWidth = HANDLE_THICKNESS;
 
-    // Y-Axis (Green)
+    // Y-Axis (Green) - Pointing UP (+Y)
     ctx.strokeStyle = '#00ff00';
     ctx.beginPath();
     ctx.moveTo(centerX, centerY);
-    ctx.lineTo(centerX, centerY - GIZMO_SIZE);
+    ctx.lineTo(centerX, centerY + GIZMO_SIZE);
     ctx.stroke();
     // Square head for Y
     ctx.fillStyle = '#00ff00';
-    ctx.fillRect(centerX - SCALE_BOX_SIZE / 2, centerY - GIZMO_SIZE - SCALE_BOX_SIZE / 2, SCALE_BOX_SIZE, SCALE_BOX_SIZE);
+    ctx.fillRect(centerX - SCALE_BOX_SIZE / 2, centerY + GIZMO_SIZE - SCALE_BOX_SIZE / 2, SCALE_BOX_SIZE, SCALE_BOX_SIZE);
 
     // X-Axis (Red)
     ctx.strokeStyle = '#ff0000';
@@ -555,8 +558,8 @@ function checkUIGizmoHit(canvasPos) {
     switch (activeTool) {
         case 'move':
             if (Math.abs(worldMouse.y - centerY) < handleHitboxSize / 2 && worldMouse.x > centerX && worldMouse.x < centerX + gizmoSize) return 'ui-move-x';
-            // Corrected Y-axis hit detection to be in the negative world Y direction (upwards on screen)
-            if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y < centerY && worldMouse.y > centerY - gizmoSize) return 'ui-move-y';
+            // Corrected Y-axis hit detection to be in the positive world Y direction (upwards on screen)
+            if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y > centerY && worldMouse.y < centerY + gizmoSize) return 'ui-move-y';
              // Central square hit detection
             const squareHitboxSize = 10 / zoom;
             if (Math.abs(worldMouse.x - centerX) < squareHitboxSize / 2 && Math.abs(worldMouse.y - centerY) < squareHitboxSize / 2) {
@@ -625,16 +628,16 @@ function drawUIGizmos(renderer, materia) {
         case 'move':
             ctx.lineWidth = HANDLE_THICKNESS;
 
-            // Y-Axis (Green)
+            // Y-Axis (Green) - Pointing UP (+Y)
             ctx.strokeStyle = '#00ff00';
             ctx.beginPath();
             ctx.moveTo(centerX, centerY);
-            ctx.lineTo(centerX, centerY - GIZMO_SIZE);
+            ctx.lineTo(centerX, centerY + GIZMO_SIZE);
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(centerX, centerY - GIZMO_SIZE);
-            ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
-            ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
+            ctx.moveTo(centerX, centerY + GIZMO_SIZE);
+            ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY + GIZMO_SIZE - ARROW_HEAD_SIZE);
+            ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY + GIZMO_SIZE - ARROW_HEAD_SIZE);
             ctx.closePath();
             ctx.fillStyle = '#00ff00';
             ctx.fill();
@@ -975,7 +978,7 @@ export function initialize(dependencies) {
                  uiTransform.position.x += dx;
                  break;
             case 'ui-move-y':
-                 uiTransform.position.y += dy;
+                 uiTransform.position.y -= dy;
                  break;
             case 'ui-move-xy':
                 {
@@ -986,7 +989,7 @@ export function initialize(dependencies) {
                     // 1. Calculate the element's desired new absolute center position
                     const oldRect = getAbsoluteRect(dragState.materia, rectCache);
                     const desiredCenterX = (oldRect.x + oldRect.width / 2) + dx;
-                    const desiredCenterY = (oldRect.y + oldRect.height / 2) + dy;
+                    const desiredCenterY = (oldRect.y + oldRect.height / 2) - dy;
 
                     // 2. Determine the closest anchor point based on the new position
                     const parentRect = getAbsoluteRect(parentCanvasMateria, rectCache);
@@ -1009,23 +1012,23 @@ export function initialize(dependencies) {
             // --- UI Scaling with new Offset-based logic ---
             case 'ui-scale-r': uiTransform.size.width += dx; uiTransform.position.x += dx / 2; break;
             case 'ui-scale-l': uiTransform.size.width -= dx; uiTransform.position.x += dx / 2; break;
-            case 'ui-scale-b': uiTransform.size.height += dy; uiTransform.position.y += dy / 2; break;
-            case 'ui-scale-t': uiTransform.size.height -= dy; uiTransform.position.y += dy / 2; break;
+            case 'ui-scale-b': uiTransform.size.height += dy; uiTransform.position.y -= dy / 2; break;
+            case 'ui-scale-t': uiTransform.size.height -= dy; uiTransform.position.y -= dy / 2; break;
             case 'ui-scale-tr':
                 uiTransform.size.width += dx; uiTransform.position.x += dx / 2;
-                uiTransform.size.height -= dy; uiTransform.position.y += dy / 2;
+                uiTransform.size.height -= dy; uiTransform.position.y -= dy / 2;
                 break;
             case 'ui-scale-tl':
                 uiTransform.size.width -= dx; uiTransform.position.x += dx / 2;
-                uiTransform.size.height -= dy; uiTransform.position.y += dy / 2;
+                uiTransform.size.height -= dy; uiTransform.position.y -= dy / 2;
                 break;
             case 'ui-scale-br':
                 uiTransform.size.width += dx; uiTransform.position.x += dx / 2;
-                uiTransform.size.height += dy; uiTransform.position.y += dy / 2;
+                uiTransform.size.height += dy; uiTransform.position.y -= dy / 2;
                 break;
             case 'ui-scale-bl':
                 uiTransform.size.width -= dx; uiTransform.position.x += dx / 2;
-                uiTransform.size.height += dy; uiTransform.position.y += dy / 2;
+                uiTransform.size.height += dy; uiTransform.position.y -= dy / 2;
                 break;
 
             // --- Normal Scaling logic (Incremental Delta-based like BoxCollider2D) ---
@@ -1078,10 +1081,9 @@ export function initialize(dependencies) {
                     if (dragState.handle === 'scale-axis-x') {
                         newScale.x += (ldx * 2) / dims.width;
                     } else {
-                        // Axis Y is pointing UP on screen (negative world Y)
-                        // Moving mouse up (negative dy) should increase scale.
-                        // factorY for Y-axis handle is effectively -1.
-                        newScale.y -= (ldy * 2) / dims.height;
+                        // Axis Y is pointing UP on screen (+Y world)
+                        // Moving mouse up (positive world dy) should increase scale.
+                        newScale.y += (ldy * 2) / dims.height;
                     }
                     transform.scale = newScale;
                 }
@@ -1104,17 +1106,17 @@ export function initialize(dependencies) {
             const rad = -transform.rotation * Math.PI / 180;
             const cos = Math.cos(rad);
             const sin = Math.sin(rad);
-            // Mouse deltas in collider local space
+            // Mouse deltas in collider local space (+Y UP)
             const localDx = (dx * cos + dy * sin) / (Math.abs(transform.scale.x) || 1);
-            const localDy = (-dx * sin + dy * cos) / (Math.abs(transform.scale.y) || 1);
+            const localDy = (dx * sin - dy * cos) / (Math.abs(transform.scale.y) || 1);
 
             switch (dragState.handle) {
                 case 'collider-top':
-                    boxCollider.size.y -= localDy;
+                    boxCollider.size.y += localDy;
                     boxCollider.offset.y += localDy / 2;
                     break;
                 case 'collider-bottom':
-                    boxCollider.size.y += localDy;
+                    boxCollider.size.y -= localDy;
                     boxCollider.offset.y += localDy / 2;
                     break;
                 case 'collider-right':
@@ -1126,25 +1128,25 @@ export function initialize(dependencies) {
                     boxCollider.offset.x += localDx / 2;
                     break;
                 case 'collider-tr':
-                    boxCollider.size.y -= localDy;
+                    boxCollider.size.y += localDy;
                     boxCollider.offset.y += localDy / 2;
                     boxCollider.size.x += localDx;
                     boxCollider.offset.x += localDx / 2;
                     break;
                  case 'collider-tl':
-                    boxCollider.size.y -= localDy;
+                    boxCollider.size.y += localDy;
                     boxCollider.offset.y += localDy / 2;
                     boxCollider.size.x -= localDx;
                     boxCollider.offset.x += localDx / 2;
                     break;
                 case 'collider-br':
-                    boxCollider.size.y += localDy;
+                    boxCollider.size.y -= localDy;
                     boxCollider.offset.y += localDy / 2;
                     boxCollider.size.x += localDx;
                     boxCollider.offset.x += localDx / 2;
                     break;
                 case 'collider-bl':
-                    boxCollider.size.y += localDy;
+                    boxCollider.size.y -= localDy;
                     boxCollider.offset.y += localDy / 2;
                     boxCollider.size.x -= localDx;
                     boxCollider.offset.x += localDx / 2;
@@ -1161,7 +1163,7 @@ export function initialize(dependencies) {
 
             const scaleFac = Math.max(Math.abs(transform.scale.x), Math.abs(transform.scale.y)) || 1;
             const localDx = (dx * cos + dy * sin) / scaleFac;
-            const localDy = (-dx * sin + dy * cos) / scaleFac;
+            const localDy = (dx * sin - dy * cos) / scaleFac;
 
             switch (dragState.handle) {
                 case 'collider-circle-handle':
@@ -1183,15 +1185,15 @@ export function initialize(dependencies) {
             const cos = Math.cos(rad);
             const sin = Math.sin(rad);
             const localDx = (dx * cos + dy * sin) / (Math.abs(transform.scale.x) || 1);
-            const localDy = (-dx * sin + dy * cos) / (Math.abs(transform.scale.y) || 1);
+            const localDy = (dx * sin - dy * cos) / (Math.abs(transform.scale.y) || 1);
 
             switch (dragState.handle) {
                 case 'collider-capsule-top':
-                    capsuleCollider.size.y -= localDy;
+                    capsuleCollider.size.y += localDy;
                     capsuleCollider.offset.y += localDy / 2;
                     break;
                 case 'collider-capsule-bottom':
-                    capsuleCollider.size.y += localDy;
+                    capsuleCollider.size.y -= localDy;
                     capsuleCollider.offset.y += localDy / 2;
                     break;
                 case 'collider-capsule-right':
@@ -1768,7 +1770,9 @@ export function initialize(dependencies) {
                 const dy = moveEvent.clientY - lastPos.y;
                 if (renderer && renderer.camera) {
                     renderer.camera.x -= dx / renderer.camera.effectiveZoom;
-                    renderer.camera.y -= dy / renderer.camera.effectiveZoom;
+                    // In +Y UP, moving mouse down (positive dy) should increase camera Y
+                    // so that the world appears to follow the mouse down.
+                    renderer.camera.y += dy / renderer.camera.effectiveZoom;
                 }
                 lastPos = { x: moveEvent.clientX, y: moveEvent.clientY };
             };
@@ -2435,7 +2439,17 @@ function drawTileCursor() {
         const mouseInLayerY = localMouseY - layerTopLeftY;
 
         const col = Math.floor(mouseInLayerX / cellSize.x);
-        const row = Math.floor(mouseInLayerY / cellSize.y);
+        // row 0 is at visual top (highest Y). localMouseY increases downwards on screen but we want to map it to rows.
+        // wait, localMouseY here is world-like but flipped in Renderer.
+        // In Renderer I used dy = layerOffsetY + (y * grid.cellSize.y) - (mapTotalHeight / 2)
+        // and then drew at -dy.
+        // So worldY = - (layerOffsetY + (y * cellSize.y) - (mapTotalHeight / 2))
+        // worldY = -layerOffsetY - y * cellSize.y + mapTotalHeight / 2
+        // y * cellSize.y = mapTotalHeight / 2 - worldY - layerOffsetY
+        // y = (mapTotalHeight / 2 - worldY - layerOffsetY) / cellSize.y
+
+        // localMouseY here is screen-to-world mapped Y.
+        const row = Math.floor((layerHeight - (mouseInLayerY)) / cellSize.y);
 
         if (col >= 0 && col < width && row >= 0 && row < height) {
             ctx.save();
@@ -2451,13 +2465,13 @@ function drawTileCursor() {
                 if (selectedTiles && selectedTiles.length > 0) {
                     for (const tile of selectedTiles) {
                         const tx = layerTopLeftX + (col + tile.offsetX) * cellSize.x;
-                        const ty = layerTopLeftY + (row + tile.offsetY) * cellSize.y;
+                const ty = layerHeight - (row + tile.offsetY + 1) * cellSize.y + layerTopLeftY;
                         ctx.fillRect(tx, ty, cellSize.x, cellSize.y);
                         ctx.strokeRect(tx, ty, cellSize.x, cellSize.y);
                     }
                 } else {
                     const cursorX = layerTopLeftX + col * cellSize.x;
-                    const cursorY = layerTopLeftY + row * cellSize.y;
+            const cursorY = layerHeight - (row + 1) * cellSize.y + layerTopLeftY;
                     ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
                     ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
                 }
@@ -2465,14 +2479,14 @@ function drawTileCursor() {
                 ctx.strokeStyle = 'rgba(100, 255, 100, 0.8)';
                 ctx.fillStyle = 'rgba(100, 255, 100, 0.2)';
                 const cursorX = layerTopLeftX + col * cellSize.x;
-                const cursorY = layerTopLeftY + row * cellSize.y;
+                const cursorY = layerHeight - (row + 1) * cellSize.y + layerTopLeftY;
                 ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
                 ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
             } else { // eraser
                 ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
                 ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
                 const cursorX = layerTopLeftX + col * cellSize.x;
-                const cursorY = layerTopLeftY + row * cellSize.y;
+                const cursorY = layerHeight - (row + 1) * cellSize.y + layerTopLeftY;
                 ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
                 ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
             }
@@ -2560,8 +2574,9 @@ function drawComponentGrids() {
     } else {
         const viewLeft = camera.x - (canvas.width / 2 / zoom);
         const viewRight = camera.x + (canvas.width / 2 / zoom);
-        const viewTop = camera.y - (canvas.height / 2 / zoom);
-        const viewBottom = camera.y + (canvas.height / 2 / zoom);
+        // In +Y UP, top has higher Y
+        const viewTop = camera.y + (canvas.height / 2 / zoom);
+        const viewBottom = camera.y - (canvas.height / 2 / zoom);
 
         ctx.lineWidth = 1 / zoom;
         ctx.strokeStyle = isSceneGridVisible ? 'rgba(0, 100, 255, 0.5)' : 'rgba(255, 255, 255, 0.1)';
@@ -2574,8 +2589,8 @@ function drawComponentGrids() {
             ctx.lineTo(x, viewBottom);
         }
 
-        const startY = Math.floor((viewTop - transform.y) / cellSize.y) * cellSize.y + transform.y;
-        const endY = Math.ceil((viewBottom - transform.y) / cellSize.y) * cellSize.y + transform.y;
+        const startY = Math.floor((viewBottom - transform.y) / cellSize.y) * cellSize.y + transform.y;
+        const endY = Math.ceil((viewTop - transform.y) / cellSize.y) * cellSize.y + transform.y;
         for (let y = startY; y <= endY; y += cellSize.y) {
             ctx.moveTo(viewLeft, y);
             ctx.lineTo(viewRight, y);
@@ -3530,6 +3545,7 @@ function drawPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
         } else {
             ctx.translate(centerX, centerY);
             ctx.rotate(transform.rotation * Math.PI / 180);
+            ctx.scale(1, -1);
             ctx.strokeRect(-width / 2, -height / 2, width, height);
         }
         ctx.restore();
@@ -3546,6 +3562,7 @@ function drawPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
         ctx.save();
         ctx.translate(centerX, centerY);
         ctx.rotate(transform.rotation * Math.PI / 180);
+        ctx.scale(1, -1);
 
         ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
         ctx.lineWidth = 2 / camera.effectiveZoom;
@@ -3577,6 +3594,7 @@ function drawPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
         ctx.save();
         ctx.translate(centerX, centerY);
         ctx.rotate(transform.rotation * Math.PI / 180);
+        ctx.scale(1, -1);
 
         ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
         ctx.lineWidth = 2 / camera.effectiveZoom;
@@ -3677,6 +3695,7 @@ function drawTilemapOutline(proj = null, view = null, cw = null, ch = null) {
         ctx.save();
         ctx.translate(transform.x, transform.y);
         ctx.rotate(transform.rotation * Math.PI / 180);
+        ctx.scale(1, -1);
 
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
         ctx.lineWidth = 2 / camera.effectiveZoom;
@@ -3735,7 +3754,7 @@ function drawTerrenoColliders(proj = null, view = null, cw = null, ch = null) {
     if (!is3D) {
         ctx.translate(transform.x, transform.y);
         ctx.rotate(transform.rotation * Math.PI / 180);
-        ctx.scale(transform.scale.x, transform.scale.y);
+        ctx.scale(transform.scale.x, -transform.scale.y);
     }
 
     ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
@@ -3854,7 +3873,7 @@ function drawTilemapColliders(proj = null, view = null, cw = null, ch = null) {
     if (!is3D) {
         ctx.translate(transform.x, transform.y);
         ctx.rotate(transform.rotation * Math.PI / 180);
-        ctx.scale(transform.scale.x, transform.scale.y);
+        ctx.scale(transform.scale.x, -transform.scale.y);
     }
 
     ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
@@ -3988,7 +4007,7 @@ function paintTile(event) {
             const mInLX = localMouseX - lTopLeftX;
             const mInLY = localMouseY - lTopLeftY;
             const c = Math.floor(mInLX / cellSize.x);
-            const r = Math.floor(mInLY / cellSize.y);
+            const r = Math.floor((layerHeight - mInLY) / cellSize.y);
 
             if (c >= 0 && c < width && r >= 0 && r < height) {
                 const key = `${c},${r}`;
@@ -4026,7 +4045,7 @@ function paintTile(event) {
         const layerTopLeftY = layerOffsetY - layerHeight / 2;
         return {
             col: Math.floor((localMouseX - layerTopLeftX) / cellSize.x),
-            row: Math.floor((localMouseY - layerTopLeftY) / cellSize.y)
+            row: Math.floor((layerHeight - (localMouseY - layerTopLeftY)) / cellSize.y)
         };
     };
 

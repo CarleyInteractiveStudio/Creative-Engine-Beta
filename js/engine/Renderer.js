@@ -172,9 +172,9 @@ export class Renderer {
         } else {
             this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
         }
-        this.ctx.scale(activeCamera.effectiveZoom, activeCamera.effectiveZoom);
+        this.ctx.scale(activeCamera.effectiveZoom, -activeCamera.effectiveZoom);
         const rotationInRadians = (transform.rotation || 0) * Math.PI / 180;
-        this.ctx.rotate(-rotationInRadians);
+        this.ctx.rotate(rotationInRadians);
         this.ctx.translate(-activeCamera.x, -activeCamera.y);
     }
 
@@ -200,18 +200,18 @@ export class Renderer {
         // Safe check for negative dimensions
         if (width === 0 || height === 0) return;
 
-        if (width < 0 || height < 0) {
-            this.ctx.save();
-            this.ctx.translate(x, y);
-            this.ctx.scale(width < 0 ? -1 : 1, height < 0 ? -1 : 1);
-            this.ctx.drawImage(image, -Math.abs(width) / 2, -Math.abs(height) / 2, Math.abs(width), Math.abs(height));
-            this.ctx.restore();
-        } else {
-            this.ctx.drawImage(image, x - width / 2, y - height / 2, width, height);
-        }
+        this.ctx.save();
+        this.ctx.translate(x, y);
+        // Counter-flip Y because of global world scale(1, -1)
+        this.ctx.scale(width < 0 ? -1 : 1, height < 0 ? 1 : -1);
+        this.ctx.drawImage(image, -Math.abs(width) / 2, -Math.abs(height) / 2, Math.abs(width), Math.abs(height));
+        this.ctx.restore();
     }
 
     drawText(text, x, y, color, fontSize, fontFamily, textTransform) {
+        this.ctx.save();
+        this.ctx.translate(x, y);
+        this.ctx.scale(1, -1); // Counter-flip text
         this.ctx.fillStyle = color;
         this.ctx.font = `${fontSize}px ${fontFamily || 'sans-serif'}`;
         this.ctx.textAlign = 'center';
@@ -223,7 +223,8 @@ export class Renderer {
         } else if (textTransform === 'lowercase') {
             transformedText = text.toLowerCase();
         }
-        this.ctx.fillText(transformedText, x, y);
+        this.ctx.fillText(transformedText, 0, 0);
+        this.ctx.restore();
     }
 
     drawGyzmo(gyzmo) {
@@ -236,7 +237,8 @@ export class Renderer {
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
         this.ctx.rotate(transform.rotation * Math.PI / 180);
-        this.ctx.scale(transform.scale.x, transform.scale.y);
+        // Counter-flip locally since world scale is (1, -1)
+        this.ctx.scale(transform.scale.x, -transform.scale.y);
 
         const zoom = this.camera?.effectiveZoom || 1;
 
@@ -258,11 +260,15 @@ export class Renderer {
 
             if (isEditor) {
                 // Draw name tag
+                this.ctx.save();
+                this.ctx.translate(x, y - height / 2 - (5 / zoom));
+                this.ctx.scale(1, -1);
                 this.ctx.globalAlpha = 1.0;
                 this.ctx.fillStyle = '#ffffff';
                 this.ctx.font = `${12 / zoom}px sans-serif`;
                 this.ctx.textAlign = 'center';
-                this.ctx.fillText(name || "Área", x, y - height / 2 - (5 / zoom));
+                this.ctx.fillText(name || "Área", 0, 0);
+                this.ctx.restore();
             }
         }
 
@@ -282,6 +288,7 @@ export class Renderer {
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
         this.ctx.rotate(transform.rotation * Math.PI / 180);
+        this.ctx.scale(1, -1);
 
         // Draw bone shape (a diamond/triangle starting from origin)
         this.ctx.beginPath();
@@ -313,6 +320,10 @@ export class Renderer {
         if (!transform || !skeleton.mesh || !skeleton.bones.length) return;
 
         const { ctx } = this;
+        ctx.save();
+        ctx.translate(transform.x, transform.y);
+        ctx.scale(1, -1);
+        ctx.translate(-transform.x, -transform.y);
         const mesh = skeleton.mesh;
         const bindPoses = skeleton.bindPoses;
 
@@ -390,6 +401,7 @@ export class Renderer {
                 this._drawSolidTriangle(v0, v1, v2, skeleton.color || '#ffffff');
             }
         }
+        ctx.restore();
     }
 
     drawWater(water, x = null, y = null) {
@@ -405,7 +417,7 @@ export class Renderer {
              const drawY = y !== null ? y : transform.y;
              ctx.translate(drawX, drawY);
              ctx.rotate(transform.rotation * Math.PI / 180);
-             ctx.scale(transform.scale.x, transform.scale.y);
+            ctx.scale(transform.scale.x, -transform.scale.y);
              ctx.fillStyle = water.color || 'rgba(52, 152, 219, 0.5)';
              ctx.fillRect(-water.width/2, -water.height/2, water.width, water.height);
              ctx.restore();
@@ -437,7 +449,7 @@ export class Renderer {
             const drawY = y !== null ? y : transform.y;
             ctx.translate(drawX, drawY);
             ctx.rotate(transform.rotation * Math.PI / 180);
-            ctx.scale(transform.scale.x, transform.scale.y);
+            ctx.scale(transform.scale.x, -transform.scale.y);
         }
 
         const bounds = water.bounds;
@@ -557,9 +569,13 @@ export class Renderer {
             ctx.arc(dotX, dotY, 5 / zoom, 0, Math.PI * 2);
             ctx.fill();
 
+            ctx.save();
+            ctx.translate(dotX, dotY - 10 / zoom);
+            ctx.scale(1, -1);
             ctx.font = `${10 / zoom}px sans-serif`;
             ctx.textAlign = 'center';
-            ctx.fillText("Water Source", dotX, dotY - 10 / zoom);
+            ctx.fillText("Water Source", 0, 0);
+            ctx.restore();
         }
 
         ctx.restore();
@@ -578,7 +594,7 @@ export class Renderer {
         ctx.save();
         ctx.translate(drawX, drawY);
         ctx.rotate(transform.rotation * Math.PI / 180);
-        ctx.scale(transform.scale.x, transform.scale.y);
+        ctx.scale(transform.scale.x, -transform.scale.y);
 
         ctx.beginPath();
         ctx.moveTo(collider.points[0].x, collider.points[0].y);
@@ -612,7 +628,7 @@ export class Renderer {
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
         this.ctx.rotate(transform.rotation * Math.PI / 180);
-        this.ctx.scale(transform.scale.x, transform.scale.y);
+        this.ctx.scale(transform.scale.x, -transform.scale.y);
 
         const w = terreno.width;
         const h = terreno.height;
@@ -723,7 +739,7 @@ export class Renderer {
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
         this.ctx.rotate(transform.rotation * Math.PI / 180);
-        this.ctx.scale(transform.scale.x, transform.scale.y);
+        this.ctx.scale(transform.scale.x, -transform.scale.y);
 
         const mapTotalWidth = tilemap.width * grid.cellSize.x;
         const mapTotalHeight = tilemap.height * grid.cellSize.y;
@@ -765,8 +781,10 @@ export class Renderer {
 
                     const dx = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2);
                     const dy = layerOffsetY + (y * grid.cellSize.y) - (mapTotalHeight / 2);
-                    // Add 0.5px to width and height to prevent gaps between tiles
-                    this.ctx.drawImage(image, dx, dy, grid.cellSize.x + 0.5, grid.cellSize.y + 0.5);
+
+                    // row 0 is top, so we draw it at the highest world Y relative to the map
+                    // In +Y UP, higher world Y is visual top.
+                    this.ctx.drawImage(image, dx, -dy, grid.cellSize.x + 0.5, grid.cellSize.y + 0.5);
                 }
             }
         }
@@ -1173,6 +1191,11 @@ export class Renderer {
         }
 
         this.ctx.save();
+
+        // Counter-flip Y for UI in world space
+        this.ctx.translate(canvasTransform.x, canvasTransform.y);
+        this.ctx.scale(1, -1);
+        this.ctx.translate(-canvasTransform.x, -canvasTransform.y);
 
         // The rectCache will get the initial rect from the canvas itself via getAbsoluteRect.
         const rectCache = new Map();

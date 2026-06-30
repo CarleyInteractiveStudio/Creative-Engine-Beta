@@ -43,6 +43,7 @@ import * as MateriaFactory from './editor/MateriaFactory.js';
 import * as SkeletonImporter from './editor/SkeletonImporter.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
 import * as CarlAgent from './editor/CarlAgent.js';
+import * as AutoReparator from './editor/AutoReparator.js';
 import * as CollaborationSystem from './editor/CollaborationSystem.js';
 import * as UpdatesWindow from './editor/ui/UpdatesWindow.js';
 import * as CollabActivityWindow from './editor/ui/CollabActivityWindow.js';
@@ -1393,6 +1394,38 @@ document.addEventListener('DOMContentLoaded', () => {
             window.currentProjectConfig = currentProjectConfig;
             console.log("Configuracion del proyecto cargada:", currentProjectConfig);
 
+            // --- Coordinate System Migration (+Y UP) ---
+            if (currentProjectConfig.coordinateSystem !== 'Y-UP') {
+                const projectName = new URLSearchParams(window.location.search).get('project');
+
+                await new Promise(resolve => {
+                    showConfirmationDialog(
+                        'Actualización Importante',
+                        `Hemos detectado que el proyecto "${projectName}" es de una versión anterior con inconsistencias en las coordenadas Y.
+                        El motor reconstruirá tus escenas y prefabs para que funcionen correctamente con el nuevo sistema (+Y es ARRIBA).
+                        Se crearán copias de seguridad (.old_y_down) de tus archivos. ¿Deseas continuar?`,
+                        async () => {
+                            const success = await AutoReparator.runMigration(projectsDirHandle, currentProjectConfig);
+                            if (success) {
+                                if (typeof saveProjectConfigFromModule === 'function') {
+                                    await saveProjectConfigFromModule(false);
+                                }
+                                showNotificationDialog('Éxito', 'Proyecto migrado correctamente. Por favor, reinicia el editor.');
+                                setTimeout(() => window.location.reload(), 2000);
+                            } else {
+                                showNotificationDialog('Error', 'Hubo un problema durante la migración.');
+                                resolve(true);
+                            }
+                        },
+                        () => {
+                            // User declined, but we must mark it as handled or keep nagging?
+                            // For now, just proceed, but things will look wrong.
+                            resolve(true);
+                        }
+                    );
+                });
+            }
+
             // Apply project type class to body for CSS filtering
             document.body.classList.remove('project-type-2d', 'project-type-3d');
             document.body.classList.add(`project-type-${currentProjectConfig.projectType || '2d'}`);
@@ -1412,7 +1445,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 authorName: 'Un Creador',
                 appVersion: '1.0.0',
                 projectType: '2d', // New: '2d' or '3d'
-                engineVersion: '0.1.2',
+                coordinateSystem: 'Y-UP',
+                engineVersion: '2.0.0',
                 maxFps: 60,
                 minFps: 30,
                 iconPath: '',

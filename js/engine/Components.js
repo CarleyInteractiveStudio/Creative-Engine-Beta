@@ -4202,8 +4202,8 @@ export class Movement extends Leyes {
 
         if (input.isKeyPressed(this.rightKey)) moveX += 1;
         if (input.isKeyPressed(this.leftKey)) moveX -= 1;
-        if (input.isKeyPressed(this.upKey)) moveY -= 1;
-        if (input.isKeyPressed(this.downKey)) moveY += 1;
+        if (input.isKeyPressed(this.upKey)) moveY += 1;
+        if (input.isKeyPressed(this.downKey)) moveY -= 1;
 
         // Normalize movement for diagonal speed consistency
         if (moveX !== 0 || moveY !== 0) {
@@ -4230,7 +4230,7 @@ export class Movement extends Leyes {
                 }
 
                 if (this.isGrounded && input.isKeyJustPressed(this.jumpKey)) {
-                    rb.addImpulse(0, -this.jumpForce / 10);
+                    rb.addImpulse(0, this.jumpForce / 10);
 
                     // Stop running sound when jumping
                     const audio = this.materia.getComponent(AudioSource);
@@ -4289,8 +4289,8 @@ export class Movement extends Leyes {
         const transform = this.materia.getComponent(Transform);
 
         if (!this.isGrounded && rb) {
-            if (rb.velocity.y < -0.1) play(this.jumpAnim);
-            else if (rb.velocity.y > 0.1) play(this.fallAnim);
+            if (rb.velocity.y > 0.1) play(this.jumpAnim);
+            else if (rb.velocity.y < -0.1) play(this.fallAnim);
         } else {
             if (Math.abs(moveX) > 0.01 || Math.abs(moveY) > 0.01) {
                 play(this.runAnim);
@@ -6223,7 +6223,8 @@ export class ParticleSystem extends Leyes {
         if (!rb && this.gravityScale !== 0) {
             const trans = p.getComponent(Transform);
             if (trans) {
-                p._gravityVelocity = (p._gravityVelocity || 0) + (9.8 * this.gravityScale);
+                // In +Y UP, gravity is negative
+                p._gravityVelocity = (p._gravityVelocity || 0) - (9.8 * this.gravityScale);
                 trans.y += p._gravityVelocity;
             }
         }
@@ -6850,14 +6851,15 @@ export class Water extends Leyes {
         const hw = w / 2;
         const hh = h / 2;
         if (p.x > cx - hw && p.x < cx + hw && p.y > cy - hh && p.y < cy + hh) {
-            const overlapTop = p.y - (cy - hh);
-            const overlapBottom = (cy + hh) - p.y;
+            // In +Y UP: Top is MAX Y, Bottom is MIN Y
+            const overlapTop = (cy + hh) - p.y;
+            const overlapBottom = p.y - (cy - hh);
             const overlapLeft = p.x - (cx - hw);
             const overlapRight = (cx + hw) - p.x;
             const minOverlap = Math.min(overlapTop, overlapBottom, overlapLeft, overlapRight);
 
-            if (minOverlap === overlapTop) { p.y = cy - hh; p.vy *= -0.1; }
-            else if (minOverlap === overlapBottom) { p.y = cy + hh; p.vy *= -0.1; }
+            if (minOverlap === overlapTop) { p.y = cy + hh; p.vy *= -0.1; }
+            else if (minOverlap === overlapBottom) { p.y = cy - hh; p.vy *= -0.1; }
             else if (minOverlap === overlapLeft) { p.x = cx - hw; p.vx *= -0.1; }
             else if (minOverlap === overlapRight) { p.x = cx + hw; p.vx *= -0.1; }
         }
@@ -6984,7 +6986,7 @@ export class HelicopterController extends Leyes {
         this.potenciaActual = thrustInput;
 
         const rad = transform.rotation * Math.PI / 180;
-        const up = { x: Math.sin(rad), y: -Math.cos(rad) }; // Dirección "arriba" relativa al helicóptero
+        const up = { x: -Math.sin(rad), y: Math.cos(rad) }; // Dirección "arriba" relativa al helicóptero (+Y UP)
 
         // Fuerza de sustentación (Lift)
         // Combinamos la potencia de despegue (base) con el input del motor
@@ -7517,7 +7519,7 @@ export class PlaneController extends Leyes {
             const liftFactor = Math.min(1.5, (speedKmh - this.velocidadDespegue * 0.5) / 400) * stallFactor;
 
             // Fuerza hacia arriba relativa al avión (sustentación pura)
-            const liftDir = { x: forward.y, y: -forward.x };
+            const liftDir = { x: -forward.y, y: forward.x };
             const liftMag = liftFactor * this.fuerzaSustentacion * 600 * deltaTime;
             rb.addForce(liftDir.x * liftMag, liftDir.y * liftMag);
 
