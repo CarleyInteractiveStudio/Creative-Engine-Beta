@@ -417,7 +417,7 @@ export class Renderer {
              const drawY = y !== null ? y : transform.y;
              ctx.translate(drawX, drawY);
              ctx.rotate(transform.rotation * Math.PI / 180);
-            ctx.scale(transform.scale.x, -transform.scale.y);$
+            ctx.scale(transform.scale.x, -transform.scale.y);
              ctx.fillStyle = water.color || 'rgba(52, 152, 219, 0.5)';
              ctx.fillRect(-water.width/2, -water.height/2, water.width, water.height);
              ctx.restore();
