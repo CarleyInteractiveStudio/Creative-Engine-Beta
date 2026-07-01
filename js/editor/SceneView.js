@@ -3754,7 +3754,13 @@ function drawTerrenoColliders(proj = null, view = null, cw = null, ch = null) {
     if (!is3D) {
         ctx.translate(transform.x, transform.y);
         ctx.rotate(transform.rotation * Math.PI / 180);
-        ctx.scale(transform.scale.x, -transform.scale.y);
+        // Gizmos are drawn in world context, which is already flipped scale(1, -1) in Renderer.js
+        // If we apply scale(1, -1) again here, we negate it.
+        // However, SceneView debug drawing usually happens outside the primary draw loop or needs consistent logic.
+        // Actually, the Renderer.js beginWorld applies scale(zoom, -zoom).
+        // If we want to draw collider RECTS that are defined in +Y UP world space,
+        // we should just use world coordinates.
+        ctx.scale(transform.scale.x, transform.scale.y);
     }
 
     ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
@@ -3873,7 +3879,7 @@ function drawTilemapColliders(proj = null, view = null, cw = null, ch = null) {
     if (!is3D) {
         ctx.translate(transform.x, transform.y);
         ctx.rotate(transform.rotation * Math.PI / 180);
-        ctx.scale(transform.scale.x, -transform.scale.y);
+        ctx.scale(transform.scale.x, transform.scale.y);
     }
 
     ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';

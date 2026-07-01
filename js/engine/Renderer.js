@@ -780,7 +780,9 @@ export class Renderer {
                     if (x < 0 || x >= tilemap.width || y < 0 || y >= tilemap.height) continue;
 
                     const dx = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2);
-                    const dy = (y * grid.cellSize.y) - (mapTotalHeight / 2) - layerOffsetY;
+                    // In +Y UP, row 0 is top. World Y = (mapHeight/2) - (y * cellSize) - (cellSize/2) + layerOffsetY
+                    // Since drawImage draws from top-left, we use:
+                    const dy = (mapTotalHeight / 2) - (y * grid.cellSize.y) - grid.cellSize.y + layerOffsetY;
 
                     this.ctx.drawImage(image, dx, dy, grid.cellSize.x + 0.5, grid.cellSize.y + 0.5);
                 }

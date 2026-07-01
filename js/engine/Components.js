@@ -4681,28 +4681,26 @@ export class TilemapCollider2D extends Leyes {
                     const [c, r] = key.split(',').map(Number);
                     const rectWidth_pixels = cellSize.x;
                     const rectHeight_pixels = cellSize.y;
-                    const rectTopLeftX = (c * cellSize.x) - (layerWidth / 2) + layerOffsetX;
-                    const rectTopLeftY = (r * cellSize.y) - (layerHeight / 2) + layerOffsetY;
+                    const rectCenterX = (c * cellSize.x) - (layerWidth / 2) + layerOffsetX + rectWidth_pixels / 2;
+                    const rectCenterY = (layerHeight / 2) - (r * cellSize.y) - (rectHeight_pixels / 2) + layerOffsetY;
 
-                    const centerX = rectTopLeftX + rectWidth_pixels / 2;
-                    const centerY = rectTopLeftY + rectHeight_pixels / 2;
                     const hw = rectWidth_pixels / 2;
                     const hh = rectHeight_pixels / 2;
 
                     let vertices = [];
-                    // TL: top-left, TR: top-right, BL: bottom-left, BR: bottom-right
-                    // slope_up (BL to TR): missing TL
-                    if (type === 'slope_up') vertices = [{x: -hw, y: hh}, {x: hw, y: -hh}, {x: hw, y: hh}];
-                    // slope_down (TL to BR): missing TR
-                    else if (type === 'slope_down') vertices = [{x: -hw, y: -hh}, {x: hw, y: hh}, {x: -hw, y: hh}];
-                    // slope_up_inv (BR to TL): missing BL (Ceiling slope up)
-                    else if (type === 'slope_up_inv') vertices = [{x: -hw, y: -hh}, {x: hw, y: -hh}, {x: hw, y: hh}];
-                    // slope_down_inv (TR to BL): missing BR (Ceiling slope down)
-                    else if (type === 'slope_down_inv') vertices = [{x: -hw, y: -hh}, {x: hw, y: -hh}, {x: -hw, y: hh}];
+                    // Standard Y-UP coordinates: -hh is Bottom, hh is Top. -hw is Left, hw is Right.
+                    // slope_up (Floor /): BL, BR, TR
+                    if (type === 'slope_up') vertices = [{x: -hw, y: -hh}, {x: hw, y: -hh}, {x: hw, y: hh}];
+                    // slope_down (Floor \): BL, BR, TL
+                    else if (type === 'slope_down') vertices = [{x: -hw, y: -hh}, {x: hw, y: -hh}, {x: -hw, y: hh}];
+                    // slope_up_inv (Ceiling \): TL, TR, BR
+                    else if (type === 'slope_up_inv') vertices = [{x: -hw, y: hh}, {x: hw, y: hh}, {x: hw, y: -hh}];
+                    // slope_down_inv (Ceiling /): TL, TR, BL
+                    else if (type === 'slope_down_inv') vertices = [{x: -hw, y: hh}, {x: hw, y: hh}, {x: -hw, y: -hh}];
 
                     if (vertices.length > 0) {
                         this.generatedPolygons.push({
-                            vertices: vertices.map(v => ({ x: v.x + centerX, y: v.y + centerY }))
+                            vertices: vertices.map(v => ({ x: v.x + rectCenterX, y: v.y + rectCenterY }))
                         });
                     }
                 }
@@ -4719,13 +4717,15 @@ export class TilemapCollider2D extends Leyes {
                     const rectWidth_pixels = rect.width * cellSize.x;
                     const rectHeight_pixels = rect.height * cellSize.y;
 
-                    // Ajuste clave: Restar la mitad de la altura total del layer para alinear con el pivote central
-                    const rectTopLeftX = (rect.col * cellSize.x) - (layerWidth / 2) + layerOffsetX;
-                    const rectTopLeftY = (rect.row * cellSize.y) - (layerHeight / 2) + layerOffsetY;
+                    // In +Y UP, Row 0 is at the top of the layer.
+                    // Visual Top Y of layer = layerHeight / 2 + layerOffsetY
+                    // Center Y = Top Y - (rect.row * cellSize.y) - (rectHeight_pixels / 2)
+                    const centerX = (rect.col * cellSize.x) - (layerWidth / 2) + layerOffsetX + rectWidth_pixels / 2;
+                    const centerY = (layerHeight / 2) - (rect.row * cellSize.y) - (rectHeight_pixels / 2) + layerOffsetY;
 
                     this.generatedColliders.push({
-                        x: rectTopLeftX + rectWidth_pixels / 2,
-                        y: rectTopLeftY + rectHeight_pixels / 2,
+                        x: centerX,
+                        y: centerY,
                         width: rectWidth_pixels,
                         height: rectHeight_pixels
                     });
@@ -5211,7 +5211,8 @@ export class TerrenoCollider2D extends Leyes {
                     const rectWidth = w * res;
                     const rectHeight = h * res;
                     const centerX = (c * res + rectWidth / 2) - (width / 2);
-                    const centerY = (r * res + rectHeight / 2) - (height / 2);
+                    // In +Y UP, row 0 is top. CenterY = (Height/2) - (r*res) - (rectHeight/2)
+                    const centerY = (height / 2) - (r * res) - (rectHeight / 2);
                     this.generatedColliders.push({ x: centerX, y: centerY, width: rectWidth, height: rectHeight });
                 }
             }
@@ -5251,9 +5252,10 @@ export class TerrenoCollider2D extends Leyes {
                         const simplified = this._ramerDouglasPeucker(contour, this._simplifyTolerance);
                         if (simplified.length > 2) {
                             // Centrar vértices respecto al terreno
+                            // In +Y UP, Pixel Y=0 is top. World Y = (Height/2) - Pixel Y
                             const centered = simplified.map(v => ({
                                 x: v.x - width / 2,
-                                y: v.y - height / 2
+                                y: (height / 2) - v.y
                             }));
 
                             // Comprobar si es una isla o un hueco
