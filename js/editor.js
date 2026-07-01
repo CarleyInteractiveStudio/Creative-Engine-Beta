@@ -1395,9 +1395,22 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Configuracion del proyecto cargada:", currentProjectConfig);
 
             // --- Coordinate System Migration (+Y UP) ---
-            // Force re-migration if version is older than 2.0.2 to fix Tilemap inversions
+            // Force re-migration if version is older than 2.0.3 to fix inversions
+            const compareVersions = (v1, v2) => {
+                const parts1 = v1.split('.').map(Number);
+                const parts2 = v2.split('.').map(Number);
+                for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+                    const p1 = parts1[i] || 0;
+                    const p2 = parts2[i] || 0;
+                    if (p1 < p2) return -1;
+                    if (p1 > p2) return 1;
+                }
+                return 0;
+            };
+
             const needsMigration = currentProjectConfig.coordinateSystem !== 'Y-UP' ||
-                                 (currentProjectConfig.engineVersion && parseFloat(currentProjectConfig.engineVersion) < 2.02);
+                                 (!currentProjectConfig.engineVersion) ||
+                                 (compareVersions(currentProjectConfig.engineVersion, '2.0.3') < 0);
 
             if (needsMigration) {
                 const projectName = new URLSearchParams(window.location.search).get('project');
@@ -1412,7 +1425,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const success = await AutoReparator.runMigration(projectsDirHandle, currentProjectConfig);
                             if (success) {
                                 // Update version to avoid re-migration
-                                currentProjectConfig.engineVersion = '2.0.2';
+                                currentProjectConfig.engineVersion = '2.0.3';
                                 currentProjectConfig.coordinateSystem = 'Y-UP';
 
                                 try {
@@ -1461,7 +1474,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 appVersion: '1.0.0',
                 projectType: '2d', // New: '2d' or '3d'
                 coordinateSystem: 'Y-UP',
-                engineVersion: '2.0.0',
+                engineVersion: '2.0.3',
                 maxFps: 60,
                 minFps: 30,
                 iconPath: '',

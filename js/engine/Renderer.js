@@ -666,9 +666,8 @@ export class Renderer {
             bCtx.globalCompositeOperation = 'source-over';
 
             this.ctx.globalAlpha = layer.opacity !== undefined ? layer.opacity : 1.0;
-            // Terrain buffer is generated in standard canvas Y-down.
-            // World context is scale(1, -1). By drawing at -w/2, -h/2 we center it.
-            this.ctx.drawImage(this._terrainBuffer, -w / 2, -h / 2, w, h);
+            // Use this.drawImage to handle local Y counter-flip
+            this.drawImage(this._terrainBuffer, 0, 0, w, h);
         }
         this.ctx.globalAlpha = 1.0;
 
@@ -780,12 +779,11 @@ export class Renderer {
                     // Comprobar límites: los azulejos fuera del ancho/alto del Tilemap no se dibujan
                     if (x < 0 || x >= tilemap.width || y < 0 || y >= tilemap.height) continue;
 
-                    const dx = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2);
-                    // In a locally-flipped context (scale 1, -1), y=0 is the visual top.
-                    // dy is the coordinate in that flipped context.
-                    const dy = (y * grid.cellSize.y) - (mapTotalHeight / 2) - layerOffsetY;
+                    const centerX = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2) + (grid.cellSize.x / 2);
+                    const centerY = (mapTotalHeight / 2) - (y * grid.cellSize.y) - (grid.cellSize.y / 2) + layerOffsetY;
 
-                    this.ctx.drawImage(image, dx, dy, grid.cellSize.x + 0.5, grid.cellSize.y + 0.5);
+                    // Use this.drawImage to handle local Y counter-flip
+                    this.drawImage(image, centerX, centerY, grid.cellSize.x + 0.5, grid.cellSize.y + 0.5);
                 }
             }
         }
