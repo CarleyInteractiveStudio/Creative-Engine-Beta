@@ -3891,12 +3891,12 @@ function drawTilemapColliders(proj = null, view = null, cw = null, ch = null) {
         const layerOffsetX = layer.position.x * layerWidth;
         const layerOffsetY = layer.position.y * layerHeight;
         const layerTopLeftX = layerOffsetX - layerWidth / 2;
-        const layerTopLeftY = layerOffsetY - layerHeight / 2;
+        const layerTopLeftY = layerOffsetY + layerHeight / 2;
 
         for (const rect of rects) {
             // rect coordinates are relative to the Tilemap center (local)
             const rectX = layerTopLeftX + rect.col * cellSize.x;
-            const rectY = layerTopLeftY + rect.row * cellSize.y;
+            const rectY = layerTopLeftY - (rect.row + rect.height) * cellSize.y;
             const rectWidth = rect.width * cellSize.x;
             const rectHeight = rect.height * cellSize.y;
             drawColliderRect(rectX, rectY, rectWidth, rectHeight);

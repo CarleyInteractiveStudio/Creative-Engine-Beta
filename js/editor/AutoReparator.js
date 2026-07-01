@@ -77,9 +77,13 @@ export async function runMigration(projectsDirHandle, currentProjectConfig) {
                         }
                     } else if (ley.type === 'PointLight2D' || ley.type === 'SpotLight2D') {
                         if (props.offset) props.offset.y *= -1;
+                    } else if (ley.type === 'Tilemap') {
+                        if (props.layers) {
+                            props.layers.forEach(layer => {
+                                if (layer.position) layer.position.y *= -1;
+                            });
+                        }
                     }
-                    // Tilemap layers don't need Y inversion because the new Renderer handles it relative to the materia center
-                    // which is already being moved to the correct Y position.
                 });
             }
             if (m.children) {

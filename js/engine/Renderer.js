@@ -780,11 +780,9 @@ export class Renderer {
                     if (x < 0 || x >= tilemap.width || y < 0 || y >= tilemap.height) continue;
 
                     const dx = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2);
-                    const dy = layerOffsetY + (y * grid.cellSize.y) - (mapTotalHeight / 2);
+                    const dy = (y * grid.cellSize.y) - (mapTotalHeight / 2) - layerOffsetY;
 
-                    // row 0 is top, so we draw it at the highest world Y relative to the map
-                    // In +Y UP, higher world Y is visual top.
-                    this.ctx.drawImage(image, dx, -dy, grid.cellSize.x + 0.5, grid.cellSize.y + 0.5);
+                    this.ctx.drawImage(image, dx, dy, grid.cellSize.x + 0.5, grid.cellSize.y + 0.5);
                 }
             }
         }

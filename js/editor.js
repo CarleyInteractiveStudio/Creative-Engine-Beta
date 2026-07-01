@@ -1407,8 +1407,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         async () => {
                             const success = await AutoReparator.runMigration(projectsDirHandle, currentProjectConfig);
                             if (success) {
-                                if (typeof saveProjectConfigFromModule === 'function') {
-                                    await saveProjectConfigFromModule(false);
+                                try {
+                                    const projectName = new URLSearchParams(window.location.search).get('project');
+                                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                                    const configFileHandle = await projectHandle.getFileHandle('project.ceconfig', { create: true });
+                                    const writable = await configFileHandle.createWritable();
+                                    await writable.write(JSON.stringify(currentProjectConfig, null, 2));
+                                    await writable.close();
+                                } catch (e) {
+                                    console.error("[Migration] Error saving project config directly:", e);
                                 }
                                 showNotificationDialog('Éxito', 'Proyecto migrado correctamente. Por favor, reinicia el editor.');
                                 setTimeout(() => window.location.reload(), 2000);
