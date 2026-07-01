@@ -632,8 +632,6 @@ export class Renderer {
 
         const w = terreno.width;
         const h = terreno.height;
-        const x = -w / 2;
-        const y = -h / 2;
 
         if (!this._terrainBuffer) {
             this._terrainBuffer = document.createElement('canvas');
@@ -668,7 +666,8 @@ export class Renderer {
             bCtx.globalCompositeOperation = 'source-over';
 
             this.ctx.globalAlpha = layer.opacity !== undefined ? layer.opacity : 1.0;
-            this.ctx.drawImage(this._terrainBuffer, x, y, w, h);
+            // Use this.drawImage to handle local Y counter-flip
+            this.drawImage(this._terrainBuffer, 0, 0, w, h);
         }
         this.ctx.globalAlpha = 1.0;
 
@@ -739,7 +738,7 @@ export class Renderer {
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
         this.ctx.rotate(transform.rotation * Math.PI / 180);
-        this.ctx.scale(transform.scale.x, -transform.scale.y);
+        this.ctx.scale(transform.scale.x, transform.scale.y);
 
         const mapTotalWidth = tilemap.width * grid.cellSize.x;
         const mapTotalHeight = tilemap.height * grid.cellSize.y;
@@ -779,12 +778,16 @@ export class Renderer {
                     // Comprobar límites: los azulejos fuera del ancho/alto del Tilemap no se dibujan
                     if (x < 0 || x >= tilemap.width || y < 0 || y >= tilemap.height) continue;
 
-                    const dx = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2);
-                    const dy = layerOffsetY + (y * grid.cellSize.y) - (mapTotalHeight / 2);
+                    const centerX = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2) + (grid.cellSize.x / 2);
+                    // In world space (+Y UP), Row 0 is at visual Top.
+                    // World Center Y of Map is transform.y. Map Height is mapTotalHeight.
+                    // Top Y of Map = transform.y + mapTotalHeight / 2.
+                    // Row y center world Y = (Top Y of layer) - (y * cellHeight) - (cellHeight / 2).
+                    // Top Y of layer = transform.y + mapTotalHeight / 2 + layerOffsetY.
+                    const worldCenterY = (mapTotalHeight / 2) - (y * grid.cellSize.y) - (grid.cellSize.y / 2) + layerOffsetY;
 
-                    // row 0 is top, so we draw it at the highest world Y relative to the map
-                    // In +Y UP, higher world Y is visual top.
-                    this.ctx.drawImage(image, dx, -dy, grid.cellSize.x + 0.5, grid.cellSize.y + 0.5);
+                    // Use this.drawImage to handle local Y counter-flip and orientation correctly
+                    this.drawImage(image, centerX, worldCenterY, grid.cellSize.x + 0.5, grid.cellSize.y + 0.5);
                 }
             }
         }

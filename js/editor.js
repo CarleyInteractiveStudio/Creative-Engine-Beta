@@ -1395,7 +1395,25 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Configuracion del proyecto cargada:", currentProjectConfig);
 
             // --- Coordinate System Migration (+Y UP) ---
-            if (currentProjectConfig.coordinateSystem !== 'Y-UP') {
+            // Force re-migration if version is older than 2.0.7 to fix inversions
+            const compareVersions = (v1, v2) => {
+                if (!v1 || typeof v1 !== 'string') return -1;
+                const parts1 = v1.split('.').map(Number);
+                const parts2 = v2.split('.').map(Number);
+                for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+                    const p1 = parts1[i] || 0;
+                    const p2 = parts2[i] || 0;
+                    if (p1 < p2) return -1;
+                    if (p1 > p2) return 1;
+                }
+                return 0;
+            };
+
+            const needsMigration = currentProjectConfig.coordinateSystem !== 'Y-UP' ||
+                                 (!currentProjectConfig.engineVersion) ||
+                                 (compareVersions(currentProjectConfig.engineVersion, '2.0.7') < 0);
+
+            if (needsMigration) {
                 const projectName = new URLSearchParams(window.location.search).get('project');
 
                 await new Promise(resolve => {
@@ -1407,8 +1425,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         async () => {
                             const success = await AutoReparator.runMigration(projectsDirHandle, currentProjectConfig);
                             if (success) {
-                                if (typeof saveProjectConfigFromModule === 'function') {
-                                    await saveProjectConfigFromModule(false);
+                                // Update version to avoid re-migration
+                                currentProjectConfig.engineVersion = '2.0.7';
+                                currentProjectConfig.coordinateSystem = 'Y-UP';
+
+                                try {
+                                    const projectName = new URLSearchParams(window.location.search).get('project');
+                                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                                    const configFileHandle = await projectHandle.getFileHandle('project.ceconfig', { create: true });
+                                    const writable = await configFileHandle.createWritable();
+                                    await writable.write(JSON.stringify(currentProjectConfig, null, 2));
+                                    await writable.close();
+                                } catch (e) {
+                                    console.error("[Migration] Error saving project config directly:", e);
                                 }
                                 showNotificationDialog('Éxito', 'Proyecto migrado correctamente. Por favor, reinicia el editor.');
                                 setTimeout(() => window.location.reload(), 2000);
@@ -1446,7 +1475,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 appVersion: '1.0.0',
                 projectType: '2d', // New: '2d' or '3d'
                 coordinateSystem: 'Y-UP',
-                engineVersion: '2.0.0',
+                engineVersion: '2.0.7',
                 maxFps: 60,
                 minFps: 30,
                 iconPath: '',
