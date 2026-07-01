@@ -95,7 +95,7 @@ export async function runMigration(projectsDirHandle, currentProjectConfig) {
 
         // Actualizar configuración del proyecto
         currentProjectConfig.coordinateSystem = 'Y-UP';
-        currentProjectConfig.engineVersion = '2.0.0';
+        currentProjectConfig.engineVersion = '2.0.2';
 
         // El guardado del config se hará en editor.js tras llamar a esta función
 

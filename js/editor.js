@@ -1395,7 +1395,11 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Configuracion del proyecto cargada:", currentProjectConfig);
 
             // --- Coordinate System Migration (+Y UP) ---
-            if (currentProjectConfig.coordinateSystem !== 'Y-UP') {
+            // Force re-migration if version is older than 2.0.2 to fix Tilemap inversions
+            const needsMigration = currentProjectConfig.coordinateSystem !== 'Y-UP' ||
+                                 (currentProjectConfig.engineVersion && parseFloat(currentProjectConfig.engineVersion) < 2.02);
+
+            if (needsMigration) {
                 const projectName = new URLSearchParams(window.location.search).get('project');
 
                 await new Promise(resolve => {
@@ -1407,6 +1411,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         async () => {
                             const success = await AutoReparator.runMigration(projectsDirHandle, currentProjectConfig);
                             if (success) {
+                                // Update version to avoid re-migration
+                                currentProjectConfig.engineVersion = '2.0.2';
+                                currentProjectConfig.coordinateSystem = 'Y-UP';
+
                                 try {
                                     const projectName = new URLSearchParams(window.location.search).get('project');
                                     const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
