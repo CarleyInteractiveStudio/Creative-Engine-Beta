@@ -780,10 +780,15 @@ export class Renderer {
                     if (x < 0 || x >= tilemap.width || y < 0 || y >= tilemap.height) continue;
 
                     const centerX = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2) + (grid.cellSize.x / 2);
-                    const centerY = (mapTotalHeight / 2) - (y * grid.cellSize.y) - (grid.cellSize.y / 2) + layerOffsetY;
+                    // In world space (+Y UP), Row 0 is at visual Top.
+                    // World Center Y of Map is transform.y. Map Height is mapTotalHeight.
+                    // Top Y of Map = transform.y + mapTotalHeight / 2.
+                    // Row y center world Y = (Top Y of layer) - (y * cellHeight) - (cellHeight / 2).
+                    // Top Y of layer = transform.y + mapTotalHeight / 2 + layerOffsetY.
+                    const worldCenterY = (mapTotalHeight / 2) - (y * grid.cellSize.y) - (grid.cellSize.y / 2) + layerOffsetY;
 
-                    // Use this.drawImage to handle local Y counter-flip
-                    this.drawImage(image, centerX, centerY, grid.cellSize.x + 0.5, grid.cellSize.y + 0.5);
+                    // Use this.drawImage to handle local Y counter-flip and orientation correctly
+                    this.drawImage(image, centerX, worldCenterY, grid.cellSize.x + 0.5, grid.cellSize.y + 0.5);
                 }
             }
         }

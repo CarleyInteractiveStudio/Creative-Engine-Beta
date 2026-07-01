@@ -2419,12 +2419,12 @@ function drawTileCursor() {
     const mousePos = InputManager.getMousePositionInCanvas();
     const worldMouse = screenToWorld(mousePos.x, mousePos.y);
 
-    // Transform world mouse to tilemap local space (accounting for rotation)
+    // Transform world mouse to tilemap local space (accounting for rotation and scale)
     const relX = worldMouse.x - transform.x;
     const relY = worldMouse.y - transform.y;
     const rad = -transform.rotation * Math.PI / 180;
-    const localMouseX = relX * Math.cos(rad) - relY * Math.sin(rad);
-    const localMouseY = relX * Math.sin(rad) + relY * Math.cos(rad);
+    const localMouseX = (relX * Math.cos(rad) - relY * Math.sin(rad)) / (transform.scale.x || 1);
+    const localMouseY = (relX * Math.sin(rad) + relY * Math.cos(rad)) / (transform.scale.y || 1);
 
     const layerWidth = width * cellSize.x;
     const layerHeight = height * cellSize.y;
@@ -2434,11 +2434,11 @@ function drawTileCursor() {
         const layerOffsetY = layer.position.y * layerHeight;
 
         const layerTopLeftX = layerOffsetX - layerWidth / 2;
-        const layerTopLeftY = layerOffsetY + layerHeight / 2;
+        const layerTopY = layerOffsetY + layerHeight / 2;
 
         const col = Math.floor((localMouseX - layerTopLeftX) / cellSize.x);
-        // localMouseY is world +Y UP. Row 0 is at layerTopLeftY.
-        const row = Math.floor((layerTopLeftY - localMouseY) / cellSize.y);
+        // localMouseY is world +Y UP. Row 0 is at layerTopY.
+        const row = Math.floor((layerTopY - localMouseY) / cellSize.y);
 
         if (col >= 0 && col < width && row >= 0 && row < height) {
             ctx.save();
@@ -2447,9 +2447,9 @@ function drawTileCursor() {
             ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
 
             const drawCursor = (c, r) => {
+                // We draw in +Y UP world space directly
                 const tx = layerTopLeftX + c * cellSize.x;
-                // In local Y-DOWN context, Row 0 is at Top Y = - (layerHeight / 2) - layerOffsetY
-                const ty = (r * cellSize.y) - (layerHeight / 2) - layerOffsetY;
+                const ty = layerTopY - (r + 1) * cellSize.y;
                 ctx.fillRect(tx, ty, cellSize.x, cellSize.y);
                 ctx.strokeRect(tx, ty, cellSize.x, cellSize.y);
             };
@@ -3688,9 +3688,8 @@ function drawTilemapOutline(proj = null, view = null, cw = null, ch = null) {
         for (const layer of tilemap.layers) {
             const offsetX = layer.position.x * layerWidth;
             const offsetY = layer.position.y * layerHeight;
-            // Draw layer bounds in local Y-down space
-            const dy = - (layerHeight / 2) - offsetY;
-            ctx.strokeRect(offsetX - layerWidth / 2, dy, layerWidth, layerHeight);
+            // Draw layer bounds in +Y UP space
+            ctx.strokeRect(offsetX - layerWidth / 2, offsetY - layerHeight / 2, layerWidth, layerHeight);
         }
         ctx.restore();
     }
@@ -3882,12 +3881,13 @@ function drawTilemapColliders(proj = null, view = null, cw = null, ch = null) {
         const layerTopLeftX = layerOffsetX - layerWidth / 2;
         const layerTopLeftY = layerOffsetY + layerHeight / 2;
 
+        const layerTopY = layerOffsetY + layerHeight / 2;
+
         for (const rect of rects) {
             // rect coordinates are relative to the Tilemap center (local)
             const rectX = layerTopLeftX + rect.col * cellSize.x;
-            // In a locally-unflipped context (Y-Down), Row 0 is at visual Top.
-            // Local Top Y of map = - (layerHeight / 2) - layerOffsetY
-            const rectY = (rect.row * cellSize.y) - (layerHeight / 2) - layerOffsetY;
+            // Row 0 is Top (+Y). Bottom Y of rect = TopY - (row + height) * cellSize
+            const rectY = layerTopY - (rect.row + rect.height) * cellSize.y;
             const rectWidth = rect.width * cellSize.x;
             const rectHeight = rect.height * cellSize.y;
             drawColliderRect(rectX, rectY, rectWidth, rectHeight);
@@ -3979,8 +3979,8 @@ function paintTile(event) {
     const relX = worldMouse.x - transform.x;
     const relY = worldMouse.y - transform.y;
     const rad = -transform.rotation * Math.PI / 180;
-    const localMouseX = relX * Math.cos(rad) - relY * Math.sin(rad);
-    const localMouseY = relX * Math.sin(rad) + relY * Math.cos(rad);
+    const localMouseX = (relX * Math.cos(rad) - relY * Math.sin(rad)) / (transform.scale.x || 1);
+    const localMouseY = (relX * Math.sin(rad) + relY * Math.cos(rad)) / (transform.scale.y || 1);
 
     const layerWidth = width * cellSize.x;
     const layerHeight = height * cellSize.y;
@@ -4028,10 +4028,10 @@ function paintTile(event) {
         const layerOffsetX = l.position.x * layerWidth;
         const layerOffsetY = l.position.y * layerHeight;
         const layerTopLeftX = layerOffsetX - layerWidth / 2;
-        const layerTopLeftY = layerOffsetY + layerHeight / 2;
+        const layerTopY = layerOffsetY + layerHeight / 2;
         return {
             col: Math.floor((localMouseX - layerTopLeftX) / cellSize.x),
-            row: Math.floor((layerTopLeftY - localMouseY) / cellSize.y)
+            row: Math.floor((layerTopY - localMouseY) / cellSize.y)
         };
     };
 

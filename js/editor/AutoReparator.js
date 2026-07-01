@@ -60,28 +60,32 @@ export async function runMigration(projectsDirHandle, currentProjectConfig) {
         }
 
         function migrateMateria(m) {
+            const isOldSystem = currentProjectConfig.coordinateSystem !== 'Y-UP';
+
             if (m.leyes) {
                 m.leyes.forEach(ley => {
                     const props = ley.properties;
                     if (!props) return;
 
-                    if (ley.type === 'Transform') {
-                        if (props.localPosition) props.localPosition.y *= -1;
-                    } else if (ley.type === 'BoxCollider2D' || ley.type === 'CircleCollider2D' || ley.type === 'CapsuleCollider2D' || ley.type === 'PolygonCollider2D' || ley.type === 'LineCollider2D') {
-                        if (props.offset) props.offset.y *= -1;
-                        if (ley.type === 'PolygonCollider2D' && props.vertices) {
-                            props.vertices.forEach(v => v.y *= -1);
-                        }
-                        if (ley.type === 'LineCollider2D' && props.points) {
-                            props.points.forEach(p => p.y *= -1);
-                        }
-                    } else if (ley.type === 'PointLight2D' || ley.type === 'SpotLight2D') {
-                        if (props.offset) props.offset.y *= -1;
-                    } else if (ley.type === 'Tilemap') {
-                        if (props.layers) {
-                            props.layers.forEach(layer => {
-                                if (layer.position) layer.position.y *= -1;
-                            });
+                    if (isOldSystem) {
+                        if (ley.type === 'Transform') {
+                            if (props.localPosition) props.localPosition.y *= -1;
+                        } else if (ley.type === 'BoxCollider2D' || ley.type === 'CircleCollider2D' || ley.type === 'CapsuleCollider2D' || ley.type === 'PolygonCollider2D' || ley.type === 'LineCollider2D') {
+                            if (props.offset) props.offset.y *= -1;
+                            if (ley.type === 'PolygonCollider2D' && props.vertices) {
+                                props.vertices.forEach(v => v.y *= -1);
+                            }
+                            if (ley.type === 'LineCollider2D' && props.points) {
+                                props.points.forEach(p => p.y *= -1);
+                            }
+                        } else if (ley.type === 'PointLight2D' || ley.type === 'SpotLight2D') {
+                            if (props.offset) props.offset.y *= -1;
+                        } else if (ley.type === 'Tilemap') {
+                            if (props.layers) {
+                                props.layers.forEach(layer => {
+                                    if (layer.position) layer.position.y *= -1;
+                                });
+                            }
                         }
                     }
                 });
@@ -95,7 +99,7 @@ export async function runMigration(projectsDirHandle, currentProjectConfig) {
 
         // Actualizar configuración del proyecto
         currentProjectConfig.coordinateSystem = 'Y-UP';
-        currentProjectConfig.engineVersion = '2.0.3';
+        currentProjectConfig.engineVersion = '2.0.6';
 
         // El guardado del config se hará en editor.js tras llamar a esta función
 
