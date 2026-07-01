@@ -2433,29 +2433,23 @@ function drawTileCursor() {
         const layerOffsetY = layer.position.y * layerHeight;
 
         const layerTopLeftX = layerOffsetX - layerWidth / 2;
-        const layerTopLeftY = layerOffsetY - layerHeight / 2;
+        const layerTopLeftY = layerOffsetY + layerHeight / 2;
 
-        const mouseInLayerX = localMouseX - layerTopLeftX;
-        const mouseInLayerY = localMouseY - layerTopLeftY;
-
-        const col = Math.floor(mouseInLayerX / cellSize.x);
-        // row 0 is at visual top (highest Y). localMouseY increases downwards on screen but we want to map it to rows.
-        // wait, localMouseY here is world-like but flipped in Renderer.
-        // In Renderer I used dy = layerOffsetY + (y * grid.cellSize.y) - (mapTotalHeight / 2)
-        // and then drew at -dy.
-        // So worldY = - (layerOffsetY + (y * cellSize.y) - (mapTotalHeight / 2))
-        // worldY = -layerOffsetY - y * cellSize.y + mapTotalHeight / 2
-        // y * cellSize.y = mapTotalHeight / 2 - worldY - layerOffsetY
-        // y = (mapTotalHeight / 2 - worldY - layerOffsetY) / cellSize.y
-
-        // localMouseY here is screen-to-world mapped Y.
-        const row = Math.floor((layerHeight - (mouseInLayerY)) / cellSize.y);
+        const col = Math.floor((localMouseX - (layerOffsetX - layerWidth / 2)) / cellSize.x);
+        const row = Math.floor((layerTopLeftY - localMouseY) / cellSize.y);
 
         if (col >= 0 && col < width && row >= 0 && row < height) {
             ctx.save();
             ctx.translate(transform.x, transform.y);
             ctx.rotate(transform.rotation * Math.PI / 180);
             ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
+
+            const drawCursor = (c, r) => {
+                const tx = layerTopLeftX + c * cellSize.x;
+                const ty = layerTopLeftY - (r + 1) * cellSize.y;
+                ctx.fillRect(tx, ty, cellSize.x, cellSize.y);
+                ctx.strokeRect(tx, ty, cellSize.x, cellSize.y);
+            };
 
             if (activeTool === 'tile-brush' || activeTool === 'tile-rectangle-fill') {
                 ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
@@ -2464,31 +2458,19 @@ function drawTileCursor() {
                 const selectedTiles = getSelectedTile();
                 if (selectedTiles && selectedTiles.length > 0) {
                     for (const tile of selectedTiles) {
-                        const tx = layerTopLeftX + (col + tile.offsetX) * cellSize.x;
-                const ty = layerHeight - (row + tile.offsetY + 1) * cellSize.y + layerTopLeftY;
-                        ctx.fillRect(tx, ty, cellSize.x, cellSize.y);
-                        ctx.strokeRect(tx, ty, cellSize.x, cellSize.y);
+                        drawCursor(col + tile.offsetX, row + tile.offsetY);
                     }
                 } else {
-                    const cursorX = layerTopLeftX + col * cellSize.x;
-            const cursorY = layerHeight - (row + 1) * cellSize.y + layerTopLeftY;
-                    ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
-                    ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
+                    drawCursor(col, row);
                 }
             } else if (activeTool === 'tile-bucket') {
                 ctx.strokeStyle = 'rgba(100, 255, 100, 0.8)';
                 ctx.fillStyle = 'rgba(100, 255, 100, 0.2)';
-                const cursorX = layerTopLeftX + col * cellSize.x;
-                const cursorY = layerHeight - (row + 1) * cellSize.y + layerTopLeftY;
-                ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
-                ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
+                drawCursor(col, row);
             } else { // eraser
                 ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
                 ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
-                const cursorX = layerTopLeftX + col * cellSize.x;
-                const cursorY = layerHeight - (row + 1) * cellSize.y + layerTopLeftY;
-                ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
-                ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
+                drawCursor(col, row);
             }
             ctx.restore();
             // Stop after finding the first layer under the cursor
@@ -3695,7 +3677,6 @@ function drawTilemapOutline(proj = null, view = null, cw = null, ch = null) {
         ctx.save();
         ctx.translate(transform.x, transform.y);
         ctx.rotate(transform.rotation * Math.PI / 180);
-        ctx.scale(1, -1);
 
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
         ctx.lineWidth = 2 / camera.effectiveZoom;
@@ -3703,6 +3684,7 @@ function drawTilemapOutline(proj = null, view = null, cw = null, ch = null) {
         for (const layer of tilemap.layers) {
             const offsetX = layer.position.x * layerWidth;
             const offsetY = layer.position.y * layerHeight;
+            // Draw layer bounds in world +Y UP space
             ctx.strokeRect(offsetX - layerWidth / 2, offsetY - layerHeight / 2, layerWidth, layerHeight);
         }
         ctx.restore();
@@ -3754,12 +3736,8 @@ function drawTerrenoColliders(proj = null, view = null, cw = null, ch = null) {
     if (!is3D) {
         ctx.translate(transform.x, transform.y);
         ctx.rotate(transform.rotation * Math.PI / 180);
-        // Gizmos are drawn in world context, which is already flipped scale(1, -1) in Renderer.js
-        // If we apply scale(1, -1) again here, we negate it.
-        // However, SceneView debug drawing usually happens outside the primary draw loop or needs consistent logic.
-        // Actually, the Renderer.js beginWorld applies scale(zoom, -zoom).
-        // If we want to draw collider RECTS that are defined in +Y UP world space,
-        // we should just use world coordinates.
+        // Gizmos are drawn in world context, which is already flipped scale(1, -1) in Renderer.js.
+        // We don't apply scale(1, -1) here because we want to work in +Y UP world space.
         ctx.scale(transform.scale.x, transform.scale.y);
     }
 
@@ -3902,7 +3880,13 @@ function drawTilemapColliders(proj = null, view = null, cw = null, ch = null) {
         for (const rect of rects) {
             // rect coordinates are relative to the Tilemap center (local)
             const rectX = layerTopLeftX + rect.col * cellSize.x;
-            const rectY = layerTopLeftY - (rect.row + rect.height) * cellSize.y;
+            // In +Y UP, Row 0 is at visual top.
+            // World Top Y of map = layerHeight / 2 + layerOffsetY
+            // rectY is the bottom Y of the rectangle because strokeRect(x,y,w,h) in flipped context
+            // actually draws towards world negative Y.
+            // But we are in scale(1, 1) locally now? NO, Renderer is scale(zoom, -zoom).
+            // Actually, let's keep it simple and use world space +Y UP.
+            const rectY = (layerHeight / 2) - (rect.row + rect.height) * cellSize.y + layerOffsetY;
             const rectWidth = rect.width * cellSize.x;
             const rectHeight = rect.height * cellSize.y;
             drawColliderRect(rectX, rectY, rectWidth, rectHeight);
@@ -4006,14 +3990,9 @@ function paintTile(event) {
         let lastCoord = null;
 
         tilemap.layers.forEach(l => {
-            const lOffsetX = l.position.x * layerWidth;
-            const lOffsetY = l.position.y * layerHeight;
-            const lTopLeftX = lOffsetX - layerWidth / 2;
-            const lTopLeftY = lOffsetY - layerHeight / 2;
-            const mInLX = localMouseX - lTopLeftX;
-            const mInLY = localMouseY - lTopLeftY;
-            const c = Math.floor(mInLX / cellSize.x);
-            const r = Math.floor((layerHeight - mInLY) / cellSize.y);
+            const coords = getCoordsInLayer(l);
+            const c = coords.col;
+            const r = coords.row;
 
             if (c >= 0 && c < width && r >= 0 && r < height) {
                 const key = `${c},${r}`;
@@ -4047,11 +4026,10 @@ function paintTile(event) {
     const getCoordsInLayer = (l) => {
         const layerOffsetX = l.position.x * layerWidth;
         const layerOffsetY = l.position.y * layerHeight;
-        const layerTopLeftX = layerOffsetX - layerWidth / 2;
-        const layerTopLeftY = layerOffsetY - layerHeight / 2;
+        const layerTopLeftY = layerOffsetY + layerHeight / 2;
         return {
-            col: Math.floor((localMouseX - layerTopLeftX) / cellSize.x),
-            row: Math.floor((layerHeight - (localMouseY - layerTopLeftY)) / cellSize.y)
+            col: Math.floor((localMouseX - (layerOffsetX - layerWidth / 2)) / cellSize.x),
+            row: Math.floor((layerTopLeftY - localMouseY) / cellSize.y)
         };
     };
 

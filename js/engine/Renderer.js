@@ -632,8 +632,6 @@ export class Renderer {
 
         const w = terreno.width;
         const h = terreno.height;
-        const x = -w / 2;
-        const y = -h / 2;
 
         if (!this._terrainBuffer) {
             this._terrainBuffer = document.createElement('canvas');
@@ -668,7 +666,8 @@ export class Renderer {
             bCtx.globalCompositeOperation = 'source-over';
 
             this.ctx.globalAlpha = layer.opacity !== undefined ? layer.opacity : 1.0;
-            this.ctx.drawImage(this._terrainBuffer, x, y, w, h);
+            // Use this.drawImage to handle local Y counter-flip
+            this.drawImage(this._terrainBuffer, 0, 0, w, h);
         }
         this.ctx.globalAlpha = 1.0;
 
@@ -739,6 +738,7 @@ export class Renderer {
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
         this.ctx.rotate(transform.rotation * Math.PI / 180);
+        // Counter-flip locally because world is scale(1, -1)
         this.ctx.scale(transform.scale.x, -transform.scale.y);
 
         const mapTotalWidth = tilemap.width * grid.cellSize.x;
@@ -779,12 +779,13 @@ export class Renderer {
                     // Comprobar límites: los azulejos fuera del ancho/alto del Tilemap no se dibujan
                     if (x < 0 || x >= tilemap.width || y < 0 || y >= tilemap.height) continue;
 
-                    const dx = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2);
-                    // In +Y UP, row 0 is top. World Y = (mapHeight/2) - (y * cellSize) - (cellSize/2) + layerOffsetY
-                    // Since drawImage draws from top-left, we use:
-                    const dy = (mapTotalHeight / 2) - (y * grid.cellSize.y) - grid.cellSize.y + layerOffsetY;
+                    // In +Y UP, Row 0 is at visual top.
+                    // We calculate center coordinates in world space units relative to map center.
+                    const centerX = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2) + (grid.cellSize.x / 2);
+                    const centerY = (mapTotalHeight / 2) - (y * grid.cellSize.y) - (grid.cellSize.y / 2) + layerOffsetY;
 
-                    this.ctx.drawImage(image, dx, dy, grid.cellSize.x + 0.5, grid.cellSize.y + 0.5);
+                    // Use this.drawImage to handle local Y counter-flip
+                    this.drawImage(image, centerX, centerY, grid.cellSize.x + 0.5, grid.cellSize.y + 0.5);
                 }
             }
         }

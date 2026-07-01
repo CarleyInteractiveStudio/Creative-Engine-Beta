@@ -4721,7 +4721,7 @@ export class TilemapCollider2D extends Leyes {
                     // Visual Top Y of layer = layerHeight / 2 + layerOffsetY
                     // Center Y = Top Y - (rect.row * cellSize.y) - (rectHeight_pixels / 2)
                     const centerX = (rect.col * cellSize.x) - (layerWidth / 2) + layerOffsetX + rectWidth_pixels / 2;
-                    const centerY = (layerHeight / 2) - (rect.row * cellSize.y) - (rectHeight_pixels / 2) + layerOffsetY;
+                    const centerY = -((rect.row * cellSize.y) - (layerHeight / 2) + (rectHeight_pixels / 2)) + layerOffsetY;
 
                     this.generatedColliders.push({
                         x: centerX,
