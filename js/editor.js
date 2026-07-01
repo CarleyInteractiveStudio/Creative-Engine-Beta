@@ -1395,7 +1395,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Configuracion del proyecto cargada:", currentProjectConfig);
 
             // --- Coordinate System Migration (+Y UP) ---
-            // Force re-migration if version is older than 2.0.6 to fix inversions
+            // Force re-migration if version is older than 2.0.7 to fix inversions
             const compareVersions = (v1, v2) => {
                 if (!v1 || typeof v1 !== 'string') return -1;
                 const parts1 = v1.split('.').map(Number);
@@ -1411,7 +1411,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const needsMigration = currentProjectConfig.coordinateSystem !== 'Y-UP' ||
                                  (!currentProjectConfig.engineVersion) ||
-                                 (compareVersions(currentProjectConfig.engineVersion, '2.0.6') < 0);
+                                 (compareVersions(currentProjectConfig.engineVersion, '2.0.7') < 0);
 
             if (needsMigration) {
                 const projectName = new URLSearchParams(window.location.search).get('project');
@@ -1426,7 +1426,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const success = await AutoReparator.runMigration(projectsDirHandle, currentProjectConfig);
                             if (success) {
                                 // Update version to avoid re-migration
-                                currentProjectConfig.engineVersion = '2.0.6';
+                                currentProjectConfig.engineVersion = '2.0.7';
                                 currentProjectConfig.coordinateSystem = 'Y-UP';
 
                                 try {
@@ -1475,7 +1475,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 appVersion: '1.0.0',
                 projectType: '2d', // New: '2d' or '3d'
                 coordinateSystem: 'Y-UP',
-                engineVersion: '2.0.6',
+                engineVersion: '2.0.7',
                 maxFps: 60,
                 minFps: 30,
                 iconPath: '',

@@ -2448,6 +2448,9 @@ function drawTileCursor() {
 
             const drawCursor = (c, r) => {
                 // We draw in +Y UP world space directly
+                // In +Y UP world context, strokeRect(x,y,w,h) draws from Y downwards?
+                // Actually, if we are in world context (scale(1, -1)), it draws from Y UPWARDS.
+                // Because Renderer.js beginWorld: scale(zoom, -zoom).
                 const tx = layerTopLeftX + c * cellSize.x;
                 const ty = layerTopY - (r + 1) * cellSize.y;
                 ctx.fillRect(tx, ty, cellSize.x, cellSize.y);
@@ -3680,7 +3683,6 @@ function drawTilemapOutline(proj = null, view = null, cw = null, ch = null) {
         ctx.save();
         ctx.translate(transform.x, transform.y);
         ctx.rotate(transform.rotation * Math.PI / 180);
-        ctx.scale(1, -1);
 
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
         ctx.lineWidth = 2 / camera.effectiveZoom;
@@ -3740,9 +3742,7 @@ function drawTerrenoColliders(proj = null, view = null, cw = null, ch = null) {
     if (!is3D) {
         ctx.translate(transform.x, transform.y);
         ctx.rotate(transform.rotation * Math.PI / 180);
-        // Gizmos are drawn in world context, which is already flipped scale(1, -1) in Renderer.js.
-        // We un-flip it locally to draw in standard Y-down coordinates.
-        ctx.scale(transform.scale.x, -transform.scale.y);
+        ctx.scale(transform.scale.x, transform.scale.y);
     }
 
     ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
