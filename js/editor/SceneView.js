@@ -1464,24 +1464,24 @@ export function initialize(dependencies) {
                         console.log(`[SceneView] Inicializando scripts para nuevo objeto '${newMateria.name}' en tiempo de ejecución.`);
                         const initScriptsRecursive = async (mtr) => {
                             for (const ley of mtr.leyes) {
-                                if (ley instanceof Components.CreativeScript) {
+                                if (ley.constructor.name === "CreativeScript") {
                                     await ley.initializeInstance();
                                     if (ley.isInitialized) {
                                         try { ley.start(); } catch(e) {}
                                         try { ley.onEnable(); } catch(e) {}
                                     }
-                                } else if (ley instanceof Components.AnimatorController) {
+                                } else if (ley.constructor.name === "AnimatorController") {
                                     await ley.initialize(window.projectsDirHandle);
-                                } else if (ley instanceof Components.Animator) {
+                                } else if (ley.constructor.name === "Animator") {
                                     if (!mtr.getComponent(Components.AnimatorController)) {
                                         await ley.loadAnimationClip(window.projectsDirHandle);
                                         if (ley.playOnAwake) ley.play();
                                     }
-                                } else if (ley instanceof Components.Terreno2D) {
+                                } else if (ley.constructor.name === "Terreno2D") {
                                     await ley.loadTextures(window.projectsDirHandle);
                                 }
 
-                                if (!(ley instanceof Components.CreativeScript) && typeof ley.start === 'function') {
+                                if (!(ley.constructor.name === "CreativeScript") && typeof ley.start === 'function') {
                                     try { await ley.start(); } catch(e) {}
                                 }
                             }
@@ -1635,9 +1635,9 @@ export function initialize(dependencies) {
 
             // Only proceed with sculpting if we hit a mesh or terrain
             const isSculptable = hit && hit.materia && (
-                hit.materia.getComponent(Components3D.Terreno3D) ||
-                hit.materia.getComponent(Components3D.MeshRenderer3D) ||
-                hit.materia.getComponent(Components3D.SkinnedMeshRenderer3D)
+                hit.materia.getComponentByName("Terreno3D") ||
+                hit.materia.getComponentByName("MeshRenderer3D") ||
+                hit.materia.getComponentByName("SkinnedMeshRenderer3D")
             );
 
             if (isSculptable) {
@@ -1650,7 +1650,7 @@ export function initialize(dependencies) {
 
                     const h = SceneManager.currentScene.physicsSystem.raycast3D(r.origin, r.direction);
                     if (h && h.materia) {
-                        const terrain = h.materia.getComponent(Components3D.Terreno3D);
+                        const terrain = h.materia.getComponentByName("Terreno3D");
                         if (terrain) {
                             const localHit = h.localPoint;
                             const tSettings = window.TerrenoEditorWindow?.settings || {};
@@ -1717,7 +1717,7 @@ export function initialize(dependencies) {
                             return;
                         }
 
-                        const renderer = h.materia.getComponent(Components3D.MeshRenderer3D) || h.materia.getComponent(Components3D.SkinnedMeshRenderer3D);
+                        const renderer = h.materia.getComponentByName("MeshRenderer3D") || h.materia.getComponentByName("SkinnedMeshRenderer3D");
                         if (renderer && renderer.cpuPositions) {
                             const brushSize = window.TerrenoEditorWindow?.settings?.brushSize || 50;
                             const brushStrength = window.TerrenoEditorWindow?.settings?.brushStrength || 50;
@@ -2151,7 +2151,7 @@ export function focusOnSelectedMateria() {
     const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
 
     const C3D = window.Components3D || Components3D;
-    const meshRenderer = C3D ? materia.getComponent(C3D.MeshRenderer3D) : null;
+    const meshRenderer = C3D ? materia.getComponentByName("MeshRenderer3D") : null;
 
     let size = 50;
     if (meshRenderer) {
@@ -2765,7 +2765,7 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
     if (!C3D) return;
 
     const transform = materia.getComponent(Components.Transform);
-    const meshRenderer = materia.getComponent(C3D.MeshRenderer3D);
+    const meshRenderer = materia.getComponentByName("MeshRenderer3D");
     if (meshRenderer) {
         const scale = { x: transform.scale.x, y: transform.scale.y, z: transform.scale.z || 1 };
         const rotation = { x: transform.rotationX || 0, y: transform.rotationY || 0, z: transform.rotationZ || 0 };
@@ -3040,11 +3040,11 @@ function drawGizmoIcons(proj = null, view = null, cw = null, ch = null) {
             iconPath = 'icons/camera.svg';
         } else if (materia.getComponent(Components.VideoPlayer)) {
             iconPath = 'icons/video.svg';
-        } else if (Components3D && materia.getComponent(Components3D.DirectionalLight3D)) {
+        } else if (Components3D && materia.getComponentByName("DirectionalLight3D")) {
             iconPath = 'icons/sparkles.svg';
-        } else if (Components3D && materia.getComponent(Components3D.PointLight3D)) {
+        } else if (Components3D && materia.getComponentByName("PointLight3D")) {
             iconPath = 'icons/lightbulb.svg';
-        } else if (Components3D && materia.getComponent(Components3D.SpotLight3D)) {
+        } else if (Components3D && materia.getComponentByName("SpotLight3D")) {
             iconPath = 'icons/flashlight.svg';
         }
 
@@ -3430,7 +3430,7 @@ function draw3DPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
     const { ctx } = renderer;
     const center = { x: transform.x, y: transform.y, z: transform.z || 0 };
 
-    const box = selectedMateria.getComponent(C3D.BoxCollider3D);
+    const box = selectedMateria.getComponentByName("BoxCollider3D");
     const rotation = { x: transform.rotationX || 0, y: transform.rotationY || 0, z: transform.rotationZ || 0 };
 
     if (box) {
@@ -3447,7 +3447,7 @@ function draw3DPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
         Gizmos.drawWireCube(ctx, worldCenter, worldSize, rotation, 'rgba(0, 255, 0, 0.8)', proj, view, cw, ch);
     }
 
-    const sphere = selectedMateria.getComponent(C3D.SphereCollider3D);
+    const sphere = selectedMateria.getComponentByName("SphereCollider3D");
     if (sphere) {
         const worldRadius = sphere.radius * Math.max(Math.abs(transform.scale.x), Math.abs(transform.scale.y), Math.abs(transform.scale.z));
         const worldCenter = {
@@ -3458,7 +3458,7 @@ function draw3DPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
         Gizmos.drawWireSphere(ctx, worldCenter, worldRadius, rotation, 'rgba(0, 255, 0, 0.8)', proj, view, cw, ch);
     }
 
-    const capsule = selectedMateria.getComponent(C3D.CapsuleCollider3D);
+    const capsule = selectedMateria.getComponentByName("CapsuleCollider3D");
     if (capsule) {
         const worldRadius = capsule.radius * Math.max(Math.abs(transform.scale.x), Math.abs(transform.scale.z));
         const worldHeight = capsule.height * Math.abs(transform.scale.y);
@@ -3470,7 +3470,7 @@ function draw3DPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
         Gizmos.drawWireCapsule(ctx, worldCenter, worldRadius, worldHeight, rotation, 'rgba(0, 255, 0, 0.8)', proj, view, cw, ch);
     }
 
-    const plane = selectedMateria.getComponent(C3D.PlaneCollider3D);
+    const plane = selectedMateria.getComponentByName("PlaneCollider3D");
     if (plane) {
         const worldCenter = {
             x: center.x + plane.offset.x,

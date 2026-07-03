@@ -1,8 +1,8 @@
 // js/editor/MateriaFactory.js
 
-import { Materia } from '../engine/Materia.js';
-import * as Components from '../engine/Components.js';
-import * as SceneManager from '../engine/SceneManager.js';
+let Materia = null;
+let Components = null;
+let SceneManager = null;
 
 async function ensure3D() {
     if (!window.Components3D) window.Components3D = await import('../engine/Components3D.js');
@@ -729,4 +729,10 @@ export async function createTestCircuit(parent = null) {
     archTop.getComponent(Components.Transform).localScale = { x: 850, y: 60, z: 120 };
 
     return root;
+}
+
+export function initialize(deps) {
+    Materia = deps.Materia;
+    SceneManager = deps.SceneManager;
+    Components = deps.Components;
 }

@@ -981,3 +981,24 @@ registerComponent('ProceduralChain3D', ProceduralChain3D);
 registerComponent('ClothRenderer3D', ClothRenderer3D);
 registerComponent('WheelCollider3D', WheelCollider3D);
 registerComponent('VehicleController3D', VehicleController3D);
+
+// Aliases for compatibility with MateriaFactory
+export { Transform3D as Transform, Camera3D as Camera };
+
+import { registerComponent } from '../ComponentRegistry.js';
+registerComponent('Transform3D', Transform3D);
+registerComponent('MeshRenderer3D', MeshRenderer3D);
+registerComponent('SkinnedMeshRenderer3D', SkinnedMeshRenderer3D);
+registerComponent('DirectionalLight3D', DirectionalLight3D);
+registerComponent('PointLight3D', PointLight3D);
+registerComponent('SpotLight3D', SpotLight3D);
+registerComponent('Rigidbody3D', Rigidbody3D);
+registerComponent('BoxCollider3D', BoxCollider3D);
+registerComponent('SphereCollider3D', SphereCollider3D);
+registerComponent('CapsuleCollider3D', CapsuleCollider3D);
+registerComponent('PlaneCollider3D', PlaneCollider3D);
+registerComponent('Terreno3D', Terreno3D);
+registerComponent('TerrenoCollider3D', TerrenoCollider3D);
+registerComponent('Animator3D', Animator3D);
+registerComponent('Bone', Bone);
+registerComponent('Camera3D', Camera3D);

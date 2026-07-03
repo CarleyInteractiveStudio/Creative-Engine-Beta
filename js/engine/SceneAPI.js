@@ -55,7 +55,6 @@ function setLayerSettings(layer, settings) {
 }
 
 /**
- * Configures the 3D Sky system.
  * @param {object} settings - { skyMode: 'None'|'Gradient', skyColor: hex, horizonColor: hex, groundColor: hex }
  */
 function setSkySettings(settings) {

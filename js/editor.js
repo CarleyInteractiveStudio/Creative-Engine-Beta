@@ -613,7 +613,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`[CHC] Hot-reloading script: ${scriptName}`);
         for (const materia of SceneManager.currentScene.getAllMaterias()) {
             if (!materia.isActive) continue;
-            const scripts = materia.getComponents(Components.CreativeScript).filter(s => s.scriptName === scriptName);
+            const scripts = materia.getComponents("CreativeScript").filter(s => s.scriptName === scriptName);
             for (const script of scripts) {
                 // Notificar desactivacion antes de reiniciar
                 try { script.onDisable(); } catch(e) {}
@@ -1165,12 +1165,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     setActiveTool('tile-eraser');
                     break;
                 case '2':
-                    if (currentProjectConfig.projectType !== '2d' && dom.btnToggle2d3d && currentProjectConfig.rendererMode !== 'canvas2d') {
+                    if (window.currentProjectConfig.projectType !== '2d' && dom.btnToggle2d3d && currentProjectConfig.rendererMode !== 'canvas2d') {
                         dom.btnToggle2d3d.click();
                     }
                     break;
                 case '3':
-                    if (currentProjectConfig.projectType !== '2d' && dom.btnToggle2d3d && currentProjectConfig.rendererMode !== '3d-mode') {
+                    if (window.currentProjectConfig.projectType !== '2d' && dom.btnToggle2d3d && currentProjectConfig.rendererMode !== '3d-mode') {
                         dom.btnToggle2d3d.click();
                     }
                     break;
@@ -1288,7 +1288,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (dom.btnToggle2d3d) {
             // Only show simulation toggle if project is 3D
-            dom.btnToggle2d3d.style.display = (currentProjectConfig.projectType === '3d') ? 'flex' : 'none';
+            dom.btnToggle2d3d.style.display = (window.currentProjectConfig.projectType === '3d') ? 'flex' : 'none';
         }
     };
 
@@ -1386,7 +1386,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentProjectConfig = JSON.parse(content);
 
             // Unified Engine: projectType is no longer a restriction
-            if (!currentProjectConfig.projectType) currentProjectConfig.projectType = '3d';
+            if (!window.currentProjectConfig.projectType) window.currentProjectConfig.projectType = '3d';
             if (!currentProjectConfig.viewMode) currentProjectConfig.viewMode = '3d';
             if (!currentProjectConfig.graphicMode) currentProjectConfig.graphicMode = 'Realistic';
             if (currentProjectConfig.realismLevel === undefined) currentProjectConfig.realismLevel = 50;
@@ -1457,7 +1457,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Apply project type class to body for CSS filtering
             document.body.classList.remove('project-type-2d', 'project-type-3d');
-            document.body.classList.add(`project-type-${currentProjectConfig.projectType || '2d'}`);
+            document.body.classList.add(`project-type-${window.currentProjectConfig.projectType || '2d'}`);
 
             // Sync FPS settings to PerformanceMonitor
             const perfMonitor = EngineAPI.getPerformanceMonitor();
@@ -1836,17 +1836,17 @@ document.addEventListener('DOMContentLoaded', () => {
         for (const materia of SceneManager.currentScene.getAllMaterias()) {
             if (!materia.isActive) continue;
 
-            const vg = materia.getComponent(Components.VerticalLayoutGroup);
+            const vg = materia.getComponentByName("VerticalLayoutGroup");
             if (vg) vg.update();
 
-            const hg = materia.getComponent(Components.HorizontalLayoutGroup);
+            const hg = materia.getComponentByName("HorizontalLayoutGroup");
             if (hg) hg.update();
 
-            const gg = materia.getComponent(Components.GridLayoutGroup);
+            const gg = materia.getComponentByName("GridLayoutGroup");
             if (gg) gg.update();
 
             // Note: ContentSizeFitter should probably be updated after children are arranged
-            const csf = materia.getComponent(Components.ContentSizeFitter);
+            const csf = materia.getComponentByName("ContentSizeFitter");
             if (csf) csf.update();
         }
     };
@@ -1891,6 +1891,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     updateScene = function(rendererInstance, isGameView) {
+        const projectType = window.window.currentProjectConfig.projectType || "2d";
         if (!rendererInstance || !SceneManager.currentScene) return;
 
         // Sync ambient light from scene
@@ -1899,27 +1900,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // --- Pass 1: Draw Scene Geometry ---
-        const is3D = currentProjectConfig.projectType !== '2d' && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
+        const is3D = window.currentProjectConfig.projectType !== '2d' && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
 
         const materiasToRender = SceneManager.currentScene.getAllMaterias()
             .filter(m => {
-                if (!m.getComponent(Components.Transform)) return false;
+                if (!m.getComponentByName("Transform")) return false;
 
                 // In 3D/Hybrid mode, the 2D renderer (Renderer.js) should NOT draw objects
                 // that are already handled by the 3D renderer (Renderer3D.js).
                 // This prevents the "always facing camera" double-rendering issue.
-                if (is3D) {
-                    const has3DSupported = m.getComponent(Components.SpriteRenderer) ||
-                                          m.getComponent(Components.TextureRender) ||
-                                          (window.Components3D && m.getComponent(window.Components3D.MeshRenderer3D)) ||
-                                          m.getComponent(Components.TilemapRenderer) ||
-                                          m.getComponent(Components.Terreno2D) ||
-                                          m.getComponent(Components.Water) ||
-                                          m.getComponent(Components.Gyzmo);
+                if (window.window.currentProjectConfig.projectType === "3d") {
+                    const has3DSupported = m.getComponentByName("SpriteRenderer") ||
+                                          m.getComponentByName("TextureRender") ||
+                                          (window.Components3D && m.getComponentByName("MeshRenderer3D")) ||
+                                          m.getComponentByName("TilemapRenderer") ||
+                                          m.getComponentByName("Terreno2D") ||
+                                          m.getComponentByName("Water") ||
+                                          m.getComponentByName("Gyzmo");
 
                     // We only exclude it if it DOESN'T have 2D-only components like UI
                     // A Canvas can be world-space, but currently they are mostly 2D overlays or drawn in drawCanvas.
-                    const has2DOnly = m.getComponent(Components.Canvas);
+                    const has2DOnly = m.getComponentByName("Canvas");
 
                     if (has3DSupported && !has2DOnly) return false;
                 }
@@ -1929,38 +1930,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const tilemapsToRender = SceneManager.currentScene.getAllMaterias()
             .filter(m => {
-                if (!m.getComponent(Components.Transform) || !m.getComponent(Components.TilemapRenderer)) return false;
-                if (is3D) return false; // Already handled by 3D renderer
+                if (!m.getComponentByName("Transform") || !m.getComponentByName("TilemapRenderer")) return false;
+                if (window.window.currentProjectConfig.projectType === "3d") return false; // Already handled by 3D renderer
                 return true;
             })
             .sort((a, b) => {
-                const orderA = a.getComponent(Components.TilemapRenderer).orderInLayer || 0;
-                const orderB = b.getComponent(Components.TilemapRenderer).orderInLayer || 0;
+                const orderA = a.getComponentByName("TilemapRenderer").orderInLayer || 0;
+                const orderB = b.getComponentByName("TilemapRenderer").orderInLayer || 0;
                 return orderA - orderB;
             });
 
         const pointLights = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.PointLight2D));
+            .filter(m => m.getComponentByName("Transform") && m.getComponentByName("PointLight2D"));
         const spotLights = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpotLight2D));
+            .filter(m => m.getComponentByName("Transform") && m.getComponentByName("SpotLight2D"));
         const freeformLights = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.FreeformLight2D));
+            .filter(m => m.getComponentByName("Transform") && m.getComponentByName("FreeformLight2D"));
         const spriteLights = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteLight2D));
+            .filter(m => m.getComponentByName("Transform") && m.getComponentByName("SpriteLight2D"));
         const canvasesToRender = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.Canvas));
+            .filter(m => m.getComponentByName("Transform") && m.getComponentByName("Canvas"));
 
         const drawObjects = (ctx, cameraForCulling, objectsToRender, tilemapsToDraw, canvasesToDraw) => {
             const aspect = rendererInstance.canvas.width / rendererInstance.canvas.height;
             const cameraViewBox = cameraForCulling ? MathUtils.getCameraViewBox(cameraForCulling, aspect) : null;
-            const camTransform = cameraForCulling ? cameraForCulling.getComponent(Components.Transform) : null;
+            const camTransform = cameraForCulling ? cameraForCulling.getComponentByName("Transform") : null;
             const viewport = cameraViewBox ? MathUtils.getBoundsFromCorners(cameraViewBox) : null;
 
             // Consolidate all renderers for correct interleaving by orderInLayer
             const allInLayer = [...objectsToRender, ...tilemapsToDraw].sort((a, b) => {
                 // 1. Manual DrawingOrder override
-                const drawingOrderA = a.getComponent(Components.DrawingOrder);
-                const drawingOrderB = b.getComponent(Components.DrawingOrder);
+                const drawingOrderA = a.getComponentByName("DrawingOrder");
+                const drawingOrderB = b.getComponentByName("DrawingOrder");
                 const valA = drawingOrderA ? drawingOrderA.order : 0;
                 const valB = drawingOrderB ? drawingOrderB.order : 0;
                 if (valA !== valB) return valA - valB;
@@ -1970,20 +1971,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (b.isAncestorOf(a)) return 1;  // b is parent, draw first (behind)
 
                 // 3. Renderer orderInLayer
-                const rendererA = a.getComponent(Components.SpriteRenderer) || a.getComponent(Components.TextureRender) || a.getComponent(Components.TilemapRenderer) || a.getComponent(Components.Terreno2D) || a.getComponent(Components.Gyzmo) || a.getComponent(Components.Water) || a.getComponent(Components.LineCollider2D);
-                const rendererB = b.getComponent(Components.SpriteRenderer) || b.getComponent(Components.TextureRender) || b.getComponent(Components.TilemapRenderer) || b.getComponent(Components.Terreno2D) || b.getComponent(Components.Gyzmo) || b.getComponent(Components.Water) || b.getComponent(Components.LineCollider2D);
+                const rendererA = a.getComponentByName("SpriteRenderer") || a.getComponentByName("TextureRender") || a.getComponentByName("TilemapRenderer") || a.getComponentByName("Terreno2D") || a.getComponentByName("Gyzmo") || a.getComponentByName("Water") || a.getComponentByName("LineCollider2D");
+                const rendererB = b.getComponentByName("SpriteRenderer") || b.getComponentByName("TextureRender") || b.getComponentByName("TilemapRenderer") || b.getComponentByName("Terreno2D") || b.getComponentByName("Gyzmo") || b.getComponentByName("Water") || b.getComponentByName("LineCollider2D");
                 const orderA = rendererA ? (rendererA.orderInLayer || 0) : 0;
                 const orderB = rendererB ? (rendererB.orderInLayer || 0) : 0;
                 if (orderA !== orderB) return orderA - orderB;
 
                 // 4. Parallax priority (Force backdrop if on same orderInLayer)
-                const isParallaxA = !!a.getComponent(Components.Parallax);
-                const isParallaxB = !!b.getComponent(Components.Parallax);
+                const isParallaxA = !!a.getComponentByName("Parallax");
+                const isParallaxB = !!b.getComponentByName("Parallax");
                 if (isParallaxA !== isParallaxB) return isParallaxA ? -1 : 1;
 
                 // 5. Y position (Isometric/Depth)
-                const transformA = a.getComponent(Components.Transform);
-                const transformB = b.getComponent(Components.Transform);
+                const transformA = a.getComponentByName("Transform");
+                const transformB = b.getComponentByName("Transform");
                 return (transformA ? transformA.y : 0) - (transformB ? transformB.y : 0);
             });
 
@@ -2000,18 +2001,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
-                const textureRender = materia.getComponent(Components.TextureRender);
-                const terreno2D = materia.getComponent(Components.Terreno2D);
-                const water = materia.getComponent(Components.Water);
-                const lineCollider = materia.getComponent(Components.LineCollider2D);
-                const skeleton = materia.getComponent(Components.SkeletonRenderer);
-                const bone = materia.getComponent(Components.Bone);
-                const videoPlayer = materia.getComponent(Components.VideoPlayer);
-                const gyzmo = materia.getComponent(Components.Gyzmo);
-                const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
-                const transform = materia.getComponent(Components.Transform);
-                const parallax = materia.getComponent(Components.Parallax);
+                const spriteRenderer = materia.getComponentByName("SpriteRenderer");
+                const textureRender = materia.getComponentByName("TextureRender");
+                const terreno2D = materia.getComponentByName("Terreno2D");
+                const water = materia.getComponentByName("Water");
+                const lineCollider = materia.getComponentByName("LineCollider2D");
+                const skeleton = materia.getComponentByName("SkeletonRenderer");
+                const bone = materia.getComponentByName("Bone");
+                const videoPlayer = materia.getComponentByName("VideoPlayer");
+                const gyzmo = materia.getComponentByName("Gyzmo");
+                const tilemapRenderer = materia.getComponentByName("TilemapRenderer");
+                const transform = materia.getComponentByName("Transform");
+                const parallax = materia.getComponentByName("Parallax");
 
                 // --- Parallax Displacement ---
                 let worldPosition = transform.position;
@@ -2040,7 +2041,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     if (cameraForCulling) {
-                        const cameraComponent = cameraForCulling.getComponent(Components.Camera);
+                        const cameraComponent = cameraForCulling.getComponentByName("Camera");
                         const objectLayerBit = 1 << materia.layer;
                         if ((cameraComponent.cullingMask & objectLayerBit) === 0) continue;
                     }
@@ -2241,12 +2242,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (cameraForCulling) {
                     const objectBounds = MathUtils.getOOB(materia);
                     if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) continue;
-                    const cameraComponent = cameraForCulling.getComponent(Components.Camera);
+                    const cameraComponent = cameraForCulling.getComponentByName("Camera");
                     const objectLayerBit = 1 << materia.layer;
                     if ((cameraComponent.cullingMask & objectLayerBit) === 0) continue;
                 }
 
-                const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
+                const tilemapRenderer = materia.getComponentByName("TilemapRenderer");
                 if (tilemapRenderer) {
                     rendererInstance.drawTilemap(tilemapRenderer);
                 }
@@ -2285,26 +2286,26 @@ document.addEventListener('DOMContentLoaded', () => {
             if (lights) {
                 for (const lightMateria of lights.point) {
                     if (!lightMateria.isActive) continue;
-                    const light = lightMateria.getComponent(Components.PointLight2D);
-                    const transform = lightMateria.getComponent(Components.Transform);
+                    const light = lightMateria.getComponentByName("PointLight2D");
+                    const transform = lightMateria.getComponentByName("Transform");
                     rendererInstance.drawPointLight(light, transform);
                 }
                 for (const lightMateria of lights.spot) {
                     if (!lightMateria.isActive) continue;
-                    const light = lightMateria.getComponent(Components.SpotLight2D);
-                    const transform = lightMateria.getComponent(Components.Transform);
+                    const light = lightMateria.getComponentByName("SpotLight2D");
+                    const transform = lightMateria.getComponentByName("Transform");
                     rendererInstance.drawSpotLight(light, transform);
                 }
                 for (const lightMateria of lights.freeform) {
                     if (!lightMateria.isActive) continue;
-                    const light = lightMateria.getComponent(Components.FreeformLight2D);
-                    const transform = lightMateria.getComponent(Components.Transform);
+                    const light = lightMateria.getComponentByName("FreeformLight2D");
+                    const transform = lightMateria.getComponentByName("Transform");
                     rendererInstance.drawFreeformLight(light, transform);
                 }
                 for (const lightMateria of lights.sprite) {
                     if (!lightMateria.isActive) continue;
-                    const light = lightMateria.getComponent(Components.SpriteLight2D);
-                    const transform = lightMateria.getComponent(Components.Transform);
+                    const light = lightMateria.getComponentByName("SpriteLight2D");
+                    const transform = lightMateria.getComponentByName("Transform");
                     rendererInstance.drawSpriteLight(light, transform);
                 }
             }
@@ -2361,7 +2362,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (isGameView) {
             const cameras = SceneManager.currentScene.findAllCameras()
-                .sort((a, b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth);
+                .sort((a, b) => a.getComponentByName("Camera").depth - b.getComponentByName("Camera").depth);
 
             if (cameras.length === 0) {
                 rendererInstance.clear();
@@ -2429,7 +2430,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         SceneView.update(); // Handle all editor input logic
         AmbienteControlWindow.update(deltaTime, isGameRunning);
-        EngineAPI.CEEngine.update(deltaTime);
+        EngineCore.update(deltaTime);
         if (uiSystem) {
             try {
                 uiSystem.update(deltaTime);
@@ -2456,25 +2457,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!materia.isActive) continue;
 
                 // Always update renderers for asset loading logic
-                const sr = materia.getComponent(Components.SpriteRenderer);
+                const sr = materia.getComponentByName("SpriteRenderer");
                 if (sr) sr.update(deltaTime);
-                const ui = materia.getComponent(Components.UIImage);
+                const ui = materia.getComponentByName("UIImage");
                 if (ui) ui.update(deltaTime);
 
-                const water = materia.getComponent(Components.Water);
+                const water = materia.getComponentByName("Water");
                 if (water) water.update(deltaTime);
 
-                const tr = materia.getComponent(Components.TextureRender);
+                const tr = materia.getComponentByName("TextureRender");
                 if (tr) tr.update(deltaTime);
 
-                const terreno = materia.getComponent(Components.Terreno2D);
+                const terreno = materia.getComponentByName("Terreno2D");
                 if (terreno) {
                     if (terreno.layers.some(l => l.texturePath && !terreno.imageCache.has(l.texturePath))) {
                         terreno.loadTextures(projectsDirHandle);
                     }
                 }
 
-                const skeleton = materia.getComponent(Components.SkeletonRenderer);
+                const skeleton = materia.getComponentByName("SkeletonRenderer");
                 if (skeleton) {
                     if (skeleton.source && skeleton.source !== skeleton._lastLoadedSource) {
                         skeleton.loadTexture(projectsDirHandle);
@@ -2482,11 +2483,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (window.Components3D) {
-                    const skinned = materia.getComponent(window.Components3D.SkinnedMeshRenderer3D);
+                    const skinned = materia.getComponentByName("SkinnedMeshRenderer3D");
                     if (skinned && skinned.isLoaded) {
                         skinned.updateBoneMatrices();
                     }
-                    const anim3d = materia.getComponent(window.Components3D.Animator3D);
+                    const anim3d = materia.getComponentByName("Animator3D");
                     if (anim3d && (anim3d.isPlaying || materia === selectedMateria)) {
                         anim3d.update(deltaTime);
                     }
@@ -2496,16 +2497,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 // ONLY update Animator and Controller for selected object to avoid performance issues
                 // but allow the user to see the character animate when selected.
                 if (materia === selectedMateria) {
-                    const ctrl = materia.getComponent(Components.AnimatorController);
+                    const ctrl = materia.getComponentByName("AnimatorController");
                     if (ctrl) ctrl.update(deltaTime);
-                    const anim = materia.getComponent(Components.Animator);
+                    const anim = materia.getComponentByName("Animator");
                     if (anim) anim.update(deltaTime);
                 }
             }
         }
 
 
-        const is3D = currentProjectConfig.projectType !== '2d' && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
+        const is3D = window.currentProjectConfig.projectType !== '2d' && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
 
         if (isGameRunning && !isGamePaused) {
             runGameLoop();
@@ -2541,7 +2542,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (renderer3D.initialized) renderer3D.render(SceneManager.currentScene, null, { editorCamera: renderer.camera, isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1, showGrid });
                     if (renderer) updateScene(renderer, false);
                 } else if (activeView === 'game-content' && gameRenderer3D) {
-                    const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth)[0];
+                    const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponentByName("Camera").depth - b.getComponentByName("Camera").depth)[0];
                     if (mainCam) {
                         if (!gameRenderer3D.initialized) gameRenderer3D.init();
                         gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1, isGameView: true });
@@ -2564,7 +2565,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (renderer) updateScene(renderer, false);
             } else if (activeView === 'game-content') {
                 if (is3D && gameRenderer3D) {
-                    const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth)[0];
+                    const mainCam = SceneManager.currentScene.findAllCameras().sort((a,b) => a.getComponentByName("Camera").depth - b.getComponentByName("Camera").depth)[0];
                     if (mainCam) {
                         if (!gameRenderer3D.initialized) gameRenderer3D.init();
                         gameRenderer3D.render(SceneManager.currentScene, mainCam, { isToon: currentProjectConfig.rendererMode === 'anime-3d', clearAlpha: 1, isGameView: true });
@@ -2658,7 +2659,7 @@ document.addEventListener('DOMContentLoaded', () => {
         SceneManager.currentScene.physicsSystem = physicsSystem; // Link for components
         uiSystem = UISystem;
         uiSystem.initialize(SceneManager.currentScene);
-        EngineAPI.CEEngine.initialize({ physicsSystem }); // Re-initialize the API with the new instance
+        EngineCore.initialize({ physicsSystem, scene: SceneManager.currentScene }); // Re-initialize the API with the new instance
 
 
         // 1. Tomar una "snapshot" de la escena actual antes de modificarla
@@ -2702,7 +2703,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (materia.isActive) {
                         for (const ley of materia.leyes) {
                             // 1. Script Initialization
-                            if (ley instanceof Components.CreativeScript) {
+                            if (ley.constructor.name === "CreativeScript") {
                                 await ley.initializeInstance();
                                 if (ley.isInitialized) {
                                     try {
@@ -2718,19 +2719,19 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }
                             }
                             // 2. Specific Component Initialization
-                            else if (ley instanceof Components.AnimatorController) {
+                            else if (ley.constructor.name === "AnimatorController") {
                                 await ley.initialize(projectsDirHandle);
-                            } else if (ley instanceof Components.Animator) {
-                                if (!materia.getComponent(Components.AnimatorController)) {
+                            } else if (ley.constructor.name === "Animator") {
+                                if (!materia.getComponentByName("AnimatorController")) {
                                     await ley.loadAnimationClip(projectsDirHandle);
                                     if (ley.playOnAwake) ley.play();
                                 }
-                            } else if (ley instanceof Components.Terreno2D) {
+                            } else if (ley.constructor.name === "Terreno2D") {
                                 await ley.loadTextures(projectsDirHandle);
                             }
 
                             // 3. Generic start for all non-script components (including AnimatorController)
-                            if (!(ley instanceof Components.CreativeScript) && typeof ley.start === 'function') {
+                            if (!(ley ley.constructor.name === "CreativeScript") && typeof ley.start === 'function') {
                                 try {
                                     await ley.start();
                                 } catch (e) {
@@ -2780,7 +2781,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             for (const materia of SceneManager.currentScene.getAllMaterias()) {
                 if (!materia.isActive) continue;
-                const scripts = materia.getComponents(Components.CreativeScript);
+                const scripts = materia.getComponents("CreativeScript");
                 for (const script of scripts) {
                     try { script.onDisable(); } catch (e) { console.error(`Error en onDisable() del script '${script.scriptName}' en el objeto '${materia.name}':`, e); }
                     try { script.onDestroy(); } catch (e) { console.error(`Error en onDestroy() del script '${script.scriptName}' en el objeto '${materia.name}':`, e); }
@@ -3647,7 +3648,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         renderer.resize();
                         if (renderer3D) renderer3D.resize();
 
-                        const is3D = (currentProjectConfig.projectType !== '2d') && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
+                        const is3D = (window.currentProjectConfig.projectType !== '2d') && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
                         InputManager.setActiveCanvas(is3D ? dom.sceneCanvas3d : dom.sceneCanvas);
                     } , 0);
                 } else if (viewId === 'game-content' && gameRenderer) {
@@ -3655,7 +3656,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         gameRenderer.resize();
                         if (gameRenderer3D) gameRenderer3D.resize();
 
-                        const is3D = (currentProjectConfig.projectType !== '2d') && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
+                        const is3D = (window.currentProjectConfig.projectType !== '2d') && (currentProjectConfig.rendererMode === '3d-mode' || currentProjectConfig.rendererMode === 'hybrid-3d' || currentProjectConfig.rendererMode === 'anime-3d');
                         InputManager.setActiveCanvas(is3D ? dom.gameCanvas3d : dom.gameCanvas);
                     } , 0);
                 }
@@ -4854,7 +4855,7 @@ public start() {
             updateLoadingProgress(40, "Activando sistema de fisicas...");
             physicsSystem = new PhysicsSystem(SceneManager.currentScene);
             SceneManager.currentScene.physicsSystem = physicsSystem; // Link for components
-            EngineAPI.CEEngine.initialize({ physicsSystem }); // Pass physics system to the API
+            EngineCore.initialize({ physicsSystem, scene: SceneManager.currentScene }); // Pass physics system to the API
             InputManager.initialize(dom.sceneCanvas, dom.gameCanvas);
             if (dom.sceneCanvas3d) InputManager.attachCanvas(dom.sceneCanvas3d);
             if (dom.gameCanvas3d) InputManager.attachCanvas(dom.gameCanvas3d);
@@ -5022,7 +5023,7 @@ public start() {
                 const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
 
                 let worldPos = null;
-                if (is3D) {
+                if (window.window.currentProjectConfig.projectType === "3d") {
                     const ray = SceneView.getMouseRay3D(e.clientX, e.clientY);
                     if (ray) {
                         const physics = SceneManager.currentScene.physicsSystem;
@@ -5120,23 +5121,50 @@ public start() {
             if (projectsDirHandle) {
                 await loadProjectConfig();
             } else {
-                // In test mode, populate with a full default config to prevent errors
                 const defaultConfig = {
-                    appName: 'TestProject',
-                    authorName: 'Test Author',
-                    appVersion: '1.0.0',
-                    projectType: '2d',
-                    rendererMode: 'canvas2d',
+                    appName: "TestProject",
+                    authorName: "Test Author",
+                    appVersion: "1.0.0",
+                    projectType: "2d",
+                    rendererMode: "canvas2d",
                     showEngineLogo: true,
-                    keystore: { path: '', pass: '', alias: '', aliasPass: '' },
-                    iconPath: '',
+                    keystore: { path: "", pass: "", alias: "", aliasPass: "" },
+                    iconPath: "",
                     splashLogos: [],
-                    layers: { sortingLayers: ['Default', 'Agua'], collisionLayers: ['Default', 'Agua'] },
-                    tags: ['Untagged', 'Agua']
+                    layers: { sortingLayers: ["Default", "Agua"], collisionLayers: ["Default", "Agua"] },
+                    tags: ["Untagged", "Agua"]
                 };
                 currentProjectConfig = defaultConfig;
                 window.currentProjectConfig = currentProjectConfig;
                 populateProjectSettingsUI(defaultConfig, null);
+            }
+
+            if (!EngineCore) EngineCore = await import("./engine/CEEngine.js");
+            updateLoadingProgress(82, "Configurando motor segun el proyecto...");
+            const projectType = window.window.currentProjectConfig.projectType || "2d";
+            if (projectType === "3d") {
+                const SceneManager3D = await import("./engine/3d/SceneManager3D.js");
+                const { Materia3D } = await import("./engine/3d/Materia3D.js");
+                SceneManager = SceneManager3D;
+                Materia = Materia3D;
+                EngineCore = await import("./engine/3d/CEEngine3D.js");
+
+                MateriaFactory.initialize({ Materia, SceneManager, Components: await import("./engine/3d/Components3D.js") });
+                initializeHierarchy({ dom, SceneManager, projectsDirHandle, selectMateriaCallback: selectMateria, showContextMenuCallback: showContextMenu, getSelectedMateria: () => selectedMateria, updateInspector });
+                initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openAssetSelectorCallback: openAssetSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser, createAssetCallback: createAsset, onAssetOpened, enterAddTilemapLayerMode });
+
+                updateLoadingProgress(83, "Cargando escena 3D...");
+                const sceneData = await SceneManager.initialize(projectsDirHandle);
+                if (sceneData) {
+                    SceneManager.setCurrentScene(sceneData.scene);
+                    SceneManager.setCurrentSceneFileHandle(sceneData.fileHandle);
+                    dom.currentSceneName.textContent = sceneData.fileHandle.name.replace(".ceScene", "");
+                }
+
+                const Physics3DModule = await import("./engine/3d/Physics3D.js");
+                physicsSystem = new Physics3DModule.Physics3D(SceneManager.currentScene);
+            } else {
+                MateriaFactory.initialize({ Materia, SceneManager, Components });
             }
 
             updateLoadingProgress(85, "Actualizando paneles...");

@@ -168,9 +168,9 @@ export function duplicateSelectedMateria() {
     if (window.isGameRunning || window.CE_Standalone_Scripts) {
         (async () => {
             for (const ley of newMateria.leyes) {
-                if (ley instanceof Components.AnimatorController) {
+                if (ley.constructor.name === "AnimatorController") {
                     await ley.initialize(window.projectsDirHandle);
-                } else if (ley instanceof Components.CreativeScript) {
+                } else if (ley.constructor.name === "CreativeScript") {
                     await ley.initializeInstance();
                 }
                 if (typeof ley.start === 'function') {
@@ -636,9 +636,9 @@ export async function handleContextMenuAction(action) {
                 if (window.isGameRunning || window.CE_Standalone_Scripts) {
                     (async () => {
                         for (const ley of newDuplicatedMateria.leyes) {
-                            if (ley instanceof Components.AnimatorController) {
+                            if (ley.constructor.name === "AnimatorController") {
                                 await ley.initialize(window.projectsDirHandle);
-                            } else if (ley instanceof Components.CreativeScript) {
+                            } else if (ley.constructor.name === "CreativeScript") {
                                 await ley.initializeInstance();
                             }
                             if (typeof ley.start === 'function') {
