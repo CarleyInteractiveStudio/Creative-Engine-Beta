@@ -366,7 +366,7 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
                     extensions: [
                         ...extensions,
                         EditorView.updateListener.of((update) => {
-                            if (update.docChanged && !update.transactions.some(tr => tr.annotation(Transaction.remote))) {
+                            if (update.docChanged && !update.transactions.some(tr => tr.annotation(RemoteAnnotation))) {
                                 // Broadcast changes to peers
                                 broadcastUpdate({
                                     op: 'SCRIPT_EDIT',

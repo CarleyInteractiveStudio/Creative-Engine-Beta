@@ -10,7 +10,7 @@ import * as ThemeModule from "@codemirror/theme-one-dark";
 import * as HighlightModule from "@lezer/highlight";
 
 const { EditorState, StateField, StateEffect, Annotation, Transaction, ChangeSet, Prec } = StateModule;
-Transaction.remote = Annotation.define(); // Define the remote annotation for collaboration
+const RemoteAnnotation = Annotation.define(); // Define the remote annotation for collaboration
 const {
     EditorView, keymap, Decoration, lineNumbers,
     drawSelection, dropCursor, highlightSpecialChars,
@@ -60,6 +60,7 @@ const basicSetup = [
 ];
 
 export {
+    RemoteAnnotation,
     basicSetup,
     EditorState, StateField, StateEffect, Annotation, Transaction, ChangeSet, Prec,
     EditorView, keymap, Decoration, lineNumbers, drawSelection, dropCursor, highlightSpecialChars,

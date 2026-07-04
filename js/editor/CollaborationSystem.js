@@ -282,7 +282,7 @@ export function initialize(dom) {
             const changes = CodeMirror.ChangeSet.fromJSON(data.changes);
             editor.dispatch({
                 changes,
-                annotations: [CodeMirror.Transaction.remote.of(true)]
+                annotations: [CodeMirror.RemoteAnnotation.of(true)]
             });
         }
 

@@ -807,7 +807,7 @@ function setupEventListeners() {
                 try {
                     let anim = null;
                     if (data.isEmbedded) {
-                        const { ModelLoader3D } = await import('../../engine/ModelLoader3D.js');
+                        const { ModelLoader3D } = await import('../../engine/3d/ModelLoader3D.js');
                         const modelData = await ModelLoader3D.loadModel(data.modelPath, window.projectsDirHandle);
                         if (modelData && modelData.animations) {
                             anim = modelData.animations[data.animIndex];

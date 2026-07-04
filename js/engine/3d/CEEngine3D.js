@@ -15,7 +15,7 @@ export function initialize(dependencies) {
     physicsSystem = dependencies.physicsSystem;
     currentScene = dependencies.scene;
     if (!performanceMonitor) {
-        performanceMonitor = new PerformanceMonitor(this);
+        performanceMonitor = new PerformanceMonitor(null);
         PerformanceAPI.setPerformanceMonitor(performanceMonitor);
     }
 }

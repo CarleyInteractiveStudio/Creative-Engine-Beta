@@ -7,7 +7,7 @@ import { getCustomComponentDefinitions } from '../EngineAPIExtension.js';
 import * as CES_Transpiler from '../../editor/CES_Transpiler.js';
 import { showPrompt, showNotification } from './DialogWindow.js';
 import { TerrenoEditorWindow } from './TerrenoEditorWindow.js';
-import { Renderer3D } from '../../engine/Renderer3D.js';
+import { Renderer3D } from '../../engine/3d/Renderer3D.js';
 import { broadcastUpdate } from '../CollaborationSystem.js';
 
 // --- Module State ---
@@ -1770,7 +1770,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "GridLayoutGroup") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('GRID_LAYOUT', "Grid Layout"), icon, index)}
+                ${renderComponentHeader(L.get('GRID_LAYOUT', "Grid Layout"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-section-header"><span data-i18n="PADDING">${L.get('PADDING', 'Padding')}</span></div>
                     <div class="prop-row-multi">
@@ -1795,7 +1795,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "ContentSizeFitter") {
              componentHTML = `
-                $) {renderComponentHeader(L.get('SIZE_FITTER', "Size Fitter"), icon, index)}
+                ${renderComponentHeader(L.get('SIZE_FITTER', "Size Fitter"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="HORIZONTAL_FIT">${L.get('HORIZONTAL_FIT', 'Horizontal Fit')}</label>
@@ -1815,7 +1815,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "VideoPlayer") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('VIDEO_PLAYER', "Video Player"), icon, index)}
+                ${renderComponentHeader(L.get('VIDEO_PLAYER', "Video Player"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label data-i18n="VIDEO_SOURCE">${L.get('VIDEO_SOURCE', 'Video Source')}</label>
@@ -1967,7 +1967,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "ProgressBar") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('PROGRESS_BAR', "Barra de Progreso"), icon, index)}
+                ${renderComponentHeader(L.get('PROGRESS_BAR', "Barra de Progreso"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label data-i18n="TARGET_MATERIA">${L.get('TARGET_MATERIA', 'Materia Objetivo')}</label>
@@ -2009,7 +2009,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "UIScrollRect") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('SCROLL_RECT', "Rect de Desplazamiento"), icon, index)}
+                ${renderComponentHeader(L.get('SCROLL_RECT', "Rect de Desplazamiento"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label data-i18n="CONTENT_MATERIA">${L.get('CONTENT_MATERIA', 'Materia de Contenido')}</label>
@@ -2043,7 +2043,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "UIMask") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('UI_MASK', "Máscara UI"), icon, index)}
+                ${renderComponentHeader(L.get('UI_MASK', "Máscara UI"), icon, index)}
                 <div class="component-content">
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="UIMask" data-prop="showGizmo" ${ley.showGizmo ? 'checked' : ''}>
@@ -2054,7 +2054,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "UICollider") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('UI_COLLIDER', "Colisionador UI"), icon, index)}
+                ${renderComponentHeader(L.get('UI_COLLIDER', "Colisionador UI"), icon, index)}
                 <div class="component-content">
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="UICollider" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
@@ -2064,7 +2064,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "Patrol") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('PATROL_COMPONENT', "Patrulla (Patrol)"), icon, index)}
+                ${renderComponentHeader(L.get('PATROL_COMPONENT', "Patrulla (Patrol)"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="VELOCIDAD">${L.get('VELOCIDAD', 'Velocidad')}</label>
@@ -2140,7 +2140,7 @@ async function updateInspectorForMateria(selectedMateria) {
         } else if (ley.constructor.name === "PolygonCollider2D") {
             componentHTML = `
             <div class="component-inspector">
-                $) {renderComponentHeader(L.get('POLYGON_COLLIDER_2D', "Polygon Collider 2D"), icon, index)}
+                ${renderComponentHeader(L.get('POLYGON_COLLIDER_2D', "Polygon Collider 2D"), icon, index)}
                 <div class="component-content">
                     <div class="checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="PolygonCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
@@ -2210,7 +2210,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             </div>`;
         } else if (ley.constructor.name === "UIImage") {
-            componentHTML = `$) {renderComponentHeader(L.get('UI_IMAGE', "UI Image"), icon, index)}
+            componentHTML = `${renderComponentHeader(L.get('UI_IMAGE', "UI Image"), icon, index)}
             <div class="component-content">
                 <div class="inspector-row">
                     <label data-i18n="SOURCE">${L.get('SOURCE', 'Source')}</label>
@@ -2275,7 +2275,7 @@ async function updateInspectorForMateria(selectedMateria) {
             const ssResolution = ley.referenceResolution || { width: 800, height: 600 };
 
             componentHTML = `
-                $) {renderComponentHeader(L.get('CANVAS', "Canvas"), "image", index)}
+                ${renderComponentHeader(L.get('CANVAS', "Canvas"), "image", index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="RENDER_MODE">${L.get('RENDER_MODE', 'Render Mode')}</label>
@@ -2322,7 +2322,7 @@ async function updateInspectorForMateria(selectedMateria) {
             const isSpriteSwap = ley.transition === 'Sprite Swap';
             const isAnimation = ley.transition === 'Animation';
             componentHTML = `
-                $) {renderComponentHeader(L.get('BUTTON', "Button"), "mouse-pointer", index)}
+                ${renderComponentHeader(L.get('BUTTON', "Button"), "mouse-pointer", index)}
                 <div class="component-content">
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Button" data-prop="interactable" ${ley.interactable ? 'checked' : ''}>
@@ -2412,7 +2412,7 @@ async function updateInspectorForMateria(selectedMateria) {
         else if (ley.constructor.name === "CircleCollider2D") {
             componentHTML = `
             <div class="component-inspector">
-                $) {renderComponentHeader(L.get('CIRCLE_COLLIDER_2D', "Circle Collider 2D"), 'disc', index)}
+                ${renderComponentHeader(L.get('CIRCLE_COLLIDER_2D', "Circle Collider 2D"), 'disc', index)}
                 <div class="component-content">
                     <div class="checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="CircleCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
@@ -2522,7 +2522,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "Animator") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('ANIMATOR', "Animator"), icon, index)}
+                ${renderComponentHeader(L.get('ANIMATOR', "Animator"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label data-i18n="ANIMATION_CLIP">${L.get('ANIMATION_CLIP', 'Animation Clip')}</label>
@@ -2542,7 +2542,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>`;
         } else if (ley.constructor.name === "AnimatorController") {
-            let statesListHTML = `<p class="field-description">$) {L.get('HINT_ASIGNAR_CONTROLADOR', 'Asigna un Controller para ver sus estados.')}</p>`;
+            let statesListHTML = `<p class="field-description">${L.get('HINT_ASIGNAR_CONTROLADOR', 'Asigna un Controller para ver sus estados.')}</p>`;
             if (ley.controller && ley.states.size > 0) {
                 statesListHTML = '<ul>';
                 for (const stateName of ley.states.keys()) {
@@ -2594,7 +2594,7 @@ async function updateInspectorForMateria(selectedMateria) {
             const clearFlags = ley.clearFlags || 'SolidColor';
 
             componentHTML = `
-                $) {renderComponentHeader(L.get('CAMERA', "Camera"), icon, index)}
+                ${renderComponentHeader(L.get('CAMERA', "Camera"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="DEPTH">${L.get('DEPTH', 'Depth')}</label>
@@ -2655,7 +2655,7 @@ async function updateInspectorForMateria(selectedMateria) {
         } else if (ley.constructor.name === "PointLight2D") {
             componentHTML = `
             <div class="component-inspector">
-                $) {renderComponentHeader(L.get('POINT_LIGHT_2D', "Point Light 2D"), icon, index)}
+                ${renderComponentHeader(L.get('POINT_LIGHT_2D', "Point Light 2D"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_COLOR">${L.get('PROP_COLOR', 'Color')}</label>
@@ -2690,7 +2690,7 @@ async function updateInspectorForMateria(selectedMateria) {
         } else if (ley.constructor.name === "SpotLight2D") {
             componentHTML = `
             <div class="component-inspector">
-                $) {renderComponentHeader(L.get('SPOT_LIGHT_2D', "Spot Light 2D"), icon, index)}
+                ${renderComponentHeader(L.get('SPOT_LIGHT_2D', "Spot Light 2D"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_COLOR">${L.get('PROP_COLOR', 'Color')}</label>
@@ -2731,7 +2731,7 @@ async function updateInspectorForMateria(selectedMateria) {
         } else if (ley.constructor.name === "FreeformLight2D") {
             componentHTML = `
             <div class="component-inspector">
-                $) {renderComponentHeader(L.get('FREEFORM_LIGHT_2D', "Freeform Light 2D"), icon, index)}
+                ${renderComponentHeader(L.get('FREEFORM_LIGHT_2D', "Freeform Light 2D"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_COLOR">${L.get('PROP_COLOR', 'Color')}</label>
@@ -2831,7 +2831,7 @@ async function updateInspectorForMateria(selectedMateria) {
             }
         } else if (ley.constructor.name === "TilemapRenderer") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('TILEMAP_RENDERER', 'Tilemap Renderer'), 'brush', index)}
+                ${renderComponentHeader(L.get('TILEMAP_RENDERER', 'Tilemap Renderer'), 'brush', index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_ORDER_IN_LAYER">${L.get('PROP_ORDER_IN_LAYER', 'Order in Layer')}</label>
@@ -2911,7 +2911,7 @@ async function updateInspectorForMateria(selectedMateria) {
         } else if (ley.constructor.name === "CapsuleCollider2D") {
             componentHTML = `
             <div class="component-inspector">
-                $) {renderComponentHeader(L.get('CAPSULE_COLLIDER_2D', "Capsule Collider 2D"), icon, index)}
+                ${renderComponentHeader(L.get('CAPSULE_COLLIDER_2D', "Capsule Collider 2D"), icon, index)}
                 <div class="component-content">
                     <div class="checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="CapsuleCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
@@ -2946,7 +2946,7 @@ async function updateInspectorForMateria(selectedMateria) {
         } else if (ley.constructor.name === "SpriteLight2D") {
             componentHTML = `
             <div class="component-inspector">
-                $) {renderComponentHeader(L.get('SPRITE_LIGHT_2D', "Sprite Light 2D"), icon, index)}
+                ${renderComponentHeader(L.get('SPRITE_LIGHT_2D', "Sprite Light 2D"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label data-i18n="SPRITE">${L.get('SPRITE', 'Sprite')}</label>
@@ -3055,7 +3055,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "DrawingOrder") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('DRAWING_ORDER_COMPONENT', "Orden de Dibujo"), icon, index)}
+                ${renderComponentHeader(L.get('DRAWING_ORDER_COMPONENT', "Orden de Dibujo"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="ORDER">${L.get('ORDER', 'Orden')}</label>
@@ -3224,7 +3224,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "AutoDestroy") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('AUTO_DESTROY_COMPONENT', "Destrucción Automática"), icon, index)}
+                ${renderComponentHeader(L.get('AUTO_DESTROY_COMPONENT', "Destrucción Automática"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="DELAY_SECS">${L.get('DELAY_SECS', 'Retraso (segs)')}</label>
@@ -3263,7 +3263,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "ParticleSystem") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('PARTICLE_SYSTEM', "Sistema de Partículas"), icon, index)}
+                ${renderComponentHeader(L.get('PARTICLE_SYSTEM', "Sistema de Partículas"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label data-i18n="PARTICLE_PREFAB">${L.get('PARTICLE_PREFAB', 'Prefab Partícula')}</label>
@@ -3301,7 +3301,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "Parallax") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('PARALLAX_COMPONENT', "Parallax (Avanzado)"), icon, index)}
+                ${renderComponentHeader(L.get('PARALLAX_COMPONENT', "Parallax (Avanzado)"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="SCROLL_FACTOR">${L.get('SCROLL_FACTOR', 'Scroll Factor X/Y')}</label>
@@ -3351,7 +3351,7 @@ async function updateInspectorForMateria(selectedMateria) {
         } else if (ley.constructor.name === "Terreno2D") {
             const settings = TerrenoEditorWindow.settings;
             componentHTML = `
-                $) {renderComponentHeader(L.get('TERRAIN_2D_COMPONENT', "Terreno 2D (Píxeles)"), icon, index)}
+                ${renderComponentHeader(L.get('TERRAIN_2D_COMPONENT', "Terreno 2D (Píxeles)"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="CANVAS_SIZE">${L.get('CANVAS_SIZE', 'Canvas Size')}</label>
@@ -3408,7 +3408,7 @@ async function updateInspectorForMateria(selectedMateria) {
         } else if (ley.constructor.name === "TerrenoCollider2D") {
             const isPolygon = ley.mode === 'Polygon';
             componentHTML = `
-                $) {renderComponentHeader(L.get('TERRAIN_COLLIDER_2D', "Terreno Collider 2D"), icon, index)}
+                ${renderComponentHeader(L.get('TERRAIN_COLLIDER_2D', "Terreno Collider 2D"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="MODE">${L.get('MODE', 'Modo')}</label>
@@ -3439,7 +3439,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "Gyzmo") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('GYZMO_AREAS', "Gyzmo (Áreas)"), icon, index)}
+                ${renderComponentHeader(L.get('GYZMO_AREAS', "Gyzmo (Áreas)"), icon, index)}
                 <div class="component-content">
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Gyzmo" data-prop="showInGame" ${ley.showInGame ? 'checked' : ''}>
@@ -3494,7 +3494,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "RaycastSource") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('RAYCAST_SOURCE', "Raycast Source (Rallo)"), icon, index)}
+                ${renderComponentHeader(L.get('RAYCAST_SOURCE', "Raycast Source (Rallo)"), icon, index)}
                 <div class="component-content">
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="RaycastSource" data-prop="showGizmo" ${ley.showGizmo ? 'checked' : ''}>
@@ -3526,7 +3526,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "Water") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('WATER', "Water (Agua)"), icon, index)}
+                ${renderComponentHeader(L.get('WATER', "Water (Agua)"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_DIMENSIONS">${L.get('PROP_DIMENSIONS', 'Dimensions')}</label>
@@ -3561,7 +3561,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "LineCollider2D") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('LINE_COLLIDER', "Line Collider 2D"), icon, index)}
+                ${renderComponentHeader(L.get('LINE_COLLIDER', "Line Collider 2D"), icon, index)}
                 <div class="component-content">
                     <div class="checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="LineCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
@@ -3587,7 +3587,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "PlatformEffector2D") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('PLATFORM_EFFECTOR', "Platform Effector 2D"), 'square', index)}
+                ${renderComponentHeader(L.get('PLATFORM_EFFECTOR', "Platform Effector 2D"), 'square', index)}
                 <div class="component-content">
                     <div class="effector-ui-container" style="display: flex; flex-direction: column; align-items: center; gap: 15px; padding: 10px;">
                         <div class="effector-square-preview" style="position: relative; width: 100px; height: 100px; background: rgba(255,255,255,0.05); border: 2px dashed rgba(255,255,255,0.1);">
@@ -3633,7 +3633,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "AudioSource") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('AUDIO_SOURCE', "Audio Source"), icon, index)}
+                ${renderComponentHeader(L.get('AUDIO_SOURCE', "Audio Source"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label data-i18n="AUDIO_CLIP">${L.get('AUDIO_CLIP', 'Audio Clip')}</label>
@@ -3682,7 +3682,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "Suspension") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('SUSPENSION', "Suspensión"), icon, index)}
+                ${renderComponentHeader(L.get('SUSPENSION', "Suspensión"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label data-i18n="CHASSIS">${L.get('CHASSIS', 'Chasis')}</label>
@@ -3716,7 +3716,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "VehicleSideView2D") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('VEHICLE_SIDE_VIEW_2D', "Vehículo Lateral 2D"), icon, index)}
+                ${renderComponentHeader(L.get('VEHICLE_SIDE_VIEW_2D', "Vehículo Lateral 2D"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-section-header"><span data-i18n="WHEELS">${L.get('WHEELS', 'Ruedas')}</span></div>
                     <div class="inspector-row">
@@ -4005,7 +4005,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "Bone") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('BONE', "Hueso"), icon, index)}
+                ${renderComponentHeader(L.get('BONE', "Hueso"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label data-i18n="LONGITUD">${L.get('LONGITUD', 'Longitud')}</label>
@@ -4026,7 +4026,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "SkeletonRenderer") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('SKELETON_RENDERER', "Esqueleto"), icon, index)}
+                ${renderComponentHeader(L.get('SKELETON_RENDERER', "Esqueleto"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label data-i18n="IMAGEN">${L.get('IMAGEN', 'Imagen')}</label>
@@ -4082,7 +4082,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "IKManager2D") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('IK_MANAGER_2D', "IK Manager 2D"), icon, index)}
+                ${renderComponentHeader(L.get('IK_MANAGER_2D', "IK Manager 2D"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label data-i18n="OBJETIVO_TARGET">${L.get('OBJETIVO_TARGET', 'Objetivo (Target)')}</label>
@@ -4104,7 +4104,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley.constructor.name === "SceneLoader") {
             componentHTML = `
-                $) {renderComponentHeader(L.get('SCENE_LOADER', "Cargar Escena"), icon, index)}
+                ${renderComponentHeader(L.get('SCENE_LOADER', "Cargar Escena"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label data-i18n="SCENE_PATH">${L.get('SCENE_PATH', 'Ruta de Escena')}</label>
@@ -5322,7 +5322,7 @@ export async function showAddComponentModal() {
         .filter(ley => ley.constructor.name === "CustomComponent)
         .map(ley => ley.definition.nombre)
     );
-    const existingScripts = new Set(selectedMateria.leyes.filter(ley => ley.constructor.name === "CreativeScript).map(ley" => ley.scriptName));
+    const existingScripts = new Set(selectedMateria.leyes.filter(ley => ley.constructor.name === "CreativeScript").map(ley => ley.scriptName));
 
     // --- 1. Render Built-in Components ---
     const L = window.Localization;

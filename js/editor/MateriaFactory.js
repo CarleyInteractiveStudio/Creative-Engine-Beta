@@ -114,7 +114,7 @@ export async function createSpotLight3D(parent = null) {
 
 export async function createSkinnedMeshObject(modelPath, parent = null, options = {}) {
     const C3D = await ensure3D();
-    const { ModelLoader3D } = await import('../engine/ModelLoader3D.js');
+    const { ModelLoader3D } = await import('../engine/3d/ModelLoader3D.js');
     const modelData = await ModelLoader3D.loadModel(modelPath, window.projectsDirHandle);
     if (!modelData) return null;
 

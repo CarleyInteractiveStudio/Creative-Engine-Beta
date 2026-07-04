@@ -1,3 +1,10 @@
+// --- Create Mock Auth if Supabase fails ---
+window.auth = window.auth || {
+    getUser: async () => null,
+    loginSSO: () => console.warn("Auth not available"),
+    callBridge: () => console.warn("Bridge not available"),
+    openAuthModal: () => console.warn("Auth modal not available")
+};
 // --- Supabase Client Initialization ---
 const SUPABASE_URL = 'https://tladrluezsmmhjbhupgb.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsYWRybHVlenNtbWhqYmh1cGdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0MjY5NjQsImV4cCI6MjA3MTAwMjk2NH0.p7x3MPizmNdX57KzX5T4c15ytuH1oznjFqyp14HD-QU';
