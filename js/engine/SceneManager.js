@@ -668,22 +668,18 @@ export async function instanciarPrefab(prefabData, x, y) {
 
 function createDefaultScene() {
     const scene = new Scene();
-    const config = window.currentProjectConfig || {};
-        trans.localRotation = { x: 15, y: 0, z: 0 };
-    }
 
+    const rootNode = new Materia('Scene');
+    scene.addMateria(rootNode);
+
+    const cameraNode = new Materia('Main Camera');
+    const cameraComponent = new Camera(cameraNode);
     cameraNode.addComponent(cameraComponent);
 
+    const transform = new Transform(cameraNode);
+    cameraNode.addComponent(transform);
+
     rootNode.addChild(cameraNode);
-    scene.addMateria(cameraNode);
-
-        })();
-        const lightTrans = lightNode.getComponent(Transform);
-        lightTrans.localRotation = { x: 50, y: -30, z: 0 };
-
-        rootNode.addChild(lightNode);
-        scene.addMateria(lightNode);
-    }
 
     return scene;
 }
