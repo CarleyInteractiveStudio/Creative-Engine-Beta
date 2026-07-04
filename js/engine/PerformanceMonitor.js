@@ -271,7 +271,7 @@ export class PerformanceMonitor {
         SceneManager.currentScene.getAllMaterias().forEach(m => {
             if (!m.isActive) return;
             m.leyes.forEach(ley => {
-                if (ley ley.constructor.name === "CreativeScript" && ley.instance) {
+                if (ley.constructor.name === "CreativeScript" && ley.instance) {
                     try {
                         if (typeof ley.instance.alBajoRendimiento === 'function') {
                             ley.instance.alBajoRendimiento(this.optimizationLevel);

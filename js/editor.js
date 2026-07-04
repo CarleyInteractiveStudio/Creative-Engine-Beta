@@ -2731,7 +2731,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
 
                             // 3. Generic start for all non-script components (including AnimatorController)
-                            if (!(ley ley.constructor.name === "CreativeScript") && typeof ley.start === 'function') {
+                            if (!(ley.constructor.name === "CreativeScript") && typeof ley.start === 'function') {
                                 try {
                                     await ley.start();
                                 } catch (e) {
