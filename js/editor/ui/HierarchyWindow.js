@@ -168,9 +168,9 @@ export function duplicateSelectedMateria() {
     if (window.isGameRunning || window.CE_Standalone_Scripts) {
         (async () => {
             for (const ley of newMateria.leyes) {
-                if (ley instanceof Components.AnimatorController) {
+                if (ley.constructor.name === "AnimatorController") {
                     await ley.initialize(window.projectsDirHandle);
-                } else if (ley instanceof Components.CreativeScript) {
+                } else if (ley.constructor.name === "CreativeScript") {
                     await ley.initializeInstance();
                 }
                 if (typeof ley.start === 'function') {
@@ -636,9 +636,9 @@ export async function handleContextMenuAction(action) {
                 if (window.isGameRunning || window.CE_Standalone_Scripts) {
                     (async () => {
                         for (const ley of newDuplicatedMateria.leyes) {
-                            if (ley instanceof Components.AnimatorController) {
+                            if (ley.constructor.name === "AnimatorController") {
                                 await ley.initialize(window.projectsDirHandle);
-                            } else if (ley instanceof Components.CreativeScript) {
+                            } else if (ley.constructor.name === "CreativeScript") {
                                 await ley.initializeInstance();
                             }
                             if (typeof ley.start === 'function') {
@@ -807,7 +807,7 @@ function setupEventListeners() {
                 try {
                     let anim = null;
                     if (data.isEmbedded) {
-                        const { ModelLoader3D } = await import('../../engine/ModelLoader3D.js');
+                        const { ModelLoader3D } = await import('../../engine/3d/ModelLoader3D.js');
                         const modelData = await ModelLoader3D.loadModel(data.modelPath, window.projectsDirHandle);
                         if (modelData && modelData.animations) {
                             anim = modelData.animations[data.animIndex];

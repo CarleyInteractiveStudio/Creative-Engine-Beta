@@ -1304,7 +1304,7 @@ export function getCurrentDirectoryPath() {
 }
 
 async function renderModelSubAssets(gridContainer, fileEntry, modelPath) {
-    const { ModelLoader3D: Loader } = await import('../../engine/ModelLoader3D.js');
+    const { ModelLoader3D: Loader } = await import('../../engine/3d/ModelLoader3D.js');
 
     try {
         const data = await Loader.loadModel(modelPath, window.projectsDirHandle);

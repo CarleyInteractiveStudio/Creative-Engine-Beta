@@ -58,7 +58,7 @@ export class ExtensionsManager {
                 id: 'city-pack-01',
                 name: 'Ciudad Industrial Pack',
                 description: 'Edificios, pistas y utileria urbana.',
-                type: '3D Model',
+                type: 'Modelo 3D',
                 thumbnail: 'https://images.pexels.com/photos/1034662/pexels-photo-1034662.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
                 assets: [
                     { path: 'Extensions/Models/City/Building_A.glb', url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Box/glTF-Binary/Box.glb' },
@@ -69,7 +69,7 @@ export class ExtensionsManager {
                 id: 'race-track-01',
                 name: 'Pista de Carreras Pro',
                 description: 'Pista completa con curvas cerradas y rectas largas.',
-                type: '3D Scene',
+                type: 'Escena 3D',
                 thumbnail: 'https://images.pexels.com/photos/35967/pexels-photo-35967.jpg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
                 assets: [
                     { path: 'Extensions/Models/Tracks/RaceTrack.glb', url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Box/glTF-Binary/Box.glb' }

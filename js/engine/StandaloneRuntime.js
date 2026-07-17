@@ -134,21 +134,21 @@ export class StandaloneRuntime {
             // Load and instantiate scripts and components
             for (const materia of scene.getAllMaterias()) {
                 for (const ley of materia.leyes) {
-                    if (ley instanceof Components.CreativeScript) {
+                    if (ley.constructor.name === "CreativeScript") {
                         await ley.initializeInstance();
                         if (ley.isInitialized) {
                             try { ley.start(); } catch(e) {}
                             try { ley.onEnable(); } catch(e) {}
                         }
-                    } else if (ley instanceof Components.AnimatorController) {
+                    } else if (ley.constructor.name === "AnimatorController") {
                         await ley.initialize(null); // null handle for standalone
-                    } else if (ley instanceof Components.Animator) {
+                    } else if (ley.constructor.name === "Animator") {
                         if (!materia.getComponent(Components.AnimatorController)) {
                             await ley.loadAnimationClip(null);
                         }
                     }
 
-                    if (!(ley instanceof Components.CreativeScript) && typeof ley.start === 'function') {
+                    if (ley.constructor.name !== "CreativeScript" && typeof ley.start === 'function') {
                         try { await ley.start(); } catch(e) {}
                     }
                 }

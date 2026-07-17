@@ -1,11 +1,11 @@
 // Gizmos.js
-// A collection of utility functions to draw gizmos in both 2D and 3D scenes.
+// A collection of utility functions to draw gizmos in 2D scenes.
 
 import { world3DToScreen, drawLineClipped } from './MathUtils.js';
 
 export const Gizmos = {
     /**
-     * Draws a wireframe cube in 3D space.
+     * Draws a wireframe cube.
      */
     drawWireCube(ctx, center, size, rotation = {x:0, y:0, z:0}, color = 'rgba(0, 255, 255, 0.8)', proj = null, view = null, cw = null, ch = null) {
         const glm = window.glMatrix;
@@ -40,7 +40,7 @@ export const Gizmos = {
     },
 
     /**
-     * Draws a wireframe sphere in 3D space.
+     * Draws a wireframe sphere.
      */
     drawWireSphere(ctx, center, radius, rotation = {x:0, y:0, z:0}, color = 'rgba(0, 255, 255, 0.8)', proj = null, view = null, cw = null, ch = null) {
         const glm = window.glMatrix;

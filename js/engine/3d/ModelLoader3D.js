@@ -3,7 +3,7 @@
  * (c) 2024 Carley Interactive Studio
  */
 
-import { getURLForAssetPath } from './AssetUtils.js';
+import { getURLForAssetPath } from '../AssetUtils.js';
 
 export class ModelLoader3D {
     static async loadModel(path, projectsDirHandle) {

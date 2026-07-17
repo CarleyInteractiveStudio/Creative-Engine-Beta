@@ -1,8 +1,8 @@
 // Materia.js
 // This file contains the Materia class.
 
-import { Transform } from './Components.js';
 import { currentScene } from './SceneManager.js';
+import { Transform } from './Components.js';
 
 let MATERIA_ID_COUNTER = 0;
 export class Materia {
@@ -53,10 +53,7 @@ export class Materia {
     get controlador() { return this.animatorController; }
     get controladorAnimacion() { return this.animatorController; }
 
-    get animador3D() { return this.getComponentByName('Animator3D'); }
-    get animacion3D() { return this.animador3D; }
 
-    get renderizadorDeMallaConHuesos3D() { return this.getComponentByName('SkinnedMeshRenderer3D'); }
 
     get uiTransform() { return this.getComponentByName('UITransform'); }
     get posicionUI() { return this.uiTransform; }
@@ -136,7 +133,7 @@ export class Materia {
     }
 
     _resolveMateria(ref) {
-        if (ref instanceof Materia) return ref;
+        if (ref.constructor.name === "Materia") return ref;
         if (typeof ref === 'number') {
             const scene = this.scene || currentScene;
             return scene ? scene.findMateriaById(ref) : null;

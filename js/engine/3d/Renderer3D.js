@@ -4,13 +4,13 @@
  * (c) 2024 Carley Interactive Studio
  */
 
-import * as Components from './Components.js';
+import * as Components from '../Components.js';
 import * as Components3D from './Components3D.js';
 
 // Import gl-matrix for 3D math
-import * as glMatrix from 'gl-matrix';
-const { mat4, vec3, quat, vec4 } = glMatrix;
-window.glMatrix = glMatrix; // Essential for other 3D modules
+
+const { mat4, vec3, quat, vec4 } = window.glMatrix;
+ // Essential for other 3D modules
 
 export class Renderer3D {
     constructor(canvas) {
@@ -494,7 +494,7 @@ export class Renderer3D {
         let clearColor = [0.05, 0.05, 0.07];
         let clearFlags = 'SolidColor';
         if (cameraMateria) {
-            const cam = cameraMateria.getComponent(Components.Camera);
+            const cam = cameraMateria.getComponentByName('Camera3D');
             clearFlags = cam.clearFlags;
             if (cam.clearFlags === 'SolidColor') {
                 const rgb = this.hexToRgb(cam.backgroundColor);
@@ -510,8 +510,8 @@ export class Renderer3D {
         let far = 20000.0;
 
         if (cameraMateria) {
-            const cam = cameraMateria.getComponent(Components.Camera);
-            const transform = cameraMateria.getComponent(Components.Transform);
+            const cam = cameraMateria.getComponentByName('Camera3D');
+            const transform = cameraMateria.getComponentByName('Transform3D');
             near = cam.nearClipPlane || 0.1;
             far = cam.farClipPlane || 20000.0;
 
@@ -647,26 +647,26 @@ export class Renderer3D {
         gl.enable(gl.DEPTH_TEST);
         gl.enable(gl.CULL_FACE);
 
-        const cullingMask = cameraMateria ? cameraMateria.getComponent(Components.Camera).cullingMask : -1;
+        const cullingMask = cameraMateria ? cameraMateria.getComponentByName('Camera3D').cullingMask : -1;
         const materias = scene.getAllMaterias();
 
         materias.forEach(materia => {
             if (!materia.isActive) return;
             if (cullingMask !== -1 && !(cullingMask & (1 << materia.layer))) return;
 
-            const terrain = materia.getComponent(Components3D.Terreno3D);
+            const terrain = materia.getComponentByName('Terreno3D');
             if (terrain) {
                 this.drawTerreno3D(materia, terrain);
                 return;
             }
 
-            const skinnedMesh = materia.getComponent(Components3D.SkinnedMeshRenderer3D);
+            const skinnedMesh = materia.getComponentByName('SkinnedMeshRenderer3D');
             if (skinnedMesh && skinnedMesh.isLoaded && skinnedMesh.isActive) {
                 this.drawSkinnedMesh(materia, skinnedMesh);
                 return;
             }
 
-            const mesh = materia.getComponent(Components3D.MeshRenderer3D);
+            const mesh = materia.getComponentByName('MeshRenderer3D');
             if (!mesh || !mesh.isActive) return;
 
             const program = mesh.isUnlit ? this.programs.unlit : this.programs.standard;
@@ -684,7 +684,7 @@ export class Renderer3D {
             const colorLoc = gl.getUniformLocation(program, 'uColor');
             const modelLoc = gl.getUniformLocation(program, 'uModelMatrix');
 
-            const transform = materia.getComponent(Components.Transform);
+            const transform = materia.getComponentByName('Transform3D');
             gl.uniformMatrix4fv(modelLoc, false, transform.worldMatrix || mat4.create());
             const color = this.hexToRgb(mesh.color);
             gl.uniform4f(colorLoc, color[0], color[1], color[2], 1.0);
@@ -790,7 +790,7 @@ export class Renderer3D {
         const program = this.programs.standard;
         gl.useProgram(program);
 
-        const transform = materia.getComponent(Components.Transform);
+        const transform = materia.getComponentByName('Transform3D');
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uViewMatrix'), false, this.viewMatrix);
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, transform.worldMatrix || mat4.create());
@@ -885,7 +885,7 @@ export class Renderer3D {
         const program = this.programs.skinned;
         gl.useProgram(program);
 
-        const transform = materia.getComponent(Components.Transform);
+        const transform = materia.getComponentByName('Transform3D');
         const color = this.hexToRgb(mesh.color);
 
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uProjectionMatrix'), false, this.projectionMatrix);
@@ -1063,7 +1063,7 @@ export class Renderer3D {
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
 
         (async () => {
-            const { getURLForAssetPath } = await import('./AssetUtils.js');
+            const { getURLForAssetPath } = await import('../AssetUtils.js');
             const url = await getURLForAssetPath(path, window.projectsDirHandle);
             if (!url) return;
 
@@ -1149,13 +1149,13 @@ export class Renderer3D {
         const idMap = new Map();
         scene.getAllMaterias().forEach((m, index) => {
             if (!m.isActive) return;
-            const mesh = m.getComponent(Components3D.MeshRenderer3D);
+            const mesh = m.getComponentByName('MeshRenderer3D');
             if (!mesh) return;
 
             const id = index + 1;
             idMap.set(id, m.id);
             gl.uniform4f(pickColorLoc, (id & 0xFF)/255, ((id >> 8) & 0xFF)/255, ((id >> 16) & 0xFF)/255, 1.0);
-            gl.uniformMatrix4fv(modelLoc, false, m.getComponent(Components.Transform).worldMatrix);
+            gl.uniformMatrix4fv(modelLoc, false, m.getComponentByName('Transform3D').worldMatrix);
 
             if (mesh.meshType === 'Cube' || !mesh.meshType) {
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cube);

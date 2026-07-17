@@ -10,8 +10,6 @@ import * as PerformanceAPI from './PerformanceAPI.js';
 import { bus as MessageBus } from './Messaging.js';
 import * as MathUtils from './MathUtils.js';
 
-// Import gl-matrix for 3D transformations
-import * as glMatrix from 'gl-matrix';
 const { mat4, vec3, quat, vec4 } = glMatrix;
 
 let editorLogic = null;
@@ -82,18 +80,6 @@ const componentAliases = {
     'ProgressBar': 'barraDeProgreso',
     'SceneLoader': 'cargarEscena',
     'PlatformEffector2D': 'efectorPlataforma2D',
-    'Rigidbody3D': 'fisica3D',
-    'BoxCollider3D': 'colisionadorCaja3D',
-    'SphereCollider3D': 'colisionadorEsfera3D',
-    'MeshRenderer3D': 'renderizadorDeMalla3D',
-    'SkinnedMeshRenderer3D': 'renderizadorDeMallaConHuesos3D',
-    'Animator3D': 'animador3D',
-    'HumanoidPhysics3D': 'fisicaHumanoide3D',
-    'MovementControl3D': 'controlMovimiento3D',
-    'HealthController3D': 'controladorSalud3D',
-    'ThirdPersonController3D': 'controladorTerceraPersona3D',
-    'CameraControl3D': 'controlCamara3D',
-    'DeformableMesh3D': 'mallaDeformable3D',
 };
 
 
@@ -417,30 +403,13 @@ export class CreativeScriptBehavior {
     get fisica() { return this.obtenerComponente('Rigidbody2D') || this._missingComponentProxy('fisica', 'Rigidbody2D'); }
     get rigidbody2D() { return this.fisica; }
 
-    get fisica3D() { return this.obtenerComponente('Rigidbody3D') || this._missingComponentProxy('fisica3D', 'Rigidbody3D'); }
-    get rigidbody3D() { return this.fisica3D; }
 
-    get animacion3D() { return this.obtenerComponente('Animator3D') || this._missingComponentProxy('animacion3D', 'Animator3D'); }
-    get animador3D() { return this.animacion3D; }
-    get animator3D() { return this.animacion3D; }
 
-    get fisicaHumanoide3D() { return this.obtenerComponente('HumanoidPhysics3D') || this._missingComponentProxy('fisicaHumanoide3D', 'HumanoidPhysics3D'); }
-    get humanoidPhysics3D() { return this.fisicaHumanoide3D; }
 
-    get controlMovimiento3D() { return this.obtenerComponente('MovementControl3D') || this._missingComponentProxy('controlMovimiento3D', 'MovementControl3D'); }
-    get movementControl3D() { return this.controlMovimiento3D; }
 
-    get controladorSalud3D() { return this.obtenerComponente('HealthController3D') || this._missingComponentProxy('controladorSalud3D', 'HealthController3D'); }
-    get healthController3D() { return this.controladorSalud3D; }
 
-    get controladorTerceraPersona3D() { return this.obtenerComponente('ThirdPersonController3D') || this._missingComponentProxy('controladorTerceraPersona3D', 'ThirdPersonController3D'); }
-    get thirdPersonController3D() { return this.controladorTerceraPersona3D; }
 
-    get controlCamara3D() { return this.obtenerComponente('CameraControl3D') || this._missingComponentProxy('controlCamara3D', 'CameraControl3D'); }
-    get cameraControl3D() { return this.controlCamara3D; }
 
-    get mallaDeformable3D() { return this.obtenerComponente('DeformableMesh3D') || this._missingComponentProxy('mallaDeformable3D', 'DeformableMesh3D'); }
-    get deformableMesh3D() { return this.mallaDeformable3D; }
 
     get vida() { return this.obtenerComponente('Health') || this._missingComponentProxy('vida', 'Health'); }
     get salud() { return this.vida; }
@@ -911,18 +880,15 @@ export class Transform extends Leyes {
 
     // --- Posición Global (World Position) ---
     get position() {
-        const is3D = window.currentProjectConfig?.projectType === '3d';
 
         if (!this.materia || !this.materia.parent) {
             const pos = { ...this.localPosition };
-            if (!is3D) pos.z = 0;
             return pos;
         }
 
         const parentTransform = this.materia.parent.getComponent(Transform);
         if (!parentTransform) {
             const pos = { ...this.localPosition };
-            if (!is3D) pos.z = 0;
             return pos;
         }
 
@@ -934,7 +900,7 @@ export class Transform extends Leyes {
         return {
             x: worldVec[0],
             y: worldVec[1],
-            z: is3D ? worldVec[2] : 0
+            z: 0
         };
     }
 
@@ -1177,9 +1143,8 @@ export class Transform extends Leyes {
 export class Camera extends Leyes {
     constructor(materia) {
         super(materia);
-        const is3D = window.currentProjectConfig?.projectType === '3d';
         this.depth = 0; // Rendering order. Higher is drawn on top.
-        this.projection = is3D ? 'Perspective' : 'Orthographic';
+        this.projection = "Orthographic";
         this.orthographicSize = 5; // Size for Orthographic
         this.fov = 60; // Field of view for Perspective
         this.nearClipPlane = 0.1;
@@ -1776,7 +1741,7 @@ export class SpriteRenderer extends Leyes {
         this.isLoading = false;
         this._lastLoadedSource = '';
         this.pivot = { x: 0.5, y: 0.5 };
-        this.billboard = false; // For 3D mode
+
     }
 
     get spriteName() { return this._spriteName; }
@@ -3129,7 +3094,7 @@ export class TextureRender extends Leyes {
         this._lastLoadedPath = '';
         this.isLoading = false;
         this.isError = false;
-        this.billboard = false; // For 3D mode
+
     }
 
     update(deltaTime) {
@@ -7907,7 +7872,7 @@ export class BasicAI extends Leyes {
         let targetObj = null;
         if (typeof this.target === 'number') {
             targetObj = scene.findMateriaById(this.target);
-        } else if (this.target instanceof Materia) {
+        } else if (this.target && this.target.constructor.name === "Materia") {
             targetObj = this.target;
         }
 
@@ -8127,7 +8092,7 @@ export class BasicAI extends Leyes {
         let scriptTargetObj = null;
         if (typeof this.scriptTarget === 'number') {
             scriptTargetObj = this.materia.scene.findMateriaById(this.scriptTarget);
-        } else if (this.scriptTarget instanceof Materia) {
+        } else if (this.scriptTarget && this.scriptTarget.constructor.name === "Materia") {
             scriptTargetObj = this.scriptTarget;
         } else {
             scriptTargetObj = this.materia; // Default to self

@@ -24,7 +24,6 @@ export class Scene {
             hora: '12',                // Start at Noon for better visibility
             cicloAutomatico: false,
             duracionDia: '60',
-            // 3D Sky system
             skyMode: 'Gradient',
             skyColor: '#4a90e2',      // Beautiful Sky Blue
             horizonColor: '#ffffff',
@@ -34,7 +33,7 @@ export class Scene {
     }
 
     addMateria(materia) {
-        if (materia instanceof Materia) {
+        if (materia.constructor.name === "Materia") {
             this.materias.push(materia);
             this._setMateriaSceneRecursive(materia);
         }
@@ -315,7 +314,7 @@ export function serializeMateria(materia, recursive = false) {
                     } else if (key.startsWith('_')) {
                         // Skip "private" or internal state properties
                         continue;
-                    } else if (ley[key] instanceof Materia) {
+                    } else if (ley[key] && ley[key].constructor.name === "Materia") {
                         leyData.properties[key] = { __materiaId: ley[key].id };
                     } else {
                         leyData.properties[key] = ley[key];
@@ -428,7 +427,6 @@ async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, mate
                     Object.assign(newLey, leyData.properties);
                     newLey.states = new Map();
                 } else if (leyData.type === 'Transform') {
-                    // Upgrade legacy 2D transforms to 3D object format if needed
                     if (leyData.properties.localPosition && leyData.properties.localPosition.z === undefined) {
                         leyData.properties.localPosition.z = 0;
                     }
@@ -452,11 +450,6 @@ async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, mate
                 if (newLey instanceof Terreno2D) await newLey.loadTextures(projectsDirHandle);
                 if (newLey instanceof AudioSource) { /* AudioSource handles its own loading on play or start */ }
 
-                // Dynamic loading of 3D modules for deserialized 3D components
-                const is3DComp = (leyData.type === 'MeshRenderer3D' || leyData.type === 'DirectionalLight3D' || leyData.type === 'PointLight3D' || leyData.type === 'SpotLight3D');
-                if (is3DComp && !window.Components3D) {
-                    window.Components3D = await import('./Components3D.js');
-                }
             }
         }
     }
@@ -637,7 +630,7 @@ export async function loadSceneByPath(path) {
  * @returns {Materia} La nueva instancia creada.
  */
 export function instanciar(original, x, y) {
-    if (!original || !(original instanceof Materia)) {
+    if (!original || !(original.constructor.name === "Materia")) {
         console.error("instanciar: Se requiere una Materia válida para copiar.");
         return null;
     }
@@ -675,46 +668,18 @@ export async function instanciarPrefab(prefabData, x, y) {
 
 function createDefaultScene() {
     const scene = new Scene();
-    const config = window.currentProjectConfig || {};
-    const is3D = config.projectType === '3d';
 
-    // Create the root node
     const rootNode = new Materia('Scene');
     scene.addMateria(rootNode);
 
-    // Create the camera
     const cameraNode = new Materia('Main Camera');
     const cameraComponent = new Camera(cameraNode);
-
-    if (is3D) {
-        cameraComponent.projection = 'Perspective';
-        cameraComponent.clearFlags = 'Skybox'; // Default to show procedural sky
-        const trans = cameraNode.getComponent(Transform);
-        // Better default view for 3D
-        trans.localPosition = { x: 0, y: 150, z: 500 };
-        trans.localRotation = { x: 15, y: 0, z: 0 };
-    }
-
     cameraNode.addComponent(cameraComponent);
 
+    const transform = new Transform(cameraNode);
+    cameraNode.addComponent(transform);
+
     rootNode.addChild(cameraNode);
-    scene.addMateria(cameraNode);
-
-    if (is3D) {
-        // Create a directional light for 3D projects
-        const lightNode = new Materia('Directional Light');
-        (async () => {
-            if (!window.Components3D) {
-                window.Components3D = await import('./Components3D.js');
-            }
-            lightNode.addComponent(new window.Components3D.DirectionalLight3D(lightNode));
-        })();
-        const lightTrans = lightNode.getComponent(Transform);
-        lightTrans.localRotation = { x: 50, y: -30, z: 0 };
-
-        rootNode.addChild(lightNode);
-        scene.addMateria(lightNode);
-    }
 
     return scene;
 }
