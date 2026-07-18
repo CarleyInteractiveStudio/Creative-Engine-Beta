@@ -1230,9 +1230,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Mode Simulation: viewMode '2d' vs '3d'
         const is2DLocked = currentProjectConfig.viewMode === '2d';
 
-        // DYNAMIC IMPORT for 3D components and renderers (Always load if not present)
+        // DYNAMIC IMPORT for Carley World 3D components and renderers (Always load if not present)
         if (!window.Components3D) {
-            console.log("[Engine] Loading 3D modules and math library...");
+            console.log("[Engine] Loading Carley World 3D modules and math library...");
 
             if (!window.glMatrix) {
                 try {
@@ -1243,15 +1243,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            const comp3DModule = await import('./engine/Components3D.js');
+            const comp3DModule = await import('./carley-world/CarleyComponents.js');
             window.Components3D = comp3DModule;
         }
 
         if (!renderer3D) {
-            const { Renderer3D } = await import('./engine/Renderer3D.js');
-            console.log("[Creative 3D Render] Instantiating Creative 3D core...");
-            renderer3D = new Renderer3D(dom.sceneCanvas3d);
-            gameRenderer3D = new Renderer3D(dom.gameCanvas3d);
+            const { CarleyRenderer } = await import('./carley-world/CarleyRenderer.js');
+            console.log("[Creative 3D Render] Instantiating Carley World 3D core...");
+            renderer3D = new CarleyRenderer(dom.sceneCanvas3d);
+            gameRenderer3D = new CarleyRenderer(dom.gameCanvas3d);
         }
         window._Renderer3D = renderer3D;
 
@@ -1395,65 +1395,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Configuracion del proyecto cargada:", currentProjectConfig);
 
             // --- Coordinate System Migration (+Y UP) ---
-            // Force re-migration if version is older than 2.0.7 to fix inversions
-            const compareVersions = (v1, v2) => {
-                if (!v1 || typeof v1 !== 'string') return -1;
-                const parts1 = v1.split('.').map(Number);
-                const parts2 = v2.split('.').map(Number);
-                for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
-                    const p1 = parts1[i] || 0;
-                    const p2 = parts2[i] || 0;
-                    if (p1 < p2) return -1;
-                    if (p1 > p2) return 1;
-                }
-                return 0;
-            };
-
-            const needsMigration = currentProjectConfig.coordinateSystem !== 'Y-UP' ||
-                                 (!currentProjectConfig.engineVersion) ||
-                                 (compareVersions(currentProjectConfig.engineVersion, '2.0.7') < 0);
-
-            if (needsMigration) {
-                const projectName = new URLSearchParams(window.location.search).get('project');
-
-                await new Promise(resolve => {
-                    showConfirmationDialog(
-                        'Actualización Importante',
-                        `Hemos detectado que el proyecto "${projectName}" es de una versión anterior con inconsistencias en las coordenadas Y.
-                        El motor reconstruirá tus escenas y prefabs para que funcionen correctamente con el nuevo sistema (+Y es ARRIBA).
-                        Se crearán copias de seguridad (.old_y_down) de tus archivos. ¿Deseas continuar?`,
-                        async () => {
-                            const success = await AutoReparator.runMigration(projectsDirHandle, currentProjectConfig);
-                            if (success) {
-                                // Update version to avoid re-migration
-                                currentProjectConfig.engineVersion = '2.0.7';
-                                currentProjectConfig.coordinateSystem = 'Y-UP';
-
-                                try {
-                                    const projectName = new URLSearchParams(window.location.search).get('project');
-                                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-                                    const configFileHandle = await projectHandle.getFileHandle('project.ceconfig', { create: true });
-                                    const writable = await configFileHandle.createWritable();
-                                    await writable.write(JSON.stringify(currentProjectConfig, null, 2));
-                                    await writable.close();
-                                } catch (e) {
-                                    console.error("[Migration] Error saving project config directly:", e);
-                                }
-                                showNotificationDialog('Éxito', 'Proyecto migrado correctamente. Por favor, reinicia el editor.');
-                                setTimeout(() => window.location.reload(), 2000);
-                            } else {
-                                showNotificationDialog('Error', 'Hubo un problema durante la migración.');
-                                resolve(true);
-                            }
-                        },
-                        () => {
-                            // User declined, but we must mark it as handled or keep nagging?
-                            // For now, just proceed, but things will look wrong.
-                            resolve(true);
-                        }
-                    );
-                });
-            }
+            // El sistema de migración innecesaria ha sido desactivado para prevenir alertas molestas.
+            const needsMigration = false;
 
             // Apply project type class to body for CSS filtering
             document.body.classList.remove('project-type-2d', 'project-type-3d');

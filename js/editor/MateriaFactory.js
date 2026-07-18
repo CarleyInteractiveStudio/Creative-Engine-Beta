@@ -5,7 +5,7 @@ import * as Components from '../engine/Components.js';
 import * as SceneManager from '../engine/SceneManager.js';
 
 async function ensure3D() {
-    if (!window.Components3D) window.Components3D = await import('../engine/Components3D.js');
+    if (!window.Components3D) window.Components3D = await import('../carley-world/CarleyComponents.js');
     return window.Components3D;
 }
 
@@ -42,53 +42,28 @@ export function createImageObject(parent) {
 // --- 3D Objects ---
 
 export async function createCubeObject(parent = null, color = '#ffffff') {
-    const C3D = await ensure3D();
-    const mtr = createBaseMateria(generateUniqueName('Cubo'), parent);
-    mtr.getComponent(Components.Transform).localScale = { x: 100, y: 100, z: 100 };
-    const renderer = new C3D.MeshRenderer3D(mtr);
-    renderer.color = color;
-    mtr.addComponent(renderer);
-    return mtr;
+    const { createCubeObject: carleyCreateCube } = await import('../carley-world/CarleyMateriaFactory.js');
+    return carleyCreateCube(parent, color);
 }
 
 export async function createSphereObject(parent = null) {
-    const C3D = await ensure3D();
-    const mtr = createBaseMateria(generateUniqueName('Esfera'), parent);
-    mtr.getComponent(Components.Transform).localScale = { x: 100, y: 100, z: 100 };
-    const renderer = new C3D.MeshRenderer3D(mtr);
-    renderer.meshType = 'Sphere';
-    mtr.addComponent(renderer);
-    return mtr;
+    const { createSphereObject: carleyCreateSphere } = await import('../carley-world/CarleyMateriaFactory.js');
+    return carleyCreateSphere(parent);
 }
 
 export async function createTriangle3DObject(parent = null) {
-    const C3D = await ensure3D();
-    const mtr = createBaseMateria(generateUniqueName('Triángulo'), parent);
-    mtr.getComponent(Components.Transform).localScale = { x: 100, y: 100, z: 100 };
-    const renderer = new C3D.MeshRenderer3D(mtr);
-    renderer.meshType = 'Triangle';
-    mtr.addComponent(renderer);
-    return mtr;
+    const { createTriangleObject: carleyCreateTriangle } = await import('../carley-world/CarleyMateriaFactory.js');
+    return carleyCreateTriangle(parent);
 }
 
 export async function createCapsule3DObject(parent = null) {
-    const C3D = await ensure3D();
-    const mtr = createBaseMateria(generateUniqueName('Cápsula'), parent);
-    mtr.getComponent(Components.Transform).localScale = { x: 100, y: 100, z: 100 };
-    const renderer = new C3D.MeshRenderer3D(mtr);
-    renderer.meshType = 'Capsule';
-    mtr.addComponent(renderer);
-    return mtr;
+    const { createCapsuleObject: carleyCreateCapsule } = await import('../carley-world/CarleyMateriaFactory.js');
+    return carleyCreateCapsule(parent);
 }
 
 export async function createPlane3DObject(parent = null) {
-    const C3D = await ensure3D();
-    const mtr = createBaseMateria(generateUniqueName('Plano'), parent);
-    mtr.getComponent(Components.Transform).localScale = { x: 100, y: 1, z: 100 };
-    const renderer = new C3D.MeshRenderer3D(mtr);
-    renderer.meshType = 'Plane';
-    mtr.addComponent(renderer);
-    return mtr;
+    const { createPlaneObject: carleyCreatePlane } = await import('../carley-world/CarleyMateriaFactory.js');
+    return carleyCreatePlane(parent);
 }
 
 export async function createDirectionalLight3D(parent = null) {
