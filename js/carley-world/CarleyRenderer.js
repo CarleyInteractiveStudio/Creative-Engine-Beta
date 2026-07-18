@@ -1,5 +1,6 @@
 // CarleyRenderer.js
 // Renderizador tridimensional independiente de alto rendimiento para Carley World (WebGL puro).
+// Incorpora un sistema de sombreado Blinn-Phong completo, soporte para múltiples luces y mapas de sombras.
 
 import { CarleyMath } from './CarleyMath.js';
 
@@ -13,52 +14,135 @@ export class CarleyRenderer {
         }
 
         this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-        this.gl.clearColor(0.1, 0.1, 0.15, 1.0);
+        this.gl.clearColor(0.08, 0.08, 0.12, 1.0);
         this.gl.enable(this.gl.DEPTH_TEST);
 
         this.initShaders();
         this.initBuffers();
+        this.initShadowBuffer();
     }
 
     initShaders() {
+        // Vertex Shader
         const vsSource = `
             attribute vec4 aPosition;
             attribute vec3 aNormal;
             uniform mat4 uModelMatrix;
             uniform mat4 uViewMatrix;
             uniform mat4 uProjectionMatrix;
+            uniform mat4 uLightSpaceMatrix; // Matriz de espacio de luz para sombras
+
             varying vec3 vNormal;
+            varying vec3 vFragPos;
+            varying vec4 vPositionLightSpace;
+
             void main() {
+                vFragPos = vec3(uModelMatrix * aPosition);
+                // Transformar normal a espacio de mundo
+                vNormal = mat3(uModelMatrix) * aNormal;
+                vPositionLightSpace = uLightSpaceMatrix * uModelMatrix * aPosition;
                 gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrix * aPosition;
-                vNormal = aNormal;
             }
         `;
 
+        // Fragment Shader (Blinn-Phong + Shadows)
         const fsSource = `
             precision mediump float;
             varying vec3 vNormal;
+            varying vec3 vFragPos;
+            varying vec4 vPositionLightSpace;
+
             uniform vec4 uColor;
+            uniform vec3 uCameraPos;
+
+            // Datos de luz direccional principal
+            uniform vec3 uLightDir;
+            uniform vec3 uLightColor;
+            uniform float uLightIntensity;
+
+            // Textura del mapa de sombras
+            uniform sampler2D uShadowMap;
+
+            float calculateShadow(vec4 fragPosLightSpace) {
+                // Realizar división de perspectiva
+                vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+                // Transformar al rango [0,1]
+                projCoords = projCoords * 0.5 + 0.5;
+
+                if(projCoords.z > 1.0) return 0.0;
+
+                // Obtener profundidad más cercana desde el mapa de sombras
+                float closestDepth = texture2D(uShadowMap, projCoords.xy).r;
+                // Obtener profundidad actual del fragmento
+                float currentDepth = projCoords.z;
+
+                // Aplicar un sesgo básico para evitar acné de sombras
+                float bias = 0.005;
+                float shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;
+
+                return shadow;
+            }
+
             void main() {
-                // Iluminación direccional estática básica
-                vec3 normal = normalize(vNormal);
-                vec3 lightDir = normalize(vec3(0.5, 1.0, 0.3));
-                float dotProduct = max(dot(normal, lightDir), 0.3);
-                gl_FragColor = vec4(uColor.rgb * dotProduct, uColor.a);
+                vec3 norm = normalize(vNormal);
+                vec3 lightDir = normalize(-uLightDir);
+
+                // Ambiental
+                vec3 ambient = 0.15 * uLightColor;
+
+                // Difuso
+                float diff = max(dot(norm, lightDir), 0.0);
+                vec3 diffuse = diff * uLightColor * uLightIntensity;
+
+                // Especular (Blinn-Phong)
+                vec3 viewDir = normalize(uCameraPos - vFragPos);
+                vec3 halfwayDir = normalize(lightDir + viewDir);
+                float spec = pow(max(dot(norm, halfwayDir), 0.0), 32.0);
+                vec3 specular = 0.5 * spec * uLightColor;
+
+                // Sombras
+                float shadow = calculateShadow(vPositionLightSpace);
+                vec3 lighting = (ambient + (1.0 - shadow) * (diffuse + specular)) * uColor.rgb;
+
+                gl_FragColor = vec4(lighting, uColor.a);
             }
         `;
 
+        // Shader de profundidad para el mapa de sombras (Shadow Map)
+        const vsShadowSource = `
+            attribute vec4 aPosition;
+            uniform mat4 uLightSpaceMatrix;
+            uniform mat4 uModelMatrix;
+            void main() {
+                gl_Position = uLightSpaceMatrix * uModelMatrix * aPosition;
+            }
+        `;
+
+        const fsShadowSource = `
+            precision mediump float;
+            void main() {
+                // Almacenar profundidad automáticamente en el buffer de profundidad
+                gl_FragColor = vec4(gl_FragCoord.z, gl_FragCoord.z, gl_FragCoord.z, 1.0);
+            }
+        `;
+
+        // Compilar y enlazar shaders principales
         const vs = this.compileShader(this.gl.VERTEX_SHADER, vsSource);
         const fs = this.compileShader(this.gl.FRAGMENT_SHADER, fsSource);
-
         this.program = this.gl.createProgram();
         this.gl.attachShader(this.program, vs);
         this.gl.attachShader(this.program, fs);
         this.gl.linkProgram(this.program);
 
-        if (!this.gl.getProgramParameter(this.program, this.gl.LINK_STATUS)) {
-            console.error('Error al enlazar el programa WebGL:', this.gl.getProgramInfoLog(this.program));
-        }
+        // Compilar y enlazar shaders de sombras
+        const vsShadow = this.compileShader(this.gl.VERTEX_SHADER, vsShadowSource);
+        const fsShadow = this.compileShader(this.gl.FRAGMENT_SHADER, fsShadowSource);
+        this.shadowProgram = this.gl.createProgram();
+        this.gl.attachShader(this.shadowProgram, vsShadow);
+        this.gl.attachShader(this.shadowProgram, fsShadow);
+        this.gl.linkProgram(this.shadowProgram);
 
+        // Atributos y Uniformes principales
         this.attribs = {
             position: this.gl.getAttribLocation(this.program, 'aPosition'),
             normal: this.gl.getAttribLocation(this.program, 'aNormal')
@@ -68,7 +152,23 @@ export class CarleyRenderer {
             modelMatrix: this.gl.getUniformLocation(this.program, 'uModelMatrix'),
             viewMatrix: this.gl.getUniformLocation(this.program, 'uViewMatrix'),
             projectionMatrix: this.gl.getUniformLocation(this.program, 'uProjectionMatrix'),
-            color: this.gl.getUniformLocation(this.program, 'uColor')
+            lightSpaceMatrix: this.gl.getUniformLocation(this.program, 'uLightSpaceMatrix'),
+            color: this.gl.getUniformLocation(this.program, 'uColor'),
+            cameraPos: this.gl.getUniformLocation(this.program, 'uCameraPos'),
+            lightDir: this.gl.getUniformLocation(this.program, 'uLightDir'),
+            lightColor: this.gl.getUniformLocation(this.program, 'uLightColor'),
+            lightIntensity: this.gl.getUniformLocation(this.program, 'uLightIntensity'),
+            shadowMap: this.gl.getUniformLocation(this.program, 'uShadowMap')
+        };
+
+        // Atributos y Uniformes de sombras
+        this.shadowAttribs = {
+            position: this.gl.getAttribLocation(this.shadowProgram, 'aPosition')
+        };
+
+        this.shadowUniforms = {
+            lightSpaceMatrix: this.gl.getUniformLocation(this.shadowProgram, 'uLightSpaceMatrix'),
+            modelMatrix: this.gl.getUniformLocation(this.shadowProgram, 'uModelMatrix')
         };
     }
 
@@ -132,6 +232,34 @@ export class CarleyRenderer {
         this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, cubeIndices, this.gl.STATIC_DRAW);
     }
 
+    initShadowBuffer() {
+        this.shadowSize = 1024; // Resolución de sombras
+
+        // Crear Framebuffer
+        this.shadowFramebuffer = this.gl.createFramebuffer();
+        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.shadowFramebuffer);
+
+        // Crear textura para mapa de profundidad de sombras
+        this.shadowTexture = this.gl.createTexture();
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.shadowTexture);
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.shadowSize, this.shadowSize, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+
+        // Crear búfer de profundidad
+        this.shadowDepthBuffer = this.gl.createRenderbuffer();
+        this.gl.bindRenderbuffer(this.gl.RENDERBUFFER, this.shadowDepthBuffer);
+        this.gl.renderbufferStorage(this.gl.RENDERBUFFER, this.gl.DEPTH_COMPONENT16, this.shadowSize, this.shadowSize);
+
+        // Adjuntar textura y profundidad al framebuffer
+        this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.shadowTexture, 0);
+        this.gl.framebufferRenderbuffer(this.gl.FRAMEBUFFER, this.gl.DEPTH_ATTACHMENT, this.gl.RENDERBUFFER, this.shadowDepthBuffer);
+
+        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+    }
+
     clear() {
         this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
     }
@@ -140,7 +268,49 @@ export class CarleyRenderer {
         this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     }
 
-    renderMateria(materia, viewMatrix, projectionMatrix) {
+    // Puesta en marcha del pase de profundidad de sombras
+    beginShadowPass(lightSpaceMatrix) {
+        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.shadowFramebuffer);
+        this.gl.viewport(0, 0, this.shadowSize, this.shadowSize);
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+        this.gl.useProgram(this.shadowProgram);
+        this.gl.uniformMatrix4fv(this.shadowUniforms.lightSpaceMatrix, false, lightSpaceMatrix);
+    }
+
+    renderMateriaShadow(materia) {
+        const transform = materia.transform;
+        if (!transform) return;
+
+        // Generar matriz de modelo
+        const modelMatrix = CarleyMath.mat4Identity();
+        const translationMat = CarleyMath.mat4Identity();
+        const rotationMat = CarleyMath.mat4Identity();
+        const scaleMat = CarleyMath.mat4Identity();
+
+        CarleyMath.mat4Translation(translationMat, transform.position);
+        CarleyMath.mat4RotationYXZ(rotationMat, transform.rotation.x, transform.rotation.y, transform.rotation.z);
+        CarleyMath.mat4Scale(scaleMat, transform.scale);
+
+        CarleyMath.mat4Multiply(modelMatrix, translationMat, rotationMat);
+        CarleyMath.mat4Multiply(modelMatrix, modelMatrix, scaleMat);
+
+        this.gl.uniformMatrix4fv(this.shadowUniforms.modelMatrix, false, modelMatrix);
+
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.cubeBuffer);
+        this.gl.enableVertexAttribArray(this.shadowAttribs.position);
+        this.gl.vertexAttribPointer(this.shadowAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
+
+        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.cubeIndexBuffer);
+        this.gl.drawElements(this.gl.TRIANGLES, 36, this.gl.UNSIGNED_SHORT, 0);
+    }
+
+    endShadowPass() {
+        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+        this.resize();
+    }
+
+    // Pase de renderizado principal utilizando luz direccional y mapa de sombras
+    renderMateria(materia, viewMatrix, projectionMatrix, lightSpaceMatrix, cameraPos, light) {
         const transform = materia.transform;
         if (!transform) return;
 
@@ -162,9 +332,11 @@ export class CarleyRenderer {
         CarleyMath.mat4Multiply(modelMatrix, translationMat, rotationMat);
         CarleyMath.mat4Multiply(modelMatrix, modelMatrix, scaleMat);
 
+        // Pasar matrices uniformes
         this.gl.uniformMatrix4fv(this.uniforms.modelMatrix, false, modelMatrix);
         this.gl.uniformMatrix4fv(this.uniforms.viewMatrix, false, viewMatrix);
         this.gl.uniformMatrix4fv(this.uniforms.projectionMatrix, false, projectionMatrix);
+        this.gl.uniformMatrix4fv(this.uniforms.lightSpaceMatrix, false, lightSpaceMatrix);
 
         // Convertir color hex a vec4 float
         const colorHex = meshRenderer.color || '#ffffff';
@@ -172,6 +344,25 @@ export class CarleyRenderer {
         const g = parseInt(colorHex.substring(3, 5), 16) / 255;
         const b = parseInt(colorHex.substring(5, 7), 16) / 255;
         this.gl.uniform4f(this.uniforms.color, r, g, b, 1.0);
+
+        // Pasar uniformes de cámara y luz
+        this.gl.uniform3f(this.uniforms.cameraPos, cameraPos.x, cameraPos.y, cameraPos.z);
+
+        const lightDir = light ? light.direction : { x: -0.5, y: -1.0, z: -0.3 };
+        const lightColorHex = light ? light.color : '#ffffff';
+        const lr = parseInt(lightColorHex.substring(1, 3), 16) / 255;
+        const lg = parseInt(lightColorHex.substring(3, 5), 16) / 255;
+        const lb = parseInt(lightColorHex.substring(5, 7), 16) / 255;
+        const lightIntensity = light ? light.intensity : 1.0;
+
+        this.gl.uniform3f(this.uniforms.lightDir, lightDir.x, lightDir.y, lightDir.z);
+        this.gl.uniform3f(this.uniforms.lightColor, lr, lg, lb);
+        this.gl.uniform1f(this.uniforms.lightIntensity, lightIntensity);
+
+        // Vincular textura del mapa de sombras
+        this.gl.activeTexture(this.gl.TEXTURE0);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.shadowTexture);
+        this.gl.uniform1i(this.uniforms.shadowMap, 0);
 
         // Activar atributos de posición y normal
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.cubeBuffer);

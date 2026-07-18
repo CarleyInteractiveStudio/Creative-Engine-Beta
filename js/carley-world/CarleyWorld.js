@@ -1,9 +1,11 @@
 // CarleyWorld.js
 // Gestor principal del ciclo de juego, físicas simplificadas y lógica de la escena para el motor Carley World 3D.
+// Gestiona el renderizado de sombras en pase previo y actualiza los uniformes de iluminación.
 
 import { CarleyMateria3D } from './CarleyMateria3D.js';
 import { CarleyRenderer } from './CarleyRenderer.js';
 import { CarleyMath } from './CarleyMath.js';
+import { CarleyDirectionalLight3D } from './CarleyComponents.js';
 
 export class CarleyWorld {
     constructor(canvas) {
@@ -82,14 +84,52 @@ export class CarleyWorld {
     }
 
     render() {
+        const all = this.getAllMaterias();
+
+        // 1. Detectar luz direccional para sombras e iluminación
+        let mainLight = null;
+        for (const m of all) {
+            if (m.isActive) {
+                const light = m.getLaw(CarleyDirectionalLight3D);
+                if (light) {
+                    mainLight = light;
+                    break;
+                }
+            }
+        }
+
+        // 2. Construir la matriz de espacio de luz (para proyección de sombras)
+        const lightSpaceMatrix = CarleyMath.mat4Identity();
+        const lightView = CarleyMath.mat4Identity();
+        const lightProj = CarleyMath.mat4Identity();
+
+        // Proyección ortográfica simplificada para la luz direccional
+        const lDir = mainLight ? mainLight.direction : { x: -0.5, y: -1.0, z: -0.3 };
+        const lightPos = { x: -lDir.x * 1000, y: -lDir.y * 1000, z: -lDir.z * 1000 };
+        const invLightPos = { x: -lightPos.x, y: -lightPos.y, z: -lightPos.z };
+
+        CarleyMath.mat4Translation(lightView, invLightPos);
+        // Perspectiva ortográfica simulada básica para proyección de sombras
+        CarleyMath.mat4Perspective(lightProj, 90, 1.0, 1.0, 5000);
+        CarleyMath.mat4Multiply(lightSpaceMatrix, lightProj, lightView);
+
+        // 3. Pase de Sombras (Shadow Pass)
+        this.renderer.beginShadowPass(lightSpaceMatrix);
+        for (const m of all) {
+            if (m.isActive && m.meshRenderer && m.meshRenderer.castShadows) {
+                this.renderer.renderMateriaShadow(m);
+            }
+        }
+        this.renderer.endShadowPass();
+
+        // 4. Pase de Renderizado Principal
         this.renderer.clear();
 
-        // Construir matriz de vista
+        // Construir matriz de vista de la cámara principal
         const viewMatrix = CarleyMath.mat4Identity();
         const translationMat = CarleyMath.mat4Identity();
         const rotationMat = CarleyMath.mat4Identity();
 
-        // Invertir cámara para la vista
         const invCamPos = {
             x: -this.cameraPosition.x,
             y: -this.cameraPosition.y,
@@ -99,15 +139,22 @@ export class CarleyWorld {
         CarleyMath.mat4RotationYXZ(rotationMat, -this.cameraRotation.x, -this.cameraRotation.y, -this.cameraRotation.z);
         CarleyMath.mat4Multiply(viewMatrix, rotationMat, translationMat);
 
-        // Construir matriz de proyección perspectiva
+        // Construir matriz de proyección de la cámara principal
         const projectionMatrix = CarleyMath.mat4Identity();
         const aspect = this.canvas.width / this.canvas.height;
         CarleyMath.mat4Perspective(projectionMatrix, 60, aspect, 0.1, 10000);
 
-        const all = this.getAllMaterias();
+        // Renderizar cada objeto de la escena
         for (const m of all) {
             if (m.isActive && m.meshRenderer) {
-                this.renderer.renderMateria(m, viewMatrix, projectionMatrix);
+                this.renderer.renderMateria(
+                    m,
+                    viewMatrix,
+                    projectionMatrix,
+                    lightSpaceMatrix,
+                    this.cameraPosition,
+                    mainLight
+                );
             }
         }
     }

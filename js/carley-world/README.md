@@ -30,9 +30,13 @@ Para facilitar la programación en múltiples idiomas de forma nativa e intuitiv
 *   **posicion3d** / **Transform3D** (`CarleyTransform3D`): Controla la posición, rotación y escala 3D.
 *   **renderizador3d** / **MeshRenderer3D** (`CarleyMeshRenderer3D`): Dibuja mallas (cubos, esferas, cápsulas, etc.).
 *   **fisica3d** / **Rigidbody3D** (`CarleyRigidbody3D`): Maneja la gravedad, fuerza y velocidad.
+*   **colisionador3d** / **Collider3D** (`CarleyCollider3D`): Área física tridimensional.
 *   **cajaDeColision3d** / **BoxCollider3D** (`CarleyBoxCollider3D`): Área física en forma de caja.
 *   **esferaDeColision3d** / **SphereCollider3D** (`CarleySphereCollider3D`): Área física redonda.
 *   **capsulaDeColision3d** / **CapsuleCollider3D** (`CarleyCapsuleCollider3D`): Área de colisión vertical u horizontal redondeada.
+*   **luzDireccional3d** / **DirectionalLight3D** (`CarleyDirectionalLight3D`): Luz solar direccional global con proyección de sombras dinámicas.
+*   **luzPunto3d** / **PointLight3D** (`CarleyPointLight3D`): Luz omnidireccional puntual desde una posición.
+*   **luzFocal3d** / **SpotLight3D** (`CarleySpotLight3D`): Luz focal cónica (estilo linterna).
 
 Esto garantiza que tanto desarrolladores que programen en español como en inglés usen nombres fáciles sin generar problemas de incompatibilidad futuros en el motor.
 
@@ -41,3 +45,6 @@ Esto garantiza que tanto desarrolladores que programen en español como en ingl�
 ## 🛠️ Modos de Renderizado y Optimización
 
 Carley World está diseñado para ser realista, potente y a la vez sumamente optimizado, utilizando operaciones directas de WebGL y cálculo de matrices en CPU/GPU sin sobrecargas de librerías de terceros.
+
+### 🌓 Sistema de Luces y Sombras Dinámicas
+El motor utiliza un sistema de **Sombreado Blinn-Phong** para reflejos especulares realistas y renderiza mapas de sombras dinámicos (**Shadow Maps**) de una sola pasada de profundidad, proyectando sombras realistas de alta fidelidad desde la luz direccional principal (`luzDireccional3d`) a los componentes del renderizador.

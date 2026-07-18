@@ -1,5 +1,5 @@
 // CarleyComponents.js
-// Definición de las nuevas Leyes 3D independientes del motor Carley World con nombres simplificados y bilingües.
+// Definición de las leyes 3D independientes de Carley World con nombres simplificados, bilingües y soporte de iluminación.
 
 import { CarleyLeyes3D } from './CarleyLeyes3D.js';
 
@@ -28,7 +28,6 @@ export class CarleyTransform3D extends CarleyLeyes3D {
         return copy;
     }
 }
-// Alias bilingües de la clase
 export const posicion3d = CarleyTransform3D;
 export const Transform3D = CarleyTransform3D;
 
@@ -41,6 +40,8 @@ export class CarleyMeshRenderer3D extends CarleyLeyes3D {
         this.color = '#ffffff';
         this.texturePath = null;
         this.isUnlit = false;
+        this.receiveShadows = true;
+        this.castShadows = true;
     }
 
     // Español (Simplificado)
@@ -55,7 +56,6 @@ export class CarleyMeshRenderer3D extends CarleyLeyes3D {
         return copy;
     }
 }
-// Alias bilingües de la clase
 export const renderizador3d = CarleyMeshRenderer3D;
 export const MeshRenderer3D = CarleyMeshRenderer3D;
 
@@ -88,7 +88,6 @@ export class CarleyRigidbody3D extends CarleyLeyes3D {
         return copy;
     }
 }
-// Alias bilingües de la clase
 export const fisica3d = CarleyRigidbody3D;
 export const Rigidbody3D = CarleyRigidbody3D;
 
@@ -120,7 +119,6 @@ export class CarleyBoxCollider3D extends CarleyCollider3D {
         return copy;
     }
 }
-// Alias bilingües de la clase
 export const cajaDeColision3d = CarleyBoxCollider3D;
 export const BoxCollider3D = CarleyBoxCollider3D;
 
@@ -139,7 +137,6 @@ export class CarleySphereCollider3D extends CarleyCollider3D {
         return copy;
     }
 }
-// Alias bilingües de la clase
 export const esferaDeColision3d = CarleySphereCollider3D;
 export const SphereCollider3D = CarleySphereCollider3D;
 
@@ -159,6 +156,84 @@ export class CarleyCapsuleCollider3D extends CarleyCollider3D {
         return copy;
     }
 }
-// Alias bilingües de la clase
 export const capsulaDeColision3d = CarleyCapsuleCollider3D;
 export const CapsuleCollider3D = CarleyCapsuleCollider3D;
+
+
+// 8. Base Light3D / Luz 3D (Base)
+export class CarleyLight3D extends CarleyLeyes3D {
+    constructor(materia) {
+        super(materia);
+        this.color = '#ffffff';
+        this.intensity = 1.0;
+        this.castShadows = true;
+    }
+
+    get colorDeLuz() { return this.color; }
+    set colorDeLuz(v) { this.color = v; }
+    get intensidad() { return this.intensity; }
+    set intensidad(v) { this.intensity = v; }
+}
+
+
+// 9. DirectionalLight3D / Luz Direccional 3D
+export class CarleyDirectionalLight3D extends CarleyLight3D {
+    constructor(materia) {
+        super(materia);
+        this.direction = { x: -0.5, y: -1.0, z: -0.3 };
+    }
+
+    clone() {
+        const copy = new CarleyDirectionalLight3D(null);
+        Object.assign(copy, this);
+        copy.direction = { ...this.direction };
+        return copy;
+    }
+}
+export const luzDireccional3d = CarleyDirectionalLight3D;
+export const DirectionalLight3D = CarleyDirectionalLight3D;
+
+
+// 10. PointLight3D / Luz de Punto 3D
+export class CarleyPointLight3D extends CarleyLight3D {
+    constructor(materia) {
+        super(materia);
+        this.range = 500.0;
+    }
+
+    get rango() { return this.range; }
+    set rango(v) { this.range = v; }
+
+    clone() {
+        const copy = new CarleyPointLight3D(null);
+        Object.assign(copy, this);
+        return copy;
+    }
+}
+export const luzPunto3d = CarleyPointLight3D;
+export const PointLight3D = CarleyPointLight3D;
+
+
+// 11. SpotLight3D / Luz Focal 3D
+export class CarleySpotLight3D extends CarleyLight3D {
+    constructor(materia) {
+        super(materia);
+        this.direction = { x: 0, y: -1, z: 0 };
+        this.angle = 30.0; // En grados
+        this.range = 500.0;
+    }
+
+    get angulo() { return this.angle; }
+    set angulo(v) { this.angle = v; }
+    get rango() { return this.range; }
+    set rango(v) { this.range = v; }
+
+    clone() {
+        const copy = new CarleySpotLight3D(null);
+        Object.assign(copy, this);
+        copy.direction = { ...this.direction };
+        return copy;
+    }
+}
+export const luzFocal3d = CarleySpotLight3D;
+export const SpotLight3D = CarleySpotLight3D;
