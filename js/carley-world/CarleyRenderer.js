@@ -17,9 +17,27 @@ export class CarleyRenderer {
         this.gl.clearColor(0.08, 0.08, 0.12, 1.0);
         this.gl.enable(this.gl.DEPTH_TEST);
 
+        this.initialized = true;
+
         this.initShaders();
         this.initBuffers();
         this.initShadowBuffer();
+    }
+
+    init() {
+        this.initialized = true;
+    }
+
+    pick(scene, camera, mouseX, mouseY, options) {
+        // Retornar null de momento para evitar errores en SceneView.js
+        return null;
+    }
+
+    render(scene, camera, options) {
+        // Desviar de forma segura a renderMateria mediante el ciclo de CarleyWorld
+        if (window.currentCarleyWorld) {
+            window.currentCarleyWorld.render();
+        }
     }
 
     initShaders() {

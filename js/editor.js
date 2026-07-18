@@ -1249,9 +1249,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!renderer3D) {
             const { CarleyRenderer } = await import('./carley-world/CarleyRenderer.js');
+            const { CarleyWorld } = await import('./carley-world/CarleyWorld.js');
             console.log("[Creative 3D Render] Instantiating Carley World 3D core...");
             renderer3D = new CarleyRenderer(dom.sceneCanvas3d);
             gameRenderer3D = new CarleyRenderer(dom.gameCanvas3d);
+
+            // Instanciar CarleyWorld globalmente para interactuar con la escena
+            window.currentCarleyWorld = new CarleyWorld(dom.sceneCanvas3d);
+            window.gameCarleyWorld = new CarleyWorld(dom.gameCanvas3d);
         }
         window._Renderer3D = renderer3D;
 
