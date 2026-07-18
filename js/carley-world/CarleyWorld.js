@@ -27,10 +27,16 @@ export class CarleyWorld {
     }
 
     getRootMaterias() {
+        if (window.SceneManager && window.SceneManager.currentScene) {
+            return window.SceneManager.currentScene.getRootMaterias();
+        }
         return this.materias.filter(m => m.parent === null);
     }
 
     getAllMaterias() {
+        if (window.SceneManager && window.SceneManager.currentScene) {
+            return window.SceneManager.currentScene.getAllMaterias();
+        }
         let all = [];
         const getRecursive = (m) => {
             all.push(m);

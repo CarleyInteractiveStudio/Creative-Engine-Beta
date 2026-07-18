@@ -2373,6 +2373,9 @@ document.addEventListener('DOMContentLoaded', () => {
         window.CE_DEBUG_ANIMATION = true;
 
         SceneView.update(); // Handle all editor input logic
+        if (window.currentCarleyWorld) {
+            window.currentCarleyWorld.update(deltaTime);
+        }
         AmbienteControlWindow.update(deltaTime, isGameRunning);
         EngineAPI.CEEngine.update(deltaTime);
         if (uiSystem) {
