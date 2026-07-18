@@ -20,6 +20,7 @@ Este directorio contiene el motor 3D completamente reconstruido desde cero, deno
     - `CarleyMateria3D.js` (Entidades 3D independientes).
     - `CarleyLeyes3D.js` (Clase base de Leyes 3D).
     - `CarleyWorld.js` (Inicializador central y gestor del ciclo de juego 3D).
+    - `CarleyModelLoader3D.js` (Procesador nativo e independiente de modelos y animaciones).
 
 ---
 
@@ -37,7 +38,9 @@ Para facilitar la programación en múltiples idiomas de forma nativa e intuitiv
 *   **luzDireccional3d** / **DirectionalLight3D** (`CarleyDirectionalLight3D`): Luz solar direccional global con proyección de sombras dinámicas.
 *   **luzPunto3d** / **PointLight3D** (`CarleyPointLight3D`): Luz omnidireccional puntual desde una posición.
 *   **luzFocal3d** / **SpotLight3D** (`CarleySpotLight3D`): Luz focal cónica (estilo linterna).
-*   **materialLuz3d** / **MaterialLuz3D** (`CarleyMaterialLuz`): Material emisor incandescente (Neón/Glow) que brilla por sí mismo independientemente de las luces del escenario y las sombras.
+*   **materialLuz3d** / **MaterialLuz3D** (`CarleyMaterialLuz`): Material emisor incandescente (Neón/Glow).
+*   **esqueletoRender3d** / **SkinnedMeshRenderer3D** (`CarleySkinnedMeshRenderer3D`): Renderiza y articula mallas esqueléticas complejas basadas en huesos.
+*   **animador3d** / **Animator3D** (`CarleyAnimator3D`): Controla, reproduce e interpola múltiples canales de animación sobre la jerarquía de huesos de un personaje o modelo importado.
 
 Esto garantiza que tanto desarrolladores que programen en español como en inglés usen nombres fáciles sin generar problemas de incompatibilidad futuros en el motor.
 
@@ -49,3 +52,6 @@ Carley World está diseñado para ser realista, potente y a la vez sumamente opt
 
 ### 🌓 Sistema de Luces y Sombras Dinámicas
 El motor utiliza un sistema de **Sombreado Blinn-Phong** para reflejos especulares realistas y renderiza mapas de sombras dinámicos (**Shadow Maps**) de una sola pasada de profundidad, proyectando sombras realistas de alta fidelidad desde la luz direccional principal (`luzDireccional3d`) a los componentes del renderizador.
+
+### 🏃 Importación de Modelos Complejos y Personajes Animados
+Gracias a **CarleyModelLoader3D**, el motor soporta la importación, desempaquetado de jerarquías y reproducción de animaciones de esqueletos de personajes desde formatos estándar de la industria como `.obj`, `.gltf` y `.glb`.

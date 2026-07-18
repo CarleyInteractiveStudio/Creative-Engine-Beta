@@ -1,5 +1,5 @@
 // CarleyComponents.js
-// Definición de las leyes 3D independientes de Carley World con nombres simplificados, bilingües y soporte de iluminación y materiales incandescentes.
+// Definición de las leyes 3D independientes de Carley World con nombres simplificados, bilingües y soporte de mallas esqueléticas animadas.
 
 import { CarleyLeyes3D } from './CarleyLeyes3D.js';
 
@@ -12,7 +12,6 @@ export class CarleyTransform3D extends CarleyLeyes3D {
         this.scale = { x: 1, y: 1, z: 1 };
     }
 
-    // Español (Simplificado)
     get posicion() { return this.position; }
     set posicion(v) { this.position = v; }
     get rotacion() { return this.rotation; }
@@ -44,7 +43,6 @@ export class CarleyMeshRenderer3D extends CarleyLeyes3D {
         this.castShadows = true;
     }
 
-    // Español (Simplificado)
     get colorDeMalla() { return this.color; }
     set colorDeMalla(v) { this.color = v; }
     get tipoDeMalla() { return this.meshType; }
@@ -76,7 +74,6 @@ export class CarleyRigidbody3D extends CarleyLeyes3D {
         this.velocity.z += fz / this.mass;
     }
 
-    // Español (Simplificado)
     aplicarFuerza(fx, fy, fz) {
         this.addForce(fx, fy, fz);
     }
@@ -260,4 +257,135 @@ export class CarleyMaterialLuz extends CarleyLeyes3D {
 }
 export const materialLuz3d = CarleyMaterialLuz;
 export const MaterialLuz3D = CarleyMaterialLuz;
-export const LightMaterial3D = CarleyMaterialLuz;
+
+
+// 13. SkinnedMeshRenderer3D / Renderizador Malla Huesos 3D
+export class CarleySkinnedMeshRenderer3D extends CarleyMeshRenderer3D {
+    constructor(materia) {
+        super(materia);
+        this.meshType = 'Custom';
+        this.modelPath = null;
+        this.skeleton = null;
+        this.rootBone = null;
+        this.cpuPositions = null;
+        this.cpuNormals = null;
+        this.cpuUVs = null;
+        this.cpuIndices = null;
+        this.cpuJoints = null;
+        this.cpuWeights = null;
+        this.indexCount = 0;
+        this.boneMatrices = new Float32Array(64 * 16);
+        for(let i=0; i<64; i++) {
+            const idx = i * 16;
+            this.boneMatrices[idx] = 1; this.boneMatrices[idx+5] = 1; this.boneMatrices[idx+10] = 1; this.boneMatrices[idx+15] = 1;
+        }
+        this.isLoaded = false;
+    }
+
+    clone() {
+        const copy = new CarleySkinnedMeshRenderer3D(null);
+        Object.assign(copy, this);
+        return copy;
+    }
+}
+export const esqueletoRender3d = CarleySkinnedMeshRenderer3D;
+export const SkinnedMeshRenderer3D = CarleySkinnedMeshRenderer3D;
+
+
+// 14. Animator3D / Animador 3D
+export class CarleyAnimator3D extends CarleyLeyes3D {
+    constructor(materia) {
+        super(materia);
+        this.animations = [];
+        this.currentAnimation = null;
+        this.isPlaying = false;
+        this.time = 0;
+        this.speed = 1.0;
+        this.loop = true;
+    }
+
+    play(name = null) {
+        if (name) this.currentAnimation = this.animations.find(a => a.name === name);
+        else if (this.animations.length > 0) this.currentAnimation = this.animations[0];
+        this.isPlaying = true;
+        this.time = 0;
+    }
+
+    stop() { this.isPlaying = false; this.time = 0; }
+    pause() { this.isPlaying = false; }
+
+    update(deltaTime) {
+        if (!this.isPlaying || !this.currentAnimation) return;
+        this.time += deltaTime * this.speed;
+        const duration = this.getMaxTime();
+        if (this.time > duration) {
+            if (this.loop) this.time %= duration;
+            else { this.time = duration; this.isPlaying = false; }
+        }
+        this.applyAnimation(this.time);
+    }
+
+    getMaxTime() {
+        let max = 0;
+        for (const channel of this.currentAnimation.channels) {
+            const lastTime = channel.times[channel.times.length - 1];
+            if (lastTime > max) max = lastTime;
+        }
+        return max;
+    }
+
+    applyAnimation(time) {
+        // Mapear los canales a los componentes de posición del hueso (Materia3D)
+        for (const channel of this.currentAnimation.channels) {
+            const scene = this.materia.scene || window.SceneManager?.currentScene;
+            if (!scene) continue;
+            const targetMateria = scene.findMateriaById(channel.node);
+            if (!targetMateria) continue;
+            const transform = targetMateria.transform;
+            if (!transform) continue;
+
+            const value = this.interpolate(channel, time);
+            if (!value) continue;
+
+            if (channel.path === 'translation') {
+                transform.position = { x: value[0], y: value[1], z: value[2] };
+            } else if (channel.path === 'rotation') {
+                // Conversión de quat simplificado
+                transform.rotation = { x: value[0] * 180, y: value[1] * 180, z: value[2] * 180 };
+            } else if (channel.path === 'scale') {
+                transform.scale = { x: value[0], y: value[1], z: value[2] };
+            }
+        }
+    }
+
+    interpolate(channel, time) {
+        const times = channel.times;
+        const values = channel.values;
+        const compCount = channel.path === 'rotation' ? 4 : 3;
+
+        if (time <= times[0]) return values.slice(0, compCount);
+        if (time >= times[times.length - 1]) return values.slice((times.length - 1) * compCount, times.length * compCount);
+
+        let i = 0;
+        for (; i < times.length - 1; i++) {
+            if (time >= times[i] && time <= times[i + 1]) break;
+        }
+
+        const t = (time - times[i]) / (times[i + 1] - times[i]);
+        const result = new Float32Array(compCount);
+        for (let j = 0; j < compCount; j++) {
+            const v1 = values[i * compCount + j];
+            const v2 = values[(i + 1) * compCount + j];
+            result[j] = v1 + (v2 - v1) * t;
+        }
+        return result;
+    }
+
+    clone() {
+        const copy = new CarleyAnimator3D(null);
+        Object.assign(copy, this);
+        return copy;
+    }
+}
+export const animador3d = CarleyAnimator3D;
+export const Animator3D = CarleyAnimator3D;
