@@ -13,6 +13,13 @@ export function createBaseMateria3D(name, parent = null) {
     if (parent) {
         parent.addChild(mtr);
     }
+    if (window.currentCarleyWorld) {
+        window.currentCarleyWorld.addMateria(mtr);
+    }
+    // Añadir también al SceneManager si existe para que aparezca en la Jerarquía de la UI
+    if (window.SceneManager && window.SceneManager.currentScene) {
+        window.SceneManager.currentScene.addMateria(mtr);
+    }
     return mtr;
 }
 
