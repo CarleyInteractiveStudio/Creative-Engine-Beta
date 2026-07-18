@@ -58,17 +58,50 @@ export class CarleyMateria3D {
     }
 
     getLaw(lawClass) {
+        if (typeof lawClass === 'string') {
+            return this.getLawByName(lawClass);
+        }
         if (typeof lawClass !== 'function') return null;
         return this.leyes.find(ley => ley instanceof lawClass);
     }
 
     getLaws(lawClass) {
+        if (typeof lawClass === 'string') {
+            const comp = this.getLawByName(lawClass);
+            return comp ? [comp] : [];
+        }
         if (typeof lawClass !== 'function') return [];
         return this.leyes.filter(ley => ley instanceof lawClass);
     }
 
     getLawByName(name) {
         return this.leyes.find(ley => ley.constructor.name === name);
+    }
+
+    // Compatibilidad transparente con los métodos de la interfaz del editor
+    getComponent(componentClass) {
+        if (componentClass) {
+            const className = typeof componentClass === 'string' ? componentClass : componentClass.name;
+            if (className === 'Transform' || className === 'CarleyTransform3D') {
+                return this.transform;
+            }
+            if (className === 'MeshRenderer3D' || className === 'CarleyMeshRenderer3D') {
+                return this.meshRenderer;
+            }
+            if (className === 'Rigidbody3D' || className === 'CarleyRigidbody3D') {
+                return this.rigidbody;
+            }
+        }
+        return this.getLaw(componentClass);
+    }
+
+    getComponents(componentClass) {
+        const comp = this.getComponent(componentClass);
+        return comp ? [comp] : [];
+    }
+
+    getComponentByName(name) {
+        return this.getLawByName(name);
     }
 
     findChildByName(name, recursive = true) {

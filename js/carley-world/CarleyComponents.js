@@ -7,11 +7,64 @@ import { CarleyLeyes3D } from './CarleyLeyes3D.js';
 export class CarleyTransform3D extends CarleyLeyes3D {
     constructor(materia) {
         super(materia);
-        this.position = { x: 0, y: 0, z: 0 };
-        this.rotation = { x: 0, y: 0, z: 0 };
-        this.scale = { x: 1, y: 1, z: 1 };
+        this._position = { x: 0, y: 0, z: 0 };
+        this._rotation = { x: 0, y: 0, z: 0 };
+        this._scale = { x: 1, y: 1, z: 1 };
     }
 
+    // Getters y setters internos para compatibilidad con la física/renderizador
+    get position() { return this._position; }
+    set position(v) {
+        if (v && typeof v === 'object') {
+            this._position.x = v.x !== undefined ? v.x : this._position.x;
+            this._position.y = v.y !== undefined ? v.y : this._position.y;
+            this._position.z = v.z !== undefined ? v.z : this._position.z;
+        }
+    }
+
+    get rotation() { return this._rotation; }
+    set rotation(v) {
+        if (typeof v === 'number') {
+            this._rotation.z = v;
+        } else if (v && typeof v === 'object') {
+            this._rotation.x = v.x !== undefined ? v.x : this._rotation.x;
+            this._rotation.y = v.y !== undefined ? v.y : this._rotation.y;
+            this._rotation.z = v.z !== undefined ? v.z : this._rotation.z;
+        }
+    }
+
+    get scale() { return this._scale; }
+    set scale(v) {
+        if (v && typeof v === 'object') {
+            this._scale.x = v.x !== undefined ? v.x : this._scale.x;
+            this._scale.y = v.y !== undefined ? v.y : this._scale.y;
+            this._scale.z = v.z !== undefined ? v.z : this._scale.z;
+        }
+    }
+
+    // Coordenadas individuales para compatibilidad transparente con el editor (Gizmos, navegación, etc.)
+    get x() { return this._position.x; }
+    set x(val) { this._position.x = val; }
+    get y() { return this._position.y; }
+    set y(val) { this._position.y = val; }
+    get z() { return this._position.z; }
+    set z(val) { this._position.z = val; }
+
+    get rotationX() { return this._rotation.x; }
+    set rotationX(val) { this._rotation.x = val; }
+    get rotationY() { return this._rotation.y; }
+    set rotationY(val) { this._rotation.y = val; }
+    get rotationZ() { return this._rotation.z; }
+    set rotationZ(val) { this._rotation.z = val; }
+
+    get scaleX() { return this._scale.x; }
+    set scaleX(val) { this._scale.x = val; }
+    get scaleY() { return this._scale.y; }
+    set scaleY(val) { this._scale.y = val; }
+    get scaleZ() { return this._scale.z; }
+    set scaleZ(val) { this._scale.z = val; }
+
+    // Español (Simplificado)
     get posicion() { return this.position; }
     set posicion(v) { this.position = v; }
     get rotacion() { return this.rotation; }
