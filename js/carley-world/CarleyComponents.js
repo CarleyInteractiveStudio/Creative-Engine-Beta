@@ -1,5 +1,5 @@
 // CarleyComponents.js
-// Definición de las leyes 3D independientes de Carley World con nombres simplificados, bilingües y soporte de iluminación.
+// Definición de las leyes 3D independientes de Carley World con nombres simplificados, bilingües y soporte de iluminación y materiales incandescentes.
 
 import { CarleyLeyes3D } from './CarleyLeyes3D.js';
 
@@ -237,3 +237,27 @@ export class CarleySpotLight3D extends CarleyLight3D {
 }
 export const luzFocal3d = CarleySpotLight3D;
 export const SpotLight3D = CarleySpotLight3D;
+
+
+// 12. MaterialLuz3D / Material de Luz (Emisión / Incandescente)
+export class CarleyMaterialLuz extends CarleyLeyes3D {
+    constructor(materia) {
+        super(materia);
+        this.color = '#ffaa00'; // Color incandescente de emisión
+        this.intensity = 2.0;   // Fuerza del brillo
+    }
+
+    get colorDeBrillo() { return this.color; }
+    set colorDeBrillo(v) { this.color = v; }
+    get intensidadBrillo() { return this.intensity; }
+    set intensidadBrillo(v) { this.intensity = v; }
+
+    clone() {
+        const copy = new CarleyMaterialLuz(null);
+        Object.assign(copy, this);
+        return copy;
+    }
+}
+export const materialLuz3d = CarleyMaterialLuz;
+export const MaterialLuz3D = CarleyMaterialLuz;
+export const LightMaterial3D = CarleyMaterialLuz;

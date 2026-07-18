@@ -1,6 +1,6 @@
 // CarleyRenderer.js
 // Renderizador tridimensional independiente de alto rendimiento para Carley World (WebGL puro).
-// Incorpora un sistema de sombreado Blinn-Phong completo, soporte para múltiples luces y mapas de sombras.
+// Incorpora un sistema de sombreado Blinn-Phong completo, soporte para múltiples luces, mapas de sombras y materiales emisores incandescentes (materialLuz3d).
 
 import { CarleyMath } from './CarleyMath.js';
 
@@ -45,7 +45,7 @@ export class CarleyRenderer {
             }
         `;
 
-        // Fragment Shader (Blinn-Phong + Shadows)
+        // Fragment Shader (Blinn-Phong + Shadows + Emissive Light Material)
         const fsSource = `
             precision mediump float;
             varying vec3 vNormal;
@@ -59,6 +59,11 @@ export class CarleyRenderer {
             uniform vec3 uLightDir;
             uniform vec3 uLightColor;
             uniform float uLightIntensity;
+
+            // Datos del Material Luz (Emisión)
+            uniform int uIsLightMaterial;
+            uniform vec3 uEmissiveColor;
+            uniform float uEmissiveIntensity;
 
             // Textura del mapa de sombras
             uniform sampler2D uShadowMap;
@@ -84,6 +89,12 @@ export class CarleyRenderer {
             }
 
             void main() {
+                // Si es un material de luz emisor, brilla de manera constante (Flat Emissive)
+                if (uIsLightMaterial == 1) {
+                    gl_FragColor = vec4(uEmissiveColor * uEmissiveIntensity, uColor.a);
+                    return;
+                }
+
                 vec3 norm = normalize(vNormal);
                 vec3 lightDir = normalize(-uLightDir);
 
@@ -158,7 +169,10 @@ export class CarleyRenderer {
             lightDir: this.gl.getUniformLocation(this.program, 'uLightDir'),
             lightColor: this.gl.getUniformLocation(this.program, 'uLightColor'),
             lightIntensity: this.gl.getUniformLocation(this.program, 'uLightIntensity'),
-            shadowMap: this.gl.getUniformLocation(this.program, 'uShadowMap')
+            shadowMap: this.gl.getUniformLocation(this.program, 'uShadowMap'),
+            isLightMaterial: this.gl.getUniformLocation(this.program, 'uIsLightMaterial'),
+            emissiveColor: this.gl.getUniformLocation(this.program, 'uEmissiveColor'),
+            emissiveIntensity: this.gl.getUniformLocation(this.program, 'uEmissiveIntensity')
         };
 
         // Atributos y Uniformes de sombras
@@ -281,6 +295,9 @@ export class CarleyRenderer {
         const transform = materia.transform;
         if (!transform) return;
 
+        // Si es un material de luz emisor pura, no proyecta sombra sobre sí mismo ni sobre el suelo
+        if (materia.getLawByName('CarleyMaterialLuz')) return;
+
         // Generar matriz de modelo
         const modelMatrix = CarleyMath.mat4Identity();
         const translationMat = CarleyMath.mat4Identity();
@@ -344,6 +361,20 @@ export class CarleyRenderer {
         const g = parseInt(colorHex.substring(3, 5), 16) / 255;
         const b = parseInt(colorHex.substring(5, 7), 16) / 255;
         this.gl.uniform4f(this.uniforms.color, r, g, b, 1.0);
+
+        // Configurar Material de Luz (Emisión / Incandescente)
+        const lightMaterial = materia.getLawByName('CarleyMaterialLuz');
+        if (lightMaterial) {
+            this.gl.uniform1i(this.uniforms.isLightMaterial, 1);
+            const mColorHex = lightMaterial.color || '#ffaa00';
+            const mr = parseInt(mColorHex.substring(1, 3), 16) / 255;
+            const mg = parseInt(mColorHex.substring(3, 5), 16) / 255;
+            const mb = parseInt(mColorHex.substring(5, 7), 16) / 255;
+            this.gl.uniform3f(this.uniforms.emissiveColor, mr, mg, mb);
+            this.gl.uniform1f(this.uniforms.emissiveIntensity, lightMaterial.intensity);
+        } else {
+            this.gl.uniform1i(this.uniforms.isLightMaterial, 0);
+        }
 
         // Pasar uniformes de cámara y luz
         this.gl.uniform3f(this.uniforms.cameraPos, cameraPos.x, cameraPos.y, cameraPos.z);

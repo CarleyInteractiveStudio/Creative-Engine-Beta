@@ -37,6 +37,7 @@ Para facilitar la programación en múltiples idiomas de forma nativa e intuitiv
 *   **luzDireccional3d** / **DirectionalLight3D** (`CarleyDirectionalLight3D`): Luz solar direccional global con proyección de sombras dinámicas.
 *   **luzPunto3d** / **PointLight3D** (`CarleyPointLight3D`): Luz omnidireccional puntual desde una posición.
 *   **luzFocal3d** / **SpotLight3D** (`CarleySpotLight3D`): Luz focal cónica (estilo linterna).
+*   **materialLuz3d** / **MaterialLuz3D** (`CarleyMaterialLuz`): Material emisor incandescente (Neón/Glow) que brilla por sí mismo independientemente de las luces del escenario y las sombras.
 
 Esto garantiza que tanto desarrolladores que programen en español como en inglés usen nombres fáciles sin generar problemas de incompatibilidad futuros en el motor.
 
