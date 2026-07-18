@@ -23,6 +23,21 @@ Este directorio contiene el motor 3D completamente reconstruido desde cero, deno
 
 ---
 
+## 🗣️ Soporte de Nombres Simplificados y Bilingües (Regla de Nomenclatura)
+
+Para facilitar la programación en múltiples idiomas de forma nativa e intuitiva, todas las leyes e identificadores de Carley World están diseñados de inicio con soporte de traducción y nombres amigables simplificados:
+
+*   **posicion3d** / **Transform3D** (`CarleyTransform3D`): Controla la posición, rotación y escala 3D.
+*   **renderizador3d** / **MeshRenderer3D** (`CarleyMeshRenderer3D`): Dibuja mallas (cubos, esferas, cápsulas, etc.).
+*   **fisica3d** / **Rigidbody3D** (`CarleyRigidbody3D`): Maneja la gravedad, fuerza y velocidad.
+*   **cajaDeColision3d** / **BoxCollider3D** (`CarleyBoxCollider3D`): Área física en forma de caja.
+*   **esferaDeColision3d** / **SphereCollider3D** (`CarleySphereCollider3D`): Área física redonda.
+*   **capsulaDeColision3d** / **CapsuleCollider3D** (`CarleyCapsuleCollider3D`): Área de colisión vertical u horizontal redondeada.
+
+Esto garantiza que tanto desarrolladores que programen en español como en inglés usen nombres fáciles sin generar problemas de incompatibilidad futuros en el motor.
+
+---
+
 ## 🛠️ Modos de Renderizado y Optimización
 
 Carley World está diseñado para ser realista, potente y a la vez sumamente optimizado, utilizando operaciones directas de WebGL y cálculo de matrices en CPU/GPU sin sobrecargas de librerías de terceros.
