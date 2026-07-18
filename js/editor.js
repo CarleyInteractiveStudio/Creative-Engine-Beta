@@ -1235,12 +1235,9 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("[Engine] Loading Carley World 3D modules and math library...");
 
             if (!window.glMatrix) {
-                try {
-                    const glm = await import('gl-matrix');
-                    window.glMatrix = glm;
-                } catch (e) {
-                    console.error("[Engine] Failed to load gl-matrix:", e);
-                }
+                import('gl-matrix')
+                    .then(glm => { window.glMatrix = glm; })
+                    .catch(e => console.warn("[Engine] Failed to load gl-matrix in background (offline/blocked), using fallback math."));
             }
 
             const comp3DModule = await import('./carley-world/CarleyComponents.js');

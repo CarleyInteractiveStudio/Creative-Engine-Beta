@@ -33,6 +33,27 @@ export function createCubeObject(parent = null, color = '#ffffff') {
     return mtr;
 }
 
+export function createDirectionalLightObject(parent = null) {
+    const mtr = createBaseMateria3D('Luz_Direccional_Carley', parent);
+    const light = new CarleyComponents.CarleyDirectionalLight3D(mtr);
+    mtr.addLaw(light);
+    return mtr;
+}
+
+export function createPointLightObject(parent = null) {
+    const mtr = createBaseMateria3D('Luz_Punto_Carley', parent);
+    const light = new CarleyComponents.CarleyPointLight3D(mtr);
+    mtr.addLaw(light);
+    return mtr;
+}
+
+export function createSpotLightObject(parent = null) {
+    const mtr = createBaseMateria3D('Luz_Focal_Carley', parent);
+    const light = new CarleyComponents.CarleySpotLight3D(mtr);
+    mtr.addLaw(light);
+    return mtr;
+}
+
 export function createSphereObject(parent = null, color = '#ffffff') {
     const mtr = createBaseMateria3D('Esfera_Carley', parent);
     mtr.transform.scale = { x: 100, y: 100, z: 100 };

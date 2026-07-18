@@ -67,24 +67,18 @@ export async function createPlane3DObject(parent = null) {
 }
 
 export async function createDirectionalLight3D(parent = null) {
-    const C3D = await ensure3D();
-    const mtr = createBaseMateria(generateUniqueName('Luz Direccional'), parent);
-    mtr.addComponent(new C3D.DirectionalLight3D(mtr));
-    return mtr;
+    const { createDirectionalLightObject } = await import('../carley-world/CarleyMateriaFactory.js');
+    return createDirectionalLightObject(parent);
 }
 
 export async function createPointLight3D(parent = null) {
-    const C3D = await ensure3D();
-    const mtr = createBaseMateria(generateUniqueName('Luz Punto 3D'), parent);
-    mtr.addComponent(new C3D.PointLight3D(mtr));
-    return mtr;
+    const { createPointLightObject } = await import('../carley-world/CarleyMateriaFactory.js');
+    return createPointLightObject(parent);
 }
 
 export async function createSpotLight3D(parent = null) {
-    const C3D = await ensure3D();
-    const mtr = createBaseMateria(generateUniqueName('Luz Focal 3D'), parent);
-    mtr.addComponent(new C3D.SpotLight3D(mtr));
-    return mtr;
+    const { createSpotLightObject } = await import('../carley-world/CarleyMateriaFactory.js');
+    return createSpotLightObject(parent);
 }
 
 export async function createSkinnedMeshObject(modelPath, parent = null, options = {}) {
