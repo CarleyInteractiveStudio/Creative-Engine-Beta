@@ -150,6 +150,9 @@ export class CarleyWorld {
         const aspect = this.canvas.width / this.canvas.height;
         CarleyMath.mat4Perspective(projectionMatrix, 60, aspect, 0.1, 10000);
 
+        // Dibujar Rejilla y Ejes Coordenados del Mundo 3D
+        this.renderer.drawGridAndAxes(viewMatrix, projectionMatrix);
+
         // Renderizar cada objeto de la escena
         for (const m of all) {
             if (m.isActive && m.meshRenderer) {
