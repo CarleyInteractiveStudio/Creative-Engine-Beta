@@ -1,6 +1,6 @@
 // CarleyRenderer.js
 // Renderizador tridimensional independiente de alto rendimiento para Carley World (WebGL puro).
-// Incorpora un sistema de sombreado Blinn-Phong completo, soporte para múltiples luces, mapas de sombras, materiales emisores incandescentes (materialLuz3d) y rejilla/ejes 3D nativos.
+// Incorpora un sistema de sombreado Blinn-Phong completo, soporte para múltiples luces, mapas de sombras, materiales emisores incandescentes (materialLuz3d), rejilla/ejes 3D nativos y geometría de primitivas generadas procedimentalmente (Cubo, Esfera, Cápsula, Plano, Triángulo).
 
 import { CarleyMath } from './CarleyMath.js';
 
@@ -234,7 +234,20 @@ export class CarleyRenderer {
         };
     }
 
+    compileShader(type, source) {
+        const shader = this.gl.createShader(type);
+        this.gl.shaderSource(shader, source);
+        this.gl.compileShader(shader);
+        if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+            console.error('Error compilando shader:', this.gl.getShaderInfoLog(shader));
+            this.gl.deleteShader(shader);
+            return null;
+        }
+        return shader;
+    }
+
     initBuffers() {
+        // --- 1. BUFERES DEL CUBO ---
         const cubeVertices = new Float32Array([
             -1, -1,  1,   1, -1,  1,   1,  1,  1,  -1,  1,  1,
             -1, -1, -1,  -1,  1, -1,   1,  1, -1,   1, -1, -1,
@@ -273,6 +286,151 @@ export class CarleyRenderer {
         this.cubeIndexBuffer = this.gl.createBuffer();
         this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.cubeIndexBuffer);
         this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, cubeIndices, this.gl.STATIC_DRAW);
+
+        // --- 2. BUFERES DE LA ESFERA (BOLA REDONDA) procedimental ---
+        const sphereVerts = [];
+        const sphereNormals = [];
+        const sphereIndices = [];
+        const latBands = 16;
+        const longBands = 16;
+
+        for (let lat = 0; lat <= latBands; lat++) {
+            const theta = lat * Math.PI / latBands;
+            const sinTheta = Math.sin(theta);
+            const cosTheta = Math.cos(theta);
+
+            for (let lon = 0; lon <= longBands; lon++) {
+                const phi = lon * 2 * Math.PI / longBands;
+                const sinPhi = Math.sin(phi);
+                const cosPhi = Math.cos(phi);
+
+                const x = cosPhi * sinTheta;
+                const y = cosTheta;
+                const z = sinPhi * sinTheta;
+
+                sphereNormals.push(x, y, z);
+                sphereVerts.push(x, y, z); // radio 1
+            }
+        }
+
+        for (let lat = 0; lat < latBands; lat++) {
+            for (let lon = 0; lon < longBands; lon++) {
+                const first = (lat * (longBands + 1)) + lon;
+                const second = first + longBands + 1;
+                sphereIndices.push(first, second, first + 1);
+                sphereIndices.push(second, second + 1, first + 1);
+            }
+        }
+
+        this.sphereCount = sphereIndices.length;
+        this.sphereBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.sphereBuffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(sphereVerts), this.gl.STATIC_DRAW);
+
+        this.sphereNormalBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.sphereNormalBuffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(sphereNormals), this.gl.STATIC_DRAW);
+
+        this.sphereIndexBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.sphereIndexBuffer);
+        this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(sphereIndices), this.gl.STATIC_DRAW);
+
+        // --- 3. BUFERES DE LA CAPSULA procedimental ---
+        const capsuleVerts = [];
+        const capsuleNormals = [];
+        const capsuleIndices = [];
+        const capSegments = 12;
+        const capRings = 12;
+        const capR = 0.6;
+        const capH = 1.0;
+
+        for (let i = 0; i <= capRings; i++) {
+            const lat = (i / capRings) * Math.PI;
+            const sinLat = Math.sin(lat);
+            const cosLat = Math.cos(lat);
+            const yOffset = cosLat > 0 ? capH : -capH;
+
+            for (let j = 0; j <= capSegments; j++) {
+                const lon = (j / capSegments) * 2 * Math.PI;
+                const sinLon = Math.sin(lon);
+                const cosLon = Math.cos(lon);
+
+                const x = cosLon * sinLat;
+                const y = cosLat;
+                const z = sinLon * sinLat;
+
+                capsuleNormals.push(x, y, z);
+                capsuleVerts.push(capR * x, capR * y + yOffset, capR * z);
+            }
+        }
+
+        for (let i = 0; i < capRings; i++) {
+            for (let j = 0; j < capSegments; j++) {
+                const first = (i * (capSegments + 1)) + j;
+                const second = first + capSegments + 1;
+                capsuleIndices.push(first, second, first + 1);
+                capsuleIndices.push(second, second + 1, first + 1);
+            }
+        }
+
+        this.capsuleCount = capsuleIndices.length;
+        this.capsuleBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.capsuleBuffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(capsuleVerts), this.gl.STATIC_DRAW);
+
+        this.capsuleNormalBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.capsuleNormalBuffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(capsuleNormals), this.gl.STATIC_DRAW);
+
+        this.capsuleIndexBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.capsuleIndexBuffer);
+        this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(capsuleIndices), this.gl.STATIC_DRAW);
+
+        // --- 4. BUFERES DEL PLANO (QUAD) ---
+        const planeVertices = new Float32Array([
+            -1, 0,  1,   1, 0,  1,   1, 0, -1,  -1, 0, -1
+        ]);
+        const planeNormals = new Float32Array([
+            0, 1, 0,   0, 1, 0,   0, 1, 0,   0, 1, 0
+        ]);
+        const planeIndices = new Uint16Array([
+            0, 1, 2,   0, 2, 3
+        ]);
+
+        this.planeBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.planeBuffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, planeVertices, this.gl.STATIC_DRAW);
+
+        this.planeNormalBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.planeNormalBuffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, planeNormals, this.gl.STATIC_DRAW);
+
+        this.planeIndexBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.planeIndexBuffer);
+        this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, planeIndices, this.gl.STATIC_DRAW);
+
+        // --- 5. BUFERES DEL TRIANGULO ---
+        const triangleVertices = new Float32Array([
+            0,  1, 0,  -1, -1, 0,   1, -1, 0
+        ]);
+        const triangleNormals = new Float32Array([
+            0, 0, 1,   0, 0, 1,   0, 0, 1
+        ]);
+        const triangleIndices = new Uint16Array([
+            0, 1, 2
+        ]);
+
+        this.triangleBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.triangleBuffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, triangleVertices, this.gl.STATIC_DRAW);
+
+        this.triangleNormalBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.triangleNormalBuffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, triangleNormals, this.gl.STATIC_DRAW);
+
+        this.triangleIndexBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.triangleIndexBuffer);
+        this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, triangleIndices, this.gl.STATIC_DRAW);
     }
 
     initShadowBuffer() {
@@ -299,7 +457,6 @@ export class CarleyRenderer {
     }
 
     initGridAndAxes() {
-        // Generar vértices de la rejilla (20x20 líneas en plano XZ)
         const gridVertices = [];
         const size = 1000;
         const step = 100;
@@ -313,7 +470,6 @@ export class CarleyRenderer {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.gridBuffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(gridVertices), this.gl.STATIC_DRAW);
 
-        // Generar ejes coordenados (Rojo=X, Verde=Y, Azul=Z)
         const axesVertices = [
             0, 0, 0,   300, 0, 0, // X
             0, 0, 0,   0, 300, 0, // Y
@@ -338,6 +494,9 @@ export class CarleyRenderer {
         if (!transform) return;
         if (materia.getLawByName('CarleyMaterialLuz')) return;
 
+        const meshRenderer = materia.meshRenderer;
+        if (!meshRenderer) return;
+
         const modelMatrix = CarleyMath.mat4Identity();
         const translationMat = CarleyMath.mat4Identity();
         const rotationMat = CarleyMath.mat4Identity();
@@ -352,12 +511,36 @@ export class CarleyRenderer {
 
         this.gl.uniformMatrix4fv(this.shadowUniforms.modelMatrix, false, modelMatrix);
 
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.cubeBuffer);
+        // Seleccionar buffer según tipo de malla para la sombra
+        let vBuffer = this.cubeBuffer;
+        let iBuffer = this.cubeIndexBuffer;
+        let count = 36;
+
+        const meshType = meshRenderer.meshType;
+        if (meshType === 'Sphere') {
+            vBuffer = this.sphereBuffer;
+            iBuffer = this.sphereIndexBuffer;
+            count = this.sphereCount;
+        } else if (meshType === 'Capsule') {
+            vBuffer = this.capsuleBuffer;
+            iBuffer = this.capsuleIndexBuffer;
+            count = this.capsuleCount;
+        } else if (meshType === 'Plane') {
+            vBuffer = this.planeBuffer;
+            iBuffer = this.planeIndexBuffer;
+            count = 6;
+        } else if (meshType === 'Triangle') {
+            vBuffer = this.triangleBuffer;
+            iBuffer = this.triangleIndexBuffer;
+            count = 3;
+        }
+
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vBuffer);
         this.gl.enableVertexAttribArray(this.shadowAttribs.position);
         this.gl.vertexAttribPointer(this.shadowAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
 
-        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.cubeIndexBuffer);
-        this.gl.drawElements(this.gl.TRIANGLES, 36, this.gl.UNSIGNED_SHORT, 0);
+        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, iBuffer);
+        this.gl.drawElements(this.gl.TRIANGLES, count, this.gl.UNSIGNED_SHORT, 0);
     }
 
     endShadowPass() {
@@ -370,14 +553,12 @@ export class CarleyRenderer {
         this.gl.uniformMatrix4fv(this.lineUniforms.viewMatrix, false, viewMatrix);
         this.gl.uniformMatrix4fv(this.lineUniforms.projectionMatrix, false, projectionMatrix);
 
-        // 1. Dibujar Rejilla (Gris tenue)
         this.gl.uniform4f(this.lineUniforms.color, 0.3, 0.3, 0.35, 1.0);
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.gridBuffer);
         this.gl.enableVertexAttribArray(this.lineAttribs.position);
         this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
         this.gl.drawArrays(this.gl.LINES, 0, this.gridCount);
 
-        // 2. Dibujar Ejes de Coordenadas
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.axesBuffer);
         this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
 
@@ -456,15 +637,44 @@ export class CarleyRenderer {
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.shadowTexture);
         this.gl.uniform1i(this.uniforms.shadowMap, 0);
 
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.cubeBuffer);
+        // Seleccionar buffer según tipo de malla para el dibujo final
+        let vBuffer = this.cubeBuffer;
+        let nBuffer = this.cubeNormalBuffer;
+        let iBuffer = this.cubeIndexBuffer;
+        let count = 36;
+
+        const meshType = meshRenderer.meshType;
+        if (meshType === 'Sphere') {
+            vBuffer = this.sphereBuffer;
+            nBuffer = this.sphereNormalBuffer;
+            iBuffer = this.sphereIndexBuffer;
+            count = this.sphereCount;
+        } else if (meshType === 'Capsule') {
+            vBuffer = this.capsuleBuffer;
+            nBuffer = this.capsuleNormalBuffer;
+            iBuffer = this.capsuleIndexBuffer;
+            count = this.capsuleCount;
+        } else if (meshType === 'Plane') {
+            vBuffer = this.planeBuffer;
+            nBuffer = this.planeNormalBuffer;
+            iBuffer = this.planeIndexBuffer;
+            count = 6;
+        } else if (meshType === 'Triangle') {
+            vBuffer = this.triangleBuffer;
+            nBuffer = this.triangleNormalBuffer;
+            iBuffer = this.triangleIndexBuffer;
+            count = 3;
+        }
+
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vBuffer);
         this.gl.enableVertexAttribArray(this.attribs.position);
         this.gl.vertexAttribPointer(this.attribs.position, 3, this.gl.FLOAT, false, 0, 0);
 
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.cubeNormalBuffer);
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, nBuffer);
         this.gl.enableVertexAttribArray(this.attribs.normal);
         this.gl.vertexAttribPointer(this.attribs.normal, 3, this.gl.FLOAT, false, 0, 0);
 
-        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.cubeIndexBuffer);
-        this.gl.drawElements(this.gl.TRIANGLES, 36, this.gl.UNSIGNED_SHORT, 0);
+        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, iBuffer);
+        this.gl.drawElements(this.gl.TRIANGLES, count, this.gl.UNSIGNED_SHORT, 0);
     }
 }
