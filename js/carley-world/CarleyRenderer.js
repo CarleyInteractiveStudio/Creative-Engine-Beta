@@ -156,21 +156,28 @@ export class CarleyRenderer {
             }
         `;
 
-        // Shader para dibujar líneas (Rejilla y Ejes)
+        // Shader para dibujar líneas (Rejilla y Ejes) con desvanecimiento por distancia
         const vsLineSource = `
             attribute vec4 aPosition;
             uniform mat4 uViewMatrix;
             uniform mat4 uProjectionMatrix;
+            uniform vec3 uCameraPos;
+            varying float vFade;
+
             void main() {
                 gl_Position = uProjectionMatrix * uViewMatrix * aPosition;
+                float dist = distance(aPosition.xz, uCameraPos.xz);
+                float maxDist = max(2000.0, uCameraPos.y * 6.0);
+                vFade = 1.0 - clamp(dist / maxDist, 0.0, 1.0);
             }
         `;
 
         const fsLineSource = `
             precision mediump float;
             uniform vec4 uColor;
+            varying float vFade;
             void main() {
-                gl_FragColor = uColor;
+                gl_FragColor = vec4(uColor.rgb, uColor.a * vFade);
             }
         `;
 
@@ -236,7 +243,8 @@ export class CarleyRenderer {
         this.lineUniforms = {
             viewMatrix: this.gl.getUniformLocation(this.lineProgram, 'uViewMatrix'),
             projectionMatrix: this.gl.getUniformLocation(this.lineProgram, 'uProjectionMatrix'),
-            color: this.gl.getUniformLocation(this.lineProgram, 'uColor')
+            color: this.gl.getUniformLocation(this.lineProgram, 'uColor'),
+            cameraPos: this.gl.getUniformLocation(this.lineProgram, 'uCameraPos')
         };
     }
 
@@ -586,13 +594,6 @@ export class CarleyRenderer {
     }
 
     drawGridAndAxes(viewMatrix, projectionMatrix) {
-        this.gl.useProgram(this.lineProgram);
-        this.gl.uniformMatrix4fv(this.lineUniforms.viewMatrix, false, viewMatrix);
-        this.gl.uniformMatrix4fv(this.lineUniforms.projectionMatrix, false, projectionMatrix);
-
-        this.gl.enable(this.gl.BLEND);
-        this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-
         // Obtener coordenadas de la cámara
         let camX = 0;
         let camY = 500;
@@ -603,6 +604,14 @@ export class CarleyRenderer {
             camY = Math.abs(window.currentCarleyWorld.cameraPosition.y || 0);
             camZ = window.currentCarleyWorld.cameraPosition.z || 0;
         }
+
+        this.gl.useProgram(this.lineProgram);
+        this.gl.uniformMatrix4fv(this.lineUniforms.viewMatrix, false, viewMatrix);
+        this.gl.uniformMatrix4fv(this.lineUniforms.projectionMatrix, false, projectionMatrix);
+        this.gl.uniform3f(this.lineUniforms.cameraPos, camX, camY, camZ);
+
+        this.gl.enable(this.gl.BLEND);
+        this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
 
         // Rejilla adaptativa y sin fin estilo Unity (LOD Grid scaling)
         const logY = Math.log10(Math.max(10, camY / 2));
@@ -627,13 +636,16 @@ export class CarleyRenderer {
         const centerX = Math.round(camX / fineStep) * fineStep;
         const centerZ = Math.round(camZ / fineStep) * fineStep;
 
+        const baseK_X = Math.round(centerX / fineStep);
+        const baseK_Z = Math.round(centerZ / fineStep);
+
         for (let i = -N; i <= N; i++) {
             const x = centerX + i * fineStep;
             const z = centerZ + i * fineStep;
 
             // Evitar dibujar líneas que coinciden con el grid grueso para prevenir parpadeo (Z-fighting)
-            const isXMajor = Math.abs(x % coarseStep) < (fineStep * 0.1);
-            const isZMajor = Math.abs(z % coarseStep) < (fineStep * 0.1);
+            const isXMajor = Math.abs(baseK_X + i) % 10 === 0;
+            const isZMajor = Math.abs(baseK_Z + i) % 10 === 0;
 
             if (!isZMajor) {
                 gridVertices.push(centerX - N * fineStep, 0, z,   centerX + N * fineStep, 0, z);
