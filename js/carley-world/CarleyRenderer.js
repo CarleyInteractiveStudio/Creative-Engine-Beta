@@ -548,6 +548,12 @@ export class CarleyRenderer {
         this.resize();
     }
 
+    resize() {
+        if (this.canvas && this.gl) {
+            this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+        }
+    }
+
     drawGridAndAxes(viewMatrix, projectionMatrix) {
         this.gl.useProgram(this.lineProgram);
         this.gl.uniformMatrix4fv(this.lineUniforms.viewMatrix, false, viewMatrix);
