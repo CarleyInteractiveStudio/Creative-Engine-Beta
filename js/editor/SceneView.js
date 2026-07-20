@@ -1,4 +1,5 @@
 import { world3DToScreen, drawLineClipped } from '../engine/MathUtils.js';
+import { CarleyMath } from '../carley-world/CarleyMath.js';
 // --- Module for Scene View Interactions and Gizmos ---
 
 import { getAbsoluteRect, getClosestAnchorPoint, getAnchorPosition } from '../engine/UITransformUtils.js';
@@ -2108,14 +2109,16 @@ function handle3DCameraNavigation() {
         }
 
         // --- 2. FPS-Style Movement (WASD + Arrows, relative to look direction) ---
-        const q = glm.quat.create();
-        glm.quat.fromEuler(q, cam.rotation.x, cam.rotation.y, cam.rotation.z || 0);
+        const R = CarleyMath.mat4Identity();
+        CarleyMath.mat4RotationYXZ(R, cam.rotation.x, cam.rotation.y, cam.rotation.z || 0);
 
-        const localForward = glm.vec3.fromValues(0, 0, -1);
-        glm.vec3.transformQuat(localForward, localForward, q);
+        // El vector localForward es la dirección negativa del tercer eje (Z) de la matriz de rotación
+        const localForward = glm.vec3.fromValues(-R[8], -R[9], -R[10]);
+        glm.vec3.normalize(localForward, localForward);
 
-        const localRight = glm.vec3.fromValues(1, 0, 0);
-        glm.vec3.transformQuat(localRight, localRight, q);
+        // El vector localRight es el primer eje (X) de la matriz de rotación
+        const localRight = glm.vec3.fromValues(R[0], R[1], R[2]);
+        glm.vec3.normalize(localRight, localRight);
 
         const finalMove = glm.vec3.create();
 

@@ -135,11 +135,13 @@ export class CarleyWorld {
         const viewMatrix = CarleyMath.mat4Identity();
         if (window.glMatrix) {
             const mat4 = window.glMatrix.mat4;
-            const q = window.glMatrix.quat.create();
-            // Euler rotation in degrees (x, y, z) for camera rotation
-            window.glMatrix.quat.fromEuler(q, this.cameraRotation.x, this.cameraRotation.y, this.cameraRotation.z);
             const camWorld = mat4.create();
-            mat4.fromRotationTranslation(camWorld, q, [this.cameraPosition.x, this.cameraPosition.y, this.cameraPosition.z]);
+            const translationMat = CarleyMath.mat4Identity();
+            const rotationMat = CarleyMath.mat4Identity();
+
+            CarleyMath.mat4Translation(translationMat, this.cameraPosition);
+            CarleyMath.mat4RotationYXZ(rotationMat, this.cameraRotation.x, this.cameraRotation.y, this.cameraRotation.z);
+            CarleyMath.mat4Multiply(camWorld, translationMat, rotationMat);
             mat4.invert(viewMatrix, camWorld);
         } else {
             // Fallback robusto sin glMatrix

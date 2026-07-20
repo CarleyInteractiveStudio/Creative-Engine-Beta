@@ -489,19 +489,22 @@ export class CarleyRenderer {
         this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(majorGridVertices), this.gl.STATIC_DRAW);
 
         const axesVertices = [];
-        const ranges = [-10000000, -1000000, -100000, -10000, -1000, 1000, 10000, 100000, 1000000, 10000000];
+        const ranges = [
+            -10000000, -1000000, -100000, -10000, -1000, -500, -200, -100, -50, -20, -10, -5, 0,
+            5, 10, 20, 50, 100, 200, 500, 1000, 10000, 100000, 1000000, 10000000
+        ];
 
-        // Eje X: 9 segmentos
+        // Eje X (Rojo) - 24 segmentos (48 vértices), dibujado ligeramente por encima del grid (Y = 0.01) para evitar Z-fighting
         for (let r = 0; r < ranges.length - 1; r++) {
-            axesVertices.push(ranges[r], 0, 0,   ranges[r+1], 0, 0);
+            axesVertices.push(ranges[r], 0.01, 0,   ranges[r+1], 0.01, 0);
         }
-        // Eje Y: 9 segmentos
+        // Eje Y (Verde) - 24 segmentos (48 vértices)
         for (let r = 0; r < ranges.length - 1; r++) {
-            axesVertices.push(0, ranges[r], 0,   0, ranges[r+1], 0);
+            axesVertices.push(0.01, ranges[r], 0.01,   0.01, ranges[r+1], 0.01);
         }
-        // Eje Z: 9 segmentos
+        // Eje Z (Azul) - 24 segmentos (48 vértices), dibujado a Y = 0.01
         for (let r = 0; r < ranges.length - 1; r++) {
-            axesVertices.push(0, 0, ranges[r],   0, 0, ranges[r+1]);
+            axesVertices.push(0, 0.01, ranges[r],   0, 0.01, ranges[r+1]);
         }
 
         this.axesBuffer = this.gl.createBuffer();
@@ -653,8 +656,9 @@ export class CarleyRenderer {
             const x = coarseCenterX + i * coarseStep;
             const z = coarseCenterZ + i * coarseStep;
 
-            majorGridVertices.push(coarseCenterX - M * coarseStep, 0, z,   coarseCenterX + M * coarseStep, 0, z);
-            majorGridVertices.push(x, 0, coarseCenterZ - M * coarseStep,   x, 0, coarseCenterZ + M * coarseStep);
+            // Dibujado a Y = 0.005 para evitar Z-fighting con el grid fino (Y = 0.0) y con los ejes (Y = 0.01)
+            majorGridVertices.push(coarseCenterX - M * coarseStep, 0.005, z,   coarseCenterX + M * coarseStep, 0.005, z);
+            majorGridVertices.push(x, 0.005, coarseCenterZ - M * coarseStep,   x, 0.005, coarseCenterZ + M * coarseStep);
         }
 
         if (!this.dynamicMajorGridBuffer) {
@@ -673,17 +677,17 @@ export class CarleyRenderer {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.axesBuffer);
         this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
 
-        // Eje X (Rojo) - 9 segmentos (18 vértices)
+        // Eje X (Rojo) - 24 segmentos (48 vértices)
         this.gl.uniform4f(this.lineUniforms.color, 1.0, 0.2, 0.2, 1.0);
-        this.gl.drawArrays(this.gl.LINES, 0, 18);
+        this.gl.drawArrays(this.gl.LINES, 0, 48);
 
-        // Eje Y (Verde) - 9 segmentos (18 vértices)
+        // Eje Y (Verde) - 24 segmentos (48 vértices)
         this.gl.uniform4f(this.lineUniforms.color, 0.2, 1.0, 0.2, 1.0);
-        this.gl.drawArrays(this.gl.LINES, 18, 18);
+        this.gl.drawArrays(this.gl.LINES, 48, 48);
 
-        // Eje Z (Azul) - 9 segmentos (18 vértices)
+        // Eje Z (Azul) - 24 segmentos (48 vértices)
         this.gl.uniform4f(this.lineUniforms.color, 0.2, 0.2, 1.0, 1.0);
-        this.gl.drawArrays(this.gl.LINES, 36, 18);
+        this.gl.drawArrays(this.gl.LINES, 96, 48);
     }
 
     renderMateria(materia, viewMatrix, projectionMatrix, lightSpaceMatrix, cameraPos, light) {
