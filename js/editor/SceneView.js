@@ -1,5 +1,4 @@
 import { world3DToScreen, drawLineClipped } from '../engine/MathUtils.js';
-import { CarleyMath } from '../carley-world/CarleyMath.js';
 // --- Module for Scene View Interactions and Gizmos ---
 
 import { getAbsoluteRect, getClosestAnchorPoint, getAnchorPosition } from '../engine/UITransformUtils.js';
@@ -2109,15 +2108,20 @@ function handle3DCameraNavigation() {
         }
 
         // --- 2. FPS-Style Movement (WASD + Arrows, relative to look direction) ---
-        const R = CarleyMath.mat4Identity();
-        CarleyMath.mat4RotationYXZ(R, cam.rotation.x, cam.rotation.y, cam.rotation.z || 0);
+        const pitchRad = cam.rotation.x * Math.PI / 180;
+        const yawRad = cam.rotation.y * Math.PI / 180;
 
-        // El vector localForward es la dirección negativa del tercer eje (Z) de la matriz de rotación
-        const localForward = glm.vec3.fromValues(-R[8], -R[9], -R[10]);
+        // Calculate look direction (localForward) based on precise camera orientation
+        const fx = Math.sin(yawRad) * Math.cos(pitchRad);
+        const fy = -Math.sin(pitchRad);
+        const fz = -Math.cos(yawRad) * Math.cos(pitchRad);
+
+        const localForward = glm.vec3.fromValues(fx, fy, fz);
         glm.vec3.normalize(localForward, localForward);
 
-        // El vector localRight es el primer eje (X) de la matriz de rotación
-        const localRight = glm.vec3.fromValues(R[0], R[1], R[2]);
+        // Calculate side direction (localRight) perpendicular to Forward and Up (0, 1, 0)
+        const localRight = glm.vec3.create();
+        glm.vec3.cross(localRight, localForward, glm.vec3.fromValues(0, 1, 0));
         glm.vec3.normalize(localRight, localRight);
 
         const finalMove = glm.vec3.create();

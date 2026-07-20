@@ -131,31 +131,19 @@ export class CarleyWorld {
         // 4. Pase de Renderizado Principal
         this.renderer.clear();
 
-        // Construir matriz de vista de la cámara principal
+        // Construir matriz de vista de la cámara principal (con rotación Pitch-Yaw local sobre sí misma sin roll/tilt)
         const viewMatrix = CarleyMath.mat4Identity();
-        if (window.glMatrix) {
-            const mat4 = window.glMatrix.mat4;
-            const camWorld = mat4.create();
-            const translationMat = CarleyMath.mat4Identity();
-            const rotationMat = CarleyMath.mat4Identity();
+        const translationMat = CarleyMath.mat4Identity();
+        const rotationMat = CarleyMath.mat4Identity();
 
-            CarleyMath.mat4Translation(translationMat, this.cameraPosition);
-            CarleyMath.mat4RotationYXZ(rotationMat, this.cameraRotation.x, this.cameraRotation.y, this.cameraRotation.z);
-            CarleyMath.mat4Multiply(camWorld, translationMat, rotationMat);
-            mat4.invert(viewMatrix, camWorld);
-        } else {
-            // Fallback robusto sin glMatrix
-            const translationMat = CarleyMath.mat4Identity();
-            const rotationMat = CarleyMath.mat4Identity();
-            const invCamPos = {
-                x: -this.cameraPosition.x,
-                y: -this.cameraPosition.y,
-                z: -this.cameraPosition.z
-            };
-            CarleyMath.mat4Translation(translationMat, invCamPos);
-            CarleyMath.mat4RotationYXZ(rotationMat, -this.cameraRotation.x, -this.cameraRotation.y, -this.cameraRotation.z);
-            CarleyMath.mat4Multiply(viewMatrix, rotationMat, translationMat);
-        }
+        const invCamPos = {
+            x: -this.cameraPosition.x,
+            y: -this.cameraPosition.y,
+            z: -this.cameraPosition.z
+        };
+        CarleyMath.mat4Translation(translationMat, invCamPos);
+        CarleyMath.mat4RotationPitchYaw(rotationMat, -this.cameraRotation.x, -this.cameraRotation.y);
+        CarleyMath.mat4Multiply(viewMatrix, rotationMat, translationMat);
 
         // Construir matriz de proyección de la cámara principal
         const projectionMatrix = CarleyMath.mat4Identity();

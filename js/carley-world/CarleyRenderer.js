@@ -631,8 +631,16 @@ export class CarleyRenderer {
             const x = centerX + i * fineStep;
             const z = centerZ + i * fineStep;
 
-            gridVertices.push(centerX - N * fineStep, 0, z,   centerX + N * fineStep, 0, z);
-            gridVertices.push(x, 0, centerZ - N * fineStep,   x, 0, centerZ + N * fineStep);
+            // Evitar dibujar líneas que coinciden con el grid grueso para prevenir parpadeo (Z-fighting)
+            const isXMajor = Math.abs(x % coarseStep) < (fineStep * 0.1);
+            const isZMajor = Math.abs(z % coarseStep) < (fineStep * 0.1);
+
+            if (!isZMajor) {
+                gridVertices.push(centerX - N * fineStep, 0, z,   centerX + N * fineStep, 0, z);
+            }
+            if (!isXMajor) {
+                gridVertices.push(x, 0, centerZ - N * fineStep,   x, 0, centerZ + N * fineStep);
+            }
         }
 
         if (!this.dynamicGridBuffer) {
