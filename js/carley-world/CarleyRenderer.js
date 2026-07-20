@@ -156,7 +156,7 @@ export class CarleyRenderer {
             }
         `;
 
-        // Shader para dibujar líneas (Rejilla y Ejes) con desvanecimiento por distancia
+        // Shader para dibujar líneas (Rejilla y Ejes) con desvanecimiento por distancia (sin swizzling de atributos para máxima compatibilidad WebGL)
         const vsLineSource = `
             attribute vec4 aPosition;
             uniform mat4 uViewMatrix;
@@ -166,8 +166,13 @@ export class CarleyRenderer {
 
             void main() {
                 gl_Position = uProjectionMatrix * uViewMatrix * aPosition;
-                float dist = distance(aPosition.xz, uCameraPos.xz);
-                float maxDist = max(2000.0, uCameraPos.y * 6.0);
+                float dx = aPosition.x - uCameraPos.x;
+                float dz = aPosition.z - uCameraPos.z;
+                float dist = sqrt(dx * dx + dz * dz);
+                float maxDist = uCameraPos.y * 10.0;
+                if (maxDist < 5000.0) {
+                    maxDist = 5000.0;
+                }
                 vFade = 1.0 - clamp(dist / maxDist, 0.0, 1.0);
             }
         `;
