@@ -577,20 +577,90 @@ export class CarleyRenderer {
         this.gl.uniformMatrix4fv(this.lineUniforms.viewMatrix, false, viewMatrix);
         this.gl.uniformMatrix4fv(this.lineUniforms.projectionMatrix, false, projectionMatrix);
 
-        // Minor grid lines (Faint)
-        this.gl.uniform4f(this.lineUniforms.color, 0.15, 0.15, 0.18, 1.0);
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.gridBuffer);
+        this.gl.enable(this.gl.BLEND);
+        this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+
+        // Obtener coordenadas de la cámara
+        let camX = 0;
+        let camY = 500;
+        let camZ = 0;
+
+        if (window.currentCarleyWorld) {
+            camX = window.currentCarleyWorld.cameraPosition.x || 0;
+            camY = Math.abs(window.currentCarleyWorld.cameraPosition.y || 0);
+            camZ = window.currentCarleyWorld.cameraPosition.z || 0;
+        }
+
+        // Determinar tamaños de celda según altitud (camY)
+        let fineStep = 100;
+        let coarseStep = 1000;
+        let gridAlpha = 1.0;
+
+        if (camY < 800) {
+            fineStep = 100;
+            coarseStep = 1000;
+            gridAlpha = Math.max(0, 1.0 - (camY - 300) / 500);
+        } else if (camY < 8000) {
+            fineStep = 1000;
+            coarseStep = 10000;
+            gridAlpha = Math.max(0, 1.0 - (camY - 3000) / 5000);
+        } else {
+            fineStep = 10000;
+            coarseStep = 100000;
+            gridAlpha = 1.0;
+        }
+
+        // Generar líneas de rejilla fina centradas en la cámara
+        const gridVertices = [];
+        const N = 40; // Líneas a cada lado
+        const centerX = Math.round(camX / fineStep) * fineStep;
+        const centerZ = Math.round(camZ / fineStep) * fineStep;
+
+        for (let i = -N; i <= N; i++) {
+            const x = centerX + i * fineStep;
+            const z = centerZ + i * fineStep;
+
+            gridVertices.push(centerX - N * fineStep, 0, z,   centerX + N * fineStep, 0, z);
+            gridVertices.push(x, 0, centerZ - N * fineStep,   x, 0, centerZ + N * fineStep);
+        }
+
+        if (!this.dynamicGridBuffer) {
+            this.dynamicGridBuffer = this.gl.createBuffer();
+        }
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.dynamicGridBuffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(gridVertices), this.gl.DYNAMIC_DRAW);
+
+        this.gl.uniform4f(this.lineUniforms.color, 0.15, 0.15, 0.18, gridAlpha * 0.4);
         this.gl.enableVertexAttribArray(this.lineAttribs.position);
         this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
-        this.gl.drawArrays(this.gl.LINES, 0, this.gridCount);
+        this.gl.drawArrays(this.gl.LINES, 0, gridVertices.length / 3);
 
-        // Major grid lines (Slightly brighter)
-        this.gl.uniform4f(this.lineUniforms.color, 0.28, 0.28, 0.32, 1.0);
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.majorGridBuffer);
+        // Generar líneas de rejilla gruesa (mayor) centradas en la cámara
+        const majorGridVertices = [];
+        const M = 20;
+        const coarseCenterX = Math.round(camX / coarseStep) * coarseStep;
+        const coarseCenterZ = Math.round(camZ / coarseStep) * coarseStep;
+
+        for (let i = -M; i <= M; i++) {
+            const x = coarseCenterX + i * coarseStep;
+            const z = coarseCenterZ + i * coarseStep;
+
+            majorGridVertices.push(coarseCenterX - M * coarseStep, 0, z,   coarseCenterX + M * coarseStep, 0, z);
+            majorGridVertices.push(x, 0, coarseCenterZ - M * coarseStep,   x, 0, coarseCenterZ + M * coarseStep);
+        }
+
+        if (!this.dynamicMajorGridBuffer) {
+            this.dynamicMajorGridBuffer = this.gl.createBuffer();
+        }
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.dynamicMajorGridBuffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(majorGridVertices), this.gl.DYNAMIC_DRAW);
+
+        this.gl.uniform4f(this.lineUniforms.color, 0.28, 0.28, 0.32, 0.8);
         this.gl.enableVertexAttribArray(this.lineAttribs.position);
         this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
-        this.gl.drawArrays(this.gl.LINES, 0, this.majorGridCount);
+        this.gl.drawArrays(this.gl.LINES, 0, majorGridVertices.length / 3);
 
+        // Dibujar ejes infinitos
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.axesBuffer);
         this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
 
