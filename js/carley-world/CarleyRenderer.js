@@ -591,28 +591,20 @@ export class CarleyRenderer {
             camZ = window.currentCarleyWorld.cameraPosition.z || 0;
         }
 
-        // Determinar tamaños de celda según altitud (camY)
-        let fineStep = 100;
-        let coarseStep = 1000;
-        let gridAlpha = 1.0;
+        // Rejilla adaptativa y sin fin estilo Unity (LOD Grid scaling)
+        const logY = Math.log10(Math.max(10, camY / 2));
+        const floorLog = Math.floor(logY);
+        const fraction = logY - floorLog;
 
-        if (camY < 800) {
-            fineStep = 100;
-            coarseStep = 1000;
-            gridAlpha = Math.max(0, 1.0 - (camY - 300) / 500);
-        } else if (camY < 8000) {
-            fineStep = 1000;
-            coarseStep = 10000;
-            gridAlpha = Math.max(0, 1.0 - (camY - 3000) / 5000);
-        } else {
-            fineStep = 10000;
-            coarseStep = 100000;
-            gridAlpha = 1.0;
-        }
+        const fineStep = Math.pow(10, floorLog);
+        const coarseStep = fineStep * 10;
 
-        // Generar líneas de rejilla fina centradas en la cámara
+        // gridAlpha desvanece suavemente la cuadrícula fina mientras nos alejamos
+        const gridAlpha = Math.max(0, 1.0 - fraction);
+
+        // Generar líneas de rejilla fina centradas en la cámara (LOD fino)
         const gridVertices = [];
-        const N = 40; // Líneas a cada lado
+        const N = 45; // Número de líneas a cada lado
         const centerX = Math.round(camX / fineStep) * fineStep;
         const centerZ = Math.round(camZ / fineStep) * fineStep;
 
@@ -630,14 +622,14 @@ export class CarleyRenderer {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.dynamicGridBuffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(gridVertices), this.gl.DYNAMIC_DRAW);
 
-        this.gl.uniform4f(this.lineUniforms.color, 0.15, 0.15, 0.18, gridAlpha * 0.4);
+        this.gl.uniform4f(this.lineUniforms.color, 0.15, 0.15, 0.18, gridAlpha * 0.45);
         this.gl.enableVertexAttribArray(this.lineAttribs.position);
         this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
         this.gl.drawArrays(this.gl.LINES, 0, gridVertices.length / 3);
 
-        // Generar líneas de rejilla gruesa (mayor) centradas en la cámara
+        // Generar líneas de rejilla gruesa centradas en la cámara (LOD grueso)
         const majorGridVertices = [];
-        const M = 20;
+        const M = 25;
         const coarseCenterX = Math.round(camX / coarseStep) * coarseStep;
         const coarseCenterZ = Math.round(camZ / coarseStep) * coarseStep;
 
@@ -655,7 +647,8 @@ export class CarleyRenderer {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.dynamicMajorGridBuffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(majorGridVertices), this.gl.DYNAMIC_DRAW);
 
-        this.gl.uniform4f(this.lineUniforms.color, 0.28, 0.28, 0.32, 0.8);
+        // La rejilla mayor siempre se ve nítida y perfectamente visible
+        this.gl.uniform4f(this.lineUniforms.color, 0.28, 0.28, 0.32, 0.85);
         this.gl.enableVertexAttribArray(this.lineAttribs.position);
         this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
         this.gl.drawArrays(this.gl.LINES, 0, majorGridVertices.length / 3);
