@@ -24,6 +24,8 @@ const defaultPrefs = {
     showSceneGrid: true,
     showOriginAxes: true,
     showOrientationGizmo: true,
+    invertXAxis: false,
+    invertYAxis: false,
     snapping: false,
     gridSize: 1,
     zoomSpeed: 1.1,
@@ -165,6 +167,8 @@ async function savePreferences() {
     currentPreferences.showSceneGrid = _dom.prefsShowSceneGrid.checked;
     currentPreferences.showOriginAxes = _dom.prefsShowOriginAxes.checked;
     currentPreferences.showOrientationGizmo = _dom.prefsShowOrientationGizmo.checked;
+    currentPreferences.invertXAxis = _dom.prefsInvertXAxis.checked;
+    currentPreferences.invertYAxis = _dom.prefsInvertYAxis.checked;
     currentPreferences.snapping = _dom.prefsSnappingToggle.checked;
     currentPreferences.gridSize = _dom.prefsSnappingGridSize.value;
     currentPreferences.zoomSpeed = parseFloat(_dom.prefsZoomSpeed.value) || 1.1;
@@ -241,6 +245,8 @@ function loadPreferences() {
     if (_dom.prefsShowSceneGrid) _dom.prefsShowSceneGrid.checked = currentPreferences.showSceneGrid;
     if (_dom.prefsShowOriginAxes) _dom.prefsShowOriginAxes.checked = currentPreferences.showOriginAxes;
     if (_dom.prefsShowOrientationGizmo) _dom.prefsShowOrientationGizmo.checked = currentPreferences.showOrientationGizmo !== false;
+    if (_dom.prefsInvertXAxis) _dom.prefsInvertXAxis.checked = !!currentPreferences.invertXAxis;
+    if (_dom.prefsInvertYAxis) _dom.prefsInvertYAxis.checked = !!currentPreferences.invertYAxis;
     if (_dom.prefsSnappingToggle) _dom.prefsSnappingToggle.checked = currentPreferences.snapping;
     if (_dom.prefsSnappingGridSize) _dom.prefsSnappingGridSize.value = currentPreferences.gridSize;
     if (_dom.prefsZoomSpeed) _dom.prefsZoomSpeed.value = currentPreferences.zoomSpeed;

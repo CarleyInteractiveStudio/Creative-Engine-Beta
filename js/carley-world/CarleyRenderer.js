@@ -489,9 +489,9 @@ export class CarleyRenderer {
         this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(majorGridVertices), this.gl.STATIC_DRAW);
 
         const axesVertices = [
-            -100000, 0, 0,   100000, 0, 0, // X: infinite line
-            0, -100000, 0,   0, 100000, 0, // Y: infinite line
-            0, 0, -100000,   0, 0, 100000  // Z: infinite line
+            -10000000, 0, 0,   10000000, 0, 0, // X: infinite line
+            0, -10000000, 0,   0, 10000000, 0, // Y: infinite line
+            0, 0, -10000000,   0, 0, 10000000  // Z: infinite line
         ];
 
         this.axesBuffer = this.gl.createBuffer();
@@ -599,12 +599,18 @@ export class CarleyRenderer {
         const fineStep = Math.pow(10, floorLog);
         const coarseStep = fineStep * 10;
 
-        // gridAlpha desvanece suavemente la cuadrícula fina mientras nos alejamos
-        const gridAlpha = Math.max(0, 1.0 - fraction);
+        // Opacidad máxima de la cuadrícula
+        const maxOpacity = 0.50;
+
+        // El grid fino se desvanece de maxOpacity a 0 según nos alejamos (fraction de 0 a 1)
+        const opacityFine = maxOpacity * (1.0 - fraction);
+
+        // El grid grueso aparece de 0 a maxOpacity según nos alejamos (fraction de 0 a 1)
+        const opacityCoarse = maxOpacity * fraction;
 
         // Generar líneas de rejilla fina centradas en la cámara (LOD fino)
         const gridVertices = [];
-        const N = 45; // Número de líneas a cada lado
+        const N = 150; // Más líneas para que se extienda sin fin y cubra todo el frustum de la cámara
         const centerX = Math.round(camX / fineStep) * fineStep;
         const centerZ = Math.round(camZ / fineStep) * fineStep;
 
@@ -622,14 +628,14 @@ export class CarleyRenderer {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.dynamicGridBuffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(gridVertices), this.gl.DYNAMIC_DRAW);
 
-        this.gl.uniform4f(this.lineUniforms.color, 0.15, 0.15, 0.18, gridAlpha * 0.45);
+        this.gl.uniform4f(this.lineUniforms.color, 0.25, 0.25, 0.28, opacityFine);
         this.gl.enableVertexAttribArray(this.lineAttribs.position);
         this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
         this.gl.drawArrays(this.gl.LINES, 0, gridVertices.length / 3);
 
         // Generar líneas de rejilla gruesa centradas en la cámara (LOD grueso)
         const majorGridVertices = [];
-        const M = 25;
+        const M = 150; // Más líneas para mayor alcance sin cortes
         const coarseCenterX = Math.round(camX / coarseStep) * coarseStep;
         const coarseCenterZ = Math.round(camZ / coarseStep) * coarseStep;
 
@@ -647,8 +653,8 @@ export class CarleyRenderer {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.dynamicMajorGridBuffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(majorGridVertices), this.gl.DYNAMIC_DRAW);
 
-        // La rejilla mayor siempre se ve nítida y perfectamente visible
-        this.gl.uniform4f(this.lineUniforms.color, 0.28, 0.28, 0.32, 0.85);
+        // La rejilla mayor también usa nuestra opacidad interpolada y fluida
+        this.gl.uniform4f(this.lineUniforms.color, 0.28, 0.28, 0.32, opacityCoarse);
         this.gl.enableVertexAttribArray(this.lineAttribs.position);
         this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
         this.gl.drawArrays(this.gl.LINES, 0, majorGridVertices.length / 3);

@@ -148,7 +148,7 @@ export class CarleyWorld {
         // Construir matriz de proyección de la cámara principal
         const projectionMatrix = CarleyMath.mat4Identity();
         const aspect = this.canvas.width / this.canvas.height;
-        CarleyMath.mat4Perspective(projectionMatrix, 60, aspect, 0.1, 10000);
+        CarleyMath.mat4Perspective(projectionMatrix, 60, aspect, 0.1, 200000);
 
         // Dibujar Rejilla y Ejes Coordenados del Mundo 3D
         this.renderer.drawGridAndAxes(viewMatrix, projectionMatrix);
