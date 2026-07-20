@@ -2108,21 +2108,14 @@ function handle3DCameraNavigation() {
         }
 
         // --- 2. FPS-Style Movement (WASD + Arrows, relative to look direction) ---
-        const pitchRad = cam.rotation.x * Math.PI / 180;
-        const yawRad = cam.rotation.y * Math.PI / 180;
+        const q = glm.quat.create();
+        glm.quat.fromEuler(q, cam.rotation.x, cam.rotation.y, cam.rotation.z || 0);
 
-        // Calculate look direction (localForward) based on precise camera orientation
-        const fx = Math.sin(yawRad) * Math.cos(pitchRad);
-        const fy = -Math.sin(pitchRad);
-        const fz = -Math.cos(yawRad) * Math.cos(pitchRad);
+        const localForward = glm.vec3.fromValues(0, 0, -1);
+        glm.vec3.transformQuat(localForward, localForward, q);
 
-        const localForward = glm.vec3.fromValues(fx, fy, fz);
-        glm.vec3.normalize(localForward, localForward);
-
-        // Calculate side direction (localRight) perpendicular to Forward and Up (0, 1, 0)
-        const localRight = glm.vec3.create();
-        glm.vec3.cross(localRight, localForward, glm.vec3.fromValues(0, 1, 0));
-        glm.vec3.normalize(localRight, localRight);
+        const localRight = glm.vec3.fromValues(1, 0, 0);
+        glm.vec3.transformQuat(localRight, localRight, q);
 
         const finalMove = glm.vec3.create();
 

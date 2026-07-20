@@ -488,11 +488,21 @@ export class CarleyRenderer {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.majorGridBuffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(majorGridVertices), this.gl.STATIC_DRAW);
 
-        const axesVertices = [
-            -10000000, 0, 0,   10000000, 0, 0, // X: infinite line
-            0, -10000000, 0,   0, 10000000, 0, // Y: infinite line
-            0, 0, -10000000,   0, 0, 10000000  // Z: infinite line
-        ];
+        const axesVertices = [];
+        const ranges = [-10000000, -1000000, -100000, -10000, -1000, 1000, 10000, 100000, 1000000, 10000000];
+
+        // Eje X: 9 segmentos
+        for (let r = 0; r < ranges.length - 1; r++) {
+            axesVertices.push(ranges[r], 0, 0,   ranges[r+1], 0, 0);
+        }
+        // Eje Y: 9 segmentos
+        for (let r = 0; r < ranges.length - 1; r++) {
+            axesVertices.push(0, ranges[r], 0,   0, ranges[r+1], 0);
+        }
+        // Eje Z: 9 segmentos
+        for (let r = 0; r < ranges.length - 1; r++) {
+            axesVertices.push(0, 0, ranges[r],   0, 0, ranges[r+1]);
+        }
 
         this.axesBuffer = this.gl.createBuffer();
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.axesBuffer);
@@ -663,17 +673,17 @@ export class CarleyRenderer {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.axesBuffer);
         this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
 
-        // Eje X (Rojo)
+        // Eje X (Rojo) - 9 segmentos (18 vértices)
         this.gl.uniform4f(this.lineUniforms.color, 1.0, 0.2, 0.2, 1.0);
-        this.gl.drawArrays(this.gl.LINES, 0, 2);
+        this.gl.drawArrays(this.gl.LINES, 0, 18);
 
-        // Eje Y (Verde)
+        // Eje Y (Verde) - 9 segmentos (18 vértices)
         this.gl.uniform4f(this.lineUniforms.color, 0.2, 1.0, 0.2, 1.0);
-        this.gl.drawArrays(this.gl.LINES, 2, 2);
+        this.gl.drawArrays(this.gl.LINES, 18, 18);
 
-        // Eje Z (Azul)
+        // Eje Z (Azul) - 9 segmentos (18 vértices)
         this.gl.uniform4f(this.lineUniforms.color, 0.2, 0.2, 1.0, 1.0);
-        this.gl.drawArrays(this.gl.LINES, 4, 2);
+        this.gl.drawArrays(this.gl.LINES, 36, 18);
     }
 
     renderMateria(materia, viewMatrix, projectionMatrix, lightSpaceMatrix, cameraPos, light) {
