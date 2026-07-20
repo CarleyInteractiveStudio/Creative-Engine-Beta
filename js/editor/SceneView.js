@@ -2103,34 +2103,43 @@ function handle3DCameraNavigation() {
             cam.rotation.x = Math.max(-89.9, Math.min(89.9, cam.rotation.x));
         }
 
-        // --- 2. Movement (WASD + Arrows) ---
-        const moveDir = glm.vec3.create();
-        let hasMove = false;
+        // --- 2. FPS-Style Movement (WASD + Arrows, relative to look direction) ---
+        const camMatrix = glm.mat4.create();
+        const rotationQuat = glm.quat.create();
+        // Construct standard rotation quaternion using camera's pitch and yaw
+        glm.quat.fromEuler(rotationQuat, cam.rotation.x, cam.rotation.y, 0);
+        glm.mat4.fromRotationTranslation(camMatrix, rotationQuat, [0, 0, 0]);
 
-        if (InputManager.getKey('w') || InputManager.getKey('ArrowUp')) { moveDir[2] -= 1; hasMove = true; }
-        if (InputManager.getKey('s') || InputManager.getKey('ArrowDown')) { moveDir[2] += 1; hasMove = true; }
-        if (InputManager.getKey('a') || InputManager.getKey('ArrowLeft')) { moveDir[0] -= 1; hasMove = true; }
-        if (InputManager.getKey('d') || InputManager.getKey('ArrowRight')) { moveDir[0] += 1; hasMove = true; }
+        // Extract camera's local Right and Forward vectors from the orientation matrix
+        const localRight = glm.vec3.fromValues(camMatrix[0], camMatrix[1], camMatrix[2]);
+        const localForward = glm.vec3.fromValues(-camMatrix[8], -camMatrix[9], -camMatrix[10]);
 
-        // Q/E: World Vertical Movement
+        const finalMove = glm.vec3.create();
+
+        // W/S: Move along look direction (localForward)
+        if (InputManager.getKey('w') || InputManager.getKey('ArrowUp')) {
+            glm.vec3.scaleAndAdd(finalMove, finalMove, localForward, speed);
+        }
+        if (InputManager.getKey('s') || InputManager.getKey('ArrowDown')) {
+            glm.vec3.scaleAndAdd(finalMove, finalMove, localForward, -speed);
+        }
+
+        // A/D: Move horizontally along side direction (localRight)
+        if (InputManager.getKey('a') || InputManager.getKey('ArrowLeft')) {
+            glm.vec3.scaleAndAdd(finalMove, finalMove, localRight, -speed);
+        }
+        if (InputManager.getKey('d') || InputManager.getKey('ArrowRight')) {
+            glm.vec3.scaleAndAdd(finalMove, finalMove, localRight, speed);
+        }
+
+        // Q/E: Move vertically in world space (Standard Unity style)
         if (InputManager.getKey('e')) cam.y += speed;
         if (InputManager.getKey('q')) cam.y -= speed;
 
-        if (hasMove) {
-            glm.vec3.normalize(moveDir, moveDir);
-            const rotationQuat = glm.quat.create();
-
-            // FPS Movement: Use the full camera rotation (including pitch) for W/S
-            // so you move towards where you are looking.
-            glm.quat.fromEuler(rotationQuat, cam.rotation.x, cam.rotation.y, 0);
-
-            const rotatedDir = glm.vec3.create();
-            glm.vec3.transformQuat(rotatedDir, moveDir, rotationQuat);
-
-            cam.x += rotatedDir[0] * speed;
-            cam.y += rotatedDir[1] * speed;
-            cam.z += rotatedDir[2] * speed;
-        }
+        // Apply final translation vector to camera position
+        cam.x += finalMove[0];
+        cam.y += finalMove[1];
+        cam.z += finalMove[2];
 
         dom.sceneCanvas.style.cursor = 'crosshair';
         updateScene();

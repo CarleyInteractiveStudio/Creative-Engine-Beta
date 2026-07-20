@@ -464,11 +464,18 @@ export class CarleyRenderer {
 
     initGridAndAxes() {
         const gridVertices = [];
-        const size = 1000;
+        const majorGridVertices = [];
+        const size = 15000; // Large size to simulate "infinite"
         const step = 100;
+
         for (let i = -size; i <= size; i += step) {
-            gridVertices.push(i, 0, -size,   i, 0, size);
-            gridVertices.push(-size, 0, i,   size, 0, i);
+            if (i % 1000 === 0) {
+                majorGridVertices.push(i, 0, -size,   i, 0, size);
+                majorGridVertices.push(-size, 0, i,   size, 0, i);
+            } else {
+                gridVertices.push(i, 0, -size,   i, 0, size);
+                gridVertices.push(-size, 0, i,   size, 0, i);
+            }
         }
 
         this.gridCount = gridVertices.length / 3;
@@ -476,10 +483,15 @@ export class CarleyRenderer {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.gridBuffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(gridVertices), this.gl.STATIC_DRAW);
 
+        this.majorGridCount = majorGridVertices.length / 3;
+        this.majorGridBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.majorGridBuffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(majorGridVertices), this.gl.STATIC_DRAW);
+
         const axesVertices = [
-            0, 0, 0,   300, 0, 0, // X
-            0, 0, 0,   0, 300, 0, // Y
-            0, 0, 0,   0, 0, 300  // Z
+            -100000, 0, 0,   100000, 0, 0, // X: infinite line
+            0, -100000, 0,   0, 100000, 0, // Y: infinite line
+            0, 0, -100000,   0, 0, 100000  // Z: infinite line
         ];
 
         this.axesBuffer = this.gl.createBuffer();
@@ -565,11 +577,19 @@ export class CarleyRenderer {
         this.gl.uniformMatrix4fv(this.lineUniforms.viewMatrix, false, viewMatrix);
         this.gl.uniformMatrix4fv(this.lineUniforms.projectionMatrix, false, projectionMatrix);
 
-        this.gl.uniform4f(this.lineUniforms.color, 0.3, 0.3, 0.35, 1.0);
+        // Minor grid lines (Faint)
+        this.gl.uniform4f(this.lineUniforms.color, 0.15, 0.15, 0.18, 1.0);
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.gridBuffer);
         this.gl.enableVertexAttribArray(this.lineAttribs.position);
         this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
         this.gl.drawArrays(this.gl.LINES, 0, this.gridCount);
+
+        // Major grid lines (Slightly brighter)
+        this.gl.uniform4f(this.lineUniforms.color, 0.28, 0.28, 0.32, 1.0);
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.majorGridBuffer);
+        this.gl.enableVertexAttribArray(this.lineAttribs.position);
+        this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
+        this.gl.drawArrays(this.gl.LINES, 0, this.majorGridCount);
 
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.axesBuffer);
         this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
