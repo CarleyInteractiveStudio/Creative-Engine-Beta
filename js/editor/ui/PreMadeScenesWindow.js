@@ -65,7 +65,7 @@ async function updateContent() {
             id: 'character-test',
             name: L.get('PRUEBA_PERSONAJE', 'Campo de Personajes'),
             description: L.get('CHAR_DESC', 'Escena preparada para probar personajes humanoides, ropa y animaciones procedimentales.'),
-            thumbnail: 'https://images.pexels.com/photos/163036/mario-luigi-yoshi-figures-163036.jpeg?auto=compress&cs=tinysrgb&w=400',
+            thumbnail: 'https://images.unsplash.com/photo-1566577134770-3d85bb3a9cc4?auto=format&fit=crop&w=400&q=80',
             type: '3d'
         }
     ];

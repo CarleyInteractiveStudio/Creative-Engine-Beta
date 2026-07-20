@@ -33,6 +33,12 @@ export class CarleyRenderer {
         return null;
     }
 
+    clear() {
+        if (this.gl) {
+            this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+        }
+    }
+
     render(scene, camera, options) {
         if (window.currentCarleyWorld) {
             if (options && options.editorCamera) {
