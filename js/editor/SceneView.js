@@ -2109,16 +2109,21 @@ function handle3DCameraNavigation() {
         }
 
         // --- 2. FPS-Style Movement (WASD + Arrows, relative to look direction) ---
-        const rotationMat = CarleyMath.mat4Identity();
-        CarleyMath.mat4RotationPitchYaw(rotationMat, -cam.rotation.x, -cam.rotation.y);
+        const rotX = CarleyMath.mat4Identity();
+        const rotY = CarleyMath.mat4Identity();
+        CarleyMath.mat4RotationX(rotX, cam.rotation.x);
+        CarleyMath.mat4RotationY(rotY, cam.rotation.y);
+
+        const worldRotMat = CarleyMath.mat4Identity();
+        CarleyMath.mat4Multiply(worldRotMat, rotY, rotX); // Yaw first, then Pitch for camera world matrix
 
         // Column 2 (indices 8, 9, 10) is the camera's local backward direction in world space.
         // Therefore, localForward is negative of Column 2.
-        const localForward = glm.vec3.fromValues(-rotationMat[8], -rotationMat[9], -rotationMat[10]);
+        const localForward = glm.vec3.fromValues(-worldRotMat[8], -worldRotMat[9], -worldRotMat[10]);
         glm.vec3.normalize(localForward, localForward);
 
         // Column 0 (indices 0, 1, 2) is the camera's local right direction in world space.
-        const localRight = glm.vec3.fromValues(rotationMat[0], rotationMat[1], rotationMat[2]);
+        const localRight = glm.vec3.fromValues(worldRotMat[0], worldRotMat[1], worldRotMat[2]);
         glm.vec3.normalize(localRight, localRight);
 
         const finalMove = glm.vec3.create();
