@@ -534,11 +534,15 @@ export class CarleyRenderer {
     }
 
     renderMateriaShadow(materia) {
-        const transform = materia.transform;
+        const transform = materia.transform || materia.getComponentByName?.('Transform') || materia.getComponent?.('Transform');
         if (!transform) return;
-        if (materia.getLawByName('CarleyMaterialLuz')) return;
+        if (materia.getLawByName?.('CarleyMaterialLuz') || materia.getComponentByName?.('MaterialLuz3D') || materia.getComponent?.('MaterialLuz3D')) return;
 
-        const meshRenderer = materia.meshRenderer;
+        const meshRenderer = materia.meshRenderer ||
+                             materia.getComponentByName?.('MeshRenderer3D') ||
+                             materia.getComponentByName?.('SkinnedMeshRenderer3D') ||
+                             materia.getComponent?.('MeshRenderer3D') ||
+                             materia.getComponent?.('SkinnedMeshRenderer3D');
         if (!meshRenderer) return;
 
         const modelMatrix = CarleyMath.mat4Identity();
@@ -546,9 +550,24 @@ export class CarleyRenderer {
         const rotationMat = CarleyMath.mat4Identity();
         const scaleMat = CarleyMath.mat4Identity();
 
-        CarleyMath.mat4Translation(translationMat, transform.position);
-        CarleyMath.mat4RotationYXZ(rotationMat, transform.rotation.x, transform.rotation.y, transform.rotation.z);
-        CarleyMath.mat4Scale(scaleMat, transform.scale);
+        const pos = transform.position || { x: transform.x || 0, y: transform.y || 0, z: transform.z || 0 };
+
+        let rot = { x: 0, y: 0, z: 0 };
+        if (transform.rotation && typeof transform.rotation === 'object') {
+            rot = { x: transform.rotation.x || 0, y: transform.rotation.y || 0, z: transform.rotation.z || 0 };
+        } else {
+            rot = {
+                x: transform.rotationX !== undefined ? transform.rotationX : 0,
+                y: transform.rotationY !== undefined ? transform.rotationY : 0,
+                z: transform.rotationZ !== undefined ? transform.rotationZ : (transform.rotation || 0)
+            };
+        }
+
+        const scl = transform.scale || { x: transform.scaleX || 1, y: transform.scaleY || 1, z: transform.scaleZ || 1 };
+
+        CarleyMath.mat4Translation(translationMat, pos);
+        CarleyMath.mat4RotationYXZ(rotationMat, rot.x, rot.y, rot.z);
+        CarleyMath.mat4Scale(scaleMat, scl);
 
         CarleyMath.mat4Multiply(modelMatrix, translationMat, rotationMat);
         CarleyMath.mat4Multiply(modelMatrix, modelMatrix, scaleMat);
@@ -720,10 +739,14 @@ export class CarleyRenderer {
     }
 
     renderMateria(materia, viewMatrix, projectionMatrix, lightSpaceMatrix, cameraPos, light) {
-        const transform = materia.transform;
+        const transform = materia.transform || materia.getComponentByName?.('Transform') || materia.getComponent?.('Transform');
         if (!transform) return;
 
-        const meshRenderer = materia.meshRenderer;
+        const meshRenderer = materia.meshRenderer ||
+                             materia.getComponentByName?.('MeshRenderer3D') ||
+                             materia.getComponentByName?.('SkinnedMeshRenderer3D') ||
+                             materia.getComponent?.('MeshRenderer3D') ||
+                             materia.getComponent?.('SkinnedMeshRenderer3D');
         if (!meshRenderer) return;
 
         this.gl.useProgram(this.program);
@@ -733,9 +756,24 @@ export class CarleyRenderer {
         const rotationMat = CarleyMath.mat4Identity();
         const scaleMat = CarleyMath.mat4Identity();
 
-        CarleyMath.mat4Translation(translationMat, transform.position);
-        CarleyMath.mat4RotationYXZ(rotationMat, transform.rotation.x, transform.rotation.y, transform.rotation.z);
-        CarleyMath.mat4Scale(scaleMat, transform.scale);
+        const pos = transform.position || { x: transform.x || 0, y: transform.y || 0, z: transform.z || 0 };
+
+        let rot = { x: 0, y: 0, z: 0 };
+        if (transform.rotation && typeof transform.rotation === 'object') {
+            rot = { x: transform.rotation.x || 0, y: transform.rotation.y || 0, z: transform.rotation.z || 0 };
+        } else {
+            rot = {
+                x: transform.rotationX !== undefined ? transform.rotationX : 0,
+                y: transform.rotationY !== undefined ? transform.rotationY : 0,
+                z: transform.rotationZ !== undefined ? transform.rotationZ : (transform.rotation || 0)
+            };
+        }
+
+        const scl = transform.scale || { x: transform.scaleX || 1, y: transform.scaleY || 1, z: transform.scaleZ || 1 };
+
+        CarleyMath.mat4Translation(translationMat, pos);
+        CarleyMath.mat4RotationYXZ(rotationMat, rot.x, rot.y, rot.z);
+        CarleyMath.mat4Scale(scaleMat, scl);
 
         CarleyMath.mat4Multiply(modelMatrix, translationMat, rotationMat);
         CarleyMath.mat4Multiply(modelMatrix, modelMatrix, scaleMat);
@@ -751,7 +789,9 @@ export class CarleyRenderer {
         const b = parseInt(colorHex.substring(5, 7), 16) / 255;
         this.gl.uniform4f(this.uniforms.color, r, g, b, 1.0);
 
-        const lightMaterial = materia.getLawByName('CarleyMaterialLuz');
+        const lightMaterial = materia.getLawByName?.('CarleyMaterialLuz') ||
+                              materia.getComponentByName?.('MaterialLuz3D') ||
+                              materia.getComponent?.('MaterialLuz3D');
         if (lightMaterial) {
             this.gl.uniform1i(this.uniforms.isLightMaterial, 1);
             const mColorHex = lightMaterial.color || '#ffaa00';

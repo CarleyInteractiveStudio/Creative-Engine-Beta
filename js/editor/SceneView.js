@@ -8,6 +8,7 @@ import * as MateriaFactory from './MateriaFactory.js';
 import { WeightPainter } from './WeightPainter.js';
 import { broadcastUpdate } from './CollaborationSystem.js';
 import { Gizmos } from '../engine/Gizmos.js';
+import { CarleyMath } from '../carley-world/CarleyMath.js';
 
 // Dependencies from editor.js
 let dom;
@@ -2108,20 +2109,16 @@ function handle3DCameraNavigation() {
         }
 
         // --- 2. FPS-Style Movement (WASD + Arrows, relative to look direction) ---
-        const pitchRad = cam.rotation.x * Math.PI / 180;
-        const yawRad = cam.rotation.y * Math.PI / 180;
+        const rotationMat = CarleyMath.mat4Identity();
+        CarleyMath.mat4RotationPitchYaw(rotationMat, -cam.rotation.x, -cam.rotation.y);
 
-        // Calculate look direction (localForward) based on precise camera orientation
-        const fx = Math.sin(yawRad) * Math.cos(pitchRad);
-        const fy = -Math.sin(pitchRad);
-        const fz = -Math.cos(yawRad) * Math.cos(pitchRad);
-
-        const localForward = glm.vec3.fromValues(fx, fy, fz);
+        // Column 2 (indices 8, 9, 10) is the camera's local backward direction in world space.
+        // Therefore, localForward is negative of Column 2.
+        const localForward = glm.vec3.fromValues(-rotationMat[8], -rotationMat[9], -rotationMat[10]);
         glm.vec3.normalize(localForward, localForward);
 
-        // Calculate side direction (localRight) perpendicular to Forward and Up (0, 1, 0)
-        const localRight = glm.vec3.create();
-        glm.vec3.cross(localRight, localForward, glm.vec3.fromValues(0, 1, 0));
+        // Column 0 (indices 0, 1, 2) is the camera's local right direction in world space.
+        const localRight = glm.vec3.fromValues(rotationMat[0], rotationMat[1], rotationMat[2]);
         glm.vec3.normalize(localRight, localRight);
 
         const finalMove = glm.vec3.create();
