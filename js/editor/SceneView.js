@@ -2705,9 +2705,47 @@ function getGizmoScale(center, customProj = null, customView = null, cw = null, 
 }
 
 function getMateriaAxes(materia) {
-    const transform = materia.getComponent(Components.Transform);
-    const matrix = transform.worldMatrix;
+    const transform = materia.transform || materia.getComponentByName?.('Transform') || materia.getComponent?.('Transform');
     const glm = window.glMatrix;
+    if (!transform) {
+        return {
+            x: glm.vec3.fromValues(1, 0, 0),
+            y: glm.vec3.fromValues(0, 1, 0),
+            z: glm.vec3.fromValues(0, 0, 1),
+            worldCenter: [0, 0, 0]
+        };
+    }
+
+    let matrix = transform.worldMatrix;
+    if (!matrix) {
+        // Build a temporary world matrix from the transform values
+        const translationMat = CarleyMath.mat4Identity();
+        const rotationMat = CarleyMath.mat4Identity();
+        const scaleMat = CarleyMath.mat4Identity();
+
+        const pos = transform.position || { x: transform.x || 0, y: transform.y || 0, z: transform.z || 0 };
+
+        let rot = { x: 0, y: 0, z: 0 };
+        if (transform.rotation && typeof transform.rotation === 'object') {
+            rot = { x: transform.rotation.x || 0, y: transform.rotation.y || 0, z: transform.rotation.z || 0 };
+        } else {
+            rot = {
+                x: transform.rotationX !== undefined ? transform.rotationX : 0,
+                y: transform.rotationY !== undefined ? transform.rotationY : 0,
+                z: transform.rotationZ !== undefined ? transform.rotationZ : (transform.rotation || 0)
+            };
+        }
+
+        const scl = transform.scale || { x: transform.scaleX || 1, y: transform.scaleY || 1, z: transform.scaleZ || 1 };
+
+        CarleyMath.mat4Translation(translationMat, pos);
+        CarleyMath.mat4RotationYXZ(rotationMat, rot.x, rot.y, rot.z);
+        CarleyMath.mat4Scale(scaleMat, scl);
+
+        matrix = CarleyMath.mat4Identity();
+        CarleyMath.mat4Multiply(matrix, translationMat, rotationMat);
+        CarleyMath.mat4Multiply(matrix, matrix, scaleMat);
+    }
 
     // Extract basis vectors from world matrix columns
     const xAxis = glm.vec3.fromValues(matrix[0], matrix[1], matrix[2]);
