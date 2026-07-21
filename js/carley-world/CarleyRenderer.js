@@ -161,28 +161,27 @@ export class CarleyRenderer {
             attribute vec4 aPosition;
             uniform mat4 uViewMatrix;
             uniform mat4 uProjectionMatrix;
-            uniform vec3 uCameraPos;
-            varying float vFade;
+            varying vec3 vWorldPos;
 
             void main() {
                 gl_Position = uProjectionMatrix * uViewMatrix * aPosition;
-                float dx = aPosition.x - uCameraPos.x;
-                float dz = aPosition.z - uCameraPos.z;
-                float dist = sqrt(dx * dx + dz * dz);
-                float maxDist = uCameraPos.y * 10.0;
-                if (maxDist < 5000.0) {
-                    maxDist = 5000.0;
-                }
-                vFade = 1.0 - clamp(dist / maxDist, 0.0, 1.0);
+                vWorldPos = aPosition.xyz;
             }
         `;
 
         const fsLineSource = `
             precision mediump float;
             uniform vec4 uColor;
-            varying float vFade;
+            uniform vec3 uCameraPos;
+            uniform float uMaxDist;
+            varying vec3 vWorldPos;
+
             void main() {
-                gl_FragColor = vec4(uColor.rgb, uColor.a * vFade);
+                float dx = vWorldPos.x - uCameraPos.x;
+                float dz = vWorldPos.z - uCameraPos.z;
+                float dist = sqrt(dx * dx + dz * dz);
+                float fade = 1.0 - clamp(dist / uMaxDist, 0.0, 1.0);
+                gl_FragColor = vec4(uColor.rgb, uColor.a * fade);
             }
         `;
 
@@ -249,7 +248,8 @@ export class CarleyRenderer {
             viewMatrix: this.gl.getUniformLocation(this.lineProgram, 'uViewMatrix'),
             projectionMatrix: this.gl.getUniformLocation(this.lineProgram, 'uProjectionMatrix'),
             color: this.gl.getUniformLocation(this.lineProgram, 'uColor'),
-            cameraPos: this.gl.getUniformLocation(this.lineProgram, 'uCameraPos')
+            cameraPos: this.gl.getUniformLocation(this.lineProgram, 'uCameraPos'),
+            maxDist: this.gl.getUniformLocation(this.lineProgram, 'uMaxDist')
         };
     }
 
@@ -666,6 +666,8 @@ export class CarleyRenderer {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.dynamicGridBuffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(gridVertices), this.gl.DYNAMIC_DRAW);
 
+        // Establecer la distancia máxima para el desvanecimiento del grid fino (funde a 0 antes del borde físico)
+        this.gl.uniform1f(this.lineUniforms.maxDist, N * fineStep * 0.9);
         this.gl.uniform4f(this.lineUniforms.color, 0.25, 0.25, 0.28, opacityFine);
         this.gl.enableVertexAttribArray(this.lineAttribs.position);
         this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
@@ -692,13 +694,15 @@ export class CarleyRenderer {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.dynamicMajorGridBuffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(majorGridVertices), this.gl.DYNAMIC_DRAW);
 
-        // La rejilla mayor también usa nuestra opacidad interpolada y fluida
+        // Establecer la distancia máxima para el desvanecimiento del grid grueso (funde a 0 antes del borde físico)
+        this.gl.uniform1f(this.lineUniforms.maxDist, M * coarseStep * 0.9);
         this.gl.uniform4f(this.lineUniforms.color, 0.28, 0.28, 0.32, opacityCoarse);
         this.gl.enableVertexAttribArray(this.lineAttribs.position);
         this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
         this.gl.drawArrays(this.gl.LINES, 0, majorGridVertices.length / 3);
 
-        // Dibujar ejes infinitos
+        // Dibujar ejes infinitos (sin desvanecimiento prematuro)
+        this.gl.uniform1f(this.lineUniforms.maxDist, 10000000.0);
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.axesBuffer);
         this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
 
