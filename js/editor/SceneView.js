@@ -10,6 +10,15 @@ import { broadcastUpdate } from './CollaborationSystem.js';
 import { Gizmos } from '../engine/Gizmos.js';
 import { CarleyMath } from '../carley-world/CarleyMath.js';
 
+function isProject3D(config) {
+    if (!config) return false;
+    return config.projectType === '3d' ||
+           config.rendererMode === '3d-mode' ||
+           config.rendererMode === 'hybrid-3d' ||
+           config.rendererMode === 'anime-3d' ||
+           config.rendererMode === 'realista';
+}
+
 // Dependencies from editor.js
 let dom;
 let renderer;
@@ -148,7 +157,7 @@ function checkGizmoHit(canvasPos) {
     if (!transform) return null;
 
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
 
     if (is3D) {
         return check3DGizmoHit(canvasPos, selectedMateria);
@@ -694,7 +703,7 @@ function drawGizmos(renderer, materia, proj = null, view = null, cw = null, ch =
     if (!transform) return;
 
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
 
     if (is3D) {
         draw3DGizmos(materia, proj, view, cw, ch);
@@ -806,7 +815,7 @@ export function initialize(dependencies) {
         const currentMouseWorld = screenToWorld(moveEvent.clientX - rect.left, moveEvent.clientY - rect.top);
 
         const config = getCurrentProjectConfig();
-        const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+        const is3D = isProject3D(config);
 
         // In 3D, we'll use a better projection for axes
         const totalDx = (currentMouseWorld.x - dragState.initialMouseWorld.x);
@@ -1268,7 +1277,7 @@ export function initialize(dependencies) {
             const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
 
             const config = getCurrentProjectConfig();
-            const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+            const is3D = isProject3D(config);
 
             let targetId = null;
             if (is3D) {
@@ -1541,7 +1550,7 @@ export function initialize(dependencies) {
         if (!renderer || !renderer.camera) return;
 
         const config = getCurrentProjectConfig();
-        const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+        const is3D = isProject3D(config);
 
         const scrollDelta = event.deltaY;
         const zoomFactor = getPreferences().zoomSpeed || 1.1;
@@ -1627,7 +1636,7 @@ export function initialize(dependencies) {
 
         // --- Panning Logic (Middle click or Right-click in 2D) ---
         const config = getCurrentProjectConfig();
-        const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+        const is3D = isProject3D(config);
 
         // --- Sculpting Logic ---
         if (activeTool === 'sculpt' && e.button === 0 && is3D) {
@@ -1903,7 +1912,7 @@ export function initialize(dependencies) {
 
             // 3D Object Picking
             const config = getCurrentProjectConfig();
-            const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+            const is3D = isProject3D(config);
 
             if (!isAddingLayer && activeTool !== 'pan') {
                 const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCircleColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos) || checkUIGizmoHit(canvasPos);
@@ -2169,7 +2178,7 @@ export function focusOnSelectedMateria() {
 
     const cam = renderer.camera;
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
 
     const C3D = window.Components3D || Components3D;
     const meshRenderer = C3D ? materia.getComponent(C3D.MeshRenderer3D) : null;
@@ -2206,7 +2215,7 @@ export function focusOnSelectedMateria() {
 export function update() {
     // This will be called from the main editorLoop
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
 
     if (is3D && !window.isGameRunning && getActiveView() === 'scene-content') {
         handle3DCameraNavigation();
@@ -2304,7 +2313,7 @@ function drawCameraGizmos(renderer, proj = null, view = null, cw = null, ch = nu
 
     const { ctx, canvas } = renderer;
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
     const allMaterias = scene.getAllMaterias();
     const aspect = canvas.width / canvas.height;
     const selectedMateria = getSelectedMateria();
@@ -2527,7 +2536,7 @@ function drawComponentGrids() {
 
     const { ctx, camera, canvas } = renderer;
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
     const zoom = camera.effectiveZoom;
     const prefs = getPreferences();
     const isSceneGridVisible = prefs.showSceneGrid;
@@ -2987,7 +2996,7 @@ export function drawOverlay(customProj = null, customView = null) {
     if (!renderer) return;
 
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
     const is3DActive = is3D && config.viewMode !== '2d';
 
     // Capture matrices at the start of the overlay pass to ensure consistency
@@ -3177,7 +3186,7 @@ function drawGizmoIcons(proj = null, view = null, cw = null, ch = null) {
 
     const { ctx, camera } = renderer;
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
     const zoom = camera.effectiveZoom;
     const allMaterias = SceneManager.currentScene.getAllMaterias();
 
@@ -3648,7 +3657,7 @@ function drawPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
     if (!ctx || !camera) return;
 
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
 
     // Helper for 3D projected lines
     const strokeRect3D = (cx, cy, w, h, z, rot) => {
@@ -3786,7 +3795,7 @@ function drawTilemapOutline(proj = null, view = null, cw = null, ch = null) {
 
     const { ctx, camera } = renderer;
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
     const { cellSize } = grid;
     const { width, height } = tilemap;
 
@@ -3868,7 +3877,7 @@ function drawTerrenoColliders(proj = null, view = null, cw = null, ch = null) {
 
     const { ctx, camera } = renderer;
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
 
     const drawLine3D = (p1World, p2World) => {
         const p1 = world3DToScreen(p1World, proj, view, cw, ch);
@@ -3984,7 +3993,7 @@ function drawTilemapColliders(proj = null, view = null, cw = null, ch = null) {
 
     const { ctx, camera } = renderer;
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
     const { cellSize } = grid;
 
     const drawColliderRect = (rx, ry, rw, rh) => {
