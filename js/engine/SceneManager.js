@@ -34,7 +34,7 @@ export class Scene {
     }
 
     addMateria(materia) {
-        if (materia instanceof Materia) {
+        if (materia instanceof Materia || materia?.constructor?.name === 'CarleyMateria3D') {
             this.materias.push(materia);
             this._setMateriaSceneRecursive(materia);
         }
@@ -647,7 +647,7 @@ export async function loadSceneByPath(path) {
  * @returns {Materia} La nueva instancia creada.
  */
 export function instanciar(original, x, y) {
-    if (!original || !(original instanceof Materia)) {
+    if (!original || !(original instanceof Materia || original?.constructor?.name === 'CarleyMateria3D')) {
         console.error("instanciar: Se requiere una Materia válida para copiar.");
         return null;
     }
