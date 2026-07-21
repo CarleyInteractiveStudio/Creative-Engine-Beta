@@ -572,7 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Animation Skeletal Elements
             'animation-type-selector', 'animation-record-btn', 'skeletal-timeline', 'animation-time-slider', 'skeletal-tracks',
             'scene-canvas-3d', 'game-canvas-3d', 'prefs-show-origin-axes', 'prefs-show-orientation-gizmo',
-            'prefs-show-see-through-gizmo',
+            'prefs-show-see-through-gizmo', 'prefs-show-blue-skeleton-gizmo',
             'prefs-invert-x-axis', 'prefs-invert-y-axis'
         ];
         ids.forEach(id => {
@@ -5075,8 +5075,8 @@ public start() {
                     appName: 'TestProject',
                     authorName: 'Test Author',
                     appVersion: '1.0.0',
-                    projectType: '2d',
-                    rendererMode: 'canvas2d',
+                    projectType: '3d',
+                    rendererMode: '3d-mode',
                     showEngineLogo: true,
                     keystore: { path: '', pass: '', alias: '', aliasPass: '' },
                     iconPath: '',

@@ -2868,26 +2868,43 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
     const ARROW_SIZE = 18;
 
     const prefs = typeof getPreferences === 'function' ? getPreferences() : {};
-    const showSeeThrough = prefs.showSeeThroughGizmo !== false;
+    const showBlueSkeleton = prefs.showBlueSkeletonGizmo !== false;
+    const showSeeThrough = prefs.showSeeThroughGizmo !== false && !showBlueSkeleton;
 
-    if (showSeeThrough) {
+    console.log(`[SceneView] draw3DGizmos: showBlueSkeleton=${showBlueSkeleton}, showSeeThrough=${showSeeThrough}`);
+    if (showBlueSkeleton || showSeeThrough) {
         const C3D = window.Components3D || Components3D;
+        console.log(`[SceneView] C3D is: ${C3D ? 'defined' : 'undefined'}`);
         if (C3D) {
-            const meshRenderer = materia.getComponent(C3D.MeshRenderer3D);
-            const scale = { x: transform.scale.x, y: transform.scale.y, z: transform.scale.z || 1 };
+            const meshRenderer = materia.getComponent(C3D.MeshRenderer3D) ||
+                                 materia.getComponentByName?.('CarleyMeshRenderer3D') ||
+                                 materia.getComponent?.('CarleyMeshRenderer3D') ||
+                                 materia.getComponentByName?.('CarleySkinnedMeshRenderer3D') ||
+                                 materia.getComponent?.('CarleySkinnedMeshRenderer3D');
+            console.log(`[SceneView] meshRenderer is: ${meshRenderer ? meshRenderer.constructor.name : 'null/undefined'}`);
+            // Unit meshes in WebGL are typically defined from -1 to 1, meaning their local diameter/span is 2.0.
+            // Therefore, to match their visual size on screen, we scale the wireframe size by 2.0.
+            const scale = { x: transform.scale.x * 2, y: transform.scale.y * 2, z: (transform.scale.z || 1) * 2 };
             const rotation = { x: transform.rotationX || 0, y: transform.rotationY || 0, z: transform.rotationZ || 0 };
 
-            if (meshRenderer) {
-                if (meshRenderer.meshType === 'Cube') Gizmos.drawWireCube(ctx, center, scale, rotation, 'rgba(0, 255, 255, 0.9)', proj, view, cw, ch);
-                else if (meshRenderer.meshType === 'Sphere') Gizmos.drawWireSphere(ctx, center, Math.max(scale.x, scale.y, scale.z) * 0.5, rotation, 'rgba(0, 255, 255, 0.9)', proj, view, cw, ch);
-                else if (meshRenderer.meshType === 'Plane') Gizmos.drawWirePlane(ctx, center, { x: scale.x, z: scale.z }, rotation, 'rgba(0, 255, 255, 0.9)', proj, view, cw, ch);
-                else if (meshRenderer.meshType === 'Triangle') Gizmos.drawWireTriangle(ctx, center, { x: scale.x, y: scale.y }, rotation, 'rgba(0, 255, 255, 0.9)', proj, view, cw, ch);
-                else if (meshRenderer.meshType === 'Capsule') Gizmos.drawWireCapsule(ctx, center, Math.max(scale.x, scale.z) * 0.25, scale.y, rotation, 'rgba(0, 255, 255, 0.9)', proj, view, cw, ch);
-                else Gizmos.drawWireCube(ctx, center, scale, rotation, 'rgba(0, 255, 255, 0.9)', proj, view, cw, ch);
+            const clr = showBlueSkeleton ? 'rgba(0, 102, 255, 1.0)' : 'rgba(0, 255, 255, 0.9)';
+            const clrFallback = showBlueSkeleton ? 'rgba(0, 102, 255, 0.7)' : 'rgba(0, 255, 255, 0.6)';
+
+            console.log(`[SceneView] Drawing with clr=${clr}, scale=${JSON.stringify(scale)}, rotation=${JSON.stringify(rotation)}, center=${JSON.stringify(center)}`);
+
+            if (meshRenderer && meshRenderer.meshType) {
+                console.log(`[SceneView] Drawing wireframe for meshType: ${meshRenderer.meshType}`);
+                if (meshRenderer.meshType === 'Cube') Gizmos.drawWireCube(ctx, center, scale, rotation, clr, proj, view, cw, ch);
+                else if (meshRenderer.meshType === 'Sphere') Gizmos.drawWireSphere(ctx, center, Math.max(scale.x, scale.y, scale.z) * 0.5, rotation, clr, proj, view, cw, ch);
+                else if (meshRenderer.meshType === 'Plane') Gizmos.drawWirePlane(ctx, center, { x: scale.x, z: scale.z }, rotation, clr, proj, view, cw, ch);
+                else if (meshRenderer.meshType === 'Triangle') Gizmos.drawWireTriangle(ctx, center, { x: scale.x, y: scale.y }, rotation, clr, proj, view, cw, ch);
+                else if (meshRenderer.meshType === 'Capsule') Gizmos.drawWireCapsule(ctx, center, Math.max(scale.x, scale.z) * 0.25, scale.y, rotation, clr, proj, view, cw, ch);
+                else Gizmos.drawWireCube(ctx, center, scale, rotation, clr, proj, view, cw, ch);
             } else {
                 // For any other object, draw a beautiful 3D bounding box overlay based on its scale
-                const size = scale.x === 1 && scale.y === 1 && scale.z === 1 ? { x: 50, y: 50, z: 50 } : scale;
-                Gizmos.drawWireCube(ctx, center, size, rotation, 'rgba(0, 255, 255, 0.6)', proj, view, cw, ch);
+                console.log(`[SceneView] Bounding box fallback`);
+                const size = scale.x === 2 && scale.y === 2 && scale.z === 2 ? { x: 100, y: 100, z: 100 } : scale;
+                Gizmos.drawWireCube(ctx, center, size, rotation, clrFallback, proj, view, cw, ch);
             }
         }
     }

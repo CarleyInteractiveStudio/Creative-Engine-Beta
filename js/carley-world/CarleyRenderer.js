@@ -18,6 +18,8 @@ export class CarleyRenderer {
         this.gl.enable(this.gl.DEPTH_TEST);
 
         this.initialized = true;
+        this.lastProjectionMatrix = CarleyMath.mat4Identity();
+        this.lastViewMatrix = CarleyMath.mat4Identity();
 
         this.initShaders();
         this.initBuffers();
