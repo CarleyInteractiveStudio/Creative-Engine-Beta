@@ -2792,6 +2792,41 @@ function check3DGizmoHit(canvasPos, materia) {
         if (checkHandle(axes.x, 'X')) return activeTool === 'scale' ? 'scale-x' : 'move-x';
         if (checkHandle(axes.y, 'Y')) return activeTool === 'scale' ? 'scale-y' : 'move-y';
         if (checkHandle(axes.z, 'Z')) return activeTool === 'scale' ? 'scale-z' : 'move-z';
+    } else if (activeTool === 'rotate') {
+        let closestAxis = null;
+        let minDistance = 15; // Hit radius
+        const radius = 60 * gizmoScale;
+        const segments = 16;
+        for (let axisIndex = 0; axisIndex < 3; axisIndex++) {
+            for (let i = 0; i < segments; i++) {
+                const angle = (i / segments) * Math.PI * 2;
+                const cos = Math.cos(angle);
+                const sin = Math.sin(angle);
+                let offset = { x: 0, y: 0, z: 0 };
+                if (axisIndex === 0) {
+                    offset = { x: 0, y: cos * radius, z: sin * radius };
+                } else if (axisIndex === 1) {
+                    offset = { x: cos * radius, y: 0, z: sin * radius };
+                } else {
+                    offset = { x: cos * radius, y: sin * radius, z: 0 };
+                }
+                const worldOffset = {
+                    x: axes.x[0] * offset.x + axes.y[0] * offset.y + axes.z[0] * offset.z,
+                    y: axes.x[1] * offset.x + axes.y[1] * offset.y + axes.z[1] * offset.z,
+                    z: axes.x[2] * offset.x + axes.y[2] * offset.y + axes.z[2] * offset.z
+                };
+                const pWorld = { x: center.x + worldOffset.x, y: center.y + worldOffset.y, z: center.z + worldOffset.z };
+                const pScreen = world3DToScreen(pWorld, proj, view, cw, ch);
+                if (pScreen) {
+                    const dist = Math.hypot(canvasPos.x - pScreen.x, canvasPos.y - pScreen.y);
+                    if (dist < minDistance) {
+                        minDistance = dist;
+                        closestAxis = axisIndex === 0 ? 'rotate-x' : (axisIndex === 1 ? 'rotate-y' : 'rotate-z');
+                    }
+                }
+            }
+        }
+        if (closestAxis) return closestAxis;
     }
     return null;
 }
@@ -2799,6 +2834,9 @@ function check3DGizmoHit(canvasPos, materia) {
 function draw3DGizmos(materia, customProj = null, customView = null, customCw = null, customCh = null) {
     const r3d = window._Renderer3D;
     if (!r3d) return;
+
+    const transform = materia.transform || materia.getComponentByName?.('Transform') || materia.getComponent?.('Transform');
+    if (!transform) return;
 
     // Use current rendering matrices for correct projection
     const proj = customProj || r3d.lastProjectionMatrix;
@@ -2820,20 +2858,32 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
     // ARROW_SIZE is the handle size in constant screen PIXELS.
     const ARROW_SIZE = 18;
 
-    const C3D = window.Components3D || Components3D;
-    if (!C3D) return;
+    const prefs = typeof getPreferences === 'function' ? getPreferences() : {};
+    const showSeeThrough = prefs.showSeeThroughGizmo !== false;
 
-    const transform = materia.getComponent(Components.Transform);
-    const meshRenderer = materia.getComponent(C3D.MeshRenderer3D);
-    if (meshRenderer) {
-        const scale = { x: transform.scale.x, y: transform.scale.y, z: transform.scale.z || 1 };
-        const rotation = { x: transform.rotationX || 0, y: transform.rotationY || 0, z: transform.rotationZ || 0 };
-        if (meshRenderer.meshType === 'Cube') Gizmos.drawWireCube(ctx, center, scale, rotation, 'rgba(0, 255, 255, 0.8)', proj, view, cw, ch);
-        else if (meshRenderer.meshType === 'Sphere') Gizmos.drawWireSphere(ctx, center, Math.max(scale.x, scale.y, scale.z) * 0.5, rotation, 'rgba(0, 255, 255, 0.8)', proj, view, cw, ch);
-        else if (meshRenderer.meshType === 'Plane') Gizmos.drawWirePlane(ctx, center, { x: scale.x, z: scale.z }, rotation, 'rgba(0, 255, 255, 0.8)', proj, view, cw, ch);
-        else if (meshRenderer.meshType === 'Triangle') Gizmos.drawWireTriangle(ctx, center, { x: scale.x, y: scale.y }, rotation, 'rgba(0, 255, 255, 0.8)', proj, view, cw, ch);
-        else if (meshRenderer.meshType === 'Capsule') Gizmos.drawWireCapsule(ctx, center, Math.max(scale.x, scale.z) * 0.25, scale.y, rotation, 'rgba(0, 255, 255, 0.8)', proj, view, cw, ch);
-    } else if (materia.getComponent(Components.Camera)) {
+    if (showSeeThrough) {
+        const C3D = window.Components3D || Components3D;
+        if (C3D) {
+            const meshRenderer = materia.getComponent(C3D.MeshRenderer3D);
+            const scale = { x: transform.scale.x, y: transform.scale.y, z: transform.scale.z || 1 };
+            const rotation = { x: transform.rotationX || 0, y: transform.rotationY || 0, z: transform.rotationZ || 0 };
+
+            if (meshRenderer) {
+                if (meshRenderer.meshType === 'Cube') Gizmos.drawWireCube(ctx, center, scale, rotation, 'rgba(0, 255, 255, 0.9)', proj, view, cw, ch);
+                else if (meshRenderer.meshType === 'Sphere') Gizmos.drawWireSphere(ctx, center, Math.max(scale.x, scale.y, scale.z) * 0.5, rotation, 'rgba(0, 255, 255, 0.9)', proj, view, cw, ch);
+                else if (meshRenderer.meshType === 'Plane') Gizmos.drawWirePlane(ctx, center, { x: scale.x, z: scale.z }, rotation, 'rgba(0, 255, 255, 0.9)', proj, view, cw, ch);
+                else if (meshRenderer.meshType === 'Triangle') Gizmos.drawWireTriangle(ctx, center, { x: scale.x, y: scale.y }, rotation, 'rgba(0, 255, 255, 0.9)', proj, view, cw, ch);
+                else if (meshRenderer.meshType === 'Capsule') Gizmos.drawWireCapsule(ctx, center, Math.max(scale.x, scale.z) * 0.25, scale.y, rotation, 'rgba(0, 255, 255, 0.9)', proj, view, cw, ch);
+                else Gizmos.drawWireCube(ctx, center, scale, rotation, 'rgba(0, 255, 255, 0.9)', proj, view, cw, ch);
+            } else {
+                // For any other object, draw a beautiful 3D bounding box overlay based on its scale
+                const size = scale.x === 1 && scale.y === 1 && scale.z === 1 ? { x: 50, y: 50, z: 50 } : scale;
+                Gizmos.drawWireCube(ctx, center, size, rotation, 'rgba(0, 255, 255, 0.6)', proj, view, cw, ch);
+            }
+        }
+    }
+
+    if (materia.getComponent(Components.Camera)) {
         drawCameraGizmos(renderer, proj, view, cw, ch);
     }
 
@@ -2880,6 +2930,53 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
         ctx.fillStyle = activeTool === 'scale' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)';
         ctx.beginPath(); ctx.arc(screenPos.x, screenPos.y, 8, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
+    } else if (activeTool === 'rotate') {
+        // Draw 3D rotation circles!
+        const drawRotationCircle = (axisIndex, color) => {
+            const segments = 40;
+            const radius = 60 * gizmoScale;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            let first = true;
+            for (let i = 0; i <= segments; i++) {
+                const angle = (i / segments) * Math.PI * 2;
+                const cos = Math.cos(angle);
+                const sin = Math.sin(angle);
+                let offset = { x: 0, y: 0, z: 0 };
+                if (axisIndex === 0) { // X-axis (Y-Z plane)
+                    offset = { x: 0, y: cos * radius, z: sin * radius };
+                } else if (axisIndex === 1) { // Y-axis (X-Z plane)
+                    offset = { x: cos * radius, y: 0, z: sin * radius };
+                } else { // Z-axis (X-Y plane)
+                    offset = { x: cos * radius, y: sin * radius, z: 0 };
+                }
+                const worldOffset = {
+                    x: axes.x[0] * offset.x + axes.y[0] * offset.y + axes.z[0] * offset.z,
+                    y: axes.x[1] * offset.x + axes.y[1] * offset.y + axes.z[1] * offset.z,
+                    z: axes.x[2] * offset.x + axes.y[2] * offset.y + axes.z[2] * offset.z
+                };
+                const pWorld = { x: center.x + worldOffset.x, y: center.y + worldOffset.y, z: center.z + worldOffset.z };
+                const pScreen = world3DToScreen(pWorld, proj, view, cw, ch);
+                if (pScreen) {
+                    if (first) {
+                        ctx.moveTo(pScreen.x, pScreen.y);
+                        first = false;
+                    } else {
+                        ctx.lineTo(pScreen.x, pScreen.y);
+                    }
+                }
+            }
+            ctx.stroke();
+        };
+
+        drawRotationCircle(0, '#ff4444'); // X (Red)
+        drawRotationCircle(1, '#44ff44'); // Y (Green)
+        drawRotationCircle(2, '#4444ff'); // Z (Blue)
+
+        // Center dot
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.beginPath(); ctx.arc(screenPos.x, screenPos.y, 4, 0, Math.PI * 2); ctx.fill();
     }
 
     ctx.restore();

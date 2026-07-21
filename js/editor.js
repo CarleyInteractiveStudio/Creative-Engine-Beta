@@ -572,6 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Animation Skeletal Elements
             'animation-type-selector', 'animation-record-btn', 'skeletal-timeline', 'animation-time-slider', 'skeletal-tracks',
             'scene-canvas-3d', 'game-canvas-3d', 'prefs-show-origin-axes', 'prefs-show-orientation-gizmo',
+            'prefs-show-see-through-gizmo',
             'prefs-invert-x-axis', 'prefs-invert-y-axis'
         ];
         ids.forEach(id => {
