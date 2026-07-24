@@ -153,15 +153,15 @@ function checkGizmoHit(canvasPos) {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria || !renderer) return null;
 
-    const transform = selectedMateria.getComponent(Components.Transform);
-    if (!transform) return null;
-
     const config = getCurrentProjectConfig();
     const is3D = isProject3D(config);
 
     if (is3D) {
         return check3DGizmoHit(canvasPos, selectedMateria);
     }
+
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!transform) return null;
 
     const centerX = transform.x;
     const centerY = transform.y;
@@ -699,9 +699,6 @@ function drawUIGizmos(renderer, materia) {
 function drawGizmos(renderer, materia, proj = null, view = null, cw = null, ch = null) {
     if (!materia || !renderer) return;
 
-    const transform = materia.getComponent(Components.Transform);
-    if (!transform) return;
-
     const config = getCurrentProjectConfig();
     const is3D = isProject3D(config);
 
@@ -709,6 +706,9 @@ function drawGizmos(renderer, materia, proj = null, view = null, cw = null, ch =
         draw3DGizmos(materia, proj, view, cw, ch);
         return;
     }
+
+    const transform = materia.getComponent(Components.Transform);
+    if (!transform) return;
 
     const { ctx, camera } = renderer;
     const zoom = camera.effectiveZoom;
@@ -806,16 +806,18 @@ export function initialize(dependencies) {
         moveEvent.preventDefault();
         if (!dragState.materia) return;
 
-        const transform = dragState.materia.getComponent(Components.Transform);
+        const config = getCurrentProjectConfig();
+        const is3D = isProject3D(config);
+
+        const transform = is3D
+            ? (dragState.materia.transform || dragState.materia.getComponentByName?.('Transform') || dragState.materia.getComponentByName?.('CarleyTransform3D'))
+            : dragState.materia.getComponent(Components.Transform);
         const uiTransform = dragState.materia.getComponent(Components.UITransform);
 
         // Total delta from start of drag
         const canvas = dom.sceneCanvas;
         const rect = canvas.getBoundingClientRect();
         const currentMouseWorld = screenToWorld(moveEvent.clientX - rect.left, moveEvent.clientY - rect.top);
-
-        const config = getCurrentProjectConfig();
-        const is3D = isProject3D(config);
 
         // In 3D, we'll use a better projection for axes
         const totalDx = (currentMouseWorld.x - dragState.initialMouseWorld.x);
@@ -1945,7 +1947,9 @@ export function initialize(dependencies) {
             if (hitHandle) {
                 e.stopPropagation();
                 isDragging = true;
-                const transform = selectedMateria.getComponent(Components.Transform);
+                const transform = is3D
+                    ? (selectedMateria.transform || selectedMateria.getComponentByName?.('Transform') || selectedMateria.getComponentByName?.('CarleyTransform3D'))
+                    : selectedMateria.getComponent(Components.Transform);
                 const initialX = transform ? transform.x : 0;
                 const initialY = transform ? transform.y : 0;
                 const initialZ = transform ? (transform.z || 0) : 0;
@@ -2867,6 +2871,13 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
     // ARROW_SIZE is the handle size in constant screen PIXELS.
     const ARROW_SIZE = 18;
 
+    if (materia.getComponent(Components.Camera)) {
+        drawCameraGizmos(renderer, proj, view, cw, ch);
+    }
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
     const prefs = typeof getPreferences === 'function' ? getPreferences() : {};
     const showBlueSkeleton = prefs.showBlueSkeletonGizmo !== false;
     const showSeeThrough = prefs.showSeeThroughGizmo !== false && !showBlueSkeleton;
@@ -2887,34 +2898,27 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
             const scale = { x: transform.scale.x * 2, y: transform.scale.y * 2, z: (transform.scale.z || 1) * 2 };
             const rotation = { x: transform.rotationX || 0, y: transform.rotationY || 0, z: transform.rotationZ || 0 };
 
-            const clr = showBlueSkeleton ? 'rgba(0, 102, 255, 1.0)' : 'rgba(0, 255, 255, 0.9)';
-            const clrFallback = showBlueSkeleton ? 'rgba(0, 102, 255, 0.7)' : 'rgba(0, 255, 255, 0.6)';
+            const clr = showBlueSkeleton ? '#00b4ff' : 'rgba(0, 255, 255, 0.9)';
+            const clrFallback = showBlueSkeleton ? '#0084ff' : 'rgba(0, 255, 255, 0.6)';
 
             console.log(`[SceneView] Drawing with clr=${clr}, scale=${JSON.stringify(scale)}, rotation=${JSON.stringify(rotation)}, center=${JSON.stringify(center)}`);
 
             if (meshRenderer && meshRenderer.meshType) {
                 console.log(`[SceneView] Drawing wireframe for meshType: ${meshRenderer.meshType}`);
-                if (meshRenderer.meshType === 'Cube') Gizmos.drawWireCube(ctx, center, scale, rotation, clr, proj, view, cw, ch);
-                else if (meshRenderer.meshType === 'Sphere') Gizmos.drawWireSphere(ctx, center, Math.max(scale.x, scale.y, scale.z) * 0.5, rotation, clr, proj, view, cw, ch);
-                else if (meshRenderer.meshType === 'Plane') Gizmos.drawWirePlane(ctx, center, { x: scale.x, z: scale.z }, rotation, clr, proj, view, cw, ch);
-                else if (meshRenderer.meshType === 'Triangle') Gizmos.drawWireTriangle(ctx, center, { x: scale.x, y: scale.y }, rotation, clr, proj, view, cw, ch);
-                else if (meshRenderer.meshType === 'Capsule') Gizmos.drawWireCapsule(ctx, center, Math.max(scale.x, scale.z) * 0.25, scale.y, rotation, clr, proj, view, cw, ch);
-                else Gizmos.drawWireCube(ctx, center, scale, rotation, clr, proj, view, cw, ch);
+                if (meshRenderer.meshType === 'Cube') Gizmos.drawWireCube(ctx, center, scale, rotation, clr, proj, view, cw, ch, 3);
+                else if (meshRenderer.meshType === 'Sphere') Gizmos.drawWireSphere(ctx, center, Math.max(scale.x, scale.y, scale.z) * 0.5, rotation, clr, proj, view, cw, ch, 3);
+                else if (meshRenderer.meshType === 'Plane') Gizmos.drawWirePlane(ctx, center, { x: scale.x, z: scale.z }, rotation, clr, proj, view, cw, ch, 3);
+                else if (meshRenderer.meshType === 'Triangle') Gizmos.drawWireTriangle(ctx, center, { x: scale.x, y: scale.y }, rotation, clr, proj, view, cw, ch, 3);
+                else if (meshRenderer.meshType === 'Capsule') Gizmos.drawWireCapsule(ctx, center, Math.max(scale.x, scale.z) * 0.25, scale.y, rotation, clr, proj, view, cw, ch, 3);
+                else Gizmos.drawWireCube(ctx, center, scale, rotation, clr, proj, view, cw, ch, 3);
             } else {
                 // For any other object, draw a beautiful 3D bounding box overlay based on its scale
                 console.log(`[SceneView] Bounding box fallback`);
                 const size = scale.x === 2 && scale.y === 2 && scale.z === 2 ? { x: 100, y: 100, z: 100 } : scale;
-                Gizmos.drawWireCube(ctx, center, size, rotation, clrFallback, proj, view, cw, ch);
+                Gizmos.drawWireCube(ctx, center, size, rotation, clrFallback, proj, view, cw, ch, 3);
             }
         }
     }
-
-    if (materia.getComponent(Components.Camera)) {
-        drawCameraGizmos(renderer, proj, view, cw, ch);
-    }
-
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     const drawAxis = (worldAxis, color) => {
         const endPos = { x: center.x + worldAxis[0] * GIZMO_SIZE, y: center.y + worldAxis[1] * GIZMO_SIZE, z: center.z + worldAxis[2] * GIZMO_SIZE };
@@ -3020,7 +3024,8 @@ export function drawOverlay(customProj = null, customView = null) {
     const r3d = window._Renderer3D;
     const proj = customProj || r3d?.lastProjectionMatrix;
     const view = customView || r3d?.lastViewMatrix;
-    const cw = r3d?.canvas?.width, ch = r3d?.canvas?.height;
+    const cw = renderer.canvas.width;
+    const ch = renderer.canvas.height;
 
     if (is3D) {
         // Reset 2D transform to Screen Space for 3D-projected gizmos

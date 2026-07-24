@@ -153,6 +153,7 @@ export class CarleyWorld {
         // Guardar las últimas matrices de renderizado en el renderizador para proyección de gizmos/raycasts
         this.renderer.lastViewMatrix = viewMatrix;
         this.renderer.lastProjectionMatrix = projectionMatrix;
+        window._Renderer3D = this.renderer; // Ensure window._Renderer3D is always aligned with the active CarleyWorld renderer
 
         // Dibujar Rejilla y Ejes Coordenados del Mundo 3D
         this.renderer.drawGridAndAxes(viewMatrix, projectionMatrix);
