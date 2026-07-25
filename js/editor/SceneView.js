@@ -155,8 +155,9 @@ function checkGizmoHit(canvasPos) {
 
     const config = getCurrentProjectConfig();
     const is3D = isProject3D(config);
+    const is3DActive = is3D && config.viewMode !== '2d';
 
-    if (is3D) {
+    if (is3DActive) {
         return check3DGizmoHit(canvasPos, selectedMateria);
     }
 
@@ -701,8 +702,9 @@ function drawGizmos(renderer, materia, proj = null, view = null, cw = null, ch =
 
     const config = getCurrentProjectConfig();
     const is3D = isProject3D(config);
+    const is3DActive = is3D && config.viewMode !== '2d';
 
-    if (is3D) {
+    if (is3DActive) {
         draw3DGizmos(materia, proj, view, cw, ch);
         return;
     }
@@ -808,6 +810,7 @@ export function initialize(dependencies) {
 
         const config = getCurrentProjectConfig();
         const is3D = isProject3D(config);
+        const is3DActive = is3D && config.viewMode !== '2d';
 
         const transform = is3D
             ? (dragState.materia.transform || dragState.materia.getComponentByName?.('Transform') || dragState.materia.getComponentByName?.('CarleyTransform3D'))
@@ -838,7 +841,7 @@ export function initialize(dependencies) {
             case 'move-y':
             case 'move-z':
                 {
-                    if (is3D && glm) {
+                    if (is3DActive && glm) {
                         const ray = getMouseRay3D(moveEvent.clientX, moveEvent.clientY);
                         if (!ray) break;
 
@@ -892,7 +895,7 @@ export function initialize(dependencies) {
                 break;
             case 'move-xy':
                 {
-                    if (is3D && glm) {
+                    if (is3DActive && glm) {
                         const ray = getMouseRay3D(moveEvent.clientX, moveEvent.clientY);
                         if (!ray) break;
 
@@ -1280,9 +1283,10 @@ export function initialize(dependencies) {
 
             const config = getCurrentProjectConfig();
             const is3D = isProject3D(config);
+            const is3DActive = is3D && config.viewMode !== '2d';
 
             let targetId = null;
-            if (is3D) {
+            if (is3DActive) {
                 const renderer3D = window._Renderer3D;
                 if (renderer3D) {
                     targetId = renderer3D.pick(SceneManager.currentScene, null, canvasPos.x, canvasPos.y, { editorCamera: renderer.camera });
@@ -1553,11 +1557,12 @@ export function initialize(dependencies) {
 
         const config = getCurrentProjectConfig();
         const is3D = isProject3D(config);
+        const is3DActive = is3D && config.viewMode !== '2d';
 
         const scrollDelta = event.deltaY;
         const zoomFactor = getPreferences().zoomSpeed || 1.1;
 
-        if (is3D && window.glMatrix) {
+        if (is3DActive && window.glMatrix) {
             const cam = renderer.camera;
             const glm = window.glMatrix;
             const moveDir = glm.vec3.create();
@@ -1639,9 +1644,10 @@ export function initialize(dependencies) {
         // --- Panning Logic (Middle click or Right-click in 2D) ---
         const config = getCurrentProjectConfig();
         const is3D = isProject3D(config);
+        const is3DActive = is3D && config.viewMode !== '2d';
 
         // --- Sculpting Logic ---
-        if (activeTool === 'sculpt' && e.button === 0 && is3D) {
+        if (activeTool === 'sculpt' && e.button === 0 && is3DActive) {
             const ray = getMouseRay3D(e.clientX, e.clientY);
             const hit = ray ? SceneManager.currentScene.physicsSystem.raycast3D(ray.origin, ray.direction) : null;
 
@@ -1771,7 +1777,7 @@ export function initialize(dependencies) {
             }
         }
 
-        if (e.button === 1 || (e.button === 2 && !is3D)) {
+        if (e.button === 1 || (e.button === 2 && !is3DActive)) {
             e.preventDefault();
             canvas.style.cursor = 'grabbing';
             let lastPos = { x: e.clientX, y: e.clientY };
@@ -1915,6 +1921,7 @@ export function initialize(dependencies) {
             // 3D Object Picking
             const config = getCurrentProjectConfig();
             const is3D = isProject3D(config);
+            const is3DActive = is3D && config.viewMode !== '2d';
 
             if (!isAddingLayer && activeTool !== 'pan') {
                 const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCircleColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos) || checkUIGizmoHit(canvasPos);
@@ -1922,7 +1929,7 @@ export function initialize(dependencies) {
                 // Only pick new object if we didn't hit a gizmo handle
                 if (!hitHandle) {
                     let pickedId = null;
-                    if (is3D) {
+                    if (is3DActive) {
                         const renderer3D = window._Renderer3D;
                         if (renderer3D) {
                             pickedId = renderer3D.pick(SceneManager.currentScene, null, canvasPos.x, canvasPos.y, { editorCamera: renderer.camera });
@@ -1956,7 +1963,7 @@ export function initialize(dependencies) {
 
                 let offsetFromRay = [0, 0, 0];
                 let initialU = 0; // Initial distance along axis
-                if (is3D && window.glMatrix) {
+                if (is3DActive && window.glMatrix) {
                     const ray = getMouseRay3D(e.clientX, e.clientY);
                     if (ray) {
                         const glm = window.glMatrix;
@@ -2183,6 +2190,7 @@ export function focusOnSelectedMateria() {
     const cam = renderer.camera;
     const config = getCurrentProjectConfig();
     const is3D = isProject3D(config);
+    const is3DActive = is3D && config.viewMode !== '2d';
 
     const C3D = window.Components3D || Components3D;
     const meshRenderer = C3D ? materia.getComponent(C3D.MeshRenderer3D) : null;
@@ -2196,7 +2204,7 @@ export function focusOnSelectedMateria() {
         size = Math.max(dims.width * Math.abs(transform.scale.x), dims.height * Math.abs(transform.scale.y));
     }
 
-    if (is3D) {
+    if (is3DActive) {
         // Position camera at a distance relative to size
         const distance = Math.max(150, size * 3.0);
         cam.x = transform.x;
@@ -2220,8 +2228,9 @@ export function update() {
     // This will be called from the main editorLoop
     const config = getCurrentProjectConfig();
     const is3D = isProject3D(config);
+    const is3DActive = is3D && config.viewMode !== '2d';
 
-    if (is3D && !window.isGameRunning && getActiveView() === 'scene-content') {
+    if (is3DActive && !window.isGameRunning && getActiveView() === 'scene-content') {
         handle3DCameraNavigation();
 
         // F key to focus
@@ -2318,6 +2327,7 @@ function drawCameraGizmos(renderer, proj = null, view = null, cw = null, ch = nu
     const { ctx, canvas } = renderer;
     const config = getCurrentProjectConfig();
     const is3D = isProject3D(config);
+    const is3DActive = is3D && config.viewMode !== '2d';
     const allMaterias = scene.getAllMaterias();
     const aspect = canvas.width / canvas.height;
     const selectedMateria = getSelectedMateria();
@@ -2335,9 +2345,9 @@ function drawCameraGizmos(renderer, proj = null, view = null, cw = null, ch = nu
 
         ctx.save();
         ctx.strokeStyle = isSelected ? 'rgba(255, 255, 0, 0.8)' : 'rgba(255, 255, 255, 0.4)';
-        ctx.lineWidth = is3D ? 2 : 1 / renderer.camera.effectiveZoom;
+        ctx.lineWidth = is3DActive ? 2 : 1 / renderer.camera.effectiveZoom;
 
-        if (!is3D) {
+        if (!is3DActive) {
             ctx.translate(transform.x, transform.y);
             ctx.rotate(transform.rotation * Math.PI / 180);
             ctx.scale(1, -1);
@@ -2354,7 +2364,7 @@ function drawCameraGizmos(renderer, proj = null, view = null, cw = null, ch = nu
             const halfHeight = size;
             const halfWidth = size * aspect;
 
-            if (is3D) {
+            if (is3DActive) {
                 const z = transform.z || 0;
                 const p1 = { x: transform.x - halfWidth, y: transform.y - halfHeight, z };
                 const p2 = { x: transform.x + halfWidth, y: transform.y - halfHeight, z };
@@ -2373,7 +2383,7 @@ function drawCameraGizmos(renderer, proj = null, view = null, cw = null, ch = nu
             }
 
             // --- Draw Interactive Handles (only for selected camera) ---
-            if (isSelected && !is3D) {
+            if (isSelected && !is3DActive) {
                 ctx.fillStyle = 'rgba(255, 255, 0, 0.9)';
                 const handleSize = 8 / renderer.camera.effectiveZoom;
                 const halfHandle = handleSize / 2;
@@ -2391,7 +2401,7 @@ function drawCameraGizmos(renderer, proj = null, view = null, cw = null, ch = nu
                 });
             }
 
-        } else if (is3D && glm) { // 3D Perspective Frustum
+        } else if (is3DActive && glm) { // 3D Perspective Frustum
             const fovRad = cameraComponent.fov * Math.PI / 180;
             const near = cameraComponent.nearClipPlane;
             const far = Math.min(cameraComponent.farClipPlane, 10000); // Increased limit further for professional feel
@@ -2419,7 +2429,7 @@ function drawCameraGizmos(renderer, proj = null, view = null, cw = null, ch = nu
             const f1 = projectRaw(-farW, farH, far), f2 = projectRaw(farW, farH, far), f3 = projectRaw(farW, -farH, far), f4 = projectRaw(-farW, -farH, far);
 
             const clr = isSelected ? 'rgba(255, 255, 0, 0.8)' : 'rgba(255, 255, 255, 0.4)';
-            const drawL = (p1, p2) => drawLineClipped(ctx, p1, p2, clr, is3D ? 2 : 1 / renderer.camera.effectiveZoom, _proj, _view, _cw, _ch);
+            const drawL = (p1, p2) => drawLineClipped(ctx, p1, p2, clr, is3DActive ? 2 : 1 / renderer.camera.effectiveZoom, _proj, _view, _cw, _ch);
 
             // Near plane
             drawL(n1, n2); drawL(n2, n3); drawL(n3, n4); drawL(n4, n1);
@@ -2541,6 +2551,7 @@ function drawComponentGrids() {
     const { ctx, camera, canvas } = renderer;
     const config = getCurrentProjectConfig();
     const is3D = isProject3D(config);
+    const is3DActive = is3D && config.viewMode !== '2d';
     const zoom = camera.effectiveZoom;
     const prefs = getPreferences();
     const isSceneGridVisible = prefs.showSceneGrid;
@@ -2549,7 +2560,7 @@ function drawComponentGrids() {
     if (cellSize.x <= 0 || cellSize.y <= 0) return;
 
     ctx.save();
-    if (is3D) {
+    if (is3DActive) {
         ctx.setTransform(1, 0, 0, 1, 0, 0); // Screen Space for overlay
         ctx.lineWidth = 1;
         ctx.strokeStyle = 'rgba(0, 150, 255, 0.4)';
@@ -3027,7 +3038,7 @@ export function drawOverlay(customProj = null, customView = null) {
     const cw = renderer.canvas.width;
     const ch = renderer.canvas.height;
 
-    if (is3D) {
+    if (is3DActive) {
         // Reset 2D transform to Screen Space for 3D-projected gizmos
         renderer.ctx.save();
         renderer.ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -3059,7 +3070,7 @@ export function drawOverlay(customProj = null, customView = null) {
         drawFrustumCullingGizmos(proj, view, cw, ch);
     }
 
-    if (is3D) {
+    if (is3DActive) {
         drawOrientationGizmo();
         draw3DGrid();
     }
@@ -3083,7 +3094,9 @@ export function drawOverlay(customProj = null, customView = null) {
         drawPhysicsGizmos(proj, view, cw, ch);
     }
 
-    draw3DPhysicsGizmos(proj, view, cw, ch);
+    if (is3DActive) {
+        draw3DPhysicsGizmos(proj, view, cw, ch);
+    }
 
     if (!is3DActive) {
         // Draw outline for selected Tilemap
@@ -3101,7 +3114,7 @@ export function drawOverlay(customProj = null, customView = null) {
         drawBasicAIGizmos();
     }
 
-    if (is3D) {
+    if (is3DActive) {
         renderer.ctx.restore();
     }
 }
@@ -3209,6 +3222,7 @@ function drawGizmoIcons(proj = null, view = null, cw = null, ch = null) {
     const { ctx, camera } = renderer;
     const config = getCurrentProjectConfig();
     const is3D = isProject3D(config);
+    const is3DActive = is3D && config.viewMode !== '2d';
     const zoom = camera.effectiveZoom;
     const allMaterias = SceneManager.currentScene.getAllMaterias();
 
@@ -3240,7 +3254,7 @@ function drawGizmoIcons(proj = null, view = null, cw = null, ch = null) {
             if (iconImg.complete && iconImg.naturalWidth > 0) {
                 let screenPos;
                 let scale = 1.0;
-                if (is3D) {
+                if (is3DActive) {
                     const worldPos = { x: transform.x, y: transform.y, z: transform.z || 0 };
                     screenPos = world3DToScreen(worldPos, proj, view, cw, ch);
                     // Use standard gizmo scale logic to make icons smaller at distance
@@ -3258,7 +3272,7 @@ function drawGizmoIcons(proj = null, view = null, cw = null, ch = null) {
                     ctx.save();
                     ctx.translate(screenPos.x, screenPos.y);
                     ctx.globalAlpha = 0.8;
-                    const size = (is3D ? BASE_ICON_SIZE * scale : BASE_ICON_SIZE / zoom);
+                    const size = (is3DActive ? BASE_ICON_SIZE * scale : BASE_ICON_SIZE / zoom);
                     ctx.drawImage(iconImg, -size / 2, -size / 2, size, size);
                     ctx.restore();
                 }
@@ -3680,6 +3694,7 @@ function drawPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
 
     const config = getCurrentProjectConfig();
     const is3D = isProject3D(config);
+    const is3DActive = is3D && config.viewMode !== '2d';
 
     // Helper for 3D projected lines
     const strokeRect3D = (cx, cy, w, h, z, rot) => {
@@ -3713,9 +3728,9 @@ function drawPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
 
         ctx.save();
         ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
-        ctx.lineWidth = is3D ? 2 : 2 / camera.effectiveZoom;
+        ctx.lineWidth = is3DActive ? 2 : 2 / camera.effectiveZoom;
 
-        if (is3D) {
+        if (is3DActive) {
             strokeRect3D(centerX, centerY, width, height, transform.z || 0, transform.rotation);
         } else {
             ctx.translate(centerX, centerY);
@@ -3818,13 +3833,14 @@ function drawTilemapOutline(proj = null, view = null, cw = null, ch = null) {
     const { ctx, camera } = renderer;
     const config = getCurrentProjectConfig();
     const is3D = isProject3D(config);
+    const is3DActive = is3D && config.viewMode !== '2d';
     const { cellSize } = grid;
     const { width, height } = tilemap;
 
     const layerWidth = width * cellSize.x;
     const layerHeight = height * cellSize.y;
 
-    if (is3D) {
+    if (is3DActive) {
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
         ctx.lineWidth = 2;
 
@@ -3900,6 +3916,7 @@ function drawTerrenoColliders(proj = null, view = null, cw = null, ch = null) {
     const { ctx, camera } = renderer;
     const config = getCurrentProjectConfig();
     const is3D = isProject3D(config);
+    const is3DActive = is3D && config.viewMode !== '2d';
 
     const drawLine3D = (p1World, p2World) => {
         const p1 = world3DToScreen(p1World, proj, view, cw, ch);
@@ -3926,20 +3943,20 @@ function drawTerrenoColliders(proj = null, view = null, cw = null, ch = null) {
     };
 
     ctx.save();
-    if (!is3D) {
+    if (!is3DActive) {
         ctx.translate(transform.x, transform.y);
         ctx.rotate(transform.rotation * Math.PI / 180);
         ctx.scale(transform.scale.x, transform.scale.y);
     }
 
     ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
-    ctx.lineWidth = is3D ? 2 : 2 / camera.effectiveZoom;
-    if (!is3D) ctx.setLineDash([4 / camera.effectiveZoom, 4 / camera.effectiveZoom]);
+    ctx.lineWidth = is3DActive ? 2 : 2 / camera.effectiveZoom;
+    if (!is3DActive) ctx.setLineDash([4 / camera.effectiveZoom, 4 / camera.effectiveZoom]);
 
     // Draw based on mode to avoid visual clutter from old data
     if (collider.mode === 'Rectangles') {
         for (const rect of collider.generatedColliders) {
-            if (is3D) {
+            if (is3DActive) {
                 drawRect3D(rect.x, rect.y, rect.width, rect.height);
             } else {
                 ctx.strokeRect(rect.x - rect.width / 2, rect.y - rect.height / 2, rect.width, rect.height);
@@ -3953,7 +3970,7 @@ function drawTerrenoColliders(proj = null, view = null, cw = null, ch = null) {
         if (polysToDraw) {
             for (const poly of polysToDraw) {
                 if (poly.vertices && poly.vertices.length > 2) {
-                    if (is3D) {
+                    if (is3DActive) {
                         const rad = (transform.rotation || 0) * Math.PI / 180;
                         const cos = Math.cos(rad), sin = Math.sin(rad);
                         for (let i = 0; i < poly.vertices.length; i++) {
@@ -4016,10 +4033,11 @@ function drawTilemapColliders(proj = null, view = null, cw = null, ch = null) {
     const { ctx, camera } = renderer;
     const config = getCurrentProjectConfig();
     const is3D = isProject3D(config);
+    const is3DActive = is3D && config.viewMode !== '2d';
     const { cellSize } = grid;
 
     const drawColliderRect = (rx, ry, rw, rh) => {
-        if (is3D) {
+        if (is3DActive) {
             // Tiles in Tilemap are local to the Tilemap center.
             // We need to apply rotation manually since we are in screen-space overlay
             const rad = (transform.rotation || 0) * Math.PI / 180;
@@ -4045,15 +4063,15 @@ function drawTilemapColliders(proj = null, view = null, cw = null, ch = null) {
     };
 
     ctx.save();
-    if (!is3D) {
+    if (!is3DActive) {
         ctx.translate(transform.x, transform.y);
         ctx.rotate(transform.rotation * Math.PI / 180);
         ctx.scale(transform.scale.x, transform.scale.y);
     }
 
     ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
-    ctx.lineWidth = is3D ? 2 : 2 / camera.effectiveZoom;
-    if (!is3D) ctx.setLineDash([6 / camera.effectiveZoom, 4 / camera.effectiveZoom]);
+    ctx.lineWidth = is3DActive ? 2 : 2 / camera.effectiveZoom;
+    if (!is3DActive) ctx.setLineDash([6 / camera.effectiveZoom, 4 / camera.effectiveZoom]);
 
     const layerWidth = tilemap.width * cellSize.x;
     const layerHeight = tilemap.height * cellSize.y;
