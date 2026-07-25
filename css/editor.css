@@ -6547,3 +6547,129 @@ body.mobile-mode .submenu li {
     opacity: 0.5;
     text-transform: uppercase;
 }
+
+/* Tree Guidelines and Branches */
+.folder-children {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    margin-left: 14px !important; /* Indentation */
+    padding-left: 4px !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.08) !important; /* Guidelines ("rayitas") */
+}
+
+/* File item inside the tree */
+.tree-file-item {
+    font-size: 0.9em;
+    opacity: 0.85;
+}
+
+.tree-file-item:hover {
+    opacity: 1;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.tree-file-item.active {
+    opacity: 1;
+    background-color: rgba(14, 99, 156, 0.3) !important;
+    border-left: 3px solid var(--accent-color);
+    color: #fff;
+    font-weight: 600;
+}
+
+/* Professional Colors for File types in the tree view */
+/* Folders: Warm Yellow/Amber */
+.tree-folder-item {
+    color: #ffd24d;
+}
+.tree-folder-item .tree-name {
+    color: #e0e0e0; /* keep text readable */
+}
+
+/* Scripts: Cyan/Blue-Teal */
+.file-script .tree-name, .file-script-icon img {
+    color: #4fc3f7;
+}
+.file-script img {
+    filter: invert(72%) sepia(51%) saturate(544%) hue-rotate(174deg) brightness(101%) contrast(97%) !important;
+}
+
+/* CHC / Human Code: Neon Purple/Violet */
+.file-chc .tree-name {
+    color: #d1c4e9;
+}
+.file-chc img {
+    filter: invert(88%) sepia(21%) saturate(996%) hue-rotate(205deg) brightness(96%) contrast(94%) !important;
+}
+
+/* Creative Scratch: Emerald/Neon Green */
+.file-css .tree-name {
+    color: #a7ffeb;
+}
+.file-css img {
+    filter: invert(84%) sepia(48%) saturate(350%) hue-rotate(117deg) brightness(101%) contrast(104%) !important;
+}
+
+/* Animations: Coral/Red-Orange */
+.file-animation .tree-name {
+    color: #ff8a80;
+}
+.file-animation img {
+    filter: invert(71%) sepia(47%) saturate(1619%) hue-rotate(320deg) brightness(101%) contrast(101%) !important;
+}
+
+/* Prefabs: Royal Blue (Unity-style) */
+.file-prefab .tree-name {
+    color: #82b1ff;
+}
+.file-prefab img {
+    filter: invert(67%) sepia(34%) saturate(1915%) hue-rotate(198deg) brightness(103%) contrast(101%) !important;
+}
+
+/* Scenes: Bright Green */
+.file-scene .tree-name {
+    color: #b9f6ca;
+}
+.file-scene img {
+    filter: invert(87%) sepia(35%) saturate(464%) hue-rotate(85deg) brightness(98%) contrast(99%) !important;
+}
+
+/* Audio: Pink/Magenta */
+.file-audio .tree-name {
+    color: #ff80ab;
+}
+.file-audio img {
+    filter: invert(65%) sepia(69%) saturate(1136%) hue-rotate(303deg) brightness(102%) contrast(101%) !important;
+}
+
+/* Images/Textures: Sky Blue */
+.file-image .tree-name {
+    color: #80deea;
+}
+.file-image img {
+    filter: invert(85%) sepia(25%) saturate(589%) hue-rotate(143deg) brightness(96%) contrast(93%) !important;
+}
+
+/* 3D Models: Silver/Grey Metal */
+.file-model3d .tree-name {
+    color: #cfd8dc;
+}
+.file-model3d img {
+    filter: invert(87%) sepia(12%) saturate(161%) hue-rotate(158deg) brightness(93%) contrast(85%) !important;
+}
+
+/* Tile Palettes: Golden Orange */
+.file-palette .tree-name {
+    color: #ffe082;
+}
+.file-palette img {
+    filter: invert(88%) sepia(21%) saturate(718%) hue-rotate(345deg) brightness(102%) contrast(101%) !important;
+}
+
+/* Icons filter normalization */
+.folder-toggle img {
+    filter: brightness(0.6) !important;
+}
+.folder-toggle img:hover {
+    filter: brightness(1) !important;
+}

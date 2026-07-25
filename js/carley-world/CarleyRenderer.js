@@ -59,6 +59,9 @@ export class CarleyRenderer {
                 }
             }
             window.currentCarleyWorld.render();
+            // Sync matrices to the outer renderer instance as well to prevent identity matrix overwrite
+            this.lastProjectionMatrix = window.currentCarleyWorld.renderer.lastProjectionMatrix;
+            this.lastViewMatrix = window.currentCarleyWorld.renderer.lastViewMatrix;
         }
     }
 
