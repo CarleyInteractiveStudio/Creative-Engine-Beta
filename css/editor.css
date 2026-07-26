@@ -6729,7 +6729,8 @@ body.mobile-mode .submenu li {
     vertical-align: middle;
 }
 
-.folder-item:hover .tree-name.can-scroll {
+.folder-item:hover .tree-name.can-scroll,
+.file-item:hover .tree-name.can-scroll {
     text-overflow: clip; /* Clip the ellipsis during scrolling */
     text-indent: var(--scroll-dist, 0px);
 }

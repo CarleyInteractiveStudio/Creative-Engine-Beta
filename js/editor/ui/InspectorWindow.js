@@ -4700,18 +4700,15 @@ async function updateInspectorForAsset(assetName, assetPath) {
                     <h5 style="margin: 0 0 10px 0; color: var(--accent-color); font-size: 0.9em; text-transform: uppercase;">Ajustes de Imagen</h5>
 
                     <div class="inspector-row" style="margin-bottom: 12px;">
-                        <label style="font-size: 0.85em; opacity: 0.8;">Resolución Detectada:</label>
-                        <span id="detected-resolution" style="font-weight: bold; font-family: monospace; font-size: 0.9em;">Detectando...</span>
+                        <label style="font-size: 0.85em; opacity: 0.8;">Calidad de Imagen (Ancho en px):</label>
+                        <select id="image-quality-pixels-select" style="flex-grow: 1;">
+                            <option value="">Cargando calidad...</option>
+                        </select>
                     </div>
 
-                    <div class="prop-row-multi" style="margin-bottom: 12px;">
-                        <label style="font-size: 0.85em; opacity: 0.8;">Tamaño Deseado (px):</label>
-                        <div class="prop-inputs" style="display: flex; gap: 6px;">
-                            <input type="number" id="custom-width" placeholder="W" style="width: 70px; text-align: center;" min="1" value="${metaData.customWidth || ''}">
-                            <span style="align-self: center; opacity: 0.5;">x</span>
-                            <input type="number" id="custom-height" placeholder="H" style="width: 70px; text-align: center;" min="1" value="${metaData.customHeight || ''}">
-                            <button id="btn-reset-size" class="small-btn" title="Restablecer tamaño original" style="padding: 2px 8px; font-size: 0.8em; cursor: pointer; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: white;">Nativo</button>
-                        </div>
+                    <div class="inspector-row" style="margin-bottom: 12px;">
+                        <label style="font-size: 0.85em; opacity: 0.8;">Píxeles Personalizados:</label>
+                        <input type="number" id="custom-pixels-input" placeholder="Escribe cantidad px" style="flex-grow: 1;" min="1" value="${metaData.customWidth || ''}">
                     </div>
 
                     <div class="inspector-row" style="margin-bottom: 12px;">
@@ -4867,17 +4864,68 @@ async function updateInspectorForAsset(assetName, assetPath) {
                     tempImg.onload = () => {
                         nativeWidth = tempImg.naturalWidth;
                         nativeHeight = tempImg.naturalHeight;
-                        const resSpan = document.getElementById('detected-resolution');
-                        if (resSpan) {
-                            resSpan.textContent = `${nativeWidth} x ${nativeHeight} px`;
-                        }
-                        const customW = document.getElementById('custom-width');
-                        const customH = document.getElementById('custom-height');
-                        if (customW && customH) {
-                            customW.max = nativeWidth;
-                            customH.max = nativeHeight;
-                            if (!customW.value) customW.value = nativeWidth;
-                            if (!customH.value) customH.value = nativeHeight;
+
+                        const qualitySelect = document.getElementById('image-quality-pixels-select');
+                        const customPixelsInput = document.getElementById('custom-pixels-input');
+
+                        if (qualitySelect) {
+                            qualitySelect.innerHTML = '';
+
+                            const percentages = [100, 70, 50, 30, 10];
+                            percentages.forEach(pct => {
+                                const pxVal = Math.round(nativeWidth * (pct / 100));
+                                const opt = document.createElement('option');
+                                opt.value = pxVal;
+                                opt.textContent = `${pxVal} px`;
+                                qualitySelect.appendChild(opt);
+                            });
+
+                            // Synchronize with existing custom width if saved
+                            if (metaData.customWidth) {
+                                customPixelsInput.value = metaData.customWidth;
+                                // If the customWidth matches one of the options exactly, select it
+                                const matchedOpt = Array.from(qualitySelect.options).find(o => parseInt(o.value, 10) === metaData.customWidth);
+                                if (matchedOpt) {
+                                    qualitySelect.value = metaData.customWidth;
+                                } else {
+                                    // Custom value that doesn't match standard percentages, add a temporary custom option
+                                    const opt = document.createElement('option');
+                                    opt.value = metaData.customWidth;
+                                    opt.textContent = `${metaData.customWidth} px`;
+                                    opt.selected = true;
+                                    qualitySelect.insertBefore(opt, qualitySelect.firstChild);
+                                }
+                            } else {
+                                qualitySelect.value = nativeWidth;
+                                customPixelsInput.value = nativeWidth;
+                            }
+
+                            qualitySelect.onchange = () => {
+                                customPixelsInput.value = qualitySelect.value;
+                            };
+
+                            customPixelsInput.oninput = () => {
+                                const manualVal = parseInt(customPixelsInput.value, 10);
+                                if (!isNaN(manualVal) && manualVal > 0) {
+                                    const hasOption = Array.from(qualitySelect.options).some(o => parseInt(o.value, 10) === manualVal);
+                                    if (hasOption) {
+                                        qualitySelect.value = manualVal;
+                                    } else {
+                                        // Remove any existing temporary non-percentage option
+                                        Array.from(qualitySelect.options).forEach(o => {
+                                            const pctCheck = [100, 70, 50, 30, 10].map(p => Math.round(nativeWidth * (p / 100)));
+                                            if (!pctCheck.includes(parseInt(o.value, 10))) {
+                                                o.remove();
+                                            }
+                                        });
+                                        const opt = document.createElement('option');
+                                        opt.value = manualVal;
+                                        opt.textContent = `${manualVal} px`;
+                                        opt.selected = true;
+                                        qualitySelect.insertBefore(opt, qualitySelect.firstChild);
+                                    }
+                                }
+                            };
                         }
                     };
                     tempImg.src = url;
@@ -4925,19 +4973,6 @@ async function updateInspectorForAsset(assetName, assetPath) {
                         }
                         btnAutoDetect.textContent = "Detectar Automáticamente";
                         btnAutoDetect.disabled = false;
-                    }
-                };
-            }
-
-            // Reset Size Button handler
-            const btnResetSize = settingsContainer.querySelector('#btn-reset-size');
-            if (btnResetSize) {
-                btnResetSize.onclick = () => {
-                    const customW = document.getElementById('custom-width');
-                    const customH = document.getElementById('custom-height');
-                    if (customW && customH && nativeWidth && nativeHeight) {
-                        customW.value = nativeWidth;
-                        customH.value = nativeHeight;
                     }
                 };
             }
@@ -5011,8 +5046,18 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 } catch (e) { /* no-op, will create a new one */ }
 
                 currentMetaData.textureType = document.getElementById('texture-type').value;
-                currentMetaData.customWidth = parseInt(document.getElementById('custom-width').value, 10) || null;
-                currentMetaData.customHeight = parseInt(document.getElementById('custom-height').value, 10) || null;
+
+                const customWInput = document.getElementById('custom-pixels-input');
+                const targetWidth = customWInput ? parseInt(customWInput.value, 10) : null;
+
+                if (targetWidth && targetWidth > 0 && nativeWidth && nativeHeight) {
+                    currentMetaData.customWidth = targetWidth;
+                    // Compute scaled height proportionally to maintain exact aspect ratio
+                    currentMetaData.customHeight = Math.round(nativeHeight * (targetWidth / nativeWidth));
+                } else {
+                    currentMetaData.customWidth = null;
+                    currentMetaData.customHeight = null;
+                }
 
                 if (currentMetaData.textureType === 'Texture') {
                     currentMetaData.wrapMode = 'Repeat';
