@@ -1187,8 +1187,107 @@ export async function updateAssetBrowser() {
     try {
         const libHandle = await projectHandle.getDirectoryHandle('lib', { create: true });
 
-        await populateFolderTree(assetsHandle, 'Assets', folderTreeContainer);
-        await populateFolderTree(libHandle, 'lib', folderTreeContainer);
+        // Helper to render a master root folder in the tree view
+        const createRootFolderItem = async (folderHandle, folderPath, labelName) => {
+            const folderItem = document.createElement('div');
+            folderItem.className = 'folder-item tree-folder-item';
+            folderItem.dataset.path = folderPath;
+
+            const isCollapsed = collapsedFolders.has(folderPath);
+
+            // Arrow toggle icon
+            const toggle = document.createElement('span');
+            toggle.className = 'folder-toggle';
+            toggle.classList.add('has-children');
+            toggle.innerHTML = `<img src="icons/arrow-right.svg" class="ce-icon arrow-icon" style="width: 10px; height: 10px; transition: transform 0.2s; ${!isCollapsed ? 'transform: rotate(90deg);' : ''}">`;
+
+            toggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (collapsedFolders.has(folderPath)) {
+                    collapsedFolders.delete(folderPath);
+                } else {
+                    collapsedFolders.add(folderPath);
+                }
+                updateAssetBrowser();
+            });
+            folderItem.appendChild(toggle);
+
+            // Folder Icon
+            const folderIcon = document.createElement('span');
+            folderIcon.className = 'tree-icon folder-icon';
+            folderIcon.innerHTML = `<img src="icons/folder.svg" class="ce-icon" style="width: 14px; height: 14px; margin-right: 6px; vertical-align: middle;">`;
+            folderItem.appendChild(folderIcon);
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'tree-name';
+            nameSpan.textContent = labelName;
+            nameSpan.title = labelName;
+            folderItem.appendChild(nameSpan);
+
+            if (currentDirectoryHandle.path === folderPath) {
+                folderItem.classList.add('active');
+            }
+
+            folderItem.addEventListener('click', (e) => {
+                e.stopPropagation();
+                dom.assetFolderTree.querySelectorAll('.folder-item').forEach(i => i.classList.remove('active'));
+                dom.assetGridView.querySelectorAll('.grid-item').forEach(i => i.classList.remove('active'));
+
+                folderItem.classList.add('active');
+                currentDirectoryHandle = { handle: folderHandle, path: folderPath };
+                onAssetSelected(labelName, folderPath, 'directory');
+                updateAssetBrowser();
+            });
+
+            folderItem.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                if (collapsedFolders.has(folderPath)) {
+                    collapsedFolders.delete(folderPath);
+                } else {
+                    collapsedFolders.add(folderPath);
+                }
+                updateAssetBrowser();
+            });
+
+            // Setup drag and drop for master folders
+            folderItem.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; folderItem.classList.add('drag-over'); });
+            folderItem.addEventListener('dragleave', () => folderItem.classList.remove('drag-over'));
+            folderItem.addEventListener('drop', async (e) => {
+                folderItem.classList.remove('drag-over');
+                e.preventDefault();
+                e.stopPropagation();
+                dom.assetsContent.classList.remove('drag-over-fs');
+
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    currentDirectoryHandle = { handle: folderHandle, path: folderPath };
+                    await handleExternalFileDrop(e);
+                    return;
+                }
+
+                try {
+                    const dataText = e.dataTransfer.getData('text/plain');
+                    if (dataText) {
+                        const droppedData = JSON.parse(dataText);
+                        await handleDropOnFolder(folderHandle, folderPath, droppedData);
+                    }
+                } catch(err) {
+                    console.warn("[AssetBrowser] Error drag-drop on master root folder:", err);
+                }
+            });
+
+            folderTreeContainer.appendChild(folderItem);
+
+            if (!isCollapsed) {
+                const childrenContainer = document.createElement('div');
+                childrenContainer.className = 'folder-children';
+                folderTreeContainer.appendChild(childrenContainer);
+                await populateFolderTree(folderHandle, folderPath, childrenContainer, 1);
+            }
+        };
+
+        // Render "Assets" and "lib" folders
+        await createRootFolderItem(assetsHandle, 'Assets', 'Assets');
+        await createRootFolderItem(libHandle, 'lib', 'Librerías (lib)');
 
         await populateGridView(currentDirectoryHandle.handle, currentDirectoryHandle.path);
     } catch (error) {

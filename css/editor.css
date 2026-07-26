@@ -6668,10 +6668,10 @@ body.mobile-mode .submenu li {
 
 /* Icons filter normalization */
 .folder-toggle img {
-    filter: brightness(0.6) !important;
+    filter: brightness(1) !important;
 }
 .folder-toggle img:hover {
-    filter: brightness(1) !important;
+    filter: brightness(1.2) !important;
 }
 
 /* Custom Scrollbars */
@@ -6702,15 +6702,15 @@ body.mobile-mode .submenu li {
 .tree-name {
     display: inline-block !important;
     white-space: nowrap;
-    max-width: 130px; /* Adjust maximum visible width in sidebar */
+    max-width: 110px; /* Adjust maximum visible width in sidebar */
     overflow: hidden;
     text-overflow: ellipsis; /* Show points suspensivos by default */
-    transition: transform 2s ease-in-out;
-    transform: translateX(0);
+    transition: text-indent 2s ease-in-out;
+    text-indent: 0;
     vertical-align: middle;
 }
 
 .folder-item:hover .tree-name.can-scroll {
     text-overflow: clip; /* Clip the ellipsis during scrolling */
-    transform: translateX(var(--scroll-dist, 0px));
+    text-indent: var(--scroll-dist, 0px);
 }
