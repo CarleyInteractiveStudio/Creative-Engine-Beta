@@ -985,6 +985,12 @@ export async function updateAssetBrowser() {
                  const nameSpan = document.createElement('span');
                  nameSpan.className = 'tree-name';
                  nameSpan.textContent = entry.name;
+                 nameSpan.title = entry.name;
+                 if (entry.name.length > 15) {
+                     nameSpan.classList.add('can-scroll');
+                     const scrollPixels = -Math.min(250, (entry.name.length - 14) * 7.5);
+                     nameSpan.style.setProperty('--scroll-dist', `${scrollPixels}px`);
+                 }
                  folderItem.appendChild(nameSpan);
 
                  if (currentDirectoryHandle.handle && await entry.isSameEntry(currentDirectoryHandle.handle)) {
@@ -1114,11 +1120,19 @@ export async function updateAssetBrowser() {
                  const nameSpan = document.createElement('span');
                  nameSpan.className = 'tree-name';
                  const lastDot = entry.name.lastIndexOf('.');
-                 nameSpan.textContent = lastDot !== -1 ? entry.name.substring(0, lastDot) : entry.name;
+                 const baseName = lastDot !== -1 ? entry.name.substring(0, lastDot) : entry.name;
+                 nameSpan.textContent = baseName;
+                 nameSpan.title = entry.name;
+                 if (baseName.length > 15) {
+                     nameSpan.classList.add('can-scroll');
+                     const scrollPixels = -Math.min(250, (baseName.length - 14) * 7.5);
+                     nameSpan.style.setProperty('--scroll-dist', `${scrollPixels}px`);
+                 }
                  fileItem.appendChild(nameSpan);
 
                  // If this file is currently selected, highlight it
-                 if (contextAsset && contextAsset.name === entry.name && contextAsset.kind === 'file') {
+                 const selAsset = window.getSelectedAsset ? window.getSelectedAsset() : null;
+                 if (selAsset && selAsset.name === entry.name && selAsset.kind === 'file') {
                      fileItem.classList.add('active');
                  }
 

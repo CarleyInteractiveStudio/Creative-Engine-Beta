@@ -17,6 +17,7 @@ import { initialize as initializeAssetBrowser, updateAssetBrowser, getCurrentDir
 import { initialize as initializeUIEditor, openUiAsset, openUiEditor as openUiEditorFromModule, createUiSystemFile } from './editor/ui/UIEditorWindow.js';
 import { initialize as initializeMusicPlayer } from './editor/ui/MusicPlayerWindow.js';
 import { initialize as initializeImportExport } from './editor/ui/PackageImportExportWindow.js';
+import * as AudioEditorWindow from './editor/ui/AudioEditorWindow.js';
 import { transpile } from './editor/CES_Transpiler.js';
 import * as SceneView from './editor/SceneView.js';
 import * as MathUtils from './engine/MathUtils.js';
@@ -1311,7 +1312,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'particle-editor-panel': 'menu-window-particle-editor',
             'visual-scripting-panel': 'menu-window-visual-scripting',
             'scene-panel': 'menu-window-scene',
-            'updates-panel': 'menu-window-updates'
+            'updates-panel': 'menu-window-updates',
+            'audio-editor-panel': 'menu-window-audio-editor'
         };
         const checkmark = '✓ ';
 
@@ -4814,6 +4816,7 @@ public start() {
 
             // --- Define Callbacks & Helpers ---
             const getSelectedAsset = () => selectedAsset;
+            window.getSelectedAsset = getSelectedAsset;
             const extractFramesAndCreateAsset = async (assetPath, metaData, animName, dirHandle) => {
                 try {
                     const frames = await extractFramesFromSheet(assetPath, metaData);
@@ -5055,6 +5058,15 @@ public start() {
                 SceneManager,
                 currentProjectConfig
             });
+
+            AudioEditorWindow.initialize({
+                dom,
+                projectsDirHandle,
+                getCurrentDirectoryHandle,
+                saveAssetMetaCallback: saveAssetMeta,
+                updateAssetBrowserCallback: updateAssetBrowser
+            });
+            window.AudioEditorWindow = AudioEditorWindow;
 
             // Initialize all runtime APIs through the central manager
             // EngineAPI.initialize({

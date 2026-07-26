@@ -6702,14 +6702,15 @@ body.mobile-mode .submenu li {
 .tree-name {
     display: inline-block !important;
     white-space: nowrap;
-    max-width: 180px; /* Adjust maximum visible width in sidebar */
+    max-width: 130px; /* Adjust maximum visible width in sidebar */
     overflow: hidden;
-    text-overflow: clip; /* Hide standard ellipsis to allow continuous scrolling */
+    text-overflow: ellipsis; /* Show points suspensivos by default */
     transition: transform 2s ease-in-out;
     transform: translateX(0);
     vertical-align: middle;
 }
 
 .folder-item:hover .tree-name.can-scroll {
+    text-overflow: clip; /* Clip the ellipsis during scrolling */
     transform: translateX(var(--scroll-dist, 0px));
 }
