@@ -1144,6 +1144,7 @@ export async function updateAssetBrowser() {
                      dom.assetGridView.querySelectorAll('.grid-item').forEach(i => i.classList.remove('active'));
 
                      fileItem.classList.add('active');
+                     currentDirectoryHandle = { handle: dirHandle, path: currentPath };
                      contextAsset = { name: entry.name, kind: 'file' };
                      onAssetSelected(entry.name, entryPath, 'file');
                  });

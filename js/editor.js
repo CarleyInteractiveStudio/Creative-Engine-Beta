@@ -1398,7 +1398,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentProjectConfig.realismLevel === undefined) currentProjectConfig.realismLevel = 50;
 
             window.currentProjectConfig = currentProjectConfig;
-            console.log("Configuracion del proyecto cargada:", currentProjectConfig);
+            console.log("Configuración del proyecto cargada correctamente.");
 
             // --- Coordinate System Migration (+Y UP) ---
             // El sistema de migración innecesaria ha sido desactivado para prevenir alertas molestas.
