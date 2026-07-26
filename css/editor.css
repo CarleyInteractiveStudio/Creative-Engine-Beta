@@ -6673,3 +6673,43 @@ body.mobile-mode .submenu li {
 .folder-toggle img:hover {
     filter: brightness(1) !important;
 }
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    border: 1px solid transparent;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-color, #0e639c);
+}
+
+/* Firefox support */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) rgba(0, 0, 0, 0.15);
+}
+
+/* Hover Scroll Marquee effect for long names */
+.tree-name {
+    display: inline-block !important;
+    white-space: nowrap;
+    max-width: 180px; /* Adjust maximum visible width in sidebar */
+    overflow: hidden;
+    text-overflow: clip; /* Hide standard ellipsis to allow continuous scrolling */
+    transition: transform 2s ease-in-out;
+    transform: translateX(0);
+    vertical-align: middle;
+}
+
+.folder-item:hover .tree-name.can-scroll {
+    transform: translateX(var(--scroll-dist, 0px));
+}
