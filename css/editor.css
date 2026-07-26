@@ -3327,6 +3327,22 @@ body.mobile-mode .component-item:active {
 
 .prop-row-multi .prop-inputs input {
     width: 100%;
+    box-sizing: border-box !important;
+}
+
+#inspector-panel *,
+#inspector-panel *::before,
+#inspector-panel *::after {
+    box-sizing: border-box !important;
+}
+
+#inspector-panel {
+    overflow-x: hidden !important;
+}
+
+#inspector-panel .panel-content {
+    overflow-x: hidden !important;
+    max-width: 100% !important;
 }
 
 
@@ -3501,8 +3517,11 @@ body.mobile-mode .component-item:active {
 }
 
 #inspector-panel input[type="text"],
-#inspector-panel input[type="number"] {
-    width: calc(100% - 16px); /* Adjust for padding */
+#inspector-panel input[type="number"],
+#inspector-panel select,
+#inspector-panel textarea {
+    width: 100%;
+    box-sizing: border-box !important;
     font-size: 1em;
 }
 
