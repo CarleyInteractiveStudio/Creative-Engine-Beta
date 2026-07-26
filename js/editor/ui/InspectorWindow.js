@@ -4517,37 +4517,9 @@ async function updateInspectorForMateria(selectedMateria) {
     };
 
     // --- Renderizado Organizado ---
-
-    // 1. Renderizar 3D en una sección colapsada por defecto
-    const all3D = [].concat(...Object.values(components3D));
-    if (all3D.length > 0) {
-        const fold3D = document.createElement('details');
-        fold3D.className = 'inspector-section-fold'; // Usamos una clase común
-        fold3D.open = true; // 3D abierto por defecto
-        const summary = document.createElement('summary');
-        summary.textContent = L.get('LEYES_3D', 'Leyes 3D');
-        fold3D.appendChild(summary);
-
-        const innerWrapper = document.createElement('div');
-        renderComponentList(all3D, innerWrapper);
-        fold3D.appendChild(innerWrapper);
-        componentsWrapper.appendChild(fold3D);
-    }
-
-    // 2. Renderizar 2D en una sección colapsada por defecto
-    if (components2D.length > 0) {
-        const fold2D = document.createElement('details');
-        fold2D.className = 'inspector-section-fold';
-        // fold2D.open = false; // Cerrado por defecto
-        const summary = document.createElement('summary');
-        summary.textContent = L.get('LEYES_2D', 'Leyes 2D');
-        fold2D.appendChild(summary);
-
-        const innerWrapper = document.createElement('div');
-        renderComponentList(components2D, innerWrapper);
-        fold2D.appendChild(innerWrapper);
-        componentsWrapper.appendChild(fold2D);
-    }
+    // List all components directly without any 2D/3D division, folds or summaries
+    const allComponents = selectedMateria.leyes.map((ley, index) => ({ ley, index }));
+    renderComponentList(allComponents, componentsWrapper);
 
     if (currentId !== lastUpdateId) return;
     dom.inspectorContent.appendChild(componentsWrapper);
@@ -5327,20 +5299,7 @@ export async function showAddComponentModal() {
     // --- 1. Render Built-in Components ---
     const L = window.Localization;
     const projectConfig = getCurrentProjectConfig();
-
-    // View Mode determines the filtering (simulated 2D or full 3D)
-    const viewMode = projectConfig.viewMode || '3d';
-
-    // Top-level containers
-    const container3D = document.createElement('details');
-    container3D.className = 'component-master-category';
-    container3D.open = (viewMode === '3d');
-    container3D.innerHTML = `<summary><h3>3D</h3></summary>`;
-
-    const container2D = document.createElement('details');
-    container2D.className = 'component-master-category';
-    container2D.open = (viewMode === '2d');
-    container2D.innerHTML = `<summary><h3>2D</h3></summary>`;
+    const projectType = projectConfig.projectType || '3d';
 
     const containerScripts = document.createElement('details');
     containerScripts.className = 'component-master-category';
@@ -5350,8 +5309,6 @@ export async function showAddComponentModal() {
     containerLibraries.className = 'component-master-category';
     containerLibraries.innerHTML = `<summary><h3>${L.get('LIBRERIAS', 'Librerías')}</h3></summary>`;
 
-    dom.componentList.appendChild(container3D);
-    dom.componentList.appendChild(container2D);
     dom.componentList.appendChild(containerScripts);
     dom.componentList.appendChild(containerLibraries);
 
@@ -5359,7 +5316,8 @@ export async function showAddComponentModal() {
         const is3D = category.endsWith('_3D');
         const is2D = !is3D && category !== 'CAT_SCRIPTING';
 
-        if (viewMode === '2d' && is3D) continue;
+        if (projectType === '2d' && is3D) continue;
+        if (projectType === '3d' && is2D) continue;
         if (category === 'CAT_SCRIPTING') continue;
 
         const categoryWrapper = document.createElement('div');
@@ -5391,8 +5349,8 @@ export async function showAddComponentModal() {
         categoryWrapper.appendChild(categoryHeader);
         categoryWrapper.appendChild(categoryContent);
 
-        if (is3D) container3D.appendChild(categoryWrapper);
-        else container2D.appendChild(categoryWrapper);
+        // Insert built-in component categories before Scripts/Libraries
+        dom.componentList.insertBefore(categoryWrapper, containerScripts);
 
         availableComponents[category].forEach(ComponentClassOrName => {
             const L = window.Localization;

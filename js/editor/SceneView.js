@@ -3327,16 +3327,17 @@ function drawRaycastGizmos() {
     ctx.restore();
 }
 
-function draw3DGyzmoRects(gyzmo) {
+function draw3DGyzmoRects(gyzmo, customProj = null, customView = null, customCw = null, customCh = null) {
     const transform = gyzmo.materia.getComponent(Components.Transform);
     if (!transform) return;
 
     const { ctx } = renderer;
 
     const r3d = window._Renderer3D;
-    const proj = r3d?.lastProjectionMatrix;
-    const view = r3d?.lastViewMatrix;
-    const cw = r3d?.canvas?.width, ch = r3d?.canvas?.height;
+    const proj = customProj || r3d?.lastProjectionMatrix;
+    const view = customView || r3d?.lastViewMatrix;
+    const cw = customCw || r3d?.canvas?.width || 800;
+    const ch = customCh || r3d?.canvas?.height || 600;
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
