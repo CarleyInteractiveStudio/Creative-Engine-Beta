@@ -1421,6 +1421,10 @@ async function handleGridDblClick(e) {
     const kind = item.dataset.kind;
     const path = item.dataset.path;
 
+    if (kind === 'sub-sprite') {
+        return;
+    }
+
     if (kind === 'directory') {
         currentDirectoryHandle = { handle: await currentDirectoryHandle.handle.getDirectoryHandle(name), path: path };
         updateAssetBrowserCallback();

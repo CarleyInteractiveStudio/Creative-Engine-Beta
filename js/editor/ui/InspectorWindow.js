@@ -4540,6 +4540,12 @@ async function updateInspectorForAsset(assetName, assetPath) {
         return;
     }
 
+    const selectedAsset = getSelectedAsset();
+    if (selectedAsset && selectedAsset.kind === 'directory') {
+        dom.inspectorContent.innerHTML = `<h4>Asset: ${assetName}</h4><p>Tipo: Carpeta</p>`;
+        return;
+    }
+
     dom.inspectorContent.innerHTML = `<h4>Asset: ${assetName}</h4>`;
 
     const selectedAssetEl = dom.assetGridView.querySelector('.grid-item.active');
@@ -4550,7 +4556,6 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
     try {
         const L = window.Localization;
-        const selectedAsset = getSelectedAsset();
         let dirHandle = selectedAsset && selectedAsset.dirHandle ? selectedAsset.dirHandle : null;
         if (!dirHandle) {
             dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
