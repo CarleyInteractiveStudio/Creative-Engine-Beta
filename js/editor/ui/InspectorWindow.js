@@ -5832,7 +5832,12 @@ async function renderCeSpriteInspector(content, dirHandle, assetPath) {
 
         dom.inspectorContent.appendChild(container);
 
-        const sourceImageUrl = await getURLForAssetPath(`Assets/${sourceImageName}`, projectsDirHandle);
+        const parentPath = assetPath.includes('/') ? assetPath.substring(0, assetPath.lastIndexOf('/')) : 'Assets';
+        const imageAssetPath = `${parentPath}/${sourceImageName}`;
+        let sourceImageUrl = await getURLForAssetPath(imageAssetPath, projectsDirHandle);
+        if (!sourceImageUrl) {
+            sourceImageUrl = await getURLForAssetPath(`Assets/${sourceImageName}`, projectsDirHandle);
+        }
         if (!sourceImageUrl) {
             gallery.innerHTML = `<p class="error-message">${L.get('ERROR_LOAD_SOURCE_IMAGE', 'Could not load source image.')}</p>`;
             return;
