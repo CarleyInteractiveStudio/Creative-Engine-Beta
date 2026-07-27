@@ -1407,7 +1407,7 @@ function handleGridClick(e) {
 
     if (item) {
         item.classList.add('active');
-        onAssetSelected(item.dataset.name, item.dataset.path, item.dataset.kind, null, currentDirectoryHandle.handle);
+        onAssetSelected(item.dataset.name, item.dataset.path, item.dataset.kind, null, currentDirectoryHandle.handle, item.dataset.subSpriteName || null);
     } else {
         onAssetSelected(null, null, null);
     }
@@ -1719,6 +1719,10 @@ function createSubAssetItem(container, name, icon, dragData) {
     const item = document.createElement('div');
     item.className = 'grid-item sub-asset-item';
     item.draggable = true;
+    item.dataset.name = name;
+    item.dataset.path = dragData.assetPath;
+    item.dataset.kind = 'sub-sprite';
+    item.dataset.subSpriteName = name;
 
     const iconContainer = document.createElement('div');
     iconContainer.className = 'icon';

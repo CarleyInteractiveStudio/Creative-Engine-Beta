@@ -4863,7 +4863,7 @@ public start() {
                     showNotificationDialog('Error', "No se pudo crear la animacion.");
                 }
             };
-            const onAssetSelected = (assetName, assetPath, assetKind, fileHandle = null, dirHandle = null) => {
+            const onAssetSelected = (assetName, assetPath, assetKind, fileHandle = null, dirHandle = null, subSpriteName = null) => {
                 if (assetName) {
                     // When an asset is selected, deselect any Materia
                     selectMateria(null);
@@ -4872,7 +4872,8 @@ public start() {
                         path: assetPath,
                         kind: assetKind,
                         fileHandle: fileHandle,
-                        dirHandle: dirHandle
+                        dirHandle: dirHandle,
+                        subSpriteName: subSpriteName || (assetKind === 'sub-sprite' ? assetName : null)
                     };
                 } else {
                     selectedAsset = null;
