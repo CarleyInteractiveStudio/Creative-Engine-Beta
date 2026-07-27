@@ -4570,8 +4570,30 @@ async function updateInspectorForAsset(assetName, assetPath) {
             const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
             fileHandle = await getFileHandleForPath(selectedAsset.path, currentDirHandle);
         } else {
-            fileHandle = selectedAsset && selectedAsset.fileHandle ? selectedAsset.fileHandle : await dirHandle.getFileHandle(assetName);
+            fileHandle = selectedAsset && selectedAsset.fileHandle ? selectedAsset.fileHandle : null;
+            if (!fileHandle) {
+                try {
+                    fileHandle = await dirHandle.getFileHandle(assetName);
+                } catch (e) {
+                    try {
+                        fileHandle = await dirHandle.getDirectoryHandle(assetName);
+                    } catch (e2) {
+                        fileHandle = null;
+                    }
+                }
+            }
         }
+
+        if (!fileHandle) {
+            dom.inspectorContent.innerHTML = `<p class="inspector-placeholder error-message">Asset no encontrado</p>`;
+            return;
+        }
+
+        if (fileHandle.kind === 'directory' || typeof fileHandle.getFile !== 'function') {
+            dom.inspectorContent.innerHTML = `<h4>Asset: ${assetName}</h4><p>Tipo: Carpeta</p>`;
+            return;
+        }
+
         const file = await fileHandle.getFile();
         const lowerName = assetName.toLowerCase();
 
