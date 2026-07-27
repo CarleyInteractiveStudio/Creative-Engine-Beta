@@ -532,7 +532,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'tile-palette-panel', 'palette-asset-name', 'palette-save-btn', 'palette-load-btn', 'palette-edit-btn',
             'palette-file-name', 'palette-selected-tile-id',
             'palette-view-container', 'palette-grid-canvas', 'palette-panel-overlay',
-            'palette-organize-sidebar', 'palette-associate-sprite-btn', 'palette-disassociate-sprite-btn', 'palette-delete-sprite-btn', 'palette-sprite-pack-list',
+            'palette-organize-sidebar', 'palette-associate-sprite-btn', 'palette-disassociate-sprite-btn', 'palette-delete-sprite-btn', 'palette-sprite-pack-list', 'palette-auto-organize-btn',
             // Sprite Slicer Panel Elements
             'sprite-slicer-panel', 'slicer-load-image-btn', 'slicer-create-asset-btn', 'sprite-slicer-overlay',
             'slicer-canvas', 'slice-type', 'slice-grid-cell-size-options',
@@ -1230,6 +1230,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateCanvasInteractivity = async function() {
         if (!currentProjectConfig) return;
+
+        // If the project type is strictly 2D, do not load 3D engine components at all.
+        if (currentProjectConfig.projectType === '2d') {
+            if (dom.sceneCanvas3d) dom.sceneCanvas3d.style.display = 'none';
+            if (dom.gameCanvas3d) dom.gameCanvas3d.style.display = 'none';
+            if (dom.sceneCanvas) {
+                dom.sceneCanvas.style.pointerEvents = 'all';
+                dom.sceneCanvas.style.zIndex = '1';
+                dom.sceneCanvas.style.display = 'block';
+            }
+            if (dom.gameCanvas) {
+                dom.gameCanvas.style.pointerEvents = 'all';
+                dom.gameCanvas.style.zIndex = '1';
+                dom.gameCanvas.style.display = 'block';
+            }
+            if (dom.btnToggle2d3d) {
+                dom.btnToggle2d3d.style.display = 'none';
+            }
+            const label = document.getElementById('label-2d-3d');
+            const icon = document.getElementById('icon-2d-3d');
+            if (label) label.textContent = 'Vista 2D';
+            if (icon) icon.src = 'icons/layers.svg';
+            return;
+        }
 
         // Unified Engine: Everything is 3D-capable now.
         // projectType is kept for metadata but no longer blocks 3D loading.
@@ -4832,13 +4856,14 @@ public start() {
                     const fileName = `${animName}.cea`;
                     await createAsset(fileName, JSON.stringify(animationData, null, 2), dirHandle);
                     updateAssetBrowser();
-                    showNotificationDialog('Exito', `Animacion '${animName}' creada correctamente.`);
+                    const displayAnimName = animName.replace(/\.[^/.]+$/, "");
+                    showNotificationDialog('Exito', `Animacion '${displayAnimName}' creada correctamente.`);
                 } catch (error) {
                     console.error("Error al extraer frames:", error);
                     showNotificationDialog('Error', "No se pudo crear la animacion.");
                 }
             };
-            const onAssetSelected = (assetName, assetPath, assetKind, fileHandle = null, dirHandle = null) => {
+            const onAssetSelected = (assetName, assetPath, assetKind, fileHandle = null, dirHandle = null, subSpriteName = null) => {
                 if (assetName) {
                     // When an asset is selected, deselect any Materia
                     selectMateria(null);
@@ -4847,7 +4872,8 @@ public start() {
                         path: assetPath,
                         kind: assetKind,
                         fileHandle: fileHandle,
-                        dirHandle: dirHandle
+                        dirHandle: dirHandle,
+                        subSpriteName: subSpriteName || (assetKind === 'sub-sprite' ? assetName : null)
                     };
                 } else {
                     selectedAsset = null;
@@ -5093,12 +5119,14 @@ public start() {
                 await loadProjectConfig();
             } else {
                 // In test mode, populate with a full default config to prevent errors
+                const urlParams = new URLSearchParams(window.location.search);
+                const queryProjectType = urlParams.get('projectType') || '3d';
                 const defaultConfig = {
                     appName: 'TestProject',
                     authorName: 'Test Author',
                     appVersion: '1.0.0',
-                    projectType: '3d',
-                    rendererMode: '3d-mode',
+                    projectType: queryProjectType,
+                    rendererMode: queryProjectType === '2d' ? 'canvas2d' : '3d-mode',
                     showEngineLogo: true,
                     keystore: { path: '', pass: '', alias: '', aliasPass: '' },
                     iconPath: '',

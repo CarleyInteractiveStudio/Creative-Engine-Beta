@@ -1,4 +1,4 @@
-import { getURLForAssetPath, clearAssetCache } from '../../engine/AssetUtils.js';
+import { getURLForAssetPath, clearAssetCache, getFileHandleForPath } from '../../engine/AssetUtils.js';
 
 // --- Animation Editor Module ---
 
@@ -774,7 +774,45 @@ export function initializeAnimationEditor(dependencies) {
         e.preventDefault(); dom.animationPanel.classList.remove('drag-over');
         if (!currentAnimationAsset) return;
         const dataText = e.dataTransfer.getData('text/plain');
-        if (dataText) { try { const data = JSON.parse(dataText); if (data.type === 'Asset' && (data.name.endsWith('.png') || data.name.endsWith('.jpg') || data.name.endsWith('.jpeg'))) processImportItems([{ path: data.path }]); } catch (err) {} }
+        if (dataText) {
+            try {
+                const data = JSON.parse(dataText);
+                if (data.type === 'Asset' && (data.name.endsWith('.png') || data.name.endsWith('.jpg') || data.name.endsWith('.jpeg'))) {
+                    processImportItems([{ path: data.path }]);
+                } else if (data.type === 'sprite') {
+                    // Extract the sub-sprite and add it as a frame!
+                    const ceSpritePath = data.assetPath;
+                    const spriteName = data.spriteName;
+                    const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
+
+                    const fileHandle = await getFileHandleForPath(ceSpritePath, currentDirHandle);
+                    const file = await fileHandle.getFile();
+                    const spriteAssetData = JSON.parse(await file.text());
+                    const spriteData = spriteAssetData.sprites[spriteName];
+                    if (spriteData) {
+                        const parentPath = ceSpritePath.substring(0, ceSpritePath.lastIndexOf('/'));
+                        const imageAssetPath = `${parentPath}/${spriteAssetData.sourceImage}`;
+                        const imageUrl = await getURLForAssetPath(imageAssetPath, currentDirHandle);
+                        if (imageUrl) {
+                            const img = new Image();
+                            img.onload = () => {
+                                const canvas = document.createElement('canvas');
+                                canvas.width = spriteData.rect.width;
+                                canvas.height = spriteData.rect.height;
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(img, spriteData.rect.x, spriteData.rect.y, spriteData.rect.width, spriteData.rect.height, 0, 0, spriteData.rect.width, spriteData.rect.height);
+
+                                const dataUrl = canvas.toDataURL();
+                                addFramesToAnimation([dataUrl]);
+                            };
+                            img.src = imageUrl;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Error dropping sprite into animation editor:", err);
+            }
+        }
         else if (e.dataTransfer.files.length > 0) { const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')); if (files.length > 0) { const items = await Promise.all(files.map(async file => { const dataUrl = await new Promise(resolve => { const reader = new FileReader(); reader.onload = (ev) => resolve(ev.target.result); reader.readAsDataURL(file); }); return { path: file.name, dataUrl: dataUrl }; })); processImportItems(items); } }
     });
 

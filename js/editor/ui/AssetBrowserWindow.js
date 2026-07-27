@@ -1,4 +1,4 @@
-import { getURLForAssetPath } from '../../engine/AssetUtils.js';
+import { getURLForAssetPath, getFileHandleForPath } from '../../engine/AssetUtils.js';
 import { createNewPalette } from './TilePaletteWindow.js';
 import { showNotification, showConfirmation, showPrompt } from './DialogWindow.js';
 import { broadcastUpdate } from '../CollaborationSystem.js';
@@ -16,6 +16,7 @@ let contextAsset = null; // Asset under the right-click context menu
 let dragCounter = 0; // For robust drag-over UI
 let collapsedFolders = new Set(); // Conjunto de rutas de carpetas contraídas
 let expandedModels = new Set(); // Modelos (glb, obj) expandidos en el grid
+let expandedSprites = new Set(); // Archivos .ceSprite expandidos en el grid
 
 // Callbacks to other modules/editor.js
 let onAssetSelected;
@@ -695,6 +696,49 @@ export async function updateAssetBrowser() {
                 window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_MOVER_ARCHIVO', 'No se pudo mover el archivo.'));
             }
         }
+
+        if (droppedData.type === 'sprite') {
+            try {
+                const ceSpritePath = droppedData.assetPath;
+                const spriteName = droppedData.spriteName;
+                const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
+
+                const fileHandle = await getFileHandleForPath(ceSpritePath, currentDirHandle);
+                const file = await fileHandle.getFile();
+                const spriteAssetData = JSON.parse(await file.text());
+                const spriteData = spriteAssetData.sprites[spriteName];
+                if (spriteData) {
+                    const parentPath = ceSpritePath.substring(0, ceSpritePath.lastIndexOf('/'));
+                    const imageAssetPath = `${parentPath}/${spriteAssetData.sourceImage}`;
+                    const imageUrl = await getURLForAssetPath(imageAssetPath, currentDirHandle);
+                    if (imageUrl) {
+                        const img = new Image();
+                        img.onload = async () => {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = spriteData.rect.width;
+                            canvas.height = spriteData.rect.height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, spriteData.rect.x, spriteData.rect.y, spriteData.rect.width, spriteData.rect.height, 0, 0, spriteData.rect.width, spriteData.rect.height);
+
+                            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                            const targetFileName = `${spriteName}.png`;
+                            const newFileHandle = await targetFolderHandle.getFileHandle(targetFileName, { create: true });
+                            const writable = await newFileHandle.createWritable();
+                            await writable.write(blob);
+                            await writable.close();
+
+                            console.log(`[AssetBrowser] Sub-sprite extracted: ${targetFileName}`);
+                            window.Dialogs.showNotification(window.Localization.get('EXITO', 'Éxito'), `Sprite '${spriteName}' creado con éxito.`);
+                            await updateAssetBrowser();
+                        };
+                        img.src = imageUrl;
+                    }
+                }
+            } catch (err) {
+                console.error("Error extracting sub-sprite as independent sprite:", err);
+            }
+            return;
+        }
     }
 
     async function populateGridView(dirHandle, dirPath) {
@@ -889,6 +933,58 @@ export async function updateAssetBrowser() {
                 item.appendChild(toggle);
             }
 
+            // --- Sprite Expansion Toggle ---
+            if (entry.kind === 'file' && lowerName.endsWith('.cesprite')) {
+                (async () => {
+                    try {
+                        const file = await entry.getFile();
+                        const content = await file.text();
+                        const spriteAsset = JSON.parse(content);
+                        const sprites = spriteAsset.sprites || {};
+                        const spriteCount = Object.keys(sprites).length;
+
+                        if (spriteCount > 1) {
+                            const toggle = document.createElement('div');
+                            toggle.className = 'sprite-expand-toggle';
+
+                            // Style toggle with nice CSS / inline styles for right-middle positioning
+                            toggle.style.position = 'absolute';
+                            toggle.style.right = '4px';
+                            toggle.style.top = '50%';
+                            toggle.style.transform = 'translateY(-50%)';
+                            toggle.style.cursor = 'pointer';
+                            toggle.style.zIndex = '10';
+                            toggle.style.display = 'flex';
+                            toggle.style.alignItems = 'center';
+                            toggle.style.justifyContent = 'center';
+                            toggle.style.width = '18px';
+                            toggle.style.height = '18px';
+                            toggle.style.borderRadius = '50%';
+                            toggle.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+                            toggle.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+
+                            const isExpanded = expandedSprites.has(fullPath);
+                            // Collapsed: ▶ (play), Expanded: ▼ (down)
+                            toggle.innerHTML = `<span style="color: #00ffcc; font-size: 10px; font-weight: bold; line-height: 1; margin-left: ${isExpanded ? '0' : '2px'};">${isExpanded ? '▼' : '▶'}</span>`;
+
+                            toggle.onclick = (e) => {
+                                e.stopPropagation();
+                                if (expandedSprites.has(fullPath)) {
+                                    expandedSprites.delete(fullPath);
+                                } else {
+                                    expandedSprites.add(fullPath);
+                                }
+                                updateAssetBrowser();
+                            };
+                            item.appendChild(toggle);
+                            item.style.position = 'relative'; // Ensure absolute position works inside grid item
+                        }
+                    } catch (e) {
+                        console.error("Error loading .ceSprite for expand button:", e);
+                    }
+                })();
+            }
+
             const name = document.createElement('div');
             name.className = 'name';
             if (entry.kind === 'file') {
@@ -905,6 +1001,11 @@ export async function updateAssetBrowser() {
             if (expandedModels.has(fullPath)) {
                 item.classList.add('model-expanded-parent');
                 await renderModelSubAssets(gridViewContainer, entry, fullPath);
+            }
+
+            if (expandedSprites.has(fullPath)) {
+                item.classList.add('sprite-expanded-parent');
+                await renderSpriteSubAssets(gridViewContainer, entry, fullPath);
             }
         }
     }
@@ -1306,7 +1407,7 @@ function handleGridClick(e) {
 
     if (item) {
         item.classList.add('active');
-        onAssetSelected(item.dataset.name, item.dataset.path, item.dataset.kind, null, currentDirectoryHandle.handle);
+        onAssetSelected(item.dataset.name, item.dataset.path, item.dataset.kind, null, currentDirectoryHandle.handle, item.dataset.subSpriteName || null);
     } else {
         onAssetSelected(null, null, null);
     }
@@ -1319,6 +1420,10 @@ async function handleGridDblClick(e) {
     const name = item.dataset.name;
     const kind = item.dataset.kind;
     const path = item.dataset.path;
+
+    if (kind === 'sub-sprite') {
+        return;
+    }
 
     if (kind === 'directory') {
         currentDirectoryHandle = { handle: await currentDirectoryHandle.handle.getDirectoryHandle(name), path: path };
@@ -1618,6 +1723,10 @@ function createSubAssetItem(container, name, icon, dragData) {
     const item = document.createElement('div');
     item.className = 'grid-item sub-asset-item';
     item.draggable = true;
+    item.dataset.name = name;
+    item.dataset.path = dragData.assetPath;
+    item.dataset.kind = 'sub-sprite';
+    item.dataset.subSpriteName = name;
 
     const iconContainer = document.createElement('div');
     iconContainer.className = 'icon';
@@ -1634,5 +1743,84 @@ function createSubAssetItem(container, name, icon, dragData) {
         e.stopPropagation();
         e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
     };
+    container.appendChild(item);
+}
+
+async function renderSpriteSubAssets(gridContainer, fileEntry, spriteAssetPath) {
+    try {
+        const file = await fileEntry.getFile();
+        const content = await file.text();
+        const spriteAsset = JSON.parse(content);
+        const sprites = spriteAsset.sprites || {};
+        const sourceImageName = spriteAsset.sourceImage;
+
+        // Find the image URL so we can render sub-sprites
+        const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
+        const parentPath = spriteAssetPath.substring(0, spriteAssetPath.lastIndexOf('/'));
+        const imageAssetPath = `${parentPath}/${sourceImageName}`;
+        const sourceImageUrl = await getURLForAssetPath(imageAssetPath, currentDirHandle);
+
+        if (!sourceImageUrl) return;
+
+        for (const spriteName in sprites) {
+            const spriteData = sprites[spriteName];
+            const rect = spriteData.rect;
+
+            const dragData = {
+                type: 'sprite',
+                assetPath: spriteAssetPath, // The path to the .ceSprite file
+                spriteName: spriteName
+            };
+
+            createSubAssetItemWithLazyIcon(gridContainer, spriteName, sourceImageUrl, rect, dragData);
+        }
+    } catch (e) {
+        console.error("Error loading sprite sub-assets for expansion:", e);
+    }
+}
+
+function createSubAssetItemWithLazyIcon(container, name, imageUrl, rect, dragData) {
+    const item = document.createElement('div');
+    item.className = 'grid-item sub-asset-item';
+    item.draggable = true;
+
+    const iconContainer = document.createElement('div');
+    iconContainer.className = 'icon';
+    iconContainer.style.display = 'flex';
+    iconContainer.style.alignItems = 'center';
+    iconContainer.style.justifyContent = 'center';
+    iconContainer.style.width = '48px';
+    iconContainer.style.height = '48px';
+    iconContainer.style.overflow = 'hidden';
+
+    const img = new Image();
+    img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, rect.x, rect.y, rect.width, rect.height, 0, 0, rect.width, rect.height);
+
+        const iconImg = document.createElement('img');
+        iconImg.src = canvas.toDataURL();
+        iconImg.style.maxWidth = '100%';
+        iconImg.style.maxHeight = '100%';
+        iconImg.style.objectFit = 'contain';
+        iconContainer.appendChild(iconImg);
+    };
+    img.src = imageUrl;
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'name';
+    nameEl.textContent = name;
+
+    item.appendChild(iconContainer);
+    item.appendChild(nameEl);
+
+    item.ondragstart = (e) => {
+        e.stopPropagation();
+        e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
+    };
+
     container.appendChild(item);
 }

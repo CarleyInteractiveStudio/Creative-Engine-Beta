@@ -219,7 +219,21 @@ async function generateSpritePreview(spriteFile, directoryHandle) {
             const firstSprite = sprites[0];
             const rect = firstSprite.rect;
 
-            const imageFileHandle = await directoryHandle.getFileHandle(sourceImageName);
+            let imageFileHandle;
+            try {
+                imageFileHandle = await directoryHandle.getFileHandle(sourceImageName);
+            } catch (e) {
+                console.warn(`[AssetUtils] Source image not found in the same directory as .ceSprite, falling back to Assets root:`, e);
+                const rootHandle = projectsDirHandle || window.projectsDirHandle;
+                if (rootHandle) {
+                    const projectName = new URLSearchParams(window.location.search).get('project');
+                    const projectHandle = await rootHandle.getDirectoryHandle(projectName);
+                    const assetsDir = await projectHandle.getDirectoryHandle('Assets');
+                    imageFileHandle = await assetsDir.getFileHandle(sourceImageName);
+                } else {
+                    throw e;
+                }
+            }
             const imageFile = await imageFileHandle.getFile();
             const imageURL = URL.createObjectURL(imageFile);
 
