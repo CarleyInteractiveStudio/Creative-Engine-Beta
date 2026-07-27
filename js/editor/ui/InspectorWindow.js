@@ -1,7 +1,7 @@
 import * as Components from '../../engine/Components.js';
 import { getComponent } from '../../engine/ComponentRegistry.js';
 import * as UITransformUtils from '../../engine/UITransformUtils.js';
-import { getURLForAssetPath } from '../../engine/AssetUtils.js';
+import { getURLForAssetPath, getFileHandleForPath } from '../../engine/AssetUtils.js';
 import * as SpriteSlicer from './SpriteSlicerWindow.js';
 import { getCustomComponentDefinitions } from '../EngineAPIExtension.js';
 import * as CES_Transpiler from '../../editor/CES_Transpiler.js';
@@ -4560,9 +4560,27 @@ async function updateInspectorForAsset(assetName, assetPath) {
             return;
         }
 
-        const fileHandle = selectedAsset && selectedAsset.fileHandle ? selectedAsset.fileHandle : await dirHandle.getFileHandle(assetName);
+        let fileHandle;
+        if (selectedAsset && selectedAsset.kind === 'sub-sprite') {
+            const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
+            fileHandle = await getFileHandleForPath(selectedAsset.path, currentDirHandle);
+        } else {
+            fileHandle = selectedAsset && selectedAsset.fileHandle ? selectedAsset.fileHandle : await dirHandle.getFileHandle(assetName);
+        }
         const file = await fileHandle.getFile();
         const lowerName = assetName.toLowerCase();
+
+        if (selectedAsset && selectedAsset.kind === 'sub-sprite') {
+            const subSpriteName = selectedAsset.subSpriteName;
+            const content = await file.text();
+            const spriteAsset = JSON.parse(content);
+            const spriteData = spriteAsset.sprites[subSpriteName];
+
+            if (spriteData) {
+                await renderSingleSubSpriteInspector(spriteAsset, spriteData, dirHandle, selectedAsset.path, fileHandle.name);
+                return;
+            }
+        }
 
         if (lowerName.endsWith('.ceprefab')) {
             const content = await file.text();
@@ -6969,4 +6987,125 @@ async function autoDetectSheetGrid(imgUrl) {
         };
         img.src = imgUrl;
     });
+}
+
+async function renderSingleSubSpriteInspector(spriteAsset, spriteData, dirHandle, assetPath, ceSpriteFileName) {
+    const L = window.Localization;
+    const container = document.createElement('div');
+    container.className = 'sub-sprite-inspector';
+
+    const title = document.createElement('h4');
+    title.textContent = `${L.get('SPRITE', 'Sprite')}: ${spriteData.name}`;
+    container.appendChild(title);
+
+    // Image preview
+    const parentPath = assetPath.includes('/') ? assetPath.substring(0, assetPath.lastIndexOf('/')) : 'Assets';
+    const imageAssetPath = `${parentPath}/${spriteAsset.sourceImage}`;
+    let sourceImageUrl = await getURLForAssetPath(imageAssetPath, projectsDirHandle);
+    if (!sourceImageUrl) {
+        sourceImageUrl = await getURLForAssetPath(`Assets/${spriteAsset.sourceImage}`, projectsDirHandle);
+    }
+
+    if (sourceImageUrl) {
+        const previewContainer = document.createElement('div');
+        previewContainer.style.display = 'flex';
+        previewContainer.style.justifyContent = 'center';
+        previewContainer.style.alignItems = 'center';
+        previewContainer.style.background = '#1a1a1a';
+        previewContainer.style.border = '1px solid #333';
+        previewContainer.style.borderRadius = '8px';
+        previewContainer.style.padding = '15px';
+        previewContainer.style.marginBottom = '15px';
+
+        const canvas = document.createElement('canvas');
+        canvas.width = spriteData.rect.width;
+        canvas.height = spriteData.rect.height;
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.onload = () => {
+            ctx.drawImage(img, spriteData.rect.x, spriteData.rect.y, spriteData.rect.width, spriteData.rect.height, 0, 0, spriteData.rect.width, spriteData.rect.height);
+        };
+        img.src = sourceImageUrl;
+
+        canvas.style.maxWidth = '120px';
+        canvas.style.maxHeight = '120px';
+        canvas.style.objectFit = 'contain';
+        previewContainer.appendChild(canvas);
+        container.appendChild(previewContainer);
+    }
+
+    // Properties: Name, Rect X, Rect Y, Rect W, Rect H, Pivot X, Pivot Y
+    const propRows = [
+        { label: L.get('NOMBRE', 'Nombre'), id: 'sub-sprite-prop-name', value: spriteData.name, type: 'text' },
+        { label: 'Rect X', id: 'sub-sprite-prop-rect-x', value: spriteData.rect.x, type: 'number' },
+        { label: 'Rect Y', id: 'sub-sprite-prop-rect-y', value: spriteData.rect.y, type: 'number' },
+        { label: 'Rect W', id: 'sub-sprite-prop-rect-w', value: spriteData.rect.width, type: 'number' },
+        { label: 'Rect H', id: 'sub-sprite-prop-rect-h', value: spriteData.rect.height, type: 'number' },
+        { label: 'Pivot X', id: 'sub-sprite-prop-pivot-x', value: spriteData.pivot.x, type: 'number', step: '0.1' },
+        { label: 'Pivot Y', id: 'sub-sprite-prop-pivot-y', value: spriteData.pivot.y, type: 'number', step: '0.1' }
+    ];
+
+    propRows.forEach(prop => {
+        const row = document.createElement('div');
+        row.className = 'prop-row-multi';
+        row.style.marginBottom = '8px';
+
+        const label = document.createElement('label');
+        label.textContent = prop.label;
+        row.appendChild(label);
+
+        const input = document.createElement('input');
+        input.type = prop.type;
+        input.id = prop.id;
+        input.value = prop.value;
+        input.className = 'prop-input';
+        if (prop.step) input.step = prop.step;
+        row.appendChild(input);
+
+        container.appendChild(row);
+    });
+
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'primary-btn';
+    saveBtn.style.width = '100%';
+    saveBtn.style.marginTop = '15px';
+    saveBtn.textContent = L.get('GUARDAR_CAMBIOS', 'Guardar Cambios');
+    saveBtn.onclick = async () => {
+        const newName = document.getElementById('sub-sprite-prop-name').value;
+        const rectX = parseInt(document.getElementById('sub-sprite-prop-rect-x').value);
+        const rectY = parseInt(document.getElementById('sub-sprite-prop-rect-y').value);
+        const rectW = parseInt(document.getElementById('sub-sprite-prop-rect-w').value);
+        const rectH = parseInt(document.getElementById('sub-sprite-prop-rect-h').value);
+        const pivotX = parseFloat(document.getElementById('sub-sprite-prop-pivot-x').value);
+        const pivotY = parseFloat(document.getElementById('sub-sprite-prop-pivot-y').value);
+
+        // Update data
+        spriteData.rect = { x: rectX, y: rectY, width: rectW, height: rectH };
+        spriteData.pivot = { x: pivotX, y: pivotY };
+
+        if (newName !== spriteData.name) {
+            delete spriteAsset.sprites[spriteData.name];
+            spriteData.name = newName;
+            spriteAsset.sprites[newName] = spriteData;
+        }
+
+        const ceSpriteFileHandle = await dirHandle.getFileHandle(ceSpriteFileName);
+        const writable = await ceSpriteFileHandle.createWritable();
+        await writable.write(JSON.stringify(spriteAsset, null, 2));
+        await writable.close();
+
+        window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `Sprite '${newName}' guardado correctamente.`);
+
+        const selectedAsset = getSelectedAsset();
+        if (selectedAsset) {
+            selectedAsset.name = newName;
+            selectedAsset.subSpriteName = newName;
+        }
+
+        if (updateAssetBrowserCallback) await updateAssetBrowserCallback();
+        updateInspector();
+    };
+
+    container.appendChild(saveBtn);
+    dom.inspectorContent.appendChild(container);
 }

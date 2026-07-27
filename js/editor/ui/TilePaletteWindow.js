@@ -47,6 +47,7 @@ export function initialize(dependencies) {
         spritePackList: dependencies.dom.paletteSpritePackList,
         disassociateModal: dependencies.dom.disassociateSpriteModal,
         disassociateList: dependencies.dom.disassociateSpriteList,
+        autoOrganizeBtn: dependencies.dom.paletteAutoOrganizeBtn,
     };
     projectsDirHandle = dependencies.projectsDirHandle;
     openAssetSelectorCallback = dependencies.openAssetSelectorCallback;
@@ -226,6 +227,9 @@ export function setActiveTool(toolName) {
 
 function setupEventListeners() {
     dom.saveBtn.addEventListener('click', saveCurrentPalette);
+    if (dom.autoOrganizeBtn) {
+        dom.autoOrganizeBtn.addEventListener('click', autoOrganizePalette);
+    }
     dom.loadBtn.addEventListener('click', async () => {
         openAssetSelectorCallback(async (fileHandle) => {
             await openPalette(fileHandle);
@@ -585,6 +589,95 @@ function handleCanvasMouseDown(event) {
                 drawTiles();
             }
         }
+    }
+}
+
+async function autoOrganizePalette() {
+    if (!currentPalette || !currentPalette.associatedSpritePacks || currentPalette.associatedSpritePacks.length === 0) {
+        const L = window.Localization;
+        window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('AVISO_SIN_PACKS_ORGANIZAR', 'No hay paquetes de sprites asociados para organizar.'));
+        return;
+    }
+
+    const L = window.Localization;
+    try {
+        window.Dialogs.showConfirmation(
+            L.get('CONFIRMAR_AUTO_ORGANIZAR', 'Auto-Organizar Paleta'),
+            L.get('MSG_CONFIRMAR_AUTO_ORGANIZAR', '¿Estás seguro de que quieres auto-organizar la paleta? Esto sobrescribirá las posiciones de los tiles actuales con sus posiciones originales en la hoja de sprites.'),
+            async () => {
+                currentPalette.tiles = {};
+                allTiles = [];
+
+                let yOffsetGrid = 0;
+
+                for (const packPath of currentPalette.associatedSpritePacks) {
+                    const lowerPath = packPath.toLowerCase();
+                    if (!lowerPath.endsWith('.cesprite')) continue;
+
+                    const packFileHandle = await getFileHandleForPath(packPath, projectsDirHandle);
+                    const packFile = await packFileHandle.getFile();
+                    const packData = JSON.parse(await packFile.text());
+
+                    const sourceImagePath = `Assets/${packData.sourceImage}`;
+                    const imageUrl = await getURLForAssetPath(sourceImagePath, projectsDirHandle);
+                    if (!imageUrl) continue;
+
+                    const sourceImage = new Image();
+                    sourceImage.src = imageUrl;
+                    await sourceImage.decode();
+
+                    let maxPackGridY = 0;
+
+                    for (const spriteName in packData.sprites) {
+                        const spriteData = packData.sprites[spriteName];
+                        const rect = spriteData.rect;
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = rect.width;
+                        canvas.height = rect.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(
+                            sourceImage,
+                            rect.x, rect.y,
+                            rect.width, rect.height,
+                            0, 0, rect.width, rect.height
+                        );
+                        const imageData = canvas.toDataURL();
+
+                        const gridX = Math.round(rect.x / rect.width);
+                        const gridY = Math.round(rect.y / rect.height) + yOffsetGrid;
+
+                        maxPackGridY = Math.max(maxPackGridY, Math.round(rect.y / rect.height) + 1);
+
+                        const coord = `${gridX},${gridY}`;
+                        currentPalette.tiles[coord] = {
+                            spriteName: spriteName,
+                            imageData: imageData,
+                            type: 'sprite'
+                        };
+
+                        const img = new Image();
+                        img.src = imageData;
+                        await img.decode();
+
+                        allTiles.push({
+                            coord: coord,
+                            image: img
+                        });
+                    }
+
+                    yOffsetGrid += maxPackGridY + 2;
+                }
+
+                currentPalette.paintOrder = Object.keys(currentPalette.tiles);
+                drawTiles();
+
+                window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), L.get('EXITO_PALETA_AUTO_ORGANIZADA', 'La paleta ha sido organizada automáticamente con éxito.'));
+            }
+        );
+    } catch (e) {
+        console.error("Error auto-organizing palette:", e);
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), `No se pudo auto-organizar la paleta: ${e.message}`);
     }
 }
 
