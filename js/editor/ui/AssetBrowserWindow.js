@@ -1006,7 +1006,7 @@ export async function updateAssetBrowser() {
                      folderItem.classList.add('active');
                      currentDirectoryHandle = { handle: entry, path: entryPath };
                      // Only select if not right click (handled by contextmenu)
-                     onAssetSelected(entry.name, entryPath, 'directory');
+                     onAssetSelected(entry.name, entryPath, 'directory', entry, dirHandle);
                      updateAssetBrowser();
                  });
 
@@ -1146,7 +1146,7 @@ export async function updateAssetBrowser() {
                      fileItem.classList.add('active');
                      currentDirectoryHandle = { handle: dirHandle, path: currentPath };
                      contextAsset = { name: entry.name, kind: 'file' };
-                     onAssetSelected(entry.name, entryPath, 'file');
+                     onAssetSelected(entry.name, entryPath, 'file', entry, dirHandle);
                  });
 
                  // File Interaction: Double-click to open
@@ -1236,7 +1236,7 @@ export async function updateAssetBrowser() {
 
                 folderItem.classList.add('active');
                 currentDirectoryHandle = { handle: folderHandle, path: folderPath };
-                onAssetSelected(labelName, folderPath, 'directory');
+                onAssetSelected(labelName, folderPath, 'directory', folderHandle, folderHandle);
                 updateAssetBrowser();
             });
 
@@ -1306,7 +1306,7 @@ function handleGridClick(e) {
 
     if (item) {
         item.classList.add('active');
-        onAssetSelected(item.dataset.name, item.dataset.path, item.dataset.kind);
+        onAssetSelected(item.dataset.name, item.dataset.path, item.dataset.kind, null, currentDirectoryHandle.handle);
     } else {
         onAssetSelected(null, null, null);
     }
@@ -1359,7 +1359,7 @@ async function handleGridContextMenu(e) {
         item.classList.add('active');
         const assetName = item.dataset.name;
         const assetKind = item.dataset.kind;
-        onAssetSelected(assetName, item.dataset.path, assetKind);
+        onAssetSelected(assetName, item.dataset.path, assetKind, null, currentDirectoryHandle.handle);
 
         contextAsset = { name: assetName, kind: assetKind }; // Store asset for context action
 

@@ -4550,13 +4550,17 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
     try {
         const L = window.Localization;
-        const dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
+        const selectedAsset = getSelectedAsset();
+        let dirHandle = selectedAsset && selectedAsset.dirHandle ? selectedAsset.dirHandle : null;
+        if (!dirHandle) {
+            dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
+        }
         if (!dirHandle) {
             dom.inspectorContent.innerHTML = `<p class="inspector-placeholder error-message">Directorio de assets no disponible</p>`;
             return;
         }
 
-        const fileHandle = await dirHandle.getFileHandle(assetName);
+        const fileHandle = selectedAsset && selectedAsset.fileHandle ? selectedAsset.fileHandle : await dirHandle.getFileHandle(assetName);
         const file = await fileHandle.getFile();
         const lowerName = assetName.toLowerCase();
 
@@ -4651,7 +4655,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
             dom.inspectorContent.appendChild(container);
 
-        } else if (lowerName.endsWith('.ces') || lowerName.endsWith('.txt')) {
+        } else if (lowerName.endsWith('.ces') || lowerName.endsWith('.chc') || lowerName.endsWith('.css') || lowerName.endsWith('.txt') || lowerName.endsWith('.js') || lowerName.endsWith('.json')) {
             const content = await file.text();
             const pre = document.createElement('pre');
             pre.style.maxHeight = '400px';
@@ -4660,7 +4664,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             pre.style.padding = '10px';
             pre.style.borderRadius = '4px';
             const code = document.createElement('code');
-            code.className = lowerName.endsWith('.ces') ? 'language-javascript' : '';
+            code.className = (lowerName.endsWith('.ces') || lowerName.endsWith('.js') || lowerName.endsWith('.json')) ? 'language-javascript' : '';
             code.textContent = content;
             pre.appendChild(code);
             dom.inspectorContent.appendChild(pre);

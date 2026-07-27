@@ -1027,6 +1027,9 @@ document.addEventListener('DOMContentLoaded', () => {
             await writable.write(content);
             await writable.close();
             console.log(`Asset '${fileName}' creado exitosamente.`);
+            if (typeof updateAssetBrowser === 'function') {
+                await updateAssetBrowser();
+            }
             return fileHandle;
         } catch (error) {
             console.error(`No se pudo crear el asset '${fileName}':`, error);
@@ -4835,11 +4838,17 @@ public start() {
                     showNotificationDialog('Error', "No se pudo crear la animacion.");
                 }
             };
-            const onAssetSelected = (assetName, assetPath, assetKind) => {
+            const onAssetSelected = (assetName, assetPath, assetKind, fileHandle = null, dirHandle = null) => {
                 if (assetName) {
                     // When an asset is selected, deselect any Materia
                     selectMateria(null);
-                    selectedAsset = { name: assetName, path: assetPath, kind: assetKind };
+                    selectedAsset = {
+                        name: assetName,
+                        path: assetPath,
+                        kind: assetKind,
+                        fileHandle: fileHandle,
+                        dirHandle: dirHandle
+                    };
                 } else {
                     selectedAsset = null;
                 }
