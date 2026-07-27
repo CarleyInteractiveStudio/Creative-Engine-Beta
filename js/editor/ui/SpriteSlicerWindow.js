@@ -361,8 +361,12 @@ function executeSlice() {
     // For automatic, we calculate it now since it's not previewed
     if (type === 'Automatic') {
         generatedSlices = sliceAutomatic();
+    } else if (type === 'Grid by Cell Size') {
+        generatedSlices = sliceByCellSize(false); // isPreview = false, to discard empty regions
+    } else if (type === 'Grid by Cell Count') {
+        generatedSlices = sliceByCellCount(false); // isPreview = false, to discard empty regions
     } else {
-        // For grid types, the preview is what we want to confirm
+        // Fallback
         generatedSlices = calculatePreviewSlices();
     }
 
@@ -436,7 +440,7 @@ async function createSpriteAsset() {
         }
 
         const jsonContent = JSON.stringify(spriteAssetContent, null, 2);
-        const assetsDirHandle = await getAssetsDirectoryHandle();
+        const targetDirHandle = dirHandle || await getAssetsDirectoryHandle();
 
         let fileHandle;
         if (isEditing) {
@@ -450,13 +454,14 @@ async function createSpriteAsset() {
             clearAssetCache(`Assets/${fileHandle.name}`);
         } else {
             // Create a new file
-            fileHandle = await createAssetCallback(assetName, jsonContent, assetsDirHandle);
+            fileHandle = await createAssetCallback(assetName, jsonContent, targetDirHandle);
         }
 
         if (fileHandle) {
+            const displayName = assetName.replace(/\.[^/.]+$/, "");
             const message = isEditing
-                ? L.get('EXITO_ASSET_GUARDADO_CON', "Asset '{name}' guardado con {count} sprites.").replace('{name}', assetName).replace('{count}', generatedSlices.length)
-                : L.get('EXITO_ASSET_CREADO_CON', "Asset '{name}' creado con {count} sprites.").replace('{name}', assetName).replace('{count}', generatedSlices.length);
+                ? L.get('EXITO_ASSET_GUARDADO_CON', "Asset '{name}' guardado con {count} sprites.").replace('{name}', displayName).replace('{count}', generatedSlices.length)
+                : L.get('EXITO_ASSET_CREADO_CON', "Asset '{name}' creado con {count} sprites.").replace('{name}', displayName).replace('{count}', generatedSlices.length);
             Dialogs.showNotification(L.get('EXITO', "Éxito"), message);
 
             await updateAssetBrowserCallback(); // Refresh to show new/updated file
@@ -592,12 +597,20 @@ async function loadCeSpriteForEditing(ceSpriteFileHandle, directoryHandle) {
 
         // Find and load the source image
         const sourceImageName = spriteAssetData.sourceImage;
-        const assetsDir = await getAssetsDirectoryHandle();
-        const sourceImageFileHandle = await assetsDir.getFileHandle(sourceImageName);
+        let sourceImageFileHandle;
+        let imageDirHandle = directoryHandle;
+        try {
+            sourceImageFileHandle = await directoryHandle.getFileHandle(sourceImageName);
+        } catch (e) {
+            console.warn(`[SpriteSlicer] Source image not found in the same directory as .ceSprite, falling back to Assets root:`, e);
+            const assetsDir = await getAssetsDirectoryHandle();
+            sourceImageFileHandle = await assetsDir.getFileHandle(sourceImageName);
+            imageDirHandle = assetsDir;
+        }
 
         // A bit of a workaround: use loadImageFromFileHandle for the image loading part
         // but prevent it from setting top-level state we're managing here.
-        await loadImageFromFileHandle(sourceImageFileHandle, assetsDir, null);
+        await loadImageFromFileHandle(sourceImageFileHandle, imageDirHandle, null);
 
         // Populate existing slices
         generatedSlices = Object.values(spriteAssetData.sprites).map(s => s.rect);

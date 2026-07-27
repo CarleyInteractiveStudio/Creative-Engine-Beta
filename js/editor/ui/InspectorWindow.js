@@ -5223,7 +5223,8 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
                 const dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
                     await createAssetCallback(animAssetName, JSON.stringify(animData, null, 2), dirHandle);
-                window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_CREAR_ANIM_ASSET', 'Asset de animación "{name}" creado y foto original eliminada.').replace('{name}', animAssetName)}`);
+                const displayAnimName = animAssetName.replace(/\.[^/.]+$/, "");
+                window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_CREAR_ANIM_ASSET', 'Asset de animación "{name}" creado y foto original eliminada.').replace('{name}', displayAnimName)}`);
 
                     // Automatically delete original image photo and its metadata
                     try {
