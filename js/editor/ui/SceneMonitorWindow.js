@@ -338,7 +338,7 @@ export function update() {
                 <strong style="color: #00b4ff; font-size: 1.05em;">🖥️ Sobrecarga de Elementos UI (Canvas: ${metrics.uiElements} activos)</strong>
                 <div style="margin-top: 4px; color: #ddd; font-size: 0.95em; line-height: 1.4;">
                     Tienes muchos elementos de interfaz UI activos en el Canvas. Cada cambio de texto o posición de imagen fuerza al Canvas de la GPU a re-calcular sus polígonos y redibujarse (Batch Rebuild).
-                    <br><span style="color: #00ffcc;">Sugerencia:</span> Desactiva paneles completos de UI que no estén en uso (`materia.isActive = false`) en lugar de esconderlos individualmente, de modo que queden excluidos del árbol de dibujo.
+                    <br><span style="color: #00ffcc;">Sugerencia:</span> Desactiva paneles completos de UI que no estén en uso (<code>materia.isActive = false</code>) en lugar de esconderlos individualmente, de modo que queden excluidos del árbol de dibujo.
                 </div>
             </div>
         `);
