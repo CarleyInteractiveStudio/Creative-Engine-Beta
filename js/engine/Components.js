@@ -1227,27 +1227,25 @@ export class CreativeScript extends Leyes {
     }
 
     // --- Lifecycle wrappers ---
-    async _safeInvoke(methodName, ...args) {
+    _safeInvoke(methodName, ...args) {
         if (!this.instance || typeof this.instance[methodName] !== 'function') return;
 
         const startTime = performance.now();
         const startMem = (window.performance && window.performance.memory && window.performance.memory.usedJSHeapSize) ? window.performance.memory.usedJSHeapSize : 0;
         const prevScript = window._currentlyExecutingScript;
         window._currentlyExecutingScript = this.scriptName;
-        let hasError = false;
 
         if (window.ScriptMonitor && window.ScriptMonitor.onScriptStart) {
             window.ScriptMonitor.onScriptStart(this.scriptName, methodName);
         }
 
-        try {
-            // We await it so if it's async, it catches errors correctly.
-            // Note: For frame-based updates, we don't wait for the promise to resolve before the next frame,
-            // but we do await it here for error handling.
-            await this.instance[methodName](...args);
-        } catch (e) {
-            hasError = true;
-            // --- Improved Runtime Error Reporting ---
+        const handleSuccess = (duration, memDelta) => {
+            if (window.ScriptMonitor && window.ScriptMonitor.onScriptEnd) {
+                window.ScriptMonitor.onScriptEnd(this.scriptName, methodName, duration, memDelta, false);
+            }
+        };
+
+        const handleFailure = (e) => {
             let cesLine = 0;
             const stack = e.stack || "";
 
@@ -1278,18 +1276,49 @@ export class CreativeScript extends Leyes {
             } else {
                 console.error(`[CreativeScript] Error en '${this.scriptName}' (${methodName}):`, e);
             }
+
+            if (window.ScriptMonitor && window.ScriptMonitor.onScriptEnd) {
+                const duration = performance.now() - startTime;
+                const endMem = (window.performance && window.performance.memory && window.performance.memory.usedJSHeapSize) ? window.performance.memory.usedJSHeapSize : 0;
+                let memDelta = endMem - startMem;
+                if (memDelta <= 0) {
+                    const codeLength = (this.scriptName && window.CE_Script_Metadata && window.CE_Script_Metadata[this.scriptName]?.codeLength) || 500;
+                    memDelta = Math.round(codeLength * 0.1 + duration * 1500 + Math.random() * 200);
+                }
+                window.ScriptMonitor.onScriptEnd(this.scriptName, methodName, duration, memDelta, true);
+            }
+        };
+
+        try {
+            const result = this.instance[methodName](...args);
+
+            if (result && typeof result.then === 'function') {
+                return result.then(() => {
+                    const duration = performance.now() - startTime;
+                    const endMem = (window.performance && window.performance.memory && window.performance.memory.usedJSHeapSize) ? window.performance.memory.usedJSHeapSize : 0;
+                    let memDelta = endMem - startMem;
+                    if (memDelta <= 0) {
+                        const codeLength = (this.scriptName && window.CE_Script_Metadata && window.CE_Script_Metadata[this.scriptName]?.codeLength) || 500;
+                        memDelta = Math.round(codeLength * 0.1 + duration * 1500 + Math.random() * 200);
+                    }
+                    handleSuccess(duration, memDelta);
+                }).catch((e) => {
+                    handleFailure(e);
+                });
+            } else {
+                const duration = performance.now() - startTime;
+                const endMem = (window.performance && window.performance.memory && window.performance.memory.usedJSHeapSize) ? window.performance.memory.usedJSHeapSize : 0;
+                let memDelta = endMem - startMem;
+                if (memDelta <= 0) {
+                    const codeLength = (this.scriptName && window.CE_Script_Metadata && window.CE_Script_Metadata[this.scriptName]?.codeLength) || 500;
+                    memDelta = Math.round(codeLength * 0.1 + duration * 1500 + Math.random() * 200);
+                }
+                handleSuccess(duration, memDelta);
+            }
+        } catch (e) {
+            handleFailure(e);
         } finally {
             window._currentlyExecutingScript = prevScript;
-            const duration = performance.now() - startTime;
-            const endMem = (window.performance && window.performance.memory && window.performance.memory.usedJSHeapSize) ? window.performance.memory.usedJSHeapSize : 0;
-            let memDelta = endMem - startMem;
-            if (memDelta <= 0) {
-                const codeLength = (this.scriptName && window.CE_Script_Metadata && window.CE_Script_Metadata[this.scriptName]?.codeLength) || 500;
-                memDelta = Math.round(codeLength * 0.1 + duration * 1500 + Math.random() * 200);
-            }
-            if (window.ScriptMonitor && window.ScriptMonitor.onScriptEnd) {
-                window.ScriptMonitor.onScriptEnd(this.scriptName, methodName, duration, memDelta, hasError);
-            }
         }
     }
 
