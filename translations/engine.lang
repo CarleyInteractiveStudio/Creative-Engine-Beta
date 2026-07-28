@@ -664,8 +664,9 @@ VELOCIDAD_DESPEGUE: Vel. Despegue
 DERRAPE: Derrape
 FRENO_MOTOR: Freno Motor
 
-# Script Monitor
+# Script Monitor & Scene Monitor
 MONITOR_SCRIPTS: Monitor de Script
+MONITOR_ESCENA: Monitor de Escena
 MONITOR_RED_GLOBAL: Permitir Red (Global)
 MONITOR_BORRAR: Borrar
 MONITOR_TABLA_SCRIPT: Script
@@ -1350,8 +1351,9 @@ VELOCIDAD_DESPEGUE: Takeoff Speed
 DERRAPE: Drift
 FRENO_MOTOR: Motor Brake
 
-# Script Monitor
+# Script Monitor & Scene Monitor
 MONITOR_SCRIPTS: Script Monitor
+MONITOR_ESCENA: Scene Monitor
 MONITOR_RED_GLOBAL: Allow Network (Global)
 MONITOR_BORRAR: Clear
 MONITOR_TABLA_SCRIPT: Script
@@ -1905,8 +1907,9 @@ VELOCIDAD_DESPEGUE: Vel. de Decolagem
 DERRAPE: Derrapagem
 FRENO_MOTOR: Freio Motor
 
-# Script Monitor
+# Script Monitor & Scene Monitor
 MONITOR_SCRIPTS: Monitor de Script
+MONITOR_ESCENA: Monitor de Cena
 MONITOR_RED_GLOBAL: Permitir Rede (Global)
 MONITOR_BORRAR: Limpar
 MONITOR_TABLA_SCRIPT: Script
@@ -1918,7 +1921,7 @@ MONITOR_TABLA_RAM: Est. RAM
 MONITOR_TABLA_RED: Acesso Rede
 MONITOR_DETALLES_LOGS: Registro de Requisições (Últimas 10)
 MONITOR_SIN_REGISTROS: Nenhuma atividade de rede registrada.
-MONITOR_SIN_SCRIPTS: Nenhum script fue executado ainda nesta sessão.
+MONITOR_SIN_SCRIPTS: Nenhum script foi executado ainda nesta sessão.
 MONITOR_EXITOS: Êxitos
 MONITOR_ERRORES: Erros
 MONITOR_LENTOS: Lentas
@@ -2437,8 +2440,9 @@ VELOCIDAD_DESPEGUE: Скорость взлета
 DERRAPE: Дрифт
 FRENO_MOTOR: Торможение двигателем
 
-# Script Monitor
+# Script Monitor & Scene Monitor
 MONITOR_SCRIPTS: Монитор скриптов
+MONITOR_ESCENA: Монитор сцены
 MONITOR_RED_GLOBAL: Разрешить сеть (глобально)
 MONITOR_BORRAR: Очистить
 MONITOR_TABLA_SCRIPT: Скрипт
@@ -3018,8 +3022,9 @@ MENU_PRINCIPAL: Menú Principal
 GESTOR_NIVELES: Gestor de Niveles
 LIMPIAR_CACHE: Limpiar Caché
 
-# Script Monitor
+# Script Monitor & Scene Monitor
 MONITOR_SCRIPTS: 脚本监视器
+MONITOR_ESCENA: 场景监视器
 MONITOR_RED_GLOBAL: 允许网络 (全局)
 MONITOR_BORRAR: 清除
 MONITOR_TABLA_SCRIPT: 脚本

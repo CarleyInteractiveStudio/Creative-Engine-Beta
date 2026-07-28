@@ -26,6 +26,7 @@ import * as CodeEditor from './editor/CodeEditorWindow.js';
 import { initializeFloatingPanels, bringToFront, resetWindows } from './editor/FloatingPanelManager.js';
 import * as DebugPanel from './editor/ui/DebugPanel.js';
 import * as ScriptMonitorWindow from './editor/ui/ScriptMonitorWindow.js';
+import * as SceneMonitorWindow from './editor/ui/SceneMonitorWindow.js';
 import * as AIHandler from './editor/AIHandler.js';
 import * as Terminal from './editor/Terminal.js';
 import * as TilePalette from './editor/ui/TilePaletteWindow.js';
@@ -1329,6 +1330,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const menuItems = {
             'console': 'menu-window-console',
             'script-monitor-content': 'menu-window-script-monitor',
+            'scene-monitor-content': 'menu-window-scene-monitor',
             'hierarchy-panel': 'menu-window-hierarchy',
             'inspector-panel': 'menu-window-inspector',
             'assets-panel': 'menu-window-assets',
@@ -1359,6 +1361,19 @@ document.addEventListener('DOMContentLoaded', () => {
                      const consoleTab = document.getElementById('console-content');
                      if (assetsPanel && !assetsPanel.classList.contains('hidden') && consoleTab && consoleTab.classList.contains('active')) {
                          consoleMenuItem.textContent = checkmark + consoleMenuItem.textContent;
+                     }
+                 }
+            }
+
+            // Special case for scene monitor
+            if (menuId === 'menu-window-scene-monitor') {
+                 const sceneMonitorMenuItem = document.getElementById('menu-window-scene-monitor');
+                 if (sceneMonitorMenuItem) {
+                     sceneMonitorMenuItem.textContent = sceneMonitorMenuItem.textContent.replace(checkmark, '');
+                     const assetsPanel = dom.assetsPanel;
+                     const sceneMonitorTab = document.getElementById('scene-monitor-content');
+                     if (assetsPanel && !assetsPanel.classList.contains('hidden') && sceneMonitorTab && sceneMonitorTab.classList.contains('active')) {
+                         sceneMonitorMenuItem.textContent = checkmark + sceneMonitorMenuItem.textContent;
                      }
                  }
             }
@@ -2441,6 +2456,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         DebugPanel.update();
         ScriptMonitorWindow.update();
+        SceneMonitorWindow.update();
 
         // Update layouts before game logic and rendering
         runLayoutUpdate();
@@ -3710,6 +3726,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Switch to console tab
                     const consoleTabBtn = assetsPanel.querySelector('[data-tab="console-content"]');
                     if (consoleTabBtn) consoleTabBtn.click();
+
+                    updateWindowMenuUI();
+                }
+                return;
+            }
+
+            // Special case for Scene Monitor (it's a tab, not a panel)
+            if (panelName === 'scene-monitor') {
+                const assetsPanel = dom.assetsPanel;
+                if (assetsPanel) {
+                    assetsPanel.classList.remove('hidden');
+                    panelVisibility['assets'] = true;
+                    updateEditorLayout();
+
+                    // Switch to scene monitor tab
+                    const sceneMonitorTabBtn = assetsPanel.querySelector('[data-tab="scene-monitor-content"]');
+                    if (sceneMonitorTabBtn) sceneMonitorTabBtn.click();
 
                     updateWindowMenuUI();
                 }
@@ -5037,6 +5070,7 @@ public start() {
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime, getCpuExecutionTime });
             ScriptMonitorWindow.initialize({ dom });
+            SceneMonitorWindow.initialize({ dom });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, showContextMenuCallback: (menu, e) => {
                 const rect = (dom.sceneCanvas3d && dom.sceneCanvas3d.style.display !== 'none' ? dom.sceneCanvas3d : dom.sceneCanvas).getBoundingClientRect();
                 const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
