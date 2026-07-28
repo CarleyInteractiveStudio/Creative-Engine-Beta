@@ -3,6 +3,7 @@
 let dom;
 let isInitialized = false;
 let sessionLogs = []; // Stores event logs like collisions, creations, destructions, etc.
+const componentStats = new Map(); // Tracks execution statistics for all components (Leyes)
 let lastFrameTime = performance.now();
 let lastMemorySize = 0;
 let lastMemoryTime = performance.now();
@@ -18,9 +19,33 @@ export function initialize(dependencies) {
         logEvent,
         clearHistory() {
             sessionLogs = [];
+            componentStats.clear();
             forceFullRepopulate();
         },
-        saveHistory
+        saveHistory,
+        recordComponentCall(componentName, duration, success) {
+            let stats = componentStats.get(componentName);
+            if (!stats) {
+                stats = {
+                    calls: 0,
+                    successes: 0,
+                    errors: 0,
+                    totalTime: 0,
+                    maxTime: 0
+                };
+                componentStats.set(componentName, stats);
+            }
+            stats.calls++;
+            stats.totalTime += duration;
+            if (duration > stats.maxTime) {
+                stats.maxTime = duration;
+            }
+            if (success) {
+                stats.successes++;
+            } else {
+                stats.errors++;
+            }
+        }
     };
 
     setupEventListeners();
@@ -120,7 +145,6 @@ function getSceneMetrics() {
     const scaleIssues = []; // List of scale-related bugs found
     const playingAudios = []; // List of active/playing audio files
     const cameras = []; // Active cameras in scene
-    let estimatedVRAMBytes = 0; // Estimated GPU VRAM based on textures/renderers
 
     materias.forEach(m => {
         // Look for scale bugs (e.g. scale equal to zero)
@@ -140,15 +164,8 @@ function getSceneMetrics() {
             if (name === 'Rigidbody2D' || name === 'Fisicas2D') rigidbodies2D++;
             if (name === 'Rigidbody3D' || name === 'Fisicas3D') rigidbodies3D++;
             if (name === 'ParticleSystem' || name === 'SistemaParticulas') particleSystems++;
-            if (name === 'SpriteRenderer' || name === 'RenderizadorSprite') {
-                spriteRenderers++;
-                // Base sprite VRAM estimation (e.g. 512x512 average texture sizing if unspecified)
-                estimatedVRAMBytes += 512 * 512 * 4;
-            }
-            if (name === 'MeshRenderer3D' || name === 'SkinnedMeshRenderer3D') {
-                meshRenderers++;
-                estimatedVRAMBytes += 1024 * 1024 * 4; // Higher VRAM for 3D meshes/materials
-            }
+            if (name === 'SpriteRenderer' || name === 'RenderizadorSprite') spriteRenderers++;
+            if (name === 'MeshRenderer3D' || name === 'SkinnedMeshRenderer3D') meshRenderers++;
             if (name === 'Light' || name === 'DirectionalLight3D' || name === 'PointLight3D' || name === 'SpotLight3D' || name === 'Luz2D') lights++;
             if (name === 'AudioSource' || name === 'FuenteAudio') {
                 audioSourcesCount++;
@@ -196,8 +213,7 @@ function getSceneMetrics() {
         scriptInstancesMap,
         scaleIssues,
         playingAudios,
-        cameras,
-        estimatedVRAMBytes
+        cameras
     };
 }
 
@@ -240,16 +256,6 @@ export function update() {
     // Fetch advanced scene telemetry
     const metrics = getSceneMetrics();
     if (!metrics) return;
-
-    // Global Physics Settings Telemetry
-    let gravityStr = "X: 0, Y: -9.8, Z: 0";
-    if (window._PhysicsSystem && window._PhysicsSystem.gravity) {
-        const g = window._PhysicsSystem.gravity;
-        gravityStr = `X: ${g.x || 0}, Y: ${g.y || 0}, Z: ${g.z || 0}`;
-    } else if (scene.physicsSystem && scene.physicsSystem.gravity) {
-        const g = scene.physicsSystem.gravity;
-        gravityStr = `X: ${g.x || 0}, Y: ${g.y || 0}, Z: ${g.z || 0}`;
-    }
 
     // Diagnostics & Optimization Heuristics
     const advancedAdvices = [];
@@ -404,7 +410,38 @@ export function update() {
         `).join('');
     }
 
-    const formattedVRAM = formatBytes(metrics.estimatedVRAMBytes);
+    // Build component stats list
+    let componentStatsHtml = '';
+    if (componentStats.size === 0) {
+        componentStatsHtml = `<div style="color: #666; font-size: 0.9em; padding: 4px 0;">Esperando ejecuciones de componentes en escena...</div>`;
+    } else {
+        componentStatsHtml = `<table style="width: 100%; border-collapse: collapse; font-size: 0.85em; text-align: left; font-family: monospace; color: #ddd;">
+            <thead>
+                <tr style="border-bottom: 1px solid #333; color: #888; font-weight: bold; height: 20px;">
+                    <th style="padding: 2px;">Componente</th>
+                    <th style="padding: 2px; text-align: right;">Llamados</th>
+                    <th style="padding: 2px; text-align: right; color: #ff4444;">Errores</th>
+                    <th style="padding: 2px; text-align: right;">T.Prom (ms)</th>
+                    <th style="padding: 2px; text-align: right;">T.Máx (ms)</th>
+                </tr>
+            </thead>
+            <tbody>`;
+        componentStats.forEach((stats, compName) => {
+            const avgTime = stats.calls > 0 ? (stats.totalTime / stats.calls).toFixed(3) : '0.000';
+            const maxTime = stats.maxTime.toFixed(3);
+            const errColor = stats.errors > 0 ? '#ff4444' : '#00ffcc';
+            componentStatsHtml += `
+                <tr style="border-bottom: 1px solid #222; height: 20px;">
+                    <td style="padding: 2px; color: #fff; font-weight: bold;">${compName}</td>
+                    <td style="padding: 2px; text-align: right; color: #00b4ff;">${stats.calls}</td>
+                    <td style="padding: 2px; text-align: right; color: ${errColor};">${stats.errors}</td>
+                    <td style="padding: 2px; text-align: right; color: #ccc;">${avgTime} ms</td>
+                    <td style="padding: 2px; text-align: right; color: #ffbb33; font-weight: bold;">${maxTime} ms</td>
+                </tr>
+            `;
+        });
+        componentStatsHtml += `</tbody></table>`;
+    }
 
     // Render HTML Panel Structure
     container.innerHTML = `
@@ -414,8 +451,6 @@ export function update() {
                 <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                     <span style="font-size: 0.95em; color: #aaa; font-weight: bold;">📊 FPS: <span style="color: #00ffcc;">${fps} FPS</span></span>
                     <span style="font-size: 0.95em; color: #aaa; font-weight: bold;">📈 RAM Growth: <span style="color: #00b4ff;">+${ramGrowthRate} MB/s</span></span>
-                    <span style="font-size: 0.95em; color: #aaa; font-weight: bold;">💾 Est. VRAM: <span style="color: #ff00ff;">${formattedVRAM}</span></span>
-                    <span style="font-size: 0.95em; color: #aaa; font-weight: bold;">🪐 Gravedad: <span style="color: #ffbb33;">(${gravityStr})</span></span>
                 </div>
                 <div style="display: flex; gap: 8px;">
                     <button id="btn-save-scene-monitor" class="panel-tool-btn" style="background: #2d2d2d; border: 1px solid #444; color: #00ffcc; padding: 4px 10px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.85em;" title="Guardar Historial de Escena">
@@ -471,7 +506,7 @@ export function update() {
                 <!-- Right Column: Live Scene Telemetry Logs & Subsystems details -->
                 <div style="flex: 1; display: flex; flex-direction: column; gap: 15px; overflow: hidden;">
                     <!-- Top Right: Audio & Camera sources -->
-                    <div style="flex: 1.2; display: flex; flex-direction: column; gap: 10px; background: #151515; padding: 10px; border-radius: 4px; border: 1px solid #333; overflow-y: auto;">
+                    <div style="flex: 1.5; display: flex; flex-direction: column; gap: 10px; background: #151515; padding: 10px; border-radius: 4px; border: 1px solid #333; overflow-y: auto;">
                         <div>
                             <div style="font-size: 0.95em; font-weight: bold; color: #00b4ff; margin-bottom: 4px; border-bottom: 1px solid #222; padding-bottom: 2px;">📷 Cámaras en Escena</div>
                             ${camerasHtml}
@@ -479,6 +514,10 @@ export function update() {
                         <div>
                             <div style="font-size: 0.95em; font-weight: bold; color: #00ffcc; margin-bottom: 4px; border-bottom: 1px solid #222; padding-bottom: 2px;">🔊 Reproducción de Audio Live</div>
                             ${audioItemsHtml}
+                        </div>
+                        <div style="margin-top: 5px;">
+                            <div style="font-size: 0.95em; font-weight: bold; color: #ff00ff; margin-bottom: 4px; border-bottom: 1px solid #222; padding-bottom: 2px;">⚙️ Rendimiento y Llamadas de Componentes (Leyes)</div>
+                            ${componentStatsHtml}
                         </div>
                     </div>
 

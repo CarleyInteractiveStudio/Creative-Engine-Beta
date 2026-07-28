@@ -362,12 +362,21 @@ export class Materia {
     }
 
     update(deltaTime = 0) {
+        const recordCall = window.SceneMonitor && window.SceneMonitor.recordComponentCall;
         for (const ley of this.leyes) {
             if (ley.isActive && typeof ley.update === 'function') {
+                const compName = ley.constructor.name;
+                const startTime = recordCall ? performance.now() : 0;
                 try {
                     ley.update(deltaTime);
+                    if (recordCall) {
+                        recordCall(compName, performance.now() - startTime, true);
+                    }
                 } catch (e) {
-                    console.error(`Error updating component ${ley.constructor.name} on Materia '${this.name}':`, e);
+                    console.error(`Error updating component ${compName} on Materia '${this.name}':`, e);
+                    if (recordCall) {
+                        recordCall(compName, performance.now() - startTime, false);
+                    }
                 }
             }
         }
