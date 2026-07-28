@@ -25,6 +25,7 @@ import { setActiveTool, getActiveTool } from './editor/SceneView.js';
 import * as CodeEditor from './editor/CodeEditorWindow.js';
 import { initializeFloatingPanels, bringToFront, resetWindows } from './editor/FloatingPanelManager.js';
 import * as DebugPanel from './editor/ui/DebugPanel.js';
+import * as ScriptMonitorWindow from './editor/ui/ScriptMonitorWindow.js';
 import * as AIHandler from './editor/AIHandler.js';
 import * as Terminal from './editor/Terminal.js';
 import * as TilePalette from './editor/ui/TilePaletteWindow.js';
@@ -1327,6 +1328,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateWindowMenuUI() {
         const menuItems = {
             'console': 'menu-window-console',
+            'script-monitor-content': 'menu-window-script-monitor',
             'hierarchy-panel': 'menu-window-hierarchy',
             'inspector-panel': 'menu-window-inspector',
             'assets-panel': 'menu-window-assets',
@@ -1357,6 +1359,19 @@ document.addEventListener('DOMContentLoaded', () => {
                      const consoleTab = document.getElementById('console-content');
                      if (assetsPanel && !assetsPanel.classList.contains('hidden') && consoleTab && consoleTab.classList.contains('active')) {
                          consoleMenuItem.textContent = checkmark + consoleMenuItem.textContent;
+                     }
+                 }
+            }
+
+            // Special case for script monitor
+            if (menuId === 'menu-window-script-monitor') {
+                 const scriptMonitorMenuItem = document.getElementById('menu-window-script-monitor');
+                 if (scriptMonitorMenuItem) {
+                     scriptMonitorMenuItem.textContent = scriptMonitorMenuItem.textContent.replace(checkmark, '');
+                     const assetsPanel = dom.assetsPanel;
+                     const scriptMonitorTab = document.getElementById('script-monitor-content');
+                     if (assetsPanel && !assetsPanel.classList.contains('hidden') && scriptMonitorTab && scriptMonitorTab.classList.contains('active')) {
+                         scriptMonitorMenuItem.textContent = checkmark + scriptMonitorMenuItem.textContent;
                      }
                  }
             }
@@ -2425,6 +2440,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         DebugPanel.update();
+        ScriptMonitorWindow.update();
 
         // Update layouts before game logic and rendering
         runLayoutUpdate();
@@ -3694,6 +3710,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Switch to console tab
                     const consoleTabBtn = assetsPanel.querySelector('[data-tab="console-content"]');
                     if (consoleTabBtn) consoleTabBtn.click();
+
+                    updateWindowMenuUI();
+                }
+                return;
+            }
+
+            // Special case for Script Monitor (it's a tab, not a panel)
+            if (panelName === 'script-monitor') {
+                const assetsPanel = dom.assetsPanel;
+                if (assetsPanel) {
+                    assetsPanel.classList.remove('hidden');
+                    panelVisibility['assets'] = true;
+                    updateEditorLayout();
+
+                    // Switch to script monitor tab
+                    const scriptMonitorTabBtn = assetsPanel.querySelector('[data-tab="script-monitor-content"]');
+                    if (scriptMonitorTabBtn) scriptMonitorTabBtn.click();
 
                     updateWindowMenuUI();
                 }
@@ -5003,6 +5036,7 @@ public start() {
                 }
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime, getCpuExecutionTime });
+            ScriptMonitorWindow.initialize({ dom });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, showContextMenuCallback: (menu, e) => {
                 const rect = (dom.sceneCanvas3d && dom.sceneCanvas3d.style.display !== 'none' ? dom.sceneCanvas3d : dom.sceneCanvas).getBoundingClientRect();
                 const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };

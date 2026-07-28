@@ -664,6 +664,21 @@ VELOCIDAD_DESPEGUE: Vel. Despegue
 DERRAPE: Derrape
 FRENO_MOTOR: Freno Motor
 
+# Script Monitor
+MONITOR_SCRIPTS: Monitor de Script
+MONITOR_RED_GLOBAL: Permitir Red (Global)
+MONITOR_BORRAR: Borrar
+MONITOR_TABLA_SCRIPT: Script
+MONITOR_TABLA_ESTADO: Estado
+MONITOR_TABLA_ULT_FUNC: Últ. Función
+MONITOR_TABLA_EJECS: Ejecs.
+MONITOR_TABLA_TIEMPO: Tiempo (Prom/Últ)
+MONITOR_TABLA_RAM: Est. RAM
+MONITOR_TABLA_RED: Acceso Red
+MONITOR_DETALLES_LOGS: Registro de Peticiones (Últimas 10)
+MONITOR_SIN_REGISTROS: Sin actividad de red registrada.
+MONITOR_SIN_SCRIPTS: No se han ejecutado scripts todavía en esta sesión.
+
 [EN]
 # Header
 INICIAR_SESION: Log In
@@ -1325,6 +1340,21 @@ VELOCIDAD_DESPEGUE: Takeoff Speed
 DERRAPE: Drift
 FRENO_MOTOR: Motor Brake
 
+# Script Monitor
+MONITOR_SCRIPTS: Script Monitor
+MONITOR_RED_GLOBAL: Allow Network (Global)
+MONITOR_BORRAR: Clear
+MONITOR_TABLA_SCRIPT: Script
+MONITOR_TABLA_ESTADO: Status
+MONITOR_TABLA_ULT_FUNC: Last Func
+MONITOR_TABLA_EJECS: Execs
+MONITOR_TABLA_TIEMPO: Time (Avg/Last)
+MONITOR_TABLA_RAM: Est. RAM
+MONITOR_TABLA_RED: Net Access
+MONITOR_DETALLES_LOGS: Request Logs (Last 10)
+MONITOR_SIN_REGISTROS: No network activity recorded.
+MONITOR_SIN_SCRIPTS: No scripts have executed yet in this session.
+
 [PT]
 # Header
 INICIAR_SESION: Iniciar Sessão
@@ -1855,6 +1885,21 @@ VELOCIDAD_DESPEGUE: Vel. de Decolagem
 DERRAPE: Derrapagem
 FRENO_MOTOR: Freio Motor
 
+# Script Monitor
+MONITOR_SCRIPTS: Monitor de Script
+MONITOR_RED_GLOBAL: Permitir Rede (Global)
+MONITOR_BORRAR: Limpar
+MONITOR_TABLA_SCRIPT: Script
+MONITOR_TABLA_ESTADO: Estado
+MONITOR_TABLA_ULT_FUNC: Últ. Função
+MONITOR_TABLA_EJECS: Execs.
+MONITOR_TABLA_TIEMPO: Tempo (Méd/Últ)
+MONITOR_TABLA_RAM: Est. RAM
+MONITOR_TABLA_RED: Acesso Rede
+MONITOR_DETALLES_LOGS: Registro de Requisições (Últimas 10)
+MONITOR_SIN_REGISTROS: Nenhuma atividade de rede registrada.
+MONITOR_SIN_SCRIPTS: Nenhum script foi executado ainda nesta sessão.
+
 [RU]
 # Header
 INICIAR_SESION: Войти
@@ -2361,6 +2406,21 @@ SUSTENTACION: Подъемная сила
 VELOCIDAD_DESPEGUE: Скорость взлета
 DERRAPE: Дрифт
 FRENO_MOTOR: Торможение двигателем
+
+# Script Monitor
+MONITOR_SCRIPTS: Монитор скриптов
+MONITOR_RED_GLOBAL: Разрешить сеть (глобально)
+MONITOR_BORRAR: Очистить
+MONITOR_TABLA_SCRIPT: Скрипт
+MONITOR_TABLA_ESTADO: Статус
+MONITOR_TABLA_ULT_FUNC: Посл. функция
+MONITOR_TABLA_EJECS: Вып.
+MONITOR_TABLA_TIEMPO: Время (Ср/Посл)
+MONITOR_TABLA_RAM: Оценка ОЗУ
+MONITOR_TABLA_RED: Доступ к сети
+MONITOR_DETALLES_LOGS: Журнал запросов (последние 10)
+MONITOR_SIN_REGISTROS: Сетевая активность не зарегистрирована.
+MONITOR_SIN_SCRIPTS: В этом сеансе скрипты еще не выполнялись.
 
 [ZH]
 # Header
@@ -2917,3 +2977,18 @@ UI_MOVIMIENTO: UI de Movimiento
 MENU_PRINCIPAL: Menú Principal
 GESTOR_NIVELES: Gestor de Niveles
 LIMPIAR_CACHE: Limpiar Caché
+
+# Script Monitor
+MONITOR_SCRIPTS: 脚本监视器
+MONITOR_RED_GLOBAL: 允许网络 (全局)
+MONITOR_BORRAR: 清除
+MONITOR_TABLA_SCRIPT: 脚本
+MONITOR_TABLA_ESTADO: 状态
+MONITOR_TABLA_ULT_FUNC: 最近函数
+MONITOR_TABLA_EJECS: 执行次数
+MONITOR_TABLA_TIEMPO: 时间 (平均/单次)
+MONITOR_TABLA_RAM: 预估内存
+MONITOR_TABLA_RED: 网络访问
+MONITOR_DETALLES_LOGS: 请求日志 (最后10条)
+MONITOR_SIN_REGISTROS: 无网络活动记录。
+MONITOR_SIN_SCRIPTS: 本次会话中尚未执行任何脚本。

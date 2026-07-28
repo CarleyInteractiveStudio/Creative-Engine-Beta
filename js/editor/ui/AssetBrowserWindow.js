@@ -1421,7 +1421,7 @@ async function handleGridDblClick(e) {
     const kind = item.dataset.kind;
     const path = item.dataset.path;
 
-    if (kind === 'sub-sprite') {
+    if (!name || !kind || kind === 'sub-sprite') {
         return;
     }
 
@@ -1458,7 +1458,7 @@ async function handleGridContextMenu(e) {
     const importSpineOption = dom.contextMenu.querySelector('[data-action="import-spine"]');
     const fileDivider = dom.contextMenu.querySelector('.file-only-divider');
 
-    if (item) {
+    if (item && item.dataset.name && item.dataset.kind) {
         // Select the item that was right-clicked
         dom.assetGridView.querySelectorAll('.grid-item').forEach(i => i.classList.remove('active'));
         item.classList.add('active');
@@ -1724,7 +1724,7 @@ function createSubAssetItem(container, name, icon, dragData) {
     item.className = 'grid-item sub-asset-item';
     item.draggable = true;
     item.dataset.name = name;
-    item.dataset.path = dragData.assetPath;
+    item.dataset.path = dragData.assetPath || dragData.modelPath || '';
     item.dataset.kind = 'sub-sprite';
     item.dataset.subSpriteName = name;
 
@@ -1783,6 +1783,10 @@ function createSubAssetItemWithLazyIcon(container, name, imageUrl, rect, dragDat
     const item = document.createElement('div');
     item.className = 'grid-item sub-asset-item';
     item.draggable = true;
+    item.dataset.name = name;
+    item.dataset.path = dragData.assetPath || '';
+    item.dataset.kind = 'sub-sprite';
+    item.dataset.subSpriteName = name;
 
     const iconContainer = document.createElement('div');
     iconContainer.className = 'icon';

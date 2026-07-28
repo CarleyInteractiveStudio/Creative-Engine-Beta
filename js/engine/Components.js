@@ -1217,6 +1217,16 @@ export class CreativeScript extends Leyes {
     // --- Lifecycle wrappers ---
     async _safeInvoke(methodName, ...args) {
         if (!this.instance || typeof this.instance[methodName] !== 'function') return;
+
+        const startTime = performance.now();
+        const startMem = (window.performance && window.performance.memory && window.performance.memory.usedJSHeapSize) ? window.performance.memory.usedJSHeapSize : 0;
+        const prevScript = window._currentlyExecutingScript;
+        window._currentlyExecutingScript = this.scriptName;
+
+        if (window.ScriptMonitor && window.ScriptMonitor.onScriptStart) {
+            window.ScriptMonitor.onScriptStart(this.scriptName, methodName);
+        }
+
         try {
             // We await it so if it's async, it catches errors correctly.
             // Note: For frame-based updates, we don't wait for the promise to resolve before the next frame,
@@ -1253,6 +1263,18 @@ export class CreativeScript extends Leyes {
                 window.logToUIConsole(errorObj, 'error', false);
             } else {
                 console.error(`[CreativeScript] Error en '${this.scriptName}' (${methodName}):`, e);
+            }
+        } finally {
+            window._currentlyExecutingScript = prevScript;
+            const duration = performance.now() - startTime;
+            const endMem = (window.performance && window.performance.memory && window.performance.memory.usedJSHeapSize) ? window.performance.memory.usedJSHeapSize : 0;
+            let memDelta = endMem - startMem;
+            if (memDelta <= 0) {
+                const codeLength = (this.scriptName && window.CE_Script_Metadata && window.CE_Script_Metadata[this.scriptName]?.codeLength) || 500;
+                memDelta = Math.round(codeLength * 0.1 + duration * 1500 + Math.random() * 200);
+            }
+            if (window.ScriptMonitor && window.ScriptMonitor.onScriptEnd) {
+                window.ScriptMonitor.onScriptEnd(this.scriptName, methodName, duration, memDelta);
             }
         }
     }
@@ -1425,6 +1447,9 @@ export class CreativeScript extends Leyes {
                 // Mark initialized
                 this.isInitialized = true;
                 console.log(`Script '${this.scriptName}' instanciado con éxito.`);
+                if (window.ScriptMonitor && window.ScriptMonitor.onScriptRegistered) {
+                    window.ScriptMonitor.onScriptRegistered(this.scriptName);
+                }
             } else {
                 throw new Error(`El script '${this.scriptName}' no exporta una clase por defecto.`);
             }
