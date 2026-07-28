@@ -1222,6 +1222,7 @@ export class CreativeScript extends Leyes {
         const startMem = (window.performance && window.performance.memory && window.performance.memory.usedJSHeapSize) ? window.performance.memory.usedJSHeapSize : 0;
         const prevScript = window._currentlyExecutingScript;
         window._currentlyExecutingScript = this.scriptName;
+        let hasError = false;
 
         if (window.ScriptMonitor && window.ScriptMonitor.onScriptStart) {
             window.ScriptMonitor.onScriptStart(this.scriptName, methodName);
@@ -1233,6 +1234,7 @@ export class CreativeScript extends Leyes {
             // but we do await it here for error handling.
             await this.instance[methodName](...args);
         } catch (e) {
+            hasError = true;
             // --- Improved Runtime Error Reporting ---
             let cesLine = 0;
             const stack = e.stack || "";
@@ -1274,7 +1276,7 @@ export class CreativeScript extends Leyes {
                 memDelta = Math.round(codeLength * 0.1 + duration * 1500 + Math.random() * 200);
             }
             if (window.ScriptMonitor && window.ScriptMonitor.onScriptEnd) {
-                window.ScriptMonitor.onScriptEnd(this.scriptName, methodName, duration, memDelta);
+                window.ScriptMonitor.onScriptEnd(this.scriptName, methodName, duration, memDelta, hasError);
             }
         }
     }

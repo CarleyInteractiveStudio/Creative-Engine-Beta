@@ -1,4 +1,4 @@
-// --- Module for the Script Monitor (Monitor de Script) ---
+// --- Module for the Advanced Script Monitor (Monitor de Script) ---
 
 let dom;
 const scripts = new Map();
@@ -76,13 +76,14 @@ function setupNetworkInterceptors() {
 }
 
 function setupEventListeners() {
-    // We delegate events for dynamic checkboxes and buttons
     const container = document.getElementById('script-monitor-content');
     if (!container) return;
 
     container.addEventListener('click', (e) => {
-        if (e.target.id === 'btn-clear-monitor') {
+        if (e.target.id === 'btn-clear-monitor' || e.target.closest('#btn-clear-monitor')) {
             clearMonitorData();
+        } else if (e.target.id === 'btn-save-monitor' || e.target.closest('#btn-save-monitor')) {
+            saveMonitorHistory();
         } else if (e.target.classList.contains('monitor-expand-btn') || e.target.closest('.monitor-expand-btn')) {
             const btn = e.target.classList.contains('monitor-expand-btn') ? e.target : e.target.closest('.monitor-expand-btn');
             const scriptName = btn.dataset.script;
@@ -117,12 +118,14 @@ function getOrCreateScriptData(scriptName) {
             status: 'Idle',
             lastMethod: '---',
             executions: 0,
-            totalDuration: 0,
-            lastDuration: 0,
+            successes: 0,
+            errors: 0,
+            unresponsive: 0,
             ramEstimate: 0,
             networkCalls: 0,
             networkAllowed: true,
-            networkLogs: []
+            networkLogs: [],
+            functions: {}
         });
     }
     return scripts.get(scriptName);
@@ -137,14 +140,53 @@ function onScriptStart(scriptName, methodName) {
     data.status = 'Running';
     data.lastMethod = methodName;
     data.executions++;
+
+    if (!data.functions[methodName]) {
+        data.functions[methodName] = {
+            calls: 0,
+            successes: 0,
+            errors: 0,
+            unresponsive: 0,
+            totalTime: 0,
+            maxTime: 0
+        };
+    }
+    data.functions[methodName].calls++;
 }
 
-function onScriptEnd(scriptName, methodName, duration, ramEstimateBytes) {
+function onScriptEnd(scriptName, methodName, duration, ramEstimateBytes, hasError = false) {
     const data = getOrCreateScriptData(scriptName);
     data.status = 'Idle';
     data.lastDuration = duration;
-    data.totalDuration += duration;
     data.ramEstimate = ramEstimateBytes;
+
+    const func = data.functions[methodName] || {
+        calls: 1,
+        successes: 0,
+        errors: 0,
+        unresponsive: 0,
+        totalTime: 0,
+        maxTime: 0
+    };
+    data.functions[methodName] = func;
+
+    func.totalTime += duration;
+    if (duration > func.maxTime) {
+        func.maxTime = duration;
+    }
+
+    if (duration > 16.6) { // Slow call (stalls 60fps frame budget)
+        data.unresponsive++;
+        func.unresponsive++;
+    }
+
+    if (hasError) {
+        data.errors++;
+        func.errors++;
+    } else {
+        data.successes++;
+        func.successes++;
+    }
 }
 
 function logNetworkAttempt(scriptName, url, type, status) {
@@ -163,7 +205,7 @@ function logNetworkAttempt(scriptName, url, type, status) {
         timestamp: new Date().toLocaleTimeString()
     });
 
-    if (data.networkLogs.length > 10) {
+    if (data.networkLogs.length > 15) {
         data.networkLogs.pop();
     }
 }
@@ -185,6 +227,38 @@ function formatBytes(bytes) {
     return (bytes / 1048576).toFixed(1) + " MB";
 }
 
+function saveMonitorHistory() {
+    const exportData = {
+        sessionTimestamp: new Date().toISOString(),
+        globalNetworkAllowed: isNetworkGlobalAllowed,
+        scripts: []
+    };
+
+    scripts.forEach((data, name) => {
+        exportData.scripts.push({
+            name: data.name,
+            totalExecutions: data.executions,
+            totalSuccesses: data.successes,
+            totalErrors: data.errors,
+            totalUnresponsive: data.unresponsive,
+            ramEstimateBytes: data.ramEstimate,
+            networkCalls: data.networkCalls,
+            networkAllowed: data.networkAllowed,
+            functions: data.functions,
+            networkLogs: data.networkLogs
+        });
+    });
+
+    const jsonString = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", jsonString);
+    downloadAnchor.setAttribute("download", `script_monitor_session_${Date.now()}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    console.log("[ScriptMonitor] Historial de sesión exportado.");
+}
+
 export function update() {
     const container = document.getElementById('script-monitor-content');
     if (!container) return;
@@ -203,10 +277,16 @@ export function update() {
                             <span data-i18n="MONITOR_RED_GLOBAL">${L.get('MONITOR_RED_GLOBAL', 'Permitir Red (Global)')}</span>
                         </label>
                     </div>
-                    <button id="btn-clear-monitor" class="panel-tool-btn" style="background: #2d2d2d; border: 1px solid #444; color: #ccc; padding: 4px 10px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.85em;" title="${L.get('MONITOR_BORRAR', 'Borrar')}">
-                        <img src="icons/trash.svg" class="ce-icon" style="width: 14px; height: 14px; filter: invert(0.8);">
-                        <span data-i18n="MONITOR_BORRAR">${L.get('MONITOR_BORRAR', 'Borrar')}</span>
-                    </button>
+                    <div style="display: flex; gap: 8px;">
+                        <button id="btn-save-monitor" class="panel-tool-btn" style="background: #2d2d2d; border: 1px solid #444; color: #00ffcc; padding: 4px 10px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.85em;" title="${L.get('MONITOR_GUARDAR_HISTORIAL', 'Guardar Historial')}">
+                            <img src="icons/download.svg" class="ce-icon" style="width: 14px; height: 14px; filter: invert(0.8);">
+                            <span>${L.get('MONITOR_GUARDAR_HISTORIAL', 'Guardar Historial')}</span>
+                        </button>
+                        <button id="btn-clear-monitor" class="panel-tool-btn" style="background: #2d2d2d; border: 1px solid #444; color: #ff4444; padding: 4px 10px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.85em;" title="${L.get('MONITOR_BORRAR_SESION', 'Borrar Sesión')}">
+                            <img src="icons/trash.svg" class="ce-icon" style="width: 14px; height: 14px; filter: invert(0.8);">
+                            <span>${L.get('MONITOR_BORRAR_SESION', 'Borrar Sesión')}</span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Table Container -->
@@ -217,9 +297,9 @@ export function update() {
                                 <th style="padding: 8px 4px; width: 30px;"></th>
                                 <th style="padding: 8px 4px;" data-i18n="MONITOR_TABLA_SCRIPT">${L.get('MONITOR_TABLA_SCRIPT', 'Script')}</th>
                                 <th style="padding: 8px 4px; text-align: center; width: 90px;" data-i18n="MONITOR_TABLA_ESTADO">${L.get('MONITOR_TABLA_ESTADO', 'Estado')}</th>
-                                <th style="padding: 8px 4px;" data-i18n="MONITOR_TABLA_ULT_FUNC">${L.get('MONITOR_TABLA_ULT_FUNC', 'Últ. Función')}</th>
-                                <th style="padding: 8px 4px; text-align: right; width: 70px;" data-i18n="MONITOR_TABLA_EJECS">${L.get('MONITOR_TABLA_EJECS', 'Ejecs.')}</th>
-                                <th style="padding: 8px 4px; text-align: right; width: 140px;" data-i18n="MONITOR_TABLA_TIEMPO">${L.get('MONITOR_TABLA_TIEMPO', 'Tiempo (Prom/Últ)')}</th>
+                                <th style="padding: 8px 4px; text-align: right; width: 80px;">${L.get('MONITOR_EXITOS', 'Éxitos')}</th>
+                                <th style="padding: 8px 4px; text-align: right; width: 80px; color: #ff4444;">${L.get('MONITOR_ERRORES', 'Errores')}</th>
+                                <th style="padding: 8px 4px; text-align: right; width: 90px; color: #ffbb33;">${L.get('MONITOR_LENTOS', 'Lentos')}</th>
                                 <th style="padding: 8px 4px; text-align: right; width: 90px;" data-i18n="MONITOR_TABLA_RAM">${L.get('MONITOR_TABLA_RAM', 'Est. RAM')}</th>
                                 <th style="padding: 8px 4px; text-align: center; width: 100px;" data-i18n="MONITOR_TABLA_RED">${L.get('MONITOR_TABLA_RED', 'Acceso Red')}</th>
                             </tr>
@@ -248,7 +328,6 @@ export function update() {
         return;
     }
 
-    // Update or populate rows
     scripts.forEach((data, name) => {
         let rowId = `monitor-row-${name.replace(/[^a-zA-Z0-9]/g, '_')}`;
         let mainRow = document.getElementById(rowId);
@@ -256,8 +335,6 @@ export function update() {
         let logsRow = document.getElementById(logsRowId);
 
         const isExpanded = expandedScripts.has(name);
-        const avgTime = data.executions > 0 ? (data.totalDuration / data.executions).toFixed(3) : '0.000';
-        const lastTime = data.lastDuration.toFixed(3);
         const formattedRam = formatBytes(data.ramEstimate);
 
         const statusDotStyle = data.status === 'Running'
@@ -268,7 +345,6 @@ export function update() {
         const statusColor = data.status === 'Running' ? '#00ffcc' : '#aaa';
 
         if (!mainRow) {
-            // Create rows dynamically
             mainRow = document.createElement('tr');
             mainRow.id = rowId;
             mainRow.style.borderBottom = '1px solid #2d2d2d';
@@ -292,18 +368,15 @@ export function update() {
                     <span>${statusLabel}</span>
                 </div>
             </td>
-            <td style="padding: 6px 4px; color: #ffbb33;">${data.lastMethod}</td>
-            <td style="padding: 6px 4px; text-align: right; color: #00b4ff;">${data.executions}</td>
-            <td style="padding: 6px 4px; text-align: right; color: #aaa;">
-                <span>${avgTime} ms</span> <span style="color: #666;">/</span> <span style="color: #fff;">${lastTime} ms</span>
-            </td>
-            <td style="padding: 6px 4px; text-align: right; color: #00ffcc;">${formattedRam}</td>
+            <td style="padding: 6px 4px; text-align: right; color: #00ffcc; font-weight: bold;">${data.successes}</td>
+            <td style="padding: 6px 4px; text-align: right; color: #ff4444; font-weight: bold;">${data.errors}</td>
+            <td style="padding: 6px 4px; text-align: right; color: #ffbb33; font-weight: bold;">${data.unresponsive}</td>
+            <td style="padding: 6px 4px; text-align: right; color: #00b4ff;">${formattedRam}</td>
             <td style="padding: 6px 4px; text-align: center;">
                 <input type="checkbox" class="chk-script-network" data-script="${name}" ${data.networkAllowed ? 'checked' : ''} style="accent-color: #00ffcc; cursor: pointer;">
             </td>
         `;
 
-        // Update / create network logs sub-row
         if (isExpanded) {
             if (!logsRow) {
                 logsRow = document.createElement('tr');
@@ -311,31 +384,116 @@ export function update() {
                 rowsBody.insertBefore(logsRow, mainRow.nextSibling);
             }
 
-            let logsHtml = '';
-            if (data.networkLogs.length === 0) {
-                logsHtml = `<div style="color: #666;" data-i18n="MONITOR_SIN_REGISTROS">${L.get('MONITOR_SIN_REGISTROS', 'Sin actividad de red registrada.')}</div>`;
+            // Let's render the detailed functions analysis table!
+            let funcTableRows = '';
+            let advices = [];
+
+            // Detect advice criteria
+            let hasErrorsInFunctions = false;
+            let hasSlowFunctions = false;
+
+            const funcEntries = Object.entries(data.functions);
+            if (funcEntries.length === 0) {
+                funcTableRows = `<tr><td colspan="6" style="text-align: center; color: #666; padding: 10px;">Ninguna función ejecutada todavía.</td></tr>`;
             } else {
-                logsHtml = `<table style="width: 100%; border-collapse: collapse; font-size: 0.9em; text-align: left;">`;
-                data.networkLogs.forEach(log => {
-                    const statusColor = log.status === 'Permitido' ? '#00ffcc' : '#ff4444';
-                    logsHtml += `
-                        <tr style="border-bottom: 1px solid #222;">
-                            <td style="padding: 4px; color: #888; width: 70px;">[${log.timestamp}]</td>
-                            <td style="padding: 4px; color: #ffbb33; width: 50px;">${log.type}</td>
-                            <td style="padding: 4px; color: #fff; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${log.url}">${log.url}</td>
-                            <td style="padding: 4px; text-align: right; color: ${statusColor}; font-weight: bold;">${log.status}</td>
+                funcEntries.forEach(([funcName, stats]) => {
+                    const avgT = stats.calls > 0 ? (stats.totalTime / stats.calls).toFixed(3) : '0.000';
+                    const maxT = stats.maxTime.toFixed(3);
+
+                    if (stats.errors > 0) hasErrorsInFunctions = true;
+                    if (stats.unresponsive > 0) hasSlowFunctions = true;
+
+                    funcTableRows += `
+                        <tr style="border-bottom: 1px solid #222; height: 26px;">
+                            <td style="padding: 4px; color: #ffbb33; font-weight: bold;">${funcName}()</td>
+                            <td style="padding: 4px; text-align: right; color: #fff;">${stats.calls}</td>
+                            <td style="padding: 4px; text-align: right; color: #00ffcc;">${stats.successes}</td>
+                            <td style="padding: 4px; text-align: right; color: #ff4444;">${stats.errors}</td>
+                            <td style="padding: 4px; text-align: right; color: #ffaa00;">${stats.unresponsive}</td>
+                            <td style="padding: 4px; text-align: right; color: #ccc;">
+                                <span>${avgT} ms</span> <span style="color: #555;">/</span> <span style="color: #fff; font-weight: bold;">${maxT} ms</span>
+                            </td>
                         </tr>
                     `;
                 });
-                logsHtml += `</table>`;
+            }
+
+            // Build smart recommendations
+            if (hasErrorsInFunctions) {
+                advices.push(`⚠️ <span style="color: #ff4444;">Se han detectado errores durante la ejecución de las funciones. Revisa la pestaña de Consola para ver los detalles del error.</span>`);
+            }
+            if (hasSlowFunctions) {
+                advices.push(`⚡ <span style="color: #ffbb33;">Hay llamadas "Lentas" que tardan más de 16.6ms. Optimiza los cálculos reduciendo bucles excesivos o evitando buscar objetos con getComponentByName o findMateria dentro de update() o fixedUpdate().</span>`);
+            }
+            if (data.networkCalls > 10) {
+                advices.push(`🌐 <span style="color: #00b4ff;">Uso alto de peticiones de red (${data.networkCalls} llamadas). Considera implementar un caché o un retardo para evitar sobrecargar los hilos de comunicación de red.</span>`);
+            }
+            if (advices.length === 0) {
+                advices.push(`✅ <span style="color: #00ffcc;">¡Excelente rendimiento! Este script se está ejecutando perfectamente y dentro de los tiempos recomendados de frame budget.</span>`);
+            }
+
+            const advicesHtml = advices.map(a => `<div style="margin-bottom: 4px; font-size: 0.95em;">${a}</div>`).join('');
+
+            // Also render Network Logs
+            let networkLogsHtml = '';
+            if (data.networkLogs.length === 0) {
+                networkLogsHtml = `<div style="color: #666; font-size: 0.9em; padding: 4px 0;">Sin peticiones de red registradas.</div>`;
+            } else {
+                networkLogsHtml = `<table style="width: 100%; border-collapse: collapse; font-size: 0.9em; text-align: left;">`;
+                data.networkLogs.slice(0, 10).forEach(log => {
+                    const statusColor = log.status === 'Permitido' ? '#00ffcc' : '#ff4444';
+                    networkLogsHtml += `
+                        <tr style="border-bottom: 1px solid #222; height: 20px;">
+                            <td style="padding: 2px 4px; color: #888; width: 75px;">[${log.timestamp}]</td>
+                            <td style="padding: 2px 4px; color: #ffbb33; width: 45px;">${log.type}</td>
+                            <td style="padding: 2px 4px; color: #fff; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${log.url}">${log.url}</td>
+                            <td style="padding: 2px 4px; text-align: right; color: ${statusColor}; font-weight: bold; width: 80px;">${log.status}</td>
+                        </tr>
+                    `;
+                });
+                networkLogsHtml += `</table>`;
             }
 
             logsRow.innerHTML = `
-                <td colspan="8" style="background: #151515; padding: 10px 15px; border-bottom: 1px solid #333;">
-                    <div style="font-size: 0.9em; font-weight: bold; color: #888; margin-bottom: 6px;" data-i18n="MONITOR_DETALLES_LOGS">
-                        ${L.get('MONITOR_DETALLES_LOGS', 'Registro de Peticiones (Últimas 10)')}
+                <td colspan="8" style="background: #151515; padding: 12px 15px; border-bottom: 1px solid #333;">
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                        <!-- Left Side: Detailed Functions Table -->
+                        <div style="flex: 2; min-width: 320px;">
+                            <div style="font-size: 0.95em; font-weight: bold; color: #00ffcc; margin-bottom: 6px; border-bottom: 1px solid #333; padding-bottom: 4px;">${L.get('MONITOR_ANALISIS_DETALLADO', 'Análisis Detallado de Funciones')}</div>
+                            <table style="width: 100%; border-collapse: collapse; font-size: 0.95em; text-align: left;">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid #444; color: #888;">
+                                        <th style="padding: 4px;">${L.get('MONITOR_FUNCION', 'Función')}</th>
+                                        <th style="padding: 4px; text-align: right;">${L.get('MONITOR_LLAMADOS', 'Llamados')}</th>
+                                        <th style="padding: 4px; text-align: right;">${L.get('MONITOR_EXITOS', 'Éxitos')}</th>
+                                        <th style="padding: 4px; text-align: right; color: #ff4444;">${L.get('MONITOR_ERRORES', 'Errores')}</th>
+                                        <th style="padding: 4px; text-align: right; color: #ffbb33;">${L.get('MONITOR_LENTOS', 'Lentos')}</th>
+                                        <th style="padding: 4px; text-align: right;">${L.get('MONITOR_TABLA_TIEMPO', 'Tiempo (Prom/Máx)')}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${funcTableRows}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Right Side: Suggestions & Network Logs -->
+                        <div style="flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 15px;">
+                            <div>
+                                <div style="font-size: 0.95em; font-weight: bold; color: #ffbb33; margin-bottom: 6px; border-bottom: 1px solid #333; padding-bottom: 4px;">${L.get('MONITOR_SUGERENCIAS', 'Sugerencias de Optimización')}</div>
+                                <div style="background: #222; border-radius: 4px; padding: 8px; border-left: 3px solid #ffbb33;">
+                                    ${advicesHtml}
+                                </div>
+                            </div>
+
+                            <div>
+                                <div style="font-size: 0.95em; font-weight: bold; color: #00b4ff; margin-bottom: 6px; border-bottom: 1px solid #333; padding-bottom: 4px;">${L.get('MONITOR_RED_RECIENTES', 'Peticiones de Red Recientes')}</div>
+                                <div style="background: #222; border-radius: 4px; padding: 6px; max-height: 120px; overflow-y: auto;">
+                                    ${networkLogsHtml}
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    ${logsHtml}
                 </td>
             `;
         } else {
@@ -345,7 +503,6 @@ export function update() {
         }
     });
 
-    // Remove any rows that are no longer in the map
     const existingRowIds = new Set();
     scripts.forEach((data, name) => {
         existingRowIds.add(`monitor-row-${name.replace(/[^a-zA-Z0-9]/g, '_')}`);
