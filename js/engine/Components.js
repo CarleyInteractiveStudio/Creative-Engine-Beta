@@ -491,6 +491,10 @@ export class CreativeScriptBehavior {
      */
     destruir(materia) {
         if (!materia) return;
+        const activeScript = window._currentlyExecutingScript;
+        if (activeScript && window.ScriptMonitor && window.ScriptMonitor.onObjectDestroyed) {
+            window.ScriptMonitor.onObjectDestroyed(activeScript);
+        }
         const scene = materia.scene || (this.materia ? this.materia.scene : null);
         if (scene) {
             scene.removeMateria(materia.id);
@@ -501,6 +505,10 @@ export class CreativeScriptBehavior {
      * Crea una copia de una Materia (objeto) existente y la añade a la escena actual.
      */
     instanciar(original, x, y) {
+        const activeScript = window._currentlyExecutingScript;
+        if (activeScript && window.ScriptMonitor && window.ScriptMonitor.onObjectInstantiated) {
+            window.ScriptMonitor.onObjectInstantiated(activeScript);
+        }
         // We import it dynamically or just use the global/RuntimeManager if available.
         // But the easiest is to just use what's already imported in this file if we add it.
         // Actually, SceneManager is not imported here.
@@ -853,6 +861,10 @@ export class CreativeScriptBehavior {
      */
     reproducir(estado, opciones = false) {
         if (!this.materia) return;
+        const activeScript = window._currentlyExecutingScript;
+        if (activeScript && window.ScriptMonitor && window.ScriptMonitor.onAnimationPlayed) {
+            window.ScriptMonitor.onAnimationPlayed(activeScript);
+        }
         const controller = this.obtenerComponente('AnimatorController');
         if (controller) {
             if (typeof opciones === 'boolean') {

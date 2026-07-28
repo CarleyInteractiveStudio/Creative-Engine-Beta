@@ -21,7 +21,19 @@ export function initialize(dependencies) {
             if (!data) return false;
             return !data.networkAllowed;
         },
-        logNetworkAttempt
+        logNetworkAttempt,
+        onObjectInstantiated(scriptName) {
+            const data = getOrCreateScriptData(scriptName);
+            data.instantiations = (data.instantiations || 0) + 1;
+        },
+        onObjectDestroyed(scriptName) {
+            const data = getOrCreateScriptData(scriptName);
+            data.destructions = (data.destructions || 0) + 1;
+        },
+        onAnimationPlayed(scriptName) {
+            const data = getOrCreateScriptData(scriptName);
+            data.animationsPlayed = (data.animationsPlayed || 0) + 1;
+        }
     };
 
     // Setup global network interceptors
@@ -125,7 +137,10 @@ function getOrCreateScriptData(scriptName) {
             networkCalls: 0,
             networkAllowed: true,
             networkLogs: [],
-            functions: {}
+            functions: {},
+            instantiations: 0,
+            destructions: 0,
+            animationsPlayed: 0
         });
     }
     return scripts.get(scriptName);
@@ -245,7 +260,10 @@ function saveMonitorHistory() {
             networkCalls: data.networkCalls,
             networkAllowed: data.networkAllowed,
             functions: data.functions,
-            networkLogs: data.networkLogs
+            networkLogs: data.networkLogs,
+            instantiations: data.instantiations,
+            destructions: data.destructions,
+            animationsPlayed: data.animationsPlayed
         });
     });
 
@@ -279,7 +297,6 @@ export function update() {
                     </div>
                     <div style="display: flex; gap: 8px;">
                         <button id="btn-save-monitor" class="panel-tool-btn" style="background: #2d2d2d; border: 1px solid #444; color: #00ffcc; padding: 4px 10px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.85em;" title="${L.get('MONITOR_GUARDAR_HISTORIAL', 'Guardar Historial')}">
-                            <img src="icons/download.svg" class="ce-icon" style="width: 14px; height: 14px; filter: invert(0.8);">
                             <span>${L.get('MONITOR_GUARDAR_HISTORIAL', 'Guardar Historial')}</span>
                         </button>
                         <button id="btn-clear-monitor" class="panel-tool-btn" style="background: #2d2d2d; border: 1px solid #444; color: #ff4444; padding: 4px 10px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.85em;" title="${L.get('MONITOR_BORRAR_SESION', 'Borrar Sesión')}">
@@ -479,6 +496,15 @@ export function update() {
 
                         <!-- Right Side: Suggestions & Network Logs -->
                         <div style="flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 15px;">
+                            <div>
+                                <div style="font-size: 0.95em; font-weight: bold; color: #00e5ff; margin-bottom: 6px; border-bottom: 1px solid #333; padding-bottom: 4px;">Actividad de Objetos</div>
+                                <div style="background: #222; border-radius: 4px; padding: 8px; border-left: 3px solid #00e5ff; font-size: 0.95em;">
+                                    <div style="margin-bottom: 4px;">✨ Objetos Creados: <strong style="color: #00ffcc;">${data.instantiations || 0}</strong></div>
+                                    <div style="margin-bottom: 4px;">💥 Objetos Destruidos: <strong style="color: #ff4444;">${data.destructions || 0}</strong></div>
+                                    <div>🎬 Animaciones Iniciadas: <strong style="color: #ffbb33;">${data.animationsPlayed || 0}</strong></div>
+                                </div>
+                            </div>
+
                             <div>
                                 <div style="font-size: 0.95em; font-weight: bold; color: #ffbb33; margin-bottom: 6px; border-bottom: 1px solid #333; padding-bottom: 4px;">${L.get('MONITOR_SUGERENCIAS', 'Sugerencias de Optimización')}</div>
                                 <div style="background: #222; border-radius: 4px; padding: 8px; border-left: 3px solid #ffbb33;">
