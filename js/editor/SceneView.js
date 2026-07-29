@@ -2796,16 +2796,23 @@ function check3DGizmoHit(canvasPos, materia) {
     if (!screenPos) return null;
 
     const gizmoScale = getGizmoScale(center, proj, view, cw, ch);
-    const hitRadius = 25;
-    const gizmoLen = 80 * gizmoScale;
+    const hitRadius = 30; // More forgiving radius
+    const gizmoLen = 120 * gizmoScale; // Larger gizmo
+
+    const distanceToSegment = (p, a, b) => {
+        const l2 = (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
+        if (l2 === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+        let t = ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / l2;
+        t = Math.max(0, Math.min(1, t));
+        return Math.hypot(p.x - (a.x + t * (b.x - a.x)), p.y - (a.y + t * (b.y - a.y)));
+    };
 
     const checkHandle = (worldAxis) => {
         const axisEnd = { x: center.x + worldAxis[0] * gizmoLen, y: center.y + worldAxis[1] * gizmoLen, z: center.z + worldAxis[2] * gizmoLen };
         const screenEnd = world3DToScreen(axisEnd, proj, view, cw, ch);
         if (!screenEnd) return false;
-        const dx = canvasPos.x - screenEnd.x;
-        const dy = canvasPos.y - screenEnd.y;
-        return Math.hypot(dx, dy) < hitRadius;
+        // Check proximity to the entire axis segment for ultimate ease of interaction!
+        return distanceToSegment(canvasPos, screenPos, screenEnd) < hitRadius;
     };
 
     if (activeTool === 'move' || activeTool === 'universal' || activeTool === 'scale') {
@@ -2878,7 +2885,7 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
     const gizmoScale = getGizmoScale(center, proj, view, cw, ch);
 
     // GIZMO_SIZE is the line length in world units. It scales with distance to appear constant on screen.
-    const GIZMO_SIZE = 80 * gizmoScale;
+    const GIZMO_SIZE = 120 * gizmoScale;
     // ARROW_SIZE is the handle size in constant screen PIXELS.
     const ARROW_SIZE = 18;
 

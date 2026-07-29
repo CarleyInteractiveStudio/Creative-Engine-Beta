@@ -2094,7 +2094,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.Transform) {
+        } else if (ley instanceof Components.Transform || ley.constructor.name === 'CarleyTransform3D') {
             if (selectedMateria.getComponent(Components.UITransform)) {
                 return;
             }

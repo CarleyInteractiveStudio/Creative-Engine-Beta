@@ -64,6 +64,14 @@ export class CarleyTransform3D extends CarleyLeyes3D {
     get scaleZ() { return this._scale.z; }
     set scaleZ(val) { this._scale.z = val; }
 
+    // Compatibility getters & setters for the Editor Inspector
+    get localPosition() { return this._position; }
+    set localPosition(v) { this.position = v; }
+    get localRotation() { return this._rotation; }
+    set localRotation(v) { this.rotation = v; }
+    get localScale() { return this._scale; }
+    set localScale(v) { this.scale = v; }
+
     // Español (Simplificado)
     get posicion() { return this.position; }
     set posicion(v) { this.position = v; }
