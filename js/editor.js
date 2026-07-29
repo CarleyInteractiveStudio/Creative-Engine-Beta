@@ -814,6 +814,51 @@ document.addEventListener('DOMContentLoaded', () => {
                         iconContainer.innerHTML = `<img src="icons/scroll.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                     } else if (name.endsWith('.chc')) {
                         iconContainer.innerHTML = `<img src="icons/bot.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+                    } else if (name.toLowerCase().endsWith('.cesprite')) {
+                        const imgIcon = document.createElement('img');
+                        imgIcon.className = 'icon-preview';
+                        (async () => {
+                            try {
+                                const file = await (item.handle || await displayDirHandle.getFileHandle(name)).getFile();
+                                const content = await file.text();
+                                const spriteAsset = JSON.parse(content);
+                                const sprites = spriteAsset.sprites || {};
+                                const spriteNames = Object.keys(sprites);
+                                if (spriteNames.length > 0) {
+                                    const firstSpriteName = spriteNames[0];
+                                    const rect = sprites[firstSpriteName].rect;
+                                    const sourceImageName = spriteAsset.sourceImage;
+
+                                    let folderPath = 'Assets';
+                                    if (fullPath.includes('/')) {
+                                        folderPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
+                                    }
+                                    const imageAssetPath = `${folderPath}/${sourceImageName}`;
+                                    const sourceImageUrl = await getURLForAssetPath(imageAssetPath, projectsDirHandle);
+
+                                    if (sourceImageUrl) {
+                                        const img = new Image();
+                                        img.onload = () => {
+                                            const canvas = document.createElement('canvas');
+                                            canvas.width = rect.width;
+                                            canvas.height = rect.height;
+                                            const ctx = canvas.getContext('2d');
+                                            ctx.drawImage(img, rect.x, rect.y, rect.width, rect.height, 0, 0, rect.width, rect.height);
+                                            imgIcon.src = canvas.toDataURL();
+                                            iconContainer.appendChild(imgIcon);
+                                        };
+                                        img.src = sourceImageUrl;
+                                    } else {
+                                        iconContainer.innerHTML = `<img src="icons/image.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+                                    }
+                                } else {
+                                    iconContainer.innerHTML = `<img src="icons/image.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+                                }
+                            } catch (e) {
+                                console.error("Error loading first frame for asset selector .ceSprite preview:", e);
+                                iconContainer.innerHTML = `<img src="icons/image.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+                            }
+                        })();
                     } else {
                         const imgIcon = document.createElement('img');
                         imgIcon.className = 'icon-preview';

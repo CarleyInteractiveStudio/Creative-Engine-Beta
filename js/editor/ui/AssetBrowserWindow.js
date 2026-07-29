@@ -865,15 +865,49 @@ export async function updateAssetBrowser() {
             } else if (lowerName.endsWith('.cepalette')) {
                 iconContainer.innerHTML = `<img src="icons/grid.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (lowerName.endsWith('.cesprite')) {
-                const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
-                getURLForAssetPath(fullPath, currentDirHandle).then(url => {
-                    if (url) {
-                        imgIcon.src = url;
-                        iconContainer.appendChild(imgIcon);
-                    } else {
+                (async () => {
+                    try {
+                        const file = await entry.getFile();
+                        const content = await file.text();
+                        const spriteAsset = JSON.parse(content);
+                        const sprites = spriteAsset.sprites || {};
+                        const spriteNames = Object.keys(sprites);
+                        if (spriteNames.length > 0) {
+                            const firstSpriteName = spriteNames[0];
+                            const rect = sprites[firstSpriteName].rect;
+                            const sourceImageName = spriteAsset.sourceImage;
+
+                            let folderPath = 'Assets';
+                            if (fullPath.includes('/')) {
+                                folderPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
+                            }
+                            const imageAssetPath = `${folderPath}/${sourceImageName}`;
+                            const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
+                            const sourceImageUrl = await getURLForAssetPath(imageAssetPath, currentDirHandle);
+
+                            if (sourceImageUrl) {
+                                const img = new Image();
+                                img.onload = () => {
+                                    const canvas = document.createElement('canvas');
+                                    canvas.width = rect.width;
+                                    canvas.height = rect.height;
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.drawImage(img, rect.x, rect.y, rect.width, rect.height, 0, 0, rect.width, rect.height);
+                                    imgIcon.src = canvas.toDataURL();
+                                    iconContainer.appendChild(imgIcon);
+                                };
+                                img.src = sourceImageUrl;
+                            } else {
+                                iconContainer.innerHTML = `<img src="icons/image.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+                            }
+                        } else {
+                            iconContainer.innerHTML = `<img src="icons/image.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+                        }
+                    } catch (e) {
+                        console.error("Error loading first frame for asset browser .ceSprite preview:", e);
                         iconContainer.innerHTML = `<img src="icons/image.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                     }
-                });
+                })();
             } else if (lowerName.endsWith('.cep')) {
                 iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (lowerName.endsWith('.cmel')) {
