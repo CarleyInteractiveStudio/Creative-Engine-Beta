@@ -445,7 +445,7 @@ export function update() {
 
     // Render HTML Panel Structure
     container.innerHTML = `
-        <div class="scene-monitor-panel" style="padding: 10px; display: flex; flex-direction: column; height: 100%; box-sizing: border-box; overflow: hidden; color: #fff; background: #1e1e1e; font-family: sans-serif;">
+        <div class="scene-monitor-panel" style="padding: 10px; display: flex; flex-direction: column; min-height: 100%; box-sizing: border-box; color: #fff; background: #1e1e1e; font-family: sans-serif;">
             <!-- Toolbar -->
             <div class="monitor-toolbar" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid #333; margin-bottom: 8px;">
                 <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
@@ -494,37 +494,37 @@ export function update() {
             </div>
 
             <!-- Content Area -->
-            <div style="flex: 1; display: flex; gap: 15px; overflow: hidden; min-height: 0;">
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 10px;">
                 <!-- Left Column: Diagnostic & Architectural suggestions -->
-                <div style="flex: 1.2; display: flex; flex-direction: column; overflow-y: auto; background: #151515; padding: 10px; border-radius: 4px; border: 1px solid #333;">
+                <div style="flex: 1.2; min-width: 320px; background: #151515; padding: 10px; border-radius: 4px; border: 1px solid #333;">
                     <div style="font-size: 1em; font-weight: bold; color: #00e5ff; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px;">🔍 Sugerencias de Arquitectura y Diagnósticos Avanzados</div>
-                    <div style="flex: 1;">
+                    <div>
                         ${advancedAdvices.join('')}
                     </div>
                 </div>
 
                 <!-- Right Column: Live Scene Telemetry Logs & Subsystems details -->
-                <div style="flex: 1; display: flex; flex-direction: column; gap: 15px; overflow: hidden;">
+                <div style="flex: 1; min-width: 300px; display: flex; flex-direction: column; gap: 15px;">
                     <!-- Top Right: Audio & Camera sources -->
-                    <div style="flex: 1.5; display: flex; flex-direction: column; gap: 10px; background: #151515; padding: 10px; border-radius: 4px; border: 1px solid #333; overflow-y: auto;">
+                    <div style="background: #151515; padding: 10px; border-radius: 4px; border: 1px solid #333;">
                         <div>
                             <div style="font-size: 0.95em; font-weight: bold; color: #00b4ff; margin-bottom: 4px; border-bottom: 1px solid #222; padding-bottom: 2px;">📷 Cámaras en Escena</div>
                             ${camerasHtml}
                         </div>
-                        <div>
+                        <div style="margin-top: 10px;">
                             <div style="font-size: 0.95em; font-weight: bold; color: #00ffcc; margin-bottom: 4px; border-bottom: 1px solid #222; padding-bottom: 2px;">🔊 Reproducción de Audio Live</div>
                             ${audioItemsHtml}
                         </div>
-                        <div style="margin-top: 5px;">
+                        <div style="margin-top: 15px;">
                             <div style="font-size: 0.95em; font-weight: bold; color: #ff00ff; margin-bottom: 4px; border-bottom: 1px solid #222; padding-bottom: 2px;">⚙️ Rendimiento y Llamadas de Componentes (Leyes)</div>
                             ${componentStatsHtml}
                         </div>
                     </div>
 
                     <!-- Bottom Right: Scene Events log -->
-                    <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #151515; padding: 10px; border-radius: 4px; border: 1px solid #333;">
+                    <div style="background: #151515; padding: 10px; border-radius: 4px; border: 1px solid #333;">
                         <div style="font-size: 1em; font-weight: bold; color: #ffbb33; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px;">📋 Historial de Eventos de la Sesión</div>
-                        <div style="flex: 1; overflow-y: auto;">
+                        <div>
                             ${logsHtml}
                         </div>
                     </div>

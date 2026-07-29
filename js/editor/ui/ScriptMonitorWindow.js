@@ -286,7 +286,7 @@ export function update() {
     // Render skeleton if empty (e.g. on first load or after clear)
     if (!container.querySelector('.script-monitor-panel')) {
         container.innerHTML = `
-            <div class="script-monitor-panel" style="padding: 10px; display: flex; flex-direction: column; height: 100%; box-sizing: border-box; overflow: hidden; color: #fff; background: #1e1e1e; font-family: sans-serif;">
+            <div class="script-monitor-panel" style="padding: 10px; display: flex; flex-direction: column; min-height: 100%; box-sizing: border-box; color: #fff; background: #1e1e1e; font-family: sans-serif;">
                 <!-- Toolbar -->
                 <div class="monitor-toolbar" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid #333; margin-bottom: 8px;">
                     <div style="display: flex; align-items: center; gap: 15px;">
