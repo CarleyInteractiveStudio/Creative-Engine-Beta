@@ -1451,6 +1451,29 @@ export function initialize(dependencies) {
                     SceneManager.currentScene.addMateria(newMateria);
                 } else if (data.type === 'Asset' && data.name.endsWith('.ceprefab')) {
                     newMateria = await SceneManager.instantiatePrefabFromPath(data.path, worldPos.x, worldPos.y);
+                } else if (data.type === 'Asset' && (data.name.endsWith('.png') || data.name.endsWith('.jpg') || data.name.endsWith('.jpeg') || data.name.endsWith('.ceSprite'))) {
+                    // Create a new Materia at the drop position for images or .ceSprite sheets
+                    const baseName = data.name.replace(/\.[^/.]+$/, ""); // strip extension
+                    newMateria = new Materia(baseName);
+                    newMateria.addComponent(new Components.Transform(newMateria));
+                    const transform = newMateria.getComponent(Components.Transform);
+                    transform.x = worldPos.x;
+                    transform.y = worldPos.y;
+
+                    // Add and configure the SpriteRenderer
+                    const spriteRenderer = new Components.SpriteRenderer(newMateria);
+                    await spriteRenderer.setSourcePath(data.path, window.projectsDirHandle);
+
+                    // If it is a ceSprite, select the first sprite key as default
+                    if (data.name.endsWith('.ceSprite') && spriteRenderer.spriteSheet && spriteRenderer.spriteSheet.sprites) {
+                        const keys = Object.keys(spriteRenderer.spriteSheet.sprites);
+                        if (keys.length > 0) {
+                            spriteRenderer.spriteName = keys[0];
+                        }
+                    }
+
+                    newMateria.addComponent(spriteRenderer);
+                    SceneManager.currentScene.addMateria(newMateria);
                 } else if (data.type === 'Asset' && (data.name.endsWith('.mp4') || data.name.endsWith('.webm') || data.name.endsWith('.ogv'))) {
                     // Find existing Canvas or create one
                     let parentCanvas = SceneManager.currentScene.getAllMaterias().find(m => m.getComponent(Components.Canvas));
