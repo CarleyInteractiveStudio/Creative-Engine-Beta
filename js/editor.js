@@ -2244,20 +2244,49 @@ document.addEventListener('DOMContentLoaded', () => {
                         ctx.rotate(worldRotation * Math.PI / 180);
                         ctx.scale(worldScale.x, worldScale.y);
                         if (textureRender.texture && textureRender.texture.complete) {
-                            const pattern = ctx.createPattern(textureRender.texture, 'repeat');
-                            ctx.fillStyle = pattern;
+                            if (textureRender.wrapMode === 'Repeat') {
+                                const pattern = ctx.createPattern(textureRender.texture, 'repeat');
+                                ctx.fillStyle = pattern;
+                                if (textureRender.shape === 'Rectangle') {
+                                    ctx.fillRect(-textureRender.width / 2, -textureRender.height / 2, textureRender.width, textureRender.height);
+                                } else if (textureRender.shape === 'Circle') {
+                                    ctx.beginPath(); ctx.arc(0, 0, textureRender.radius, 0, 2 * Math.PI); ctx.fill();
+                                } else if (textureRender.shape === 'Triangle') {
+                                    ctx.beginPath(); ctx.moveTo(0, -textureRender.height / 2); ctx.lineTo(-textureRender.width / 2, textureRender.height / 2); ctx.lineTo(textureRender.width / 2, textureRender.height / 2); ctx.closePath(); ctx.fill();
+                                } else if (textureRender.shape === 'Capsule') {
+                                    const width = textureRender.width, height = textureRender.height, radius = width / 2, rectHeight = height - width;
+                                    ctx.beginPath(); ctx.arc(0, -rectHeight / 2, radius, Math.PI, 0); ctx.lineTo(width / 2, rectHeight / 2); ctx.arc(0, rectHeight / 2, radius, 0, Math.PI); ctx.lineTo(-width / 2, -rectHeight / 2); ctx.closePath(); ctx.fill();
+                                }
+                            } else {
+                                // Clamp mode (fijar borde): draw as a stretched image
+                                if (textureRender.shape === 'Rectangle') {
+                                    ctx.drawImage(textureRender.texture, -textureRender.width / 2, -textureRender.height / 2, textureRender.width, textureRender.height);
+                                } else {
+                                    ctx.save();
+                                    if (textureRender.shape === 'Circle') {
+                                        ctx.beginPath(); ctx.arc(0, 0, textureRender.radius, 0, 2 * Math.PI); ctx.clip();
+                                    } else if (textureRender.shape === 'Triangle') {
+                                        ctx.beginPath(); ctx.moveTo(0, -textureRender.height / 2); ctx.lineTo(-textureRender.width / 2, textureRender.height / 2); ctx.lineTo(textureRender.width / 2, textureRender.height / 2); ctx.closePath(); ctx.clip();
+                                    } else if (textureRender.shape === 'Capsule') {
+                                        const width = textureRender.width, height = textureRender.height, radius = width / 2, rectHeight = height - width;
+                                        ctx.beginPath(); ctx.arc(0, -rectHeight / 2, radius, Math.PI, 0); ctx.lineTo(width / 2, rectHeight / 2); ctx.arc(0, rectHeight / 2, radius, 0, Math.PI); ctx.lineTo(-width / 2, -rectHeight / 2); ctx.closePath(); ctx.clip();
+                                    }
+                                    ctx.drawImage(textureRender.texture, -textureRender.width / 2, -textureRender.height / 2, textureRender.width, textureRender.height);
+                                    ctx.restore();
+                                }
+                            }
                         } else {
                             ctx.fillStyle = textureRender.color;
-                        }
-                        if (textureRender.shape === 'Rectangle') {
-                            ctx.fillRect(-textureRender.width / 2, -textureRender.height / 2, textureRender.width, textureRender.height);
-                        } else if (textureRender.shape === 'Circle') {
-                            ctx.beginPath(); ctx.arc(0, 0, textureRender.radius, 0, 2 * Math.PI); ctx.fill();
-                        } else if (textureRender.shape === 'Triangle') {
-                            ctx.beginPath(); ctx.moveTo(0, -textureRender.height / 2); ctx.lineTo(-textureRender.width / 2, textureRender.height / 2); ctx.lineTo(textureRender.width / 2, textureRender.height / 2); ctx.closePath(); ctx.fill();
-                        } else if (textureRender.shape === 'Capsule') {
-                            const width = textureRender.width, height = textureRender.height, radius = width / 2, rectHeight = height - width;
-                            ctx.beginPath(); ctx.arc(0, -rectHeight / 2, radius, Math.PI, 0); ctx.lineTo(width / 2, rectHeight / 2); ctx.arc(0, rectHeight / 2, radius, 0, Math.PI); ctx.lineTo(-width / 2, -rectHeight / 2); ctx.closePath(); ctx.fill();
+                            if (textureRender.shape === 'Rectangle') {
+                                ctx.fillRect(-textureRender.width / 2, -textureRender.height / 2, textureRender.width, textureRender.height);
+                            } else if (textureRender.shape === 'Circle') {
+                                ctx.beginPath(); ctx.arc(0, 0, textureRender.radius, 0, 2 * Math.PI); ctx.fill();
+                            } else if (textureRender.shape === 'Triangle') {
+                                ctx.beginPath(); ctx.moveTo(0, -textureRender.height / 2); ctx.lineTo(-textureRender.width / 2, textureRender.height / 2); ctx.lineTo(textureRender.width / 2, textureRender.height / 2); ctx.closePath(); ctx.fill();
+                            } else if (textureRender.shape === 'Capsule') {
+                                const width = textureRender.width, height = textureRender.height, radius = width / 2, rectHeight = height - width;
+                                ctx.beginPath(); ctx.arc(0, -rectHeight / 2, radius, Math.PI, 0); ctx.lineTo(width / 2, rectHeight / 2); ctx.arc(0, rectHeight / 2, radius, 0, Math.PI); ctx.lineTo(-width / 2, -rectHeight / 2); ctx.closePath(); ctx.fill();
+                            }
                         }
                         ctx.restore();
                     };

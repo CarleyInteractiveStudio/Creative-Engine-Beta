@@ -642,13 +642,32 @@ export class StandaloneRuntime {
                         ctx.rotate(worldRotation * Math.PI / 180);
                         ctx.scale(worldScale.x, worldScale.y);
                         if (tr.texture && tr.texture.complete) {
-                            ctx.fillStyle = ctx.createPattern(tr.texture, 'repeat');
+                            if (tr.wrapMode === 'Repeat') {
+                                ctx.fillStyle = ctx.createPattern(tr.texture, 'repeat');
+                                if (tr.shape === 'Rectangle') ctx.fillRect(-tr.width / 2, -tr.height / 2, tr.width, tr.height);
+                                else if (tr.shape === 'Circle') { ctx.beginPath(); ctx.arc(0, 0, tr.radius, 0, 2 * Math.PI); ctx.fill(); }
+                                else if (tr.shape === 'Triangle') { ctx.beginPath(); ctx.moveTo(0, -tr.height / 2); ctx.lineTo(-tr.width / 2, tr.height / 2); ctx.lineTo(tr.width / 2, tr.height / 2); ctx.closePath(); ctx.fill(); }
+                            } else {
+                                // Clamp mode (fijar borde): draw as a stretched image
+                                if (tr.shape === 'Rectangle') {
+                                    ctx.drawImage(tr.texture, -tr.width / 2, -tr.height / 2, tr.width, tr.height);
+                                } else {
+                                    ctx.save();
+                                    if (tr.shape === 'Circle') {
+                                        ctx.beginPath(); ctx.arc(0, 0, tr.radius, 0, 2 * Math.PI); ctx.clip();
+                                    } else if (tr.shape === 'Triangle') {
+                                        ctx.beginPath(); ctx.moveTo(0, -tr.height / 2); ctx.lineTo(-tr.width / 2, tr.height / 2); ctx.lineTo(tr.width / 2, tr.height / 2); ctx.closePath(); ctx.clip();
+                                    }
+                                    ctx.drawImage(tr.texture, -tr.width / 2, -tr.height / 2, tr.width, tr.height);
+                                    ctx.restore();
+                                }
+                            }
                         } else {
                             ctx.fillStyle = tr.color;
+                            if (tr.shape === 'Rectangle') ctx.fillRect(-tr.width / 2, -tr.height / 2, tr.width, tr.height);
+                            else if (tr.shape === 'Circle') { ctx.beginPath(); ctx.arc(0, 0, tr.radius, 0, 2 * Math.PI); ctx.fill(); }
+                            else if (tr.shape === 'Triangle') { ctx.beginPath(); ctx.moveTo(0, -tr.height / 2); ctx.lineTo(-tr.width / 2, tr.height / 2); ctx.lineTo(tr.width / 2, tr.height / 2); ctx.closePath(); ctx.fill(); }
                         }
-                        if (tr.shape === 'Rectangle') ctx.fillRect(-tr.width / 2, -tr.height / 2, tr.width, tr.height);
-                        else if (tr.shape === 'Circle') { ctx.beginPath(); ctx.arc(0, 0, tr.radius, 0, 2 * Math.PI); ctx.fill(); }
-                        else if (tr.shape === 'Triangle') { ctx.beginPath(); ctx.moveTo(0, -tr.height / 2); ctx.lineTo(-tr.width / 2, tr.height / 2); ctx.lineTo(tr.width / 2, tr.height / 2); ctx.closePath(); ctx.fill(); }
                         ctx.restore();
                     };
 

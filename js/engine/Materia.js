@@ -116,13 +116,15 @@ export class Materia {
     }
 
     getComponent(componentClass) {
+        if (typeof componentClass === 'string') return this.getComponentByName(componentClass);
         if (typeof componentClass !== 'function') return null;
-        return this.leyes.find(ley => ley instanceof componentClass);
+        return this.leyes.find(ley => (ley instanceof componentClass) || (ley.constructor.name === componentClass.name));
     }
 
     getComponents(componentClass) {
+        if (typeof componentClass === 'string') return [this.getComponentByName(componentClass)].filter(Boolean);
         if (typeof componentClass !== 'function') return [];
-        return this.leyes.filter(ley => ley instanceof componentClass);
+        return this.leyes.filter(ley => (ley instanceof componentClass) || (ley.constructor.name === componentClass.name));
     }
 
     getChildrenWithComponent(componentClass) {

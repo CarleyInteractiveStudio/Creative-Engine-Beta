@@ -3194,6 +3194,7 @@ export class TextureRender extends Leyes {
         this.texturePath = '';
         this.orderInLayer = 0;
         this.texture = null; // Will hold the Image object
+        this.wrapMode = 'Clamp'; // 'Clamp' (fijar borde) or 'Repeat' (repetir)
         this._lastLoadedPath = '';
         this.isLoading = false;
         this.isError = false;
@@ -3221,6 +3222,22 @@ export class TextureRender extends Leyes {
         this.isError = false;
 
         try {
+            // Load wrapMode from metadata
+            this.wrapMode = 'Clamp';
+            try {
+                const { getFileHandleForPath } = await import('./AssetUtils.js');
+                const metaFileHandle = await getFileHandleForPath(`${this.texturePath}.meta`, currentDirHandle);
+                if (metaFileHandle) {
+                    const metaFile = await metaFileHandle.getFile();
+                    const metaData = JSON.parse(await metaFile.text());
+                    if (metaData.wrapMode) {
+                        this.wrapMode = metaData.wrapMode;
+                    }
+                }
+            } catch (metaErr) {
+                // Ignore or fallback
+            }
+
             const url = await getURLForAssetPath(this.texturePath, currentDirHandle);
             if (url) {
                 this.texture = new Image();
