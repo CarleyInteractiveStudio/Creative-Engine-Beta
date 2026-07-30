@@ -1927,11 +1927,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Update physics (non-fixed as currently implemented)
+        const physicsStart = performance.now();
+        window._PerformanceMetrics = window._PerformanceMetrics || { lastPhysicsTime: 0, lastRenderTime: 0, lastScriptUpdateTime: 0, lastFrameProcess: 'Idle' };
         if (physicsSystem) {
+            window._PerformanceMetrics.lastFrameProcess = 'Físicas';
             physicsSystem.update(deltaTime, subSteps);
         }
+        window._PerformanceMetrics.lastPhysicsTime = performance.now() - physicsStart;
 
         // Update all game objects scripts (frame-dependent)
+        const scriptStart = performance.now();
+        window._PerformanceMetrics.lastFrameProcess = 'Scripts';
         for (const materia of SceneManager.currentScene.getAllMaterias()) {
             if (!materia.isActive) continue;
 
@@ -1939,6 +1945,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // No need to set it globally anymore.
             materia.update(deltaTime);
         }
+        window._PerformanceMetrics.lastScriptUpdateTime = performance.now() - scriptStart;
+        window._PerformanceMetrics.lastFrameProcess = 'Idle';
     };
 
     updateScene = function(rendererInstance, isGameView) {
@@ -2591,6 +2599,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (cpuUsage > gamePerfStats.maxCpu) gamePerfStats.maxCpu = cpuUsage;
             }
 
+            const renderStart = performance.now();
+            window._PerformanceMetrics = window._PerformanceMetrics || { lastPhysicsTime: 0, lastRenderTime: 0, lastScriptUpdateTime: 0, lastFrameProcess: 'Idle' };
+            window._PerformanceMetrics.lastFrameProcess = 'Renderizado';
             if (is3D && renderer3D) {
                 // Hybrid/3D: Only render views that are visible
                 const showGrid = getPreferences().showSceneGrid && (currentProjectConfig.viewMode !== '2d');
@@ -2610,6 +2621,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (activeView === 'scene-content' && renderer) updateScene(renderer, false);
                 else if (activeView === 'game-content' && gameRenderer) updateScene(gameRenderer, true);
             }
+            window._PerformanceMetrics.lastRenderTime = performance.now() - renderStart;
+            window._PerformanceMetrics.lastFrameProcess = 'Idle';
         } else {
             // Editor mode (not running): Only update visible view
             const showGrid = getPreferences().showSceneGrid && (currentProjectConfig.viewMode !== '2d');

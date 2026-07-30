@@ -1,7 +1,10 @@
 // --- Module for the Advanced Script Monitor (Monitor de Script) ---
 
 let dom;
-const scripts = new Map();
+const scripts = new Map(); // Current active session data
+const sessionHistory = []; // completed sessions: Array of { name: string, scripts: Map }
+let selectedSessionIndex = -1; // -1 means Active/Current Session
+let wasGameRunning = false;
 let isNetworkGlobalAllowed = true;
 const expandedScripts = new Set();
 let isInitialized = false;
@@ -17,20 +20,24 @@ export function initialize(dependencies) {
         onScriptStart,
         onScriptEnd,
         isNetworkBlocked(scriptName) {
+            if (!window.isGameRunning) return false;
             const data = scripts.get(scriptName);
             if (!data) return false;
             return !data.networkAllowed;
         },
         logNetworkAttempt,
         onObjectInstantiated(scriptName) {
+            if (!window.isGameRunning) return;
             const data = getOrCreateScriptData(scriptName);
             data.instantiations = (data.instantiations || 0) + 1;
         },
         onObjectDestroyed(scriptName) {
+            if (!window.isGameRunning) return;
             const data = getOrCreateScriptData(scriptName);
             data.destructions = (data.destructions || 0) + 1;
         },
         onAnimationPlayed(scriptName) {
+            if (!window.isGameRunning) return;
             const data = getOrCreateScriptData(scriptName);
             data.animationsPlayed = (data.animationsPlayed || 0) + 1;
         }
@@ -119,6 +126,9 @@ function setupEventListeners() {
                 data.networkAllowed = e.target.checked;
                 console.log(`[ScriptMonitor] Acceso a red para ${scriptName}: ${data.networkAllowed ? 'PERMITIDO' : 'BLOQUEADO'}`);
             }
+        } else if (e.target.id === 'script-session-select') {
+            selectedSessionIndex = parseInt(e.target.value);
+            forceFullRepopulate();
         }
     });
 }
@@ -147,10 +157,12 @@ function getOrCreateScriptData(scriptName) {
 }
 
 function onScriptRegistered(scriptName) {
+    if (!window.isGameRunning) return;
     getOrCreateScriptData(scriptName);
 }
 
 function onScriptStart(scriptName, methodName) {
+    if (!window.isGameRunning) return;
     const data = getOrCreateScriptData(scriptName);
     data.status = 'Running';
     data.lastMethod = methodName;
@@ -170,6 +182,7 @@ function onScriptStart(scriptName, methodName) {
 }
 
 function onScriptEnd(scriptName, methodName, duration, ramEstimateBytes, hasError = false) {
+    if (!window.isGameRunning) return;
     const data = getOrCreateScriptData(scriptName);
     data.status = 'Idle';
     data.lastDuration = duration;
@@ -205,6 +218,7 @@ function onScriptEnd(scriptName, methodName, duration, ramEstimateBytes, hasErro
 }
 
 function logNetworkAttempt(scriptName, url, type, status) {
+    if (!window.isGameRunning) return;
     const data = getOrCreateScriptData(scriptName);
     data.networkCalls++;
 
@@ -228,6 +242,8 @@ function logNetworkAttempt(scriptName, url, type, status) {
 function clearMonitorData() {
     expandedScripts.clear();
     scripts.clear();
+    sessionHistory.length = 0;
+    selectedSessionIndex = -1;
     forceFullRepopulate();
 }
 
@@ -283,17 +299,51 @@ export function update() {
 
     const L = window.Localization;
 
+    // --- Dynamic Game Session Transition Detection ---
+    if (window.isGameRunning && !wasGameRunning) {
+        scripts.clear();
+        selectedSessionIndex = -1; // Live view
+        wasGameRunning = true;
+        forceFullRepopulate();
+    } else if (!window.isGameRunning && wasGameRunning) {
+        if (scripts.size > 0) {
+            // Archive the completed session
+            const archived = {
+                name: `Sesión ${sessionHistory.length + 1} (${new Date().toLocaleTimeString()})`,
+                scripts: new Map(JSON.parse(JSON.stringify(Array.from(scripts.entries()))))
+            };
+            sessionHistory.push(archived);
+            selectedSessionIndex = sessionHistory.length - 1; // Auto-select the last archived run
+        }
+        wasGameRunning = false;
+        forceFullRepopulate();
+    }
+
+    // Build session options HTML
+    let sessionOptions = '';
+    sessionHistory.forEach((session, index) => {
+        const isSel = index === selectedSessionIndex ? 'selected' : '';
+        sessionOptions += `<option value="${index}" ${isSel}>${session.name}</option>`;
+    });
+
     // Render skeleton if empty (e.g. on first load or after clear)
     if (!container.querySelector('.script-monitor-panel')) {
         container.innerHTML = `
             <div class="script-monitor-panel" style="padding: 10px; display: flex; flex-direction: column; min-height: 100%; box-sizing: border-box; color: #fff; background: #1e1e1e; font-family: sans-serif;">
                 <!-- Toolbar -->
-                <div class="monitor-toolbar" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid #333; margin-bottom: 8px;">
-                    <div style="display: flex; align-items: center; gap: 15px;">
+                <div class="monitor-toolbar" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid #333; margin-bottom: 8px; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                         <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.9em; user-select: none;">
                             <input type="checkbox" id="chk-global-network" ${isNetworkGlobalAllowed ? 'checked' : ''} style="accent-color: #00ffcc; cursor: pointer;">
                             <span data-i18n="MONITOR_RED_GLOBAL">${L.get('MONITOR_RED_GLOBAL', 'Permitir Red (Global)')}</span>
                         </label>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="font-size: 0.85em; color: #888;">Historial:</span>
+                            <select id="script-session-select" style="background: #2d2d2d; border: 1px solid #444; color: #fff; border-radius: 4px; padding: 2px 6px; font-size: 0.85em; outline: none; cursor: pointer;">
+                                <option value="-1" ${selectedSessionIndex === -1 ? 'selected' : ''}>Sesión Activa (En Vivo)</option>
+                                ${sessionOptions}
+                            </select>
+                        </div>
                     </div>
                     <div style="display: flex; gap: 8px;">
                         <button id="btn-save-monitor" class="panel-tool-btn" style="background: #2d2d2d; border: 1px solid #444; color: #00ffcc; padding: 4px 10px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.85em;" title="${L.get('MONITOR_GUARDAR_HISTORIAL', 'Guardar Historial')}">
@@ -334,7 +384,14 @@ export function update() {
     const rowsBody = document.getElementById('monitor-rows-body');
     if (!rowsBody) return;
 
-    if (scripts.size === 0) {
+    // Resolve which data map to render (Live active session or archived history)
+    let displayScripts = scripts;
+    if (selectedSessionIndex !== -1 && sessionHistory[selectedSessionIndex]) {
+        // Construct map from array format
+        displayScripts = new Map(sessionHistory[selectedSessionIndex].scripts);
+    }
+
+    if (displayScripts.size === 0) {
         rowsBody.innerHTML = `
             <tr>
                 <td colspan="8" style="text-align: center; color: #666; padding: 20px;" data-i18n="MONITOR_SIN_SCRIPTS">
@@ -345,7 +402,7 @@ export function update() {
         return;
     }
 
-    scripts.forEach((data, name) => {
+    displayScripts.forEach((data, name) => {
         let rowId = `monitor-row-${name.replace(/[^a-zA-Z0-9]/g, '_')}`;
         let mainRow = document.getElementById(rowId);
         let logsRowId = `${rowId}-logs`;
@@ -530,7 +587,7 @@ export function update() {
     });
 
     const existingRowIds = new Set();
-    scripts.forEach((data, name) => {
+    displayScripts.forEach((data, name) => {
         existingRowIds.add(`monitor-row-${name.replace(/[^a-zA-Z0-9]/g, '_')}`);
         existingRowIds.add(`monitor-row-${name.replace(/[^a-zA-Z0-9]/g, '_')}-logs`);
     });

@@ -4,6 +4,16 @@ let dom;
 let isInitialized = false;
 let sessionLogs = []; // Stores event logs like collisions, creations, destructions, etc.
 const componentStats = new Map(); // Tracks execution statistics for all components (Leyes)
+const sceneSessionHistory = []; // Historical archived sessions
+let selectedSceneSessionIndex = -1; // -1 means Active/Current Session
+let wasGameRunning = false;
+
+// Real-time FPS & CPU process profiling
+const fpsHistory = []; // Array of last 40 frames: { fps, render, physics, script, totalCpu, frameIndex, attributedCause }
+let isCurrentlyDropping = false;
+let dropStartFrame = 0;
+let frameCounter = 0;
+
 let lastFrameTime = performance.now();
 let lastMemorySize = 0;
 let lastMemoryTime = performance.now();
@@ -20,10 +30,14 @@ export function initialize(dependencies) {
         clearHistory() {
             sessionLogs = [];
             componentStats.clear();
+            fpsHistory.length = 0;
+            sceneSessionHistory.length = 0;
+            selectedSceneSessionIndex = -1;
             forceFullRepopulate();
         },
         saveHistory,
         recordComponentCall(componentName, duration, success) {
+            if (!window.isGameRunning) return;
             let stats = componentStats.get(componentName);
             if (!stats) {
                 stats = {
@@ -60,9 +74,20 @@ function setupEventListeners() {
     container.addEventListener('click', (e) => {
         if (e.target.id === 'btn-clear-scene-monitor' || e.target.closest('#btn-clear-scene-monitor')) {
             sessionLogs = [];
+            componentStats.clear();
+            fpsHistory.length = 0;
+            sceneSessionHistory.length = 0;
+            selectedSceneSessionIndex = -1;
             forceFullRepopulate();
         } else if (e.target.id === 'btn-save-scene-monitor' || e.target.closest('#btn-save-scene-monitor')) {
             saveHistory();
+        }
+    });
+
+    container.addEventListener('change', (e) => {
+        if (e.target.id === 'scene-session-select') {
+            selectedSceneSessionIndex = parseInt(e.target.value);
+            forceFullRepopulate();
         }
     });
 }
@@ -111,7 +136,8 @@ function saveHistory() {
     const exportData = {
         sessionTimestamp: new Date().toISOString(),
         sceneLogs: sessionLogs,
-        diagnostics: getSceneMetrics()
+        diagnostics: getSceneMetrics(),
+        fpsHistory: fpsHistory
     };
 
     const jsonString = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
@@ -217,6 +243,62 @@ function getSceneMetrics() {
     };
 }
 
+function drawFPSTimeline(canvas, history) {
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Draw Background Grid
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= h; i += h / 3) {
+        ctx.beginPath();
+        ctx.moveTo(0, i);
+        ctx.lineTo(w, i);
+        ctx.stroke();
+    }
+
+    if (history.length === 0) {
+        ctx.fillStyle = '#666';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Esperando datos de rendimiento...', w / 2, h / 2);
+        return;
+    }
+
+    const maxItems = 40;
+    const barWidth = w / maxItems;
+
+    // Draw bars
+    history.slice(-maxItems).forEach((data, index) => {
+        const x = index * barWidth;
+        const normalizedFPS = Math.min(60, data.fps);
+        const barHeight = (normalizedFPS / 60) * h;
+        const y = h - barHeight;
+
+        const isDrop = data.fps < 40;
+        ctx.fillStyle = isDrop ? 'rgba(255, 68, 68, 0.85)' : 'rgba(0, 255, 204, 0.7)';
+        ctx.fillRect(x + 1, y, barWidth - 1, barHeight);
+
+        if (isDrop && index === history.slice(-maxItems).length - 1) {
+            ctx.fillStyle = '#ff4444';
+            ctx.font = 'bold 9px sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(`Drop: ${data.fps.toFixed(1)} FPS (${data.attributedCause})`, w - 5, 12);
+        }
+    });
+
+    // Draw labels
+    ctx.fillStyle = '#888';
+    ctx.font = '8px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('60 FPS', 5, 10);
+    ctx.fillText('30 FPS', 5, h / 2);
+}
+
 export function update() {
     const container = document.getElementById('scene-monitor-content');
     if (!container) return;
@@ -233,37 +315,131 @@ export function update() {
         return;
     }
 
-    // Measure RAM growth rate
-    const now = performance.now();
-    if (window.performance && window.performance.memory) {
-        const memory = window.performance.memory;
-        const currentMB = memory.usedJSHeapSize / 1048576;
-        const timeDiff = (now - lastMemoryTime) / 1000; // sec
-        if (timeDiff >= 1.0) {
-            const memDiff = currentMB - lastMemorySize;
-            ramGrowthRate = memDiff > 0 ? (memDiff / timeDiff).toFixed(2) : 0;
-            lastMemorySize = currentMB;
-            lastMemoryTime = now;
-        }
-    } else {
-        ramGrowthRate = "---";
+    // --- Dynamic Game Session Transition Detection ---
+    if (window.isGameRunning && !wasGameRunning) {
+        sessionLogs.length = 0;
+        componentStats.clear();
+        fpsHistory.length = 0;
+        isCurrentlyDropping = false;
+        frameCounter = 0;
+        selectedSceneSessionIndex = -1; // Live view
+        wasGameRunning = true;
+        forceFullRepopulate();
+    } else if (!window.isGameRunning && wasGameRunning) {
+        // Archive the completed session
+        const archived = {
+            name: `Sesión ${sceneSessionHistory.length + 1} (${new Date().toLocaleTimeString()})`,
+            logs: [...sessionLogs],
+            componentStats: new Map(JSON.parse(JSON.stringify(Array.from(componentStats.entries())))),
+            fpsHistory: [...fpsHistory],
+            metrics: getSceneMetrics(),
+            ramGrowth: ramGrowthRate,
+            fps: window.currentFPS !== undefined ? window.currentFPS.toFixed(1) : "---"
+        };
+        sceneSessionHistory.push(archived);
+        selectedSceneSessionIndex = sceneSessionHistory.length - 1; // Auto-select the completed session
+        wasGameRunning = false;
+        forceFullRepopulate();
     }
 
-    // Current FPS
-    const fps = window.currentFPS !== undefined ? window.currentFPS.toFixed(1) : (1000 / (now - lastFrameTime)).toFixed(1);
-    lastFrameTime = now;
+    // Build session options HTML
+    let sessionOptions = '';
+    sceneSessionHistory.forEach((session, index) => {
+        const isSel = index === selectedSceneSessionIndex ? 'selected' : '';
+        sessionOptions += `<option value="${index}" ${isSel}>${session.name}</option>`;
+    });
 
-    // Fetch advanced scene telemetry
-    const metrics = getSceneMetrics();
-    if (!metrics) return;
+    // Resolve displayed dataset based on selection
+    let displayLogs = sessionLogs;
+    let displayComponentStats = componentStats;
+    let displayMetrics = getSceneMetrics();
+    let displayRamGrowth = ramGrowthRate;
+    let displayFPS = "---";
+
+    if (selectedSceneSessionIndex !== -1 && sceneSessionHistory[selectedSceneSessionIndex]) {
+        const archived = sceneSessionHistory[selectedSceneSessionIndex];
+        displayLogs = archived.logs;
+        displayComponentStats = new Map(archived.componentStats);
+        displayMetrics = archived.metrics;
+        displayRamGrowth = archived.ramGrowth;
+        displayFPS = archived.fps;
+    } else {
+        // Measure RAM growth rate (Live View only)
+        const now = performance.now();
+        if (window.performance && window.performance.memory) {
+            const memory = window.performance.memory;
+            const currentMB = memory.usedJSHeapSize / 1048576;
+            const timeDiff = (now - lastMemoryTime) / 1000; // sec
+            if (timeDiff >= 1.0) {
+                const memDiff = currentMB - lastMemorySize;
+                ramGrowthRate = memDiff > 0 ? (memDiff / timeDiff).toFixed(2) : 0;
+                lastMemorySize = currentMB;
+                lastMemoryTime = now;
+            }
+        } else {
+            ramGrowthRate = "---";
+        }
+        displayRamGrowth = ramGrowthRate;
+
+        // Current FPS (Live View only)
+        const fpsVal = window.currentFPS !== undefined ? window.currentFPS : (1000 / (now - lastFrameTime));
+        displayFPS = fpsVal.toFixed(1);
+        lastFrameTime = now;
+
+        // Trace and record FPS drops & process attribution in the history
+        if (window.isGameRunning) {
+            frameCounter++;
+            const renderT = (window._PerformanceMetrics && window._PerformanceMetrics.lastRenderTime) || 0;
+            const physicsT = (window._PerformanceMetrics && window._PerformanceMetrics.lastPhysicsTime) || 0;
+            const scriptT = (window._PerformanceMetrics && window._PerformanceMetrics.lastScriptUpdateTime) || 0;
+
+            // Attribute direct cause
+            let attributedCause = "Procesamiento de CPU";
+            const maxTime = Math.max(renderT, physicsT, scriptT);
+            if (maxTime > 1.5) {
+                if (maxTime === renderT) attributedCause = "Renderizado WebGL/2D";
+                else if (maxTime === physicsT) attributedCause = "Físicas & Colisiones";
+                else if (maxTime === scriptT) attributedCause = "Ejecución de Scripts";
+            }
+
+            fpsHistory.push({
+                fps: fpsVal,
+                render: renderT,
+                physics: physicsT,
+                script: scriptT,
+                frameIndex: frameCounter,
+                attributedCause: attributedCause
+            });
+
+            if (fpsHistory.length > 50) {
+                fpsHistory.shift();
+            }
+
+            // Real-time drop threshold detection (< 40 FPS indicates a stutter)
+            if (fpsVal < 40) {
+                if (!isCurrentlyDropping) {
+                    isCurrentlyDropping = true;
+                    dropStartFrame = frameCounter;
+                    logEvent('Caída FPS', `Se detectó una caída de rendimiento (${displayFPS} FPS) en el fotograma ${dropStartFrame}. Causa probable: ${attributedCause} (${maxTime.toFixed(1)}ms).`, 'error');
+                }
+            } else {
+                if (isCurrentlyDropping && fpsVal > 45) { // recovered
+                    logEvent('Caída FPS Terminado', `El rendimiento se estabilizó de nuevo a los ${displayFPS} FPS en el fotograma ${frameCounter} (Duración del drop: ${frameCounter - dropStartFrame} fotogramas).`, 'success');
+                    isCurrentlyDropping = false;
+                }
+            }
+        }
+    }
+
+    if (!displayMetrics) return;
 
     // Diagnostics & Optimization Heuristics
     const advancedAdvices = [];
     const criticalBottlenecks = [];
 
     // Scale Bugs Detection
-    if (metrics.scaleIssues && metrics.scaleIssues.length > 0) {
-        metrics.scaleIssues.forEach(issue => {
+    if (displayMetrics.scaleIssues && displayMetrics.scaleIssues.length > 0) {
+        displayMetrics.scaleIssues.forEach(issue => {
             criticalBottlenecks.push(`
                 <div style="background: #2d1313; border-left: 4px solid #ff4444; padding: 8px 12px; margin-bottom: 6px; border-radius: 4px; font-size: 0.95em;">
                     ⚠️ <strong>Error de Transformación Crítico:</strong> ${issue}
@@ -273,8 +449,8 @@ export function update() {
     }
 
     // 1. Script redundancy & Controller/Manager pattern detection
-    if (metrics.scriptInstancesMap) {
-        metrics.scriptInstancesMap.forEach((materiaNames, scriptName) => {
+    if (displayMetrics.scriptInstancesMap) {
+        displayMetrics.scriptInstancesMap.forEach((materiaNames, scriptName) => {
             if (materiaNames.length >= 6) {
                 advancedAdvices.push(`
                     <div style="background: #2b1f11; border-left: 4px solid #ffaa00; padding: 10px; margin-bottom: 8px; border-radius: 4px;">
@@ -290,10 +466,10 @@ export function update() {
     }
 
     // 2. High Draw Calls & Batching advice
-    if (metrics.drawCalls > 100) {
+    if (displayMetrics.drawCalls > 100) {
         advancedAdvices.push(`
             <div style="background: #2d1313; border-left: 4px solid #ff4444; padding: 10px; margin-bottom: 8px; border-radius: 4px;">
-                <strong style="color: #ff4444; font-size: 1.05em;">⚠️ Llamadas de Dibujo Elevadas (Draw Calls: ${metrics.drawCalls})</strong>
+                <strong style="color: #ff4444; font-size: 1.05em;">⚠️ Llamadas de Dibujo Elevadas (Draw Calls: ${displayMetrics.drawCalls})</strong>
                 <div style="margin-top: 4px; color: #ddd; font-size: 0.95em; line-height: 1.4;">
                     El número de elementos renderizados por separado está superando los límites recomendados de WebGL para navegadores móviles y laptops estándar.
                     <br><span style="color: #00ffcc;">Sugerencia de Optimización:</span> Agrupa tus sprites usando <strong>Hojas de Sprites (Sprite Sheets)</strong> o combina mallas estáticas 3D en un único prefab estático combinado. Activar el sistema de Batching reducirá drásticamente las comunicaciones CPU-GPU y evitará caídas severas de FPS.
@@ -303,19 +479,19 @@ export function update() {
     }
 
     // 3. Dynamic RAM growth rate warnings (Memory Leak heuristic)
-    if (parseFloat(ramGrowthRate) > 1.5) {
+    if (parseFloat(displayRamGrowth) > 1.5) {
         criticalBottlenecks.push(`
             <div style="background: #2d1313; border-left: 4px solid #ff4444; padding: 8px 12px; margin-bottom: 6px; border-radius: 4px; font-size: 0.95em;">
-                🚨 <strong>Consumo Excesivo de RAM (+${ramGrowthRate} MB/s)</strong>: La tasa de asignación de memoria es críticamente alta. Esto suele indicar una <strong>fuga de memoria (Memory Leak)</strong> causada por instanciación repetitiva de objetos (por ejemplo, proyectiles o partículas) sin destruir, o almacenamiento de referencias en arrays globales acumulativos.
+                🚨 <strong>Consumo Excesivo de RAM (+${displayRamGrowth} MB/s)</strong>: La tasa de asignación de memoria es críticamente alta. Esto suele indicar una <strong>fuga de memoria (Memory Leak)</strong> causada por instanciación repetitiva de objetos (por ejemplo, proyectiles o partículas) sin destruir, o almacenamiento de referencias en arrays globales acumulativos.
             </div>
         `);
     }
 
     // 4. Overlighting & Shader overload warnings
-    if (metrics.lightsCount > 8) {
+    if (displayMetrics.lightsCount > 8) {
         advancedAdvices.push(`
             <div style="background: #2b1f11; border-left: 4px solid #ff9900; padding: 10px; margin-bottom: 8px; border-radius: 4px;">
-                <strong style="color: #ff9900; font-size: 1.05em;">💡 Exceso de Luces Dinámicas (${metrics.lightsCount} activas)</strong>
+                <strong style="color: #ff9900; font-size: 1.05em;">💡 Exceso de Luces Dinámicas (${displayMetrics.lightsCount} activas)</strong>
                 <div style="margin-top: 4px; color: #ddd; font-size: 0.95em; line-height: 1.4;">
                     El renderizado de múltiples luces dinámicas fuerza a WebGL a recalcular el sombreado de píxeles (Fragment Shader) de forma múltiple para cada objeto iluminado.
                     <br><span style="color: #00ffcc;">Sugerencia de Optimización:</span> Desactiva las luces que estén fuera del campo de visión de la cámara principal (Frustum Culling) o considera simular luces secundarias usando texturas de gradiente estáticas pre-diseñadas.
@@ -325,12 +501,12 @@ export function update() {
     }
 
     // 5. Static Colliders mutating transforms warning
-    if (metrics.collidersCount > 20 && metrics.rigidbodiesCount < metrics.collidersCount * 0.4) {
+    if (displayMetrics.collidersCount > 20 && displayMetrics.rigidbodiesCount < displayMetrics.collidersCount * 0.4) {
         advancedAdvices.push(`
             <div style="background: #17271e; border-left: 4px solid #00C851; padding: 10px; margin-bottom: 8px; border-radius: 4px;">
                 <strong style="color: #00C851; font-size: 1.05em;">⚙️ Estructura del Árbol Físico (AABB Tree)</strong>
                 <div style="margin-top: 4px; color: #ddd; font-size: 0.95em; line-height: 1.4;">
-                    Tienes <strong>${metrics.collidersCount} colisionadores</strong> activos y solo <strong>${metrics.rigidbodiesCount} cuerpos físicos (Rigidbodies)</strong>.
+                    Tienes <strong>${displayMetrics.collidersCount} colisionadores</strong> activos y solo <strong>${displayMetrics.rigidbodiesCount} cuerpos físicos (Rigidbodies)</strong>.
                     <br><span style="color: #00ffcc;">Sugerencia de Buenas Prácticas:</span> Asegúrate de que los colisionadores estáticos permanezcan inmóviles. Mover un objeto con colisionador pero sin Rigidbody mediante scripts de transformación directa fuerza al motor físico a regenerar y recalcular el árbol espacial entero cada fotograma, consumiendo tiempo crítico de CPU. Usa componentes Rigidbody tipo <strong>Kinematic</strong> si los objetos deben moverse de forma procedural.
                 </div>
             </div>
@@ -338,10 +514,10 @@ export function update() {
     }
 
     // UI and Canvas suggestions
-    if (metrics.uiElements > 40) {
+    if (displayMetrics.uiElements > 40) {
         advancedAdvices.push(`
             <div style="background: #1e1e2d; border-left: 4px solid #00b4ff; padding: 10px; margin-bottom: 8px; border-radius: 4px;">
-                <strong style="color: #00b4ff; font-size: 1.05em;">🖥️ Sobrecarga de Elementos UI (Canvas: ${metrics.uiElements} activos)</strong>
+                <strong style="color: #00b4ff; font-size: 1.05em;">🖥️ Sobrecarga de Elementos UI (Canvas: ${displayMetrics.uiElements} activos)</strong>
                 <div style="margin-top: 4px; color: #ddd; font-size: 0.95em; line-height: 1.4;">
                     Tienes muchos elementos de interfaz UI activos en el Canvas. Cada cambio de texto o posición de imagen fuerza al Canvas de la GPU a re-calcular sus polígonos y redibujarse (Batch Rebuild).
                     <br><span style="color: #00ffcc;">Sugerencia:</span> Desactiva paneles completos de UI que no estén en uso (<code>materia.isActive = false</code>) en lugar de esconderlos individualmente, de modo que queden excluidos del árbol de dibujo.
@@ -361,11 +537,11 @@ export function update() {
 
     // Build event logs
     let logsHtml = '';
-    if (sessionLogs.length === 0) {
+    if (displayLogs.length === 0) {
         logsHtml = `<div style="color: #666; padding: 20px; text-align: center; font-size: 0.95em;">No hay eventos registrados en esta sesión. Los cambios en escena, colisiones y llamadas se verán reflejados aquí.</div>`;
     } else {
         logsHtml = `<table style="width: 100%; border-collapse: collapse; font-size: 0.9em; text-align: left;">`;
-        sessionLogs.forEach(log => {
+        displayLogs.forEach(log => {
             let catColor = '#aaa';
             if (log.category === 'success') catColor = '#00ffcc';
             if (log.category === 'warning') catColor = '#ffbb33';
@@ -384,10 +560,10 @@ export function update() {
 
     // Build audio items
     let audioItemsHtml = '';
-    if (metrics.playingAudios.length === 0) {
+    if (displayMetrics.playingAudios.length === 0) {
         audioItemsHtml = `<div style="color: #666; font-size: 0.9em; padding: 4px 0;">No hay fuentes de audio activas reproduciéndose.</div>`;
     } else {
-        audioItemsHtml = metrics.playingAudios.map(audio => `
+        audioItemsHtml = displayMetrics.playingAudios.map(audio => `
             <div style="padding: 4px 6px; border-bottom: 1px solid #222; font-size: 0.9em; display: flex; justify-content: space-between;">
                 <span style="color: #00ffcc; font-weight: bold;">🔊 ${audio.materiaName}</span>
                 <span style="color: #ddd;">${audio.source} (Vol: ${audio.volume})</span>
@@ -398,10 +574,10 @@ export function update() {
 
     // Build cameras list
     let camerasHtml = '';
-    if (metrics.cameras.length === 0) {
+    if (displayMetrics.cameras.length === 0) {
         camerasHtml = `<div style="color: #666; font-size: 0.9em; padding: 4px 0;">No se detectaron cámaras en la escena actual (usando cámara por defecto del editor).</div>`;
     } else {
-        camerasHtml = metrics.cameras.map(cam => `
+        camerasHtml = displayMetrics.cameras.map(cam => `
             <div style="padding: 4px 6px; border-bottom: 1px solid #222; font-size: 0.9em; display: flex; justify-content: space-between;">
                 <span style="color: #00b4ff; font-weight: bold;">📷 ${cam.materiaName}</span>
                 <span style="color: #00ffcc;">${cam.active}</span>
@@ -412,7 +588,7 @@ export function update() {
 
     // Build component stats list
     let componentStatsHtml = '';
-    if (componentStats.size === 0) {
+    if (displayComponentStats.size === 0) {
         componentStatsHtml = `<div style="color: #666; font-size: 0.9em; padding: 4px 0;">Esperando ejecuciones de componentes en escena...</div>`;
     } else {
         componentStatsHtml = `<table style="width: 100%; border-collapse: collapse; font-size: 0.85em; text-align: left; font-family: monospace; color: #ddd;">
@@ -426,7 +602,7 @@ export function update() {
                 </tr>
             </thead>
             <tbody>`;
-        componentStats.forEach((stats, compName) => {
+        displayComponentStats.forEach((stats, compName) => {
             const avgTime = stats.calls > 0 ? (stats.totalTime / stats.calls).toFixed(3) : '0.000';
             const maxTime = stats.maxTime.toFixed(3);
             const errColor = stats.errors > 0 ? '#ff4444' : '#00ffcc';
@@ -443,14 +619,34 @@ export function update() {
         componentStatsHtml += `</tbody></table>`;
     }
 
+    // Build process attribution sparkline metrics
+    let renderPct = 0, physicsPct = 0, scriptPct = 0;
+    const rT = (window._PerformanceMetrics && window._PerformanceMetrics.lastRenderTime) || 0;
+    const pT = (window._PerformanceMetrics && window._PerformanceMetrics.lastPhysicsTime) || 0;
+    const sT = (window._PerformanceMetrics && window._PerformanceMetrics.lastScriptUpdateTime) || 0;
+    const totalT = rT + pT + sT;
+
+    if (totalT > 0) {
+        renderPct = ((rT / totalT) * 100).toFixed(0);
+        physicsPct = ((pT / totalT) * 100).toFixed(0);
+        scriptPct = ((sT / totalT) * 100).toFixed(0);
+    }
+
     // Render HTML Panel Structure
     container.innerHTML = `
         <div class="scene-monitor-panel" style="padding: 10px; display: flex; flex-direction: column; min-height: 100%; box-sizing: border-box; color: #fff; background: #1e1e1e; font-family: sans-serif;">
             <!-- Toolbar -->
-            <div class="monitor-toolbar" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid #333; margin-bottom: 8px;">
+            <div class="monitor-toolbar" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid #333; margin-bottom: 8px; flex-wrap: wrap; gap: 10px;">
                 <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                    <span style="font-size: 0.95em; color: #aaa; font-weight: bold;">📊 FPS: <span style="color: #00ffcc;">${fps} FPS</span></span>
-                    <span style="font-size: 0.95em; color: #aaa; font-weight: bold;">📈 RAM Growth: <span style="color: #00b4ff;">+${ramGrowthRate} MB/s</span></span>
+                    <span style="font-size: 0.95em; color: #aaa; font-weight: bold;">📊 FPS: <span style="color: #00ffcc;">${displayFPS} FPS</span></span>
+                    <span style="font-size: 0.95em; color: #aaa; font-weight: bold;">📈 RAM Growth: <span style="color: #00b4ff;">+${displayRamGrowth} MB/s</span></span>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="font-size: 0.85em; color: #888;">Historial:</span>
+                        <select id="scene-session-select" style="background: #2d2d2d; border: 1px solid #444; color: #fff; border-radius: 4px; padding: 2px 6px; font-size: 0.85em; outline: none; cursor: pointer;">
+                            <option value="-1" ${selectedSceneSessionIndex === -1 ? 'selected' : ''}>Sesión Activa (En Vivo)</option>
+                            ${sessionOptions}
+                        </select>
+                    </div>
                 </div>
                 <div style="display: flex; gap: 8px;">
                     <button id="btn-save-scene-monitor" class="panel-tool-btn" style="background: #2d2d2d; border: 1px solid #444; color: #00ffcc; padding: 4px 10px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.85em;" title="Guardar Historial de Escena">
@@ -462,6 +658,28 @@ export function update() {
                 </div>
             </div>
 
+            <!-- Visual FPS Drop Timeline & Process Attribution Sparkline -->
+            <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 15px; margin-bottom: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                <div>
+                    <div style="font-size: 0.85em; color: #aaa; font-weight: bold; margin-bottom: 6px;">📈 Gráfico de Estabilidad de FPS (Últimos 40 Fotogramas)</div>
+                    <canvas id="fps-timeline-canvas" width="360" height="70" style="width: 100%; height: 70px; background: #000; border-radius: 4px; display: block; border: 1px solid rgba(255,255,255,0.05);"></canvas>
+                </div>
+                <div style="display: flex; flex-direction: column; justify-content: center; font-size: 0.85em;">
+                    <div style="font-weight: bold; color: #aaa; margin-bottom: 6px;">⚙️ Atribución de Carga del Motor (Fotograma Actual)</div>
+                    <!-- Sparkline Bar -->
+                    <div style="display: flex; height: 16px; border-radius: 4px; overflow: hidden; background: #222; margin-bottom: 8px;">
+                        <div style="width: ${renderPct}%; background: #e74c3c; height: 100%;" title="Renderizado: ${renderPct}%"></div>
+                        <div style="width: ${physicsPct}%; background: #2ecc71; height: 100%;" title="Físicas: ${physicsPct}%"></div>
+                        <div style="width: ${scriptPct}%; background: #f1c40f; height: 100%;" title="Scripts: ${scriptPct}%"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 0.85em; font-family: monospace;">
+                        <span style="color: #ff4d4d;">■ Render: ${rT.toFixed(1)}ms (${renderPct}%)</span>
+                        <span style="color: #2ecc71;">■ Físicas: ${pT.toFixed(1)}ms (${physicsPct}%)</span>
+                        <span style="color: #f1c40f;">■ Scripts: ${sT.toFixed(1)}ms (${scriptPct}%)</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- Bottlenecks Warning Panel -->
             ${criticalBottlenecks.length > 0 ? `<div style="margin-bottom: 10px;">${criticalBottlenecks.join('')}</div>` : ''}
 
@@ -469,27 +687,27 @@ export function update() {
             <div style="display: flex; gap: 12px; margin-bottom: 12px; font-size: 0.8em; flex-wrap: wrap;">
                 <div style="flex: 1; min-width: 100px; background: #151515; padding: 6px; border-radius: 4px; text-align: center;">
                     <div style="color: #888; font-weight: bold;">Materias Totales</div>
-                    <div style="font-size: 1.3em; color: #fff; font-weight: bold; margin-top: 4px;">${metrics.totalMaterias}</div>
+                    <div style="font-size: 1.3em; color: #fff; font-weight: bold; margin-top: 4px;">${displayMetrics.totalMaterias}</div>
                 </div>
                 <div style="flex: 1; min-width: 100px; background: #151515; padding: 6px; border-radius: 4px; text-align: center;">
                     <div style="color: #888; font-weight: bold;">Colisionadores</div>
-                    <div style="font-size: 1.3em; color: #00ffcc; font-weight: bold; margin-top: 4px;">${metrics.collidersCount}</div>
+                    <div style="font-size: 1.3em; color: #00ffcc; font-weight: bold; margin-top: 4px;">${displayMetrics.collidersCount}</div>
                 </div>
                 <div style="flex: 1; min-width: 100px; background: #151515; padding: 6px; border-radius: 4px; text-align: center;">
                     <div style="color: #888; font-weight: bold;">Scripts Activos</div>
-                    <div style="font-size: 1.3em; color: #ffbb33; font-weight: bold; margin-top: 4px;">${metrics.scriptsCount}</div>
+                    <div style="font-size: 1.3em; color: #ffbb33; font-weight: bold; margin-top: 4px;">${displayMetrics.scriptsCount}</div>
                 </div>
                 <div style="flex: 1; min-width: 100px; background: #151515; padding: 6px; border-radius: 4px; text-align: center;">
                     <div style="color: #888; font-weight: bold;">Draw Calls</div>
-                    <div style="font-size: 1.3em; color: #00b4ff; font-weight: bold; margin-top: 4px;">${metrics.drawCalls}</div>
+                    <div style="font-size: 1.3em; color: #00b4ff; font-weight: bold; margin-top: 4px;">${displayMetrics.drawCalls}</div>
                 </div>
                 <div style="flex: 1; min-width: 100px; background: #151515; padding: 6px; border-radius: 4px; text-align: center;">
                     <div style="color: #888; font-weight: bold;">Luces Dinámicas</div>
-                    <div style="font-size: 1.3em; color: #ff4444; font-weight: bold; margin-top: 4px;">${metrics.lightsCount}</div>
+                    <div style="font-size: 1.3em; color: #ff4444; font-weight: bold; margin-top: 4px;">${displayMetrics.lightsCount}</div>
                 </div>
                 <div style="flex: 1; min-width: 100px; background: #151515; padding: 6px; border-radius: 4px; text-align: center;">
                     <div style="color: #888; font-weight: bold;">Elementos UI</div>
-                    <div style="font-size: 1.3em; color: #e5c158; font-weight: bold; margin-top: 4px;">${metrics.uiElements}</div>
+                    <div style="font-size: 1.3em; color: #e5c158; font-weight: bold; margin-top: 4px;">${displayMetrics.uiElements}</div>
                 </div>
             </div>
 
@@ -532,4 +750,14 @@ export function update() {
             </div>
         </div>
     `;
+
+    // Draw the visual timeline canvas!
+    const canvas = document.getElementById('fps-timeline-canvas');
+    if (canvas) {
+        let activeHistory = fpsHistory;
+        if (selectedSceneSessionIndex !== -1 && sceneSessionHistory[selectedSceneSessionIndex]) {
+            activeHistory = sceneSessionHistory[selectedSceneSessionIndex].fpsHistory;
+        }
+        drawFPSTimeline(canvas, activeHistory);
+    }
 }
