@@ -4198,6 +4198,18 @@ function paintTile(event) {
     const layerWidth = width * cellSize.x;
     const layerHeight = height * cellSize.y;
 
+    // Helper to calculate coords in a specific layer (defined first to prevent ReferenceError)
+    const getCoordsInLayer = (l) => {
+        const layerOffsetX = l.position.x * layerWidth;
+        const layerOffsetY = l.position.y * layerHeight;
+        const layerTopLeftX = layerOffsetX - layerWidth / 2;
+        const layerTopY = layerOffsetY + layerHeight / 2;
+        return {
+            col: Math.floor((localMouseX - layerTopLeftX) / cellSize.x),
+            row: Math.floor((layerTopY - localMouseY) / cellSize.y)
+        };
+    };
+
     // --- Logic for Eraser ---
     if (activeTool === 'tile-eraser') {
         let erasedSomething = false;
@@ -4236,18 +4248,6 @@ function paintTile(event) {
     let col = -1;
     let row = -1;
 
-    // Helper to calculate coords in a specific layer
-    const getCoordsInLayer = (l) => {
-        const layerOffsetX = l.position.x * layerWidth;
-        const layerOffsetY = l.position.y * layerHeight;
-        const layerTopLeftX = layerOffsetX - layerWidth / 2;
-        const layerTopY = layerOffsetY + layerHeight / 2;
-        return {
-            col: Math.floor((localMouseX - layerTopLeftX) / cellSize.x),
-            row: Math.floor((layerTopY - localMouseY) / cellSize.y)
-        };
-    };
-
     // 1. Try active layer first
     const activeL = tilemap.layers[tilemap.activeLayerIndex];
     if (activeL) {
@@ -4278,7 +4278,7 @@ function paintTile(event) {
     }
 
     if (layer) {
-            if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) return;
+            if (activeTool !== 'tile-bucket' && col === lastPaintedCoords.col && row === lastPaintedCoords.row) return;
 
             const key = `${col},${row}`;
             if (activeTool === 'tile-brush' || activeTool === 'tile-rectangle-fill') {
