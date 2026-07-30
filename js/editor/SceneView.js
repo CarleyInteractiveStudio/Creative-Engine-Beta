@@ -826,6 +826,10 @@ export function initialize(dependencies) {
         const totalDx = (currentMouseWorld.x - dragState.initialMouseWorld.x);
         const totalDy = (currentMouseWorld.y - dragState.initialMouseWorld.y);
 
+        const lastMouseWorld = screenToWorld((lastMousePosition?.x ?? moveEvent.clientX) - rect.left, (lastMousePosition?.y ?? moveEvent.clientY) - rect.top);
+        const dx = currentMouseWorld.x - lastMouseWorld.x;
+        const dy = currentMouseWorld.y - lastMouseWorld.y;
+
         const glm = window.glMatrix;
 
         const prefs = getPreferences ? getPreferences() : {};
@@ -1046,7 +1050,7 @@ export function initialize(dependencies) {
                 uiTransform.size.height += dy; uiTransform.position.y -= dy / 2;
                 break;
 
-            // --- Normal Scaling logic (Incremental Delta-based like BoxCollider2D) ---
+            // --- Normal Scaling logic (Cumulative with optional Grid Snapping) ---
             case 'scale-tl': case 'scale-tr': case 'scale-bl': case 'scale-br':
             case 'scale-t': case 'scale-b': case 'scale-l': case 'scale-r':
                 {
@@ -1054,8 +1058,8 @@ export function initialize(dependencies) {
                     const rad = -transform.rotation * Math.PI / 180;
                     const cos = Math.cos(rad);
                     const sin = Math.sin(rad);
-                    const ldx = dx * cos - dy * sin;
-                    const ldy = dx * sin + dy * cos;
+                    let totalLdx = totalDx * cos - totalDy * sin;
+                    let totalLdy = totalDx * sin + totalDy * cos;
 
                     let factorX = 0, factorY = 0;
                     if (dragState.handle.includes('r')) factorX = 1;
@@ -1063,24 +1067,41 @@ export function initialize(dependencies) {
                     if (dragState.handle.includes('b')) factorY = 1;
                     else if (dragState.handle.includes('t')) factorY = -1;
 
-                    const newScale = transform.scale;
+                    if (snapEnabled) {
+                        if (factorX !== 0) {
+                            const initialWidth = dims.width * Math.abs(dragState.initialTransform.scale.x);
+                            let newWidth = initialWidth + totalLdx * factorX;
+                            newWidth = Math.round(newWidth / snapSize) * snapSize;
+                            newWidth = Math.max(snapSize, newWidth);
+                            totalLdx = (newWidth - initialWidth) * factorX;
+                        }
+                        if (factorY !== 0) {
+                            const initialHeight = dims.height * Math.abs(dragState.initialTransform.scale.y);
+                            let newHeight = initialHeight + totalLdy * factorY;
+                            newHeight = Math.round(newHeight / snapSize) * snapSize;
+                            newHeight = Math.max(snapSize, newHeight);
+                            totalLdy = (newHeight - initialHeight) * factorY;
+                        }
+                    }
+
+                    const newScale = { ...dragState.initialTransform.scale };
                     if (factorX !== 0) {
-                        newScale.x += (ldx * factorX) / dims.width;
+                        newScale.x = (dragState.initialTransform.scale.x >= 0 ? 1 : -1) * (dims.width * Math.abs(dragState.initialTransform.scale.x) + totalLdx * factorX) / dims.width;
                     }
                     if (factorY !== 0) {
-                        newScale.y += (ldy * factorY) / dims.height;
+                        newScale.y = (dragState.initialTransform.scale.y >= 0 ? 1 : -1) * (dims.height * Math.abs(dragState.initialTransform.scale.y) + totalLdy * factorY) / dims.height;
                     }
                     transform.scale = newScale;
 
                     // Shift center by half of the local delta in the dragged axis to keep the opposite side fixed
-                    const localShiftX = factorX !== 0 ? ldx / 2 : 0;
-                    const localShiftY = factorY !== 0 ? ldy / 2 : 0;
+                    const localShiftX = factorX !== 0 ? totalLdx / 2 : 0;
+                    const localShiftY = factorY !== 0 ? totalLdy / 2 : 0;
 
                     // Convert local shift back to world units
                     const worldRad = transform.rotation * Math.PI / 180;
                     const wcos = Math.cos(worldRad), wsin = Math.sin(worldRad);
-                    transform.x += localShiftX * wcos - localShiftY * wsin;
-                    transform.y += localShiftX * wsin + localShiftY * wcos;
+                    transform.x = dragState.initialTransform.x + localShiftX * wcos - localShiftY * wsin;
+                    transform.y = dragState.initialTransform.y + localShiftX * wsin + localShiftY * wcos;
                 }
                 break;
 
@@ -1089,16 +1110,30 @@ export function initialize(dependencies) {
                 {
                     const dims = getMateriaDimensions(dragState.materia);
                     const rad = -transform.rotation * Math.PI / 180;
-                    const ldx = dx * Math.cos(rad) - dy * Math.sin(rad);
-                    const ldy = dx * Math.sin(rad) + dy * Math.cos(rad);
+                    let totalLdx = totalDx * Math.cos(rad) - totalDy * Math.sin(rad);
+                    let totalLdy = totalDx * Math.sin(rad) + totalDy * Math.cos(rad);
 
-                    const newScale = transform.scale;
+                    if (snapEnabled) {
+                        if (dragState.handle === 'scale-axis-x') {
+                            const initialWidth = dims.width * Math.abs(dragState.initialTransform.scale.x);
+                            let newWidth = initialWidth + totalLdx * 2;
+                            newWidth = Math.round(newWidth / snapSize) * snapSize;
+                            newWidth = Math.max(snapSize, newWidth);
+                            totalLdx = (newWidth - initialWidth) / 2;
+                        } else {
+                            const initialHeight = dims.height * Math.abs(dragState.initialTransform.scale.y);
+                            let newHeight = initialHeight + totalLdy * 2;
+                            newHeight = Math.round(newHeight / snapSize) * snapSize;
+                            newHeight = Math.max(snapSize, newHeight);
+                            totalLdy = (newHeight - initialHeight) / 2;
+                        }
+                    }
+
+                    const newScale = { ...dragState.initialTransform.scale };
                     if (dragState.handle === 'scale-axis-x') {
-                        newScale.x += (ldx * 2) / dims.width;
+                        newScale.x = (dragState.initialTransform.scale.x >= 0 ? 1 : -1) * (dims.width * Math.abs(dragState.initialTransform.scale.x) + totalLdx * 2) / dims.width;
                     } else {
-                        // Axis Y is pointing UP on screen (+Y world)
-                        // Moving mouse up (positive world dy) should increase scale.
-                        newScale.y += (ldy * 2) / dims.height;
+                        newScale.y = (dragState.initialTransform.scale.y >= 0 ? 1 : -1) * (dims.height * Math.abs(dragState.initialTransform.scale.y) + totalLdy * 2) / dims.height;
                     }
                     transform.scale = newScale;
                 }
