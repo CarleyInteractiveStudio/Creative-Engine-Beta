@@ -464,6 +464,20 @@ public star() {
                             </div>
                             <button id="btn-toggle-gizmos" class="toolbar-btn active" title="Mostrar/Ocultar Iconos (Audio/Cámara)"><img src="icons/star.svg" class="ce-icon"></button>
                             <div class="toolbar-separator"></div>
+                            <!-- Snapping Controls -->
+                            <button id="btn-snap-toggle" class="toolbar-btn" title="Activar/Desactivar Ajuste (Snap)" style="padding: 2px 6px; display: inline-flex; align-items: center; justify-content: center; height: 24px;">
+                                <span style="font-size: 10px; font-weight: bold;">SNAP</span>
+                            </button>
+                            <input type="number" id="input-snap-grid-size" value="25" min="1" step="1" title="Tamaño de Ajuste (píxeles)" style="width: 42px; height: 24px; padding: 2px; font-size: 11px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); color: white; border-radius: 4px; text-align: center; margin-left: 2px; margin-right: 4px;">
+
+                            <div class="toolbar-separator"></div>
+                            <!-- Child Creation Mode Selector -->
+                            <select id="select-child-creation-mode" title="Posición inicial de nuevos hijos" style="font-size: 10px; padding: 2px 4px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); color: white; border-radius: 4px; cursor: pointer; height: 24px;">
+                                <option value="local">Hijos: Local (Padre)</option>
+                                <option value="global">Hijos: Global (0,0)</option>
+                            </select>
+
+                            <div class="toolbar-separator"></div>
                             <button id="btn-toggle-2d-3d" class="toolbar-btn" title="Alternar 2D/3D (Tecla 2/3)" data-i18n-title="ALTERNAR_2D_3D">
                                 <img id="icon-2d-3d" src="icons/layers.svg" class="ce-icon">
                                 <span id="label-2d-3d" style="font-size: 10px; font-weight: bold; margin-left: 2px;">2D</span>

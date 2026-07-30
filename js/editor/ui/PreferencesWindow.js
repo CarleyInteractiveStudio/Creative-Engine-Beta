@@ -149,6 +149,16 @@ function applyPreferences() {
              _dom.scenePanel.querySelector('[data-view="scene-content"]').click();
         }
     }
+
+    // Sync quick snapping controls in Scene View toolbar
+    const btnSnapToggle = document.getElementById('btn-snap-toggle');
+    const inputSnapGridSize = document.getElementById('input-snap-grid-size');
+    if (btnSnapToggle) {
+        btnSnapToggle.classList.toggle('active', !!currentPreferences.snapping);
+    }
+    if (inputSnapGridSize) {
+        inputSnapGridSize.value = currentPreferences.gridSize || 25;
+    }
 }
 
 async function savePreferences() {

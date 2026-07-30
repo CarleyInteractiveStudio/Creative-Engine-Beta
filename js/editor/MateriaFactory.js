@@ -20,7 +20,22 @@ export function generateUniqueName(baseName) {
 export function createBaseMateria(name, parent = null, useUITransform = false, addToScene = true) {
     const mtr = new Materia(name);
     mtr.addComponent(useUITransform ? new Components.UITransform(mtr) : new Components.Transform(mtr));
-    if (parent) parent.addChild(mtr);
+    if (parent) {
+        parent.addChild(mtr);
+        if (window.childCreationMode === 'global') {
+            if (useUITransform) {
+                const uiTransform = mtr.getComponent(Components.UITransform);
+                if (uiTransform) {
+                    uiTransform.position = { x: 0, y: 0 };
+                }
+            } else {
+                const transform = mtr.getComponent(Components.Transform);
+                if (transform) {
+                    transform.position = { x: 0, y: 0, z: 0 };
+                }
+            }
+        }
+    }
     else if (addToScene) SceneManager.currentScene.addMateria(mtr);
     return mtr;
 }

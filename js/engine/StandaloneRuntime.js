@@ -560,16 +560,36 @@ export class StandaloneRuntime {
 
                 // --- Parallax Displacement ---
                 let worldPosition = transform.position;
-                if (parallax && camTransform) {
-                     worldPosition = {
-                         x: worldPosition.x + (camTransform.x * (1 - parallax.scrollFactor.x)) + parallax.offset.x + (parallax._autoOffset ? parallax._autoOffset.x : 0),
-                         y: worldPosition.y + (camTransform.y * (1 - parallax.scrollFactor.y)) + parallax.offset.y + (parallax._autoOffset ? parallax._autoOffset.y : 0)
-                     };
+                if (parallax) {
+                    let targetX = 0;
+                    let targetY = 0;
+                    if (parallax.targetMateria) {
+                        let targetObj = null;
+                        const scene = this.scene || (materia.scene || window.SceneManager?.currentScene);
+                        if (scene) {
+                            if (typeof parallax.targetMateria === 'number') {
+                                targetObj = scene.findMateriaById(parallax.targetMateria);
+                            } else if (typeof parallax.targetMateria === 'string') {
+                                targetObj = scene.findMateriaByName(parallax.targetMateria) || materia.findChildByName(parallax.targetMateria, true);
+                            }
+                        }
+                        if (targetObj) {
+                            const targetTransform = targetObj.getComponentByName ? targetObj.getComponentByName('Transform') : targetObj.getComponent(Components.Transform);
+                            if (targetTransform) {
+                                targetX = targetTransform.x;
+                                targetY = targetTransform.y;
+                            }
+                        }
+                    }
+                    worldPosition = {
+                        x: worldPosition.x + (targetX * (1 - parallax.scrollFactor.x)) + parallax.offset.x + (parallax._autoOffset ? parallax._autoOffset.x : 0),
+                        y: worldPosition.y + (targetY * (1 - parallax.scrollFactor.y)) + parallax.offset.y + (parallax._autoOffset ? parallax._autoOffset.y : 0)
+                    };
                 }
 
                 // Culling
                 if (cameraViewBox) {
-                    const isRepeating = parallax && (parallax.repeatX || parallax.repeatY || parallax.mirroring.x > 0 || parallax.mirroring.y > 0);
+                    const isRepeating = !!parallax;
                     if (!isRepeating) {
                         const objectBounds = MathUtils.getOOB(materia, worldPosition);
                         if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) continue;
@@ -628,7 +648,7 @@ export class StandaloneRuntime {
                     ctx.globalAlpha = isNaN(opacity) ? 1.0 : opacity;
                     ctx.translate(worldPosition.x, worldPosition.y);
                     ctx.rotate(worldRotation * Math.PI / 180);
-                    ctx.scale(worldScale.x, worldScale.y);
+                    ctx.scale(worldScale.x, -worldScale.y);
                     ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, -sWidth * pivotX, -sHeight * pivotY, sWidth, sHeight);
                     ctx.restore();
                 } else if (tr) {
@@ -640,7 +660,7 @@ export class StandaloneRuntime {
                         ctx.save();
                         ctx.translate(worldPosition.x + tx, worldPosition.y + ty);
                         ctx.rotate(worldRotation * Math.PI / 180);
-                        ctx.scale(worldScale.x, worldScale.y);
+                        ctx.scale(worldScale.x, -worldScale.y);
                         if (tr.texture && tr.texture.complete) {
                             if (tr.wrapMode === 'Repeat') {
                                 ctx.fillStyle = ctx.createPattern(tr.texture, 'repeat');

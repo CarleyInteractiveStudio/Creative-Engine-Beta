@@ -576,7 +576,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'animation-type-selector', 'animation-record-btn', 'skeletal-timeline', 'animation-time-slider', 'skeletal-tracks',
             'scene-canvas-3d', 'game-canvas-3d', 'prefs-show-origin-axes', 'prefs-show-orientation-gizmo',
             'prefs-show-see-through-gizmo', 'prefs-show-blue-skeleton-gizmo',
-            'prefs-invert-x-axis', 'prefs-invert-y-axis'
+            'prefs-invert-x-axis', 'prefs-invert-y-axis',
+            'btn-snap-toggle', 'input-snap-grid-size', 'select-child-creation-mode'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
@@ -2078,22 +2079,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Get camera position for parallax (either from camera materia or editor camera)
                 const isGame = (typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts));
 
-                // FIXED: Parallax should only react to Game Camera, not Editor Camera.
-                // In Scene View, we treat camera as (0,0) to show object at its world base position.
-                const camX = isGameView ? (camTransform ? camTransform.x : 0) : 0;
-                const camY = isGameView ? (camTransform ? camTransform.y : 0) : 0;
-
                 if (parallax && (isGame || isGameView)) {
-                     worldPosition = {
-                         x: worldPosition.x + (camX * (1 - parallax.scrollFactor.x)) + parallax.offset.x + (parallax._autoOffset ? parallax._autoOffset.x : 0),
-                         y: worldPosition.y + (camY * (1 - parallax.scrollFactor.y)) + parallax.offset.y + (parallax._autoOffset ? parallax._autoOffset.y : 0)
-                     };
+                    let targetX = 0;
+                    let targetY = 0;
+                    if (parallax.targetMateria) {
+                        let targetObj = null;
+                        const scene = SceneManager.currentScene;
+                        if (scene) {
+                            if (typeof parallax.targetMateria === 'number') {
+                                targetObj = scene.findMateriaById(parallax.targetMateria);
+                            } else if (typeof parallax.targetMateria === 'string') {
+                                targetObj = scene.findMateriaByName(parallax.targetMateria) || materia.findChildByName(parallax.targetMateria, true);
+                            }
+                        }
+                        if (targetObj) {
+                            const targetTransform = targetObj.getComponentByName ? targetObj.getComponentByName('Transform') : targetObj.getComponent(Components.Transform);
+                            if (targetTransform) {
+                                targetX = targetTransform.x;
+                                targetY = targetTransform.y;
+                            }
+                        }
+                    }
+                    worldPosition = {
+                        x: worldPosition.x + (targetX * (1 - parallax.scrollFactor.x)) + parallax.offset.x + (parallax._autoOffset ? parallax._autoOffset.x : 0),
+                        y: worldPosition.y + (targetY * (1 - parallax.scrollFactor.y)) + parallax.offset.y + (parallax._autoOffset ? parallax._autoOffset.y : 0)
+                    };
                 }
 
                 if (cameraForCulling || (rendererInstance.isEditor && cameraViewBox)) {
                     const objectBounds = MathUtils.getOOB(materia, worldPosition);
                     // Special culling for infinite parallax: if repeating, skip frustum culling
-                    const isRepeating = parallax && (parallax.repeatX || parallax.repeatY || parallax.mirroring.x > 0 || parallax.mirroring.y > 0);
+                    const isRepeating = !!parallax;
                     if (!isRepeating) {
                         if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) continue;
                     }
@@ -2178,7 +2194,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         ctx.translate(worldPosition.x, worldPosition.y);
                         ctx.rotate(worldRotation * Math.PI / 180);
-                        ctx.scale(worldScale.x, worldScale.y);
+                        ctx.scale(worldScale.x, -worldScale.y);
 
                         const drawX = -sWidth * pivotX;
                         const drawY = -sHeight * pivotY;
@@ -2201,7 +2217,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         ctx.save();
                         ctx.translate(worldPosition.x, worldPosition.y);
                         ctx.rotate(transform.rotation * Math.PI / 180);
-                        ctx.scale(worldScale.x, worldScale.y);
+                        ctx.scale(worldScale.x, -worldScale.y);
 
                         const opacity = typeof spriteRenderer.opacity === 'number' ? spriteRenderer.opacity : parseFloat(spriteRenderer.opacity || 1);
                         ctx.globalAlpha = isNaN(opacity) ? 1.0 : opacity;
@@ -2242,7 +2258,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         ctx.save();
                         ctx.translate(worldPosition.x + tx, worldPosition.y + ty);
                         ctx.rotate(worldRotation * Math.PI / 180);
-                        ctx.scale(worldScale.x, worldScale.y);
+                        ctx.scale(worldScale.x, -worldScale.y);
                         if (textureRender.texture && textureRender.texture.complete) {
                             if (textureRender.wrapMode === 'Repeat') {
                                 const pattern = ctx.createPattern(textureRender.texture, 'repeat');
@@ -4518,6 +4534,49 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado
                     e.preventDefault();
                     sendMessage();
                 }
+            });
+        }
+
+        // --- Snapping & Child Creation Mode Event Listeners ---
+        if (dom.selectChildCreationMode) {
+            window.childCreationMode = dom.selectChildCreationMode.value || 'local';
+            dom.selectChildCreationMode.addEventListener('change', () => {
+                window.childCreationMode = dom.selectChildCreationMode.value;
+                console.log(`[Editor] Modo de creación de hijos cambiado a: ${window.childCreationMode}`);
+            });
+        }
+
+        const initialPrefs = getPreferences();
+        if (dom.btnSnapToggle) {
+            dom.btnSnapToggle.classList.toggle('active', !!initialPrefs.snapping);
+            dom.btnSnapToggle.addEventListener('click', () => {
+                const prefs = getPreferences();
+                prefs.snapping = !prefs.snapping;
+                dom.btnSnapToggle.classList.toggle('active', prefs.snapping);
+                localStorage.setItem('creativeEnginePrefs', JSON.stringify(prefs));
+
+                // Sync with Preferences Modal
+                const modalCheckbox = document.getElementById('prefs-snapping-toggle');
+                if (modalCheckbox) modalCheckbox.checked = prefs.snapping;
+
+                // If the preference window exists, update its local state
+                const prefsToggleGroup = document.getElementById('prefs-snapping-grid-size-group');
+                if (prefsToggleGroup) {
+                    prefsToggleGroup.classList.toggle('hidden', !prefs.snapping);
+                }
+            });
+        }
+
+        if (dom.inputSnapGridSize) {
+            dom.inputSnapGridSize.value = initialPrefs.gridSize || 25;
+            dom.inputSnapGridSize.addEventListener('input', () => {
+                const prefs = getPreferences();
+                prefs.gridSize = parseFloat(dom.inputSnapGridSize.value) || 25;
+                localStorage.setItem('creativeEnginePrefs', JSON.stringify(prefs));
+
+                // Sync with Preferences Modal
+                const modalInput = document.getElementById('prefs-snapping-grid-size');
+                if (modalInput) modalInput.value = prefs.gridSize;
             });
         }
     }
