@@ -30,6 +30,7 @@ const defaultPrefs = {
     invertYAxis: false,
     snapping: false,
     gridSize: 1,
+    childCreationMode: 'local',
     zoomSpeed: 1.1,
     ai: {
         provider: 'huggingface'
@@ -159,6 +160,9 @@ function applyPreferences() {
     if (inputSnapGridSize) {
         inputSnapGridSize.value = currentPreferences.gridSize || 25;
     }
+
+    // Set window child creation mode
+    window.childCreationMode = currentPreferences.childCreationMode || 'local';
 }
 
 async function savePreferences() {
@@ -185,6 +189,7 @@ async function savePreferences() {
     currentPreferences.invertYAxis = _dom.prefsInvertYAxis.checked;
     currentPreferences.snapping = _dom.prefsSnappingToggle.checked;
     currentPreferences.gridSize = _dom.prefsSnappingGridSize.value;
+    currentPreferences.childCreationMode = _dom.prefsChildCreationMode.value || 'local';
     currentPreferences.zoomSpeed = parseFloat(_dom.prefsZoomSpeed.value) || 1.1;
     currentPreferences.ai.provider = _dom.prefsAiProvider.value;
     currentPreferences.ai.model = _dom.prefsAiModelSelector ? _dom.prefsAiModelSelector.value : null;
@@ -265,6 +270,7 @@ function loadPreferences() {
     if (_dom.prefsInvertYAxis) _dom.prefsInvertYAxis.checked = !!currentPreferences.invertYAxis;
     if (_dom.prefsSnappingToggle) _dom.prefsSnappingToggle.checked = currentPreferences.snapping;
     if (_dom.prefsSnappingGridSize) _dom.prefsSnappingGridSize.value = currentPreferences.gridSize;
+    if (_dom.prefsChildCreationMode) _dom.prefsChildCreationMode.value = currentPreferences.childCreationMode || 'local';
     if (_dom.prefsZoomSpeed) _dom.prefsZoomSpeed.value = currentPreferences.zoomSpeed;
     if (_dom.prefsAiProvider) _dom.prefsAiProvider.value = currentPreferences.ai.provider;
 

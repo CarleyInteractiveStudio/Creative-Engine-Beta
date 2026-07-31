@@ -577,7 +577,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'scene-canvas-3d', 'game-canvas-3d', 'prefs-show-origin-axes', 'prefs-show-orientation-gizmo',
             'prefs-show-see-through-gizmo', 'prefs-show-blue-skeleton-gizmo',
             'prefs-invert-x-axis', 'prefs-invert-y-axis',
-            'btn-snap-toggle', 'input-snap-grid-size', 'select-child-creation-mode'
+            'prefs-child-creation-mode'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
@@ -4537,48 +4537,6 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado
             });
         }
 
-        // --- Snapping & Child Creation Mode Event Listeners ---
-        if (dom.selectChildCreationMode) {
-            window.childCreationMode = dom.selectChildCreationMode.value || 'local';
-            dom.selectChildCreationMode.addEventListener('change', () => {
-                window.childCreationMode = dom.selectChildCreationMode.value;
-                console.log(`[Editor] Modo de creación de hijos cambiado a: ${window.childCreationMode}`);
-            });
-        }
-
-        const initialPrefs = getPreferences();
-        if (dom.btnSnapToggle) {
-            dom.btnSnapToggle.classList.toggle('active', !!initialPrefs.snapping);
-            dom.btnSnapToggle.addEventListener('click', () => {
-                const prefs = getPreferences();
-                prefs.snapping = !prefs.snapping;
-                dom.btnSnapToggle.classList.toggle('active', prefs.snapping);
-                localStorage.setItem('creativeEnginePrefs', JSON.stringify(prefs));
-
-                // Sync with Preferences Modal
-                const modalCheckbox = document.getElementById('prefs-snapping-toggle');
-                if (modalCheckbox) modalCheckbox.checked = prefs.snapping;
-
-                // If the preference window exists, update its local state
-                const prefsToggleGroup = document.getElementById('prefs-snapping-grid-size-group');
-                if (prefsToggleGroup) {
-                    prefsToggleGroup.classList.toggle('hidden', !prefs.snapping);
-                }
-            });
-        }
-
-        if (dom.inputSnapGridSize) {
-            dom.inputSnapGridSize.value = initialPrefs.gridSize || 25;
-            dom.inputSnapGridSize.addEventListener('input', () => {
-                const prefs = getPreferences();
-                prefs.gridSize = parseFloat(dom.inputSnapGridSize.value) || 25;
-                localStorage.setItem('creativeEnginePrefs', JSON.stringify(prefs));
-
-                // Sync with Preferences Modal
-                const modalInput = document.getElementById('prefs-snapping-grid-size');
-                if (modalInput) modalInput.value = prefs.gridSize;
-            });
-        }
     }
 
     function updateAmbientePanelFromScene() {
