@@ -2251,8 +2251,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const worldRotation = transform.rotation;
                     const dWidth = textureRender.width * worldScale.x;
                     const dHeight = textureRender.height * worldScale.y;
-                    const mirrorX = parallax ? parallax.mirroring.x : 0;
-                    const mirrorY = parallax ? parallax.mirroring.y : 0;
+                    const mirrorX = parallax && parallax.mirroring ? parallax.mirroring.x : 0;
+                    const mirrorY = parallax && parallax.mirroring ? parallax.mirroring.y : 0;
 
                     const drawTex = (tx = 0, ty = 0) => {
                         ctx.save();
