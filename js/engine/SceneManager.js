@@ -4,7 +4,7 @@
 import { Leyes } from './Leyes.js';
 
 import { Transform, SpriteRenderer, CreativeScript, Camera, Animator, AnimatorController, AudioSource, Tilemap, TilemapRenderer, CustomComponent, Terreno2D, Gyzmo } from './Components.js';
-import { Materia } from './Materia.js';
+import { Materia, updateMateriaIdCounter } from './Materia.js';
 
 let customComponentProvider = null;
 
@@ -494,6 +494,7 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
     for (const materiaData of sceneData.materias) {
         const newMateria = await _deserializeMateriaRecursive(materiaData, projectsDirHandle, materiaMap);
         newMateria.id = materiaData.id; // Preserve ID for scene load
+        updateMateriaIdCounter(materiaData.id);
         if (materiaData.parentId === null) {
             newScene.addMateria(newMateria);
         }
