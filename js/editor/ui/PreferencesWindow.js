@@ -151,18 +151,12 @@ function applyPreferences() {
         }
     }
 
-    // Sync quick snapping controls in Scene View toolbar
-    const btnSnapToggle = document.getElementById('btn-snap-toggle');
-    const inputSnapGridSize = document.getElementById('input-snap-grid-size');
-    if (btnSnapToggle) {
-        btnSnapToggle.classList.toggle('active', !!currentPreferences.snapping);
+    // Sync quick controls in Scene View toolbar
+    if (window.syncQuickToolbarButtons) {
+        window.syncQuickToolbarButtons();
+    } else {
+        window.childCreationMode = currentPreferences.childCreationMode || 'local';
     }
-    if (inputSnapGridSize) {
-        inputSnapGridSize.value = currentPreferences.gridSize || 25;
-    }
-
-    // Set window child creation mode
-    window.childCreationMode = currentPreferences.childCreationMode || 'local';
 }
 
 async function savePreferences() {

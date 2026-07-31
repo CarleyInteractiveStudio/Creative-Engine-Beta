@@ -577,7 +577,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'scene-canvas-3d', 'game-canvas-3d', 'prefs-show-origin-axes', 'prefs-show-orientation-gizmo',
             'prefs-show-see-through-gizmo', 'prefs-show-blue-skeleton-gizmo',
             'prefs-invert-x-axis', 'prefs-invert-y-axis',
-            'prefs-child-creation-mode'
+            'prefs-child-creation-mode',
+            'btn-snap-toggle', 'btn-child-mode-toggle', 'icon-child-mode', 'label-child-mode'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
@@ -4537,6 +4538,50 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado
             });
         }
 
+        // --- Snapping & Child Creation Mode Event Listeners ---
+        window.syncQuickToolbarButtons = function() {
+            const prefs = getPreferences();
+            if (dom.btnSnapToggle) {
+                dom.btnSnapToggle.classList.toggle('active', !!prefs.snapping);
+            }
+            if (dom.btnChildModeToggle) {
+                const mode = prefs.childCreationMode || 'local';
+                window.childCreationMode = mode;
+                if (dom.labelChildMode) dom.labelChildMode.textContent = mode === 'global' ? 'Global' : 'Local';
+                if (dom.iconChildMode) dom.iconChildMode.src = mode === 'global' ? 'icons/globe.svg' : 'icons/map.svg';
+            }
+        };
+
+        if (dom.btnSnapToggle) {
+            dom.btnSnapToggle.addEventListener('click', () => {
+                const prefs = getPreferences();
+                prefs.snapping = !prefs.snapping;
+                localStorage.setItem('creativeEnginePrefs', JSON.stringify(prefs));
+                window.syncQuickToolbarButtons();
+
+                // Sync with Preferences Modal
+                const modalCheckbox = document.getElementById('prefs-snapping-toggle');
+                if (modalCheckbox) modalCheckbox.checked = prefs.snapping;
+                const prefsToggleGroup = document.getElementById('prefs-snapping-grid-size-group');
+                if (prefsToggleGroup) {
+                    prefsToggleGroup.classList.toggle('hidden', !prefs.snapping);
+                }
+            });
+        }
+
+        if (dom.btnChildModeToggle) {
+            dom.btnChildModeToggle.addEventListener('click', () => {
+                const prefs = getPreferences();
+                const currentMode = prefs.childCreationMode || 'local';
+                prefs.childCreationMode = currentMode === 'global' ? 'local' : 'global';
+                localStorage.setItem('creativeEnginePrefs', JSON.stringify(prefs));
+                window.syncQuickToolbarButtons();
+
+                // Sync with Preferences Modal
+                const modalSelect = document.getElementById('prefs-child-creation-mode');
+                if (modalSelect) modalSelect.value = prefs.childCreationMode;
+            });
+        }
     }
 
     function updateAmbientePanelFromScene() {
@@ -5336,6 +5381,7 @@ public start() {
 
             updateLoadingProgress(90, "Finalizando...");
             setupEventListeners();
+            if (window.syncQuickToolbarButtons) window.syncQuickToolbarButtons();
             initializeFloatingPanels();
 
             if (window.logToUIConsole) {

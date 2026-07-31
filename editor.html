@@ -462,6 +462,15 @@ public star() {
                                     <button id="tool-tile-eraser" class="toolbar-btn tilemap-tool" title="Goma de Tiles (N)" data-i18n-title="HERRAMIENTA_GOMA" style="display: none;"><img src="icons/eraser.svg" class="ce-icon"> <span data-i18n="HERRAMIENTA_GOMA">Goma</span></button>
                                 </div>
                             </div>
+                            <button id="btn-snap-toggle" class="toolbar-btn" title="Activar/Desactivar Ajuste (Snap)" style="height: 32px; width: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding: 0;">
+                                <img src="icons/grid.svg" class="ce-icon">
+                            </button>
+                            <div class="toolbar-separator"></div>
+                            <button id="btn-child-mode-toggle" class="toolbar-btn" title="Posición de nuevos hijos (Hacer clic para alternar)" style="display: inline-flex; align-items: center; justify-content: center; height: 32px; gap: 4px; padding: 0 8px; border-radius: 4px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1);">
+                                <img id="icon-child-mode" src="icons/map.svg" class="ce-icon">
+                                <span id="label-child-mode" style="font-size: 11px; font-weight: bold; text-transform: uppercase;">Local</span>
+                            </button>
+                            <div class="toolbar-separator"></div>
                             <button id="btn-toggle-2d-3d" class="toolbar-btn" title="Alternar 2D/3D (Tecla 2/3)" data-i18n-title="ALTERNAR_2D_3D">
                                 <img id="icon-2d-3d" src="icons/layers.svg" class="ce-icon">
                                 <span id="label-2d-3d" style="font-size: 10px; font-weight: bold; margin-left: 2px;">2D</span>

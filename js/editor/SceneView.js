@@ -288,7 +288,7 @@ function checkCameraGizmoHit(canvasPos) {
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
     const localMouseX = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
-    const localMouseY = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
+    const localMouseY = -((worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos);
 
     const aspect = renderer.canvas.width / renderer.canvas.height;
     const size = cameraComponent.orthographicSize;
@@ -2228,6 +2228,27 @@ function pick2D(canvasPos) {
     // Iterate in reverse to pick the topmost object
     const allMaterias = SceneManager.currentScene.getAllMaterias().reverse();
 
+    // 1. PRIORITIZE GIZMO ICONS (Camera, AudioSource, VideoPlayer, Lights)
+    for (const materia of allMaterias) {
+        if (!materia.isActive) continue;
+
+        const transform = materia.getComponent(Components.Transform);
+        if (!transform) continue;
+
+        const hasIcon = materia.getComponent(Components.Camera) ||
+                        materia.getComponent(Components.AudioSource) ||
+                        materia.getComponent(Components.VideoPlayer);
+
+        if (hasIcon) {
+            const iconSize = 32 / renderer.camera.effectiveZoom;
+            const dist = Math.hypot(worldMouse.x - transform.x, worldMouse.y - transform.y);
+            if (dist <= iconSize / 2 + 4) { // 4px padding for easy clicking
+                return materia.id;
+            }
+        }
+    }
+
+    // 2. STANDARD BOUNDS PICKING
     for (const materia of allMaterias) {
         if (!materia.isActive) continue;
 
@@ -3459,6 +3480,9 @@ function drawGizmoIcons(proj = null, view = null, cw = null, ch = null) {
                 if (screenPos) {
                     ctx.save();
                     ctx.translate(screenPos.x, screenPos.y);
+                    if (!is3DActive) {
+                        ctx.scale(1, -1);
+                    }
                     ctx.globalAlpha = 0.8;
                     const size = (is3DActive ? BASE_ICON_SIZE * scale : BASE_ICON_SIZE / zoom);
                     ctx.drawImage(iconImg, -size / 2, -size / 2, size, size);
@@ -3704,7 +3728,7 @@ function checkBoxColliderGizmoHit(canvasPos) {
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
     const localMouseX = (worldMouse.x - (transform.x + boxCollider.offset.x)) * cos - (worldMouse.y - (transform.y + boxCollider.offset.y)) * sin;
-    const localMouseY = (worldMouse.x - (transform.x + boxCollider.offset.x)) * sin + (worldMouse.y - (transform.y + boxCollider.offset.y)) * cos;
+    const localMouseY = -((worldMouse.x - (transform.x + boxCollider.offset.x)) * sin + (worldMouse.y - (transform.y + boxCollider.offset.y)) * cos);
 
     const width = boxCollider.size.x * transform.scale.x;
     const height = boxCollider.size.y * transform.scale.y;
@@ -3750,7 +3774,7 @@ function checkCapsuleColliderGizmoHit(canvasPos) {
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
     const localMouseX = (worldMouse.x - (transform.x + capsuleCollider.offset.x)) * cos - (worldMouse.y - (transform.y + capsuleCollider.offset.y)) * sin;
-    const localMouseY = (worldMouse.x - (transform.x + capsuleCollider.offset.x)) * sin + (worldMouse.y - (transform.y + capsuleCollider.offset.y)) * cos;
+    const localMouseY = -((worldMouse.x - (transform.x + capsuleCollider.offset.x)) * sin + (worldMouse.y - (transform.y + capsuleCollider.offset.y)) * cos);
 
     const width = capsuleCollider.size.x * transform.scale.x;
     const height = capsuleCollider.size.y * transform.scale.y;
