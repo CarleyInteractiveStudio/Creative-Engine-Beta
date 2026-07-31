@@ -1222,7 +1222,7 @@ export function initialize(dependencies) {
             const sin = Math.sin(rad);
             // Mouse deltas in collider local space (+Y UP)
             const localDx = (dx * cos + dy * sin) / (Math.abs(transform.scale.x) || 1);
-            const localDy = (dx * sin - dy * cos) / (Math.abs(transform.scale.y) || 1);
+            const localDy = (dx * sin + dy * cos) / (Math.abs(transform.scale.y) || 1);
 
             switch (dragState.handle) {
                 case 'collider-top':
@@ -1299,7 +1299,7 @@ export function initialize(dependencies) {
             const cos = Math.cos(rad);
             const sin = Math.sin(rad);
             const localDx = (dx * cos + dy * sin) / (Math.abs(transform.scale.x) || 1);
-            const localDy = (dx * sin - dy * cos) / (Math.abs(transform.scale.y) || 1);
+            const localDy = (dx * sin + dy * cos) / (Math.abs(transform.scale.y) || 1);
 
             switch (dragState.handle) {
                 case 'collider-capsule-top':
@@ -2240,9 +2240,8 @@ function pick2D(canvasPos) {
                         materia.getComponent(Components.VideoPlayer);
 
         if (hasIcon) {
-            const iconSize = 32 / renderer.camera.effectiveZoom;
-            const dist = Math.hypot(worldMouse.x - transform.x, worldMouse.y - transform.y);
-            if (dist <= iconSize / 2 + 4) { // 4px padding for easy clicking
+            const distInScreenPixels = Math.hypot(worldMouse.x - transform.x, worldMouse.y - transform.y) * renderer.camera.effectiveZoom;
+            if (distInScreenPixels <= 20) { // 20 pixels click radius on screen, perfectly consistent at any zoom!
                 return materia.id;
             }
         }

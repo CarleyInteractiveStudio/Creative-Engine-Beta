@@ -432,24 +432,6 @@ body.mobile-mode .logo-area span {
     display: flex;
     align-items: center;
     gap: 15px;
-    max-width: 100%;
-    overflow-x: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
-}
-
-.left-header-controls::-webkit-scrollbar {
-    height: 3px;
-}
-.left-header-controls::-webkit-scrollbar-track {
-    background: transparent;
-}
-.left-header-controls::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 2px;
-}
-.left-header-controls::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
 }
 
 #current-scene-name {
