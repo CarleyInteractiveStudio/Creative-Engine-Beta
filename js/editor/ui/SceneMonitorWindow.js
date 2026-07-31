@@ -7,6 +7,9 @@ const componentStats = new Map(); // Tracks execution statistics for all compone
 const sceneSessionHistory = []; // Historical archived sessions
 let selectedSceneSessionIndex = -1; // -1 means Active/Current Session
 let wasGameRunning = false;
+let isDetailedProfilingEnabled = false;
+let inspectedFrame = null;
+let lastUpdateTime = 0;
 
 // Real-time FPS & CPU process profiling
 const fpsHistory = []; // Array of last 40 frames: { fps, render, physics, script, totalCpu, frameIndex, attributedCause }
@@ -78,16 +81,54 @@ function setupEventListeners() {
             fpsHistory.length = 0;
             sceneSessionHistory.length = 0;
             selectedSceneSessionIndex = -1;
+            inspectedFrame = null;
             forceFullRepopulate();
         } else if (e.target.id === 'btn-save-scene-monitor' || e.target.closest('#btn-save-scene-monitor')) {
             saveHistory();
+        } else if (e.target.id === 'btn-close-inspect') {
+            inspectedFrame = null;
+            forceFullRepopulate();
         }
     });
 
     container.addEventListener('change', (e) => {
         if (e.target.id === 'scene-session-select') {
             selectedSceneSessionIndex = parseInt(e.target.value);
+            inspectedFrame = null;
             forceFullRepopulate();
+        } else if (e.target.id === 'chk-detailed-profiling') {
+            isDetailedProfilingEnabled = e.target.checked;
+            if (window.SceneMonitor) {
+                window.SceneMonitor.isDetailedProfilingEnabled = isDetailedProfilingEnabled;
+            }
+        }
+    });
+
+    container.addEventListener('mousedown', (e) => {
+        const canvas = document.getElementById('fps-timeline-canvas');
+        if (canvas && e.target === canvas) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+
+            let activeHistory = fpsHistory;
+            if (selectedSceneSessionIndex !== -1 && sceneSessionHistory[selectedSceneSessionIndex]) {
+                activeHistory = sceneSessionHistory[selectedSceneSessionIndex].fpsHistory;
+            }
+
+            if (activeHistory.length === 0) return;
+
+            const maxItems = 40;
+            const barWidth = rect.width / maxItems;
+
+            // Limit to display count
+            const displayCount = Math.min(maxItems, activeHistory.length);
+            const historySlice = activeHistory.slice(-displayCount);
+
+            const clickedIndex = Math.floor(mouseX / (rect.width / maxItems));
+            if (clickedIndex >= 0 && clickedIndex < historySlice.length) {
+                inspectedFrame = historySlice[clickedIndex];
+                forceFullRepopulate();
+            }
         }
     });
 }
@@ -273,17 +314,32 @@ function drawFPSTimeline(canvas, history) {
     const barWidth = w / maxItems;
 
     // Draw bars
-    history.slice(-maxItems).forEach((data, index) => {
+    const displayCount = Math.min(maxItems, history.length);
+    const historySlice = history.slice(-displayCount);
+
+    historySlice.forEach((data, index) => {
         const x = index * barWidth;
         const normalizedFPS = Math.min(60, data.fps);
         const barHeight = (normalizedFPS / 60) * h;
         const y = h - barHeight;
 
+        const isInspected = inspectedFrame && inspectedFrame.frameIndex === data.frameIndex;
         const isDrop = data.fps < 40;
-        ctx.fillStyle = isDrop ? 'rgba(255, 68, 68, 0.85)' : 'rgba(0, 255, 204, 0.7)';
+
+        if (isInspected) {
+            ctx.fillStyle = '#ffeb3b'; // Highlight selected inspected frame in bright yellow
+        } else {
+            ctx.fillStyle = isDrop ? 'rgba(255, 68, 68, 0.85)' : 'rgba(0, 255, 204, 0.7)';
+        }
         ctx.fillRect(x + 1, y, barWidth - 1, barHeight);
 
-        if (isDrop && index === history.slice(-maxItems).length - 1) {
+        if (isInspected) {
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x + 1, y, barWidth - 1, barHeight);
+        }
+
+        if (isDrop && index === historySlice.length - 1 && !inspectedFrame) {
             ctx.fillStyle = '#ff4444';
             ctx.font = 'bold 9px sans-serif';
             ctx.textAlign = 'right';
@@ -302,6 +358,32 @@ function drawFPSTimeline(canvas, history) {
 export function update() {
     const container = document.getElementById('scene-monitor-content');
     if (!container) return;
+
+    // Skip all DOM work and throttling checks if the Scene Monitor tab is not currently active
+    const activeTabBtn = document.querySelector('.tab-buttons .tab-btn.active');
+    const isTabActive = activeTabBtn && activeTabBtn.getAttribute('data-tab') === 'scene-monitor-content';
+    if (!isTabActive) return;
+
+    const now = performance.now();
+    const isThrottled = (now - lastUpdateTime) < 250; // Throttle DOM updates to 4 times per second (250ms)
+
+    if (isThrottled && container.innerHTML !== '') {
+        // Only redraw the timeline canvas in real-time if the game is actively running.
+        // If the game is stopped, the content is static and we do not need to redraw at 60 FPS,
+        // which completely eliminates rendering overhead and keeps the DOM completely stable.
+        if (window.isGameRunning) {
+            const canvas = document.getElementById('fps-timeline-canvas');
+            if (canvas) {
+                let activeHistory = fpsHistory;
+                if (selectedSceneSessionIndex !== -1 && sceneSessionHistory[selectedSceneSessionIndex]) {
+                    activeHistory = sceneSessionHistory[selectedSceneSessionIndex].fpsHistory;
+                }
+                drawFPSTimeline(canvas, activeHistory);
+            }
+        }
+        return;
+    }
+    lastUpdateTime = now;
 
     const L = window.Localization;
     const scene = window.SceneManager ? window.SceneManager.currentScene : null;
@@ -402,13 +484,23 @@ export function update() {
                 else if (maxTime === scriptT) attributedCause = "Ejecución de Scripts";
             }
 
+            const metrics = window._PerformanceMetrics || {};
             fpsHistory.push({
                 fps: fpsVal,
                 render: renderT,
                 physics: physicsT,
                 script: scriptT,
                 frameIndex: frameCounter,
-                attributedCause: attributedCause
+                attributedCause: attributedCause,
+                // Detailed metrics
+                spritesDrawn: metrics.spritesDrawn || 0,
+                texturesDrawn: metrics.texturesDrawn || 0,
+                tilesDrawn: metrics.tilesDrawn || 0,
+                lightsDrawn: metrics.lightsDrawn || 0,
+                uiElementsDrawn: metrics.uiElementsDrawn || 0,
+                scriptsRun: metrics.scriptsRun || 0,
+                collisionsChecked: metrics.collisionsChecked || 0,
+                detailedEnabled: isDetailedProfilingEnabled
             });
 
             if (fpsHistory.length > 50) {
@@ -632,37 +724,116 @@ export function update() {
         scriptPct = ((sT / totalT) * 100).toFixed(0);
     }
 
-    // Render HTML Panel Structure
-    container.innerHTML = `
-        <div class="scene-monitor-panel" style="padding: 10px; display: flex; flex-direction: column; min-height: 100%; box-sizing: border-box; color: #fff; background: #1e1e1e; font-family: sans-serif;">
-            <!-- Toolbar -->
-            <div class="monitor-toolbar" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid #333; margin-bottom: 8px; flex-wrap: wrap; gap: 10px;">
-                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                    <span style="font-size: 0.95em; color: #aaa; font-weight: bold;">📊 FPS: <span style="color: #00ffcc;">${displayFPS} FPS</span></span>
-                    <span style="font-size: 0.95em; color: #aaa; font-weight: bold;">📈 RAM Growth: <span style="color: #00b4ff;">+${displayRamGrowth} MB/s</span></span>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span style="font-size: 0.85em; color: #888;">Historial:</span>
-                        <select id="scene-session-select" style="background: #2d2d2d; border: 1px solid #444; color: #fff; border-radius: 4px; padding: 2px 6px; font-size: 0.85em; outline: none; cursor: pointer;">
-                            <option value="-1" ${selectedSceneSessionIndex === -1 ? 'selected' : ''}>Sesión Activa (En Vivo)</option>
-                            ${sessionOptions}
-                        </select>
+    let inspectedFrameHtml = '';
+    if (inspectedFrame) {
+        const inf = inspectedFrame;
+        const totalInfT = inf.render + inf.physics + inf.script;
+        const hasDetails = inf.detailedEnabled;
+
+        inspectedFrameHtml = `
+            <div style="background: #2b2b11; border: 1px solid #ffeb3b; padding: 12px; margin-bottom: 12px; border-radius: 6px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <strong style="color: #ffeb3b; font-size: 1.1em;">🔍 Detalle del Fotograma Inspeccionado #${inf.frameIndex}</strong>
+                    <button id="btn-close-inspect" style="background: #222; border: 1px solid #555; color: #fff; border-radius: 3px; padding: 2px 8px; cursor: pointer; font-size: 0.85em;">Cerrar Inspección</button>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; font-size: 0.9em; line-height: 1.4;">
+                    <div>
+                        <span style="color: #888;">Velocidad:</span> <strong style="color: #00ffcc;">${inf.fps.toFixed(1)} FPS</strong>
+                    </div>
+                    <div>
+                        <span style="color: #888;">Carga Principal:</span> <strong style="color: #ffaa00;">${inf.attributedCause}</strong>
+                    </div>
+                    <div>
+                        <span style="color: #888;">Tiempo Render:</span> <strong style="color: #ff4d4d;">${inf.render.toFixed(2)} ms</strong>
+                    </div>
+                    <div>
+                        <span style="color: #888;">Tiempo Físicas:</span> <strong style="color: #2ecc71;">${inf.physics.toFixed(2)} ms</strong>
+                    </div>
+                    <div>
+                        <span style="color: #888;">Tiempo Scripts:</span> <strong style="color: #f1c40f;">${inf.script.toFixed(2)} ms</strong>
                     </div>
                 </div>
-                <div style="display: flex; gap: 8px;">
-                    <button id="btn-save-scene-monitor" class="panel-tool-btn" style="background: #2d2d2d; border: 1px solid #444; color: #00ffcc; padding: 4px 10px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.85em;" title="Guardar Historial de Escena">
-                        <span>Guardar Historial de Escena</span>
-                    </button>
-                    <button id="btn-clear-scene-monitor" class="panel-tool-btn" style="background: #2d2d2d; border: 1px solid #444; color: #ff4444; padding: 4px 10px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.85em;" title="Borrar Historial">
-                        <span>Borrar Historial</span>
-                    </button>
+                <div style="border-top: 1px solid rgba(255,255,255,0.08); margin-top: 8px; padding-top: 8px; font-size: 0.85em;">
+                    ${hasDetails ? `
+                        <div style="display: flex; gap: 15px; flex-wrap: wrap; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px;">
+                            <div style="flex: 1; min-width: 120px;">🖼️ <strong style="color: #00b4ff;">Sprites Dibujados:</strong> ${inf.spritesDrawn}</div>
+                            <div style="flex: 1; min-width: 120px;">🎨 <strong style="color: #ff6b6b;">Texturas/Formas:</strong> ${inf.texturesDrawn}</div>
+                            <div style="flex: 1; min-width: 120px;">🧱 <strong style="color: #ffd166;">Celdas Tilemap:</strong> ${inf.tilesDrawn}</div>
+                            <div style="flex: 1; min-width: 120px;">💡 <strong style="color: #ef476f;">Luces Dibujadas:</strong> ${inf.lightsDrawn}</div>
+                            <div style="flex: 1; min-width: 120px;">🖥️ <strong style="color: #06d6a0;">UIs Dibujadas:</strong> ${inf.uiElementsDrawn}</div>
+                            <div style="flex: 1; min-width: 120px;">📜 <strong style="color: #a8dadc;">Scripts Ejecutados:</strong> ${inf.scriptsRun}</div>
+                            <div style="flex: 1; min-width: 120px;">⚡ <strong style="color: #e63946;">Colisiones Evaluadas:</strong> ${inf.collisionsChecked}</div>
+                        </div>
+                    ` : `
+                        <div style="color: #aaa; text-align: center; font-style: italic; background: rgba(255,255,255,0.03); padding: 6px; border-radius: 4px;">
+                            El perfilado detallado estaba desactivado para este fotograma. Activa "Perfilado Detallado" arriba a la izquierda para capturar conteo exacto de sprites, scripts, luces y colisiones en futuros fotogramas.
+                        </div>
+                    `}
                 </div>
             </div>
+        `;
+    }
 
+    // Render HTML Panel Structure
+    let panelEl = container.querySelector('.scene-monitor-panel');
+    if (!panelEl) {
+        container.innerHTML = `
+            <div class="scene-monitor-panel" style="padding: 10px; display: flex; flex-direction: column; min-height: 100%; box-sizing: border-box; color: #fff; background: #1e1e1e; font-family: sans-serif;">
+                <!-- Toolbar -->
+                <div class="monitor-toolbar" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid #333; margin-bottom: 8px; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                        <span style="font-size: 0.95em; color: #aaa; font-weight: bold;">📊 FPS: <span id="monitor-fps-val" style="color: #00ffcc;">${displayFPS} FPS</span></span>
+                        <span style="font-size: 0.95em; color: #aaa; font-weight: bold;">📈 RAM Growth: <span id="monitor-ram-val" style="color: #00b4ff;">+${displayRamGrowth} MB/s</span></span>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="font-size: 0.85em; color: #888;">Historial:</span>
+                            <select id="scene-session-select" style="background: #2d2d2d; border: 1px solid #444; color: #fff; border-radius: 4px; padding: 2px 6px; font-size: 0.85em; outline: none; cursor: pointer;">
+                                <option value="-1" ${selectedSceneSessionIndex === -1 ? 'selected' : ''}>Sesión Activa (En Vivo)</option>
+                                ${sessionOptions}
+                            </select>
+                        </div>
+                        <label style="display: flex; align-items: center; gap: 4px; font-size: 0.85em; color: #fff; cursor: pointer;" title="Grabar estadísticas detalladas de dibujado y llamadas en cada frame.">
+                            <input type="checkbox" id="chk-detailed-profiling" ${isDetailedProfilingEnabled ? 'checked' : ''} style="cursor: pointer;">
+                            <span>Perfilado Detallado</span>
+                        </label>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button id="btn-save-scene-monitor" class="panel-tool-btn" style="background: #2d2d2d; border: 1px solid #444; color: #00ffcc; padding: 4px 10px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.85em;" title="Guardar Historial de Escena">
+                            <span>Guardar Historial de Escena</span>
+                        </button>
+                        <button id="btn-clear-scene-monitor" class="panel-tool-btn" style="background: #2d2d2d; border: 1px solid #444; color: #ff4444; padding: 4px 10px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.85em;" title="Borrar Historial">
+                            <span>Borrar Historial</span>
+                        </button>
+                    </div>
+                </div>
+                <!-- Dynamic Content Container -->
+                <div id="scene-monitor-dynamic-content" style="display: flex; flex-direction: column; gap: 12px; flex-grow: 1;"></div>
+            </div>
+        `;
+        panelEl = container.querySelector('.scene-monitor-panel');
+    } else {
+        // Sync static toolbar fields without recreating the elements
+        const fpsEl = document.getElementById('monitor-fps-val');
+        if (fpsEl) fpsEl.textContent = `${displayFPS} FPS`;
+        const ramEl = document.getElementById('monitor-ram-val');
+        if (ramEl) ramEl.textContent = `+${displayRamGrowth} MB/s`;
+
+        const selectEl = document.getElementById('scene-session-select');
+        if (selectEl) {
+            const currentOptsHTML = `<option value="-1" ${selectedSceneSessionIndex === -1 ? 'selected' : ''}>Sesión Activa (En Vivo)</option>${sessionOptions}`;
+            if (selectEl.innerHTML !== currentOptsHTML) {
+                selectEl.innerHTML = currentOptsHTML;
+            }
+        }
+    }
+
+    const dynamicContent = document.getElementById('scene-monitor-dynamic-content');
+    if (dynamicContent) {
+        dynamicContent.innerHTML = `
             <!-- Visual FPS Drop Timeline & Process Attribution Sparkline -->
-            <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 15px; margin-bottom: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+            <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
                 <div>
-                    <div style="font-size: 0.85em; color: #aaa; font-weight: bold; margin-bottom: 6px;">📈 Gráfico de Estabilidad de FPS (Últimos 40 Fotogramas)</div>
-                    <canvas id="fps-timeline-canvas" width="360" height="70" style="width: 100%; height: 70px; background: #000; border-radius: 4px; display: block; border: 1px solid rgba(255,255,255,0.05);"></canvas>
+                    <div style="font-size: 0.85em; color: #aaa; font-weight: bold; margin-bottom: 6px;">📈 Gráfico de Estabilidad de FPS (Últimos 40 Fotogramas) <span style="color: #ffaa00; font-size: 0.9em; font-weight: normal;">(Haz clic en una barra para inspeccionar)</span></div>
+                    <canvas id="fps-timeline-canvas" width="360" height="70" style="width: 100%; height: 70px; background: #000; border-radius: 4px; display: block; border: 1px solid rgba(255,255,255,0.05); cursor: pointer;"></canvas>
                 </div>
                 <div style="display: flex; flex-direction: column; justify-content: center; font-size: 0.85em;">
                     <div style="font-weight: bold; color: #aaa; margin-bottom: 6px;">⚙️ Atribución de Carga del Motor (Fotograma Actual)</div>
@@ -680,11 +851,14 @@ export function update() {
                 </div>
             </div>
 
+            <!-- Inspected Frame Details Section -->
+            ${inspectedFrameHtml}
+
             <!-- Bottlenecks Warning Panel -->
             ${criticalBottlenecks.length > 0 ? `<div style="margin-bottom: 10px;">${criticalBottlenecks.join('')}</div>` : ''}
 
             <!-- Main Live Telemetry Grid -->
-            <div style="display: flex; gap: 12px; margin-bottom: 12px; font-size: 0.8em; flex-wrap: wrap;">
+            <div style="display: flex; gap: 12px; font-size: 0.8em; flex-wrap: wrap;">
                 <div style="flex: 1; min-width: 100px; background: #151515; padding: 6px; border-radius: 4px; text-align: center;">
                     <div style="color: #888; font-weight: bold;">Materias Totales</div>
                     <div style="font-size: 1.3em; color: #fff; font-weight: bold; margin-top: 4px;">${displayMetrics.totalMaterias}</div>
@@ -750,6 +924,7 @@ export function update() {
             </div>
         </div>
     `;
+    }
 
     // Draw the visual timeline canvas!
     const canvas = document.getElementById('fps-timeline-canvas');

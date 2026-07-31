@@ -1905,6 +1905,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     runGameLoop = function() {
+        if (window._PerformanceMetrics) {
+            window._PerformanceMetrics.spritesDrawn = 0;
+            window._PerformanceMetrics.texturesDrawn = 0;
+            window._PerformanceMetrics.tilesDrawn = 0;
+            window._PerformanceMetrics.lightsDrawn = 0;
+            window._PerformanceMetrics.uiElementsDrawn = 0;
+            window._PerformanceMetrics.scriptsRun = 0;
+            window._PerformanceMetrics.collisionsChecked = 0;
+        }
         const perfMonitor = EngineAPI.getPerformanceMonitor();
         const subSteps = perfMonitor ? perfMonitor.getPhysicsSubSteps() : 4;
 
@@ -1946,6 +1955,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // The context is now handled automatically by the script instance itself.
             // No need to set it globally anymore.
             materia.update(deltaTime);
+            if (window._PerformanceMetrics) {
+                window._PerformanceMetrics.scriptsRun = (window._PerformanceMetrics.scriptsRun || 0) + 1;
+            }
         }
         window._PerformanceMetrics.lastScriptUpdateTime = performance.now() - scriptStart;
         window._PerformanceMetrics.lastFrameProcess = 'Idle';

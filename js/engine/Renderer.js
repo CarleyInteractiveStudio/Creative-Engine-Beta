@@ -192,6 +192,9 @@ export class Renderer {
     }
 
     drawRect(x, y, width, height, color) {
+        if (window._PerformanceMetrics) {
+            window._PerformanceMetrics.texturesDrawn = (window._PerformanceMetrics.texturesDrawn || 0) + 1;
+        }
         this.ctx.fillStyle = color;
         this.ctx.fillRect(x - width / 2, y - height / 2, width, height);
     }
@@ -199,6 +202,10 @@ export class Renderer {
     drawImage(image, x, y, width, height) {
         // Safe check for negative dimensions
         if (width === 0 || height === 0) return;
+
+        if (window._PerformanceMetrics) {
+            window._PerformanceMetrics.spritesDrawn = (window._PerformanceMetrics.spritesDrawn || 0) + 1;
+        }
 
         this.ctx.save();
         this.ctx.translate(x, y);
@@ -778,6 +785,10 @@ export class Renderer {
                     // Comprobar límites: los azulejos fuera del ancho/alto del Tilemap no se dibujan
                     if (x < 0 || x >= tilemap.width || y < 0 || y >= tilemap.height) continue;
 
+                    if (window._PerformanceMetrics) {
+                        window._PerformanceMetrics.tilesDrawn = (window._PerformanceMetrics.tilesDrawn || 0) + 1;
+                    }
+
                     const centerX = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2) + (grid.cellSize.x / 2);
                     // In world space (+Y UP), Row 0 is at visual Top.
                     // World Center Y of Map is transform.y. Map Height is mapTotalHeight.
@@ -832,6 +843,9 @@ export class Renderer {
     }
 
     drawPointLight(light, transform) {
+        if (window._PerformanceMetrics) {
+            window._PerformanceMetrics.lightsDrawn = (window._PerformanceMetrics.lightsDrawn || 0) + 1;
+        }
         const ctx = this.allLightsCtx;
         const { radius, color, intensity, filtroOpacidad = 1 } = light;
         const drawColor = this._getLightMapColor(color, filtroOpacidad);
@@ -848,6 +862,9 @@ export class Renderer {
     }
 
     drawSpotLight(light, transform) {
+        if (window._PerformanceMetrics) {
+            window._PerformanceMetrics.lightsDrawn = (window._PerformanceMetrics.lightsDrawn || 0) + 1;
+        }
         const ctx = this.allLightsCtx;
         const { x, y, rotation } = transform;
         const { radius, color, intensity, angle, filtroOpacidad = 1 } = light;
@@ -874,6 +891,9 @@ export class Renderer {
     }
 
     drawFreeformLight(light, transform) {
+        if (window._PerformanceMetrics) {
+            window._PerformanceMetrics.lightsDrawn = (window._PerformanceMetrics.lightsDrawn || 0) + 1;
+        }
         const ctx = this.allLightsCtx;
         const { x, y, rotation } = transform;
         const { vertices, color, intensity, filtroOpacidad = 1 } = light;
@@ -899,6 +919,9 @@ export class Renderer {
     }
 
     drawSpriteLight(light, transform) {
+        if (window._PerformanceMetrics) {
+            window._PerformanceMetrics.lightsDrawn = (window._PerformanceMetrics.lightsDrawn || 0) + 1;
+        }
         const ctx = this.allLightsCtx;
         const { x, y, rotation, scale } = transform;
         const { sprite, color, intensity, filtroOpacidad = 1 } = light;
@@ -1034,6 +1057,9 @@ export class Renderer {
 
         const uiTransform = element.getComponent(UITransform);
         if (uiTransform) { // Only draw elements that have a UITransform
+            if (window._PerformanceMetrics) {
+                window._PerformanceMetrics.uiElementsDrawn = (window._PerformanceMetrics.uiElementsDrawn || 0) + 1;
+            }
             const absoluteRect = getAbsoluteRect(element, rectCache);
             let { x, y, width, height } = absoluteRect;
 
