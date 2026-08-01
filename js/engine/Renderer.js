@@ -745,7 +745,8 @@ export class Renderer {
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
         this.ctx.rotate(transform.rotation * Math.PI / 180);
-        this.ctx.scale(transform.scale.x, transform.scale.y);
+        // Pre-flip Y scale for the entire tilemap renderer to avoid saving/restoring canvas context per tile
+        this.ctx.scale(transform.scale.x, -transform.scale.y);
 
         const mapTotalWidth = tilemap.width * grid.cellSize.x;
         const mapTotalHeight = tilemap.height * grid.cellSize.y;
@@ -758,10 +759,57 @@ export class Renderer {
             animator = tilemapRenderer.materia.getComponentInChildren(Animator);
         }
 
+        // Camera culling parameters
+        const cw = this.camera ? (this.camera.rect ? this.camera.rect.cw : this.canvas.width) : this.canvas.width;
+        const ch = this.camera ? (this.camera.rect ? this.camera.rect.ch : this.canvas.height) : this.canvas.height;
+        const zoom = this.camera ? this.camera.effectiveZoom : 1.0;
+        const camX = this.camera ? this.camera.x : 0;
+        const camY = this.camera ? this.camera.y : 0;
+
+        const worldWidth = cw / zoom;
+        const worldHeight = ch / zoom;
+        const padding = 100; // 100 world units extra padding to prevent edge clipping
+
+        const camMinX = camX - worldWidth / 2 - padding;
+        const camMaxX = camX + worldWidth / 2 + padding;
+        const camMinY = camY - worldHeight / 2 - padding;
+        const camMaxY = camY + worldHeight / 2 + padding;
+
         for (const layer of tilemap.layers) {
             const layerOffsetX = layer.position.x * mapTotalWidth;
             const layerOffsetY = layer.position.y * mapTotalHeight;
             for (const [coord, tileData] of layer.tileData.entries()) {
+                // Parse coordinates once and cache them on tileData to avoid high GC pressure/RAM allocation rate
+                if (tileData.x === undefined || tileData.y === undefined) {
+                    const [tx, ty] = coord.split(',').map(Number);
+                    tileData.x = tx;
+                    tileData.y = ty;
+                }
+                const x = tileData.x;
+                const y = tileData.y;
+
+                // Comprobar límites: los azulejos fuera del ancho/alto del Tilemap no se dibujan
+                if (x < 0 || x >= tilemap.width || y < 0 || y >= tilemap.height) continue;
+
+                const centerX = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2) + (grid.cellSize.x / 2);
+                // In world space (+Y UP), Row 0 is at visual Top.
+                // World Center Y of Map is transform.y. Map Height is mapTotalHeight.
+                // Top Y of Map = transform.y + mapTotalHeight / 2.
+                // Row y center world Y = (Top Y of layer) - (y * cellHeight) - (cellHeight / 2).
+                // Top Y of layer = transform.y + mapTotalHeight / 2 + layerOffsetY.
+                const worldCenterY = (mapTotalHeight / 2) - (y * grid.cellSize.y) - (grid.cellSize.y / 2) + layerOffsetY;
+
+                // Viewport/Camera Culling
+                const tileWorldX = transform.x + centerX * transform.scale.x;
+                const tileWorldY = transform.y + worldCenterY * transform.scale.y;
+                const marginX = (grid.cellSize.x * Math.abs(transform.scale.x)) / 2;
+                const marginY = (grid.cellSize.y * Math.abs(transform.scale.y)) / 2;
+
+                if (tileWorldX + marginX < camMinX || tileWorldX - marginX > camMaxX ||
+                    tileWorldY + marginY < camMinY || tileWorldY - marginY > camMaxY) {
+                    continue; // Culled (off-screen)
+                }
+
                 let image = null;
 
                 if (tileData.type === 'animation' && animator) {
@@ -780,25 +828,21 @@ export class Renderer {
                 }
 
                 if (image && image.complete && image.naturalWidth > 0) {
-                    const [x, y] = coord.split(',').map(Number);
-
-                    // Comprobar límites: los azulejos fuera del ancho/alto del Tilemap no se dibujan
-                    if (x < 0 || x >= tilemap.width || y < 0 || y >= tilemap.height) continue;
-
                     if (window._PerformanceMetrics) {
                         window._PerformanceMetrics.tilesDrawn = (window._PerformanceMetrics.tilesDrawn || 0) + 1;
+                        window._PerformanceMetrics.spritesDrawn = (window._PerformanceMetrics.spritesDrawn || 0) + 1;
                     }
 
-                    const centerX = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2) + (grid.cellSize.x / 2);
-                    // In world space (+Y UP), Row 0 is at visual Top.
-                    // World Center Y of Map is transform.y. Map Height is mapTotalHeight.
-                    // Top Y of Map = transform.y + mapTotalHeight / 2.
-                    // Row y center world Y = (Top Y of layer) - (y * cellHeight) - (cellHeight / 2).
-                    // Top Y of layer = transform.y + mapTotalHeight / 2 + layerOffsetY.
-                    const worldCenterY = (mapTotalHeight / 2) - (y * grid.cellSize.y) - (grid.cellSize.y / 2) + layerOffsetY;
-
-                    // Use this.drawImage to handle local Y counter-flip and orientation correctly
-                    this.drawImage(image, centerX, worldCenterY, grid.cellSize.x + 0.5, grid.cellSize.y + 0.5);
+                    // Directly draw image onto the Y-flipped transformed canvas context (no save/restore per tile)
+                    const drawW = grid.cellSize.x + 0.5;
+                    const drawH = grid.cellSize.y + 0.5;
+                    this.ctx.drawImage(
+                        image,
+                        centerX - drawW / 2,
+                        -worldCenterY - drawH / 2,
+                        drawW,
+                        drawH
+                    );
                 }
             }
         }

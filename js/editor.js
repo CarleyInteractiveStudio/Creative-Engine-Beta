@@ -4749,6 +4749,7 @@ NOTA: Usa "@last" en materiaId o parentId para referirte al ultimo objeto creado
         window.updateScene = () => updateScene(renderer, false);
         window.openAssetSelector = openAssetSelector;
         window.SceneManager = SceneManager;
+        window.setSceneDirty = SceneManager.setSceneDirty;
         window.openMarkdownViewer = openMarkdownViewerCallback;
         window.setActiveTool = SceneView.setActiveTool;
         window.CES_Transpiler = CES_Transpiler;
