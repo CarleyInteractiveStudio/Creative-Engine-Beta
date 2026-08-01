@@ -245,6 +245,16 @@ export function setCurrentScene(scene) {
 
 export function setCurrentSceneFileHandle(fileHandle) {
     currentSceneFileHandle = fileHandle;
+    if (typeof window !== 'undefined' && window.location) {
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        if (projectName && fileHandle) {
+            try {
+                localStorage.setItem(`ce_last_scene_${projectName}`, fileHandle.name);
+            } catch (e) {
+                console.error("[SceneManager] Error saving last scene to localStorage:", e);
+            }
+        }
+    }
 }
 
 export function setSceneDirty(dirty) {
@@ -758,12 +768,32 @@ export async function initialize(projectsDirHandle) {
         return null;
     }
 
-    // Check if any scene file exists
+    // Check if there is a saved last active scene in localStorage
+    let lastSceneName = null;
+    if (typeof localStorage !== 'undefined') {
+        lastSceneName = localStorage.getItem(`ce_last_scene_${projectName}`);
+    }
+
     let sceneFileToLoad = null;
-    for await (const entry of assetsHandle.values()) {
-        if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
-            sceneFileToLoad = entry.name;
-            break; // Found one, load it
+    if (lastSceneName) {
+        try {
+            // Check if the saved last scene file actually exists in Assets folder
+            const fileHandle = await assetsHandle.getFileHandle(lastSceneName);
+            if (fileHandle) {
+                sceneFileToLoad = lastSceneName;
+            }
+        } catch (err) {
+            console.log(`[SceneManager] La última escena editada '${lastSceneName}' ya no existe o no se pudo acceder. Buscando otra escena...`);
+        }
+    }
+
+    // Fallback: Check if any scene file exists if the saved one didn't exist or wasn't found
+    if (!sceneFileToLoad) {
+        for await (const entry of assetsHandle.values()) {
+            if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
+                sceneFileToLoad = entry.name;
+                break; // Found one, load it
+            }
         }
     }
 

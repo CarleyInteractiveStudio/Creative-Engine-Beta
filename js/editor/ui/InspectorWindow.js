@@ -489,6 +489,10 @@ function handleInspectorInput(e) {
             }
         }
     }
+
+    if (typeof window.setSceneDirty === 'function') {
+        window.setSceneDirty(true);
+    }
 }
 
 async function handleInspectorChange(e) {
@@ -629,6 +633,9 @@ async function handleInspectorChange(e) {
     }
 
     if (needsUpdate) {
+        if (typeof window.setSceneDirty === 'function') {
+            window.setSceneDirty(true);
+        }
         // Use a slight delay to allow the value to update before re-rendering
         setTimeout(() => {
             updateInspector();
