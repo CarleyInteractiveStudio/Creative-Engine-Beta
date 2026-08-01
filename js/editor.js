@@ -3408,8 +3408,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Close menu when clicking outside
         window.addEventListener('click', (e) => {
             const menu = document.getElementById('anim-node-context-menu');
-            if (menu && menu.style.display !== 'none' && !menu.contains(e.target)) {
+            if (menu && (menu.style.display !== 'none' || menu.classList.contains('visible')) && !menu.contains(e.target)) {
                 menu.style.display = 'none';
+                menu.classList.remove('visible');
             }
         });
 

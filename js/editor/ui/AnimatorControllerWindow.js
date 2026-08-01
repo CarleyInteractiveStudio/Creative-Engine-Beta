@@ -220,6 +220,7 @@ function showNodeContextMenu(e, state) {
     const menu = document.getElementById('anim-node-context-menu');
     if (!menu) return;
 
+    menu.classList.add('visible');
     menu.style.display = 'block';
     menu.style.position = 'fixed';
     menu.style.zIndex = '3000';
@@ -248,12 +249,15 @@ function showNodeContextMenu(e, state) {
 
     // Clear and add items
     menu.innerHTML = '';
+    const ul = document.createElement('ul');
+    menu.appendChild(ul);
+
     const L = window.Localization;
     const addItem = (label, action) => {
         const li = document.createElement('li');
         li.textContent = label;
-        li.onclick = () => { action(); menu.style.display = 'none'; };
-        menu.appendChild(li);
+        li.onclick = () => { action(); menu.style.display = 'none'; menu.classList.remove('visible'); };
+        ul.appendChild(li);
     };
 
     addItem(L.get('CONTEXT_SET_PRINCIPAL', 'Establecer como Principal'), () => {

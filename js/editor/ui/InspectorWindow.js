@@ -5077,7 +5077,12 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
                 const L = window.Localization;
                 const maxSize = parseInt(document.getElementById('max-size').value, 10);
-                const compressionQuality = document.getElementById('compression-quality').value;
+                let compressionQuality = document.getElementById('compression-quality').value;
+
+                const textureType = document.getElementById('texture-type').value;
+                if (textureType === 'Animation Sheet') {
+                    compressionQuality = 'None';
+                }
 
                 // --- Image Optimization Logic ---
                 if (typeof imageCompression !== 'undefined' && compressionQuality !== 'None') {
