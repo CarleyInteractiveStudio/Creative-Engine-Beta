@@ -5379,23 +5379,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 const dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
                     await createAssetCallback(animAssetName, JSON.stringify(animData, null, 2), dirHandle);
                 const displayAnimName = animAssetName.replace(/\.[^/.]+$/, "");
-                window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_CREAR_ANIM_ASSET', 'Asset de animación "{name}" creado y foto original eliminada.').replace('{name}', displayAnimName)}`);
-
-                    // Automatically delete original image photo and its metadata
-                    try {
-                        if (dirHandle) {
-                            await dirHandle.removeEntry(assetName);
-                            try {
-                                await dirHandle.removeEntry(`${assetName}.meta`);
-                            } catch (metaErr) {}
-                            console.log(`[Auto-Delete] Deleted original photo ${assetName} and meta.`);
-                            if (window.onAssetSelected) {
-                                window.onAssetSelected(null, null, null);
-                            }
-                        }
-                    } catch (e) {
-                        console.warn("[Auto-Delete] Failed to delete original photo file:", e);
-                    }
+                window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `Asset de animación "${displayAnimName}" creado con éxito.`);
 
                     if(updateAssetBrowserCallback) await updateAssetBrowserCallback();
                     await updateInspector();
@@ -5427,54 +5411,152 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
             const previewContainer = document.createElement('div');
             previewContainer.className = 'inspector-anim-preview';
+            previewContainer.style.display = 'flex';
+            previewContainer.style.flexDirection = 'column';
+            previewContainer.style.alignItems = 'center';
+            previewContainer.style.gap = '12px';
+            previewContainer.style.padding = '10px';
 
-            const frameCount = document.createElement('p');
-            frameCount.textContent = `Fotogramas: ${anim.frames.length}`;
+            const title = document.createElement('h5');
+            title.textContent = `Animación: ${assetName.replace('.cea', '')}`;
+            title.style.margin = '0';
+            title.style.color = 'var(--accent-color)';
+            title.style.alignSelf = 'flex-start';
+            previewContainer.appendChild(title);
 
-            const timeline = document.createElement('div');
-            timeline.className = 'mini-timeline';
-            anim.frames.forEach(frameSrc => {
-                const img = document.createElement('img');
-                img.src = frameSrc; // These are data URLs from the .cea file
-                timeline.appendChild(img);
+            // Canvas for playing the animation
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            canvas.style.background = 'rgba(0,0,0,0.3)';
+            canvas.style.borderRadius = '8px';
+            canvas.style.border = '1px solid rgba(255,255,255,0.1)';
+            canvas.style.objectFit = 'contain';
+            previewContainer.appendChild(canvas);
+
+            const ctx = canvas.getContext('2d');
+
+            // Pre-load all frames into Image objects for flicker-free rendering
+            const frameImages = anim.frames.map(src => {
+                const img = new Image();
+                img.src = src;
+                return img;
             });
-
-            const controls = document.createElement('div');
-            const playBtn = document.createElement('button');
-            playBtn.innerHTML = `${getIconHTML('play')} Play`;
 
             let isPlaying = false;
             let playbackId = null;
             let currentFrame = 0;
+            let lastTime = 0;
+
+            const drawFrame = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const img = frameImages[currentFrame];
+                if (img && img.naturalWidth > 0) {
+                    const canvasAspect = canvas.width / canvas.height;
+                    const imgAspect = img.naturalWidth / img.naturalHeight;
+                    let drawWidth, drawHeight, dx, dy;
+
+                    if (canvasAspect > imgAspect) {
+                        drawHeight = canvas.height;
+                        drawWidth = drawHeight * imgAspect;
+                        dx = (canvas.width - drawWidth) / 2;
+                        dy = 0;
+                    } else {
+                        drawWidth = canvas.width;
+                        drawHeight = drawWidth / imgAspect;
+                        dx = 0;
+                        dy = (canvas.height - drawHeight) / 2;
+                    }
+                    ctx.drawImage(img, dx, dy, drawWidth, drawHeight);
+                }
+
+                // Highlight the corresponding frame in the timeline below
+                const timelineContainer = previewContainer.querySelector('.mini-timeline');
+                if (timelineContainer) {
+                    timelineContainer.childNodes.forEach((node, i) => {
+                        node.style.outline = i === currentFrame ? '2px solid var(--accent-color)' : 'none';
+                        node.style.outlineOffset = '2px';
+                    });
+                }
+            };
+
+            // Initial frame draw
+            if (frameImages.length > 0) {
+                frameImages[0].onload = () => drawFrame();
+            }
+
+            const playBtn = document.createElement('button');
+            playBtn.className = 'primary-btn';
+            playBtn.style.padding = '6px 16px';
+            playBtn.style.fontWeight = 'bold';
+            playBtn.style.borderRadius = '4px';
+            playBtn.style.cursor = 'pointer';
+            playBtn.innerHTML = `${getIconHTML('play')} Play`;
+
+            const loop = (time) => {
+                if (!isPlaying) return;
+                const speed = anim.speed || anim.frameRate || 10;
+                if (time - lastTime > (1000 / speed)) {
+                    lastTime = time;
+                    currentFrame = (currentFrame + 1) % anim.frames.length;
+                    drawFrame();
+                }
+                playbackId = requestAnimationFrame(loop);
+            };
 
             playBtn.addEventListener('click', () => {
                 isPlaying = !isPlaying;
                 if (isPlaying) {
                     playBtn.innerHTML = `${getIconHTML('stop')} Stop`;
-                    let lastTime = performance.now();
-
-                    function loop(time) {
-                        if (!isPlaying) return;
-                        if (time - lastTime > (1000 / (anim.speed || 10))) {
-                            lastTime = time;
-                            currentFrame = (currentFrame + 1) % anim.frames.length;
-                            timeline.childNodes.forEach((node, i) => node.style.border = i === currentFrame ? '2px solid var(--accent-color)' : 'none');
-                        }
-                       playbackId = requestAnimationFrame(loop);
-                    }
+                    lastTime = performance.now();
                     playbackId = requestAnimationFrame(loop);
-
                 } else {
                     playBtn.innerHTML = `${getIconHTML('play')} Play`;
-                    cancelAnimationFrame(playbackId);
-                    timeline.childNodes.forEach(node => node.style.border = 'none');
+                    if (playbackId) cancelAnimationFrame(playbackId);
+                    currentFrame = 0;
+                    drawFrame();
                 }
             });
 
-            controls.appendChild(playBtn);
+            previewContainer.appendChild(playBtn);
+
+            const frameCount = document.createElement('p');
+            frameCount.textContent = `Fotogramas: ${anim.frames.length}`;
+            frameCount.style.margin = '4px 0 0 0';
+            frameCount.style.fontSize = '0.9em';
+            frameCount.style.opacity = '0.7';
             previewContainer.appendChild(frameCount);
+
+            const timeline = document.createElement('div');
+            timeline.className = 'mini-timeline';
+            timeline.style.display = 'flex';
+            timeline.style.gap = '6px';
+            timeline.style.overflowX = 'auto';
+            timeline.style.width = '100%';
+            timeline.style.padding = '8px 2px';
+
+            anim.frames.forEach((frameSrc, idx) => {
+                const img = document.createElement('img');
+                img.src = frameSrc;
+                img.style.width = '48px';
+                img.style.height = '48px';
+                img.style.objectFit = 'contain';
+                img.style.background = 'rgba(0,0,0,0.2)';
+                img.style.borderRadius = '4px';
+                img.style.border = '1px solid rgba(255,255,255,0.05)';
+                img.style.cursor = 'pointer';
+                img.addEventListener('click', () => {
+                    // Manual selection
+                    if (isPlaying) {
+                        playBtn.click(); // Stop playback first
+                    }
+                    currentFrame = idx;
+                    drawFrame();
+                });
+                timeline.appendChild(img);
+            });
+
             previewContainer.appendChild(timeline);
-            previewContainer.appendChild(controls);
             dom.inspectorContent.appendChild(previewContainer);
 
         } else if (lowerName.endsWith('.cep')) {

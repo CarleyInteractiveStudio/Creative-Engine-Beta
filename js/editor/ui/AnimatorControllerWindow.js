@@ -223,7 +223,7 @@ function showNodeContextMenu(e, state) {
     menu.classList.add('visible');
     menu.style.display = 'block';
     menu.style.position = 'fixed';
-    menu.style.zIndex = '3000';
+    menu.style.zIndex = '999999';
     menu.style.maxHeight = '';
     menu.style.overflowY = '';
 
