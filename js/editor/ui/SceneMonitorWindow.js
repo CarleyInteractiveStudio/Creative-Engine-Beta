@@ -365,27 +365,6 @@ export function update() {
     if (!isTabActive) return;
 
     const now = performance.now();
-    const isThrottled = (now - lastUpdateTime) < 250; // Throttle DOM updates to 4 times per second (250ms)
-
-    if (isThrottled && container.innerHTML !== '') {
-        // Only redraw the timeline canvas in real-time if the game is actively running.
-        // If the game is stopped, the content is static and we do not need to redraw at 60 FPS,
-        // which completely eliminates rendering overhead and keeps the DOM completely stable.
-        if (window.isGameRunning) {
-            const canvas = document.getElementById('fps-timeline-canvas');
-            if (canvas) {
-                let activeHistory = fpsHistory;
-                if (selectedSceneSessionIndex !== -1 && sceneSessionHistory[selectedSceneSessionIndex]) {
-                    activeHistory = sceneSessionHistory[selectedSceneSessionIndex].fpsHistory;
-                }
-                drawFPSTimeline(canvas, activeHistory);
-            }
-        }
-        return;
-    }
-    lastUpdateTime = now;
-
-    const L = window.Localization;
     const scene = window.SceneManager ? window.SceneManager.currentScene : null;
 
     if (!scene) {
@@ -447,7 +426,6 @@ export function update() {
         displayFPS = archived.fps;
     } else {
         // Measure RAM growth rate (Live View only)
-        const now = performance.now();
         if (window.performance && window.performance.memory) {
             const memory = window.performance.memory;
             const currentMB = memory.usedJSHeapSize / 1048576;
@@ -466,7 +444,6 @@ export function update() {
         // Current FPS (Live View only)
         const fpsVal = window.currentFPS !== undefined ? window.currentFPS : (1000 / (now - lastFrameTime));
         displayFPS = fpsVal.toFixed(1);
-        lastFrameTime = now;
 
         // Trace and record FPS drops & process attribution in the history
         if (window.isGameRunning) {
@@ -508,20 +485,58 @@ export function update() {
             }
 
             // Real-time drop threshold detection (< 40 FPS indicates a stutter)
-            if (fpsVal < 40) {
-                if (!isCurrentlyDropping) {
-                    isCurrentlyDropping = true;
-                    dropStartFrame = frameCounter;
-                    logEvent('Caída FPS', `Se detectó una caída de rendimiento (${displayFPS} FPS) en el fotograma ${dropStartFrame}. Causa probable: ${attributedCause} (${maxTime.toFixed(1)}ms).`, 'error');
-                }
-            } else {
-                if (isCurrentlyDropping && fpsVal > 45) { // recovered
-                    logEvent('Caída FPS Terminado', `El rendimiento se estabilizó de nuevo a los ${displayFPS} FPS en el fotograma ${frameCounter} (Duración del drop: ${frameCounter - dropStartFrame} fotogramas).`, 'success');
-                    isCurrentlyDropping = false;
+            // Skip the first 15 frames of warmup to avoid false alarms immediately on game start!
+            if (frameCounter > 15) {
+                if (fpsVal < 40) {
+                    if (!isCurrentlyDropping) {
+                        isCurrentlyDropping = true;
+                        dropStartFrame = frameCounter;
+                        logEvent('Caída FPS', `Se detectó una caída de rendimiento (${displayFPS} FPS) en el fotograma ${dropStartFrame}. Causa probable: ${attributedCause} (${maxTime.toFixed(1)}ms).`, 'error');
+                    }
+                } else {
+                    if (isCurrentlyDropping && fpsVal > 45) { // recovered
+                        logEvent('Caída FPS Terminado', `El rendimiento se estabilizó de nuevo a los ${displayFPS} FPS en el fotograma ${frameCounter} (Duración del drop: ${frameCounter - dropStartFrame} fotogramas).`, 'success');
+                        isCurrentlyDropping = false;
+                    }
                 }
             }
         }
     }
+
+    // Keep lastFrameTime updated
+    lastFrameTime = now;
+
+    // --- Real-time Canvas and Toolbar Text Redraw (On EVERY frame if playing) ---
+    if (window.isGameRunning && selectedSceneSessionIndex === -1) {
+        const canvas = document.getElementById('fps-timeline-canvas');
+        if (canvas) {
+            drawFPSTimeline(canvas, fpsHistory);
+        }
+        const fpsValEl = document.getElementById('monitor-fps-val');
+        if (fpsValEl) fpsValEl.textContent = `${displayFPS} FPS`;
+        const ramValEl = document.getElementById('monitor-ram-val');
+        if (ramValEl) ramValEl.textContent = `+${displayRamGrowth} MB/s`;
+    }
+
+    // --- DOM Rebuild Throttling (Throttled to 4 times per second) ---
+    const isThrottled = (now - lastUpdateTime) < 250;
+    if (isThrottled && container.innerHTML !== '') {
+        // Draw timeline for static view / archived sessions
+        if (!window.isGameRunning || selectedSceneSessionIndex !== -1) {
+            const canvas = document.getElementById('fps-timeline-canvas');
+            if (canvas) {
+                let activeHistory = fpsHistory;
+                if (selectedSceneSessionIndex !== -1 && sceneSessionHistory[selectedSceneSessionIndex]) {
+                    activeHistory = sceneSessionHistory[selectedSceneSessionIndex].fpsHistory;
+                }
+                drawFPSTimeline(canvas, activeHistory);
+            }
+        }
+        return;
+    }
+    lastUpdateTime = now;
+
+    const L = window.Localization;
 
     if (!displayMetrics) return;
 

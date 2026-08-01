@@ -830,7 +830,6 @@ export class Renderer {
                 if (image && image.complete && image.naturalWidth > 0) {
                     if (window._PerformanceMetrics) {
                         window._PerformanceMetrics.tilesDrawn = (window._PerformanceMetrics.tilesDrawn || 0) + 1;
-                        window._PerformanceMetrics.spritesDrawn = (window._PerformanceMetrics.spritesDrawn || 0) + 1;
                     }
 
                     // Directly draw image onto the Y-flipped transformed canvas context (no save/restore per tile)

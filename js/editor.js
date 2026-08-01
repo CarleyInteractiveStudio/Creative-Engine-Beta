@@ -1965,9 +1965,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // The context is now handled automatically by the script instance itself.
             // No need to set it globally anymore.
             materia.update(deltaTime);
-            if (window._PerformanceMetrics) {
-                window._PerformanceMetrics.scriptsRun = (window._PerformanceMetrics.scriptsRun || 0) + 1;
-            }
         }
         window._PerformanceMetrics.lastScriptUpdateTime = performance.now() - scriptStart;
         window._PerformanceMetrics.lastFrameProcess = 'Idle';
@@ -2243,6 +2240,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Absolute safety check to prevent InvalidStateError
                         if (sourceImg && (sourceImg.width > 0 || sourceImg.naturalWidth > 0)) {
                             ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, drawX, drawY, sWidth, sHeight);
+                            if (window._PerformanceMetrics) {
+                                window._PerformanceMetrics.spritesDrawn = (window._PerformanceMetrics.spritesDrawn || 0) + 1;
+                            }
                         }
                         ctx.restore();
                     } else {
@@ -2296,6 +2296,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     const mirrorY = parallax && parallax.mirroring ? parallax.mirroring.y : 0;
 
                     const drawTex = (tx = 0, ty = 0) => {
+                        if (window._PerformanceMetrics) {
+                            window._PerformanceMetrics.texturesDrawn = (window._PerformanceMetrics.texturesDrawn || 0) + 1;
+                        }
                         ctx.save();
                         ctx.translate(worldPosition.x + tx, worldPosition.y + ty);
                         ctx.rotate(worldRotation * Math.PI / 180);
