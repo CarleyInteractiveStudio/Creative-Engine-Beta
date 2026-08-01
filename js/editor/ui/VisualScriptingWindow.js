@@ -143,6 +143,19 @@ function createWindow() {
                 </div>
                 <div class="vs-toolbox-section">
                     <h4 style="color: #40bf4a;">🟢 Operadores</h4>
+                    <div class="vs-draggable-item" data-type="action" data-name="Sumar">➕ Sumar</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Restar">➖ Restar</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Multiplicar">✖️ Multiplicar</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Dividir">➗ Dividir</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Mayor que">👉 Mayor que (&gt;)</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Menor que">👈 Menor que (&lt;)</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Igual que">🤝 Igual que (==)</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Mayor o igual que">👉 Mayor o igual (&gt;=)</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Menor o igual que">👈 Menor o igual (&lt;=)</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Diferente de">≠ Diferente de (!=)</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="Y">🧠 Y (&&)</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="O">🧠 O (||)</div>
+                    <div class="vs-draggable-item" data-type="action" data-name="NO">🧠 NO (!)</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Operación Matemática">🧮 Calcular (+ - * /)</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Número al Azar">🎲 Número al Azar</div>
                     <div class="vs-draggable-item" data-type="action" data-name="Comparar">Comparar (> < =)</div>
@@ -344,6 +357,13 @@ function addBlock(type, name, x, y, integrated = false) {
         block.inputs.qty = 1;
     } else if (name === 'Fijar Opacidad') {
         block.inputs.value = 0.5;
+    } else if (['Sumar', 'Restar', 'Multiplicar', 'Dividir', 'Mayor que', 'Menor que', 'Igual que', 'Mayor o igual que', 'Menor o igual que', 'Diferente de', 'Y', 'O', 'NO'].includes(name)) {
+        block.inputs.a = 0;
+        block.inputs.b = 0;
+        if (name === 'Y' || name === 'O' || name === 'NO') {
+            block.inputs.a = 'true';
+            block.inputs.b = 'true';
+        }
     } else if (name === 'Si' || name === 'Mientras' || name === 'Comparar' || name === 'Esperar Hasta') {
         block.inputs.var1 = 'miVar';
         block.inputs.op = '==';
@@ -621,16 +641,35 @@ function renderBlock(block, container, svg) {
         `;
     } else if (block.name === 'Nueva Función' || block.name === 'Llamar Función') {
         inputsHtml = `Nombre: <input type="text" value="${block.inputs.name}" style="width:80px" onchange="window.vs_updateInput('${block.id}', 'name', this.value)">`;
+    } else if (['Sumar', 'Restar', 'Multiplicar', 'Dividir', 'Mayor que', 'Menor que', 'Igual que', 'Mayor o igual que', 'Menor o igual que', 'Diferente de', 'Y', 'O', 'NO'].includes(block.name)) {
+        const signMap = {
+            'Sumar': '+', 'Restar': '-', 'Multiplicar': '*', 'Dividir': '/',
+            'Mayor que': '>', 'Menor que': '<', 'Igual que': '==',
+            'Mayor o igual que': '>=', 'Menor o igual que': '<=', 'Diferente de': '!=',
+            'Y': 'Y', 'O': 'O', 'NO': 'NO'
+        };
+        const sign = signMap[block.name];
+        if (block.name === 'NO') {
+            inputsHtml = `no <input type="text" value="${block.inputs.a}" style="width:50px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:3px; text-align:center;" onchange="window.vs_updateInput('${block.id}', 'a', this.value)">`;
+        } else {
+            inputsHtml = `
+                <input type="text" value="${block.inputs.a}" style="width:40px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:3px; text-align:center;" onchange="window.vs_updateInput('${block.id}', 'a', this.value)">
+                <strong>${sign}</strong>
+                <input type="text" value="${block.inputs.b}" style="width:40px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:3px; text-align:center;" onchange="window.vs_updateInput('${block.id}', 'b', this.value)">
+            `;
+        }
     } else if (block.name === 'Si' || block.name === 'Mientras') {
         inputsHtml = `
-            <input type="text" value="${block.inputs.var1}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'var1', this.value)">
-            <select onchange="window.vs_updateInput('${block.id}', 'op', this.value)">
-                <option value="==" ${block.inputs.op === '==' ? 'selected' : ''}>==</option>
-                <option value=">" ${block.inputs.op === '>' ? 'selected' : ''}>&gt;</option>
-                <option value="<" ${block.inputs.op === '<' ? 'selected' : ''}>&lt;</option>
-                <option value="!=" ${block.inputs.op === '!=' ? 'selected' : ''}>!=</option>
-            </select>
-            <input type="text" value="${block.inputs.var2}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'var2', this.value)">
+            <div class="vs-scratch-diagonal-slot" style="display:inline-flex; align-items:center; background: rgba(0,0,0,0.5); border: 1.5px solid #ffab19; padding: 3px 12px; border-radius: 2px; clip-path: polygon(8px 0%, calc(100% - 8px) 0%, 100% 50%, calc(100% - 8px) 100%, 8px 100%, 0% 50%); gap: 5px;">
+                <input type="text" value="${block.inputs.var1}" style="width:40px; border:none; background:transparent; color:#fff; text-align:center;" onchange="window.vs_updateInput('${block.id}', 'var1', this.value)">
+                <select style="background:transparent; border:none; color:#ffab19; font-weight:bold; cursor:pointer;" onchange="window.vs_updateInput('${block.id}', 'op', this.value)">
+                    <option value="==" ${block.inputs.op === '==' ? 'selected' : ''}>==</option>
+                    <option value=">" ${block.inputs.op === '>' ? 'selected' : ''}>&gt;</option>
+                    <option value="<" ${block.inputs.op === '<' ? 'selected' : ''}>&lt;</option>
+                    <option value="!=" ${block.inputs.op === '!=' ? 'selected' : ''}>!=</option>
+                </select>
+                <input type="text" value="${block.inputs.var2}" style="width:40px; border:none; background:transparent; color:#fff; text-align:center;" onchange="window.vs_updateInput('${block.id}', 'var2', this.value)">
+            </div>
         `;
     } else if (block.name === 'Repetir') {
         inputsHtml = `Veces: <input type="number" value="${block.inputs.times}" style="width:40px" onchange="window.vs_updateInput('${block.id}', 'times', this.value)">`;
