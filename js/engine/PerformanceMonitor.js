@@ -70,10 +70,12 @@ export class PerformanceMonitor {
 
     checkPerformance() {
         // Optimization logic
-        if (this.fps < this.targetMinFps + 5) {
+        // Only trigger optimization if FPS falls below the absolute target minimum,
+        // to prevent micro-stutters from triggering persistent optimization cycles.
+        if (this.fps < this.targetMinFps) {
             this.analyzeFramePerformance();
             this.increaseOptimization();
-        } else if (this.fps > this.targetMinFps + 15) {
+        } else if (this.fps > this.targetMinFps + 10) {
             this.decreaseOptimization();
             this.recordStableSnapshot();
         }

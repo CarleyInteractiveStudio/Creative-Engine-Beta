@@ -4196,10 +4196,16 @@ export class Parallax extends Leyes {
 
         // Internal state
         this._autoOffset = { x: 0, y: 0 };
+        this._initialPosition = null;
+        this._initialTargetPosition = null;
     }
     update(deltaTime) {
         const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
-        if (!isGame) return;
+        if (!isGame) {
+            this._initialPosition = null;
+            this._initialTargetPosition = null;
+            return;
+        }
 
         if (this.autoscroll.x !== 0 || this.autoscroll.y !== 0) {
             this._autoOffset.x += this.autoscroll.x * deltaTime;

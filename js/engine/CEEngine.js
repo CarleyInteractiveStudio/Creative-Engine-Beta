@@ -42,6 +42,11 @@ function checkMemory() {
     const memory = window.performance.memory;
     const usedMB = memory.usedJSHeapSize / 1048576;
 
+    // Guard: Sandbox memory reporting is highly capped in browsers (often report ~30MB heap).
+    // Do not trigger aggressive/heavy engine-level optimizations unless used RAM is at least 150MB,
+    // to prevent artificial performance degradation on sandboxed runtimes.
+    if (usedMB < 150) return;
+
     // We need access to the config, but CEEngine is engine-side.
     // For now we use a default or look for a global if available.
     const limitMB = window.currentProjectConfig ? (window.currentProjectConfig.ramLimit || 2048) : 2048;
