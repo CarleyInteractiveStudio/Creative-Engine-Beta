@@ -288,7 +288,7 @@ function checkCameraGizmoHit(canvasPos) {
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
     const localMouseX = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
-    const localMouseY = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
+    const localMouseY = -((worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos);
 
     const aspect = renderer.canvas.width / renderer.canvas.height;
     const size = cameraComponent.orthographicSize;
@@ -1084,14 +1084,47 @@ export function initialize(dependencies) {
                         }
                     }
 
-                    const newScale = { ...dragState.initialTransform.scale };
-                    if (factorX !== 0) {
-                        newScale.x = (dragState.initialTransform.scale.x >= 0 ? 1 : -1) * (dims.width * Math.abs(dragState.initialTransform.scale.x) + totalLdx * factorX) / dims.width;
+                    const textureRender = dragState.materia.getComponent(Components.TextureRender);
+                    if (textureRender) {
+                        if (snapEnabled) {
+                            if (factorX !== 0) {
+                                const initialWidth = dragState.initialTextureRenderWidth;
+                                let newWidth = initialWidth + totalLdx * factorX;
+                                newWidth = Math.round(newWidth / snapSize) * snapSize;
+                                newWidth = Math.max(snapSize, newWidth);
+                                totalLdx = (newWidth - initialWidth) * factorX;
+                            }
+                            if (factorY !== 0) {
+                                const initialHeight = dragState.initialTextureRenderHeight;
+                                let newHeight = initialHeight + totalLdy * factorY;
+                                newHeight = Math.round(newHeight / snapSize) * snapSize;
+                                newHeight = Math.max(snapSize, newHeight);
+                                totalLdy = (newHeight - initialHeight) * factorY;
+                            }
+                        }
+
+                        if (factorX !== 0) {
+                            textureRender.width = Math.max(1, dragState.initialTextureRenderWidth + totalLdx * factorX);
+                        }
+                        if (factorY !== 0) {
+                            textureRender.height = Math.max(1, dragState.initialTextureRenderHeight + totalLdy * factorY);
+                        }
+                        if (textureRender.shape === 'Circle') {
+                            let deltaRadius = (factorX !== 0 ? totalLdx * factorX : 0) + (factorY !== 0 ? totalLdy * factorY : 0);
+                            textureRender.radius = Math.max(1, dragState.initialTextureRenderRadius + deltaRadius / 2);
+                        }
+
+                        transform.scale = dragState.initialTransform.scale;
+                    } else {
+                        const newScale = { ...dragState.initialTransform.scale };
+                        if (factorX !== 0) {
+                            newScale.x = (dragState.initialTransform.scale.x >= 0 ? 1 : -1) * (dims.width * Math.abs(dragState.initialTransform.scale.x) + totalLdx * factorX) / dims.width;
+                        }
+                        if (factorY !== 0) {
+                            newScale.y = (dragState.initialTransform.scale.y >= 0 ? 1 : -1) * (dims.height * Math.abs(dragState.initialTransform.scale.y) + totalLdy * factorY) / dims.height;
+                        }
+                        transform.scale = newScale;
                     }
-                    if (factorY !== 0) {
-                        newScale.y = (dragState.initialTransform.scale.y >= 0 ? 1 : -1) * (dims.height * Math.abs(dragState.initialTransform.scale.y) + totalLdy * factorY) / dims.height;
-                    }
-                    transform.scale = newScale;
 
                     // Shift center by half of the local delta in the dragged axis to keep the opposite side fixed
                     const localShiftX = factorX !== 0 ? totalLdx / 2 : 0;
@@ -1129,13 +1162,44 @@ export function initialize(dependencies) {
                         }
                     }
 
-                    const newScale = { ...dragState.initialTransform.scale };
-                    if (dragState.handle === 'scale-axis-x') {
-                        newScale.x = (dragState.initialTransform.scale.x >= 0 ? 1 : -1) * (dims.width * Math.abs(dragState.initialTransform.scale.x) + totalLdx * 2) / dims.width;
+                    const textureRender = dragState.materia.getComponent(Components.TextureRender);
+                    if (textureRender) {
+                        if (snapEnabled) {
+                            if (dragState.handle === 'scale-axis-x') {
+                                const initialWidth = dragState.initialTextureRenderWidth;
+                                let newWidth = initialWidth + totalLdx * 2;
+                                newWidth = Math.round(newWidth / snapSize) * snapSize;
+                                newWidth = Math.max(snapSize, newWidth);
+                                totalLdx = (newWidth - initialWidth) / 2;
+                            } else {
+                                const initialHeight = dragState.initialTextureRenderHeight;
+                                let newHeight = initialHeight + totalLdy * 2;
+                                newHeight = Math.round(newHeight / snapSize) * snapSize;
+                                newHeight = Math.max(snapSize, newHeight);
+                                totalLdy = (newHeight - initialHeight) / 2;
+                            }
+                        }
+
+                        if (dragState.handle === 'scale-axis-x') {
+                            textureRender.width = Math.max(1, dragState.initialTextureRenderWidth + totalLdx * 2);
+                        } else {
+                            textureRender.height = Math.max(1, dragState.initialTextureRenderHeight + totalLdy * 2);
+                        }
+                        if (textureRender.shape === 'Circle') {
+                            let deltaRadius = (dragState.handle === 'scale-axis-x' ? totalLdx : totalLdy);
+                            textureRender.radius = Math.max(1, dragState.initialTextureRenderRadius + deltaRadius);
+                        }
+
+                        transform.scale = dragState.initialTransform.scale;
                     } else {
-                        newScale.y = (dragState.initialTransform.scale.y >= 0 ? 1 : -1) * (dims.height * Math.abs(dragState.initialTransform.scale.y) + totalLdy * 2) / dims.height;
+                        const newScale = { ...dragState.initialTransform.scale };
+                        if (dragState.handle === 'scale-axis-x') {
+                            newScale.x = (dragState.initialTransform.scale.x >= 0 ? 1 : -1) * (dims.width * Math.abs(dragState.initialTransform.scale.x) + totalLdx * 2) / dims.width;
+                        } else {
+                            newScale.y = (dragState.initialTransform.scale.y >= 0 ? 1 : -1) * (dims.height * Math.abs(dragState.initialTransform.scale.y) + totalLdy * 2) / dims.height;
+                        }
+                        transform.scale = newScale;
                     }
-                    transform.scale = newScale;
                 }
                 break;
             case 'rotate': {
@@ -1158,7 +1222,7 @@ export function initialize(dependencies) {
             const sin = Math.sin(rad);
             // Mouse deltas in collider local space (+Y UP)
             const localDx = (dx * cos + dy * sin) / (Math.abs(transform.scale.x) || 1);
-            const localDy = (dx * sin - dy * cos) / (Math.abs(transform.scale.y) || 1);
+            const localDy = (dx * sin + dy * cos) / (Math.abs(transform.scale.y) || 1);
 
             switch (dragState.handle) {
                 case 'collider-top':
@@ -1235,7 +1299,7 @@ export function initialize(dependencies) {
             const cos = Math.cos(rad);
             const sin = Math.sin(rad);
             const localDx = (dx * cos + dy * sin) / (Math.abs(transform.scale.x) || 1);
-            const localDy = (dx * sin - dy * cos) / (Math.abs(transform.scale.y) || 1);
+            const localDy = (dx * sin + dy * cos) / (Math.abs(transform.scale.y) || 1);
 
             switch (dragState.handle) {
                 case 'collider-capsule-top':
@@ -2125,6 +2189,7 @@ export function initialize(dependencies) {
                     }
                 }
 
+                const textureRender = selectedMateria ? selectedMateria.getComponent(Components.TextureRender) : null;
                 dragState = {
                     handle: hitHandle,
                     materia: selectedMateria,
@@ -2135,6 +2200,9 @@ export function initialize(dependencies) {
                         rotation: transform.rotation,
                         scale: { x: transform.scale.x, y: transform.scale.y, z: transform.scale.z || 1 }
                     } : null,
+                    initialTextureRenderWidth: textureRender ? textureRender.width : null,
+                    initialTextureRenderHeight: textureRender ? textureRender.height : null,
+                    initialTextureRenderRadius: textureRender ? textureRender.radius : null,
                     initialMouseWorld: screenToWorld(canvasPos.x, canvasPos.y),
                     initialMousePos: { x: e.clientX, y: e.clientY },
                     offsetFromRay: offsetFromRay,
@@ -2160,6 +2228,26 @@ function pick2D(canvasPos) {
     // Iterate in reverse to pick the topmost object
     const allMaterias = SceneManager.currentScene.getAllMaterias().reverse();
 
+    // 1. PRIORITIZE GIZMO ICONS (Camera, AudioSource, VideoPlayer, Lights)
+    for (const materia of allMaterias) {
+        if (!materia.isActive) continue;
+
+        const transform = materia.getComponent(Components.Transform);
+        if (!transform) continue;
+
+        const hasIcon = materia.getComponent(Components.Camera) ||
+                        materia.getComponent(Components.AudioSource) ||
+                        materia.getComponent(Components.VideoPlayer);
+
+        if (hasIcon) {
+            const distInScreenPixels = Math.hypot(worldMouse.x - transform.x, worldMouse.y - transform.y) * renderer.camera.effectiveZoom;
+            if (distInScreenPixels <= 20) { // 20 pixels click radius on screen, perfectly consistent at any zoom!
+                return materia.id;
+            }
+        }
+    }
+
+    // 2. STANDARD BOUNDS PICKING
     for (const materia of allMaterias) {
         if (!materia.isActive) continue;
 
@@ -3391,6 +3479,9 @@ function drawGizmoIcons(proj = null, view = null, cw = null, ch = null) {
                 if (screenPos) {
                     ctx.save();
                     ctx.translate(screenPos.x, screenPos.y);
+                    if (!is3DActive) {
+                        ctx.scale(1, -1);
+                    }
                     ctx.globalAlpha = 0.8;
                     const size = (is3DActive ? BASE_ICON_SIZE * scale : BASE_ICON_SIZE / zoom);
                     ctx.drawImage(iconImg, -size / 2, -size / 2, size, size);
@@ -3636,7 +3727,7 @@ function checkBoxColliderGizmoHit(canvasPos) {
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
     const localMouseX = (worldMouse.x - (transform.x + boxCollider.offset.x)) * cos - (worldMouse.y - (transform.y + boxCollider.offset.y)) * sin;
-    const localMouseY = (worldMouse.x - (transform.x + boxCollider.offset.x)) * sin + (worldMouse.y - (transform.y + boxCollider.offset.y)) * cos;
+    const localMouseY = -((worldMouse.x - (transform.x + boxCollider.offset.x)) * sin + (worldMouse.y - (transform.y + boxCollider.offset.y)) * cos);
 
     const width = boxCollider.size.x * transform.scale.x;
     const height = boxCollider.size.y * transform.scale.y;
@@ -3682,7 +3773,7 @@ function checkCapsuleColliderGizmoHit(canvasPos) {
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
     const localMouseX = (worldMouse.x - (transform.x + capsuleCollider.offset.x)) * cos - (worldMouse.y - (transform.y + capsuleCollider.offset.y)) * sin;
-    const localMouseY = (worldMouse.x - (transform.x + capsuleCollider.offset.x)) * sin + (worldMouse.y - (transform.y + capsuleCollider.offset.y)) * cos;
+    const localMouseY = -((worldMouse.x - (transform.x + capsuleCollider.offset.x)) * sin + (worldMouse.y - (transform.y + capsuleCollider.offset.y)) * cos);
 
     const width = capsuleCollider.size.x * transform.scale.x;
     const height = capsuleCollider.size.y * transform.scale.y;

@@ -943,21 +943,6 @@ function handleInspectorClick(e) {
         }
     }
 
-    if (e.target.matches('[data-action="parallax-match-sprite"]')) {
-        const index = parseInt(e.target.dataset.leyIndex, 10);
-        const parallax = selectedMateria.leyes[index];
-        const spriteRenderer = selectedMateria.getComponent(Components.SpriteRenderer);
-        const transform = selectedMateria.getComponent(Components.Transform);
-
-        if (parallax && spriteRenderer && spriteRenderer.sprite && spriteRenderer.sprite.naturalWidth > 0) {
-            parallax.mirroring.x = spriteRenderer.sprite.naturalWidth * transform.scale.x;
-            parallax.mirroring.y = spriteRenderer.sprite.naturalHeight * transform.scale.y;
-            updateInspector();
-            updateSceneCallback();
-        } else {
-            window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('ERROR_NECESITA_SPRITE_RENDERER', 'Se necesita un SpriteRenderer con una imagen cargada.'));
-        }
-    }
 
     // --- Terrain Layer Management ---
     if (e.target.matches('[data-action="terrain-add-layer"]')) {
@@ -3310,27 +3295,10 @@ async function updateInspectorForMateria(selectedMateria) {
                             <input type="number" autocomplete="off" class="prop-input" step="0.01" data-component="Parallax" data-prop="scrollFactor.y" value="${ley.scrollFactor.y}" title="Y">
                         </div>
                     </div>
-                    <div class="prop-row-multi">
-                        <label data-i18n="REPEAT_INFINITE">${L.get('REPEAT_INFINITE', 'Repetir (Infinito)')}</label>
-                        <div class="prop-inputs" style="display: flex; align-items: center; gap: 10px; justify-content: flex-start;">
-                            <div style="display: flex; align-items: center; gap: 4px;">
-                                <input type="checkbox" class="prop-input" data-component="Parallax" data-prop="repeatX" ${ley.repeatX ? 'checked' : ''} id="parallax-repeat-x-${index}">
-                                <label for="parallax-repeat-x-${index}" style="font-size: 10px; margin: 0;" data-i18n="HORIZONTAL">${L.get('HORIZONTAL', 'Horizontal')}</label>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 4px;">
-                                <input type="checkbox" class="prop-input" data-component="Parallax" data-prop="repeatY" ${ley.repeatY ? 'checked' : ''} id="parallax-repeat-y-${index}">
-                                <label for="parallax-repeat-y-${index}" style="font-size: 10px; margin: 0;" data-i18n="VERTICAL">${L.get('VERTICAL', 'Vertical')}</label>
-                            </div>
-                        </div>
+                    <div class="prop-row">
+                        <label data-i18n="TARGET_OBJECT">${L.get('TARGET_OBJECT', 'Objeto a Seguir')}</label>
+                        ${renderPropertyDropper('Materia', ley.targetMateria, 'data-component="Parallax" data-prop="targetMateria"')}
                     </div>
-                    <div class="prop-row-multi">
-                        <label data-i18n="MIRRORING_XY">${L.get('MIRRORING_XY', 'Mirroring X/Y')}</label>
-                        <div class="prop-inputs">
-                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="Parallax" data-prop="mirroring.x" value="${ley.mirroring.x}" title="X">
-                            <input type="number" autocomplete="off" class="prop-input" step="1" data-component="Parallax" data-prop="mirroring.y" value="${ley.mirroring.y}" title="Y">
-                        </div>
-                    </div>
-                    <button class="panel-tool-btn" style="width:100%; margin-bottom: 8px;" data-action="parallax-match-sprite" data-ley-index="${index}" data-i18n="MATCH_MIRRORING_SPRITE">${L.get('MATCH_MIRRORING_SPRITE', 'Ajustar Mirroring al Sprite')}</button>
                     <div class="prop-row-multi">
                         <label data-i18n="OFFSET_XY">${L.get('OFFSET_XY', 'Offset X/Y')}</label>
                         <div class="prop-inputs">
@@ -3345,7 +3313,7 @@ async function updateInspectorForMateria(selectedMateria) {
                             <input type="number" autocomplete="off" class="prop-input" step="1" data-component="Parallax" data-prop="autoscroll.y" value="${ley.autoscroll.y}" title="Y">
                         </div>
                     </div>
-                    <p class="field-description">${L.get('PARALLAX_DESC', 'Scroll Factor: 0 = Pegado a cámara. 1 = Mundo real.<br>Mirroring: Tamaño de repetición (0 = no repite).')}</p>
+                    <p class="field-description">${L.get('PARALLAX_DESC', 'Scroll Factor: Factor de movimiento relativo al objeto seguido (ej: 0.5 para moverse a la mitad de velocidad).')}</p>
                 </div>
             `;
         } else if (ley instanceof Components.Terreno2D) {

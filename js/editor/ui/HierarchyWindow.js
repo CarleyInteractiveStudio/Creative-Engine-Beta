@@ -365,9 +365,12 @@ export async function handleContextMenuAction(action) {
             newMateria = await createTerreno3DObject(selectedMateria);
             break;
         case 'create-parallax':
-
             newMateria = createBaseMateria(generateUniqueName(L.get('PARALLAX', 'Parallax')), selectedMateria);
-            newMateria.addComponent(new Components.SpriteRenderer(newMateria));
+            const trComp = new Components.TextureRender(newMateria);
+            trComp.wrapMode = 'Repeat';
+            trComp.width = 1920; // Default wide width to fit parallax viewport
+            trComp.height = 1080; // Default height
+            newMateria.addComponent(trComp);
             newMateria.addComponent(new Components.DrawingOrder(newMateria));
             const p = new Components.Parallax(newMateria);
             p.scrollFactor = { x: 0.5, y: 0.5 };
