@@ -3327,6 +3327,22 @@ body.mobile-mode .component-item:active {
 
 .prop-row-multi .prop-inputs input {
     width: 100%;
+    box-sizing: border-box !important;
+}
+
+#inspector-panel *,
+#inspector-panel *::before,
+#inspector-panel *::after {
+    box-sizing: border-box !important;
+}
+
+#inspector-panel {
+    overflow-x: hidden !important;
+}
+
+#inspector-panel .panel-content {
+    overflow-x: hidden !important;
+    max-width: 100% !important;
 }
 
 
@@ -3501,8 +3517,11 @@ body.mobile-mode .component-item:active {
 }
 
 #inspector-panel input[type="text"],
-#inspector-panel input[type="number"] {
-    width: calc(100% - 16px); /* Adjust for padding */
+#inspector-panel input[type="number"],
+#inspector-panel select,
+#inspector-panel textarea {
+    width: 100%;
+    box-sizing: border-box !important;
     font-size: 1em;
 }
 
@@ -6668,10 +6687,10 @@ body.mobile-mode .submenu li {
 
 /* Icons filter normalization */
 .folder-toggle img {
-    filter: brightness(0.6) !important;
+    filter: brightness(1) !important;
 }
 .folder-toggle img:hover {
-    filter: brightness(1) !important;
+    filter: brightness(1.2) !important;
 }
 
 /* Custom Scrollbars */
@@ -6702,14 +6721,16 @@ body.mobile-mode .submenu li {
 .tree-name {
     display: inline-block !important;
     white-space: nowrap;
-    max-width: 180px; /* Adjust maximum visible width in sidebar */
+    max-width: 110px; /* Adjust maximum visible width in sidebar */
     overflow: hidden;
-    text-overflow: clip; /* Hide standard ellipsis to allow continuous scrolling */
-    transition: transform 2s ease-in-out;
-    transform: translateX(0);
+    text-overflow: ellipsis; /* Show points suspensivos by default */
+    transition: text-indent 2s ease-in-out;
+    text-indent: 0;
     vertical-align: middle;
 }
 
-.folder-item:hover .tree-name.can-scroll {
-    transform: translateX(var(--scroll-dist, 0px));
+.folder-item:hover .tree-name.can-scroll,
+.file-item:hover .tree-name.can-scroll {
+    text-overflow: clip; /* Clip the ellipsis during scrolling */
+    text-indent: var(--scroll-dist, 0px);
 }

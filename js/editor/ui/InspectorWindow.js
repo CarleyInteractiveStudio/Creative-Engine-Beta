@@ -4550,13 +4550,17 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
     try {
         const L = window.Localization;
-        const dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
+        const selectedAsset = getSelectedAsset();
+        let dirHandle = selectedAsset && selectedAsset.dirHandle ? selectedAsset.dirHandle : null;
+        if (!dirHandle) {
+            dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
+        }
         if (!dirHandle) {
             dom.inspectorContent.innerHTML = `<p class="inspector-placeholder error-message">Directorio de assets no disponible</p>`;
             return;
         }
 
-        const fileHandle = await dirHandle.getFileHandle(assetName);
+        const fileHandle = selectedAsset && selectedAsset.fileHandle ? selectedAsset.fileHandle : await dirHandle.getFileHandle(assetName);
         const file = await fileHandle.getFile();
         const lowerName = assetName.toLowerCase();
 
@@ -4651,7 +4655,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
             dom.inspectorContent.appendChild(container);
 
-        } else if (lowerName.endsWith('.ces') || lowerName.endsWith('.txt')) {
+        } else if (lowerName.endsWith('.ces') || lowerName.endsWith('.chc') || lowerName.endsWith('.css') || lowerName.endsWith('.txt') || lowerName.endsWith('.js') || lowerName.endsWith('.json')) {
             const content = await file.text();
             const pre = document.createElement('pre');
             pre.style.maxHeight = '400px';
@@ -4660,7 +4664,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             pre.style.padding = '10px';
             pre.style.borderRadius = '4px';
             const code = document.createElement('code');
-            code.className = lowerName.endsWith('.ces') ? 'language-javascript' : '';
+            code.className = (lowerName.endsWith('.ces') || lowerName.endsWith('.js') || lowerName.endsWith('.json')) ? 'language-javascript' : '';
             code.textContent = content;
             pre.appendChild(code);
             dom.inspectorContent.appendChild(pre);
@@ -4696,35 +4700,78 @@ async function updateInspectorForAsset(assetName, assetPath) {
             const settingsContainer = document.createElement('div');
             settingsContainer.className = 'asset-settings';
             settingsContainer.innerHTML = `
-                <div class="inspector-section">
-                    <label for="texture-type" data-i18n="TEXTURE_TYPE">${L.get('TEXTURE_TYPE', 'Texture Type')}</label>
-                    <select id="texture-type" class="inspector-re-render-asset">
-                        <option value="Sprite (2D and UI)" ${metaData.textureType === 'Sprite (2D and UI)' ? 'selected' : ''}>Sprite (2D and UI)</option>
-                        <option value="Animation Sheet" ${metaData.textureType === 'Animation Sheet' ? 'selected' : ''}>Animation Sheet</option>
-                        <option value="Texture" ${metaData.textureType === 'Texture' ? 'selected' : ''}>Texture</option>
-                    </select>
+                <div class="inspector-section" style="background: rgba(255,255,255,0.02); border-radius: 8px; padding: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                    <h5 style="margin: 0 0 10px 0; color: var(--accent-color); font-size: 0.9em; text-transform: uppercase;">Ajustes de Imagen</h5>
+
+                    <div class="inspector-row" style="margin-bottom: 12px;">
+                        <label style="font-size: 0.85em; opacity: 0.8;">Calidad de Imagen (Ancho en px):</label>
+                        <select id="image-quality-pixels-select" style="flex-grow: 1;">
+                            <option value="">Cargando calidad...</option>
+                        </select>
+                    </div>
+
+                    <div class="inspector-row" style="margin-bottom: 12px;">
+                        <label style="font-size: 0.85em; opacity: 0.8;">Píxeles Personalizados:</label>
+                        <input type="number" id="custom-pixels-input" placeholder="Escribe cantidad px" style="flex-grow: 1;" min="1" value="${metaData.customWidth || ''}">
+                    </div>
+
+                    <div class="inspector-row" style="margin-bottom: 12px;">
+                        <label for="texture-type" data-i18n="TEXTURE_TYPE">${L.get('TEXTURE_TYPE', 'Texture Type')}</label>
+                        <select id="texture-type" class="inspector-re-render-asset" style="flex-grow: 1;">
+                            <option value="Sprite (2D and UI)" ${metaData.textureType === 'Sprite (2D and UI)' ? 'selected' : ''}>Sprite (2D and UI)</option>
+                            <option value="Animation Sheet" ${metaData.textureType === 'Animation Sheet' ? 'selected' : ''}>Animation Sheet</option>
+                            <option value="Texture" ${metaData.textureType === 'Texture' ? 'selected' : ''}>Texture</option>
+                        </select>
+                    </div>
+
+                    <div class="inspector-row" style="margin-bottom: 12px;">
+                        <label for="filter-mode" data-i18n="FILTER_MODE">${L.get('FILTER_MODE', 'Filter Mode')}</label>
+                        <select id="filter-mode" style="flex-grow: 1;">
+                            <option value="Point" ${metaData.filterMode === 'Point' ? 'selected' : ''}>Point (Pixel Art / Nítido)</option>
+                            <option value="Bilinear" ${metaData.filterMode === 'Bilinear' ? 'selected' : ''}>Bilinear (Suave)</option>
+                            <option value="Trilinear" ${metaData.filterMode === 'Trilinear' ? 'selected' : ''}>Trilinear</option>
+                        </select>
+                    </div>
+
+                    <div class="inspector-row" style="margin-bottom: 12px;">
+                        <label for="wrap-mode" data-i18n="WRAP_MODE">${L.get('WRAP_MODE', 'Wrap Mode')}</label>
+                        <select id="wrap-mode" style="flex-grow: 1;">
+                            <option value="Repeat" ${metaData.wrapMode === 'Repeat' ? 'selected' : ''}>Repeat (Repetir)</option>
+                            <option value="Clamp" ${metaData.wrapMode === 'Clamp' ? 'selected' : ''}>Clamp (Fijar bordes)</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div id="sprite-settings-container" class="${metaData.textureType === 'Animation Sheet' || metaData.textureType === 'Texture' ? 'hidden' : ''}">
-                    <fieldset class="inspector-section">
-                        <legend>Sprite (2D and UI)</legend>
+                    <fieldset class="inspector-section" style="border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; margin-top: 10px;">
+                        <legend style="font-size: 0.8em; opacity: 0.6; padding: 0 6px;">Configuración Sprite</legend>
 
                         <div class="inspector-row">
                             <label for="sprite-mode" data-i18n="SPRITE_MODE">${L.get('SPRITE_MODE', 'Sprite Mode')}</label>
-                            <select id="sprite-mode" class="inspector-re-render-asset">
+                            <select id="sprite-mode" class="inspector-re-render-asset" style="flex-grow: 1;">
                                 <option value="Single" ${metaData.spriteMode === 'Single' ? 'selected' : ''} data-i18n="SINGLE">${L.get('SINGLE', 'Single')}</option>
                                 <option value="Multiple" ${metaData.spriteMode === 'Multiple' ? 'selected' : ''} data-i18n="MULTIPLE">${L.get('MULTIPLE', 'Multiple')}</option>
                             </select>
                         </div>
 
+                        <div id="sprite-editor-btn-container" class="${metaData.spriteMode !== 'Multiple' ? 'hidden' : ''}" style="margin-top: 10px;">
+                             <button id="sprite-editor-btn" class="primary-btn" style="width: 100%; height: 30px; border-radius: 4px; font-weight: bold;">Sprite Editor</button>
+                        </div>
+                    </fieldset>
+                </div>
+
+                <!-- Collapse advanced and game optimization options into a neat details element -->
+                <details style="margin-top: 10px; border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; background: rgba(0,0,0,0.1);">
+                    <summary style="padding: 10px; font-size: 0.85em; font-weight: bold; cursor: pointer; color: var(--text-secondary); user-select: none;">Advanced & Game Optimization</summary>
+                    <div style="padding: 10px; display: flex; flex-direction: column; gap: 10px;">
                         <div class="inspector-row">
                             <label for="pixels-per-unit" data-i18n="PIXELS_PER_UNIT">${L.get('PIXELS_PER_UNIT', 'Pixels Per Unit')}</label>
-                            <input type="number" autocomplete="off" id="pixels-per-unit" value="${metaData.pixelsPerUnit}">
+                            <input type="number" autocomplete="off" id="pixels-per-unit" value="${metaData.pixelsPerUnit}" style="width: 100px;">
                         </div>
 
                         <div class="inspector-row">
                             <label for="mesh-type" data-i18n="MESH_TYPE">${L.get('MESH_TYPE', 'Mesh Type')}</label>
-                            <select id="mesh-type">
+                            <select id="mesh-type" style="flex-grow: 1;">
                                 <option value="Full Rect" ${metaData.meshType === 'Full Rect' ? 'selected' : ''} data-i18n="FULL_RECT">Full Rect</option>
                                 <option value="Tight" ${metaData.meshType === 'Tight' ? 'selected' : ''} data-i18n="TIGHT">Tight</option>
                             </select>
@@ -4732,37 +4779,12 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
                         <div class="inspector-row">
                             <label for="texture-tag" data-i18n="TAG">${L.get('TAG', 'Tag')}</label>
-                            <input type="text" autocomplete="off" id="texture-tag" value="${metaData.tag}" placeholder="${L.get('UNTAGGED', 'Untagged')}">
+                            <input type="text" autocomplete="off" id="texture-tag" value="${metaData.tag}" placeholder="${L.get('UNTAGGED', 'Untagged')}" style="flex-grow: 1;">
                         </div>
 
-                        <hr>
-
-                        <div id="sprite-editor-btn-container" class="${metaData.spriteMode !== 'Multiple' ? 'hidden' : ''}">
-                             <button id="sprite-editor-btn" class="primary-btn" style="width: 100%;" data-i18n="SPRITE_EDITOR">Sprite Editor</button>
-                        </div>
-                    </fieldset>
-
-                    <fieldset class="inspector-section">
-                        <legend data-i18n="ADVANCED">${L.get('ADVANCED', 'Advanced')}</legend>
-                        <div class="inspector-row">
-                            <label for="filter-mode" data-i18n="FILTER_MODE">${L.get('FILTER_MODE', 'Filter Mode')}</label>
-                            <select id="filter-mode">
-                                <option value="Point" ${metaData.filterMode === 'Point' ? 'selected' : ''}>Point (no filter)</option>
-                                <option value="Bilinear" ${metaData.filterMode === 'Bilinear' ? 'selected' : ''}>Bilinear</option>
-                                <option value="Trilinear" ${metaData.filterMode === 'Trilinear' ? 'selected' : ''}>Trilinear</option>
-                            </select>
-                        </div>
-                        <div class="inspector-row">
-                            <label for="wrap-mode" data-i18n="WRAP_MODE">${L.get('WRAP_MODE', 'Wrap Mode')}</label>
-                            <select id="wrap-mode">
-                                <option value="Repeat" ${metaData.wrapMode === 'Repeat' ? 'selected' : ''}>Repeat</option>
-                                <option value="Clamp" ${metaData.wrapMode === 'Clamp' ? 'selected' : ''}>Clamp</option>
-                            </select>
-                        </div>
-                         <hr>
                         <div class="inspector-row">
                             <label for="max-size" data-i18n="MAX_SIZE">${L.get('MAX_SIZE', 'Max Size')}</label>
-                            <select id="max-size">
+                            <select id="max-size" style="flex-grow: 1;">
                                 <option value="32" ${metaData.maxSize === 32 ? 'selected' : ''}>32</option>
                                 <option value="64" ${metaData.maxSize === 64 ? 'selected' : ''}>64</option>
                                 <option value="128" ${metaData.maxSize === 128 ? 'selected' : ''}>128</option>
@@ -4774,49 +4796,190 @@ async function updateInspectorForAsset(assetName, assetPath) {
                                 <option value="8192" ${metaData.maxSize === 8192 ? 'selected' : ''}>8192</option>
                             </select>
                         </div>
-                         <div class="inspector-row">
+
+                        <div class="inspector-row">
                             <label for="compression-quality" data-i18n="COMPRESSION">${L.get('COMPRESSION', 'Compression')}</label>
-                            <select id="compression-quality">
+                            <select id="compression-quality" style="flex-grow: 1;">
                                 <option value="None" ${metaData.compression === 'None' ? 'selected' : ''} data-i18n="NONE">None</option>
                                 <option value="Low" ${metaData.compression === 'Low' ? 'selected' : ''} data-i18n="LOW_QUALITY">Low Quality</option>
                                 <option value="Normal" ${metaData.compression === 'Normal' ? 'selected' : ''} data-i18n="NORMAL_QUALITY">Normal Quality</option>
                                 <option value="High" ${metaData.compression === 'High' ? 'selected' : ''} data-i18n="HIGH_QUALITY">High Quality</option>
                             </select>
                         </div>
-                    </fieldset>
-                </div>
+                    </div>
+                </details>
 
                 <div id="animation-sheet-settings-container" class="${metaData.textureType !== 'Animation Sheet' ? 'hidden' : ''}">
-                    <fieldset class="inspector-section">
+                    <fieldset class="inspector-section" style="border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; margin-top: 10px;">
                         <legend data-i18n="ANIMATION_PREVIEW">${L.get('ANIMATION_PREVIEW', 'Animation Preview')}</legend>
-                        <div class="anim-preview-bubble">
-                            <canvas id="anim-preview-canvas" width="128" height="128"></canvas>
-                            <div class="anim-preview-controls">
-                                <button id="anim-preview-play">▶️</button>
-                                <button id="anim-preview-stop">⏹️</button>
-                                <input type="number" autocomplete="off" id="anim-preview-speed" value="${metaData.animSpeed || 10}" min="1" title="FPS">
+                        <div class="anim-preview-bubble" style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                            <canvas id="anim-preview-canvas" width="128" height="128" style="background: rgba(0,0,0,0.3); border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);"></canvas>
+                            <div class="anim-preview-controls" style="display: flex; gap: 8px; align-items: center;">
+                                <button id="anim-preview-play" style="padding: 4px 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: white; cursor: pointer;">▶️</button>
+                                <button id="anim-preview-stop" style="padding: 4px 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: white; cursor: pointer;">⏹️</button>
+                                <input type="number" autocomplete="off" id="anim-preview-speed" value="${metaData.animSpeed || 10}" min="1" title="FPS" style="width: 50px; text-align: center;">
                             </div>
                         </div>
                     </fieldset>
-                    <fieldset class="inspector-section">
+
+                    <fieldset class="inspector-section" style="border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; margin-top: 10px;">
                         <legend data-i18n="SLICING">${L.get('SLICING', 'Slicing')}</legend>
-                        <div class="inspector-row">
-                            <label for="anim-columns" data-i18n="COLUMNS">${L.get('COLUMNS', 'Columns')}</label>
-                            <input type="number" autocomplete="off" id="anim-columns" value="${metaData.animColumns || 1}" min="1">
+
+                        <div class="inspector-row" style="margin-bottom: 8px;">
+                            <label style="font-size: 0.85em; opacity: 0.8;">Modo Importar:</label>
+                            <select id="slicing-mode" style="flex-grow: 1;">
+                                <option value="auto">Automático (Detectar vacío)</option>
+                                <option value="manual">Manual (Columnas y Filas)</option>
+                            </select>
                         </div>
-                        <div class="inspector-row">
-                            <label for="anim-rows" data-i18n="ROWS">${L.get('ROWS', 'Rows')}</label>
-                            <input type="number" autocomplete="off" id="anim-rows" value="${metaData.animRows || 1}" min="1">
+
+                        <div id="manual-slicing-inputs" style="display: flex; flex-direction: column; gap: 8px;">
+                            <div class="inspector-row">
+                                <label for="anim-columns" data-i18n="COLUMNS">${L.get('COLUMNS', 'Columns')}</label>
+                                <input type="number" autocomplete="off" id="anim-columns" value="${metaData.animColumns || 1}" min="1" style="width: 80px;">
+                            </div>
+                            <div class="inspector-row">
+                                <label for="anim-rows" data-i18n="ROWS">${L.get('ROWS', 'Rows')}</label>
+                                <input type="number" autocomplete="off" id="anim-rows" value="${metaData.animRows || 1}" min="1" style="width: 80px;">
+                            </div>
                         </div>
-                         <button id="create-anim-asset-btn" class="primary-btn" style="width: 100%; margin-top: 10px;" data-i18n="CREAR_ANIMACION_SIMPLE">${L.get('CREAR_ANIMACION_SIMPLE', 'Crear Animación')}</button>
+
+                        <div id="auto-slicing-container" style="text-align: center; margin-top: 8px;">
+                            <button id="btn-auto-detect-grid" class="panel-tool-btn" style="width: 100%; font-weight: bold;">Detectar Automáticamente</button>
+                        </div>
+
+                        <button id="create-anim-asset-btn" class="primary-btn" style="width: 100%; margin-top: 10px;" data-i18n="CREAR_ANIMACION_SIMPLE">${L.get('CREAR_ANIMACION_SIMPLE', 'Crear Animación')}</button>
                     </fieldset>
                 </div>
 
                 <button id="save-meta-btn" class="primary-btn ${metaData.textureType === 'Animation Sheet' ? 'hidden' : ''}" style="width: 100%; margin-top: 10px;" data-i18n="APPLY">${L.get('APPLY', 'Aplicar')}</button>
                 <hr>
-                <div class="preview-container"><img id="inspector-preview-img" src="" alt="Preview"></div>
+                <div class="preview-container" style="text-align: center; margin-top: 10px;"><img id="inspector-preview-img" src="" alt="Preview" style="max-width: 100%; max-height: 150px; object-fit: contain; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px;"></div>
             `;
             dom.inspectorContent.appendChild(settingsContainer);
+
+            // Handle native resolution retrieval and custom size controls
+            let nativeWidth = 0;
+            let nativeHeight = 0;
+
+            getURLForAssetPath(assetPath, projectsDirHandle).then(url => {
+                if (url) {
+                    const tempImg = new Image();
+                    tempImg.onload = () => {
+                        nativeWidth = tempImg.naturalWidth;
+                        nativeHeight = tempImg.naturalHeight;
+
+                        const qualitySelect = document.getElementById('image-quality-pixels-select');
+                        const customPixelsInput = document.getElementById('custom-pixels-input');
+
+                        if (qualitySelect) {
+                            qualitySelect.innerHTML = '';
+
+                            const percentages = [100, 70, 50, 30, 10];
+                            percentages.forEach(pct => {
+                                const pxVal = Math.round(nativeWidth * (pct / 100));
+                                const opt = document.createElement('option');
+                                opt.value = pxVal;
+                                opt.textContent = `${pxVal} px`;
+                                qualitySelect.appendChild(opt);
+                            });
+
+                            // Synchronize with existing custom width if saved
+                            if (metaData.customWidth) {
+                                customPixelsInput.value = metaData.customWidth;
+                                // If the customWidth matches one of the options exactly, select it
+                                const matchedOpt = Array.from(qualitySelect.options).find(o => parseInt(o.value, 10) === metaData.customWidth);
+                                if (matchedOpt) {
+                                    qualitySelect.value = metaData.customWidth;
+                                } else {
+                                    // Custom value that doesn't match standard percentages, add a temporary custom option
+                                    const opt = document.createElement('option');
+                                    opt.value = metaData.customWidth;
+                                    opt.textContent = `${metaData.customWidth} px`;
+                                    opt.selected = true;
+                                    qualitySelect.insertBefore(opt, qualitySelect.firstChild);
+                                }
+                            } else {
+                                qualitySelect.value = nativeWidth;
+                                customPixelsInput.value = nativeWidth;
+                            }
+
+                            qualitySelect.onchange = () => {
+                                customPixelsInput.value = qualitySelect.value;
+                            };
+
+                            customPixelsInput.oninput = () => {
+                                const manualVal = parseInt(customPixelsInput.value, 10);
+                                if (!isNaN(manualVal) && manualVal > 0) {
+                                    const hasOption = Array.from(qualitySelect.options).some(o => parseInt(o.value, 10) === manualVal);
+                                    if (hasOption) {
+                                        qualitySelect.value = manualVal;
+                                    } else {
+                                        // Remove any existing temporary non-percentage option
+                                        Array.from(qualitySelect.options).forEach(o => {
+                                            const pctCheck = [100, 70, 50, 30, 10].map(p => Math.round(nativeWidth * (p / 100)));
+                                            if (!pctCheck.includes(parseInt(o.value, 10))) {
+                                                o.remove();
+                                            }
+                                        });
+                                        const opt = document.createElement('option');
+                                        opt.value = manualVal;
+                                        opt.textContent = `${manualVal} px`;
+                                        opt.selected = true;
+                                        qualitySelect.insertBefore(opt, qualitySelect.firstChild);
+                                    }
+                                }
+                            };
+                        }
+                    };
+                    tempImg.src = url;
+                }
+            });
+
+            // Slicing Mode Toggle
+            const slicingSelect = settingsContainer.querySelector('#slicing-mode');
+            const manualInputs = settingsContainer.querySelector('#manual-slicing-inputs');
+            const autoInputs = settingsContainer.querySelector('#auto-slicing-container');
+
+            const updateSlicingUI = () => {
+                const mode = slicingSelect.value;
+                if (mode === 'auto') {
+                    if (manualInputs) manualInputs.classList.add('hidden');
+                    if (autoInputs) autoInputs.classList.remove('hidden');
+                } else {
+                    if (manualInputs) manualInputs.classList.remove('hidden');
+                    if (autoInputs) autoInputs.classList.add('hidden');
+                }
+            };
+            if (slicingSelect) {
+                slicingSelect.onchange = updateSlicingUI;
+                updateSlicingUI();
+            }
+
+            // Auto Detect Button handler
+            const btnAutoDetect = settingsContainer.querySelector('#btn-auto-detect-grid');
+            if (btnAutoDetect) {
+                btnAutoDetect.onclick = async () => {
+                    const imageUrl = await getURLForAssetPath(assetPath, projectsDirHandle);
+                    if (imageUrl) {
+                        btnAutoDetect.textContent = "Detectando...";
+                        btnAutoDetect.disabled = true;
+                        const detected = await autoDetectSheetGrid(imageUrl);
+
+                        const colsInput = document.getElementById('anim-columns');
+                        const rowsInput = document.getElementById('anim-rows');
+                        if (colsInput && rowsInput) {
+                            colsInput.value = detected.columns;
+                            rowsInput.value = detected.rows;
+                            colsInput.dispatchEvent(new Event('input'));
+                            rowsInput.dispatchEvent(new Event('input'));
+                            window.Dialogs.showNotification("Detector de Vacío", `Éxito: Se detectaron automáticamente ${detected.columns} columnas y ${detected.rows} filas.`);
+                        }
+                        btnAutoDetect.textContent = "Detectar Automáticamente";
+                        btnAutoDetect.disabled = false;
+                    }
+                };
+            }
 
             // --- Event Listeners for this specific inspector ---
             // The main 'change' handler (handleInspectorChange) will now manage this via event delegation.
@@ -4887,6 +5050,18 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 } catch (e) { /* no-op, will create a new one */ }
 
                 currentMetaData.textureType = document.getElementById('texture-type').value;
+
+                const customWInput = document.getElementById('custom-pixels-input');
+                const targetWidth = customWInput ? parseInt(customWInput.value, 10) : null;
+
+                if (targetWidth && targetWidth > 0 && nativeWidth && nativeHeight) {
+                    currentMetaData.customWidth = targetWidth;
+                    // Compute scaled height proportionally to maintain exact aspect ratio
+                    currentMetaData.customHeight = Math.round(nativeHeight * (targetWidth / nativeWidth));
+                } else {
+                    currentMetaData.customWidth = null;
+                    currentMetaData.customHeight = null;
+                }
 
                 if (currentMetaData.textureType === 'Texture') {
                     currentMetaData.wrapMode = 'Repeat';
@@ -5048,8 +5223,26 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
                 const dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
                     await createAssetCallback(animAssetName, JSON.stringify(animData, null, 2), dirHandle);
-                window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_CREAR_ANIM_ASSET', 'Asset de animación "{name}" creado.').replace('{name}', animAssetName)}`);
-                    if(updateAssetBrowserCallback) updateAssetBrowserCallback();
+                window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_CREAR_ANIM_ASSET', 'Asset de animación "{name}" creado y foto original eliminada.').replace('{name}', animAssetName)}`);
+
+                    // Automatically delete original image photo and its metadata
+                    try {
+                        if (dirHandle) {
+                            await dirHandle.removeEntry(assetName);
+                            try {
+                                await dirHandle.removeEntry(`${assetName}.meta`);
+                            } catch (metaErr) {}
+                            console.log(`[Auto-Delete] Deleted original photo ${assetName} and meta.`);
+                            if (window.onAssetSelected) {
+                                window.onAssetSelected(null, null, null);
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("[Auto-Delete] Failed to delete original photo file:", e);
+                    }
+
+                    if(updateAssetBrowserCallback) await updateAssetBrowserCallback();
+                    await updateInspector();
                 });
             }
 
@@ -6230,44 +6423,190 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
 
 async function renderAudioInspector(assetName, assetPath) {
     const L = window.Localization;
-    const url = await getURLForAssetPath(assetPath, projectsDirHandle);
+    let url = await getURLForAssetPath(assetPath, projectsDirHandle);
     if (!url) {
-        dom.inspectorContent.innerHTML += `<p class="error-message">${L.get('ERROR_GET_AUDIO_URL', 'No se pudo obtener la URL del audio.')}</p>`;
-        return;
+        url = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==";
+        console.warn(`[AudioInspector] Pista '${assetPath}' no encontrada en el disco virtual. Cargando fallback silencioso.`);
     }
+
+    const dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
+    let metaData = {};
+    try {
+        const metaFileHandle = await dirHandle.getFileHandle(`${assetName}.meta`);
+        const metaFile = await metaFileHandle.getFile();
+        metaData = JSON.parse(await metaFile.text());
+    } catch (e) { /* Defaults */ }
+
+    const format = assetName.split('.').pop().toUpperCase();
 
     const container = document.createElement('div');
     container.className = 'asset-settings';
     container.innerHTML = `
-        <div class="inspector-section">
-            <label data-i18n="AUDIO_PREVIEW">${L.get('AUDIO_PREVIEW', 'Audio Preview')}</label>
-            <div class="audio-preview-bubble" style="padding: 15px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; margin-top: 10px;">
-                <audio id="inspector-audio-player" controls style="width: 100%;">
+        <div class="inspector-section" style="background: rgba(255,255,255,0.02); border-radius: 8px; padding: 12px; border: 1px solid rgba(255,255,255,0.05);">
+            <label style="font-weight: bold; color: var(--accent-color); font-size: 0.9em; text-transform: uppercase;">Audio Player</label>
+
+            <div class="audio-player-ui" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                <!-- Hidden native audio element -->
+                <audio id="inspector-audio-player" style="display: none;">
                     <source src="${url}" type="audio/${assetName.split('.').pop()}">
-                    ${L.get('ERROR_NATIVO_AUDIO', 'Tu navegador no soporta el elemento de audio.')}
                 </audio>
-                <div class="audio-info" style="margin-top: 10px; font-size: 0.85em; opacity: 0.8; display: flex; justify-content: space-between;">
-                    <span><b>${L.get('FORMAT', 'Formato')}:</b> ${assetName.split('.').pop().toUpperCase()}</span>
-                    <span id="audio-duration-display">${L.get('DURATION', 'Duración')}: ${L.get('LOADING', 'Cargando...')}</span>
+
+                <!-- Seek / Progress Bar -->
+                <div style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
+                    <input type="range" id="audio-seek-slider" min="0" max="100" value="0" style="width: 100%; height: 4px; cursor: pointer; accent-color: var(--accent-color);">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.75em; opacity: 0.7; font-family: monospace;">
+                        <span id="audio-time-current">0:00</span>
+                        <span id="audio-time-total">0:00</span>
+                    </div>
+                </div>
+
+                <!-- Controls row -->
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px;">
+                    <div style="display: flex; gap: 6px;">
+                        <button id="btn-audio-play" class="small-btn" title="Reproducir/Pausa" style="width: 32px; height: 32px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1); color: white;">▶</button>
+                        <button id="btn-audio-stop" class="small-btn" title="Detener" style="width: 32px; height: 32px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1); color: white;">⏹</button>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 6px; flex-grow: 1; max-width: 110px;">
+                        <span style="font-size: 0.8em; opacity: 0.7;">🔊</span>
+                        <input type="range" id="audio-volume-slider" min="0" max="1" step="0.05" value="${metaData.volume !== undefined ? metaData.volume : '0.8'}" style="width: 100%; height: 4px; cursor: pointer; accent-color: var(--accent-color);">
+                    </div>
+                </div>
+
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8em; opacity: 0.8; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; margin-top: 4px;">
+                    <div class="checkbox-field" style="margin: 0;">
+                        <input type="checkbox" id="audio-loop-toggle" ${metaData.loop ? 'checked' : ''} style="cursor: pointer;">
+                        <label for="audio-loop-toggle" style="cursor: pointer; font-size: 0.9em; margin: 0;">Repetir (Bucle)</label>
+                    </div>
+                    <span><b>Format:</b> ${format}</span>
                 </div>
             </div>
         </div>
-        <div class="inspector-section">
-            <label data-i18n="ACTIONS">${L.get('ACTIONS', 'Acciones')}</label>
-            <p class="field-description">${L.get('HINT_ARRASTRAR_AUDIO', 'Puedes arrastrar este archivo a un componente Audio Source para usarlo.')}</p>
+
+        <div class="inspector-section" style="margin-top: 10px;">
+            <button id="btn-open-audio-editor" class="primary-btn" style="width: 100%; height: 34px; font-weight: bold; border-radius: 4px;">Abrir en Editor de Audio</button>
+            <p class="field-description" style="margin-top: 8px;">${L.get('HINT_ARRASTRAR_AUDIO', 'Puedes arrastrar este archivo a un componente Audio Source para usarlo.')}</p>
         </div>
     `;
 
     dom.inspectorContent.appendChild(container);
 
     const player = document.getElementById('inspector-audio-player');
-    const durationDisplay = document.getElementById('audio-duration-display');
+    const playBtn = document.getElementById('btn-audio-play');
+    const stopBtn = document.getElementById('btn-audio-stop');
+    const seekSlider = document.getElementById('audio-seek-slider');
+    const volumeSlider = document.getElementById('audio-volume-slider');
+    const loopToggle = document.getElementById('audio-loop-toggle');
+    const currentTimeText = document.getElementById('audio-time-current');
+    const totalTimeText = document.getElementById('audio-time-total');
+    const openEditorBtn = document.getElementById('btn-open-audio-editor');
+
+    // Apply metadata
+    const trimStart = metaData.playbackStart || 0;
+    const trimEnd = metaData.playbackEnd || 0;
+
+    player.loop = !!metaData.loop;
+    player.volume = metaData.volume !== undefined ? metaData.volume : 0.8;
+    if (metaData.pitch !== undefined) {
+        player.playbackRate = metaData.pitch;
+    }
+
+    const formatTime = (secs) => {
+        const m = Math.floor(secs / 60);
+        const s = Math.floor(secs % 60);
+        return `${m}:${s.toString().padStart(2, '0')}`;
+    };
 
     player.onloadedmetadata = () => {
-        const mins = Math.floor(player.duration / 60);
-        const secs = Math.floor(player.duration % 60);
-        durationDisplay.textContent = `Duración: ${mins}:${secs.toString().padStart(2, '0')}`;
+        totalTimeText.textContent = formatTime(trimEnd > 0 ? trimEnd : player.duration);
+        player.currentTime = trimStart;
     };
+
+    // Controls listeners
+    playBtn.onclick = () => {
+        if (player.paused) {
+            player.play();
+            playBtn.textContent = '⏸';
+        } else {
+            player.pause();
+            playBtn.textContent = '▶';
+        }
+    };
+
+    stopBtn.onclick = () => {
+        player.pause();
+        player.currentTime = trimStart;
+        playBtn.textContent = '▶';
+    };
+
+    volumeSlider.oninput = (e) => {
+        player.volume = parseFloat(e.target.value);
+    };
+
+    loopToggle.onchange = (e) => {
+        player.loop = e.target.checked;
+    };
+
+    // Update progress seek bar
+    player.ontimeupdate = () => {
+        const start = trimStart;
+        const end = trimEnd > 0 ? trimEnd : player.duration;
+        const duration = end - start;
+
+        // Enforce trim boundaries in preview player
+        if (player.currentTime < start) {
+            player.currentTime = start;
+        }
+        if (trimEnd > 0 && player.currentTime >= trimEnd) {
+            if (player.loop) {
+                player.currentTime = start;
+            } else {
+                player.pause();
+                player.currentTime = start;
+                playBtn.textContent = '▶';
+            }
+        }
+
+        const currentRelative = player.currentTime - start;
+        const percent = duration > 0 ? (currentRelative / duration) * 100 : 0;
+        seekSlider.value = percent;
+        currentTimeText.textContent = formatTime(player.currentTime);
+    };
+
+    // Scrub / Seek slider action
+    seekSlider.oninput = (e) => {
+        const start = trimStart;
+        const end = trimEnd > 0 ? trimEnd : player.duration;
+        const duration = end - start;
+        const percent = parseFloat(e.target.value);
+        player.currentTime = start + (percent / 100) * duration;
+    };
+
+    // Open in dedicated Audio Editor Panel
+    openEditorBtn.onclick = () => {
+        const audioEditorMenu = document.getElementById('menu-window-audio-editor');
+        if (audioEditorMenu) {
+            // Click to toggle panel visibility if hidden
+            const panel = document.getElementById('audio-editor-panel');
+            if (panel && panel.classList.contains('hidden')) {
+                audioEditorMenu.click();
+            }
+
+            // Set track in Editor
+            if (window.AudioEditorWindow && typeof window.AudioEditorWindow.loadTrack === 'function') {
+                window.AudioEditorWindow.loadTrack(assetName, assetPath);
+            }
+        }
+    };
+
+    // Stop playback if inspector cleans/re-renders
+    const observer = new MutationObserver(() => {
+        if (!document.getElementById('inspector-audio-player')) {
+            player.pause();
+            observer.disconnect();
+        }
+    });
+    observer.observe(dom.inspectorContent, { childList: true });
 }
 
 async function renderVideoInspector(assetName, assetPath) {
@@ -6557,4 +6896,71 @@ function drawSkeletonGizmos(renderer, rootMateria, viewMatrix) {
 
         gl.deleteBuffer(buffer);
     }
+}
+
+// --- Automatic Sheet Grid (Empty Space / Vacío) Detection Algorithm ---
+async function autoDetectSheetGrid(imgUrl) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imgData.data;
+            const width = canvas.width;
+            const height = canvas.height;
+
+            const isColEmpty = new Array(width).fill(true);
+            const isRowEmpty = new Array(height).fill(true);
+
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const alpha = data[(y * width + x) * 4 + 3];
+                    if (alpha > 10) { // Transparency threshold
+                        isColEmpty[x] = false;
+                        isRowEmpty[y] = false;
+                    }
+                }
+            }
+
+            let columns = 0;
+            let inColBlock = false;
+            for (let x = 0; x < width; x++) {
+                if (!isColEmpty[x]) {
+                    if (!inColBlock) {
+                        columns++;
+                        inColBlock = true;
+                    }
+                } else {
+                    inColBlock = false;
+                }
+            }
+
+            let rows = 0;
+            let inRowBlock = false;
+            for (let y = 0; y < height; y++) {
+                if (!isRowEmpty[y]) {
+                    if (!inRowBlock) {
+                        rows++;
+                        inRowBlock = true;
+                    }
+                } else {
+                    inRowBlock = false;
+                }
+            }
+
+            columns = Math.max(1, columns);
+            rows = Math.max(1, rows);
+
+            resolve({ columns, rows });
+        };
+        img.onerror = () => {
+            resolve({ columns: 1, rows: 1 });
+        };
+        img.src = imgUrl;
+    });
 }
