@@ -96,6 +96,8 @@
                         <a href="#" id="menu-window-inspector" data-i18n="INSPECTOR">Inspector</a>
                         <a href="#" id="menu-window-assets" data-i18n="NAVEGADOR">Navegador</a>
                         <a href="#" id="menu-window-console" data-i18n="CONSOLA">Consola</a>
+                        <a href="#" id="menu-window-script-monitor" data-i18n="MONITOR_SCRIPTS">Monitor de Script</a>
+                        <a href="#" id="menu-window-scene-monitor" data-i18n="MONITOR_ESCENA">Monitor de Escena</a>
                         <hr>
                         <a href="#" id="menu-window-animation" data-i18n="EDITOR_ANIMACION" class="only-2d">Editor de Animación</a>
                         <a href="#" id="menu-window-animator" data-i18n="CONTROLADOR_ANIMACION" class="only-2d">Controlador de Animación</a>
@@ -570,6 +572,8 @@ public star() {
                         <button class="tab-btn active" data-tab="assets-content" data-i18n="NAVEGADOR">Navegador</button>
                         <button class="tab-btn" data-tab="console-content" data-i18n="CONSOLA">Consola</button>
                         <button class="tab-btn" data-tab="debug-content" data-i18n="DEPURADOR">Depurador</button>
+                        <button class="tab-btn" data-tab="script-monitor-content" data-i18n="MONITOR_SCRIPTS">Monitor de Script</button>
+                        <button class="tab-btn" data-tab="scene-monitor-content" data-i18n="MONITOR_ESCENA">Monitor de Escena</button>
                     </div>
                     <button class="close-panel-btn" data-panel="assets-panel">&times;</button>
                 </div>
@@ -601,6 +605,12 @@ public star() {
                     </div>
                     <div id="debug-content" class="panel-content tab-content">
                         <!-- Debug info will be injected here by editor.js -->
+                    </div>
+                    <div id="script-monitor-content" class="panel-content tab-content no-padding" style="overflow-y: auto;">
+                        <!-- Script Monitor info will be injected here by ScriptMonitorWindow.js -->
+                    </div>
+                    <div id="scene-monitor-content" class="panel-content tab-content no-padding" style="overflow-y: auto;">
+                        <!-- Scene Monitor info will be injected here by SceneMonitorWindow.js -->
                     </div>
                 </div>
             </div>

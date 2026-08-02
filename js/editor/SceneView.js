@@ -1451,6 +1451,84 @@ export function initialize(dependencies) {
                     SceneManager.currentScene.addMateria(newMateria);
                 } else if (data.type === 'Asset' && data.name.endsWith('.ceprefab')) {
                     newMateria = await SceneManager.instantiatePrefabFromPath(data.path, worldPos.x, worldPos.y);
+                } else if (data.type === 'Asset' && (data.name.endsWith('.png') || data.name.endsWith('.jpg') || data.name.endsWith('.jpeg') || data.name.endsWith('.ceSprite'))) {
+                    // Check if it is a Texture type from its metadata
+                    let textureType = 'Sprite (2D and UI)';
+                    let wrapMode = 'Clamp';
+                    try {
+                        const { getFileHandleForPath } = await import('../engine/AssetUtils.js');
+                        const metaFileHandle = await getFileHandleForPath(`${data.path}.meta`, window.projectsDirHandle);
+                        if (metaFileHandle) {
+                            const metaFile = await metaFileHandle.getFile();
+                            const metaData = JSON.parse(await metaFile.text());
+                            if (metaData.textureType) {
+                                textureType = metaData.textureType;
+                            }
+                            if (metaData.wrapMode) {
+                                wrapMode = metaData.wrapMode;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("[SceneView] No meta found or failed to read, assuming default Sprite: ", e);
+                    }
+
+                    const baseName = data.name.replace(/\.[^/.]+$/, ""); // strip extension
+
+                    if (textureType === 'Texture') {
+                        // Create a new Materia as TextureRender
+                        newMateria = new Materia(baseName);
+                        newMateria.addComponent(new Components.Transform(newMateria));
+                        const transform = newMateria.getComponent(Components.Transform);
+                        transform.x = worldPos.x;
+                        transform.y = worldPos.y;
+
+                        const textureRender = new Components.TextureRender(newMateria);
+                        textureRender.texturePath = data.path;
+
+                        // Set width & height from the actual image
+                        try {
+                            const { getURLForAssetPath } = await import('../engine/AssetUtils.js');
+                            const url = await getURLForAssetPath(data.path, window.projectsDirHandle);
+                            if (url) {
+                                const tempImg = new Image();
+                                await new Promise((resolve, reject) => {
+                                    tempImg.onload = resolve;
+                                    tempImg.onerror = reject;
+                                    tempImg.src = url;
+                                });
+                                textureRender.width = tempImg.naturalWidth || 100;
+                                textureRender.height = tempImg.naturalHeight || 100;
+                            }
+                        } catch (imgErr) {
+                            textureRender.width = 100;
+                            textureRender.height = 100;
+                        }
+
+                        newMateria.addComponent(textureRender);
+                        SceneManager.currentScene.addMateria(newMateria);
+                    } else {
+                        // Create a new Materia at the drop position for Sprite sheets or Sprite image
+                        newMateria = new Materia(baseName);
+                        newMateria.addComponent(new Components.Transform(newMateria));
+                        const transform = newMateria.getComponent(Components.Transform);
+                        transform.x = worldPos.x;
+                        transform.y = worldPos.y;
+
+                        // Add and configure the SpriteRenderer
+                        const spriteRenderer = new Components.SpriteRenderer(newMateria);
+                        await spriteRenderer.setSourcePath(data.path, window.projectsDirHandle);
+
+                        // If it is a ceSprite, select the first sprite key as default
+                        if (data.name.endsWith('.ceSprite') && spriteRenderer.spriteSheet && spriteRenderer.spriteSheet.sprites) {
+                            const keys = Object.keys(spriteRenderer.spriteSheet.sprites);
+                            if (keys.length > 0) {
+                                spriteRenderer.spriteName = keys[0];
+                            }
+                        }
+
+                        newMateria.addComponent(spriteRenderer);
+                        SceneManager.currentScene.addMateria(newMateria);
+                    }
                 } else if (data.type === 'Asset' && (data.name.endsWith('.mp4') || data.name.endsWith('.webm') || data.name.endsWith('.ogv'))) {
                     // Find existing Canvas or create one
                     let parentCanvas = SceneManager.currentScene.getAllMaterias().find(m => m.getComponent(Components.Canvas));
@@ -2796,16 +2874,23 @@ function check3DGizmoHit(canvasPos, materia) {
     if (!screenPos) return null;
 
     const gizmoScale = getGizmoScale(center, proj, view, cw, ch);
-    const hitRadius = 25;
-    const gizmoLen = 80 * gizmoScale;
+    const hitRadius = 30; // More forgiving radius
+    const gizmoLen = 120 * gizmoScale; // Larger gizmo
+
+    const distanceToSegment = (p, a, b) => {
+        const l2 = (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
+        if (l2 === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+        let t = ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / l2;
+        t = Math.max(0, Math.min(1, t));
+        return Math.hypot(p.x - (a.x + t * (b.x - a.x)), p.y - (a.y + t * (b.y - a.y)));
+    };
 
     const checkHandle = (worldAxis) => {
         const axisEnd = { x: center.x + worldAxis[0] * gizmoLen, y: center.y + worldAxis[1] * gizmoLen, z: center.z + worldAxis[2] * gizmoLen };
         const screenEnd = world3DToScreen(axisEnd, proj, view, cw, ch);
         if (!screenEnd) return false;
-        const dx = canvasPos.x - screenEnd.x;
-        const dy = canvasPos.y - screenEnd.y;
-        return Math.hypot(dx, dy) < hitRadius;
+        // Check proximity to the entire axis segment for ultimate ease of interaction!
+        return distanceToSegment(canvasPos, screenPos, screenEnd) < hitRadius;
     };
 
     if (activeTool === 'move' || activeTool === 'universal' || activeTool === 'scale') {
@@ -2878,7 +2963,7 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
     const gizmoScale = getGizmoScale(center, proj, view, cw, ch);
 
     // GIZMO_SIZE is the line length in world units. It scales with distance to appear constant on screen.
-    const GIZMO_SIZE = 80 * gizmoScale;
+    const GIZMO_SIZE = 120 * gizmoScale;
     // ARROW_SIZE is the handle size in constant screen PIXELS.
     const ARROW_SIZE = 18;
 
@@ -4191,6 +4276,18 @@ function paintTile(event) {
     const layerWidth = width * cellSize.x;
     const layerHeight = height * cellSize.y;
 
+    // Helper to calculate coords in a specific layer (defined first to prevent ReferenceError)
+    const getCoordsInLayer = (l) => {
+        const layerOffsetX = l.position.x * layerWidth;
+        const layerOffsetY = l.position.y * layerHeight;
+        const layerTopLeftX = layerOffsetX - layerWidth / 2;
+        const layerTopY = layerOffsetY + layerHeight / 2;
+        return {
+            col: Math.floor((localMouseX - layerTopLeftX) / cellSize.x),
+            row: Math.floor((layerTopY - localMouseY) / cellSize.y)
+        };
+    };
+
     // --- Logic for Eraser ---
     if (activeTool === 'tile-eraser') {
         let erasedSomething = false;
@@ -4229,18 +4326,6 @@ function paintTile(event) {
     let col = -1;
     let row = -1;
 
-    // Helper to calculate coords in a specific layer
-    const getCoordsInLayer = (l) => {
-        const layerOffsetX = l.position.x * layerWidth;
-        const layerOffsetY = l.position.y * layerHeight;
-        const layerTopLeftX = layerOffsetX - layerWidth / 2;
-        const layerTopY = layerOffsetY + layerHeight / 2;
-        return {
-            col: Math.floor((localMouseX - layerTopLeftX) / cellSize.x),
-            row: Math.floor((layerTopY - localMouseY) / cellSize.y)
-        };
-    };
-
     // 1. Try active layer first
     const activeL = tilemap.layers[tilemap.activeLayerIndex];
     if (activeL) {
@@ -4271,7 +4356,7 @@ function paintTile(event) {
     }
 
     if (layer) {
-            if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) return;
+            if (activeTool !== 'tile-bucket' && col === lastPaintedCoords.col && row === lastPaintedCoords.row) return;
 
             const key = `${col},${row}`;
             if (activeTool === 'tile-brush' || activeTool === 'tile-rectangle-fill') {

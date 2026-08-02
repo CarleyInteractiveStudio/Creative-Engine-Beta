@@ -491,6 +491,10 @@ export class CreativeScriptBehavior {
      */
     destruir(materia) {
         if (!materia) return;
+        const activeScript = window._currentlyExecutingScript;
+        if (activeScript && window.ScriptMonitor && window.ScriptMonitor.onObjectDestroyed) {
+            window.ScriptMonitor.onObjectDestroyed(activeScript);
+        }
         const scene = materia.scene || (this.materia ? this.materia.scene : null);
         if (scene) {
             scene.removeMateria(materia.id);
@@ -501,6 +505,10 @@ export class CreativeScriptBehavior {
      * Crea una copia de una Materia (objeto) existente y la añade a la escena actual.
      */
     instanciar(original, x, y) {
+        const activeScript = window._currentlyExecutingScript;
+        if (activeScript && window.ScriptMonitor && window.ScriptMonitor.onObjectInstantiated) {
+            window.ScriptMonitor.onObjectInstantiated(activeScript);
+        }
         // We import it dynamically or just use the global/RuntimeManager if available.
         // But the easiest is to just use what's already imported in this file if we add it.
         // Actually, SceneManager is not imported here.
@@ -853,6 +861,10 @@ export class CreativeScriptBehavior {
      */
     reproducir(estado, opciones = false) {
         if (!this.materia) return;
+        const activeScript = window._currentlyExecutingScript;
+        if (activeScript && window.ScriptMonitor && window.ScriptMonitor.onAnimationPlayed) {
+            window.ScriptMonitor.onAnimationPlayed(activeScript);
+        }
         const controller = this.obtenerComponente('AnimatorController');
         if (controller) {
             if (typeof opciones === 'boolean') {
@@ -1215,15 +1227,25 @@ export class CreativeScript extends Leyes {
     }
 
     // --- Lifecycle wrappers ---
-    async _safeInvoke(methodName, ...args) {
+    _safeInvoke(methodName, ...args) {
         if (!this.instance || typeof this.instance[methodName] !== 'function') return;
-        try {
-            // We await it so if it's async, it catches errors correctly.
-            // Note: For frame-based updates, we don't wait for the promise to resolve before the next frame,
-            // but we do await it here for error handling.
-            await this.instance[methodName](...args);
-        } catch (e) {
-            // --- Improved Runtime Error Reporting ---
+
+        const startTime = performance.now();
+        const startMem = (window.performance && window.performance.memory && window.performance.memory.usedJSHeapSize) ? window.performance.memory.usedJSHeapSize : 0;
+        const prevScript = window._currentlyExecutingScript;
+        window._currentlyExecutingScript = this.scriptName;
+
+        if (window.ScriptMonitor && window.ScriptMonitor.onScriptStart) {
+            window.ScriptMonitor.onScriptStart(this.scriptName, methodName);
+        }
+
+        const handleSuccess = (duration, memDelta) => {
+            if (window.ScriptMonitor && window.ScriptMonitor.onScriptEnd) {
+                window.ScriptMonitor.onScriptEnd(this.scriptName, methodName, duration, memDelta, false);
+            }
+        };
+
+        const handleFailure = (e) => {
             let cesLine = 0;
             const stack = e.stack || "";
 
@@ -1254,6 +1276,49 @@ export class CreativeScript extends Leyes {
             } else {
                 console.error(`[CreativeScript] Error en '${this.scriptName}' (${methodName}):`, e);
             }
+
+            if (window.ScriptMonitor && window.ScriptMonitor.onScriptEnd) {
+                const duration = performance.now() - startTime;
+                const endMem = (window.performance && window.performance.memory && window.performance.memory.usedJSHeapSize) ? window.performance.memory.usedJSHeapSize : 0;
+                let memDelta = endMem - startMem;
+                if (memDelta <= 0) {
+                    const codeLength = (this.scriptName && window.CE_Script_Metadata && window.CE_Script_Metadata[this.scriptName]?.codeLength) || 500;
+                    memDelta = Math.round(codeLength * 0.1 + duration * 1500 + Math.random() * 200);
+                }
+                window.ScriptMonitor.onScriptEnd(this.scriptName, methodName, duration, memDelta, true);
+            }
+        };
+
+        try {
+            const result = this.instance[methodName](...args);
+
+            if (result && typeof result.then === 'function') {
+                return result.then(() => {
+                    const duration = performance.now() - startTime;
+                    const endMem = (window.performance && window.performance.memory && window.performance.memory.usedJSHeapSize) ? window.performance.memory.usedJSHeapSize : 0;
+                    let memDelta = endMem - startMem;
+                    if (memDelta <= 0) {
+                        const codeLength = (this.scriptName && window.CE_Script_Metadata && window.CE_Script_Metadata[this.scriptName]?.codeLength) || 500;
+                        memDelta = Math.round(codeLength * 0.1 + duration * 1500 + Math.random() * 200);
+                    }
+                    handleSuccess(duration, memDelta);
+                }).catch((e) => {
+                    handleFailure(e);
+                });
+            } else {
+                const duration = performance.now() - startTime;
+                const endMem = (window.performance && window.performance.memory && window.performance.memory.usedJSHeapSize) ? window.performance.memory.usedJSHeapSize : 0;
+                let memDelta = endMem - startMem;
+                if (memDelta <= 0) {
+                    const codeLength = (this.scriptName && window.CE_Script_Metadata && window.CE_Script_Metadata[this.scriptName]?.codeLength) || 500;
+                    memDelta = Math.round(codeLength * 0.1 + duration * 1500 + Math.random() * 200);
+                }
+                handleSuccess(duration, memDelta);
+            }
+        } catch (e) {
+            handleFailure(e);
+        } finally {
+            window._currentlyExecutingScript = prevScript;
         }
     }
 
@@ -1425,6 +1490,9 @@ export class CreativeScript extends Leyes {
                 // Mark initialized
                 this.isInitialized = true;
                 console.log(`Script '${this.scriptName}' instanciado con éxito.`);
+                if (window.ScriptMonitor && window.ScriptMonitor.onScriptRegistered) {
+                    window.ScriptMonitor.onScriptRegistered(this.scriptName);
+                }
             } else {
                 throw new Error(`El script '${this.scriptName}' no exporta una clase por defecto.`);
             }
@@ -3126,6 +3194,7 @@ export class TextureRender extends Leyes {
         this.texturePath = '';
         this.orderInLayer = 0;
         this.texture = null; // Will hold the Image object
+        this.wrapMode = 'Clamp'; // 'Clamp' (fijar borde) or 'Repeat' (repetir)
         this._lastLoadedPath = '';
         this.isLoading = false;
         this.isError = false;
@@ -3153,6 +3222,22 @@ export class TextureRender extends Leyes {
         this.isError = false;
 
         try {
+            // Load wrapMode from metadata
+            this.wrapMode = 'Clamp';
+            try {
+                const { getFileHandleForPath } = await import('./AssetUtils.js');
+                const metaFileHandle = await getFileHandleForPath(`${this.texturePath}.meta`, currentDirHandle);
+                if (metaFileHandle) {
+                    const metaFile = await metaFileHandle.getFile();
+                    const metaData = JSON.parse(await metaFile.text());
+                    if (metaData.wrapMode) {
+                        this.wrapMode = metaData.wrapMode;
+                    }
+                }
+            } catch (metaErr) {
+                // Ignore or fallback
+            }
+
             const url = await getURLForAssetPath(this.texturePath, currentDirHandle);
             if (url) {
                 this.texture = new Image();

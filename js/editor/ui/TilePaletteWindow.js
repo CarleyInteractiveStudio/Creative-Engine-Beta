@@ -618,7 +618,14 @@ async function autoOrganizePalette() {
                     const packFile = await packFileHandle.getFile();
                     const packData = JSON.parse(await packFile.text());
 
-                    const sourceImagePath = `Assets/${packData.sourceImage}`;
+                    let sourceImagePath = packData.sourceImage;
+                    if (!sourceImagePath.startsWith('Assets/')) {
+                        let folderPath = 'Assets';
+                        if (packPath.includes('/')) {
+                            folderPath = packPath.substring(0, packPath.lastIndexOf('/'));
+                        }
+                        sourceImagePath = `${folderPath}/${packData.sourceImage}`;
+                    }
                     const imageUrl = await getURLForAssetPath(sourceImagePath, projectsDirHandle);
                     if (!imageUrl) continue;
 
@@ -701,7 +708,14 @@ async function loadAndDisplayAssociatedSprites() {
 
                 let sourceImage = imageCache.get(packData.sourceImage);
                 if (!sourceImage) {
-                    const sourceImagePath = `Assets/${packData.sourceImage}`;
+                    let sourceImagePath = packData.sourceImage;
+                    if (!sourceImagePath.startsWith('Assets/')) {
+                        let folderPath = 'Assets';
+                        if (packPath.includes('/')) {
+                            folderPath = packPath.substring(0, packPath.lastIndexOf('/'));
+                        }
+                        sourceImagePath = `${folderPath}/${packData.sourceImage}`;
+                    }
                     const imageUrl = await getURLForAssetPath(sourceImagePath, projectsDirHandle);
                     if (!imageUrl) {
                         console.error(`Could not get URL for source image '${packData.sourceImage}' in pack '${packPath}'. Skipping.`);

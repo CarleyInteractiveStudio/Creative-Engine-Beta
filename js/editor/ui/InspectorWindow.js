@@ -2094,7 +2094,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.Transform) {
+        } else if (ley instanceof Components.Transform || ley.constructor.name === 'CarleyTransform3D') {
             if (selectedMateria.getComponent(Components.UITransform)) {
                 return;
             }
@@ -4745,23 +4745,11 @@ async function updateInspectorForAsset(assetName, assetPath) {
             const settingsContainer = document.createElement('div');
             settingsContainer.className = 'asset-settings';
             settingsContainer.innerHTML = `
-                <div class="inspector-section" style="background: rgba(255,255,255,0.02); border-radius: 8px; padding: 12px; border: 1px solid rgba(255,255,255,0.05);">
-                    <h5 style="margin: 0 0 10px 0; color: var(--accent-color); font-size: 0.9em; text-transform: uppercase;">Ajustes de Imagen</h5>
+                <div class="inspector-section" style="background: rgba(255,255,255,0.02); border-radius: 8px; padding: 12px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 12px;">
+                    <h5 style="margin: 0 0 4px 0; color: var(--accent-color); font-size: 0.9em; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Ajustes de Textura</h5>
 
-                    <div class="inspector-row" style="margin-bottom: 12px;">
-                        <label style="font-size: 0.85em; opacity: 0.8;">Calidad de Imagen (Ancho en px):</label>
-                        <select id="image-quality-pixels-select" style="flex-grow: 1;">
-                            <option value="">Cargando calidad...</option>
-                        </select>
-                    </div>
-
-                    <div class="inspector-row" style="margin-bottom: 12px;">
-                        <label style="font-size: 0.85em; opacity: 0.8;">Píxeles Personalizados:</label>
-                        <input type="number" id="custom-pixels-input" placeholder="Escribe cantidad px" style="flex-grow: 1;" min="1" value="${metaData.customWidth || ''}">
-                    </div>
-
-                    <div class="inspector-row" style="margin-bottom: 12px;">
-                        <label for="texture-type" data-i18n="TEXTURE_TYPE">${L.get('TEXTURE_TYPE', 'Texture Type')}</label>
+                    <div class="inspector-row">
+                        <label for="texture-type" data-i18n="TEXTURE_TYPE" style="font-weight: 500;">${L.get('TEXTURE_TYPE', 'Texture Type')}</label>
                         <select id="texture-type" class="inspector-re-render-asset" style="flex-grow: 1;">
                             <option value="Sprite (2D and UI)" ${metaData.textureType === 'Sprite (2D and UI)' ? 'selected' : ''}>Sprite (2D and UI)</option>
                             <option value="Animation Sheet" ${metaData.textureType === 'Animation Sheet' ? 'selected' : ''}>Animation Sheet</option>
@@ -4769,8 +4757,8 @@ async function updateInspectorForAsset(assetName, assetPath) {
                         </select>
                     </div>
 
-                    <div class="inspector-row" style="margin-bottom: 12px;">
-                        <label for="filter-mode" data-i18n="FILTER_MODE">${L.get('FILTER_MODE', 'Filter Mode')}</label>
+                    <div class="inspector-row">
+                        <label for="filter-mode" data-i18n="FILTER_MODE" style="font-weight: 500;">${L.get('FILTER_MODE', 'Filter Mode')}</label>
                         <select id="filter-mode" style="flex-grow: 1;">
                             <option value="Point" ${metaData.filterMode === 'Point' ? 'selected' : ''}>Point (Pixel Art / Nítido)</option>
                             <option value="Bilinear" ${metaData.filterMode === 'Bilinear' ? 'selected' : ''}>Bilinear (Suave)</option>
@@ -4778,12 +4766,60 @@ async function updateInspectorForAsset(assetName, assetPath) {
                         </select>
                     </div>
 
-                    <div class="inspector-row" style="margin-bottom: 12px;">
-                        <label for="wrap-mode" data-i18n="WRAP_MODE">${L.get('WRAP_MODE', 'Wrap Mode')}</label>
+                    <div class="inspector-row">
+                        <label for="wrap-mode" data-i18n="WRAP_MODE" style="font-weight: 500;">${L.get('WRAP_MODE', 'Wrap Mode')}</label>
                         <select id="wrap-mode" style="flex-grow: 1;">
                             <option value="Repeat" ${metaData.wrapMode === 'Repeat' ? 'selected' : ''}>Repeat (Repetir)</option>
                             <option value="Clamp" ${metaData.wrapMode === 'Clamp' ? 'selected' : ''}>Clamp (Fijar bordes)</option>
                         </select>
+                    </div>
+                </div>
+
+                <div class="inspector-section" style="background: rgba(255,255,255,0.02); border-radius: 8px; padding: 12px; border: 1px solid rgba(255,255,255,0.05); margin-top: 10px; display: flex; flex-direction: column; gap: 12px;">
+                    <h5 style="margin: 0 0 4px 0; color: var(--accent-color); font-size: 0.9em; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Calidad y Compresión</h5>
+
+                    <div class="inspector-row">
+                        <label for="max-size" data-i18n="MAX_SIZE" style="font-weight: 500;">Límite Resolución:</label>
+                        <select id="max-size" style="flex-grow: 1;">
+                            <option value="32" ${metaData.maxSize === 32 ? 'selected' : ''}>32 px</option>
+                            <option value="64" ${metaData.maxSize === 64 ? 'selected' : ''}>64 px</option>
+                            <option value="128" ${metaData.maxSize === 128 ? 'selected' : ''}>128 px</option>
+                            <option value="256" ${metaData.maxSize === 256 ? 'selected' : ''}>256 px</option>
+                            <option value="512" ${metaData.maxSize === 512 ? 'selected' : ''}>512 px</option>
+                            <option value="1024" ${metaData.maxSize === 1024 ? 'selected' : ''}>1024 px</option>
+                            <option value="2048" ${metaData.maxSize === 2048 ? 'selected' : ''}>2048 px</option>
+                            <option value="4096" ${metaData.maxSize === 4096 ? 'selected' : ''}>4096 px</option>
+                            <option value="8192" ${metaData.maxSize === 8192 ? 'selected' : ''}>8192 px</option>
+                        </select>
+                    </div>
+
+                    <div class="inspector-row">
+                        <label for="compression-quality" data-i18n="COMPRESSION" style="font-weight: 500;">Calidad de Compresión:</label>
+                        <select id="compression-quality" style="flex-grow: 1;">
+                            <option value="None" ${metaData.compression === 'None' ? 'selected' : ''} data-i18n="NONE">Sin Compresión</option>
+                            <option value="Low" ${metaData.compression === 'Low' ? 'selected' : ''} data-i18n="LOW_QUALITY">Compresión Baja</option>
+                            <option value="Normal" ${metaData.compression === 'Normal' ? 'selected' : ''} data-i18n="NORMAL_QUALITY">Compresión Media (Normal)</option>
+                            <option value="High" ${metaData.compression === 'High' ? 'selected' : ''} data-i18n="HIGH_QUALITY">Compresión Alta</option>
+                        </select>
+                    </div>
+
+                    <div class="inspector-row" style="margin-top: 4px; display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="toggle-custom-pixel-quality" ${metaData.customWidth ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px; accent-color: var(--accent-color);">
+                        <label for="toggle-custom-pixel-quality" style="font-size: 0.85em; font-weight: bold; cursor: pointer; user-select: none;">Personalizar Calidad y Píxeles</label>
+                    </div>
+
+                    <div id="custom-pixel-quality-container" class="${metaData.customWidth ? '' : 'hidden'}" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px; display: flex; flex-direction: column; gap: 10px;">
+                        <div class="inspector-row">
+                            <label style="font-size: 0.85em; opacity: 0.8;">Calidad de Imagen (Ancho px):</label>
+                            <select id="image-quality-pixels-select" style="flex-grow: 1;">
+                                <option value="">Cargando calidad...</option>
+                            </select>
+                        </div>
+
+                        <div class="inspector-row">
+                            <label style="font-size: 0.85em; opacity: 0.8;">Píxeles Personalizados:</label>
+                            <input type="number" id="custom-pixels-input" placeholder="Escribe cantidad px" style="flex-grow: 1;" min="1" value="${metaData.customWidth || ''}">
+                        </div>
                     </div>
                 </div>
 
@@ -4825,31 +4861,6 @@ async function updateInspectorForAsset(assetName, assetPath) {
                         <div class="inspector-row">
                             <label for="texture-tag" data-i18n="TAG">${L.get('TAG', 'Tag')}</label>
                             <input type="text" autocomplete="off" id="texture-tag" value="${metaData.tag}" placeholder="${L.get('UNTAGGED', 'Untagged')}" style="flex-grow: 1;">
-                        </div>
-
-                        <div class="inspector-row">
-                            <label for="max-size" data-i18n="MAX_SIZE">${L.get('MAX_SIZE', 'Max Size')}</label>
-                            <select id="max-size" style="flex-grow: 1;">
-                                <option value="32" ${metaData.maxSize === 32 ? 'selected' : ''}>32</option>
-                                <option value="64" ${metaData.maxSize === 64 ? 'selected' : ''}>64</option>
-                                <option value="128" ${metaData.maxSize === 128 ? 'selected' : ''}>128</option>
-                                <option value="256" ${metaData.maxSize === 256 ? 'selected' : ''}>256</option>
-                                <option value="512" ${metaData.maxSize === 512 ? 'selected' : ''}>512</option>
-                                <option value="1024" ${metaData.maxSize === 1024 ? 'selected' : ''}>1024</option>
-                                <option value="2048" ${metaData.maxSize === 2048 ? 'selected' : ''}>2048</option>
-                                <option value="4096" ${metaData.maxSize === 4096 ? 'selected' : ''}>4096</option>
-                                <option value="8192" ${metaData.maxSize === 8192 ? 'selected' : ''}>8192</option>
-                            </select>
-                        </div>
-
-                        <div class="inspector-row">
-                            <label for="compression-quality" data-i18n="COMPRESSION">${L.get('COMPRESSION', 'Compression')}</label>
-                            <select id="compression-quality" style="flex-grow: 1;">
-                                <option value="None" ${metaData.compression === 'None' ? 'selected' : ''} data-i18n="NONE">None</option>
-                                <option value="Low" ${metaData.compression === 'Low' ? 'selected' : ''} data-i18n="LOW_QUALITY">Low Quality</option>
-                                <option value="Normal" ${metaData.compression === 'Normal' ? 'selected' : ''} data-i18n="NORMAL_QUALITY">Normal Quality</option>
-                                <option value="High" ${metaData.compression === 'High' ? 'selected' : ''} data-i18n="HIGH_QUALITY">High Quality</option>
-                            </select>
                         </div>
                     </div>
                 </details>
@@ -4902,6 +4913,28 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 <div class="preview-container" style="text-align: center; margin-top: 10px;"><img id="inspector-preview-img" src="" alt="Preview" style="max-width: 100%; max-height: 150px; object-fit: contain; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px;"></div>
             `;
             dom.inspectorContent.appendChild(settingsContainer);
+
+            // Handle custom quality & pixels container visibility toggle
+            const customToggle = settingsContainer.querySelector('#toggle-custom-pixel-quality');
+            const customContainer = settingsContainer.querySelector('#custom-pixel-quality-container');
+            if (customToggle && customContainer) {
+                customToggle.addEventListener('change', () => {
+                    if (customToggle.checked) {
+                        customContainer.classList.remove('hidden');
+                        const customPixelsInput = document.getElementById('custom-pixels-input');
+                        if (customPixelsInput && !customPixelsInput.value && nativeWidth) {
+                            customPixelsInput.value = nativeWidth;
+                            customPixelsInput.dispatchEvent(new Event('input'));
+                        }
+                    } else {
+                        customContainer.classList.add('hidden');
+                        const customPixelsInput = document.getElementById('custom-pixels-input');
+                        if (customPixelsInput) {
+                            customPixelsInput.value = '';
+                        }
+                    }
+                });
+            }
 
             // Handle native resolution retrieval and custom size controls
             let nativeWidth = 0;
@@ -5096,8 +5129,9 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
                 currentMetaData.textureType = document.getElementById('texture-type').value;
 
+                const customToggle = document.getElementById('toggle-custom-pixel-quality');
                 const customWInput = document.getElementById('custom-pixels-input');
-                const targetWidth = customWInput ? parseInt(customWInput.value, 10) : null;
+                const targetWidth = (customToggle && customToggle.checked && customWInput) ? parseInt(customWInput.value, 10) : null;
 
                 if (targetWidth && targetWidth > 0 && nativeWidth && nativeHeight) {
                     currentMetaData.customWidth = targetWidth;

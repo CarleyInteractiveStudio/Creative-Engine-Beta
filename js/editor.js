@@ -25,6 +25,8 @@ import { setActiveTool, getActiveTool } from './editor/SceneView.js';
 import * as CodeEditor from './editor/CodeEditorWindow.js';
 import { initializeFloatingPanels, bringToFront, resetWindows } from './editor/FloatingPanelManager.js';
 import * as DebugPanel from './editor/ui/DebugPanel.js';
+import * as ScriptMonitorWindow from './editor/ui/ScriptMonitorWindow.js';
+import * as SceneMonitorWindow from './editor/ui/SceneMonitorWindow.js';
 import * as AIHandler from './editor/AIHandler.js';
 import * as Terminal from './editor/Terminal.js';
 import * as TilePalette from './editor/ui/TilePaletteWindow.js';
@@ -812,6 +814,51 @@ document.addEventListener('DOMContentLoaded', () => {
                         iconContainer.innerHTML = `<img src="icons/scroll.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                     } else if (name.endsWith('.chc')) {
                         iconContainer.innerHTML = `<img src="icons/bot.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+                    } else if (name.toLowerCase().endsWith('.cesprite')) {
+                        const imgIcon = document.createElement('img');
+                        imgIcon.className = 'icon-preview';
+                        (async () => {
+                            try {
+                                const file = await (item.handle || await displayDirHandle.getFileHandle(name)).getFile();
+                                const content = await file.text();
+                                const spriteAsset = JSON.parse(content);
+                                const sprites = spriteAsset.sprites || {};
+                                const spriteNames = Object.keys(sprites);
+                                if (spriteNames.length > 0) {
+                                    const firstSpriteName = spriteNames[0];
+                                    const rect = sprites[firstSpriteName].rect;
+                                    const sourceImageName = spriteAsset.sourceImage;
+
+                                    let folderPath = 'Assets';
+                                    if (fullPath.includes('/')) {
+                                        folderPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
+                                    }
+                                    const imageAssetPath = `${folderPath}/${sourceImageName}`;
+                                    const sourceImageUrl = await getURLForAssetPath(imageAssetPath, projectsDirHandle);
+
+                                    if (sourceImageUrl) {
+                                        const img = new Image();
+                                        img.onload = () => {
+                                            const canvas = document.createElement('canvas');
+                                            canvas.width = rect.width;
+                                            canvas.height = rect.height;
+                                            const ctx = canvas.getContext('2d');
+                                            ctx.drawImage(img, rect.x, rect.y, rect.width, rect.height, 0, 0, rect.width, rect.height);
+                                            imgIcon.src = canvas.toDataURL();
+                                            iconContainer.appendChild(imgIcon);
+                                        };
+                                        img.src = sourceImageUrl;
+                                    } else {
+                                        iconContainer.innerHTML = `<img src="icons/image.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+                                    }
+                                } else {
+                                    iconContainer.innerHTML = `<img src="icons/image.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+                                }
+                            } catch (e) {
+                                console.error("Error loading first frame for asset selector .ceSprite preview:", e);
+                                iconContainer.innerHTML = `<img src="icons/image.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+                            }
+                        })();
                     } else {
                         const imgIcon = document.createElement('img');
                         imgIcon.className = 'icon-preview';
@@ -1327,6 +1374,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateWindowMenuUI() {
         const menuItems = {
             'console': 'menu-window-console',
+            'script-monitor-content': 'menu-window-script-monitor',
+            'scene-monitor-content': 'menu-window-scene-monitor',
             'hierarchy-panel': 'menu-window-hierarchy',
             'inspector-panel': 'menu-window-inspector',
             'assets-panel': 'menu-window-assets',
@@ -1357,6 +1406,32 @@ document.addEventListener('DOMContentLoaded', () => {
                      const consoleTab = document.getElementById('console-content');
                      if (assetsPanel && !assetsPanel.classList.contains('hidden') && consoleTab && consoleTab.classList.contains('active')) {
                          consoleMenuItem.textContent = checkmark + consoleMenuItem.textContent;
+                     }
+                 }
+            }
+
+            // Special case for scene monitor
+            if (menuId === 'menu-window-scene-monitor') {
+                 const sceneMonitorMenuItem = document.getElementById('menu-window-scene-monitor');
+                 if (sceneMonitorMenuItem) {
+                     sceneMonitorMenuItem.textContent = sceneMonitorMenuItem.textContent.replace(checkmark, '');
+                     const assetsPanel = dom.assetsPanel;
+                     const sceneMonitorTab = document.getElementById('scene-monitor-content');
+                     if (assetsPanel && !assetsPanel.classList.contains('hidden') && sceneMonitorTab && sceneMonitorTab.classList.contains('active')) {
+                         sceneMonitorMenuItem.textContent = checkmark + sceneMonitorMenuItem.textContent;
+                     }
+                 }
+            }
+
+            // Special case for script monitor
+            if (menuId === 'menu-window-script-monitor') {
+                 const scriptMonitorMenuItem = document.getElementById('menu-window-script-monitor');
+                 if (scriptMonitorMenuItem) {
+                     scriptMonitorMenuItem.textContent = scriptMonitorMenuItem.textContent.replace(checkmark, '');
+                     const assetsPanel = dom.assetsPanel;
+                     const scriptMonitorTab = document.getElementById('script-monitor-content');
+                     if (assetsPanel && !assetsPanel.classList.contains('hidden') && scriptMonitorTab && scriptMonitorTab.classList.contains('active')) {
+                         scriptMonitorMenuItem.textContent = checkmark + scriptMonitorMenuItem.textContent;
                      }
                  }
             }
@@ -1852,11 +1927,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Update physics (non-fixed as currently implemented)
+        const physicsStart = performance.now();
+        window._PerformanceMetrics = window._PerformanceMetrics || { lastPhysicsTime: 0, lastRenderTime: 0, lastScriptUpdateTime: 0, lastFrameProcess: 'Idle' };
         if (physicsSystem) {
+            window._PerformanceMetrics.lastFrameProcess = 'Físicas';
             physicsSystem.update(deltaTime, subSteps);
         }
+        window._PerformanceMetrics.lastPhysicsTime = performance.now() - physicsStart;
 
         // Update all game objects scripts (frame-dependent)
+        const scriptStart = performance.now();
+        window._PerformanceMetrics.lastFrameProcess = 'Scripts';
         for (const materia of SceneManager.currentScene.getAllMaterias()) {
             if (!materia.isActive) continue;
 
@@ -1864,6 +1945,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // No need to set it globally anymore.
             materia.update(deltaTime);
         }
+        window._PerformanceMetrics.lastScriptUpdateTime = performance.now() - scriptStart;
+        window._PerformanceMetrics.lastFrameProcess = 'Idle';
     };
 
     updateScene = function(rendererInstance, isGameView) {
@@ -2161,20 +2244,49 @@ document.addEventListener('DOMContentLoaded', () => {
                         ctx.rotate(worldRotation * Math.PI / 180);
                         ctx.scale(worldScale.x, worldScale.y);
                         if (textureRender.texture && textureRender.texture.complete) {
-                            const pattern = ctx.createPattern(textureRender.texture, 'repeat');
-                            ctx.fillStyle = pattern;
+                            if (textureRender.wrapMode === 'Repeat') {
+                                const pattern = ctx.createPattern(textureRender.texture, 'repeat');
+                                ctx.fillStyle = pattern;
+                                if (textureRender.shape === 'Rectangle') {
+                                    ctx.fillRect(-textureRender.width / 2, -textureRender.height / 2, textureRender.width, textureRender.height);
+                                } else if (textureRender.shape === 'Circle') {
+                                    ctx.beginPath(); ctx.arc(0, 0, textureRender.radius, 0, 2 * Math.PI); ctx.fill();
+                                } else if (textureRender.shape === 'Triangle') {
+                                    ctx.beginPath(); ctx.moveTo(0, -textureRender.height / 2); ctx.lineTo(-textureRender.width / 2, textureRender.height / 2); ctx.lineTo(textureRender.width / 2, textureRender.height / 2); ctx.closePath(); ctx.fill();
+                                } else if (textureRender.shape === 'Capsule') {
+                                    const width = textureRender.width, height = textureRender.height, radius = width / 2, rectHeight = height - width;
+                                    ctx.beginPath(); ctx.arc(0, -rectHeight / 2, radius, Math.PI, 0); ctx.lineTo(width / 2, rectHeight / 2); ctx.arc(0, rectHeight / 2, radius, 0, Math.PI); ctx.lineTo(-width / 2, -rectHeight / 2); ctx.closePath(); ctx.fill();
+                                }
+                            } else {
+                                // Clamp mode (fijar borde): draw as a stretched image
+                                if (textureRender.shape === 'Rectangle') {
+                                    ctx.drawImage(textureRender.texture, -textureRender.width / 2, -textureRender.height / 2, textureRender.width, textureRender.height);
+                                } else {
+                                    ctx.save();
+                                    if (textureRender.shape === 'Circle') {
+                                        ctx.beginPath(); ctx.arc(0, 0, textureRender.radius, 0, 2 * Math.PI); ctx.clip();
+                                    } else if (textureRender.shape === 'Triangle') {
+                                        ctx.beginPath(); ctx.moveTo(0, -textureRender.height / 2); ctx.lineTo(-textureRender.width / 2, textureRender.height / 2); ctx.lineTo(textureRender.width / 2, textureRender.height / 2); ctx.closePath(); ctx.clip();
+                                    } else if (textureRender.shape === 'Capsule') {
+                                        const width = textureRender.width, height = textureRender.height, radius = width / 2, rectHeight = height - width;
+                                        ctx.beginPath(); ctx.arc(0, -rectHeight / 2, radius, Math.PI, 0); ctx.lineTo(width / 2, rectHeight / 2); ctx.arc(0, rectHeight / 2, radius, 0, Math.PI); ctx.lineTo(-width / 2, -rectHeight / 2); ctx.closePath(); ctx.clip();
+                                    }
+                                    ctx.drawImage(textureRender.texture, -textureRender.width / 2, -textureRender.height / 2, textureRender.width, textureRender.height);
+                                    ctx.restore();
+                                }
+                            }
                         } else {
                             ctx.fillStyle = textureRender.color;
-                        }
-                        if (textureRender.shape === 'Rectangle') {
-                            ctx.fillRect(-textureRender.width / 2, -textureRender.height / 2, textureRender.width, textureRender.height);
-                        } else if (textureRender.shape === 'Circle') {
-                            ctx.beginPath(); ctx.arc(0, 0, textureRender.radius, 0, 2 * Math.PI); ctx.fill();
-                        } else if (textureRender.shape === 'Triangle') {
-                            ctx.beginPath(); ctx.moveTo(0, -textureRender.height / 2); ctx.lineTo(-textureRender.width / 2, textureRender.height / 2); ctx.lineTo(textureRender.width / 2, textureRender.height / 2); ctx.closePath(); ctx.fill();
-                        } else if (textureRender.shape === 'Capsule') {
-                            const width = textureRender.width, height = textureRender.height, radius = width / 2, rectHeight = height - width;
-                            ctx.beginPath(); ctx.arc(0, -rectHeight / 2, radius, Math.PI, 0); ctx.lineTo(width / 2, rectHeight / 2); ctx.arc(0, rectHeight / 2, radius, 0, Math.PI); ctx.lineTo(-width / 2, -rectHeight / 2); ctx.closePath(); ctx.fill();
+                            if (textureRender.shape === 'Rectangle') {
+                                ctx.fillRect(-textureRender.width / 2, -textureRender.height / 2, textureRender.width, textureRender.height);
+                            } else if (textureRender.shape === 'Circle') {
+                                ctx.beginPath(); ctx.arc(0, 0, textureRender.radius, 0, 2 * Math.PI); ctx.fill();
+                            } else if (textureRender.shape === 'Triangle') {
+                                ctx.beginPath(); ctx.moveTo(0, -textureRender.height / 2); ctx.lineTo(-textureRender.width / 2, textureRender.height / 2); ctx.lineTo(textureRender.width / 2, textureRender.height / 2); ctx.closePath(); ctx.fill();
+                            } else if (textureRender.shape === 'Capsule') {
+                                const width = textureRender.width, height = textureRender.height, radius = width / 2, rectHeight = height - width;
+                                ctx.beginPath(); ctx.arc(0, -rectHeight / 2, radius, Math.PI, 0); ctx.lineTo(width / 2, rectHeight / 2); ctx.arc(0, rectHeight / 2, radius, 0, Math.PI); ctx.lineTo(-width / 2, -rectHeight / 2); ctx.closePath(); ctx.fill();
+                            }
                         }
                         ctx.restore();
                     };
@@ -2425,6 +2537,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         DebugPanel.update();
+        ScriptMonitorWindow.update();
+        SceneMonitorWindow.update();
 
         // Update layouts before game logic and rendering
         runLayoutUpdate();
@@ -2514,6 +2628,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (cpuUsage > gamePerfStats.maxCpu) gamePerfStats.maxCpu = cpuUsage;
             }
 
+            const renderStart = performance.now();
+            window._PerformanceMetrics = window._PerformanceMetrics || { lastPhysicsTime: 0, lastRenderTime: 0, lastScriptUpdateTime: 0, lastFrameProcess: 'Idle' };
+            window._PerformanceMetrics.lastFrameProcess = 'Renderizado';
             if (is3D && renderer3D) {
                 // Hybrid/3D: Only render views that are visible
                 const showGrid = getPreferences().showSceneGrid && (currentProjectConfig.viewMode !== '2d');
@@ -2533,6 +2650,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (activeView === 'scene-content' && renderer) updateScene(renderer, false);
                 else if (activeView === 'game-content' && gameRenderer) updateScene(gameRenderer, true);
             }
+            window._PerformanceMetrics.lastRenderTime = performance.now() - renderStart;
+            window._PerformanceMetrics.lastFrameProcess = 'Idle';
         } else {
             // Editor mode (not running): Only update visible view
             const showGrid = getPreferences().showSceneGrid && (currentProjectConfig.viewMode !== '2d');
@@ -3694,6 +3813,40 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Switch to console tab
                     const consoleTabBtn = assetsPanel.querySelector('[data-tab="console-content"]');
                     if (consoleTabBtn) consoleTabBtn.click();
+
+                    updateWindowMenuUI();
+                }
+                return;
+            }
+
+            // Special case for Scene Monitor (it's a tab, not a panel)
+            if (panelName === 'scene-monitor') {
+                const assetsPanel = dom.assetsPanel;
+                if (assetsPanel) {
+                    assetsPanel.classList.remove('hidden');
+                    panelVisibility['assets'] = true;
+                    updateEditorLayout();
+
+                    // Switch to scene monitor tab
+                    const sceneMonitorTabBtn = assetsPanel.querySelector('[data-tab="scene-monitor-content"]');
+                    if (sceneMonitorTabBtn) sceneMonitorTabBtn.click();
+
+                    updateWindowMenuUI();
+                }
+                return;
+            }
+
+            // Special case for Script Monitor (it's a tab, not a panel)
+            if (panelName === 'script-monitor') {
+                const assetsPanel = dom.assetsPanel;
+                if (assetsPanel) {
+                    assetsPanel.classList.remove('hidden');
+                    panelVisibility['assets'] = true;
+                    updateEditorLayout();
+
+                    // Switch to script monitor tab
+                    const scriptMonitorTabBtn = assetsPanel.querySelector('[data-tab="script-monitor-content"]');
+                    if (scriptMonitorTabBtn) scriptMonitorTabBtn.click();
 
                     updateWindowMenuUI();
                 }
@@ -5003,6 +5156,8 @@ public start() {
                 }
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime, getCpuExecutionTime });
+            ScriptMonitorWindow.initialize({ dom });
+            SceneMonitorWindow.initialize({ dom });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, showContextMenuCallback: (menu, e) => {
                 const rect = (dom.sceneCanvas3d && dom.sceneCanvas3d.style.display !== 'none' ? dom.sceneCanvas3d : dom.sceneCanvas).getBoundingClientRect();
                 const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
