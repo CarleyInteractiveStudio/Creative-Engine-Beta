@@ -5601,14 +5601,220 @@ async function updateInspectorForAsset(assetName, assetPath) {
             `;
             dom.inspectorContent.appendChild(preview);
         } else if (lowerName.endsWith('.ceanim')) {
-            const preview = document.createElement('div');
-            preview.className = 'asset-preview';
-            preview.innerHTML = `
-                <img src="image/animacion_controler.svg" class="asset-preview-icon">
-                <p><strong>Animation Controller</strong></p>
-                <p data-i18n="OPEN_ANIM_EDITOR_HINT">${L.get('OPEN_ANIM_EDITOR_HINT', 'Doble-click en el Navegador para abrir en el Editor de Animación.')}</p>
-            `;
-            dom.inspectorContent.appendChild(preview);
+            const content = await file.text();
+            let controllerData;
+            try {
+                controllerData = JSON.parse(content);
+            } catch (e) {
+                controllerData = { states: [], transitions: [], entryState: "", smartMode: false };
+            }
+
+            const container = document.createElement('div');
+            container.className = 'anim-controller-inspector';
+            container.style.padding = '10px';
+            container.style.color = '#fff';
+
+            const title = document.createElement('h4');
+            title.style.margin = '5px 0 15px 0';
+            title.style.borderBottom = '1px solid #444';
+            title.style.paddingBottom = '5px';
+            title.innerHTML = `<img src="image/animacion_controler.svg" style="width:16px; vertical-align:middle; margin-right:5px;"> Controlador: ${assetName}`;
+            container.appendChild(title);
+
+            const saveController = async () => {
+                try {
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(JSON.stringify(controllerData, null, 2));
+                    await writable.close();
+                    if (window.setSceneDirty) window.setSceneDirty(true);
+
+                    // Also refresh the animator controller panel if it's currently showing this file
+                    const curCtrlNameEl = document.getElementById('current-anim-ctrl-name');
+                    if (curCtrlNameEl && curCtrlNameEl.textContent === fileHandle.name && window.openAnimatorController) {
+                        // Soft reload
+                    }
+                } catch (err) {
+                    console.error("Error saving animator controller:", err);
+                }
+            };
+
+            const renderUI = () => {
+                container.innerHTML = '';
+                container.appendChild(title);
+
+                // Global Config Section
+                const globalSection = document.createElement('div');
+                globalSection.className = 'inspector-section';
+                globalSection.innerHTML = `
+                    <div class="inspector-section-header" style="font-weight: bold; margin-bottom: 8px;">
+                        <span>Configuración Global</span>
+                    </div>
+                    <div class="checkbox-field" style="margin-bottom:10px; display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="ctrl-smart-mode" ${controllerData.smartMode ? 'checked' : ''} style="cursor: pointer;">
+                        <label for="ctrl-smart-mode" style="cursor: pointer;">Modo Inteligente (Direcciones)</label>
+                    </div>
+                    <div class="inspector-row" style="margin-bottom: 10px;">
+                        <label style="display: block; font-size: 0.85em; color: #aaa; margin-bottom: 4px;">Estado Inicial</label>
+                        <select id="ctrl-entry-state" class="prop-input" style="background:#222; color:#fff; border:1px solid #444; width:100%; padding:4px; border-radius:3px; outline: none; cursor: pointer;">
+                            <option value="">(Ninguno)</option>
+                            ${(controllerData.states || []).map(s => `<option value="${s.name}" ${s.name === controllerData.entryState ? 'selected' : ''}>${s.name}</option>`).join('')}
+                        </select>
+                    </div>
+                `;
+                container.appendChild(globalSection);
+
+                const smartModeInput = globalSection.querySelector('#ctrl-smart-mode');
+                smartModeInput.onchange = async (e) => {
+                    controllerData.smartMode = e.target.checked;
+                    await saveController();
+                };
+
+                const entryStateSelect = globalSection.querySelector('#ctrl-entry-state');
+                entryStateSelect.onchange = async (e) => {
+                    controllerData.entryState = e.target.value;
+                    await saveController();
+                };
+
+                // Divider
+                const hr = document.createElement('hr');
+                hr.style.borderColor = '#444';
+                hr.style.margin = '15px 0';
+                container.appendChild(hr);
+
+                // States Section
+                const statesHeader = document.createElement('div');
+                statesHeader.className = 'inspector-section-header';
+                statesHeader.style.display = 'flex';
+                statesHeader.style.justifyContent = 'space-between';
+                statesHeader.style.alignItems = 'center';
+                statesHeader.style.marginBottom = '10px';
+                statesHeader.innerHTML = `
+                    <span style="font-weight: bold;">Estados (${(controllerData.states || []).length})</span>
+                    <button id="btn-add-ctrl-state" class="warning-btn" style="padding:2px 8px; font-size:0.85em; cursor:pointer; background: #ff9900; color: #000; border: none; border-radius: 3px; font-weight: bold;">+ Añadir</button>
+                `;
+                container.appendChild(statesHeader);
+
+                statesHeader.querySelector('#btn-add-ctrl-state').onclick = async () => {
+                    const newStateName = `Estado_${(controllerData.states || []).length + 1}`;
+                    if (!controllerData.states) controllerData.states = [];
+                    controllerData.states.push({
+                        name: newStateName,
+                        animationClip: "",
+                        speed: 12.0,
+                        startFrame: 0,
+                        endFrame: 5,
+                        loop: true,
+                        position: { x: 50 + Math.random() * 150, y: 50 + Math.random() * 150 }
+                    });
+                    if (!controllerData.entryState) {
+                        controllerData.entryState = newStateName;
+                    }
+                    await saveController();
+                    renderUI();
+                };
+
+                const statesList = document.createElement('div');
+                statesList.className = 'ctrl-states-list';
+                statesList.style.display = 'flex';
+                statesList.style.flexDirection = 'column';
+                statesList.style.gap = '15px';
+                container.appendChild(statesList);
+
+                (controllerData.states || []).forEach((state, index) => {
+                    const stateBlock = document.createElement('div');
+                    stateBlock.style.background = '#282828';
+                    stateBlock.style.border = '1px solid #444';
+                    stateBlock.style.borderRadius = '5px';
+                    stateBlock.style.padding = '10px';
+                    stateBlock.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #3c3c3c; padding-bottom:5px; margin-bottom:8px;">
+                            <strong style="color:#00ffcc; font-size:0.95em;">${state.name}</strong>
+                            <button class="remove-state-btn" data-index="${index}" style="background:#cc3333; color:white; border:none; padding:2px 6px; font-size:0.8em; border-radius:3px; cursor:pointer; font-weight: bold;">Eliminar</button>
+                        </div>
+                        <div class="inspector-row" style="margin-bottom:6px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                            <label style="font-size: 0.85em; color: #aaa; min-width: 60px;">Nombre</label>
+                            <input type="text" class="state-name-input" data-index="${index}" value="${state.name}" style="background:#111; color:#fff; border:1px solid #444; padding:2px 6px; border-radius:3px; flex-grow: 1; outline: none; font-size: 0.9em;">
+                        </div>
+                        <div class="inspector-row" style="margin-bottom:6px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                            <label style="font-size: 0.85em; color: #aaa; min-width: 60px;">Clip</label>
+                            <div style="display:flex; gap:4px; flex-grow: 1;">
+                                <input type="text" class="state-clip-input" data-index="${index}" value="${state.animationClip || ''}" style="background:#111; color:#fff; border:1px solid #444; padding:2px 6px; border-radius:3px; flex-grow:1; font-size:0.85em; outline: none;" readonly>
+                                <button class="state-clip-btn" data-index="${index}" style="background:#444; color:#fff; border:1px solid #555; padding:2px 8px; border-radius:3px; cursor:pointer;">...</button>
+                            </div>
+                        </div>
+                        <div class="inspector-row" style="margin-bottom:6px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                            <label style="font-size: 0.85em; color: #aaa; min-width: 60px;">Velocidad</label>
+                            <input type="number" class="state-speed-input" data-index="${index}" value="${state.speed !== undefined ? state.speed : 12.0}" step="0.5" style="background:#111; color:#fff; border:1px solid #444; padding:2px 6px; border-radius:3px; flex-grow: 1; outline: none; font-size: 0.9em;">
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <label style="font-size:0.85em; color:#aaa;">Bucle</label>
+                            <input type="checkbox" class="state-loop-input" data-index="${index}" ${state.loop ? 'checked' : ''} style="cursor:pointer;">
+                        </div>
+                    `;
+                    statesList.appendChild(stateBlock);
+
+                    // Name change
+                    const nameInput = stateBlock.querySelector('.state-name-input');
+                    nameInput.onchange = async (e) => {
+                        const newName = e.target.value.trim();
+                        if (newName && newName !== state.name) {
+                            // Update transitions as well to keep consistency
+                            if (controllerData.transitions) {
+                                controllerData.transitions.forEach(t => {
+                                    if (t.from === state.name) t.from = newName;
+                                    if (t.to === state.name) t.to = newName;
+                                });
+                            }
+                            if (controllerData.entryState === state.name) {
+                                controllerData.entryState = newName;
+                            }
+                            state.name = newName;
+                            await saveController();
+                            renderUI();
+                        }
+                    };
+
+                    // Delete state
+                    stateBlock.querySelector('.remove-state-btn').onclick = async () => {
+                        controllerData.states = controllerData.states.filter((_, idx) => idx !== index);
+                        if (controllerData.transitions) {
+                            controllerData.transitions = controllerData.transitions.filter(t => t.from !== state.name && t.to !== state.name);
+                        }
+                        if (controllerData.entryState === state.name) {
+                            controllerData.entryState = controllerData.states.length > 0 ? controllerData.states[0].name : "";
+                        }
+                        await saveController();
+                        renderUI();
+                    };
+
+                    // Speed change
+                    stateBlock.querySelector('.state-speed-input').onchange = async (e) => {
+                        state.speed = parseFloat(e.target.value) || 12.0;
+                        await saveController();
+                    };
+
+                    // Loop change
+                    stateBlock.querySelector('.state-loop-input').onchange = async (e) => {
+                        state.loop = e.target.checked;
+                        await saveController();
+                    };
+
+                    // Clip pick
+                    stateBlock.querySelector('.state-clip-btn').onclick = async () => {
+                        const selector = window.openAssetSelectorCallback || window.openAssetSelector;
+                        if (selector) {
+                            selector(['.cea', '.ceanimclip'], async (selectedAssetPath) => {
+                                state.animationClip = selectedAssetPath;
+                                await saveController();
+                                renderUI();
+                            });
+                        }
+                    };
+                });
+            };
+
+            renderUI();
+            dom.inspectorContent.appendChild(container);
         } else if (lowerName.endsWith('.cescene')) {
             const preview = document.createElement('div');
             preview.className = 'asset-preview';
