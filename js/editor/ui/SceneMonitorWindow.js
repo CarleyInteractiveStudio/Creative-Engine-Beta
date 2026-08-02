@@ -23,6 +23,10 @@ let cachedCanvas = null;
 let cachedFpsValEl = null;
 let cachedRamValEl = null;
 
+// Throttled tab state checking to prevent garbage collection and layout overhead on hot paths
+let lastTabCheckTime = 0;
+let cachedIsTabActive = false;
+
 let lastFrameTime = performance.now();
 let lastMemorySize = 0;
 let lastMemoryTime = performance.now();
@@ -365,76 +369,14 @@ function drawFPSTimeline(canvas, history) {
 }
 
 export function update() {
-    const container = document.getElementById('scene-monitor-content');
-    if (!container) return;
-
-    // Skip all DOM work and throttling checks if the Scene Monitor tab is not currently active
-    const activeTabBtn = document.querySelector('.tab-buttons .tab-btn.active');
-    const isTabActive = activeTabBtn && activeTabBtn.getAttribute('data-tab') === 'scene-monitor-content';
-    if (!isTabActive) return;
-
     const now = performance.now();
-    const scene = window.SceneManager ? window.SceneManager.currentScene : null;
 
-    if (!scene) {
-        container.innerHTML = `
-            <div style="padding: 20px; color: #888; text-align: center; font-family: sans-serif;">
-                Carga un proyecto y una escena para ver diagnósticos avanzados en tiempo real.
-            </div>
-        `;
-        return;
-    }
-
-    // --- Dynamic Game Session Transition Detection ---
-    if (window.isGameRunning && !wasGameRunning) {
-        sessionLogs.length = 0;
-        componentStats.clear();
-        fpsHistory.length = 0;
-        isCurrentlyDropping = false;
-        frameCounter = 0;
-        consecutiveDropFrames = 0;
-        selectedSceneSessionIndex = -1; // Live view
-        wasGameRunning = true;
-        forceFullRepopulate();
-    } else if (!window.isGameRunning && wasGameRunning) {
-        // Archive the completed session
-        const archived = {
-            name: `Sesión ${sceneSessionHistory.length + 1} (${new Date().toLocaleTimeString()})`,
-            logs: [...sessionLogs],
-            componentStats: new Map(JSON.parse(JSON.stringify(Array.from(componentStats.entries())))),
-            fpsHistory: [...fpsHistory],
-            metrics: getSceneMetrics(),
-            ramGrowth: ramGrowthRate,
-            fps: window.currentFPS !== undefined ? window.currentFPS.toFixed(1) : "---"
-        };
-        sceneSessionHistory.push(archived);
-        selectedSceneSessionIndex = sceneSessionHistory.length - 1; // Auto-select the completed session
-        wasGameRunning = false;
-        forceFullRepopulate();
-    }
-
-    // Build session options HTML
-    let sessionOptions = '';
-    sceneSessionHistory.forEach((session, index) => {
-        const isSel = index === selectedSceneSessionIndex ? 'selected' : '';
-        sessionOptions += `<option value="${index}" ${isSel}>${session.name}</option>`;
-    });
-
-    // Resolve displayed dataset based on selection
-    let displayLogs = sessionLogs;
-    let displayComponentStats = componentStats;
-    let displayMetrics = getSceneMetrics();
-    let displayRamGrowth = ramGrowthRate;
+    // --- 1. Frame-by-frame Performance & History Tracking (Run on EVERY frame) ---
+    // (We do this regardless of which tab is active, to keep continuous history)
     let displayFPS = "---";
+    let displayRamGrowth = ramGrowthRate;
 
-    if (selectedSceneSessionIndex !== -1 && sceneSessionHistory[selectedSceneSessionIndex]) {
-        const archived = sceneSessionHistory[selectedSceneSessionIndex];
-        displayLogs = archived.logs;
-        displayComponentStats = new Map(archived.componentStats);
-        displayMetrics = archived.metrics;
-        displayRamGrowth = archived.ramGrowth;
-        displayFPS = archived.fps;
-    } else {
+    if (selectedSceneSessionIndex === -1) {
         // Measure RAM growth rate (Live View only)
         if (window.performance && window.performance.memory) {
             const memory = window.performance.memory;
@@ -515,6 +457,81 @@ export function update() {
                 }
             }
         }
+    }
+
+    // Keep lastFrameTime updated
+    lastFrameTime = now;
+
+    // --- 2. Throttled active tab checking to prevent GC and DOM overhead ---
+    if (now - lastTabCheckTime > 500) {
+        lastTabCheckTime = now;
+        const activeTabBtn = document.querySelector('.tab-buttons .tab-btn.active');
+        cachedIsTabActive = activeTabBtn && activeTabBtn.getAttribute('data-tab') === 'scene-monitor-content';
+    }
+
+    // Skip all DOM and rendering updates if the tab is not currently active
+    if (!cachedIsTabActive) return;
+
+    const container = document.getElementById('scene-monitor-content');
+    if (!container) return;
+
+    const scene = window.SceneManager ? window.SceneManager.currentScene : null;
+    if (!scene) {
+        container.innerHTML = `
+            <div style="padding: 20px; color: #888; text-align: center; font-family: sans-serif;">
+                Carga un proyecto y una escena para ver diagnósticos avanzados en tiempo real.
+            </div>
+        `;
+        return;
+    }
+
+    // --- Dynamic Game Session Transition Detection ---
+    if (window.isGameRunning && !wasGameRunning) {
+        sessionLogs.length = 0;
+        componentStats.clear();
+        fpsHistory.length = 0;
+        isCurrentlyDropping = false;
+        frameCounter = 0;
+        consecutiveDropFrames = 0;
+        selectedSceneSessionIndex = -1; // Live view
+        wasGameRunning = true;
+        forceFullRepopulate();
+    } else if (!window.isGameRunning && wasGameRunning) {
+        // Archive the completed session
+        const archived = {
+            name: `Sesión ${sceneSessionHistory.length + 1} (${new Date().toLocaleTimeString()})`,
+            logs: [...sessionLogs],
+            componentStats: new Map(JSON.parse(JSON.stringify(Array.from(componentStats.entries())))),
+            fpsHistory: [...fpsHistory],
+            metrics: getSceneMetrics(),
+            ramGrowth: ramGrowthRate,
+            fps: window.currentFPS !== undefined ? window.currentFPS.toFixed(1) : "---"
+        };
+        sceneSessionHistory.push(archived);
+        selectedSceneSessionIndex = sceneSessionHistory.length - 1; // Auto-select the completed session
+        wasGameRunning = false;
+        forceFullRepopulate();
+    }
+
+    // Build session options HTML
+    let sessionOptions = '';
+    sceneSessionHistory.forEach((session, index) => {
+        const isSel = index === selectedSceneSessionIndex ? 'selected' : '';
+        sessionOptions += `<option value="${index}" ${isSel}>${session.name}</option>`;
+    });
+
+    // Resolve displayed dataset based on selection
+    let displayLogs = sessionLogs;
+    let displayComponentStats = componentStats;
+    let displayMetrics = getSceneMetrics();
+
+    if (selectedSceneSessionIndex !== -1 && sceneSessionHistory[selectedSceneSessionIndex]) {
+        const archived = sceneSessionHistory[selectedSceneSessionIndex];
+        displayLogs = archived.logs;
+        displayComponentStats = new Map(archived.componentStats);
+        displayMetrics = archived.metrics;
+        displayRamGrowth = archived.ramGrowth;
+        displayFPS = archived.fps;
     }
 
     // Keep lastFrameTime updated
