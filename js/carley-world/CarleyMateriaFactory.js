@@ -20,6 +20,17 @@ export function createBaseMateria3D(name, parent = null) {
     if (window.SceneManager && window.SceneManager.currentScene) {
         window.SceneManager.currentScene.addMateria(mtr);
     }
+
+    // Sincronización automática e inmediata para la Jerarquía y la Vista de Escena
+    setTimeout(() => {
+        if (typeof window.updateHierarchy === 'function') {
+            window.updateHierarchy();
+        }
+        if (typeof window.updateScene === 'function') {
+            window.updateScene();
+        }
+    }, 50);
+
     return mtr;
 }
 

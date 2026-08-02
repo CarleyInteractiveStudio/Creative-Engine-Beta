@@ -167,24 +167,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Process Token on Load ---
   processSSOToken().then(() => {
-    // If no session after hash processing, try the bridge
+    // If no session after hash processing, the bridge check is disabled
     _supabase.auth.getSession().then(({data: {session}}) => {
         if (!session) {
-            const bridgeIframe = document.getElementById('sso-bridge');
-            if (bridgeIframe) {
-                // Wait for the iframe to load
-                const tryBridge = () => {
-                   requestSessionFromBridge();
-                };
-
-                if (bridgeIframe.contentWindow && bridgeIframe.contentWindow.length > 0) {
-                    tryBridge();
-                } else {
-                    bridgeIframe.addEventListener('load', tryBridge);
-                    // Fallback in case load already fired or is restricted
-                    setTimeout(tryBridge, 2000);
-                }
-            }
+            console.log("No active local session detected (SSO Bridge check deactivated).");
         }
     });
   });
