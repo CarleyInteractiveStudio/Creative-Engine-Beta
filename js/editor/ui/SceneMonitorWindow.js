@@ -18,6 +18,11 @@ let dropStartFrame = 0;
 let frameCounter = 0;
 let consecutiveDropFrames = 0;
 
+// Cached DOM element references for 60 FPS performance optimization
+let cachedCanvas = null;
+let cachedFpsValEl = null;
+let cachedRamValEl = null;
+
 let lastFrameTime = performance.now();
 let lastMemorySize = 0;
 let lastMemoryTime = performance.now();
@@ -135,6 +140,9 @@ function setupEventListeners() {
 }
 
 function forceFullRepopulate() {
+    cachedCanvas = null;
+    cachedFpsValEl = null;
+    cachedRamValEl = null;
     const container = document.getElementById('scene-monitor-content');
     if (container) container.innerHTML = ''; // Forces complete redraw on next update
 }
@@ -514,14 +522,15 @@ export function update() {
 
     // --- Real-time Canvas and Toolbar Text Redraw (On EVERY frame if playing) ---
     if (window.isGameRunning && selectedSceneSessionIndex === -1) {
-        const canvas = document.getElementById('fps-timeline-canvas');
-        if (canvas) {
-            drawFPSTimeline(canvas, fpsHistory);
+        if (!cachedCanvas) cachedCanvas = document.getElementById('fps-timeline-canvas');
+        if (cachedCanvas) {
+            drawFPSTimeline(cachedCanvas, fpsHistory);
         }
-        const fpsValEl = document.getElementById('monitor-fps-val');
-        if (fpsValEl) fpsValEl.textContent = `${displayFPS} FPS`;
-        const ramValEl = document.getElementById('monitor-ram-val');
-        if (ramValEl) ramValEl.textContent = `+${displayRamGrowth} MB/s`;
+        if (!cachedFpsValEl) cachedFpsValEl = document.getElementById('monitor-fps-val');
+        if (cachedFpsValEl) cachedFpsValEl.textContent = `${displayFPS} FPS`;
+
+        if (!cachedRamValEl) cachedRamValEl = document.getElementById('monitor-ram-val');
+        if (cachedRamValEl) cachedRamValEl.textContent = `+${displayRamGrowth} MB/s`;
     }
 
     // --- DOM Rebuild Throttling (Throttled to 4 times per second) ---
@@ -529,13 +538,13 @@ export function update() {
     if (isThrottled && container.innerHTML !== '') {
         // Draw timeline for static view / archived sessions
         if (!window.isGameRunning || selectedSceneSessionIndex !== -1) {
-            const canvas = document.getElementById('fps-timeline-canvas');
-            if (canvas) {
+            if (!cachedCanvas) cachedCanvas = document.getElementById('fps-timeline-canvas');
+            if (cachedCanvas) {
                 let activeHistory = fpsHistory;
                 if (selectedSceneSessionIndex !== -1 && sceneSessionHistory[selectedSceneSessionIndex]) {
                     activeHistory = sceneSessionHistory[selectedSceneSessionIndex].fpsHistory;
                 }
-                drawFPSTimeline(canvas, activeHistory);
+                drawFPSTimeline(cachedCanvas, activeHistory);
             }
         }
         return;
