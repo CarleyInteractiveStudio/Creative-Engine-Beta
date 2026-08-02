@@ -25,12 +25,15 @@ export class PerformanceMonitor {
         this.lastStableSnapshots = [];
         this.maxSnapshots = 5;
         this.frameAnalysisResults = null;
+        this.hasNotifiedOptimization = false;
     }
 
     updateConfig(config) {
         this.targetMaxFps = config.maxFps || 0; // 0 = no limit
         this.forceFps = !!config.forceFps;
         this.targetMinFps = config.minFps || 30;
+        this.autoOptimize = config.autoOptimize !== undefined ? !!config.autoOptimize : true;
+        this.maxOptimizationLevel = config.maxOptimizationLevel !== undefined ? parseInt(config.maxOptimizationLevel) : 3;
 
         // Auto-Mobile Optimization Profile
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -69,15 +72,15 @@ export class PerformanceMonitor {
     }
 
     checkPerformance() {
+        // Do not automatically trigger optimizations if disabled!
+        if (this.autoOptimize === false) return;
+
         // Optimization logic
         // Only trigger optimization if FPS falls below the absolute target minimum,
         // to prevent micro-stutters from triggering persistent optimization cycles.
         if (this.fps < this.targetMinFps) {
             this.analyzeFramePerformance();
             this.increaseOptimization();
-        } else if (this.fps > this.targetMinFps + 10) {
-            this.decreaseOptimization();
-            this.recordStableSnapshot();
         }
     }
 
@@ -230,7 +233,8 @@ export class PerformanceMonitor {
     }
 
     increaseOptimization() {
-        if (this.optimizationLevel >= 3) return;
+        const maxLevel = this.maxOptimizationLevel !== undefined ? this.maxOptimizationLevel : 3;
+        if (this.optimizationLevel >= maxLevel) return;
         this.optimizationLevel++;
         this.applyOptimization();
     }
@@ -249,13 +253,16 @@ export class PerformanceMonitor {
 
         const msg = `> Optimizador: Se ha optimizado el juego aplicando "${levelDesc}" (Nivel ${this.optimizationLevel}).`;
 
-        console.warn(`[PerformanceMonitor] Optimization Level ${this.optimizationLevel} applied. FPS: ${Math.round(this.fps)}`);
-        if (window.logToUIConsole) {
-            window.logToUIConsole({
-                message: msg,
-                isSystemString: true,
-                isOptimizer: true
-            }, 'info');
+        if (this.optimizationLevel > 0 && !this.hasNotifiedOptimization) {
+            this.hasNotifiedOptimization = true;
+            console.warn(`[PerformanceMonitor] Optimization Level ${this.optimizationLevel} applied. FPS: ${Math.round(this.fps)}`);
+            if (window.logToUIConsole) {
+                window.logToUIConsole({
+                    message: msg,
+                    isSystemString: true,
+                    isOptimizer: true
+                }, 'info');
+            }
         }
 
         // 1. Notify scripts via event

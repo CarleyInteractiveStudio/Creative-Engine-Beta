@@ -1459,6 +1459,19 @@ public star() {
                         <label for="settings-slow-net" data-i18n="MODO_RED_LENTA">Optimizar para Red Lenta</label>
                         <input type="checkbox" id="settings-slow-net">
                     </div>
+                    <div class="inspector-row">
+                        <label for="settings-auto-optimize">Optimización Automática de FPS</label>
+                        <input type="checkbox" id="settings-auto-optimize" checked>
+                    </div>
+                    <div class="inspector-row">
+                        <label for="settings-max-opt-level">Nivel de Optimización Máximo</label>
+                        <select id="settings-max-opt-level" class="prop-input" style="background:#222; color:#fff; border:1px solid #444; padding:4px; border-radius:3px; outline: none; cursor: pointer;">
+                            <option value="0">Ninguno (Nivel 0)</option>
+                            <option value="1">Bajo (Nivel 1)</option>
+                            <option value="2">Medio (Nivel 2)</option>
+                            <option value="3" selected>Alto/Extremo (Nivel 3)</option>
+                        </select>
+                    </div>
                     <p class="field-description">Define el límite de memoria y red para el motor. Si se supera el 80% de RAM, el motor intentará liberar recursos. El límite de red avisará cuando se consuma más internet de lo permitido.</p>
                     <hr>
                     <div class="inspector-row" style="gap: 5px;">

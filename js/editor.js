@@ -1112,6 +1112,27 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // --- Atajos de Deshacer y Rehacer Globales (Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z) ---
+        if (activeView !== 'code-editor-content') {
+            const isZ = e.key.toLowerCase() === 'z';
+            const isY = e.key.toLowerCase() === 'y';
+
+            if (e.ctrlKey && isZ && !e.shiftKey) {
+                e.preventDefault();
+                if (window.UndoRedoManager) {
+                    window.UndoRedoManager.undo();
+                }
+                return;
+            }
+            if ((e.ctrlKey && isY) || (e.ctrlKey && e.shiftKey && isZ)) {
+                e.preventDefault();
+                if (window.UndoRedoManager) {
+                    window.UndoRedoManager.redo();
+                }
+                return;
+            }
+        }
+
         // Si estamos en la vista de codigo, permitir solo atajos globales especificos
         if (activeView === 'code-editor-content') {
             // Permitir Ctrl+S para guardar
@@ -1164,27 +1185,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Window Shortcuts (Shift + Ctrl + Key)
-        if (e.ctrlKey && e.shiftKey) {
-            const key = e.key.toLowerCase();
-            if (key === 'a') { // Animation Editor
-                e.preventDefault();
-                document.getElementById('menu-window-animation').click();
-            } else if (key === 'c') { // Animation Controller
-                e.preventDefault();
-                document.getElementById('menu-window-animator').click();
-            } else if (key === 's') { // Sprite Editor
-                e.preventDefault();
-                document.getElementById('menu-window-sprite-editor').click();
-            } else if (key === 'l') { // Carl IA
-                e.preventDefault();
-                dom.menubarCarlIaBtn.click();
-            } else if (key === 'b') { // Libraries
-                e.preventDefault();
-                dom.menubarLibrariesBtn.click();
-            }
-            return;
-        }
 
         if (!e.ctrlKey && !e.altKey) {
             // Ignore tool shortcuts if navigating in 3D (RMB held)
@@ -1251,15 +1251,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.ctrlKey && e.key.toLowerCase() === 'y') {
                 e.preventDefault();
                 CodeEditor.redoLastChange();
-            }
-        } else {
-            if (e.ctrlKey && e.key.toLowerCase() === 'z') {
-                e.preventDefault();
-                UndoRedoManager.undo();
-            }
-            if (e.ctrlKey && e.key.toLowerCase() === 'y') {
-                e.preventDefault();
-                UndoRedoManager.redo();
             }
         }
     }
@@ -1965,9 +1956,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // The context is now handled automatically by the script instance itself.
             // No need to set it globally anymore.
             materia.update(deltaTime);
-            if (window._PerformanceMetrics) {
-                window._PerformanceMetrics.scriptsRun = (window._PerformanceMetrics.scriptsRun || 0) + 1;
-            }
         }
         window._PerformanceMetrics.lastScriptUpdateTime = performance.now() - scriptStart;
         window._PerformanceMetrics.lastFrameProcess = 'Idle';
@@ -2243,6 +2231,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Absolute safety check to prevent InvalidStateError
                         if (sourceImg && (sourceImg.width > 0 || sourceImg.naturalWidth > 0)) {
                             ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, drawX, drawY, sWidth, sHeight);
+                            if (window._PerformanceMetrics) {
+                                window._PerformanceMetrics.spritesDrawn = (window._PerformanceMetrics.spritesDrawn || 0) + 1;
+                            }
                         }
                         ctx.restore();
                     } else {
@@ -2296,6 +2287,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     const mirrorY = parallax && parallax.mirroring ? parallax.mirroring.y : 0;
 
                     const drawTex = (tx = 0, ty = 0) => {
+                        if (window._PerformanceMetrics) {
+                            window._PerformanceMetrics.texturesDrawn = (window._PerformanceMetrics.texturesDrawn || 0) + 1;
+                        }
                         ctx.save();
                         ctx.translate(worldPosition.x + tx, worldPosition.y + ty);
                         ctx.rotate(worldRotation * Math.PI / 180);

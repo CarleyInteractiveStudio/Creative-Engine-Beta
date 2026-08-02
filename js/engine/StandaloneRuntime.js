@@ -669,12 +669,18 @@ export class StandaloneRuntime {
                     ctx.scale(worldScale.x, -worldScale.y);
                     ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, -sWidth * pivotX, -sHeight * pivotY, sWidth, sHeight);
                     ctx.restore();
+                    if (window._PerformanceMetrics) {
+                        window._PerformanceMetrics.spritesDrawn = (window._PerformanceMetrics.spritesDrawn || 0) + 1;
+                    }
                 } else if (tr) {
                     const worldScale = transform.scale, worldRotation = transform.rotation;
                     const dWidth = tr.width * worldScale.x, dHeight = tr.height * worldScale.y;
                     const mirrorX = parallax && parallax.mirroring ? parallax.mirroring.x : 0, mirrorY = parallax && parallax.mirroring ? parallax.mirroring.y : 0;
 
                     const drawTex = (tx = 0, ty = 0) => {
+                        if (window._PerformanceMetrics) {
+                            window._PerformanceMetrics.texturesDrawn = (window._PerformanceMetrics.texturesDrawn || 0) + 1;
+                        }
                         ctx.save();
                         ctx.translate(worldPosition.x + tx, worldPosition.y + ty);
                         ctx.rotate(worldRotation * Math.PI / 180);

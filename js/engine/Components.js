@@ -1327,6 +1327,9 @@ export class CreativeScript extends Leyes {
     }
 
     update(deltaTime) {
+        if (window._PerformanceMetrics) {
+            window._PerformanceMetrics.scriptsRun = (window._PerformanceMetrics.scriptsRun || 0) + 1;
+        }
         this._safeInvoke('update', deltaTime);
     }
 

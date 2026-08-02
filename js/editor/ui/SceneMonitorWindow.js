@@ -16,6 +16,16 @@ const fpsHistory = []; // Array of last 40 frames: { fps, render, physics, scrip
 let isCurrentlyDropping = false;
 let dropStartFrame = 0;
 let frameCounter = 0;
+let consecutiveDropFrames = 0;
+
+// Cached DOM element references for 60 FPS performance optimization
+let cachedCanvas = null;
+let cachedFpsValEl = null;
+let cachedRamValEl = null;
+
+// Throttled tab state checking to prevent garbage collection and layout overhead on hot paths
+let lastTabCheckTime = 0;
+let cachedIsTabActive = false;
 
 let lastFrameTime = performance.now();
 let lastMemorySize = 0;
@@ -134,6 +144,9 @@ function setupEventListeners() {
 }
 
 function forceFullRepopulate() {
+    cachedCanvas = null;
+    cachedFpsValEl = null;
+    cachedRamValEl = null;
     const container = document.getElementById('scene-monitor-content');
     if (container) container.innerHTML = ''; // Forces complete redraw on next update
 }
@@ -356,98 +369,15 @@ function drawFPSTimeline(canvas, history) {
 }
 
 export function update() {
-    const container = document.getElementById('scene-monitor-content');
-    if (!container) return;
-
-    // Skip all DOM work and throttling checks if the Scene Monitor tab is not currently active
-    const activeTabBtn = document.querySelector('.tab-buttons .tab-btn.active');
-    const isTabActive = activeTabBtn && activeTabBtn.getAttribute('data-tab') === 'scene-monitor-content';
-    if (!isTabActive) return;
-
     const now = performance.now();
-    const isThrottled = (now - lastUpdateTime) < 250; // Throttle DOM updates to 4 times per second (250ms)
 
-    if (isThrottled && container.innerHTML !== '') {
-        // Only redraw the timeline canvas in real-time if the game is actively running.
-        // If the game is stopped, the content is static and we do not need to redraw at 60 FPS,
-        // which completely eliminates rendering overhead and keeps the DOM completely stable.
-        if (window.isGameRunning) {
-            const canvas = document.getElementById('fps-timeline-canvas');
-            if (canvas) {
-                let activeHistory = fpsHistory;
-                if (selectedSceneSessionIndex !== -1 && sceneSessionHistory[selectedSceneSessionIndex]) {
-                    activeHistory = sceneSessionHistory[selectedSceneSessionIndex].fpsHistory;
-                }
-                drawFPSTimeline(canvas, activeHistory);
-            }
-        }
-        return;
-    }
-    lastUpdateTime = now;
-
-    const L = window.Localization;
-    const scene = window.SceneManager ? window.SceneManager.currentScene : null;
-
-    if (!scene) {
-        container.innerHTML = `
-            <div style="padding: 20px; color: #888; text-align: center; font-family: sans-serif;">
-                Carga un proyecto y una escena para ver diagnósticos avanzados en tiempo real.
-            </div>
-        `;
-        return;
-    }
-
-    // --- Dynamic Game Session Transition Detection ---
-    if (window.isGameRunning && !wasGameRunning) {
-        sessionLogs.length = 0;
-        componentStats.clear();
-        fpsHistory.length = 0;
-        isCurrentlyDropping = false;
-        frameCounter = 0;
-        selectedSceneSessionIndex = -1; // Live view
-        wasGameRunning = true;
-        forceFullRepopulate();
-    } else if (!window.isGameRunning && wasGameRunning) {
-        // Archive the completed session
-        const archived = {
-            name: `Sesión ${sceneSessionHistory.length + 1} (${new Date().toLocaleTimeString()})`,
-            logs: [...sessionLogs],
-            componentStats: new Map(JSON.parse(JSON.stringify(Array.from(componentStats.entries())))),
-            fpsHistory: [...fpsHistory],
-            metrics: getSceneMetrics(),
-            ramGrowth: ramGrowthRate,
-            fps: window.currentFPS !== undefined ? window.currentFPS.toFixed(1) : "---"
-        };
-        sceneSessionHistory.push(archived);
-        selectedSceneSessionIndex = sceneSessionHistory.length - 1; // Auto-select the completed session
-        wasGameRunning = false;
-        forceFullRepopulate();
-    }
-
-    // Build session options HTML
-    let sessionOptions = '';
-    sceneSessionHistory.forEach((session, index) => {
-        const isSel = index === selectedSceneSessionIndex ? 'selected' : '';
-        sessionOptions += `<option value="${index}" ${isSel}>${session.name}</option>`;
-    });
-
-    // Resolve displayed dataset based on selection
-    let displayLogs = sessionLogs;
-    let displayComponentStats = componentStats;
-    let displayMetrics = getSceneMetrics();
-    let displayRamGrowth = ramGrowthRate;
+    // --- 1. Frame-by-frame Performance & History Tracking (Run on EVERY frame) ---
+    // (We do this regardless of which tab is active, to keep continuous history)
     let displayFPS = "---";
+    let displayRamGrowth = ramGrowthRate;
 
-    if (selectedSceneSessionIndex !== -1 && sceneSessionHistory[selectedSceneSessionIndex]) {
-        const archived = sceneSessionHistory[selectedSceneSessionIndex];
-        displayLogs = archived.logs;
-        displayComponentStats = new Map(archived.componentStats);
-        displayMetrics = archived.metrics;
-        displayRamGrowth = archived.ramGrowth;
-        displayFPS = archived.fps;
-    } else {
+    if (selectedSceneSessionIndex === -1) {
         // Measure RAM growth rate (Live View only)
-        const now = performance.now();
         if (window.performance && window.performance.memory) {
             const memory = window.performance.memory;
             const currentMB = memory.usedJSHeapSize / 1048576;
@@ -466,7 +396,6 @@ export function update() {
         // Current FPS (Live View only)
         const fpsVal = window.currentFPS !== undefined ? window.currentFPS : (1000 / (now - lastFrameTime));
         displayFPS = fpsVal.toFixed(1);
-        lastFrameTime = now;
 
         // Trace and record FPS drops & process attribution in the history
         if (window.isGameRunning) {
@@ -508,20 +437,138 @@ export function update() {
             }
 
             // Real-time drop threshold detection (< 40 FPS indicates a stutter)
-            if (fpsVal < 40) {
-                if (!isCurrentlyDropping) {
-                    isCurrentlyDropping = true;
-                    dropStartFrame = frameCounter;
-                    logEvent('Caída FPS', `Se detectó una caída de rendimiento (${displayFPS} FPS) en el fotograma ${dropStartFrame}. Causa probable: ${attributedCause} (${maxTime.toFixed(1)}ms).`, 'error');
-                }
-            } else {
-                if (isCurrentlyDropping && fpsVal > 45) { // recovered
-                    logEvent('Caída FPS Terminado', `El rendimiento se estabilizó de nuevo a los ${displayFPS} FPS en el fotograma ${frameCounter} (Duración del drop: ${frameCounter - dropStartFrame} fotogramas).`, 'success');
+            // Skip the first 15 frames of warmup to avoid false alarms immediately on game start!
+            if (frameCounter > 15) {
+                if (fpsVal < 40) {
+                    consecutiveDropFrames++;
+                    if (consecutiveDropFrames >= 10) {
+                        if (!isCurrentlyDropping) {
+                            isCurrentlyDropping = true;
+                            dropStartFrame = frameCounter - consecutiveDropFrames + 1;
+                            logEvent('Caída FPS', `Se detectó una caída continua de rendimiento (${displayFPS} FPS) desde el fotograma ${dropStartFrame} (Duración: ${consecutiveDropFrames} fotogramas). Causa probable: ${attributedCause} (${maxTime.toFixed(1)}ms).`, 'error');
+                        }
+                    }
+                } else {
+                    if (isCurrentlyDropping && fpsVal > 45) { // recovered
+                        logEvent('Caída FPS Terminado', `El rendimiento se estabilizó de nuevo a los ${displayFPS} FPS en el fotograma ${frameCounter} (Duración del drop: ${frameCounter - dropStartFrame} fotogramas).`, 'success');
+                    }
+                    consecutiveDropFrames = 0;
                     isCurrentlyDropping = false;
                 }
             }
         }
     }
+
+    // Keep lastFrameTime updated
+    lastFrameTime = now;
+
+    // --- 2. Throttled active tab checking to prevent GC and DOM overhead ---
+    if (now - lastTabCheckTime > 500) {
+        lastTabCheckTime = now;
+        const activeTabBtn = document.querySelector('.tab-buttons .tab-btn.active');
+        cachedIsTabActive = activeTabBtn && activeTabBtn.getAttribute('data-tab') === 'scene-monitor-content';
+    }
+
+    // Skip all DOM and rendering updates if the tab is not currently active
+    if (!cachedIsTabActive) return;
+
+    const container = document.getElementById('scene-monitor-content');
+    if (!container) return;
+
+    const scene = window.SceneManager ? window.SceneManager.currentScene : null;
+    if (!scene) {
+        container.innerHTML = `
+            <div style="padding: 20px; color: #888; text-align: center; font-family: sans-serif;">
+                Carga un proyecto y una escena para ver diagnósticos avanzados en tiempo real.
+            </div>
+        `;
+        return;
+    }
+
+    // --- Dynamic Game Session Transition Detection ---
+    if (window.isGameRunning && !wasGameRunning) {
+        sessionLogs.length = 0;
+        componentStats.clear();
+        fpsHistory.length = 0;
+        isCurrentlyDropping = false;
+        frameCounter = 0;
+        consecutiveDropFrames = 0;
+        selectedSceneSessionIndex = -1; // Live view
+        wasGameRunning = true;
+        forceFullRepopulate();
+    } else if (!window.isGameRunning && wasGameRunning) {
+        // Archive the completed session
+        const archived = {
+            name: `Sesión ${sceneSessionHistory.length + 1} (${new Date().toLocaleTimeString()})`,
+            logs: [...sessionLogs],
+            componentStats: new Map(JSON.parse(JSON.stringify(Array.from(componentStats.entries())))),
+            fpsHistory: [...fpsHistory],
+            metrics: getSceneMetrics(),
+            ramGrowth: ramGrowthRate,
+            fps: window.currentFPS !== undefined ? window.currentFPS.toFixed(1) : "---"
+        };
+        sceneSessionHistory.push(archived);
+        selectedSceneSessionIndex = sceneSessionHistory.length - 1; // Auto-select the completed session
+        wasGameRunning = false;
+        forceFullRepopulate();
+    }
+
+    // Build session options HTML
+    let sessionOptions = '';
+    sceneSessionHistory.forEach((session, index) => {
+        const isSel = index === selectedSceneSessionIndex ? 'selected' : '';
+        sessionOptions += `<option value="${index}" ${isSel}>${session.name}</option>`;
+    });
+
+    // Resolve displayed dataset based on selection
+    let displayLogs = sessionLogs;
+    let displayComponentStats = componentStats;
+    let displayMetrics = getSceneMetrics();
+
+    if (selectedSceneSessionIndex !== -1 && sceneSessionHistory[selectedSceneSessionIndex]) {
+        const archived = sceneSessionHistory[selectedSceneSessionIndex];
+        displayLogs = archived.logs;
+        displayComponentStats = new Map(archived.componentStats);
+        displayMetrics = archived.metrics;
+        displayRamGrowth = archived.ramGrowth;
+        displayFPS = archived.fps;
+    }
+
+    // Keep lastFrameTime updated
+    lastFrameTime = now;
+
+    // --- Real-time Canvas and Toolbar Text Redraw (On EVERY frame if playing) ---
+    if (window.isGameRunning && selectedSceneSessionIndex === -1) {
+        if (!cachedCanvas) cachedCanvas = document.getElementById('fps-timeline-canvas');
+        if (cachedCanvas) {
+            drawFPSTimeline(cachedCanvas, fpsHistory);
+        }
+        if (!cachedFpsValEl) cachedFpsValEl = document.getElementById('monitor-fps-val');
+        if (cachedFpsValEl) cachedFpsValEl.textContent = `${displayFPS} FPS`;
+
+        if (!cachedRamValEl) cachedRamValEl = document.getElementById('monitor-ram-val');
+        if (cachedRamValEl) cachedRamValEl.textContent = `+${displayRamGrowth} MB/s`;
+    }
+
+    // --- DOM Rebuild Throttling (Throttled to 4 times per second) ---
+    const isThrottled = (now - lastUpdateTime) < 250;
+    if (isThrottled && container.innerHTML !== '') {
+        // Draw timeline for static view / archived sessions
+        if (!window.isGameRunning || selectedSceneSessionIndex !== -1) {
+            if (!cachedCanvas) cachedCanvas = document.getElementById('fps-timeline-canvas');
+            if (cachedCanvas) {
+                let activeHistory = fpsHistory;
+                if (selectedSceneSessionIndex !== -1 && sceneSessionHistory[selectedSceneSessionIndex]) {
+                    activeHistory = sceneSessionHistory[selectedSceneSessionIndex].fpsHistory;
+                }
+                drawFPSTimeline(cachedCanvas, activeHistory);
+            }
+        }
+        return;
+    }
+    lastUpdateTime = now;
+
+    const L = window.Localization;
 
     if (!displayMetrics) return;
 
