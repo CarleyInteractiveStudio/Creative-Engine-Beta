@@ -571,7 +571,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'prefs-smart-reparator-toggle', 'code-creative-code-toggle',
             // Animation Skeletal Elements
             'animation-type-selector', 'animation-record-btn', 'skeletal-timeline', 'animation-time-slider', 'skeletal-tracks',
-            'scene-canvas-3d', 'game-canvas-3d', 'prefs-show-origin-axes', 'prefs-show-orientation-gizmo'
+            'scene-canvas-3d', 'game-canvas-3d', 'prefs-show-origin-axes', 'prefs-show-orientation-gizmo',
+            'prefs-invert-x-axis', 'prefs-invert-y-axis'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());

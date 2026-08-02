@@ -2098,8 +2098,12 @@ function handle3DCameraNavigation() {
         // --- 1. Rotation (Mouse Look) ---
         const delta = InputManager.getMouseDelta();
         if (Math.abs(delta.x) < 200 && Math.abs(delta.y) < 200) {
-            cam.rotation.y -= delta.x * rotSpeed;
-            cam.rotation.x -= delta.y * rotSpeed;
+            const prefs = typeof getPreferences === 'function' ? getPreferences() : {};
+            const invX = prefs.invertXAxis === true ? -1 : 1;
+            const invY = prefs.invertYAxis === true ? -1 : 1;
+
+            cam.rotation.y -= delta.x * rotSpeed * invX;
+            cam.rotation.x -= delta.y * rotSpeed * invY;
             cam.rotation.x = Math.max(-89.9, Math.min(89.9, cam.rotation.x));
         }
 

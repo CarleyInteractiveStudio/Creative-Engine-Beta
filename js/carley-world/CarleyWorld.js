@@ -131,7 +131,7 @@ export class CarleyWorld {
         // 4. Pase de Renderizado Principal
         this.renderer.clear();
 
-        // Construir matriz de vista de la cámara principal
+        // Construir matriz de vista de la cámara principal (con rotación Pitch-Yaw local sobre sí misma sin roll/tilt)
         const viewMatrix = CarleyMath.mat4Identity();
         const translationMat = CarleyMath.mat4Identity();
         const rotationMat = CarleyMath.mat4Identity();
@@ -142,13 +142,13 @@ export class CarleyWorld {
             z: -this.cameraPosition.z
         };
         CarleyMath.mat4Translation(translationMat, invCamPos);
-        CarleyMath.mat4RotationYXZ(rotationMat, -this.cameraRotation.x, -this.cameraRotation.y, -this.cameraRotation.z);
+        CarleyMath.mat4RotationPitchYaw(rotationMat, -this.cameraRotation.x, -this.cameraRotation.y);
         CarleyMath.mat4Multiply(viewMatrix, rotationMat, translationMat);
 
         // Construir matriz de proyección de la cámara principal
         const projectionMatrix = CarleyMath.mat4Identity();
         const aspect = this.canvas.width / this.canvas.height;
-        CarleyMath.mat4Perspective(projectionMatrix, 60, aspect, 0.1, 10000);
+        CarleyMath.mat4Perspective(projectionMatrix, 60, aspect, 0.1, 200000);
 
         // Dibujar Rejilla y Ejes Coordenados del Mundo 3D
         this.renderer.drawGridAndAxes(viewMatrix, projectionMatrix);

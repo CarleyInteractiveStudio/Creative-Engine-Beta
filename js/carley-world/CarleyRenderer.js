@@ -156,21 +156,33 @@ export class CarleyRenderer {
             }
         `;
 
-        // Shader para dibujar líneas (Rejilla y Ejes)
+        // Shader para dibujar líneas (Rejilla y Ejes) con desvanecimiento por distancia (sin swizzling de atributos para máxima compatibilidad WebGL)
         const vsLineSource = `
             attribute vec4 aPosition;
             uniform mat4 uViewMatrix;
             uniform mat4 uProjectionMatrix;
+            uniform vec3 uCameraPos;
+            varying float vFade;
+
             void main() {
                 gl_Position = uProjectionMatrix * uViewMatrix * aPosition;
+                float dx = aPosition.x - uCameraPos.x;
+                float dz = aPosition.z - uCameraPos.z;
+                float dist = sqrt(dx * dx + dz * dz);
+                float maxDist = uCameraPos.y * 10.0;
+                if (maxDist < 5000.0) {
+                    maxDist = 5000.0;
+                }
+                vFade = 1.0 - clamp(dist / maxDist, 0.0, 1.0);
             }
         `;
 
         const fsLineSource = `
             precision mediump float;
             uniform vec4 uColor;
+            varying float vFade;
             void main() {
-                gl_FragColor = uColor;
+                gl_FragColor = vec4(uColor.rgb, uColor.a * vFade);
             }
         `;
 
@@ -236,7 +248,8 @@ export class CarleyRenderer {
         this.lineUniforms = {
             viewMatrix: this.gl.getUniformLocation(this.lineProgram, 'uViewMatrix'),
             projectionMatrix: this.gl.getUniformLocation(this.lineProgram, 'uProjectionMatrix'),
-            color: this.gl.getUniformLocation(this.lineProgram, 'uColor')
+            color: this.gl.getUniformLocation(this.lineProgram, 'uColor'),
+            cameraPos: this.gl.getUniformLocation(this.lineProgram, 'uCameraPos')
         };
     }
 
@@ -488,11 +501,24 @@ export class CarleyRenderer {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.majorGridBuffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(majorGridVertices), this.gl.STATIC_DRAW);
 
-        const axesVertices = [
-            -100000, 0, 0,   100000, 0, 0, // X: infinite line
-            0, -100000, 0,   0, 100000, 0, // Y: infinite line
-            0, 0, -100000,   0, 0, 100000  // Z: infinite line
+        const axesVertices = [];
+        const ranges = [
+            -10000000, -1000000, -100000, -10000, -1000, -500, -200, -100, -50, -20, -10, -5, 0,
+            5, 10, 20, 50, 100, 200, 500, 1000, 10000, 100000, 1000000, 10000000
         ];
+
+        // Eje X (Rojo) - 24 segmentos (48 vértices), dibujado ligeramente por encima del grid (Y = 0.01) para evitar Z-fighting
+        for (let r = 0; r < ranges.length - 1; r++) {
+            axesVertices.push(ranges[r], 0.01, 0,   ranges[r+1], 0.01, 0);
+        }
+        // Eje Y (Verde) - 24 segmentos (48 vértices)
+        for (let r = 0; r < ranges.length - 1; r++) {
+            axesVertices.push(0.01, ranges[r], 0.01,   0.01, ranges[r+1], 0.01);
+        }
+        // Eje Z (Azul) - 24 segmentos (48 vértices), dibujado a Y = 0.01
+        for (let r = 0; r < ranges.length - 1; r++) {
+            axesVertices.push(0, 0.01, ranges[r],   0, 0.01, ranges[r+1]);
+        }
 
         this.axesBuffer = this.gl.createBuffer();
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.axesBuffer);
@@ -573,13 +599,6 @@ export class CarleyRenderer {
     }
 
     drawGridAndAxes(viewMatrix, projectionMatrix) {
-        this.gl.useProgram(this.lineProgram);
-        this.gl.uniformMatrix4fv(this.lineUniforms.viewMatrix, false, viewMatrix);
-        this.gl.uniformMatrix4fv(this.lineUniforms.projectionMatrix, false, projectionMatrix);
-
-        this.gl.enable(this.gl.BLEND);
-        this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-
         // Obtener coordenadas de la cámara
         let camX = 0;
         let camY = 500;
@@ -591,6 +610,14 @@ export class CarleyRenderer {
             camZ = window.currentCarleyWorld.cameraPosition.z || 0;
         }
 
+        this.gl.useProgram(this.lineProgram);
+        this.gl.uniformMatrix4fv(this.lineUniforms.viewMatrix, false, viewMatrix);
+        this.gl.uniformMatrix4fv(this.lineUniforms.projectionMatrix, false, projectionMatrix);
+        this.gl.uniform3f(this.lineUniforms.cameraPos, camX, camY, camZ);
+
+        this.gl.enable(this.gl.BLEND);
+        this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+
         // Rejilla adaptativa y sin fin estilo Unity (LOD Grid scaling)
         const logY = Math.log10(Math.max(10, camY / 2));
         const floorLog = Math.floor(logY);
@@ -599,21 +626,38 @@ export class CarleyRenderer {
         const fineStep = Math.pow(10, floorLog);
         const coarseStep = fineStep * 10;
 
-        // gridAlpha desvanece suavemente la cuadrícula fina mientras nos alejamos
-        const gridAlpha = Math.max(0, 1.0 - fraction);
+        // Opacidad máxima de la cuadrícula
+        const maxOpacity = 0.50;
+
+        // El grid fino se desvanece de maxOpacity a 0 según nos alejamos (fraction de 0 a 1)
+        const opacityFine = maxOpacity * (1.0 - fraction);
+
+        // El grid grueso aparece de 0 a maxOpacity según nos alejamos (fraction de 0 a 1)
+        const opacityCoarse = maxOpacity * fraction;
 
         // Generar líneas de rejilla fina centradas en la cámara (LOD fino)
         const gridVertices = [];
-        const N = 45; // Número de líneas a cada lado
+        const N = 150; // Más líneas para que se extienda sin fin y cubra todo el frustum de la cámara
         const centerX = Math.round(camX / fineStep) * fineStep;
         const centerZ = Math.round(camZ / fineStep) * fineStep;
+
+        const baseK_X = Math.round(centerX / fineStep);
+        const baseK_Z = Math.round(centerZ / fineStep);
 
         for (let i = -N; i <= N; i++) {
             const x = centerX + i * fineStep;
             const z = centerZ + i * fineStep;
 
-            gridVertices.push(centerX - N * fineStep, 0, z,   centerX + N * fineStep, 0, z);
-            gridVertices.push(x, 0, centerZ - N * fineStep,   x, 0, centerZ + N * fineStep);
+            // Evitar dibujar líneas que coinciden con el grid grueso para prevenir parpadeo (Z-fighting)
+            const isXMajor = Math.abs(baseK_X + i) % 10 === 0;
+            const isZMajor = Math.abs(baseK_Z + i) % 10 === 0;
+
+            if (!isZMajor) {
+                gridVertices.push(centerX - N * fineStep, 0, z,   centerX + N * fineStep, 0, z);
+            }
+            if (!isXMajor) {
+                gridVertices.push(x, 0, centerZ - N * fineStep,   x, 0, centerZ + N * fineStep);
+            }
         }
 
         if (!this.dynamicGridBuffer) {
@@ -622,14 +666,14 @@ export class CarleyRenderer {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.dynamicGridBuffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(gridVertices), this.gl.DYNAMIC_DRAW);
 
-        this.gl.uniform4f(this.lineUniforms.color, 0.15, 0.15, 0.18, gridAlpha * 0.45);
+        this.gl.uniform4f(this.lineUniforms.color, 0.25, 0.25, 0.28, opacityFine);
         this.gl.enableVertexAttribArray(this.lineAttribs.position);
         this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
         this.gl.drawArrays(this.gl.LINES, 0, gridVertices.length / 3);
 
         // Generar líneas de rejilla gruesa centradas en la cámara (LOD grueso)
         const majorGridVertices = [];
-        const M = 25;
+        const M = 150; // Más líneas para mayor alcance sin cortes
         const coarseCenterX = Math.round(camX / coarseStep) * coarseStep;
         const coarseCenterZ = Math.round(camZ / coarseStep) * coarseStep;
 
@@ -637,8 +681,9 @@ export class CarleyRenderer {
             const x = coarseCenterX + i * coarseStep;
             const z = coarseCenterZ + i * coarseStep;
 
-            majorGridVertices.push(coarseCenterX - M * coarseStep, 0, z,   coarseCenterX + M * coarseStep, 0, z);
-            majorGridVertices.push(x, 0, coarseCenterZ - M * coarseStep,   x, 0, coarseCenterZ + M * coarseStep);
+            // Dibujado a Y = 0.005 para evitar Z-fighting con el grid fino (Y = 0.0) y con los ejes (Y = 0.01)
+            majorGridVertices.push(coarseCenterX - M * coarseStep, 0.005, z,   coarseCenterX + M * coarseStep, 0.005, z);
+            majorGridVertices.push(x, 0.005, coarseCenterZ - M * coarseStep,   x, 0.005, coarseCenterZ + M * coarseStep);
         }
 
         if (!this.dynamicMajorGridBuffer) {
@@ -647,8 +692,8 @@ export class CarleyRenderer {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.dynamicMajorGridBuffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(majorGridVertices), this.gl.DYNAMIC_DRAW);
 
-        // La rejilla mayor siempre se ve nítida y perfectamente visible
-        this.gl.uniform4f(this.lineUniforms.color, 0.28, 0.28, 0.32, 0.85);
+        // La rejilla mayor también usa nuestra opacidad interpolada y fluida
+        this.gl.uniform4f(this.lineUniforms.color, 0.28, 0.28, 0.32, opacityCoarse);
         this.gl.enableVertexAttribArray(this.lineAttribs.position);
         this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
         this.gl.drawArrays(this.gl.LINES, 0, majorGridVertices.length / 3);
@@ -657,17 +702,17 @@ export class CarleyRenderer {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.axesBuffer);
         this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
 
-        // Eje X (Rojo)
+        // Eje X (Rojo) - 24 segmentos (48 vértices)
         this.gl.uniform4f(this.lineUniforms.color, 1.0, 0.2, 0.2, 1.0);
-        this.gl.drawArrays(this.gl.LINES, 0, 2);
+        this.gl.drawArrays(this.gl.LINES, 0, 48);
 
-        // Eje Y (Verde)
+        // Eje Y (Verde) - 24 segmentos (48 vértices)
         this.gl.uniform4f(this.lineUniforms.color, 0.2, 1.0, 0.2, 1.0);
-        this.gl.drawArrays(this.gl.LINES, 2, 2);
+        this.gl.drawArrays(this.gl.LINES, 48, 48);
 
-        // Eje Z (Azul)
+        // Eje Z (Azul) - 24 segmentos (48 vértices)
         this.gl.uniform4f(this.lineUniforms.color, 0.2, 0.2, 1.0, 1.0);
-        this.gl.drawArrays(this.gl.LINES, 4, 2);
+        this.gl.drawArrays(this.gl.LINES, 96, 48);
     }
 
     renderMateria(materia, viewMatrix, projectionMatrix, lightSpaceMatrix, cameraPos, light) {

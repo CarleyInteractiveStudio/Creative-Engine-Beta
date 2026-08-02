@@ -79,6 +79,37 @@ export const CarleyMath = {
         return out;
     },
 
+    // Crear matriz de rotación para cámara sin roll/tilt (pitch, yaw)
+    mat4RotationPitchYaw(out, degX, degY) {
+        const radX = degX * Math.PI / 180;
+        const radY = degY * Math.PI / 180;
+
+        const cx = Math.cos(radX), sx = Math.sin(radX);
+        const cy = Math.cos(radY), sy = Math.sin(radY);
+
+        out[0] = cy;
+        out[1] = -sy * sx;
+        out[2] = sy * cx;
+        out[3] = 0;
+
+        out[4] = 0;
+        out[5] = cx;
+        out[6] = sx;
+        out[7] = 0;
+
+        out[8] = -sy;
+        out[9] = -cy * sx;
+        out[10] = cy * cx;
+        out[11] = 0;
+
+        out[12] = 0;
+        out[13] = 0;
+        out[14] = 0;
+        out[15] = 1;
+
+        return out;
+    },
+
     // Crear matriz de perspectiva
     mat4Perspective(out, fov, aspect, near, far) {
         const f = 1.0 / Math.tan(fov * Math.PI / 360);
