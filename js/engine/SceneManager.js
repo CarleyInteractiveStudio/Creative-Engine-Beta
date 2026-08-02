@@ -362,7 +362,14 @@ export function serializeScene(scene, dom) {
 import { getComponent } from './ComponentRegistry.js';
 
 async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, materiaMap) {
-    const newMateria = new Materia(materiaData.name);
+    const is3D = window.currentProjectConfig?.projectType === '3d';
+    let newMateria;
+    if (is3D) {
+        const { CarleyMateria3D } = await import('../carley-world/CarleyMateria3D.js');
+        newMateria = new CarleyMateria3D(materiaData.name);
+    } else {
+        newMateria = new Materia(materiaData.name);
+    }
     // Note: Do not override ID here if we are instantiating a prefab in an existing scene,
     // unless we are loading a full scene.
 
@@ -388,7 +395,10 @@ async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, mate
                 newMateria.addComponent(newLey);
             }
         } else {
-            const ComponentClass = getComponent(leyData.type);
+            let ComponentClass = getComponent(leyData.type);
+            if (!ComponentClass && window.Components3D) {
+                ComponentClass = window.Components3D[leyData.type];
+            }
             if (ComponentClass) {
                 const newLey = new ComponentClass(newMateria);
                 if (leyData.type === 'Tilemap') {
@@ -678,42 +688,49 @@ function createDefaultScene() {
     const config = window.currentProjectConfig || {};
     const is3D = config.projectType === '3d';
 
-    // Create the root node
-    const rootNode = new Materia('Scene');
-    scene.addMateria(rootNode);
-
-    // Create the camera
-    const cameraNode = new Materia('Main Camera');
-    const cameraComponent = new Camera(cameraNode);
-
     if (is3D) {
-        cameraComponent.projection = 'Perspective';
-        cameraComponent.clearFlags = 'Skybox'; // Default to show procedural sky
-        const trans = cameraNode.getComponent(Transform);
-        // Better default view for 3D
-        trans.localPosition = { x: 0, y: 150, z: 500 };
-        trans.localRotation = { x: 15, y: 0, z: 0 };
-    }
-
-    cameraNode.addComponent(cameraComponent);
-
-    rootNode.addChild(cameraNode);
-    scene.addMateria(cameraNode);
-
-    if (is3D) {
-        // Create a directional light for 3D projects
-        const lightNode = new Materia('Directional Light');
+        // En proyectos 3D de Carley World, creamos un plano básico, cubo, luz y cámara independiente
         (async () => {
-            if (!window.Components3D) {
-                window.Components3D = await import('./Components3D.js');
-            }
-            lightNode.addComponent(new window.Components3D.DirectionalLight3D(lightNode));
-        })();
-        const lightTrans = lightNode.getComponent(Transform);
-        lightTrans.localRotation = { x: 50, y: -30, z: 0 };
+            const { CarleyMateria3D } = await import('../carley-world/CarleyMateria3D.js');
+            const { CarleyTransform3D, CarleyMeshRenderer3D, CarleyDirectionalLight3D } = await import('../carley-world/CarleyComponents.js');
 
-        rootNode.addChild(lightNode);
-        scene.addMateria(lightNode);
+            const rootNode = new CarleyMateria3D('Scene3D');
+            scene.addMateria(rootNode);
+
+            // Luz Direccional Principal (Sol de Carley World)
+            const sunNode = new CarleyMateria3D('Sol_Principal');
+            const sunTransform = new CarleyTransform3D(sunNode);
+            sunTransform.position = { x: 0, y: 500, z: 0 };
+            sunNode.addLaw(sunTransform);
+            const sunLight = new CarleyDirectionalLight3D(sunNode);
+            sunNode.addLaw(sunLight);
+            rootNode.addChild(sunNode);
+            scene.addMateria(sunNode);
+
+            // Plano Base
+            const { createPlaneObject, createCubeObject } = await import('../carley-world/CarleyMateriaFactory.js');
+            const plane = createPlaneObject(rootNode, '#1a1a24');
+            plane.name = 'Suelo_Principal';
+            plane.transform.scale = { x: 1000, y: 1, z: 1000 };
+
+            // Cubo de Primitiva de Prueba
+            const cube = createCubeObject(rootNode, '#e74c3c');
+            cube.name = 'Cubo_Test';
+            cube.transform.position = { x: 0, y: 50, z: 0 };
+        })();
+    } else {
+        // Create the root node
+        const rootNode = new Materia('Scene');
+        scene.addMateria(rootNode);
+
+        // Create the camera
+        const cameraNode = new Materia('Main Camera');
+        const cameraComponent = new Camera(cameraNode);
+
+        cameraNode.addComponent(cameraComponent);
+
+        rootNode.addChild(cameraNode);
+        scene.addMateria(cameraNode);
     }
 
     return scene;

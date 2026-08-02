@@ -285,7 +285,11 @@ export async function getFileHandleForPath(path, rootDirHandle) {
         return fileHandle;
 
     } catch (error) {
-        console.error(`Could not get file handle for path: ${path}`, error);
+        if (error.name === 'NotFoundError') {
+            console.log(`File handle not found for path: ${path} (normal if extension or asset is not yet downloaded)`);
+        } else {
+            console.error(`Could not get file handle for path: ${path}`, error);
+        }
         return null; // Return null to indicate failure
     }
 }

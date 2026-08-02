@@ -209,12 +209,20 @@ export function setCreationPosition(pos) {
 
 function applyCreationPosition(m) {
     if (!m || !creationPosition) return;
-    const transform = m.getComponent(Components.Transform);
+    const transform = m.transform || m.getComponent(Components.Transform);
     const uiTransform = m.getComponent(Components.UITransform);
     if (transform) {
-        transform.x = creationPosition.x;
-        transform.y = creationPosition.y;
-        if (creationPosition.z !== undefined) transform.z = creationPosition.z;
+        if (transform.position) {
+            transform.position = {
+                x: creationPosition.x,
+                y: creationPosition.y,
+                z: creationPosition.z !== undefined ? creationPosition.z : 0
+            };
+        } else {
+            transform.x = creationPosition.x;
+            transform.y = creationPosition.y;
+            if (creationPosition.z !== undefined) transform.z = creationPosition.z;
+        }
     } else if (uiTransform) {
         uiTransform.position.x = creationPosition.x;
         uiTransform.position.y = creationPosition.y;

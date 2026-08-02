@@ -1,0 +1,57 @@
+# 🌟 Carley World 3D Engine - Regla de Oro (Golden Rule)
+
+Este directorio contiene el motor 3D completamente reconstruido desde cero, denominado **Carley World**.
+
+---
+
+## 📜 Regla de Oro / Golden Rule
+
+**EL MOTOR 3D "CARLEY WORLD" DEBE SER COMPLETAMENTE INDEPENDIENTE DEL MOTOR 2D.**
+**NO SE PERMITE REUTILIZAR NI CARGAR NADA ABSOLUTAMENTE DEL MOTOR 2D NI DE CÓDIGO ANTERIOR AL NUEVO MOTOR.**
+
+### Principios Fundamentales:
+
+1.  **Aislamiento Total:** El nuevo motor no carga ni comparte dependencias directas con el código 2D (`js/engine/Materia.js`, `js/engine/Components.js`, etc.).
+2.  **Entidades Propias:** En Carley World, las entidades se representan como `CarleyMateria3D` y las leyes se representan como `CarleyLeyes3D` (contenidas exclusivamente en `CarleyComponents.js`).
+3.  **Modularidad Absoluta:** Cada módulo dentro de `js/carley-world/` tiene responsabilidades claras e independientes, garantizando que los cambios en un lado no puedan afectar o desestabilizar el otro motor:
+    - `CarleyMath.js` (Librería matemática 3D libre de dependencias 2D).
+    - `CarleyRenderer.js` (Renderizador de WebGL puro y optimizado).
+    - `CarleyComponents.js` (Definición de las leyes 3D).
+    - `CarleyMateria3D.js` (Entidades 3D independientes).
+    - `CarleyLeyes3D.js` (Clase base de Leyes 3D).
+    - `CarleyWorld.js` (Inicializador central y gestor del ciclo de juego 3D).
+    - `CarleyModelLoader3D.js` (Procesador nativo e independiente de modelos y animaciones).
+
+---
+
+## 🗣️ Soporte de Nombres Simplificados y Bilingües (Regla de Nomenclatura)
+
+Para facilitar la programación en múltiples idiomas de forma nativa e intuitiva, todas las leyes e identificadores de Carley World están diseñados de inicio con soporte de traducción y nombres amigables simplificados:
+
+*   **posicion3d** / **Transform3D** (`CarleyTransform3D`): Controla la posición, rotación y escala 3D.
+*   **renderizador3d** / **MeshRenderer3D** (`CarleyMeshRenderer3D`): Dibuja mallas (cubos, esferas, cápsulas, etc.).
+*   **fisica3d** / **Rigidbody3D** (`CarleyRigidbody3D`): Maneja la gravedad, fuerza y velocidad.
+*   **colisionador3d** / **Collider3D** (`CarleyCollider3D`): Área física tridimensional.
+*   **cajaDeColision3d** / **BoxCollider3D** (`CarleyBoxCollider3D`): Área física en forma de caja.
+*   **esferaDeColision3d** / **SphereCollider3D** (`CarleySphereCollider3D`): Área física redonda.
+*   **capsulaDeColision3d** / **CapsuleCollider3D** (`CarleyCapsuleCollider3D`): Área de colisión vertical u horizontal redondeada.
+*   **luzDireccional3d** / **DirectionalLight3D** (`CarleyDirectionalLight3D`): Luz solar direccional global con proyección de sombras dinámicas.
+*   **luzPunto3d** / **PointLight3D** (`CarleyPointLight3D`): Luz omnidireccional puntual desde una posición.
+*   **luzFocal3d** / **SpotLight3D** (`CarleySpotLight3D`): Luz focal cónica (estilo linterna).
+*   **materialLuz3d** / **MaterialLuz3D** (`CarleyMaterialLuz`): Material emisor incandescente (Neón/Glow).
+*   **esqueletoRender3d** / **SkinnedMeshRenderer3D** (`CarleySkinnedMeshRenderer3D`): Renderiza y articula mallas esqueléticas complejas basadas en huesos.
+*   **animador3d** / **Animator3D** (`CarleyAnimator3D`): Controla, reproduce e interpola múltiples canales de animación sobre la jerarquía de huesos de un personaje o modelo importado.
+
+Esto garantiza que tanto desarrolladores que programen en español como en inglés usen nombres fáciles sin generar problemas de incompatibilidad futuros en el motor.
+
+---
+
+## 🛠️ Modos de Renderizado y Optimización
+
+Carley World está diseñado para ser realista, potente y a la vez sumamente optimizado, utilizando operaciones directas de WebGL y cálculo de matrices en CPU/GPU sin sobrecargas de librerías de terceros.
+
+### 🌓 Sistema de Luces y Sombras Dinámicas
+El motor utiliza un sistema de **Sombreado Blinn-Phong** para reflejos especulares realistas y renderiza mapas de sombras dinámicos (**Shadow Maps**) de una sola pasada de profundidad, proyectando sombras realistas de alta fidelidad desde la luz direccional principal (`luzDireccional3d`) a los componentes del renderizador.
+
+### 🏃 Importación de Modelos Complejos y Personajes Animados
+Gracias a **CarleyModelLoader3D**, el motor soporta la importación, desempaquetado de jerarquías y reproducción de animaciones de esqueletos de personajes desde formatos estándar de la industria como `.obj`, `.gltf` y `.glb`.
