@@ -161,28 +161,27 @@ export class CarleyRenderer {
             attribute vec4 aPosition;
             uniform mat4 uViewMatrix;
             uniform mat4 uProjectionMatrix;
-            uniform vec3 uCameraPos;
-            varying float vFade;
+            varying vec3 vWorldPos;
 
             void main() {
                 gl_Position = uProjectionMatrix * uViewMatrix * aPosition;
-                float dx = aPosition.x - uCameraPos.x;
-                float dz = aPosition.z - uCameraPos.z;
-                float dist = sqrt(dx * dx + dz * dz);
-                float maxDist = uCameraPos.y * 10.0;
-                if (maxDist < 5000.0) {
-                    maxDist = 5000.0;
-                }
-                vFade = 1.0 - clamp(dist / maxDist, 0.0, 1.0);
+                vWorldPos = aPosition.xyz;
             }
         `;
 
         const fsLineSource = `
             precision mediump float;
             uniform vec4 uColor;
-            varying float vFade;
+            uniform vec3 uCameraPos;
+            uniform float uMaxDist;
+            varying vec3 vWorldPos;
+
             void main() {
-                gl_FragColor = vec4(uColor.rgb, uColor.a * vFade);
+                float dx = vWorldPos.x - uCameraPos.x;
+                float dz = vWorldPos.z - uCameraPos.z;
+                float dist = sqrt(dx * dx + dz * dz);
+                float fade = 1.0 - clamp(dist / uMaxDist, 0.0, 1.0);
+                gl_FragColor = vec4(uColor.rgb, uColor.a * fade);
             }
         `;
 
@@ -249,7 +248,8 @@ export class CarleyRenderer {
             viewMatrix: this.gl.getUniformLocation(this.lineProgram, 'uViewMatrix'),
             projectionMatrix: this.gl.getUniformLocation(this.lineProgram, 'uProjectionMatrix'),
             color: this.gl.getUniformLocation(this.lineProgram, 'uColor'),
-            cameraPos: this.gl.getUniformLocation(this.lineProgram, 'uCameraPos')
+            cameraPos: this.gl.getUniformLocation(this.lineProgram, 'uCameraPos'),
+            maxDist: this.gl.getUniformLocation(this.lineProgram, 'uMaxDist')
         };
     }
 
@@ -534,11 +534,15 @@ export class CarleyRenderer {
     }
 
     renderMateriaShadow(materia) {
-        const transform = materia.transform;
+        const transform = materia.transform || materia.getComponentByName?.('Transform') || materia.getComponent?.('Transform');
         if (!transform) return;
-        if (materia.getLawByName('CarleyMaterialLuz')) return;
+        if (materia.getLawByName?.('CarleyMaterialLuz') || materia.getComponentByName?.('MaterialLuz3D') || materia.getComponent?.('MaterialLuz3D')) return;
 
-        const meshRenderer = materia.meshRenderer;
+        const meshRenderer = materia.meshRenderer ||
+                             materia.getComponentByName?.('MeshRenderer3D') ||
+                             materia.getComponentByName?.('SkinnedMeshRenderer3D') ||
+                             materia.getComponent?.('MeshRenderer3D') ||
+                             materia.getComponent?.('SkinnedMeshRenderer3D');
         if (!meshRenderer) return;
 
         const modelMatrix = CarleyMath.mat4Identity();
@@ -546,9 +550,24 @@ export class CarleyRenderer {
         const rotationMat = CarleyMath.mat4Identity();
         const scaleMat = CarleyMath.mat4Identity();
 
-        CarleyMath.mat4Translation(translationMat, transform.position);
-        CarleyMath.mat4RotationYXZ(rotationMat, transform.rotation.x, transform.rotation.y, transform.rotation.z);
-        CarleyMath.mat4Scale(scaleMat, transform.scale);
+        const pos = transform.position || { x: transform.x || 0, y: transform.y || 0, z: transform.z || 0 };
+
+        let rot = { x: 0, y: 0, z: 0 };
+        if (transform.rotation && typeof transform.rotation === 'object') {
+            rot = { x: transform.rotation.x || 0, y: transform.rotation.y || 0, z: transform.rotation.z || 0 };
+        } else {
+            rot = {
+                x: transform.rotationX !== undefined ? transform.rotationX : 0,
+                y: transform.rotationY !== undefined ? transform.rotationY : 0,
+                z: transform.rotationZ !== undefined ? transform.rotationZ : (transform.rotation || 0)
+            };
+        }
+
+        const scl = transform.scale || { x: transform.scaleX || 1, y: transform.scaleY || 1, z: transform.scaleZ || 1 };
+
+        CarleyMath.mat4Translation(translationMat, pos);
+        CarleyMath.mat4RotationYXZ(rotationMat, rot.x, rot.y, rot.z);
+        CarleyMath.mat4Scale(scaleMat, scl);
 
         CarleyMath.mat4Multiply(modelMatrix, translationMat, rotationMat);
         CarleyMath.mat4Multiply(modelMatrix, modelMatrix, scaleMat);
@@ -666,6 +685,8 @@ export class CarleyRenderer {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.dynamicGridBuffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(gridVertices), this.gl.DYNAMIC_DRAW);
 
+        // Establecer la distancia máxima para el desvanecimiento del grid fino (funde a 0 antes del borde físico)
+        this.gl.uniform1f(this.lineUniforms.maxDist, N * fineStep * 0.9);
         this.gl.uniform4f(this.lineUniforms.color, 0.25, 0.25, 0.28, opacityFine);
         this.gl.enableVertexAttribArray(this.lineAttribs.position);
         this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
@@ -692,13 +713,15 @@ export class CarleyRenderer {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.dynamicMajorGridBuffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(majorGridVertices), this.gl.DYNAMIC_DRAW);
 
-        // La rejilla mayor también usa nuestra opacidad interpolada y fluida
+        // Establecer la distancia máxima para el desvanecimiento del grid grueso (funde a 0 antes del borde físico)
+        this.gl.uniform1f(this.lineUniforms.maxDist, M * coarseStep * 0.9);
         this.gl.uniform4f(this.lineUniforms.color, 0.28, 0.28, 0.32, opacityCoarse);
         this.gl.enableVertexAttribArray(this.lineAttribs.position);
         this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
         this.gl.drawArrays(this.gl.LINES, 0, majorGridVertices.length / 3);
 
-        // Dibujar ejes infinitos
+        // Dibujar ejes infinitos (sin desvanecimiento prematuro)
+        this.gl.uniform1f(this.lineUniforms.maxDist, 10000000.0);
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.axesBuffer);
         this.gl.vertexAttribPointer(this.lineAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
 
@@ -716,10 +739,14 @@ export class CarleyRenderer {
     }
 
     renderMateria(materia, viewMatrix, projectionMatrix, lightSpaceMatrix, cameraPos, light) {
-        const transform = materia.transform;
+        const transform = materia.transform || materia.getComponentByName?.('Transform') || materia.getComponent?.('Transform');
         if (!transform) return;
 
-        const meshRenderer = materia.meshRenderer;
+        const meshRenderer = materia.meshRenderer ||
+                             materia.getComponentByName?.('MeshRenderer3D') ||
+                             materia.getComponentByName?.('SkinnedMeshRenderer3D') ||
+                             materia.getComponent?.('MeshRenderer3D') ||
+                             materia.getComponent?.('SkinnedMeshRenderer3D');
         if (!meshRenderer) return;
 
         this.gl.useProgram(this.program);
@@ -729,9 +756,24 @@ export class CarleyRenderer {
         const rotationMat = CarleyMath.mat4Identity();
         const scaleMat = CarleyMath.mat4Identity();
 
-        CarleyMath.mat4Translation(translationMat, transform.position);
-        CarleyMath.mat4RotationYXZ(rotationMat, transform.rotation.x, transform.rotation.y, transform.rotation.z);
-        CarleyMath.mat4Scale(scaleMat, transform.scale);
+        const pos = transform.position || { x: transform.x || 0, y: transform.y || 0, z: transform.z || 0 };
+
+        let rot = { x: 0, y: 0, z: 0 };
+        if (transform.rotation && typeof transform.rotation === 'object') {
+            rot = { x: transform.rotation.x || 0, y: transform.rotation.y || 0, z: transform.rotation.z || 0 };
+        } else {
+            rot = {
+                x: transform.rotationX !== undefined ? transform.rotationX : 0,
+                y: transform.rotationY !== undefined ? transform.rotationY : 0,
+                z: transform.rotationZ !== undefined ? transform.rotationZ : (transform.rotation || 0)
+            };
+        }
+
+        const scl = transform.scale || { x: transform.scaleX || 1, y: transform.scaleY || 1, z: transform.scaleZ || 1 };
+
+        CarleyMath.mat4Translation(translationMat, pos);
+        CarleyMath.mat4RotationYXZ(rotationMat, rot.x, rot.y, rot.z);
+        CarleyMath.mat4Scale(scaleMat, scl);
 
         CarleyMath.mat4Multiply(modelMatrix, translationMat, rotationMat);
         CarleyMath.mat4Multiply(modelMatrix, modelMatrix, scaleMat);
@@ -747,7 +789,9 @@ export class CarleyRenderer {
         const b = parseInt(colorHex.substring(5, 7), 16) / 255;
         this.gl.uniform4f(this.uniforms.color, r, g, b, 1.0);
 
-        const lightMaterial = materia.getLawByName('CarleyMaterialLuz');
+        const lightMaterial = materia.getLawByName?.('CarleyMaterialLuz') ||
+                              materia.getComponentByName?.('MaterialLuz3D') ||
+                              materia.getComponent?.('MaterialLuz3D');
         if (lightMaterial) {
             this.gl.uniform1i(this.uniforms.isLightMaterial, 1);
             const mColorHex = lightMaterial.color || '#ffaa00';

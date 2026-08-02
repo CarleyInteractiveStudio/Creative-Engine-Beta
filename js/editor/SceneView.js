@@ -8,6 +8,16 @@ import * as MateriaFactory from './MateriaFactory.js';
 import { WeightPainter } from './WeightPainter.js';
 import { broadcastUpdate } from './CollaborationSystem.js';
 import { Gizmos } from '../engine/Gizmos.js';
+import { CarleyMath } from '../carley-world/CarleyMath.js';
+
+function isProject3D(config) {
+    if (!config) return false;
+    return config.projectType === '3d' ||
+           config.rendererMode === '3d-mode' ||
+           config.rendererMode === 'hybrid-3d' ||
+           config.rendererMode === 'anime-3d' ||
+           config.rendererMode === 'realista';
+}
 
 // Dependencies from editor.js
 let dom;
@@ -147,7 +157,7 @@ function checkGizmoHit(canvasPos) {
     if (!transform) return null;
 
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
 
     if (is3D) {
         return check3DGizmoHit(canvasPos, selectedMateria);
@@ -693,7 +703,7 @@ function drawGizmos(renderer, materia, proj = null, view = null, cw = null, ch =
     if (!transform) return;
 
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
 
     if (is3D) {
         draw3DGizmos(materia, proj, view, cw, ch);
@@ -805,7 +815,7 @@ export function initialize(dependencies) {
         const currentMouseWorld = screenToWorld(moveEvent.clientX - rect.left, moveEvent.clientY - rect.top);
 
         const config = getCurrentProjectConfig();
-        const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+        const is3D = isProject3D(config);
 
         // In 3D, we'll use a better projection for axes
         const totalDx = (currentMouseWorld.x - dragState.initialMouseWorld.x);
@@ -1267,7 +1277,7 @@ export function initialize(dependencies) {
             const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
 
             const config = getCurrentProjectConfig();
-            const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+            const is3D = isProject3D(config);
 
             let targetId = null;
             if (is3D) {
@@ -1540,7 +1550,7 @@ export function initialize(dependencies) {
         if (!renderer || !renderer.camera) return;
 
         const config = getCurrentProjectConfig();
-        const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+        const is3D = isProject3D(config);
 
         const scrollDelta = event.deltaY;
         const zoomFactor = getPreferences().zoomSpeed || 1.1;
@@ -1626,7 +1636,7 @@ export function initialize(dependencies) {
 
         // --- Panning Logic (Middle click or Right-click in 2D) ---
         const config = getCurrentProjectConfig();
-        const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+        const is3D = isProject3D(config);
 
         // --- Sculpting Logic ---
         if (activeTool === 'sculpt' && e.button === 0 && is3D) {
@@ -1902,7 +1912,7 @@ export function initialize(dependencies) {
 
             // 3D Object Picking
             const config = getCurrentProjectConfig();
-            const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+            const is3D = isProject3D(config);
 
             if (!isAddingLayer && activeTool !== 'pan') {
                 const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCircleColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos) || checkUIGizmoHit(canvasPos);
@@ -2108,20 +2118,21 @@ function handle3DCameraNavigation() {
         }
 
         // --- 2. FPS-Style Movement (WASD + Arrows, relative to look direction) ---
-        const pitchRad = cam.rotation.x * Math.PI / 180;
-        const yawRad = cam.rotation.y * Math.PI / 180;
+        const rotX = CarleyMath.mat4Identity();
+        const rotY = CarleyMath.mat4Identity();
+        CarleyMath.mat4RotationX(rotX, cam.rotation.x);
+        CarleyMath.mat4RotationY(rotY, cam.rotation.y);
 
-        // Calculate look direction (localForward) based on precise camera orientation
-        const fx = Math.sin(yawRad) * Math.cos(pitchRad);
-        const fy = -Math.sin(pitchRad);
-        const fz = -Math.cos(yawRad) * Math.cos(pitchRad);
+        const worldRotMat = CarleyMath.mat4Identity();
+        CarleyMath.mat4Multiply(worldRotMat, rotY, rotX); // Yaw first, then Pitch for camera world matrix
 
-        const localForward = glm.vec3.fromValues(fx, fy, fz);
+        // Column 2 (indices 8, 9, 10) is the camera's local backward direction in world space.
+        // Therefore, localForward is negative of Column 2.
+        const localForward = glm.vec3.fromValues(-worldRotMat[8], -worldRotMat[9], -worldRotMat[10]);
         glm.vec3.normalize(localForward, localForward);
 
-        // Calculate side direction (localRight) perpendicular to Forward and Up (0, 1, 0)
-        const localRight = glm.vec3.create();
-        glm.vec3.cross(localRight, localForward, glm.vec3.fromValues(0, 1, 0));
+        // Column 0 (indices 0, 1, 2) is the camera's local right direction in world space.
+        const localRight = glm.vec3.fromValues(worldRotMat[0], worldRotMat[1], worldRotMat[2]);
         glm.vec3.normalize(localRight, localRight);
 
         const finalMove = glm.vec3.create();
@@ -2167,7 +2178,7 @@ export function focusOnSelectedMateria() {
 
     const cam = renderer.camera;
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
 
     const C3D = window.Components3D || Components3D;
     const meshRenderer = C3D ? materia.getComponent(C3D.MeshRenderer3D) : null;
@@ -2204,7 +2215,7 @@ export function focusOnSelectedMateria() {
 export function update() {
     // This will be called from the main editorLoop
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
 
     if (is3D && !window.isGameRunning && getActiveView() === 'scene-content') {
         handle3DCameraNavigation();
@@ -2302,7 +2313,7 @@ function drawCameraGizmos(renderer, proj = null, view = null, cw = null, ch = nu
 
     const { ctx, canvas } = renderer;
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
     const allMaterias = scene.getAllMaterias();
     const aspect = canvas.width / canvas.height;
     const selectedMateria = getSelectedMateria();
@@ -2525,7 +2536,7 @@ function drawComponentGrids() {
 
     const { ctx, camera, canvas } = renderer;
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
     const zoom = camera.effectiveZoom;
     const prefs = getPreferences();
     const isSceneGridVisible = prefs.showSceneGrid;
@@ -2703,9 +2714,47 @@ function getGizmoScale(center, customProj = null, customView = null, cw = null, 
 }
 
 function getMateriaAxes(materia) {
-    const transform = materia.getComponent(Components.Transform);
-    const matrix = transform.worldMatrix;
+    const transform = materia.transform || materia.getComponentByName?.('Transform') || materia.getComponent?.('Transform');
     const glm = window.glMatrix;
+    if (!transform) {
+        return {
+            x: glm.vec3.fromValues(1, 0, 0),
+            y: glm.vec3.fromValues(0, 1, 0),
+            z: glm.vec3.fromValues(0, 0, 1),
+            worldCenter: [0, 0, 0]
+        };
+    }
+
+    let matrix = transform.worldMatrix;
+    if (!matrix) {
+        // Build a temporary world matrix from the transform values
+        const translationMat = CarleyMath.mat4Identity();
+        const rotationMat = CarleyMath.mat4Identity();
+        const scaleMat = CarleyMath.mat4Identity();
+
+        const pos = transform.position || { x: transform.x || 0, y: transform.y || 0, z: transform.z || 0 };
+
+        let rot = { x: 0, y: 0, z: 0 };
+        if (transform.rotation && typeof transform.rotation === 'object') {
+            rot = { x: transform.rotation.x || 0, y: transform.rotation.y || 0, z: transform.rotation.z || 0 };
+        } else {
+            rot = {
+                x: transform.rotationX !== undefined ? transform.rotationX : 0,
+                y: transform.rotationY !== undefined ? transform.rotationY : 0,
+                z: transform.rotationZ !== undefined ? transform.rotationZ : (transform.rotation || 0)
+            };
+        }
+
+        const scl = transform.scale || { x: transform.scaleX || 1, y: transform.scaleY || 1, z: transform.scaleZ || 1 };
+
+        CarleyMath.mat4Translation(translationMat, pos);
+        CarleyMath.mat4RotationYXZ(rotationMat, rot.x, rot.y, rot.z);
+        CarleyMath.mat4Scale(scaleMat, scl);
+
+        matrix = CarleyMath.mat4Identity();
+        CarleyMath.mat4Multiply(matrix, translationMat, rotationMat);
+        CarleyMath.mat4Multiply(matrix, matrix, scaleMat);
+    }
 
     // Extract basis vectors from world matrix columns
     const xAxis = glm.vec3.fromValues(matrix[0], matrix[1], matrix[2]);
@@ -2752,6 +2801,41 @@ function check3DGizmoHit(canvasPos, materia) {
         if (checkHandle(axes.x, 'X')) return activeTool === 'scale' ? 'scale-x' : 'move-x';
         if (checkHandle(axes.y, 'Y')) return activeTool === 'scale' ? 'scale-y' : 'move-y';
         if (checkHandle(axes.z, 'Z')) return activeTool === 'scale' ? 'scale-z' : 'move-z';
+    } else if (activeTool === 'rotate') {
+        let closestAxis = null;
+        let minDistance = 15; // Hit radius
+        const radius = 60 * gizmoScale;
+        const segments = 16;
+        for (let axisIndex = 0; axisIndex < 3; axisIndex++) {
+            for (let i = 0; i < segments; i++) {
+                const angle = (i / segments) * Math.PI * 2;
+                const cos = Math.cos(angle);
+                const sin = Math.sin(angle);
+                let offset = { x: 0, y: 0, z: 0 };
+                if (axisIndex === 0) {
+                    offset = { x: 0, y: cos * radius, z: sin * radius };
+                } else if (axisIndex === 1) {
+                    offset = { x: cos * radius, y: 0, z: sin * radius };
+                } else {
+                    offset = { x: cos * radius, y: sin * radius, z: 0 };
+                }
+                const worldOffset = {
+                    x: axes.x[0] * offset.x + axes.y[0] * offset.y + axes.z[0] * offset.z,
+                    y: axes.x[1] * offset.x + axes.y[1] * offset.y + axes.z[1] * offset.z,
+                    z: axes.x[2] * offset.x + axes.y[2] * offset.y + axes.z[2] * offset.z
+                };
+                const pWorld = { x: center.x + worldOffset.x, y: center.y + worldOffset.y, z: center.z + worldOffset.z };
+                const pScreen = world3DToScreen(pWorld, proj, view, cw, ch);
+                if (pScreen) {
+                    const dist = Math.hypot(canvasPos.x - pScreen.x, canvasPos.y - pScreen.y);
+                    if (dist < minDistance) {
+                        minDistance = dist;
+                        closestAxis = axisIndex === 0 ? 'rotate-x' : (axisIndex === 1 ? 'rotate-y' : 'rotate-z');
+                    }
+                }
+            }
+        }
+        if (closestAxis) return closestAxis;
     }
     return null;
 }
@@ -2759,6 +2843,9 @@ function check3DGizmoHit(canvasPos, materia) {
 function draw3DGizmos(materia, customProj = null, customView = null, customCw = null, customCh = null) {
     const r3d = window._Renderer3D;
     if (!r3d) return;
+
+    const transform = materia.transform || materia.getComponentByName?.('Transform') || materia.getComponent?.('Transform');
+    if (!transform) return;
 
     // Use current rendering matrices for correct projection
     const proj = customProj || r3d.lastProjectionMatrix;
@@ -2780,20 +2867,32 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
     // ARROW_SIZE is the handle size in constant screen PIXELS.
     const ARROW_SIZE = 18;
 
-    const C3D = window.Components3D || Components3D;
-    if (!C3D) return;
+    const prefs = typeof getPreferences === 'function' ? getPreferences() : {};
+    const showSeeThrough = prefs.showSeeThroughGizmo !== false;
 
-    const transform = materia.getComponent(Components.Transform);
-    const meshRenderer = materia.getComponent(C3D.MeshRenderer3D);
-    if (meshRenderer) {
-        const scale = { x: transform.scale.x, y: transform.scale.y, z: transform.scale.z || 1 };
-        const rotation = { x: transform.rotationX || 0, y: transform.rotationY || 0, z: transform.rotationZ || 0 };
-        if (meshRenderer.meshType === 'Cube') Gizmos.drawWireCube(ctx, center, scale, rotation, 'rgba(0, 255, 255, 0.8)', proj, view, cw, ch);
-        else if (meshRenderer.meshType === 'Sphere') Gizmos.drawWireSphere(ctx, center, Math.max(scale.x, scale.y, scale.z) * 0.5, rotation, 'rgba(0, 255, 255, 0.8)', proj, view, cw, ch);
-        else if (meshRenderer.meshType === 'Plane') Gizmos.drawWirePlane(ctx, center, { x: scale.x, z: scale.z }, rotation, 'rgba(0, 255, 255, 0.8)', proj, view, cw, ch);
-        else if (meshRenderer.meshType === 'Triangle') Gizmos.drawWireTriangle(ctx, center, { x: scale.x, y: scale.y }, rotation, 'rgba(0, 255, 255, 0.8)', proj, view, cw, ch);
-        else if (meshRenderer.meshType === 'Capsule') Gizmos.drawWireCapsule(ctx, center, Math.max(scale.x, scale.z) * 0.25, scale.y, rotation, 'rgba(0, 255, 255, 0.8)', proj, view, cw, ch);
-    } else if (materia.getComponent(Components.Camera)) {
+    if (showSeeThrough) {
+        const C3D = window.Components3D || Components3D;
+        if (C3D) {
+            const meshRenderer = materia.getComponent(C3D.MeshRenderer3D);
+            const scale = { x: transform.scale.x, y: transform.scale.y, z: transform.scale.z || 1 };
+            const rotation = { x: transform.rotationX || 0, y: transform.rotationY || 0, z: transform.rotationZ || 0 };
+
+            if (meshRenderer) {
+                if (meshRenderer.meshType === 'Cube') Gizmos.drawWireCube(ctx, center, scale, rotation, 'rgba(0, 255, 255, 0.9)', proj, view, cw, ch);
+                else if (meshRenderer.meshType === 'Sphere') Gizmos.drawWireSphere(ctx, center, Math.max(scale.x, scale.y, scale.z) * 0.5, rotation, 'rgba(0, 255, 255, 0.9)', proj, view, cw, ch);
+                else if (meshRenderer.meshType === 'Plane') Gizmos.drawWirePlane(ctx, center, { x: scale.x, z: scale.z }, rotation, 'rgba(0, 255, 255, 0.9)', proj, view, cw, ch);
+                else if (meshRenderer.meshType === 'Triangle') Gizmos.drawWireTriangle(ctx, center, { x: scale.x, y: scale.y }, rotation, 'rgba(0, 255, 255, 0.9)', proj, view, cw, ch);
+                else if (meshRenderer.meshType === 'Capsule') Gizmos.drawWireCapsule(ctx, center, Math.max(scale.x, scale.z) * 0.25, scale.y, rotation, 'rgba(0, 255, 255, 0.9)', proj, view, cw, ch);
+                else Gizmos.drawWireCube(ctx, center, scale, rotation, 'rgba(0, 255, 255, 0.9)', proj, view, cw, ch);
+            } else {
+                // For any other object, draw a beautiful 3D bounding box overlay based on its scale
+                const size = scale.x === 1 && scale.y === 1 && scale.z === 1 ? { x: 50, y: 50, z: 50 } : scale;
+                Gizmos.drawWireCube(ctx, center, size, rotation, 'rgba(0, 255, 255, 0.6)', proj, view, cw, ch);
+            }
+        }
+    }
+
+    if (materia.getComponent(Components.Camera)) {
         drawCameraGizmos(renderer, proj, view, cw, ch);
     }
 
@@ -2840,6 +2939,53 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
         ctx.fillStyle = activeTool === 'scale' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)';
         ctx.beginPath(); ctx.arc(screenPos.x, screenPos.y, 8, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
+    } else if (activeTool === 'rotate') {
+        // Draw 3D rotation circles!
+        const drawRotationCircle = (axisIndex, color) => {
+            const segments = 40;
+            const radius = 60 * gizmoScale;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            let first = true;
+            for (let i = 0; i <= segments; i++) {
+                const angle = (i / segments) * Math.PI * 2;
+                const cos = Math.cos(angle);
+                const sin = Math.sin(angle);
+                let offset = { x: 0, y: 0, z: 0 };
+                if (axisIndex === 0) { // X-axis (Y-Z plane)
+                    offset = { x: 0, y: cos * radius, z: sin * radius };
+                } else if (axisIndex === 1) { // Y-axis (X-Z plane)
+                    offset = { x: cos * radius, y: 0, z: sin * radius };
+                } else { // Z-axis (X-Y plane)
+                    offset = { x: cos * radius, y: sin * radius, z: 0 };
+                }
+                const worldOffset = {
+                    x: axes.x[0] * offset.x + axes.y[0] * offset.y + axes.z[0] * offset.z,
+                    y: axes.x[1] * offset.x + axes.y[1] * offset.y + axes.z[1] * offset.z,
+                    z: axes.x[2] * offset.x + axes.y[2] * offset.y + axes.z[2] * offset.z
+                };
+                const pWorld = { x: center.x + worldOffset.x, y: center.y + worldOffset.y, z: center.z + worldOffset.z };
+                const pScreen = world3DToScreen(pWorld, proj, view, cw, ch);
+                if (pScreen) {
+                    if (first) {
+                        ctx.moveTo(pScreen.x, pScreen.y);
+                        first = false;
+                    } else {
+                        ctx.lineTo(pScreen.x, pScreen.y);
+                    }
+                }
+            }
+            ctx.stroke();
+        };
+
+        drawRotationCircle(0, '#ff4444'); // X (Red)
+        drawRotationCircle(1, '#44ff44'); // Y (Green)
+        drawRotationCircle(2, '#4444ff'); // Z (Blue)
+
+        // Center dot
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.beginPath(); ctx.arc(screenPos.x, screenPos.y, 4, 0, Math.PI * 2); ctx.fill();
     }
 
     ctx.restore();
@@ -2850,7 +2996,7 @@ export function drawOverlay(customProj = null, customView = null) {
     if (!renderer) return;
 
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
     const is3DActive = is3D && config.viewMode !== '2d';
 
     // Capture matrices at the start of the overlay pass to ensure consistency
@@ -3040,7 +3186,7 @@ function drawGizmoIcons(proj = null, view = null, cw = null, ch = null) {
 
     const { ctx, camera } = renderer;
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
     const zoom = camera.effectiveZoom;
     const allMaterias = SceneManager.currentScene.getAllMaterias();
 
@@ -3511,7 +3657,7 @@ function drawPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
     if (!ctx || !camera) return;
 
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
 
     // Helper for 3D projected lines
     const strokeRect3D = (cx, cy, w, h, z, rot) => {
@@ -3649,7 +3795,7 @@ function drawTilemapOutline(proj = null, view = null, cw = null, ch = null) {
 
     const { ctx, camera } = renderer;
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
     const { cellSize } = grid;
     const { width, height } = tilemap;
 
@@ -3731,7 +3877,7 @@ function drawTerrenoColliders(proj = null, view = null, cw = null, ch = null) {
 
     const { ctx, camera } = renderer;
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
 
     const drawLine3D = (p1World, p2World) => {
         const p1 = world3DToScreen(p1World, proj, view, cw, ch);
@@ -3847,7 +3993,7 @@ function drawTilemapColliders(proj = null, view = null, cw = null, ch = null) {
 
     const { ctx, camera } = renderer;
     const config = getCurrentProjectConfig();
-    const is3D = config.rendererMode === '3d-mode' || config.rendererMode === 'hybrid-3d' || config.rendererMode === 'anime-3d';
+    const is3D = isProject3D(config);
     const { cellSize } = grid;
 
     const drawColliderRect = (rx, ry, rw, rh) => {

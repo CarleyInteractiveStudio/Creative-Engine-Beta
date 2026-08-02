@@ -79,34 +79,39 @@ export const CarleyMath = {
         return out;
     },
 
-    // Crear matriz de rotación para cámara sin roll/tilt (pitch, yaw)
+    // Crear matriz de rotación alrededor de X (Pitch)
+    mat4RotationX(out, deg) {
+        const rad = deg * Math.PI / 180;
+        const c = Math.cos(rad);
+        const s = Math.sin(rad);
+        out.set(CarleyMath.mat4Identity());
+        out[5] = c;
+        out[6] = s;
+        out[9] = -s;
+        out[10] = c;
+        return out;
+    },
+
+    // Crear matriz de rotación alrededor de Y (Yaw)
+    mat4RotationY(out, deg) {
+        const rad = deg * Math.PI / 180;
+        const c = Math.cos(rad);
+        const s = Math.sin(rad);
+        out.set(CarleyMath.mat4Identity());
+        out[0] = c;
+        out[2] = -s;
+        out[8] = s;
+        out[10] = c;
+        return out;
+    },
+
+    // Crear matriz de rotación para cámara sin roll/tilt (pitch, yaw) usando multiplicación robusta
     mat4RotationPitchYaw(out, degX, degY) {
-        const radX = degX * Math.PI / 180;
-        const radY = degY * Math.PI / 180;
-
-        const cx = Math.cos(radX), sx = Math.sin(radX);
-        const cy = Math.cos(radY), sy = Math.sin(radY);
-
-        out[0] = cy;
-        out[1] = -sy * sx;
-        out[2] = sy * cx;
-        out[3] = 0;
-
-        out[4] = 0;
-        out[5] = cx;
-        out[6] = sx;
-        out[7] = 0;
-
-        out[8] = -sy;
-        out[9] = -cy * sx;
-        out[10] = cy * cx;
-        out[11] = 0;
-
-        out[12] = 0;
-        out[13] = 0;
-        out[14] = 0;
-        out[15] = 1;
-
+        const rotX = CarleyMath.mat4Identity();
+        const rotY = CarleyMath.mat4Identity();
+        CarleyMath.mat4RotationX(rotX, degX);
+        CarleyMath.mat4RotationY(rotY, degY);
+        CarleyMath.mat4Multiply(out, rotX, rotY);
         return out;
     },
 
