@@ -563,6 +563,7 @@ export class StandaloneRuntime {
                 if (parallax) {
                     let targetX = 0;
                     let targetY = 0;
+                    let hasTarget = false;
                     if (parallax.targetMateria) {
                         let targetObj = null;
                         const scene = this.scene || (materia.scene || window.SceneManager?.currentScene);
@@ -578,13 +579,30 @@ export class StandaloneRuntime {
                             if (targetTransform) {
                                 targetX = targetTransform.x;
                                 targetY = targetTransform.y;
+                                hasTarget = true;
+                                if (parallax._initialTargetPosition === null) {
+                                    parallax._initialTargetPosition = { x: targetX, y: targetY };
+                                }
                             }
                         }
                     }
-                    worldPosition = {
-                        x: worldPosition.x + (targetX * (1 - parallax.scrollFactor.x)) + parallax.offset.x + (parallax._autoOffset ? parallax._autoOffset.x : 0),
-                        y: worldPosition.y + (targetY * (1 - parallax.scrollFactor.y)) + parallax.offset.y + (parallax._autoOffset ? parallax._autoOffset.y : 0)
-                    };
+                    if (parallax._initialPosition === null) {
+                        parallax._initialPosition = { x: transform.position.x, y: transform.position.y };
+                    }
+
+                    if (hasTarget && parallax._initialTargetPosition !== null && parallax._initialPosition !== null) {
+                        const deltaX = targetX - parallax._initialTargetPosition.x;
+                        const deltaY = targetY - parallax._initialTargetPosition.y;
+                        worldPosition = {
+                            x: parallax._initialPosition.x + (deltaX * (1 - parallax.scrollFactor.x)) + parallax.offset.x + (parallax._autoOffset ? parallax._autoOffset.x : 0),
+                            y: parallax._initialPosition.y + (deltaY * (1 - parallax.scrollFactor.y)) + parallax.offset.y + (parallax._autoOffset ? parallax._autoOffset.y : 0)
+                        };
+                    } else {
+                        worldPosition = {
+                            x: worldPosition.x + parallax.offset.x + (parallax._autoOffset ? parallax._autoOffset.x : 0),
+                            y: worldPosition.y + parallax.offset.y + (parallax._autoOffset ? parallax._autoOffset.y : 0)
+                        };
+                    }
                 }
 
                 // Culling

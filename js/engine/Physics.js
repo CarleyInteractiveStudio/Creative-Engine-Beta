@@ -1114,6 +1114,9 @@ export class PhysicsSystem {
      * @returns {object|null} The MTV if a collision occurs, otherwise null.
      */
     checkCollision(materiaA, materiaB) {
+        if (window._PerformanceMetrics) {
+            window._PerformanceMetrics.collisionsChecked = (window._PerformanceMetrics.collisionsChecked || 0) + 1;
+        }
         const colliderA = this.getCollider(materiaA);
         const colliderB = this.getCollider(materiaB);
 

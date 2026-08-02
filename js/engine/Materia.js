@@ -5,6 +5,15 @@ import { Transform } from './Components.js';
 import { currentScene } from './SceneManager.js';
 
 let MATERIA_ID_COUNTER = 0;
+
+export function updateMateriaIdCounter(id) {
+    if (typeof id === 'number' && !isNaN(id)) {
+        if (id >= MATERIA_ID_COUNTER) {
+            MATERIA_ID_COUNTER = id + 1;
+        }
+    }
+}
+
 export class Materia {
     constructor(name = 'Materia') {
         this.id = MATERIA_ID_COUNTER++;
@@ -390,6 +399,7 @@ export class Materia {
         const newMateria = new Materia(this.name);
         if (preserveId) {
             newMateria.id = this.id;
+            updateMateriaIdCounter(this.id);
         }
 
         newMateria.isActive = this.isActive;

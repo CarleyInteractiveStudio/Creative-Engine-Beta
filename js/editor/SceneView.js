@@ -295,7 +295,7 @@ function checkCameraGizmoHit(canvasPos) {
     const halfHeight = size;
     const halfWidth = size * aspect;
 
-    const handleHitboxSize = 10 / renderer.camera.effectiveZoom;
+    const handleHitboxSize = 16 / renderer.camera.effectiveZoom;
     const halfHitbox = handleHitboxSize / 2;
 
     const handles = [
@@ -2586,7 +2586,7 @@ function drawCameraGizmos(renderer, proj = null, view = null, cw = null, ch = nu
             // --- Draw Interactive Handles (only for selected camera) ---
             if (isSelected && !is3DActive) {
                 ctx.fillStyle = 'rgba(255, 255, 0, 0.9)';
-                const handleSize = 8 / renderer.camera.effectiveZoom;
+                const handleSize = 10 / renderer.camera.effectiveZoom;
                 const halfHandle = handleSize / 2;
 
                 const handles = [
@@ -2598,7 +2598,22 @@ function drawCameraGizmos(renderer, proj = null, view = null, cw = null, ch = nu
                 ];
 
                 handles.forEach(handle => {
-                    ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize);
+                    if (handle.name === 'move') {
+                        // Draw a beautiful distinct yellow circle for moving
+                        ctx.fillStyle = 'rgba(255, 255, 0, 0.9)';
+                        ctx.beginPath();
+                        ctx.arc(handle.x, handle.y, handleSize * 0.7, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.strokeStyle = 'rgba(0, 0, 0, 1.0)';
+                        ctx.lineWidth = 1.5 / renderer.camera.effectiveZoom;
+                        ctx.stroke();
+                    } else {
+                        ctx.fillStyle = 'rgba(255, 255, 0, 0.9)';
+                        ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize);
+                        ctx.strokeStyle = 'rgba(0, 0, 0, 1.0)';
+                        ctx.lineWidth = 1 / renderer.camera.effectiveZoom;
+                        ctx.strokeRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize);
+                    }
                 });
             }
 
@@ -3949,6 +3964,30 @@ function drawPhysicsGizmos(proj = null, view = null, cw = null, ch = null) {
             ctx.rotate(transform.rotation * Math.PI / 180);
             ctx.scale(1, -1);
             ctx.strokeRect(-width / 2, -height / 2, width, height);
+
+            // Draw Interactive Handles (Green squares)
+            const handleSize = 8 / camera.effectiveZoom;
+            const halfHandle = handleSize / 2;
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.9)';
+
+            const handles = [
+                { x: 0, y: 0 },
+                { x: -width / 2, y: -height / 2 },
+                { x: width / 2, y: -height / 2 },
+                { x: -width / 2, y: height / 2 },
+                { x: width / 2, y: height / 2 },
+                { x: 0, y: -height / 2 },
+                { x: 0, y: height / 2 },
+                { x: -width / 2, y: 0 },
+                { x: width / 2, y: 0 }
+            ];
+
+            handles.forEach(h => {
+                ctx.fillRect(h.x - halfHandle, h.y - halfHandle, handleSize, handleSize);
+                ctx.strokeStyle = 'rgba(0, 0, 0, 1.0)';
+                ctx.lineWidth = 1 / camera.effectiveZoom;
+                ctx.strokeRect(h.x - halfHandle, h.y - halfHandle, handleSize, handleSize);
+            });
         }
         ctx.restore();
     }
