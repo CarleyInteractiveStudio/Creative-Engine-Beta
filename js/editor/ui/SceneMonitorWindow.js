@@ -16,6 +16,7 @@ const fpsHistory = []; // Array of last 40 frames: { fps, render, physics, scrip
 let isCurrentlyDropping = false;
 let dropStartFrame = 0;
 let frameCounter = 0;
+let consecutiveDropFrames = 0;
 
 let lastFrameTime = performance.now();
 let lastMemorySize = 0;
@@ -383,6 +384,7 @@ export function update() {
         fpsHistory.length = 0;
         isCurrentlyDropping = false;
         frameCounter = 0;
+        consecutiveDropFrames = 0;
         selectedSceneSessionIndex = -1; // Live view
         wasGameRunning = true;
         forceFullRepopulate();
@@ -488,16 +490,20 @@ export function update() {
             // Skip the first 15 frames of warmup to avoid false alarms immediately on game start!
             if (frameCounter > 15) {
                 if (fpsVal < 40) {
-                    if (!isCurrentlyDropping) {
-                        isCurrentlyDropping = true;
-                        dropStartFrame = frameCounter;
-                        logEvent('Caída FPS', `Se detectó una caída de rendimiento (${displayFPS} FPS) en el fotograma ${dropStartFrame}. Causa probable: ${attributedCause} (${maxTime.toFixed(1)}ms).`, 'error');
+                    consecutiveDropFrames++;
+                    if (consecutiveDropFrames >= 10) {
+                        if (!isCurrentlyDropping) {
+                            isCurrentlyDropping = true;
+                            dropStartFrame = frameCounter - consecutiveDropFrames + 1;
+                            logEvent('Caída FPS', `Se detectó una caída continua de rendimiento (${displayFPS} FPS) desde el fotograma ${dropStartFrame} (Duración: ${consecutiveDropFrames} fotogramas). Causa probable: ${attributedCause} (${maxTime.toFixed(1)}ms).`, 'error');
+                        }
                     }
                 } else {
                     if (isCurrentlyDropping && fpsVal > 45) { // recovered
                         logEvent('Caída FPS Terminado', `El rendimiento se estabilizó de nuevo a los ${displayFPS} FPS en el fotograma ${frameCounter} (Duración del drop: ${frameCounter - dropStartFrame} fotogramas).`, 'success');
-                        isCurrentlyDropping = false;
                     }
+                    consecutiveDropFrames = 0;
+                    isCurrentlyDropping = false;
                 }
             }
         }
