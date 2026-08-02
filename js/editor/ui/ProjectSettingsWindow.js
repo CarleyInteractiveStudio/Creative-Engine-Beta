@@ -88,6 +88,8 @@ export async function saveProjectConfig(showAlert = true) {
         currentProjectConfig.cpuLimit = parseInt(dom.settingsCpuLimit.value) || 100;
         currentProjectConfig.netLimit = parseInt(document.getElementById('settings-net-limit')?.value) || 0;
         currentProjectConfig.slowNetMode = document.getElementById('settings-slow-net')?.checked || false;
+        currentProjectConfig.autoOptimize = document.getElementById('settings-auto-optimize') ? document.getElementById('settings-auto-optimize').checked : true;
+        currentProjectConfig.maxOptimizationLevel = document.getElementById('settings-max-opt-level') ? parseInt(document.getElementById('settings-max-opt-level').value) : 3;
 
         // Aplicar límite al monitor de red
         import('../../engine/NetworkMonitor.js').then(({ networkMonitor }) => {
@@ -132,6 +134,13 @@ export async function saveProjectConfig(showAlert = true) {
         const writable = await configFileHandle.createWritable();
         await writable.write(JSON.stringify(currentProjectConfig, null, 2));
         await writable.close();
+
+        // Sync FPS/Optimization settings to PerformanceMonitor
+        if (window.EngineAPI && window.EngineAPI.getPerformanceMonitor) {
+            const pm = window.EngineAPI.getPerformanceMonitor();
+            if (pm) pm.updateConfig(currentProjectConfig);
+        }
+
         if(showAlert) window.Dialogs.showNotification(
             window.Localization?.get('EXITO') || 'Éxito',
             window.Localization?.get('CONFIG_GUARDADA') || '¡Configuración guardada!'
@@ -547,6 +556,12 @@ export function populateUI(config) {
 
     const slowNetEl = document.getElementById('settings-slow-net');
     if (slowNetEl) slowNetEl.checked = !!currentProjectConfig.slowNetMode;
+
+    const autoOptimizeEl = document.getElementById('settings-auto-optimize');
+    if (autoOptimizeEl) autoOptimizeEl.checked = currentProjectConfig.autoOptimize !== undefined ? !!currentProjectConfig.autoOptimize : true;
+
+    const maxOptLevelEl = document.getElementById('settings-max-opt-level');
+    if (maxOptLevelEl) maxOptLevelEl.value = currentProjectConfig.maxOptimizationLevel !== undefined ? currentProjectConfig.maxOptimizationLevel : 3;
 
     // Sincronizar monitor al cargar
     import('../../engine/NetworkMonitor.js').then(({ networkMonitor }) => {

@@ -31,6 +31,8 @@ export class PerformanceMonitor {
         this.targetMaxFps = config.maxFps || 0; // 0 = no limit
         this.forceFps = !!config.forceFps;
         this.targetMinFps = config.minFps || 30;
+        this.autoOptimize = config.autoOptimize !== undefined ? !!config.autoOptimize : true;
+        this.maxOptimizationLevel = config.maxOptimizationLevel !== undefined ? parseInt(config.maxOptimizationLevel) : 3;
 
         // Auto-Mobile Optimization Profile
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -69,6 +71,9 @@ export class PerformanceMonitor {
     }
 
     checkPerformance() {
+        // Do not automatically trigger optimizations if disabled!
+        if (this.autoOptimize === false) return;
+
         // Optimization logic
         // Only trigger optimization if FPS falls below the absolute target minimum,
         // to prevent micro-stutters from triggering persistent optimization cycles.
@@ -230,7 +235,8 @@ export class PerformanceMonitor {
     }
 
     increaseOptimization() {
-        if (this.optimizationLevel >= 3) return;
+        const maxLevel = this.maxOptimizationLevel !== undefined ? this.maxOptimizationLevel : 3;
+        if (this.optimizationLevel >= maxLevel) return;
         this.optimizationLevel++;
         this.applyOptimization();
     }
