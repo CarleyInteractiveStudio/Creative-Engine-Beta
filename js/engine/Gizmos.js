@@ -7,7 +7,7 @@ export const Gizmos = {
     /**
      * Draws a wireframe cube in 3D space.
      */
-    drawWireCube(ctx, center, size, rotation = {x:0, y:0, z:0}, color = 'rgba(0, 255, 255, 0.8)', proj = null, view = null, cw = null, ch = null) {
+    drawWireCube(ctx, center, size, rotation = {x:0, y:0, z:0}, color = 'rgba(0, 255, 255, 0.8)', proj = null, view = null, cw = null, ch = null, width = 2) {
         const glm = window.glMatrix;
         if (!glm) return;
         const hw = size.x / 2;
@@ -33,16 +33,16 @@ export const Gizmos = {
         });
 
         for (let i = 0; i < 4; i++) {
-            drawLineClipped(ctx, worldPoints[i], worldPoints[(i + 1) % 4], color, 1, proj, view, cw, ch);
-            drawLineClipped(ctx, worldPoints[i + 4], worldPoints[((i + 1) % 4) + 4], color, 1, proj, view, cw, ch);
-            drawLineClipped(ctx, worldPoints[i], worldPoints[i + 4], color, 1, proj, view, cw, ch);
+            drawLineClipped(ctx, worldPoints[i], worldPoints[(i + 1) % 4], color, width, proj, view, cw, ch);
+            drawLineClipped(ctx, worldPoints[i + 4], worldPoints[((i + 1) % 4) + 4], color, width, proj, view, cw, ch);
+            drawLineClipped(ctx, worldPoints[i], worldPoints[i + 4], color, width, proj, view, cw, ch);
         }
     },
 
     /**
      * Draws a wireframe sphere in 3D space.
      */
-    drawWireSphere(ctx, center, radius, rotation = {x:0, y:0, z:0}, color = 'rgba(0, 255, 255, 0.8)', proj = null, view = null, cw = null, ch = null) {
+    drawWireSphere(ctx, center, radius, rotation = {x:0, y:0, z:0}, color = 'rgba(0, 255, 255, 0.8)', proj = null, view = null, cw = null, ch = null, width = 2) {
         const glm = window.glMatrix;
         if (!glm) return;
         const segments = 16;
@@ -66,7 +66,7 @@ export const Gizmos = {
                     z: (center.z || 0) + rotated[2]
                 };
 
-                if (lastWorld) drawLineClipped(ctx, lastWorld, currentWorld, color, 1, proj, view, cw, ch);
+                if (lastWorld) drawLineClipped(ctx, lastWorld, currentWorld, color, width, proj, view, cw, ch);
                 lastWorld = currentWorld;
             }
         };
@@ -74,7 +74,7 @@ export const Gizmos = {
         drawRing('xy'); drawRing('xz'); drawRing('yz');
     },
 
-    drawWireTriangle(ctx, center, size, rotation = {x:0, y:0, z:0}, color = 'rgba(0, 255, 255, 0.8)', proj = null, view = null, cw = null, ch = null) {
+    drawWireTriangle(ctx, center, size, rotation = {x:0, y:0, z:0}, color = 'rgba(0, 255, 255, 0.8)', proj = null, view = null, cw = null, ch = null, width = 2) {
         const glm = window.glMatrix;
         if (!glm) return;
         const hw = size.x / 2;
@@ -88,12 +88,12 @@ export const Gizmos = {
             return { x: center.x + rotated[0], y: center.y + rotated[1], z: (center.z || 0) + rotated[2] };
         });
 
-        drawLineClipped(ctx, points[0], points[1], color, 1, proj, view, cw, ch);
-        drawLineClipped(ctx, points[1], points[2], color, 1, proj, view, cw, ch);
-        drawLineClipped(ctx, points[2], points[0], color, 1, proj, view, cw, ch);
+        drawLineClipped(ctx, points[0], points[1], color, width, proj, view, cw, ch);
+        drawLineClipped(ctx, points[1], points[2], color, width, proj, view, cw, ch);
+        drawLineClipped(ctx, points[2], points[0], color, width, proj, view, cw, ch);
     },
 
-    drawWirePlane(ctx, center, size, rotation = {x:0, y:0, z:0}, color = 'rgba(255, 255, 255, 0.5)', proj = null, view = null, cw = null, ch = null) {
+    drawWirePlane(ctx, center, size, rotation = {x:0, y:0, z:0}, color = 'rgba(255, 255, 255, 0.5)', proj = null, view = null, cw = null, ch = null, width = 2) {
         const glm = window.glMatrix;
         if (!glm) return;
         const hw = size.x / 2;
@@ -107,10 +107,10 @@ export const Gizmos = {
             return { x: center.x + rotated[0], y: center.y + rotated[1], z: (center.z || 0) + rotated[2] };
         });
 
-        for (let i = 0; i < 4; i++) drawLineClipped(ctx, points[i], points[(i + 1) % 4], color, 1, proj, view, cw, ch);
+        for (let i = 0; i < 4; i++) drawLineClipped(ctx, points[i], points[(i + 1) % 4], color, width, proj, view, cw, ch);
     },
 
-    drawWireCapsule(ctx, center, radius, height, rotation = {x:0, y:0, z:0}, color = 'rgba(0, 255, 255, 0.8)', proj = null, view = null, cw = null, ch = null) {
+    drawWireCapsule(ctx, center, radius, height, rotation = {x:0, y:0, z:0}, color = 'rgba(0, 255, 255, 0.8)', proj = null, view = null, cw = null, ch = null, width = 2) {
         const glm = window.glMatrix;
         if (!glm) return;
         const hh = height / 2;
@@ -124,14 +124,14 @@ export const Gizmos = {
             drawLineClipped(ctx,
                 { x: center.x + r1[0], y: center.y + r1[1], z: (center.z||0) + r1[2] },
                 { x: center.x + r2[0], y: center.y + r2[1], z: (center.z||0) + r2[2] },
-                color, 1, proj, view, cw, ch
+                color, width, proj, view, cw, ch
             );
         };
 
         drawL(radius, 0); drawL(-radius, 0); drawL(0, radius); drawL(0, -radius);
         const tPos = glm.vec3.create(); glm.vec3.transformQuat(tPos, [0, hh, 0], q);
         const bPos = glm.vec3.create(); glm.vec3.transformQuat(bPos, [0, -hh, 0], q);
-        this.drawWireSphere(ctx, { x: center.x + tPos[0], y: center.y + tPos[1], z: (center.z||0) + tPos[2] }, radius, rotation, color, proj, view, cw, ch);
-        this.drawWireSphere(ctx, { x: center.x + bPos[0], y: center.y + bPos[1], z: (center.z||0) + bPos[2] }, radius, rotation, color, proj, view, cw, ch);
+        this.drawWireSphere(ctx, { x: center.x + tPos[0], y: center.y + tPos[1], z: (center.z||0) + tPos[2] }, radius, rotation, color, proj, view, cw, ch, width);
+        this.drawWireSphere(ctx, { x: center.x + bPos[0], y: center.y + bPos[1], z: (center.z||0) + bPos[2] }, radius, rotation, color, proj, view, cw, ch, width);
     }
 };

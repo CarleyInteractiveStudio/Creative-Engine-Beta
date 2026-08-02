@@ -150,6 +150,11 @@ export class CarleyWorld {
         const aspect = this.canvas.width / this.canvas.height;
         CarleyMath.mat4Perspective(projectionMatrix, 60, aspect, 0.1, 200000);
 
+        // Guardar las últimas matrices de renderizado en el renderizador para proyección de gizmos/raycasts
+        this.renderer.lastViewMatrix = viewMatrix;
+        this.renderer.lastProjectionMatrix = projectionMatrix;
+        window._Renderer3D = this.renderer; // Ensure window._Renderer3D is always aligned with the active CarleyWorld renderer
+
         // Dibujar Rejilla y Ejes Coordenados del Mundo 3D
         this.renderer.drawGridAndAxes(viewMatrix, projectionMatrix);
 
