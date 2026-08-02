@@ -230,6 +230,7 @@ function applyCreationPosition(m) {
 }
 
 export async function handleContextMenuAction(action) {
+    if (window.UndoRedoManager) window.UndoRedoManager.recordState();
     const selectedMateria = getSelectedMateria();
     const L = window.Localization;
     // For actions on existing items, we MUST use the materia that was under the cursor
@@ -785,6 +786,7 @@ function setupEventListeners() {
 
     // --- The single, robust, unified drop handler ---
     hierarchyPanel.addEventListener('drop', (e) => {
+        if (window.UndoRedoManager) window.UndoRedoManager.recordState();
         e.preventDefault();
         hierarchyPanel.classList.remove('drag-over');
         isDraggingFromHierarchy = false; // Reset state regardless

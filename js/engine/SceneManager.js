@@ -237,6 +237,10 @@ export let loadingProgress = 0;
 
 export function setCurrentScene(scene) {
     currentScene = scene;
+    if (window.UndoRedoManager && window.UndoRedoManager.initialized) {
+        window.UndoRedoManager.clear();
+        window.UndoRedoManager.recordState();
+    }
 }
 
 export function setCurrentSceneFileHandle(fileHandle) {

@@ -1339,6 +1339,7 @@ export function initialize(dependencies) {
         dragState = {};
         window.removeEventListener('mousemove', onGizmoDrag);
         window.removeEventListener('mouseup', onGizmoDragEnd);
+        if (window.UndoRedoManager) window.UndoRedoManager.recordState();
     };
 
     window.addEventListener('mouseup', e => {
@@ -1945,6 +1946,7 @@ export function initialize(dependencies) {
                 const onSculptEnd = () => {
                     window.removeEventListener('mousemove', onSculptMove);
                     window.removeEventListener('mouseup', onSculptEnd);
+                    if (window.UndoRedoManager) window.UndoRedoManager.recordState();
                 };
 
                 window.addEventListener('mousemove', onSculptMove);
@@ -1997,6 +1999,7 @@ export function initialize(dependencies) {
                 lastPaintedCoords = { col: -1, row: -1 }; // Reset for next paint stroke
                 window.removeEventListener('mousemove', onPaintMove);
                 window.removeEventListener('mouseup', onPaintEnd);
+                if (window.UndoRedoManager) window.UndoRedoManager.recordState();
             };
 
             window.addEventListener('mousemove', onPaintMove);
@@ -2029,6 +2032,7 @@ export function initialize(dependencies) {
             const onPaintEnd = () => {
                 window.removeEventListener('mousemove', onPaintMove);
                 window.removeEventListener('mouseup', onPaintEnd);
+                if (window.UndoRedoManager) window.UndoRedoManager.recordState();
             };
 
             window.addEventListener('mousemove', onPaintMove);
@@ -2069,6 +2073,7 @@ export function initialize(dependencies) {
             const onBrushEnd = () => {
                 window.removeEventListener('mousemove', onBrushMove);
                 window.removeEventListener('mouseup', onBrushEnd);
+                if (window.UndoRedoManager) window.UndoRedoManager.recordState();
             };
 
             window.addEventListener('mousemove', onBrushMove);

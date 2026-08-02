@@ -1,6 +1,7 @@
 // --- CodeMirror Integration ---
 import { InputManager } from './engine/Input.js';
 import * as SceneManager from './engine/SceneManager.js';
+import { UndoRedoManager } from './editor/UndoRedoManager.js';
 import { Renderer } from './engine/Renderer.js';
 import { PhysicsSystem } from './engine/Physics.js';
 import * as UISystem from './engine/ui/UISystem.js';
@@ -1250,6 +1251,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.ctrlKey && e.key.toLowerCase() === 'y') {
                 e.preventDefault();
                 CodeEditor.redoLastChange();
+            }
+        } else {
+            if (e.ctrlKey && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                UndoRedoManager.undo();
+            }
+            if (e.ctrlKey && e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                UndoRedoManager.redo();
             }
         }
     }
@@ -3398,8 +3408,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Close menu when clicking outside
         window.addEventListener('click', (e) => {
             const menu = document.getElementById('anim-node-context-menu');
-            if (menu && menu.style.display !== 'none' && !menu.contains(e.target)) {
+            if (menu && (menu.style.display !== 'none' || menu.classList.contains('visible')) && !menu.contains(e.target)) {
                 menu.style.display = 'none';
+                menu.classList.remove('visible');
             }
         });
 
@@ -5497,6 +5508,12 @@ public start() {
                 dom.btnPlay.disabled = false;
                 isEditorReady = true;
                 window.editorInitialized = true; // Signal for Playwright tests
+
+                if (window.UndoRedoManager) {
+                    window.UndoRedoManager.initialized = true;
+                    window.UndoRedoManager.clear();
+                    window.UndoRedoManager.recordState(); // Record first initial state after boot is complete!
+                }
 
             }, 500);
 
