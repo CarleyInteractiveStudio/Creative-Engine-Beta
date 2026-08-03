@@ -659,8 +659,12 @@ export class Renderer {
             if (quality === 'low' && l > 0 && perfMonitor && perfMonitor.getShouldReduceMapDetail()) continue;
 
             if (img && img.complete && img.naturalWidth > 0) {
-                const pattern = bCtx.createPattern(img, 'repeat');
-                bCtx.fillStyle = pattern;
+                if (!layer._cachedPattern || layer._cachedPatternSrc !== img.src || layer._cachedPatternCtx !== bCtx) {
+                    layer._cachedPattern = bCtx.createPattern(img, 'repeat');
+                    layer._cachedPatternSrc = img.src;
+                    layer._cachedPatternCtx = bCtx;
+                }
+                bCtx.fillStyle = layer._cachedPattern;
                 bCtx.fillRect(0, 0, w, h);
             } else if (l === 0) {
                 bCtx.fillStyle = terreno.baseColor || '#4a4a4a';
@@ -1169,7 +1173,12 @@ export class Renderer {
                 this.ctx.save();
                 this.ctx.translate(x, y);
                 if (textureRender.texture && textureRender.texture.complete) {
-                    this.ctx.fillStyle = this.ctx.createPattern(textureRender.texture, 'repeat');
+                    if (!textureRender._cachedPattern || textureRender._cachedPatternSrc !== textureRender.texture.src || textureRender._cachedPatternCtx !== this.ctx) {
+                        textureRender._cachedPattern = this.ctx.createPattern(textureRender.texture, 'repeat');
+                        textureRender._cachedPatternSrc = textureRender.texture.src;
+                        textureRender._cachedPatternCtx = this.ctx;
+                    }
+                    this.ctx.fillStyle = textureRender._cachedPattern;
                 } else {
                     this.ctx.fillStyle = textureRender.color;
                 }

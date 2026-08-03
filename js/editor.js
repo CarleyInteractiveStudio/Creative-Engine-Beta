@@ -2296,8 +2296,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         ctx.scale(worldScale.x, -worldScale.y);
                         if (textureRender.texture && textureRender.texture.complete) {
                             if (textureRender.wrapMode === 'Repeat') {
-                                const pattern = ctx.createPattern(textureRender.texture, 'repeat');
-                                ctx.fillStyle = pattern;
+                                if (!textureRender._cachedPattern || textureRender._cachedPatternSrc !== textureRender.texture.src || textureRender._cachedPatternCtx !== ctx) {
+                                    textureRender._cachedPattern = ctx.createPattern(textureRender.texture, 'repeat');
+                                    textureRender._cachedPatternSrc = textureRender.texture.src;
+                                    textureRender._cachedPatternCtx = ctx;
+                                }
+                                ctx.fillStyle = textureRender._cachedPattern;
                                 if (textureRender.shape === 'Rectangle') {
                                     ctx.fillRect(-textureRender.width / 2, -textureRender.height / 2, textureRender.width, textureRender.height);
                                 } else if (textureRender.shape === 'Circle') {

@@ -687,7 +687,12 @@ export class StandaloneRuntime {
                         ctx.scale(worldScale.x, -worldScale.y);
                         if (tr.texture && tr.texture.complete) {
                             if (tr.wrapMode === 'Repeat') {
-                                ctx.fillStyle = ctx.createPattern(tr.texture, 'repeat');
+                                if (!tr._cachedPattern || tr._cachedPatternSrc !== tr.texture.src || tr._cachedPatternCtx !== ctx) {
+                                    tr._cachedPattern = ctx.createPattern(tr.texture, 'repeat');
+                                    tr._cachedPatternSrc = tr.texture.src;
+                                    tr._cachedPatternCtx = ctx;
+                                }
+                                ctx.fillStyle = tr._cachedPattern;
                                 if (tr.shape === 'Rectangle') ctx.fillRect(-tr.width / 2, -tr.height / 2, tr.width, tr.height);
                                 else if (tr.shape === 'Circle') { ctx.beginPath(); ctx.arc(0, 0, tr.radius, 0, 2 * Math.PI); ctx.fill(); }
                                 else if (tr.shape === 'Triangle') { ctx.beginPath(); ctx.moveTo(0, -tr.height / 2); ctx.lineTo(-tr.width / 2, tr.height / 2); ctx.lineTo(tr.width / 2, tr.height / 2); ctx.closePath(); ctx.fill(); }

@@ -232,7 +232,20 @@ function getSceneMetrics() {
         if (transform) {
             const scale = transform.localScale || { x: 1, y: 1, z: 1 };
             if (scale.x === 0 || scale.y === 0 || (scale.z !== undefined && scale.z === 0)) {
-                scaleIssues.push(`Materia '${m.name}' (ID: ${m.id}) tiene escala igual a cero en algún eje, lo que impide su renderizado y puede romper sus cálculos de física.`);
+                const lang = (window.Localization && window.Localization.currentLanguage) || 'ES';
+                let issueText = '';
+                if (lang === 'EN') {
+                    issueText = `Materia '${m.name}' (ID: ${m.id}) has a scale equal to zero in some axis, which prevents it from rendering and can break its physics calculations.`;
+                } else if (lang === 'PT') {
+                    issueText = `Materia '${m.name}' (ID: ${m.id}) tem escala igual a zero em algum eixo, o que impede a sua renderização e pode quebrar os cálculos de física.`;
+                } else if (lang === 'RU') {
+                    issueText = `Materia '${m.name}' (ID: ${m.id}) имеет масштаб, равный нулю по какой-либо оси, что препятствует ее рендерингу и может нарушить расчеты физики.`;
+                } else if (lang === 'ZH') {
+                    issueText = `Materia '${m.name}' (ID: ${m.id}) 的某个轴缩放为零，这将阻止其渲染并可能破坏其物理计算。`;
+                } else {
+                    issueText = `Materia '${m.name}' (ID: ${m.id}) tiene escala igual a cero en algún eje, lo que impide su renderizado y puede romper sus cálculos de física.`;
+                }
+                scaleIssues.push(issueText);
             }
         }
 
@@ -578,25 +591,57 @@ export function update() {
 
     // Scale Bugs Detection
     if (displayMetrics.scaleIssues && displayMetrics.scaleIssues.length > 0) {
+        const lang = (window.Localization && window.Localization.currentLanguage) || 'ES';
+        let errorTitle = 'Error de Transformación Crítico:';
+        if (lang === 'EN') errorTitle = 'Critical Transform Error:';
+        else if (lang === 'PT') errorTitle = 'Erro de Transformação Crítico:';
+        else if (lang === 'RU') errorTitle = 'Критическая ошибка трансформации:';
+        else if (lang === 'ZH') errorTitle = '关键变换错误：';
+
         displayMetrics.scaleIssues.forEach(issue => {
             criticalBottlenecks.push(`
                 <div style="background: #2d1313; border-left: 4px solid #ff4444; padding: 8px 12px; margin-bottom: 6px; border-radius: 4px; font-size: 0.95em;">
-                    ⚠️ <strong>Error de Transformación Crítico:</strong> ${issue}
+                    ⚠️ <strong>${errorTitle}</strong> ${issue}
                 </div>
             `);
         });
     }
 
+    const lang = (window.Localization && window.Localization.currentLanguage) || 'ES';
+
     // 1. Script redundancy & Controller/Manager pattern detection
     if (displayMetrics.scriptInstancesMap) {
         displayMetrics.scriptInstancesMap.forEach((materiaNames, scriptName) => {
             if (materiaNames.length >= 6) {
+                let title = '';
+                let body = '';
+                if (lang === 'EN') {
+                    title = `📦 Script Redundancy Detected: "${scriptName}"`;
+                    body = `There are <strong>${materiaNames.length} independent objects</strong> executing the script <code>${scriptName}</code> in their individual update() loop.
+                            <br><span style="color: #00ffcc;">Architectural Suggestion:</span> Consider using the <strong>Controller / Manager</strong> pattern: create a single central empty Materia with a single controller script that keeps an array with references to all these objects and moves or updates them within a single loop. This reduces execution overhead in the engine's Javascript thread from <strong>O(N)</strong> lifecycle calls to <strong>O(1)</strong> calls, substantially improving FPS.`;
+                } else if (lang === 'PT') {
+                    title = `📦 Redundância de Script Detectada: "${scriptName}"`;
+                    body = `Existem <strong>${materiaNames.length} objetos independentes</strong> executando o script <code>${scriptName}</code> em seu loop update() individual.
+                            <br><span style="color: #00ffcc;">Sugestão de Arquitetura:</span> Considere usar o padrão <strong>Controller / Manager</strong>: crie uma única Materia vazia central com um único script controlador que mantenha uma matriz com a referência a todos esses objetos e os mova ou atualize dentro de um único loop. Isso reduz o overhead no thread de execução de Javascript do motor de <strong>O(N)</strong> chamadas de ciclo de vida para <strong>O(1)</strong> chamadas, melhorando substancialmente os FPS.`;
+                } else if (lang === 'RU') {
+                    title = `📦 Обнаружена избыточность скрипта: "${scriptName}"`;
+                    body = `Существует <strong>${materiaNames.length} независимых объектов</strong>, выполняющих скрипт <code>${scriptName}</code> в своем индивидуальном цикле update().
+                            <br><span style="color: #00ffcc;">Архитектурное предложение:</span> Подумайте об использовании паттерна <strong>Controller / Manager</strong>: создайте одну центральную пустую Материю с одним управляющим скриптом, который хранит массив со ссылками на все эти объекты и перемещает или обновляет их в рамках одного цикла. Это снизит накладные расходы в потоке выполнения Javascript движка с <strong>O(N)</strong> вызовов жизненного цикла до <strong>O(1)</strong> вызовов, существенно повысив FPS.`;
+                } else if (lang === 'ZH') {
+                    title = `📦 检测到脚本冗余："${scriptName}"`;
+                    body = `有 <strong>${materiaNames.length} 个独立对象</strong> 在其各自的 update() 循环中运行脚本 <code>${scriptName}</code>。
+                            <br><span style="color: #00ffcc;">架构建议：</span> 考虑使用 <strong>Controller / Manager（控制器/管理器）</strong> 模式：创建一个单一的中央空 Materia，使用单个控制脚本，保留包含对所有这些对象的引用的数组，并在单个循环中移动或更新它们。这将使引擎 Javascript 执行线程中的开销从 <strong>O(N)</strong> 生命周期调用减少到 <strong>O(1)</strong> 调用，从而大幅提升 FPS。`;
+                } else {
+                    title = `📦 Redundancia de Script Detectada: "${scriptName}"`;
+                    body = `Hay <strong>${materiaNames.length} objetos independientes</strong> ejecutando el script <code>${scriptName}</code> en su bucle update() individual.
+                            <br><span style="color: #00ffcc;">Sugerencia de Arquitectura:</span> Considera usar el patrón <strong>Controller / Manager</strong>: crea una única Materia vacía central con un solo script controlador que mantenga un array con la referencia a todos estos objetos y los mueva o actualice dentro de un único bucle. Esto reduce el overhead en el hilo de ejecución de Javascript del motor de <strong>O(N)</strong> llamadas de ciclo de vida a <strong>O(1)</strong> llamadas, mejorando sustancialmente los FPS.`;
+                }
+
                 advancedAdvices.push(`
                     <div style="background: #2b1f11; border-left: 4px solid #ffaa00; padding: 10px; margin-bottom: 8px; border-radius: 4px;">
-                        <strong style="color: #ffaa00; font-size: 1.05em;">📦 Redundancia de Script Detectada: "${scriptName}"</strong>
+                        <strong style="color: #ffaa00; font-size: 1.05em;">${title}</strong>
                         <div style="margin-top: 4px; color: #ddd; font-size: 0.95em; line-height: 1.4;">
-                            Hay <strong>${materiaNames.length} objetos independientes</strong> ejecutando el script <code>${scriptName}</code> en su bucle update() individual.
-                            <br><span style="color: #00ffcc;">Sugerencia de Arquitectura:</span> Considera usar el patrón <strong>Controller / Manager</strong>: crea una única Materia vacía central con un solo script controlador que mantenga un array con la referencia a todos estos objetos y los mueva o actualice dentro de un único bucle. Esto reduce el overhead en el hilo de ejecución de Javascript del motor de <strong>O(N)</strong> llamadas de ciclo de vida a <strong>O(1)</strong> llamadas, mejorando sustancialmente los FPS.
+                            ${body}
                         </div>
                     </div>
                 `);
@@ -606,12 +651,35 @@ export function update() {
 
     // 2. High Draw Calls & Batching advice
     if (displayMetrics.drawCalls > 100) {
+        let title = '';
+        let body = '';
+        if (lang === 'EN') {
+            title = `⚠️ High Draw Calls (Draw Calls: ${displayMetrics.drawCalls})`;
+            body = `The number of elements rendered separately is exceeding the recommended WebGL limits for mobile browsers and standard laptops.
+                    <br><span style="color: #00ffcc;">Optimization Suggestion:</span> Group your sprites using <strong>Sprite Sheets</strong> or combine static 3D meshes into a single combined static prefab. Activating the Batching system will drastically reduce CPU-GPU communications and prevent severe FPS drops.`;
+        } else if (lang === 'PT') {
+            title = `⚠️ Altas Chamadas de Desenho (Draw Calls: ${displayMetrics.drawCalls})`;
+            body = `O número de elementos renderizados separadamente está excedendo os limites recomendados do WebGL para navegadores móveis e laptops padrão.
+                    <br><span style="color: #00ffcc;">Sugestão de Otimização:</span> Agrupe seus sprites usando <strong>Sprite Sheets (Folhas de Sprites)</strong> ou combine malhas 3D estáticas em um único prefab estático combinado. A ativação do sistema de Batching reduzirá drasticamente as comunicações CPU-GPU e evitará quedas severas de FPS.`;
+        } else if (lang === 'RU') {
+            title = `⚠️ Высокое число вызовов отрисовки (Draw Calls: ${displayMetrics.drawCalls})`;
+            body = `Количество элементов, рендеримых отдельно, превышает рекомендуемые лимиты WebGL для мобильных браузеров и стандартных ноутбуков.
+                    <br><span style="color: #00ffcc;">Предложение по оптимизации:</span> Группируйте спрайты с помощью <strong>атласов спрайтов (Sprite Sheets)</strong> или объединяйте статические 3D-меши в один комбинированный статический префаб. Активация пакетной отрисовки (Batching) резко сократит обмен данными между CPU и GPU и предотвратит серьезные падения FPS.`;
+        } else if (lang === 'ZH') {
+            title = `⚠️ 绘制调用过高 (Draw Calls: ${displayMetrics.drawCalls})`;
+            body = `单独渲染的元素数量正超出移动浏览器和标准笔记本电脑推荐 de WebGL 限制。
+                    <br><span style="color: #00ffcc;">优化建议：</span> 使用 <strong>精灵图 (Sprite Sheets)</strong> 分组您的精灵，或将静态 3D 网格合并为单个组合静态预制件。激活批处理 (Batching) 系统将彻底减少 CPU 与 GPU 的通信，并防止严重的 FPS 下降。`;
+        } else {
+            title = `⚠️ Llamadas de Dibujo Elevadas (Draw Calls: ${displayMetrics.drawCalls})`;
+            body = `El número de elementos renderizados por separado está superando los límites recomendados de WebGL para navegadores móviles y laptops estándar.
+                    <br><span style="color: #00ffcc;">Sugerencia de Optimización:</span> Agrupa tus sprites usando <strong>Hojas de Sprites (Sprite Sheets)</strong> o combina mallas estáticas 3D en un único prefab estático combinado. Activar el sistema de Batching reducirá drásticamente las comunicaciones CPU-GPU y evitará caídas severas de FPS.`;
+        }
+
         advancedAdvices.push(`
             <div style="background: #2d1313; border-left: 4px solid #ff4444; padding: 10px; margin-bottom: 8px; border-radius: 4px;">
-                <strong style="color: #ff4444; font-size: 1.05em;">⚠️ Llamadas de Dibujo Elevadas (Draw Calls: ${displayMetrics.drawCalls})</strong>
+                <strong style="color: #ff4444; font-size: 1.05em;">${title}</strong>
                 <div style="margin-top: 4px; color: #ddd; font-size: 0.95em; line-height: 1.4;">
-                    El número de elementos renderizados por separado está superando los límites recomendados de WebGL para navegadores móviles y laptops estándar.
-                    <br><span style="color: #00ffcc;">Sugerencia de Optimización:</span> Agrupa tus sprites usando <strong>Hojas de Sprites (Sprite Sheets)</strong> o combina mallas estáticas 3D en un único prefab estático combinado. Activar el sistema de Batching reducirá drásticamente las comunicaciones CPU-GPU y evitará caídas severas de FPS.
+                    ${body}
                 </div>
             </div>
         `);
@@ -619,21 +687,56 @@ export function update() {
 
     // 3. Dynamic RAM growth rate warnings (Memory Leak heuristic)
     if (parseFloat(displayRamGrowth) > 1.5) {
+        let warningText = '';
+        if (lang === 'EN') {
+            warningText = `🚨 <strong>Excessive RAM Consumption (+${displayRamGrowth} MB/s)</strong>: The memory allocation rate is critically high. This usually indicates a <strong>memory leak (Memory Leak)</strong> caused by repetitive instantiation of objects (e.g., projectiles or particles) without destroying them, or storing references in cumulative global arrays.`;
+        } else if (lang === 'PT') {
+            warningText = `🚨 <strong>Consumo Excessivo de RAM (+${displayRamGrowth} MB/s)</strong>: A taxa de alocação de memória está criticamente alta. Isso geralmente indica um <strong>vazamento de memória (Memory Leak)</strong> causado pela instanciação repetitiva de objetos (por exemplo, projéteis ou partículas) sem destruí-los, ou armazenamento de referências em arrays globais acumulativos.`;
+        } else if (lang === 'RU') {
+            warningText = `🚨 <strong>Чрезмерное потребление оперативной памяти (+${displayRamGrowth} МБ/с)</strong>: Скорость выделения памяти критически высока. Обычно это указывает на <strong>утечку памяти (Memory Leak)</strong>, вызванную повторяющимся созданием объектов (например, снарядов или частиц) без их уничтожения или сохранением ссылок в глобальных массивах.`;
+        } else if (lang === 'ZH') {
+            warningText = `🚨 <strong>内存消耗过高 (+${displayRamGrowth} MB/s)</strong>: 内存分配率极高。这通常表示存在<strong>内存泄漏 (Memory Leak)</strong>，可能是由于重复实例化对象 (例如子弹或粒子) 而未销毁，或者在全局数组中累积存储了引用。`;
+        } else {
+            warningText = `🚨 <strong>Consumo Excesivo de RAM (+${displayRamGrowth} MB/s)</strong>: La tasa de asignación de memoria es críticamente alta. Esto suele indicar una <strong>fuga de memoria (Memory Leak)</strong> causada por instanciación repetitiva de objetos (por ejemplo, proyectiles o partículas) sin destruir, o almacenamiento de referencias en arrays globales acumulativos.`;
+        }
         criticalBottlenecks.push(`
             <div style="background: #2d1313; border-left: 4px solid #ff4444; padding: 8px 12px; margin-bottom: 6px; border-radius: 4px; font-size: 0.95em;">
-                🚨 <strong>Consumo Excesivo de RAM (+${displayRamGrowth} MB/s)</strong>: La tasa de asignación de memoria es críticamente alta. Esto suele indicar una <strong>fuga de memoria (Memory Leak)</strong> causada por instanciación repetitiva de objetos (por ejemplo, proyectiles o partículas) sin destruir, o almacenamiento de referencias en arrays globales acumulativos.
+                ${warningText}
             </div>
         `);
     }
 
     // 4. Overlighting & Shader overload warnings
     if (displayMetrics.lightsCount > 8) {
+        let title = '';
+        let body = '';
+        if (lang === 'EN') {
+            title = `💡 Excess of Dynamic Lights (${displayMetrics.lightsCount} active)`;
+            body = `Rendering multiple dynamic lights forces WebGL to recalculate pixel shading (Fragment Shader) multiple times for each illuminated object.
+                    <br><span style="color: #00ffcc;">Optimization Suggestion:</span> Disable lights that are outside the field of view of the main camera (Frustum Culling) or consider simulating secondary lights using pre-designed static gradient textures.`;
+        } else if (lang === 'PT') {
+            title = `💡 Excesso de Luzes Dinâmicas (${displayMetrics.lightsCount} ativas)`;
+            body = `A renderização de várias luzes dinâmicas força o WebGL a recalcular o sombreamento de pixels (Fragment Shader) várias vezes para cada objeto iluminado.
+                    <br><span style="color: #00ffcc;">Sugestão de Otimização:</span> Desative as luzes que estão fora do campo de visão da câmera principal (Frustum Culling) ou considere simular luzes secundárias usando texturas de gradiente estático pré-desenhadas.`;
+        } else if (lang === 'RU') {
+            title = `💡 Избыток динамических источников света (${displayMetrics.lightsCount} активных)`;
+            body = `Рендеринг нескольких динамических источников света заставляет WebGL многократно пересчитывать пиксельное затенение (Fragment Shader) для каждого освещенного объекта.
+                    <br><span style="color: #00ffcc;">Предложение по оптимизации:</span> Отключите источники света, находящиеся вне поля зрения основной камеры (Frustum Culling), или рассмотрите возможность имитации вторичного освещения с помощью предварительно созданных статических текстур градиента.`;
+        } else if (lang === 'ZH') {
+            title = `💡 动态光源过多 (当前激活 ${displayMetrics.lightsCount} 个)`;
+            body = `渲染多个动态光源会迫使 WebGL 为每个受光照物体多次重新计算像素着色 (Fragment Shader)。
+                    <br><span style="color: #00ffcc;">优化建议：</span> 禁用主摄像机视野之外的光源 (Frustum Culling)，或考虑使用预先设计的静态渐变纹理来模拟辅助光源。`;
+        } else {
+            title = `💡 Exceso de Luces Dinámicas (${displayMetrics.lightsCount} activas)`;
+            body = `El renderizado de múltiples luces dinámicas fuerza a WebGL a recalcular el sombreado de píxeles (Fragment Shader) de forma múltiple para cada objeto iluminado.
+                    <br><span style="color: #00ffcc;">Sugerencia de Optimización:</span> Desactiva las luces que estén fuera del campo de visión de la cámara principal (Frustum Culling) o considera simular luces secundarias usando texturas de gradiente estáticas pre-diseñadas.`;
+        }
+
         advancedAdvices.push(`
             <div style="background: #2b1f11; border-left: 4px solid #ff9900; padding: 10px; margin-bottom: 8px; border-radius: 4px;">
-                <strong style="color: #ff9900; font-size: 1.05em;">💡 Exceso de Luces Dinámicas (${displayMetrics.lightsCount} activas)</strong>
+                <strong style="color: #ff9900; font-size: 1.05em;">${title}</strong>
                 <div style="margin-top: 4px; color: #ddd; font-size: 0.95em; line-height: 1.4;">
-                    El renderizado de múltiples luces dinámicas fuerza a WebGL a recalcular el sombreado de píxeles (Fragment Shader) de forma múltiple para cada objeto iluminado.
-                    <br><span style="color: #00ffcc;">Sugerencia de Optimización:</span> Desactiva las luces que estén fuera del campo de visión de la cámara principal (Frustum Culling) o considera simular luces secundarias usando texturas de gradiente estáticas pre-diseñadas.
+                    ${body}
                 </div>
             </div>
         `);
@@ -641,12 +744,35 @@ export function update() {
 
     // 5. Static Colliders mutating transforms warning
     if (displayMetrics.collidersCount > 20 && displayMetrics.rigidbodiesCount < displayMetrics.collidersCount * 0.4) {
+        let title = '';
+        let body = '';
+        if (lang === 'EN') {
+            title = `⚙️ Physical Tree Structure (AABB Tree)`;
+            body = `You have <strong>${displayMetrics.collidersCount} active colliders</strong> and only <strong>${displayMetrics.rigidbodiesCount} physical bodies (Rigidbodies)</strong>.
+                    <br><span style="color: #00ffcc;">Best Practices Suggestion:</span> Make sure static colliders remain motionless. Moving an object with a collider but without a Rigidbody using direct transform scripts forces the physics engine to regenerate and recalculate the entire spatial tree every frame, consuming critical CPU time. Use <strong>Kinematic</strong> Rigidbody components if objects must move procedurally.`;
+        } else if (lang === 'PT') {
+            title = `⚙️ Estrutura da Árvore Física (Árvore AABB)`;
+            body = `Você tem <strong>${displayMetrics.collidersCount} colididores</strong> ativos e apenas <strong>${displayMetrics.rigidbodiesCount} corpos físicos (Rigidbodies)</strong>.
+                    <br><span style="color: #00ffcc;">Sugestão de Boas Práticas:</span> Certifique-se de que os colididores estáticos permaneçam imóveis. Mover un objeto com colididor mas sem Rigidbody através de scripts de transformação direta força o motor de física a regenerar e recalcular a árvore espacial inteira a cada frame, consumindo tempo crítico de CPU. Use componentes Rigidbody tipo <strong>Kinematic</strong> se os objetos devem se mover de forma procedural.`;
+        } else if (lang === 'RU') {
+            title = `⚙️ Структура физического дерева (AABB Tree)`;
+            body = `У вас есть <strong>${displayMetrics.collidersCount} активных коллайдеров</strong> и только <strong>${displayMetrics.rigidbodiesCount} физических тел (Rigidbodies)</strong>.
+                    <br><span style="color: #00ffcc;">Рекомендация:</span> Убедитесь, что статические коллайдеры остаются неподвижными. Перемещение объекта с коллайдером, но без Rigidbody с помощью прямых скриптов трансформации заставляет физический движок перестраивать и пересчитывать все пространственное дерево каждый кадр, расходуя драгоценное время процессора. Используйте компоненты Rigidbody типа <strong>Kinematic</strong>, если объекты должны перемещаться процедурно.`;
+        } else if (lang === 'ZH') {
+            title = `⚙️ 物理树结构 (AABB Tree)`;
+            body = `您当前激活了 <strong>${displayMetrics.collidersCount} 个碰撞体</strong>，而只有 <strong>${displayMetrics.rigidbodiesCount} 个刚体 (Rigidbodies)</strong>。
+                    <br><span style="color: #00ffcc;">最佳实践建议：</span> 确保静态碰撞体保持静止。使用直接变换脚本移动带有碰撞体但没有刚体的物体，会迫使物理引擎在每帧重新生成和重新计算整个空间树，从而消耗关键的 CPU 时间。如果物体必须以程序化方式移动，请使用 <strong>Kinematic</strong> 类型的刚体组件。`;
+        } else {
+            title = `⚙️ Estructura del Árbol Físico (AABB Tree)`;
+            body = `Tienes <strong>${displayMetrics.collidersCount} colisionadores</strong> activos y solo <strong>${displayMetrics.rigidbodiesCount} cuerpos físicos (Rigidbodies)</strong>.
+                    <br><span style="color: #00ffcc;">Sugerencia de Buenas Prácticas:</span> Asegúrate de que los colisionadores estáticos permanezcan inmóviles. Mover un objeto con colisionador pero sin Rigidbody mediante scripts de transformación directa fuerza al motor físico a regenerar y recalcular el árbol espacial entero cada fotograma, consumiendo tiempo crítico de CPU. Usa componentes Rigidbody tipo <strong>Kinematic</strong> si los objetos deben moverse de forma procedural.`;
+        }
+
         advancedAdvices.push(`
             <div style="background: #17271e; border-left: 4px solid #00C851; padding: 10px; margin-bottom: 8px; border-radius: 4px;">
-                <strong style="color: #00C851; font-size: 1.05em;">⚙️ Estructura del Árbol Físico (AABB Tree)</strong>
+                <strong style="color: #00C851; font-size: 1.05em;">${title}</strong>
                 <div style="margin-top: 4px; color: #ddd; font-size: 0.95em; line-height: 1.4;">
-                    Tienes <strong>${displayMetrics.collidersCount} colisionadores</strong> activos y solo <strong>${displayMetrics.rigidbodiesCount} cuerpos físicos (Rigidbodies)</strong>.
-                    <br><span style="color: #00ffcc;">Sugerencia de Buenas Prácticas:</span> Asegúrate de que los colisionadores estáticos permanezcan inmóviles. Mover un objeto con colisionador pero sin Rigidbody mediante scripts de transformación directa fuerza al motor físico a regenerar y recalcular el árbol espacial entero cada fotograma, consumiendo tiempo crítico de CPU. Usa componentes Rigidbody tipo <strong>Kinematic</strong> si los objetos deben moverse de forma procedural.
+                    ${body}
                 </div>
             </div>
         `);
@@ -654,12 +780,35 @@ export function update() {
 
     // UI and Canvas suggestions
     if (displayMetrics.uiElements > 40) {
+        let title = '';
+        let body = '';
+        if (lang === 'EN') {
+            title = `🖥️ UI Elements Overload (Canvas: ${displayMetrics.uiElements} active)`;
+            body = `You have many active UI interface elements on the Canvas. Each text change or image position change forces the GPU Canvas to recalculate its polygons and redraw (Batch Rebuild).
+                    <br><span style="color: #00ffcc;">Suggestion:</span> Disable entire UI panels that are not in use (<code>materia.isActive = false</code>) instead of hiding them individually, so they are excluded from the draw tree.`;
+        } else if (lang === 'PT') {
+            title = `🖥️ Sobrecarga de Elementos de UI (Canvas: ${displayMetrics.uiElements} ativos)`;
+            body = `Você tem muitos elementos de interface de UI ativos no Canvas. Cada mudança de texto ou posição de imagem força o Canvas da GPU a recalcular seus polígonos e se redesenhar (Batch Rebuild).
+                    <br><span style="color: #00ffcc;">Sugestão:</span> Desative painéis inteiros de UI que não estejam em uso (<code>materia.isActive = false</code>) em vez de ocultá-los individualmente, para que sejam excluídos da árvore de desenho.`;
+        } else if (lang === 'RU') {
+            title = `🖥️ Перегрузка элементов интерфейса (Canvas: ${displayMetrics.uiElements} активных)`;
+            body = `У вас много активных элементов интерфейса на Canvas. Каждое изменение текста или положения изображения заставляет GPU Canvas пересчитывать полигоны и перерисовываться (Batch Rebuild).
+                    <br><span style="color: #00ffcc;">Рекомендация:</span> Отключайте панели пользовательского интерфейса целиком, когда они не используются (<code>materia.isActive = false</code>), вместо того чтобы скрывать их по отдельности, чтобы они полностью исключались из дерева отрисовки.`;
+        } else if (lang === 'ZH') {
+            title = `🖥️ UI 元素过载 (当前激活了 ${displayMetrics.uiElements} 个 Canvas)`;
+            body = `您在 Canvas 上激活了许多 UI 界面元素。每次文本更改或图像位置更改都会迫使 GPU Canvas 重新计算其多边形并重新绘制 (Batch Rebuild)。
+                    <br><span style="color: #00ffcc;">建议：</span> 禁用不使用的整个 UI 面板 (<code>materia.isActive = false</code>)，而不是单独隐藏它们，从而将它们排除在绘制树之外。`;
+        } else {
+            title = `🖥️ Sobrecarga de Elementos UI (Canvas: ${displayMetrics.uiElements} activos)`;
+            body = `Tienes muchos elementos de interfaz UI activos en el Canvas. Cada cambio de texto o posición de imagen fuerza al Canvas de la GPU a re-calcular sus polígonos y redibujarse (Batch Rebuild).
+                    <br><span style="color: #00ffcc;">Sugerencia:</span> Desactiva paneles completos de UI que no estén en uso (<code>materia.isActive = false</code>) en lugar de esconderlos individualmente, de modo que queden excluidos del árbol de dibujo.`;
+        }
+
         advancedAdvices.push(`
             <div style="background: #1e1e2d; border-left: 4px solid #00b4ff; padding: 10px; margin-bottom: 8px; border-radius: 4px;">
-                <strong style="color: #00b4ff; font-size: 1.05em;">🖥️ Sobrecarga de Elementos UI (Canvas: ${displayMetrics.uiElements} activos)</strong>
+                <strong style="color: #00b4ff; font-size: 1.05em;">${title}</strong>
                 <div style="margin-top: 4px; color: #ddd; font-size: 0.95em; line-height: 1.4;">
-                    Tienes muchos elementos de interfaz UI activos en el Canvas. Cada cambio de texto o posición de imagen fuerza al Canvas de la GPU a re-calcular sus polígonos y redibujarse (Batch Rebuild).
-                    <br><span style="color: #00ffcc;">Sugerencia:</span> Desactiva paneles completos de UI que no estén en uso (<code>materia.isActive = false</code>) en lugar de esconderlos individualmente, de modo que queden excluidos del árbol de dibujo.
+                    ${body}
                 </div>
             </div>
         `);
@@ -667,9 +816,28 @@ export function update() {
 
     // Empty state fallback for advices
     if (advancedAdvices.length === 0 && criticalBottlenecks.length === 0) {
+        let title = '';
+        let body = '';
+        if (lang === 'EN') {
+            title = `✅ The scene is in an optimal state!`;
+            body = `No code redundancies, WebGL draw call issues, overloaded interface elements, or obvious memory leaks have been detected. Everything runs under the highest performance standards.`;
+        } else if (lang === 'PT') {
+            title = `✅ A cena está em um estado ideal!`;
+            body = `Nenhuma redundância de código, problemas de chamada de desenho do WebGL, elementos de interface sobrecarregados ou vazamentos óbvios de memória foram detectados. Tudo funciona sob os mais altos padrões de desempenho.`;
+        } else if (lang === 'RU') {
+            title = `✅ Сцена находится в оптимальном состоянии!`;
+            body = `Не обнаружено избыточности кода, проблем с вызовами отрисовки WebGL, перегруженных элементов интерфейса или явных утечек памяти. Все работает в соответствии с высочайшими стандартами производительности.`;
+        } else if (lang === 'ZH') {
+            title = `✅ 场景处于最佳状态！`;
+            body = `未检测到代码冗余、WebGL 绘制调用问题、过载的界面元素或明显的内存泄漏。一切都在最高性能标准下运行。`;
+        } else {
+            title = `✅ ¡La escena se encuentra en un estado óptimo!`;
+            body = `No se han detectado redundancias de código, problemas de llamadas de dibujo WebGL, elementos de interfaz sobrecargados ni fugas de memoria evidentes. Todo funciona bajo los estándares más exigentes de rendimiento.`;
+        }
+
         advancedAdvices.push(`
             <div style="background: #17271e; border-left: 4px solid #00C851; padding: 10px; margin-bottom: 8px; border-radius: 4px; font-size: 0.95em; color: #00C851;">
-                ✅ <strong>¡La escena se encuentra en un estado óptimo!</strong> No se han detectado redundancias de código, problemas de llamadas de dibujo WebGL, elementos de interfaz sobrecargados ni fugas de memoria evidentes. Todo funciona bajo los estándares más exigentes de rendimiento.
+                <strong>${title}</strong> ${body}
             </div>
         `);
     }
