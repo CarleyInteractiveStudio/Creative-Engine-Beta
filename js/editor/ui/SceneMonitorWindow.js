@@ -418,12 +418,29 @@ export function update() {
             const scriptT = (window._PerformanceMetrics && window._PerformanceMetrics.lastScriptUpdateTime) || 0;
 
             // Attribute direct cause
+            const currentLang = (window.Localization && window.Localization.currentLanguage) || 'ES';
             let attributedCause = "Procesamiento de CPU";
-            const maxTime = Math.max(renderT, physicsT, scriptT);
+            if (currentLang === 'EN') attributedCause = "CPU Processing";
+            else if (currentLang === 'PT') attributedCause = "Processamento de CPU";
+            else if (currentLang === 'RU') attributedCause = "Процессорная обработка";
+            else if (currentLang === 'ZH') attributedCause = "CPU 处理";
+
+            const leyesT = physicsT + scriptT;
+            const maxTime = Math.max(renderT, leyesT);
             if (maxTime > 1.5) {
-                if (maxTime === renderT) attributedCause = "Renderizado WebGL/2D";
-                else if (maxTime === physicsT) attributedCause = "Físicas & Colisiones";
-                else if (maxTime === scriptT) attributedCause = "Ejecución de Scripts";
+                if (maxTime === renderT) {
+                    if (currentLang === 'EN') attributedCause = "WebGL/2D Rendering";
+                    else if (currentLang === 'PT') attributedCause = "Renderização WebGL/2D";
+                    else if (currentLang === 'RU') attributedCause = "Рендеринг WebGL/2D";
+                    else if (currentLang === 'ZH') attributedCause = "WebGL/2D 渲染";
+                    else attributedCause = "Renderizado WebGL/2D";
+                } else {
+                    if (currentLang === 'EN') attributedCause = "Components Execution (Leyes)";
+                    else if (currentLang === 'PT') attributedCause = "Execução de Leis";
+                    else if (currentLang === 'RU') attributedCause = "Исполнение компонентов (Leyes)";
+                    else if (currentLang === 'ZH') attributedCause = "组件执行 (Leyes)";
+                    else attributedCause = "Ejecución de Leyes";
+                }
             }
 
             const metrics = window._PerformanceMetrics || {};
@@ -898,14 +915,45 @@ export function update() {
     if (displayComponentStats.size === 0) {
         componentStatsHtml = `<div style="color: #666; font-size: 0.9em; padding: 4px 0;">Esperando ejecuciones de componentes en escena...</div>`;
     } else {
+        let headerComponent = "Componente";
+        let headerCalls = "Llamados";
+        let headerErrors = "Errores";
+        let headerAvg = "T.Prom (ms)";
+        let headerMax = "T.Máx (ms)";
+        if (lang === 'EN') {
+            headerComponent = "Component";
+            headerCalls = "Calls";
+            headerErrors = "Errors";
+            headerAvg = "Avg (ms)";
+            headerMax = "Max (ms)";
+        } else if (lang === 'PT') {
+            headerComponent = "Componente";
+            headerCalls = "Chamados";
+            headerErrors = "Erros";
+            headerAvg = "Média (ms)";
+            headerMax = "Máx (ms)";
+        } else if (lang === 'RU') {
+            headerComponent = "Компонент";
+            headerCalls = "Вызовы";
+            headerErrors = "Ошибки";
+            headerAvg = "Ср. (мс)";
+            headerMax = "Макс. (мс)";
+        } else if (lang === 'ZH') {
+            headerComponent = "组件 / 脚本";
+            headerCalls = "调用次数";
+            headerErrors = "错误数";
+            headerAvg = "平均值 (ms)";
+            headerMax = "最大值 (ms)";
+        }
+
         componentStatsHtml = `<table style="width: 100%; border-collapse: collapse; font-size: 0.85em; text-align: left; font-family: monospace; color: #ddd;">
             <thead>
                 <tr style="border-bottom: 1px solid #333; color: #888; font-weight: bold; height: 20px;">
-                    <th style="padding: 2px;">Componente</th>
-                    <th style="padding: 2px; text-align: right;">Llamados</th>
-                    <th style="padding: 2px; text-align: right; color: #ff4444;">Errores</th>
-                    <th style="padding: 2px; text-align: right;">T.Prom (ms)</th>
-                    <th style="padding: 2px; text-align: right;">T.Máx (ms)</th>
+                    <th style="padding: 2px;">${headerComponent}</th>
+                    <th style="padding: 2px; text-align: right;">${headerCalls}</th>
+                    <th style="padding: 2px; text-align: right; color: #ff4444;">${headerErrors}</th>
+                    <th style="padding: 2px; text-align: right;">${headerAvg}</th>
+                    <th style="padding: 2px; text-align: right;">${headerMax}</th>
                 </tr>
             </thead>
             <tbody>`;
@@ -927,61 +975,100 @@ export function update() {
     }
 
     // Build process attribution sparkline metrics
-    let renderPct = 0, physicsPct = 0, scriptPct = 0;
+    let renderPct = 0, leyesPct = 0;
     const rT = (window._PerformanceMetrics && window._PerformanceMetrics.lastRenderTime) || 0;
     const pT = (window._PerformanceMetrics && window._PerformanceMetrics.lastPhysicsTime) || 0;
     const sT = (window._PerformanceMetrics && window._PerformanceMetrics.lastScriptUpdateTime) || 0;
-    const totalT = rT + pT + sT;
+    const leyesT = pT + sT;
+    const totalT = rT + leyesT;
 
     if (totalT > 0) {
         renderPct = ((rT / totalT) * 100).toFixed(0);
-        physicsPct = ((pT / totalT) * 100).toFixed(0);
-        scriptPct = ((sT / totalT) * 100).toFixed(0);
+        leyesPct = ((leyesT / totalT) * 100).toFixed(0);
     }
 
     let inspectedFrameHtml = '';
     if (inspectedFrame) {
         const inf = inspectedFrame;
-        const totalInfT = inf.render + inf.physics + inf.script;
+        const leyesInfT = inf.physics + inf.script;
         const hasDetails = inf.detailedEnabled;
+
+        let labelSpeed = "Velocidad:";
+        let labelMainLoad = "Carga Principal:";
+        let labelRenderTime = "Tiempo Render:";
+        let labelLeyesTime = "Tiempo Leyes:";
+        let closeInspectText = "Cerrar Inspección";
+        let detailTitle = "Detalle del Fotograma Inspeccionado";
+        let detailPlaceholder = "El perfilado detallado estaba desactivado para este fotograma. Activa \"Perfilado Detallado\" arriba a la izquierda para capturar conteo exacto de sprites, scripts, luces y colisiones en futuros fotogramas.";
+
+        if (lang === 'EN') {
+            labelSpeed = "Speed:";
+            labelMainLoad = "Main Load:";
+            labelRenderTime = "Render Time:";
+            labelLeyesTime = "Laws Time:";
+            closeInspectText = "Close Inspection";
+            detailTitle = "Inspected Frame Details";
+            detailPlaceholder = "Detailed profiling was disabled for this frame. Check \"Detailed Profiling\" on the top left to capture exact sprite, script, light and collision metrics on future frames.";
+        } else if (lang === 'PT') {
+            labelSpeed = "Velocidade:";
+            labelMainLoad = "Carga Principal:";
+            labelRenderTime = "Tempo Render:";
+            labelLeyesTime = "Tempo Leis:";
+            closeInspectText = "Fechar Inspeção";
+            detailTitle = "Detalhe do Fotograma Inspecionado";
+            detailPlaceholder = "O perfilamento detalhado estava desativado para este fotograma. Ative \"Perfilamento Detalhado\" no canto superior esquerdo para capturar a contagem exata de sprites, scripts, luzes e colisões em futuros fotogramas.";
+        } else if (lang === 'RU') {
+            labelSpeed = "Скорость:";
+            labelMainLoad = "Осн. Нагрузка:";
+            labelRenderTime = "Время рендера:";
+            labelLeyesTime = "Время законов (Leyes):";
+            closeInspectText = "Закрыть Просмотр";
+            detailTitle = "Детали инспектируемого кадра";
+            detailPlaceholder = "Подробное профилирование было отключено для этого кадра. Включите \"Детальный Профиль\" вверху слева, чтобы собирать точную статистику спрайтов, скриптов, источников света и столкновений.";
+        } else if (lang === 'ZH') {
+            labelSpeed = "速度:";
+            labelMainLoad = "主要负载:";
+            labelRenderTime = "渲染时间:";
+            labelLeyesTime = "组件/脚本时间 (Leyes):";
+            closeInspectText = "关闭监视";
+            detailTitle = "已检查帧详情";
+            detailPlaceholder = "此帧已禁用详细剖析。请勾选左上角的“详细剖析”以捕获未来帧中的精确精灵、脚本、光源及碰撞数。";
+        }
 
         inspectedFrameHtml = `
             <div style="background: #2b2b11; border: 1px solid #ffeb3b; padding: 12px; margin-bottom: 12px; border-radius: 6px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <strong style="color: #ffeb3b; font-size: 1.1em;">🔍 Detalle del Fotograma Inspeccionado #${inf.frameIndex}</strong>
-                    <button id="btn-close-inspect" style="background: #222; border: 1px solid #555; color: #fff; border-radius: 3px; padding: 2px 8px; cursor: pointer; font-size: 0.85em;">Cerrar Inspección</button>
+                    <strong style="color: #ffeb3b; font-size: 1.1em;">🔍 ${detailTitle} #${inf.frameIndex}</strong>
+                    <button id="btn-close-inspect" style="background: #222; border: 1px solid #555; color: #fff; border-radius: 3px; padding: 2px 8px; cursor: pointer; font-size: 0.85em;">${closeInspectText}</button>
                 </div>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; font-size: 0.9em; line-height: 1.4;">
                     <div>
-                        <span style="color: #888;">Velocidad:</span> <strong style="color: #00ffcc;">${inf.fps.toFixed(1)} FPS</strong>
+                        <span style="color: #888;">${labelSpeed}</span> <strong style="color: #00ffcc;">${inf.fps.toFixed(1)} FPS</strong>
                     </div>
                     <div>
-                        <span style="color: #888;">Carga Principal:</span> <strong style="color: #ffaa00;">${inf.attributedCause}</strong>
+                        <span style="color: #888;">${labelMainLoad}</span> <strong style="color: #ffaa00;">${inf.attributedCause}</strong>
                     </div>
                     <div>
-                        <span style="color: #888;">Tiempo Render:</span> <strong style="color: #ff4d4d;">${inf.render.toFixed(2)} ms</strong>
+                        <span style="color: #888;">${labelRenderTime}</span> <strong style="color: #ff4d4d;">${inf.render.toFixed(2)} ms</strong>
                     </div>
                     <div>
-                        <span style="color: #888;">Tiempo Físicas:</span> <strong style="color: #2ecc71;">${inf.physics.toFixed(2)} ms</strong>
-                    </div>
-                    <div>
-                        <span style="color: #888;">Tiempo Scripts:</span> <strong style="color: #f1c40f;">${inf.script.toFixed(2)} ms</strong>
+                        <span style="color: #888;">${labelLeyesTime}</span> <strong style="color: #2ecc71;">${leyesInfT.toFixed(2)} ms</strong>
                     </div>
                 </div>
                 <div style="border-top: 1px solid rgba(255,255,255,0.08); margin-top: 8px; padding-top: 8px; font-size: 0.85em;">
                     ${hasDetails ? `
                         <div style="display: flex; gap: 15px; flex-wrap: wrap; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px;">
-                            <div style="flex: 1; min-width: 120px;">🖼️ <strong style="color: #00b4ff;">Sprites Dibujados:</strong> ${inf.spritesDrawn}</div>
-                            <div style="flex: 1; min-width: 120px;">🎨 <strong style="color: #ff6b6b;">Texturas/Formas:</strong> ${inf.texturesDrawn}</div>
-                            <div style="flex: 1; min-width: 120px;">🧱 <strong style="color: #ffd166;">Celdas Tilemap:</strong> ${inf.tilesDrawn}</div>
-                            <div style="flex: 1; min-width: 120px;">💡 <strong style="color: #ef476f;">Luces Dibujadas:</strong> ${inf.lightsDrawn}</div>
-                            <div style="flex: 1; min-width: 120px;">🖥️ <strong style="color: #06d6a0;">UIs Dibujadas:</strong> ${inf.uiElementsDrawn}</div>
-                            <div style="flex: 1; min-width: 120px;">📜 <strong style="color: #a8dadc;">Scripts Ejecutados:</strong> ${inf.scriptsRun}</div>
-                            <div style="flex: 1; min-width: 120px;">⚡ <strong style="color: #e63946;">Colisiones Evaluadas:</strong> ${inf.collisionsChecked}</div>
+                            ${inf.spritesDrawn > 0 ? `<div style="flex: 1; min-width: 120px;">🖼️ <strong style="color: #00b4ff;">${lang === 'EN' ? 'Sprites Drawn' : lang === 'PT' ? 'Sprites Desenhados' : lang === 'RU' ? 'Спрайтов нарисовано' : lang === 'ZH' ? '绘制精灵数' : 'Sprites Dibujados'}:</strong> ${inf.spritesDrawn}</div>` : ''}
+                            ${inf.texturesDrawn > 0 ? `<div style="flex: 1; min-width: 120px;">🎨 <strong style="color: #ff6b6b;">${lang === 'EN' ? 'Textures/Shapes' : lang === 'PT' ? 'Texturas/Formas' : lang === 'RU' ? 'Текстур/Форм' : lang === 'ZH' ? '纹理/形状数' : 'Texturas/Formas'}:</strong> ${inf.texturesDrawn}</div>` : ''}
+                            ${inf.tilesDrawn > 0 ? `<div style="flex: 1; min-width: 120px;">🧱 <strong style="color: #ffd166;">${lang === 'EN' ? 'Tilemap Cells' : lang === 'PT' ? 'Células de Tilemap' : lang === 'RU' ? 'Ячеек тайлмепа' : lang === 'ZH' ? '绘制瓦片数' : 'Celdas Tilemap'}:</strong> ${inf.tilesDrawn}</div>` : ''}
+                            ${inf.lightsDrawn > 0 ? `<div style="flex: 1; min-width: 120px;">💡 <strong style="color: #ef476f;">${lang === 'EN' ? 'Lights Drawn' : lang === 'PT' ? 'Luzes Desenhadas' : lang === 'RU' ? 'Источников света' : lang === 'ZH' ? '绘制光源数' : 'Luces Dibujadas'}:</strong> ${inf.lightsDrawn}</div>` : ''}
+                            ${inf.uiElementsDrawn > 0 ? `<div style="flex: 1; min-width: 120px;">🖥️ <strong style="color: #06d6a0;">${lang === 'EN' ? 'UIs Drawn' : lang === 'PT' ? 'UIs Desenhadas' : lang === 'RU' ? 'Элементов UI' : lang === 'ZH' ? '绘制UI数' : 'UIs Dibujadas'}:</strong> ${inf.uiElementsDrawn}</div>` : ''}
+                            ${inf.scriptsRun > 0 ? `<div style="flex: 1; min-width: 120px;">📜 <strong style="color: #a8dadc;">${lang === 'EN' ? 'Scripts Run' : lang === 'PT' ? 'Scripts Executados' : lang === 'RU' ? 'Скриптов запущено' : lang === 'ZH' ? '运行脚本数' : 'Scripts Ejecutados'}:</strong> ${inf.scriptsRun}</div>` : ''}
+                            ${inf.collisionsChecked > 0 ? `<div style="flex: 1; min-width: 120px;">⚡ <strong style="color: #e63946;">${lang === 'EN' ? 'Collisions Evaluated' : lang === 'PT' ? 'Colisões Avaliadas' : lang === 'RU' ? 'Проверок столкновений' : lang === 'ZH' ? '碰撞评估数' : 'Colisiones Evaluadas'}:</strong> ${inf.collisionsChecked}</div>` : ''}
                         </div>
                     ` : `
                         <div style="color: #aaa; text-align: center; font-style: italic; background: rgba(255,255,255,0.03); padding: 6px; border-radius: 4px;">
-                            El perfilado detallado estaba desactivado para este fotograma. Activa "Perfilado Detallado" arriba a la izquierda para capturar conteo exacto de sprites, scripts, luces y colisiones en futuros fotogramas.
+                            ${detailPlaceholder}
                         </div>
                     `}
                 </div>
@@ -1043,25 +1130,136 @@ export function update() {
 
     const dynamicContent = document.getElementById('scene-monitor-dynamic-content');
     if (dynamicContent) {
+        // Build telemetry items dynamically (excluding 0-count elements)
+        const telemetryItems = [];
+        let totalMateriasLabel = "Materias Totales";
+        if (lang === 'EN') totalMateriasLabel = "Total Materias";
+        else if (lang === 'PT') totalMateriasLabel = "Materias Totais";
+        else if (lang === 'RU') totalMateriasLabel = "Всего Материй";
+        else if (lang === 'ZH') totalMateriasLabel = "物体总数";
+        telemetryItems.push(`
+            <div style="flex: 1; min-width: 100px; background: #151515; padding: 6px; border-radius: 4px; text-align: center;">
+                <div style="color: #888; font-weight: bold;">${totalMateriasLabel}</div>
+                <div style="font-size: 1.3em; color: #fff; font-weight: bold; margin-top: 4px;">${displayMetrics.totalMaterias}</div>
+            </div>
+        `);
+
+        if (displayMetrics.collidersCount > 0) {
+            let collidersLabel = "Colisionadores";
+            if (lang === 'EN') collidersLabel = "Colliders";
+            else if (lang === 'PT') collidersLabel = "Colididores";
+            else if (lang === 'RU') collidersLabel = "Коллайдеры";
+            else if (lang === 'ZH') collidersLabel = "碰撞体";
+            telemetryItems.push(`
+                <div style="flex: 1; min-width: 100px; background: #151515; padding: 6px; border-radius: 4px; text-align: center;">
+                    <div style="color: #888; font-weight: bold;">${collidersLabel}</div>
+                    <div style="font-size: 1.3em; color: #00ffcc; font-weight: bold; margin-top: 4px;">${displayMetrics.collidersCount}</div>
+                </div>
+            `);
+        }
+
+        if (displayMetrics.scriptsCount > 0) {
+            let scriptsLabel = "Scripts Activos";
+            if (lang === 'EN') scriptsLabel = "Active Scripts";
+            else if (lang === 'PT') scriptsLabel = "Scripts Ativos";
+            else if (lang === 'RU') scriptsLabel = "Активные скрипты";
+            else if (lang === 'ZH') scriptsLabel = "激活的脚本";
+            telemetryItems.push(`
+                <div style="flex: 1; min-width: 100px; background: #151515; padding: 6px; border-radius: 4px; text-align: center;">
+                    <div style="color: #888; font-weight: bold;">${scriptsLabel}</div>
+                    <div style="font-size: 1.3em; color: #ffbb33; font-weight: bold; margin-top: 4px;">${displayMetrics.scriptsCount}</div>
+                </div>
+            `);
+        }
+
+        if (displayMetrics.drawCalls > 0) {
+            let drawCallsLabel = "Draw Calls";
+            if (lang === 'ZH') drawCallsLabel = "绘制调用";
+            telemetryItems.push(`
+                <div style="flex: 1; min-width: 100px; background: #151515; padding: 6px; border-radius: 4px; text-align: center;">
+                    <div style="color: #888; font-weight: bold;">${drawCallsLabel}</div>
+                    <div style="font-size: 1.3em; color: #00b4ff; font-weight: bold; margin-top: 4px;">${displayMetrics.drawCalls}</div>
+                </div>
+            `);
+        }
+
+        if (displayMetrics.lightsCount > 0) {
+            let lightsLabel = "Luces Dinámicas";
+            if (lang === 'EN') lightsLabel = "Dynamic Lights";
+            else if (lang === 'PT') lightsLabel = "Luzes Dinâmicas";
+            else if (lang === 'RU') lightsLabel = "Динамический свет";
+            else if (lang === 'ZH') lightsLabel = "动态光源";
+            telemetryItems.push(`
+                <div style="flex: 1; min-width: 100px; background: #151515; padding: 6px; border-radius: 4px; text-align: center;">
+                    <div style="color: #888; font-weight: bold;">${lightsLabel}</div>
+                    <div style="font-size: 1.3em; color: #ff4444; font-weight: bold; margin-top: 4px;">${displayMetrics.lightsCount}</div>
+                </div>
+            `);
+        }
+
+        if (displayMetrics.uiElements > 0) {
+            let uiElementsLabel = "Elementos UI";
+            if (lang === 'EN') uiElementsLabel = "UI Elements";
+            else if (lang === 'PT') uiElementsLabel = "Elementos de UI";
+            else if (lang === 'RU') uiElementsLabel = "Элементы UI";
+            else if (lang === 'ZH') uiElementsLabel = "UI 元素";
+            telemetryItems.push(`
+                <div style="flex: 1; min-width: 100px; background: #151515; padding: 6px; border-radius: 4px; text-align: center;">
+                    <div style="color: #888; font-weight: bold;">${uiElementsLabel}</div>
+                    <div style="font-size: 1.3em; color: #e5c158; font-weight: bold; margin-top: 4px;">${displayMetrics.uiElements}</div>
+                </div>
+            `);
+        }
+
+        let labelTimeline = "📈 Gráfico de Estabilidad de FPS (Últimos 40 Fotogramas)";
+        let labelTimelineClick = "(Haz clic en una barra para inspeccionar)";
+        let labelLoadTitle = "⚙️ Atribución de Carga del Motor (Fotograma Actual)";
+        let labelRenderBreakdown = "Render";
+        let labelLeyesBreakdown = "Leyes";
+
+        if (lang === 'EN') {
+            labelTimeline = "📈 FPS Stability Chart (Last 40 Frames)";
+            labelTimelineClick = "(Click a bar to inspect)";
+            labelLoadTitle = "⚙️ Engine Load Attribution (Current Frame)";
+            labelRenderBreakdown = "Render";
+            labelLeyesBreakdown = "Laws";
+        } else if (lang === 'PT') {
+            labelTimeline = "📈 Gráfico de Estabilidade de FPS (Últimos 40 Fotogramas)";
+            labelTimelineClick = "(Clique em uma barra para inspecionar)";
+            labelLoadTitle = "⚙️ Atribuição de Carga do Motor (Fotograma Atual)";
+            labelRenderBreakdown = "Render";
+            labelLeyesBreakdown = "Leis";
+        } else if (lang === 'RU') {
+            labelTimeline = "📈 График стабильности FPS (Последние 40 кадров)";
+            labelTimelineClick = "(Нажмите на столбец для просмотра)";
+            labelLoadTitle = "⚙️ Распределение нагрузки двигателя (Текущий кадр)";
+            labelRenderBreakdown = "Рендер";
+            labelLeyesBreakdown = "Законы (Leyes)";
+        } else if (lang === 'ZH') {
+            labelTimeline = "📈 FPS 稳定性图表 (最近 40 帧)";
+            labelTimelineClick = "(点击图条以进行检查)";
+            labelLoadTitle = "⚙️ 引擎负载分配 (当前帧)";
+            labelRenderBreakdown = "渲染";
+            labelLeyesBreakdown = "组件/脚本";
+        }
+
         dynamicContent.innerHTML = `
             <!-- Visual FPS Drop Timeline & Process Attribution Sparkline -->
             <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
                 <div>
-                    <div style="font-size: 0.85em; color: #aaa; font-weight: bold; margin-bottom: 6px;">📈 Gráfico de Estabilidad de FPS (Últimos 40 Fotogramas) <span style="color: #ffaa00; font-size: 0.9em; font-weight: normal;">(Haz clic en una barra para inspeccionar)</span></div>
+                    <div style="font-size: 0.85em; color: #aaa; font-weight: bold; margin-bottom: 6px;">${labelTimeline} <span style="color: #ffaa00; font-size: 0.9em; font-weight: normal;">${labelTimelineClick}</span></div>
                     <canvas id="fps-timeline-canvas" width="360" height="70" style="width: 100%; height: 70px; background: #000; border-radius: 4px; display: block; border: 1px solid rgba(255,255,255,0.05); cursor: pointer;"></canvas>
                 </div>
                 <div style="display: flex; flex-direction: column; justify-content: center; font-size: 0.85em;">
-                    <div style="font-weight: bold; color: #aaa; margin-bottom: 6px;">⚙️ Atribución de Carga del Motor (Fotograma Actual)</div>
+                    <div style="font-weight: bold; color: #aaa; margin-bottom: 6px;">${labelLoadTitle}</div>
                     <!-- Sparkline Bar -->
                     <div style="display: flex; height: 16px; border-radius: 4px; overflow: hidden; background: #222; margin-bottom: 8px;">
-                        <div style="width: ${renderPct}%; background: #e74c3c; height: 100%;" title="Renderizado: ${renderPct}%"></div>
-                        <div style="width: ${physicsPct}%; background: #2ecc71; height: 100%;" title="Físicas: ${physicsPct}%"></div>
-                        <div style="width: ${scriptPct}%; background: #f1c40f; height: 100%;" title="Scripts: ${scriptPct}%"></div>
+                        <div style="width: ${renderPct}%; background: #e74c3c; height: 100%;" title="${labelRenderBreakdown}: ${renderPct}%"></div>
+                        <div style="width: ${leyesPct}%; background: #2ecc71; height: 100%;" title="${labelLeyesBreakdown}: ${leyesPct}%"></div>
                     </div>
                     <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 0.85em; font-family: monospace;">
-                        <span style="color: #ff4d4d;">■ Render: ${rT.toFixed(1)}ms (${renderPct}%)</span>
-                        <span style="color: #2ecc71;">■ Físicas: ${pT.toFixed(1)}ms (${physicsPct}%)</span>
-                        <span style="color: #f1c40f;">■ Scripts: ${sT.toFixed(1)}ms (${scriptPct}%)</span>
+                        <span style="color: #ff4d4d;">■ ${labelRenderBreakdown}: ${rT.toFixed(1)}ms (${renderPct}%)</span>
+                        <span style="color: #2ecc71;">■ ${labelLeyesBreakdown}: ${leyesT.toFixed(1)}ms (${leyesPct}%)</span>
                     </div>
                 </div>
             </div>
@@ -1074,30 +1272,7 @@ export function update() {
 
             <!-- Main Live Telemetry Grid -->
             <div style="display: flex; gap: 12px; font-size: 0.8em; flex-wrap: wrap;">
-                <div style="flex: 1; min-width: 100px; background: #151515; padding: 6px; border-radius: 4px; text-align: center;">
-                    <div style="color: #888; font-weight: bold;">Materias Totales</div>
-                    <div style="font-size: 1.3em; color: #fff; font-weight: bold; margin-top: 4px;">${displayMetrics.totalMaterias}</div>
-                </div>
-                <div style="flex: 1; min-width: 100px; background: #151515; padding: 6px; border-radius: 4px; text-align: center;">
-                    <div style="color: #888; font-weight: bold;">Colisionadores</div>
-                    <div style="font-size: 1.3em; color: #00ffcc; font-weight: bold; margin-top: 4px;">${displayMetrics.collidersCount}</div>
-                </div>
-                <div style="flex: 1; min-width: 100px; background: #151515; padding: 6px; border-radius: 4px; text-align: center;">
-                    <div style="color: #888; font-weight: bold;">Scripts Activos</div>
-                    <div style="font-size: 1.3em; color: #ffbb33; font-weight: bold; margin-top: 4px;">${displayMetrics.scriptsCount}</div>
-                </div>
-                <div style="flex: 1; min-width: 100px; background: #151515; padding: 6px; border-radius: 4px; text-align: center;">
-                    <div style="color: #888; font-weight: bold;">Draw Calls</div>
-                    <div style="font-size: 1.3em; color: #00b4ff; font-weight: bold; margin-top: 4px;">${displayMetrics.drawCalls}</div>
-                </div>
-                <div style="flex: 1; min-width: 100px; background: #151515; padding: 6px; border-radius: 4px; text-align: center;">
-                    <div style="color: #888; font-weight: bold;">Luces Dinámicas</div>
-                    <div style="font-size: 1.3em; color: #ff4444; font-weight: bold; margin-top: 4px;">${displayMetrics.lightsCount}</div>
-                </div>
-                <div style="flex: 1; min-width: 100px; background: #151515; padding: 6px; border-radius: 4px; text-align: center;">
-                    <div style="color: #888; font-weight: bold;">Elementos UI</div>
-                    <div style="font-size: 1.3em; color: #e5c158; font-weight: bold; margin-top: 4px;">${displayMetrics.uiElements}</div>
-                </div>
+                ${telemetryItems.join('')}
             </div>
 
             <!-- Content Area -->
