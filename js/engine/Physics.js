@@ -941,7 +941,7 @@ export class PhysicsSystem {
             }
         }
 
-        // 2. Broad-phase collision detection and state update
+        // 2. Broad-phase collision detection and state update using Spatial Hash Grid
         const newActiveCollisions = new Map();
         const collidables = this.scene.getAllMaterias().filter(m => {
             if (!m.isActive) return false;
@@ -955,56 +955,86 @@ export class PhysicsSystem {
                    m.getComponent(Components.LineCollider2D);
         });
 
+        // Spatial grid implementation
+        const CELL_SIZE = 250;
+        const grid = new Map();
+
         for (let i = 0; i < collidables.length; i++) {
-            for (let j = i + 1; j < collidables.length; j++) {
-                const materiaA = collidables[i];
-                const materiaB = collidables[j];
+            const m = collidables[i];
+            const aabb = this.getAABB(m);
+            const minCellX = Math.floor(aabb.minX / CELL_SIZE);
+            const maxCellX = Math.floor(aabb.maxX / CELL_SIZE);
+            const minCellY = Math.floor(aabb.minY / CELL_SIZE);
+            const maxCellY = Math.floor(aabb.maxY / CELL_SIZE);
 
-                // --- 2.1 Collision Filtering ---
-
-                // 2. Assembly Filter (Vehicle Support):
-                // If they share a Suspension connection (Wheel vs Chassis), don't collide.
-                const suspA = materiaA.getComponent(Components.Suspension);
-                const suspB = materiaB.getComponent(Components.Suspension);
-
-                if (suspA || suspB) {
-                    const susp = suspA || suspB;
-                    const wheel = suspA ? materiaA : materiaB;
-                    const other = suspA ? materiaB : materiaA;
-
-                    let chasisMtr = susp.chasis;
-                    if (typeof chasisMtr === 'number') chasisMtr = this.scene.findMateriaById(susp.chasis);
-
-                    if (chasisMtr && (other === chasisMtr || chasisMtr.isAncestorOf(other) || other.isAncestorOf(chasisMtr))) {
-                        continue; // No collision between wheel and its chassis/hierarchy
+            for (let cx = minCellX; cx <= maxCellX; cx++) {
+                for (let cy = minCellY; cy <= maxCellY; cy++) {
+                    const cellKey = (cx & 0xFFFF) | ((cy & 0xFFFF) << 16);
+                    let list = grid.get(cellKey);
+                    if (!list) {
+                        list = [];
+                        grid.set(cellKey, list);
                     }
+                    list.push(m);
                 }
+            }
+        }
 
-                // 3. Wheel Filter: Allow wheels to collide with anything unless explicitly filtered.
-                // We rely on the Suspension filter above to prevent chassis collisions.
-                // (Removed the restriction to ONLY terrain to allow collision with BoxCollider grounds)
+        const checkedPairs = new Set();
 
-                if (materiaA.isAncestorOf(materiaB) || materiaB.isAncestorOf(materiaA)) {
-                    continue;
-                }
+        for (const [cellKey, cellObjects] of grid.entries()) {
+            if (cellObjects.length < 2) continue;
+            for (let i = 0; i < cellObjects.length; i++) {
+                for (let j = i + 1; j < cellObjects.length; j++) {
+                    const materiaA = cellObjects[i];
+                    const materiaB = cellObjects[j];
 
-                // Basic check: two static bodies can't collide if neither is a trigger
-                const rbA = materiaA.getComponent(Components.Rigidbody2D);
-                const rbB = materiaB.getComponent(Components.Rigidbody2D);
-                const colliderA = this.getCollider(materiaA);
-                const colliderB = this.getCollider(materiaB);
+                    const pairKey = materiaA.id < materiaB.id ? `${materiaA.id}_${materiaB.id}` : `${materiaB.id}_${materiaA.id}`;
+                    if (checkedPairs.has(pairKey)) continue;
+                    checkedPairs.add(pairKey);
 
-                if (rbA && rbB && rbA.bodyType.toLowerCase() === 'static' && rbB.bodyType.toLowerCase() === 'static' && !colliderA.isTrigger && !colliderB.isTrigger) {
-                    continue;
-                }
+                    // --- 2.1 Collision Filtering ---
 
-                const collisionInfo = this.checkCollision(materiaA, materiaB);
+                    // 2. Assembly Filter (Vehicle Support):
+                    // If they share a Suspension connection (Wheel vs Chassis), don't collide.
+                    const suspA = materiaA.getComponent(Components.Suspension);
+                    const suspB = materiaB.getComponent(Components.Suspension);
 
-                if (collisionInfo) {
-                    const key = this._generateCollisionKey(materiaA.id, materiaB.id);
-                    const type = colliderA.isTrigger || colliderB.isTrigger ? 'trigger' : 'collision';
+                    if (suspA || suspB) {
+                        const susp = suspA || suspB;
+                        const wheel = suspA ? materiaA : materiaB;
+                        const other = suspA ? materiaB : materiaA;
 
-                    newActiveCollisions.set(key, { materiaA, materiaB, type });
+                        let chasisMtr = susp.chasis;
+                        if (typeof chasisMtr === 'number') chasisMtr = this.scene.findMateriaById(susp.chasis);
+
+                        if (chasisMtr && (other === chasisMtr || chasisMtr.isAncestorOf(other) || other.isAncestorOf(chasisMtr))) {
+                            continue; // No collision between wheel and its chassis/hierarchy
+                        }
+                    }
+
+                    if (materiaA.isAncestorOf(materiaB) || materiaB.isAncestorOf(materiaA)) {
+                        continue;
+                    }
+
+                    // Basic check: two static bodies can't collide if neither is a trigger
+                    const rbA = materiaA.getComponent(Components.Rigidbody2D);
+                    const rbB = materiaB.getComponent(Components.Rigidbody2D);
+                    const colliderA = this.getCollider(materiaA);
+                    const colliderB = this.getCollider(materiaB);
+
+                    if (rbA && rbB && rbA.bodyType.toLowerCase() === 'static' && rbB.bodyType.toLowerCase() === 'static' && !colliderA.isTrigger && !colliderB.isTrigger) {
+                        continue;
+                    }
+
+                    const collisionInfo = this.checkCollision(materiaA, materiaB);
+
+                    if (collisionInfo) {
+                        const key = this._generateCollisionKey(materiaA.id, materiaB.id);
+                        const type = colliderA.isTrigger || colliderB.isTrigger ? 'trigger' : 'collision';
+
+                        newActiveCollisions.set(key, { materiaA, materiaB, type });
+                    }
                 }
             }
         }
@@ -1429,6 +1459,30 @@ export class PhysicsSystem {
                materia.getComponent(Components.TilemapCollider2D) ||
                materia.getComponent(Components.TerrenoCollider2D) ||
                materia.getComponent(Components.LineCollider2D);
+    }
+
+    getAABB(materia) {
+        const transform = materia.getComponent(Components.Transform);
+        if (!transform) return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+        const collider = this.getCollider(materia);
+        let w = 50, h = 50;
+        if (collider) {
+            if (collider.size) {
+                w = collider.size.x * Math.abs(transform.scale.x);
+                h = collider.size.y * Math.abs(transform.scale.y);
+            } else if (collider.radius !== undefined) {
+                w = h = collider.radius * 2 * Math.max(Math.abs(transform.scale.x), Math.abs(transform.scale.y));
+            }
+        }
+        const offset = collider ? (collider.offset || { x: 0, y: 0 }) : { x: 0, y: 0 };
+        const cx = transform.x + offset.x;
+        const cy = transform.y + offset.y;
+        return {
+            minX: cx - w/2,
+            minY: cy - h/2,
+            maxX: cx + w/2,
+            maxY: cy + h/2
+        };
     }
 
     _getLineVertices(transform, collider) {

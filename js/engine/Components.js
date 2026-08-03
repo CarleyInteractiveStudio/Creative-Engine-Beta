@@ -9125,3 +9125,180 @@ export class UIController extends Leyes {
     }
 }
 registerComponent('UIController', UIController);
+
+// --- Optimization Components ---
+
+export class AutoCulling2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.margin = 150; // Padding to prevent objects clipping at the screen edge
+        this.onlyDisableRenderer = true; // If false, disables the whole materia
+    }
+
+    update(deltaTime) {
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (!isGame) return;
+
+        const scene = this.materia.scene;
+        if (!scene) return;
+
+        const camera = scene.findFirstCamera();
+        if (!camera) return;
+
+        const camTrans = camera.getComponent(Transform);
+        const camComp = camera.getComponent(Camera);
+        const myTrans = this.materia.getComponent(Transform);
+        if (!camTrans || !camComp || !myTrans) return;
+
+        // Viewport sizes
+        const orthographicSize = camComp.orthographicSize || 5;
+        const aspect = (window.innerWidth / (window.innerHeight || 1)) || 1.6;
+        const height = orthographicSize * 2 * 100; // world units estimate
+        const width = height * aspect;
+
+        const camMinX = camTrans.x - width / 2 - this.margin;
+        const camMaxX = camTrans.x + width / 2 + this.margin;
+        const camMinY = camTrans.y - height / 2 - this.margin;
+        const camMaxY = camTrans.y + height / 2 + this.margin;
+
+        const inViewport = myTrans.x >= camMinX && myTrans.x <= camMaxX &&
+                           myTrans.y >= camMinY && myTrans.y <= camMaxY;
+
+        if (this.onlyDisableRenderer) {
+            const r = this.materia.getComponent(SpriteRenderer) || this.materia.getComponent(TextureRender);
+            if (r) {
+                r.isActive = inViewport;
+            }
+        } else {
+            this.materia.isActive = inViewport;
+        }
+    }
+
+    clone() {
+        const copy = new AutoCulling2D(null);
+        copy.margin = this.margin;
+        copy.onlyDisableRenderer = this.onlyDisableRenderer;
+        return copy;
+    }
+}
+
+export class ObjectPooler extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.prefabPath = "";
+        this.poolSize = 30;
+        this._pool = [];
+        this._isInitialized = false;
+    }
+
+    start() {
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (!isGame) return;
+        this.initializePool();
+    }
+
+    async initializePool() {
+        if (this._isInitialized || !this.prefabPath) return;
+        this._isInitialized = true;
+        this._pool = [];
+
+        if (window.SceneManager && window.SceneManager.instantiatePrefabFromPath) {
+            for (let i = 0; i < this.poolSize; i++) {
+                const p = await window.SceneManager.instantiatePrefabFromPath(this.prefabPath);
+                if (p) {
+                    p.isActive = false;
+                    this._pool.push(p);
+                }
+            }
+        }
+    }
+
+    getPooledObject(x = 0, y = 0) {
+        let obj = this._pool.find(p => !p.isActive);
+        if (!obj && this._pool.length < this.poolSize * 2) {
+            if (window.SceneManager && window.SceneManager.instantiatePrefabFromPath) {
+                window.SceneManager.instantiatePrefabFromPath(this.prefabPath).then(p => {
+                    if (p) {
+                        p.isActive = false;
+                        this._pool.push(p);
+                    }
+                });
+            }
+        }
+
+        if (obj) {
+            const trans = obj.getComponent(Transform);
+            if (trans) {
+                trans.position = { x, y };
+            }
+            obj.isActive = true;
+
+            const rb = obj.getComponent(Rigidbody2D);
+            if (rb) {
+                rb.velocity = { x: 0, y: 0 };
+                rb.angularVelocity = 0;
+            }
+        }
+        return obj;
+    }
+
+    clone() {
+        const copy = new ObjectPooler(null);
+        copy.prefabPath = this.prefabPath;
+        copy.poolSize = this.poolSize;
+        return copy;
+    }
+}
+
+export class DistanceDeactivator extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.maxDistance = 1500;
+        this.onlyDisablePhysicsAndScripts = true;
+    }
+
+    update(deltaTime) {
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (!isGame) return;
+
+        const scene = this.materia.scene;
+        if (!scene) return;
+
+        const camera = scene.findFirstCamera();
+        if (!camera) return;
+
+        const camTrans = camera.getComponent(Transform);
+        const myTrans = this.materia.getComponent(Transform);
+        if (!camTrans || !myTrans) return;
+
+        const dist = Math.hypot(camTrans.x - myTrans.x, camTrans.y - myTrans.y);
+        const shouldActive = dist <= this.maxDistance;
+
+        if (this.onlyDisablePhysicsAndScripts) {
+            const rb = this.materia.getComponent(Rigidbody2D);
+            if (rb) rb.simulated = shouldActive;
+
+            const anim = this.materia.getComponent(Animator) || this.materia.getComponent(window.Components.AnimatorController);
+            if (anim) anim.isPlaying = shouldActive;
+
+            this.materia.leyes.forEach(ley => {
+                if (ley !== this && ley.constructor.name === 'CreativeScript') {
+                    ley.isActive = shouldActive;
+                }
+            });
+        } else {
+            this.materia.isActive = shouldActive;
+        }
+    }
+
+    clone() {
+        const copy = new DistanceDeactivator(null);
+        copy.maxDistance = this.maxDistance;
+        copy.onlyDisablePhysicsAndScripts = this.onlyDisablePhysicsAndScripts;
+        return copy;
+    }
+}
+
+registerComponent('AutoCulling2D', AutoCulling2D);
+registerComponent('ObjectPooler', ObjectPooler);
+registerComponent('DistanceDeactivator', DistanceDeactivator);

@@ -41,6 +41,7 @@ const availableComponents = {
     'CAT_CAMARA': [Components.Camera],
     'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Attack, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.Suspension, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController, Components.SceneLoader, Components.Inventario, Components.SistemaDialogos, Components.GestorMisiones],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
+    'CAT_OPTIMIZACION': [Components.AutoCulling2D, Components.ObjectPooler, Components.DistanceDeactivator],
 
     // 3D Specific Categories
     'CAT_BASICO_3D': ['MovementControl3D', 'ThirdPersonController3D', 'HealthController3D', 'CameraControl3D'],
@@ -58,6 +59,7 @@ const componentIcons = {
     Animator: 'run', AnimatorController: 'gamepad', AudioSource: 'music', VideoPlayer: 'video', Camera: 'camera', CreativeScript: 'scroll', SceneLoader: 'clapperboard',
     UITransform: 'box', UICanvas: 'image', UIImage: 'image', PointLight2D: 'lightbulb', SpotLight2D: 'flashlight', FreeformLight2D: 'pencil', SpriteLight2D: 'sparkles',
     Grid: 'grid', Tilemap: 'map', TilemapRenderer: 'brush', TilemapCollider2D: 'grid',
+    AutoCulling2D: 'eye-off', ObjectPooler: 'box', DistanceDeactivator: 'zap',
     Terreno2D: 'mountain', TerrenoCollider2D: 'mountain',
     Button: 'mouse-pointer', UIText: 'type', Canvas: 'image',
     VerticalLayoutGroup: 'layers', HorizontalLayoutGroup: 'layers', GridLayoutGroup: 'grid', ContentSizeFitter: 'maximize',
@@ -3078,6 +3080,51 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="number" autocomplete="off" class="prop-input" step="1" data-component="DrawingOrder" data-prop="order" value="${ley.order || 0}">
                     </div>
                     <p class="field-description" data-i18n="DRAWING_ORDER_DESC">${L.get('DRAWING_ORDER_DESC', 'Valores altos delante, bajos detrás. Sobrescribe el orden por defecto.')}</p>
+                </div>
+            `;
+        } else if (ley instanceof Components.AutoCulling2D) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('AUTO_CULLING_2D', "Auto Culling 2D"), icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>${L.get('MARGIN', 'Margen')}</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="AutoCulling2D" data-prop="margin" value="${ley.margin || 150}">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="AutoCulling2D" data-prop="onlyDisableRenderer" ${ley.onlyDisableRenderer ? 'checked' : ''}>
+                        <label>${L.get('ONLY_DISABLE_RENDERER', 'Solo Desactivar Renderizador')}</label>
+                    </div>
+                    <p class="field-description">${L.get('AUTO_CULLING_DESC', 'Optimiza desactivando automáticamente el renderizado o lógica del objeto cuando sale de la pantalla.')}</p>
+                </div>
+            `;
+        } else if (ley instanceof Components.ObjectPooler) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('OBJECT_POOLER', "Object Pooler"), icon, index)}
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label>${L.get('PREFAB', 'Prefab')}</label>
+                        ${renderPropertyDropper('Prefab', ley.prefabPath, 'data-component="ObjectPooler" data-prop="prefabPath"')}
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('POOL_SIZE', 'Tamaño del Pool')}</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="ObjectPooler" data-prop="poolSize" value="${ley.poolSize || 30}">
+                    </div>
+                    <p class="field-description">${L.get('OBJECT_POOLER_DESC', 'Pre-crea un almacenamiento de objetos para reutilizarlos en lugar de crearlos y destruirlos constantemente.')}</p>
+                </div>
+            `;
+        } else if (ley instanceof Components.DistanceDeactivator) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('DISTANCE_DEACTIVATOR', "Distance Deactivator"), icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>${L.get('MAX_DISTANCE', 'Distancia Máxima')}</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="10" data-component="DistanceDeactivator" data-prop="maxDistance" value="${ley.maxDistance || 1500}">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="DistanceDeactivator" data-prop="onlyDisablePhysicsAndScripts" ${ley.onlyDisablePhysicsAndScripts ? 'checked' : ''}>
+                        <label>${L.get('ONLY_DISABLE_PHYSICS_SCRIPTS', 'Desactivar solo Físicas y Scripts')}</label>
+                    </div>
+                    <p class="field-description">${L.get('DISTANCE_DEACTIVATOR_DESC', 'Desactiva físicas, animaciones y scripts cuando el objeto está más lejos del jugador que la distancia configurada.')}</p>
                 </div>
             `;
         } else if (ley instanceof Components.BoxCollider2D) {
