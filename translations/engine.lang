@@ -477,7 +477,8 @@ CAT_VEHICULOS_CENITAL: Vehículos Vista Superior (Top-Down)
 CAT_DISPAROS_LATERAL: Disparos Vista Lateral
 CAT_DISPAROS_CENITAL: Disparos Vista Superior (Top-Down)
 CAT_AVENTURA_ROL: Aventura y Rol
-CAT_BASICO: Básico
+CAT_FPS_LATERAL: FPS Vista Lateral
+CAT_FPS_CENITAL: FPS Vista Superior
 CAT_BASICO_3D: Básico 3D
 CAT_FISICA_3D: Física 3D
 CAT_AUDIO_3D: Audio 3D
@@ -1176,7 +1177,8 @@ CAT_VEHICULOS_CENITAL: Top-Down Vehicles
 CAT_DISPAROS_LATERAL: Side-View Shooter
 CAT_DISPAROS_CENITAL: Top-Down Shooter
 CAT_AVENTURA_ROL: Adventure & RPG
-CAT_BASICO: Basic
+CAT_FPS_LATERAL: Side-View FPS
+CAT_FPS_CENITAL: Top-Down FPS
 CAT_BASICO_3D: Basic 3D
 CAT_FISICA_3D: Physics 3D
 CAT_AUDIO_3D: Audio 3D
@@ -1786,7 +1788,8 @@ CAT_VEHICULOS_CENITAL: Veículos de Visão Superior (Top-Down)
 CAT_DISPAROS_LATERAL: Tiro em Vista Lateral
 CAT_DISPAROS_CENITAL: Tiro em Visão Superior (Top-Down)
 CAT_AVENTURA_ROL: Aventura e RPG
-CAT_BASICO: Básico
+CAT_FPS_LATERAL: FPS de Vista Lateral
+CAT_FPS_CENITAL: FPS de Vista Superior
 CAT_BASICO_3D: Básico 3D
 CAT_FISICA_3D: Física 3D
 CAT_AUDIO_3D: Áudio 3D
@@ -2307,7 +2310,8 @@ CAT_VEHICULOS_CENITAL: Транспорт (Вид Сверху Top-Down)
 CAT_DISPAROS_LATERAL: Шутер (Вид Сбоку)
 CAT_DISPAROS_CENITAL: Шутер (Вид Сверху)
 CAT_AVENTURA_ROL: Приключения и Ролевые (RPG)
-CAT_BASICO: Базовый
+CAT_FPS_LATERAL: Шутер (Вид сбоку)
+CAT_FPS_CENITAL: Шутер (Вид сверху)
 CAT_BASICO_3D: Базовый 3D
 CAT_FISICA_3D: Физика 3D
 CAT_AUDIO_3D: Аудио 3D
@@ -2846,7 +2850,8 @@ CAT_VEHICULOS_CENITAL: 俯视角载具 (Top-Down)
 CAT_DISPAROS_LATERAL: 横版射击 (Side-View)
 CAT_DISPAROS_CENITAL: 俯视角射击 (Top-Down)
 CAT_AVENTURA_ROL: 冒险与角色扮演 (RPG)
-CAT_BASICO: 基础
+CAT_FPS_LATERAL: 横版射击 (FPS)
+CAT_FPS_CENITAL: 俯视角射击 (FPS)
 CAT_BASICO_3D: 基础 3D
 CAT_FISICA_3D: 物理 3D
 CAT_AUDIO_3D: 音频 3D

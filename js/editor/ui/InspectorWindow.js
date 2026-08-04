@@ -31,22 +31,23 @@ let enterAddTilemapLayerMode = () => {}; // Callback to notify SceneView
 const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
-    'CAT_RENDERIZADO': [Components.SpriteRenderer, Components.TextureRender, Components.DrawingOrder],
+    'CAT_RENDERIZADO': [Components.SpriteRenderer, Components.TextureRender, Components.DrawingOrder, Components.ParticleSystem],
     'CAT_MAPA': [Components.Grid, Components.Tilemap, Components.TilemapRenderer, Components.Parallax, Components.Terreno2D],
     'CAT_ILUMINACION': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
     'CAT_UTILIDADES': [Components.Gyzmo],
     'CAT_ANIMACION': [Components.Animator, Components.AnimatorController, Components.Bone, Components.SkeletonRenderer, Components.IKManager2D],
     'CAT_AUDIO': [Components.AudioSource],
     'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.PlatformEffector2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
-    'CAT_CAMARA': [Components.Camera],
+    'CAT_CAMARA': [Components.Camera, Components.CameraFollow],
     'CAT_VEHICULOS_LATERAL': [Components.Suspension, Components.VehicleSideView2D, Components.PlaneController, Components.HelicopterController],
     'CAT_VEHICULOS_CENITAL': [Components.VehicleTopDown],
     'CAT_DISPAROS_LATERAL': [Components.ProjectileLauncher],
     'CAT_DISPAROS_CENITAL': [Components.Attack],
-    'CAT_AVENTURA_ROL': [Components.Health, Components.Patrol, Components.BasicAI, Components.RaycastSource, Components.SceneLoader, Components.Inventario, Components.SistemaDialogos, Components.GestorMisiones],
-    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.AutoDestroy, Components.ParticleSystem],
+    'CAT_AVENTURA_ROL': [Components.Health, Components.Patrol, Components.BasicAI, Components.RaycastSource, Components.SceneLoader, Components.Inventario, Components.SistemaDialogos, Components.GestorMisiones, Components.Movement],
+    'CAT_FPS_LATERAL': [Components.ManejoArmasLateral, Components.Proyectil2D, Components.DetectorBajas, Components.ItemRecolectable, Components.RecolectorObjetos],
+    'CAT_FPS_CENITAL': [Components.ManejoArmasCenital, Components.Proyectil2D, Components.DetectorBajas, Components.ItemRecolectable, Components.RecolectorObjetos],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
-    'CAT_OPTIMIZACION': [Components.AutoCulling2D, Components.ObjectPooler, Components.DistanceDeactivator],
+    'CAT_OPTIMIZACION': [Components.AutoCulling2D, Components.ObjectPooler, Components.DistanceDeactivator, Components.AutoDestroy],
 
     // 3D Specific Categories
     'CAT_BASICO_3D': ['MovementControl3D', 'ThirdPersonController3D', 'HealthController3D', 'CameraControl3D'],
@@ -83,7 +84,13 @@ const componentIcons = {
     'HelicopterController': 'rocket',
     'Bone': 'bone',
     'SkeletonRenderer': 'layout',
-    'IKManager2D': 'mouse-pointer'
+    'IKManager2D': 'mouse-pointer',
+    'ManejoArmasLateral': 'crosshair',
+    'ManejoArmasCenital': 'crosshair',
+    'Proyectil2D': 'target',
+    'DetectorBajas': 'shield',
+    'ItemRecolectable': 'gift',
+    'RecolectorObjetos': 'mouse-pointer'
 };
 
 const fileIcons = {
@@ -1683,7 +1690,9 @@ async function updateInspectorForMateria(selectedMateria) {
             'Health', 'Attack', 'Patrol', 'ParticleSystem', 'RaycastSource', 'BasicAI', 'Water', 'LineCollider2D', 'Suspension',
             'VehicleTopDown', 'PlaneController', 'HelicopterController', 'Bone', 'SkeletonRenderer', 'IKManager2D', 'Animator', 'AnimatorController',
             'Canvas', 'UIImage', 'UIText', 'UITransform', 'Button', 'ProgressBar', 'UIScrollRect', 'UIMask', 'UICollider', 'UIController',
-            'VerticalLayoutGroup', 'HorizontalLayoutGroup', 'GridLayoutGroup', 'ContentSizeFitter'
+            'VerticalLayoutGroup', 'HorizontalLayoutGroup', 'GridLayoutGroup', 'ContentSizeFitter',
+            'ManejoArmasLateral', 'ManejoArmasCenital', 'Proyectil2D', 'DetectorBajas', 'ItemRecolectable', 'RecolectorObjetos',
+            'Inventario', 'SistemaDialogos', 'GestorMisiones'
         ];
         return known2D.includes(name);
     };
@@ -3238,6 +3247,179 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label>Fall</label>
                         <input type="text" autocomplete="off" class="prop-input" data-component="Movement" data-prop="fallAnim" value="${ley.fallAnim || ''}">
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.ManejoArmasLateral) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('MANEJO_ARMAS_LATERAL', "Manejo Armas Lateral"), icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Munición Máxima</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="1" data-component="ManejoArmasLateral" data-prop="municionMaxima" value="${ley.municionMaxima}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Munición Inicial</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="0" data-component="ManejoArmasLateral" data-prop="municionInicial" value="${ley.municionInicial}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Munición Actual</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="0" data-component="ManejoArmasLateral" data-prop="municionActual" value="${ley.municionActual}">
+                    </div>
+                    <div class="inspector-row">
+                        <label>Prefab Proyectil</label>
+                        <div class="file-picker">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="ManejoArmasLateral" data-prop="proyectilPrefab" value="${ley.proyectilPrefab}" placeholder="Arrastra un .ceprefab aquí">
+                            <button class="panel-tool-btn" onclick="window.openAssetSelector((h, p) => { const input = this.previousElementSibling; input.value = p; input.dispatchEvent(new Event('change', { bubbles: true })); }, '.ceprefab')">...</button>
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Tecla Disparo</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="ManejoArmasLateral" data-prop="teclaDisparo" value="${ley.teclaDisparo}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Cadencia (segs)</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="0.05" min="0" data-component="ManejoArmasLateral" data-prop="tiempoDisparo" value="${ley.tiempoDisparo}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Fuerza Retroceso</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="ManejoArmasLateral" data-prop="fuerzaRetroceso" value="${ley.fuerzaRetroceso}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Velocidad Recuperación</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="0.5" data-component="ManejoArmasLateral" data-prop="velocidadRetroceso" value="${ley.velocidadRetroceso}">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="ManejoArmasLateral" data-prop="dispararAutomatico" ${ley.dispararAutomatico ? 'checked' : ''}>
+                        <label>Disparo Automático</label>
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.ManejoArmasCenital) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('MANEJO_ARMAS_CENITAL', "Manejo Armas Cenital"), icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Munición Máxima</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="1" data-component="ManejoArmasCenital" data-prop="municionMaxima" value="${ley.municionMaxima}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Munición Inicial</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="0" data-component="ManejoArmasCenital" data-prop="municionInicial" value="${ley.municionInicial}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Munición Actual</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="0" data-component="ManejoArmasCenital" data-prop="municionActual" value="${ley.municionActual}">
+                    </div>
+                    <div class="inspector-row">
+                        <label>Prefab Proyectil</label>
+                        <div class="file-picker">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="ManejoArmasCenital" data-prop="proyectilPrefab" value="${ley.proyectilPrefab}" placeholder="Arrastra un .ceprefab aquí">
+                            <button class="panel-tool-btn" onclick="window.openAssetSelector((h, p) => { const input = this.previousElementSibling; input.value = p; input.dispatchEvent(new Event('change', { bubbles: true })); }, '.ceprefab')">...</button>
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Tecla Disparo</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="ManejoArmasCenital" data-prop="teclaDisparo" value="${ley.teclaDisparo}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Cadencia (segs)</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="0.05" min="0" data-component="ManejoArmasCenital" data-prop="tiempoDisparo" value="${ley.tiempoDisparo}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Fuerza Retroceso</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="ManejoArmasCenital" data-prop="fuerzaRetroceso" value="${ley.fuerzaRetroceso}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Velocidad Recuperación</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="0.5" data-component="ManejoArmasCenital" data-prop="velocidadRetroceso" value="${ley.velocidadRetroceso}">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="ManejoArmasCenital" data-prop="dispararAutomatico" ${ley.dispararAutomatico ? 'checked' : ''}>
+                        <label>Disparo Automático</label>
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.Proyectil2D) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('PROYECTIL_2D', "Proyectil 2D"), icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Velocidad</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="10" data-component="Proyectil2D" data-prop="velocidad" value="${ley.velocidad}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Daño</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="Proyectil2D" data-prop="dano" value="${ley.dano}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Tiempo de Vida (segs)</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="0.5" min="0.1" data-component="Proyectil2D" data-prop="tiempoVida" value="${ley.tiempoVida}">
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.DetectorBajas) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('DETECTOR_BAJAS', "Detector de Bajas"), icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Recompensa Puntos</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="10" data-component="DetectorBajas" data-prop="recompensaPuntos" value="${ley.recompensaPuntos}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Item a Recompensar</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="DetectorBajas" data-prop="itemARecompensar" value="${ley.itemARecompensar}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Cantidad Item</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="1" data-component="DetectorBajas" data-prop="cantidadItem" value="${ley.cantidadItem}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Mensaje Consola</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="DetectorBajas" data-prop="mensajeConsola" value="${ley.mensajeConsola}">
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.ItemRecolectable) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('ITEM_RECOLECTABLE', "Item Recolectable"), icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Nombre Item</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="ItemRecolectable" data-prop="nombreItem" value="${ley.nombreItem}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Cantidad</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="1" data-component="ItemRecolectable" data-prop="cantidad" value="${ley.cantidad}">
+                    </div>
+                    <div class="inspector-row">
+                        <label>Sonido Recogida</label>
+                        ${renderPropertyDropper('Audio', ley.sonidoRecogida, 'data-component="ItemRecolectable" data-prop="sonidoRecogida"')}
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="ItemRecolectable" data-prop="destruirAlRecoger" ${ley.destruirAlRecoger ? 'checked' : ''}>
+                        <label>Destruir al Recoger</label>
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.RecolectorObjetos) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('RECOLECTOR_OBJETOS', "Recolector de Objetos"), icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Método de Recogida</label>
+                        <select class="prop-input" data-component="RecolectorObjetos" data-prop="metodoRecogida">
+                            <option value="colision" ${ley.metodoRecogida === 'colision' ? 'selected' : ''}>Colisión/Solapamiento</option>
+                            <option value="tecla" ${ley.metodoRecogida === 'tecla' ? 'selected' : ''}>Presionando Tecla</option>
+                        </select>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Tecla de Recogida</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="RecolectorObjetos" data-prop="teclaRecogida" value="${ley.teclaRecogida}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Distancia Detección</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="5" data-component="RecolectorObjetos" data-prop="distanciaDeteccion" value="${ley.distanciaDeteccion}">
                     </div>
                 </div>
             `;

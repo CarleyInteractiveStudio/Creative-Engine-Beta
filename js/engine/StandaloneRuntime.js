@@ -13,6 +13,7 @@ import { Localization } from './Localization.js';
 
 export class StandaloneRuntime {
     constructor(canvasId) {
+        window.CE_Standalone_Runtime = this;
         this.canvas = document.getElementById(canvasId);
         this.renderer = null;
         this.physicsSystem = null;

@@ -1095,8 +1095,8 @@ export class PhysicsSystem {
     }
 
     _triggerScriptEvents(materia, other, state, type, mtv, isInverted) {
-        const scripts = materia.getComponents(Components.CreativeScript);
-        if (scripts.length === 0) return;
+        const laws = materia.leyes || [];
+        if (laws.length === 0) return;
 
         const otherCollider = this.getCollider(other);
         const collision = new Collision(materia, other, otherCollider);
@@ -1129,11 +1129,22 @@ export class PhysicsSystem {
             else if (state === 'exit') { methodName = 'alSalirDeTrigger'; englishMethodName = 'OnTriggerExit'; }
         }
 
-        for (const script of scripts) {
-            // We call the Spanish one. If the user defined the English one,
-            // the stub in CreativeScriptBehavior will forward it.
-            // If they defined the Spanish one, it works directly.
-            script._safeInvoke(methodName, collision);
+        for (const ley of laws) {
+            if (typeof ley[methodName] === 'function') {
+                try {
+                    ley[methodName](collision);
+                } catch (e) {
+                    console.error(`Error executing ${methodName} on component ${ley.constructor.name}:`, e);
+                }
+            } else if (typeof ley[englishMethodName] === 'function') {
+                try {
+                    ley[englishMethodName](collision);
+                } catch (e) {
+                    console.error(`Error executing ${englishMethodName} on component ${ley.constructor.name}:`, e);
+                }
+            } else if (ley.constructor.name === 'CreativeScript' && typeof ley._safeInvoke === 'function') {
+                ley._safeInvoke(methodName, collision);
+            }
         }
     }
 

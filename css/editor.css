@@ -2858,8 +2858,6 @@ body.mobile-mode #editor-main-content.no-inspector {
   list-style: none;
   padding: 0;
   margin: 20px 0 10px 0;
-  max-height: 500px;
-  overflow-y: auto;
 }
 
 .component-category-wrapper {
