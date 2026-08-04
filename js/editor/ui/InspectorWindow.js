@@ -5,7 +5,7 @@ import { getURLForAssetPath, getFileHandleForPath } from '../../engine/AssetUtil
 import * as SpriteSlicer from './SpriteSlicerWindow.js';
 import { getCustomComponentDefinitions } from '../EngineAPIExtension.js';
 import * as CES_Transpiler from '../../editor/CES_Transpiler.js';
-import { showPrompt, showNotification } from './DialogWindow.js';
+import { showPrompt, showNotification, showCustomDialog } from './DialogWindow.js';
 import { TerrenoEditorWindow } from './TerrenoEditorWindow.js';
 import { Renderer3D } from '../../engine/Renderer3D.js';
 import { broadcastUpdate } from '../CollaborationSystem.js';
@@ -1277,9 +1277,105 @@ export async function updateInspector() {
     });
 }
 
+// Dictionary with rich help descriptions, usage and combinations for the components.
+const componentHelpData = {
+    ManejoArmasLateral: {
+        descripcion: "Gestiona el equipamiento de armas, el conteo de munición inicial/máxima y actual, y la cadencia de fuego en juegos con perspectiva lateral 2D. Aplica un retroceso físico o visual configurable al disparar y detecta automáticamente la dirección hacia la que mira el personaje.",
+        uso: "Añade este componente al personaje jugador. Configura el 'Prefab Proyectil' arrastrando un archivo .ceprefab de bala y define la 'Tecla Disparo'. Asegúrate de que el personaje tenga una escala x correcta o mire a los lados para orientar el disparo.",
+        combinaciones: "Se combina perfectamente con 'Transform', 'SpriteRenderer', 'Proyectil2D' (como bala) y 'Rigidbody2D' (para que el retroceso empuje al personaje físicamente)."
+    },
+    ManejoArmasCenital: {
+        descripcion: "Administra el disparo y la munición en perspectiva superior/cenital 2D (Top-Down). Calcula de forma dinámica el ángulo en 360 grados hacia el cursor del ratón en el mundo para apuntar y disparar ráfagas o balas individuales, aplicando una fuerza de retroceso opuesta a la dirección del apuntado.",
+        uso: "Añade este componente a tu personaje en un entorno Top-Down. Configura la 'Tecla Disparo' (usualmente 'Mouse0' para clic izquierdo) y ajusta la 'Fuerza de Retroceso' según lo desees.",
+        combinaciones: "Combina de forma ideal con 'Transform', 'Camera' (para ubicar el puntero del ratón en el mundo), 'Proyectil2D' y 'Rigidbody2D'."
+    },
+    Proyectil2D: {
+        descripcion: "Controla el desplazamiento lineal de las balas y proyectiles de forma autónoma (usando velocidad directa o a través de físicas Rigidbody2D). Posee un temporizador de destrucción automática para evitar fugas de memoria y aplica daño al colisionar con cualquier entidad que posea una ley de Vida (Health), ignorando al autor que disparó el proyectil.",
+        uso: "Añádelo a la entidad que funcionará como bala (generalmente tu prefab de proyectil). Configura la 'Velocidad', el 'Daño' y el 'Tiempo de Vida'.",
+        combinaciones: "Compatible con 'CircleCollider2D', 'BoxCollider2D', 'SpriteRenderer' y 'DetectorBajas'."
+    },
+    DetectorBajas: {
+        descripcion: "Registra cuando un proyectil disparado por el personaje elimina o causa la muerte a un enemigo (reduciendo su Vida a cero). Otorga una recompensa en puntos, emite eventos y puede añadir automáticamente items al componente Inventario del portador.",
+        uso: "Agrégalo a tu personaje jugador para llevar la cuenta de sus bajas. Configura la puntuación y el 'Item a Recompensar' con el nombre exacto de la moneda o recompensa.",
+        combinaciones: "Esencial en el personaje jugador junto con 'Inventario', 'Health', y componentes de disparo como 'ManejoArmasLateral' o 'ManejoArmasCenital'."
+    },
+    ItemRecolectable: {
+        descripcion: "Convierte un objeto del escenario en un item físico interactivo que puede ser recogido (monedas, pociones, llaves, armas). Almacena el nombre del objeto, la cantidad a otorgar, la ruta del efecto de sonido y si debe destruirse de la escena al ser recogido.",
+        uso: "Coloca este componente en objetos esparcidos por el mapa (ej. una moneda flotante). Configura el nombre del item que se añadirá al inventario y selecciona un sonido de recogida.",
+        combinaciones: "Combina con 'CircleCollider2D' o 'BoxCollider2D' (con isTrigger activado) y 'SpriteRenderer' para la representación visual."
+    },
+    RecolectorObjetos: {
+        descripcion: "Permite a la entidad del jugador detectar y recoger de forma automática componentes ItemRecolectable en el escenario. Soporta dos modos profesionales: absorción instantánea al colisionar/entrar en contacto, o mediante la pulsación de una tecla interactiva (como 'E' o 'F') cuando el jugador se encuentra a una distancia configurable del objeto.",
+        uso: "Añádelo a tu personaje jugador. Si seleccionas el modo 'tecla', configura la 'Tecla de Recogida' y la 'Distancia de Detección' adecuada para interactuar con los objetos.",
+        combinaciones: "Requiere que la entidad posea un componente 'Inventario' para almacenar los objetos y, opcionalmente, un 'AudioSource' para reproducir los sonidos de recogida."
+    },
+    SpriteRenderer: {
+        descripcion: "Representa visualmente un sprite 2D en el escenario. Soporta colorización, tintes, opacidad transparente, orden de dibujo en capas, pivots personalizables y carga de imágenes individuales o atlas .ceSprite.",
+        uso: "Añádelo a cualquier objeto 2D y arrastra una imagen de tus assets a la propiedad 'Source' para renderizarla.",
+        combinaciones: "Se combina con 'Transform', 'Animator' y cualquier colisionador 2D."
+    },
+    Rigidbody2D: {
+        descripcion: "Añade comportamiento físico real a la entidad, permitiendo que le afecte la gravedad, el arrastre de aire, la masa y las fuerzas de impacto/reacción físicas.",
+        uso: "Añádelo a entidades dinámicas. Configura la gravedad, el tipo de cuerpo ('Dynamic', 'Kinematic', 'Static') y las restricciones de rotación/posición.",
+        combinaciones: "Requiere colisionadores como 'BoxCollider2D' o 'CircleCollider2D' para que el objeto interactúe físicamente con el entorno."
+    },
+    Health: {
+        descripcion: "Controla la salud y los puntos de vida de un personaje o entidad. Gestiona daño, curación, inmunidad temporal, y eventos/animación de muerte con destrucción retardada del objeto.",
+        uso: "Configura la salud máxima, vida actual y si el objeto debe destruirse automáticamente al morir ('destroyOnDeath').",
+        combinaciones: "Ideal para jugadores, enemigos, barriles destructibles, combinado con colisionadores y scripts."
+    },
+    Inventario: {
+        descripcion: "Gestiona una base de datos local de objetos recolectables y acumulables para la entidad, limitando la cantidad máxima de espacios disponibles.",
+        uso: "Añádelo al jugador para permitirle almacenar monedas, llaves y pociones, usándolo en combinación con 'RecolectorObjetos'.",
+        combinaciones: "Combina perfectamente con 'RecolectorObjetos', 'UIController' (para mostrarlo visualmente) y scripts."
+    }
+};
+
+window.showComponentHelp = function(componentName) {
+    const L = window.Localization;
+    const data = componentHelpData[componentName] || {
+        descripcion: "Añade lógica y propiedades específicas a la entidad para expandir sus capacidades en el juego.",
+        uso: "Configura las propiedades de este componente en el Inspector para adaptar su funcionamiento a tus necesidades.",
+        combinaciones: "Compatible con cualquier 'Materia' que posea un 'Transform' para posicionamiento y lógica de juego básica."
+    };
+
+    const dialogTitle = `${L?.get('INFORMACION_LEY', 'Información de Componente') || 'Información de Componente'}: ${componentName}`;
+
+    const htmlContent = `
+        <div class="component-help-dialog" style="text-align: left; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #f1f5f9; width: 420px; max-width: 100%; box-sizing: border-box; padding: 5px;">
+            <div style="margin-bottom: 15px;">
+                <h4 style="margin: 0 0 6px 0; color: #94a3b8; font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">¿Qué hace?</h4>
+                <p style="margin: 0; font-size: 0.9em; color: #f1f5f9; text-align: justify; font-weight: 400;">${data.descripcion}</p>
+            </div>
+
+            <div style="margin-bottom: 15px; background: rgba(56, 189, 248, 0.08); border-left: 3px solid #38bdf8; padding: 12px; border-radius: 4px;">
+                <h4 style="margin: 0 0 6px 0; color: #38bdf8; font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">Cómo usarlo</h4>
+                <p style="margin: 0; font-size: 0.85em; color: #e2e8f0; font-weight: 400;">${data.uso}</p>
+            </div>
+
+            <div style="margin-bottom: 5px;">
+                <h4 style="margin: 0 0 6px 0; color: #e2e8f0; font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">Compatibilidad y Combinación</h4>
+                <p style="margin: 0; font-size: 0.85em; color: #cbd5e1; font-weight: 400;">${data.combinaciones}</p>
+            </div>
+        </div>
+    `;
+
+    showCustomDialog(dialogTitle, htmlContent);
+};
+
 function renderComponentHeader(title, icon, leyIndex, canRemove = true) {
     const iconHTML = getIconHTML(icon);
     const L = window.Localization;
+    let componentName = '';
+    try {
+        const selectedMateria = typeof getSelectedMateria === 'function' ? getSelectedMateria() : null;
+        if (selectedMateria && selectedMateria.leyes && selectedMateria.leyes[leyIndex]) {
+            componentName = selectedMateria.leyes[leyIndex].constructor.name;
+        }
+    } catch (e) {
+        console.error("Error retrieving component name in header:", e);
+    }
+    const clickParam = componentName || (typeof title === 'string' ? title : '');
     return `
         <div class="component-header" data-ley-index="${leyIndex}">
             <div class="component-header-main">
@@ -1287,7 +1383,7 @@ function renderComponentHeader(title, icon, leyIndex, canRemove = true) {
                 <h4>${title}</h4>
             </div>
             <div class="component-header-controls">
-                <button class="help-component-btn" title="${L?.get('VER_AYUDA', 'Ver Ayuda')}" onclick="window.open('https://carleystudio.com/documentacion.html#componentes', '_blank')">?</button>
+                <button class="help-component-btn" title="${L?.get('VER_AYUDA', 'Ver Ayuda')}" onclick="window.showComponentHelp('${clickParam}')">?</button>
                 ${canRemove ? `<button class="remove-component-btn" title="Eliminar Componente" data-ley-index="${leyIndex}">&times;</button>` : ''}
             </div>
         </div>
