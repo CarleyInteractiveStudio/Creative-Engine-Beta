@@ -1283,72 +1283,161 @@ const componentHelpData = {
         descripcion: "Gestiona el equipamiento de armas, el conteo de munición inicial/máxima y actual, y la cadencia de fuego en juegos con perspectiva lateral 2D. Aplica un retroceso físico o visual configurable al disparar y detecta automáticamente la dirección hacia la que mira el personaje.",
         uso: "Añade este componente al personaje jugador. Configura el 'Prefab Proyectil' arrastrando un archivo .ceprefab de bala y define la 'Tecla Disparo'. Asegúrate de que el personaje tenga una escala x correcta o mire a los lados para orientar el disparo.",
         combinaciones: "Se combina perfectamente con 'Transform', 'SpriteRenderer', 'Proyectil2D' (como bala) y 'Rigidbody2D' (para que el retroceso empuje al personaje físicamente).",
-        scripting: "PROPIEDADES:\n- .municionActual (número)\n- .municionMaxima (número)\n- .municionInicial (número)\n- .teclaDisparo (string)\n- .tiempoDisparo (número)\n- .proyectilPrefab (string)\n\nMÉTODOS:\n- disparar() [ejecuta disparo manual]\n\nCÓDIGO DE EJEMPLO:\nconst comp = this.materia.getComponent(window.Components.ManejoArmasLateral);\ncomp.municionActual += 10; // Recargar balas"
+        scripting: {
+            es: "ve motor;\n\n// Recargar 10 balas en el cargador\nvariable arma = obtenerComponente(\"ManejoArmasLateral\")\narma.municionActual += 10\n\n// Disparar proyectil\narma.disparar()",
+            en: "ve motor;\n\n// Reload 10 bullets to the weapon\nvariable gun = getComponent(\"ManejoArmasLateral\")\ngun.municionActual += 10\n\n// Shoot projectile\ngun.disparar()",
+            pt: "ve motor;\n\n// Recarregar 10 balas na arma\nvariable arma = obterComponente(\"ManejoArmasLateral\")\narma.municionActual += 10\n\n// Disparar projétil\narma.disparar()",
+            ru: "ve motor;\n\n// Перезарядить 10 патронов\nvariable oruzhie = получитьКомпонент(\"ManejoArmasLateral\")\noruzhie.municionActual += 10\n\n// Выстрелить\noruzhie.disparar()",
+            zh: "ve motor;\n\n// 为武器弹匣装填 10 发子弹\nvariable gun = 获取组件(\"ManejoArmasLateral\")\ngun.municionActual += 10\n\n// 触发射击\ngun.disparar()"
+        }
     },
     ManejoArmasCenital: {
         descripcion: "Administra el disparo y la munición en perspectiva superior/cenital 2D (Top-Down). Calcula de forma dinámica el ángulo en 360 grados hacia el cursor del ratón en el mundo para apuntar y disparar ráfagas o balas individuales, aplicando una fuerza de retroceso opuesta a la dirección del apuntado.",
         uso: "Añade este componente a tu personaje en un entorno Top-Down. Configura la 'Tecla Disparo' (usualmente 'Mouse0' para clic izquierdo) y ajusta la 'Fuerza de Retroceso' según lo desees.",
         combinaciones: "Combina de forma ideal con 'Transform', 'Camera' (para ubicar el puntero del ratón en el mundo), 'Proyectil2D' y 'Rigidbody2D'.",
-        scripting: "PROPIEDADES:\n- .municionActual (número)\n- .municionMaxima (número)\n- .teclaDisparo (string)\n\nMÉTODOS:\n- disparar() [dispara hacia el cursor]\n\nCÓDIGO DE EJEMPLO:\nconst comp = this.materia.getComponent(window.Components.ManejoArmasCenital);\nconsole.log('Munición: ' + comp.municionActual);"
+        scripting: {
+            es: "ve motor;\n\n// Consultar munición actual del arma cenital\nvariable arma = obtenerComponente(\"ManejoArmasCenital\")\nimprimir(\"Balas: \" + arma.municionActual)",
+            en: "ve motor;\n\n// Get current ammo for the weapon\nvariable gun = getComponent(\"ManejoArmasCenital\")\nlog(\"Ammo: \" + gun.municionActual)",
+            pt: "ve motor;\n\n// Consultar munição atual da arma\nvariable arma = obterComponente(\"ManejoArmasCenital\")\nimprimir(\"Balas: \" + arma.municionActual)",
+            ru: "ve motor;\n\n// Получить количество патронов\nvariable oruzhie = получитьКомпонент(\"ManejoArmasCenital\")\nimprimir(\"Патроны: \" + oruzhie.municionActual)",
+            zh: "ve motor;\n\n// 检查俯视射击武器的当前子弹数\nvariable gun = 获取组件(\"ManejoArmasCenital\")\nlog(\"子弹: \" + gun.municionActual)"
+        }
     },
     Proyectil2D: {
         descripcion: "Controla el desplazamiento lineal de las balas y proyectiles de forma autónoma (usando velocidad directa o a través de físicas Rigidbody2D). Posee un temporizador de destrucción automática para evitar fugas de memoria y aplica daño al colisionar con cualquier entidad que posea una ley de Vida (Health), ignorando al autor que disparó el proyectil.",
         uso: "Añádelo a la entidad que funcionará como bala (generalmente tu prefab de proyectil). Configura la 'Velocidad', el 'Daño' y el 'Tiempo de Vida'.",
         combinaciones: "Compatible con 'CircleCollider2D', 'BoxCollider2D', 'SpriteRenderer' y 'DetectorBajas'.",
-        scripting: "PROPIEDADES:\n- .velocidad (número)\n- .dano (número)\n- .direccion (Vector2: {x, y})\n- .tiempoVida (número)\n- .autor (Materia)\n\nMÉTODOS:\n- destroyBullet() [destruye el proyectil]\n\nCÓDIGO DE EJEMPLO:\nconst proj = bullet.getComponent(window.Components.Proyectil2D);\nproj.autor = jugadorMateria;\nproj.velocidad = 800;"
+        scripting: {
+            es: "ve motor;\n\n// Configurar velocidad y daño de la bala al crearla\nvariable bala = crear balaPrefab\nvariable proj = bala.obtenerComponente(\"Proyectil2D\")\nproj.velocidad = 800\nproj.dano = 25",
+            en: "ve motor;\n\n// Configure bullet speed and damage upon creation\nvariable bullet = create bulletPrefab\nvariable proj = bullet.getComponent(\"Proyectil2D\")\nproj.velocidad = 800\nproj.dano = 25",
+            pt: "ve motor;\n\n// Configurar velocidade e dano ao criar o projétil\nvariable bala = criar balaPrefab\nvariable proj = bala.obterComponente(\"Proyectil2D\")\nproj.velocidad = 800\nproj.dano = 25",
+            ru: "ve motor;\n\n// Настроить скорость и урон пули при создании\nvariable pulya = создать pulyaPrefab\nvariable proj = pulya.получитьКомпонент(\"Proyectil2D\")\nproj.velocidad = 800\nproj.dano = 25",
+            zh: "ve motor;\n\n// 创建子弹时设置速度和伤害\nvariable bullet = 创建 bulletPrefab\nvariable proj = bullet.获取组件(\"Proyectil2D\")\nproj.velocidad = 800\nproj.dano = 25"
+        }
     },
     DetectorBajas: {
         descripcion: "Registra cuando un proyectil disparado por el personaje elimina o causa la muerte a un enemigo (reduciendo su Vida a cero). Otorga una recompensa en puntos, emite eventos y puede añadir automáticamente items al componente Inventario del portador.",
         uso: "Agrégalo a tu personaje jugador para llevar la cuenta de sus bajas. Configura la puntuación y el 'Item a Recompensar' con el nombre exacto de la moneda o recompensa.",
         combinaciones: "Esencial en el personaje jugador junto con 'Inventario', 'Health', y componentes de disparo como 'ManejoArmasLateral' o 'ManejoArmasCenital'.",
-        scripting: "PROPIEDADES:\n- .recompensaPuntos (número)\n- .itemARecompensar (string)\n- .cantidadItem (número)\n\nMÉTODOS:\n- concederRecompensa(target) [espera una Materia eliminada]\n\nCÓDIGO DE EJEMPLO:\nconst db = this.materia.getComponent(window.Components.DetectorBajas);\ndb.concederRecompensa(enemigoMat);"
+        scripting: {
+            es: "ve motor;\n\n// Incrementar puntuación al eliminar enemigo\nvariable det = obtenerComponente(\"DetectorBajas\")\ndet.recompensaPuntos = 100",
+            en: "ve motor;\n\n// Increase score reward upon defeating enemy\nvariable det = getComponent(\"DetectorBajas\")\ndet.recompensaPuntos = 100",
+            pt: "ve motor;\n\n// Aumentar recompensa de pontos ao derrotar inimigo\nvariable det = obterComponente(\"DetectorBajas\")\ndet.recompensaPuntos = 100",
+            ru: "ve motor;\n\n// Настроить количество очков за убийство\nvariable det = получитьКомпонент(\"DetectorBajas\")\ndet.recompensaPuntos = 100",
+            zh: "ve motor;\n\n// 设置击杀敌人时奖励的分数\nvariable det = 获取组件(\"DetectorBajas\")\ndet.recompensaPuntos = 100"
+        }
     },
     ItemRecolectable: {
         descripcion: "Convierte un objeto del escenario en un item físico interactivo que puede ser recogido (monedas, pociones, llaves, armas). Almacena el nombre del objeto, la cantidad a otorgar, la ruta del efecto de sonido y si debe destruirse de la escena al ser recogido.",
         uso: "Coloca este componente en objetos esparcidos por el mapa (ej. una moneda flotante). Configura el nombre del item que se añadirá al inventario y selecciona un sonido de recogida.",
         combinaciones: "Combina con 'CircleCollider2D' o 'BoxCollider2D' (con isTrigger activado) y 'SpriteRenderer' para la representación visual.",
-        scripting: "PROPIEDADES:\n- .nombreItem (string)\n- .cantidad (número)\n- .sonidoRecogida (string)\n- .destruirAlRecoger (boolean)\n\nCÓDIGO DE EJEMPLO:\nconst item = moneda.getComponent(window.Components.ItemRecolectable);\nitem.nombreItem = 'Poción_Oro';\nitem.cantidad = 3;"
+        scripting: {
+            es: "ve motor;\n\n// Personalizar moneda o gema dinámicamente\nvariable item = obtenerComponente(\"ItemRecolectable\")\nitem.nombreItem = \"Moneda_Oro\"\nitem.cantidad = 5",
+            en: "ve motor;\n\n// Customize coin or gem dynamically\nvariable item = getComponent(\"ItemRecolectable\")\nitem.nombreItem = \"Gold_Coin\"\nitem.cantidad = 5",
+            pt: "ve motor;\n\n// Personalizar moeda ou gema dinamicamente\nvariable item = obterComponente(\"ItemRecolectable\")\nitem.nombreItem = \"Moeda_Ouro\"\nitem.cantidad = 5",
+            ru: "ve motor;\n\n// Динамически настроить собираемый предмет\nvariable item = получитьКомпонент(\"ItemRecolectable\")\nitem.nombreItem = \"Gold_Coin\"\nitem.cantidad = 5",
+            zh: "ve motor;\n\n// 动态自定义金币或宝石属性\nvariable item = 获取组件(\"ItemRecolectable\")\nitem.nombreItem = \"Gold_Coin\"\nitem.cantidad = 5"
+        }
     },
     RecolectorObjetos: {
         descripcion: "Permite a la entidad del jugador detectar y recoger de forma automática componentes ItemRecolectable en el escenario. Soporta dos modos profesionales: absorción instantánea al colisionar/entrar en contacto, o mediante la pulsación de una tecla interactiva (como 'E' o 'F') cuando el jugador se encuentra a una distancia configurable del objeto.",
         uso: "Añádelo a tu personaje jugador. Si seleccionas el modo 'tecla', configura la 'Tecla de Recogida' y la 'Distancia de Detección' adecuada para interactuar con los objetos.",
         combinaciones: "Requiere que la entidad posea un componente 'Inventario' para almacenar los objetos y, opcionalmente, un 'AudioSource' para reproducir los sonidos de recogida.",
-        scripting: "PROPIEDADES:\n- .metodoRecogida (string: 'colision' o 'tecla')\n- .teclaRecogida (string)\n- .distanciaDeteccion (número)\n\nMÉTODOS:\n- buscarYRecogerCercanos() [busca items recolectables en rango]\n- intentarRecoger(itemMateria) [recoge un item específico]\n\nCÓDIGO DE EJEMPLO:\nconst rec = player.getComponent(window.Components.RecolectorObjetos);\nrec.buscarYRecogerCercanos();"
+        scripting: {
+            es: "ve motor;\n\n// Buscar y recoger todos los items cercanos automáticamente\nvariable rec = obtenerComponente(\"RecolectorObjetos\")\nrec.buscarYRecogerCercanos()",
+            en: "ve motor;\n\n// Search and collect all nearby items automatically\nvariable rec = getComponent(\"RecolectorObjetos\")\nrec.buscarYRecogerCercanos()",
+            pt: "ve motor;\n\n// Procurar e coletar todos os itens próximos automaticamente\nvariable rec = obterComponente(\"RecolectorObjetos\")\nrec.buscarYRecogerCercanos()",
+            ru: "ve motor;\n\n// Найти и собрать все ближайшие предметы автоматически\nvariable rec = получитьКомпонент(\"RecolectorObjetos\")\nrec.buscarYRecogerCercanos()",
+            zh: "ve motor;\n\n// 自动搜索并收集附近的所有物品\nvariable rec = 获取组件(\"RecolectorObjetos\")\nrec.buscarYRecogerCercanos()"
+        }
     },
     SpriteRenderer: {
         descripcion: "Representa visualmente un sprite 2D en el escenario. Soporta colorización, tintes, opacidad transparente, orden de dibujo en capas, pivots personalizables y carga de imágenes individuales o atlas .ceSprite.",
         uso: "Añádelo a cualquier objeto 2D y arrastra una imagen de tus assets a la propiedad 'Source' para renderizarla.",
         combinaciones: "Se combina con 'Transform', 'Animator' y cualquier colisionador 2D.",
-        scripting: "PROPIEDADES:\n- .color (string: '#ffffff')\n- .opacity (número: 0-1)\n- .orderInLayer (número)\n- .pivot (Vector2: {x, y})\n\nMÉTODOS:\n- loadSprite(projectsDirHandle) [carga el sprite actual]\n\nCÓDIGO DE EJEMPLO:\nconst sr = this.materia.getComponent(window.Components.SpriteRenderer);\nsr.color = '#ff0000'; // Teñir sprite en rojo"
+        scripting: {
+            es: "ve motor;\n\n// Cambiar color y transparencia de la imagen\nrenderizadorDeSprite.color = \"#ff0000\"\nrenderizadorDeSprite.opacity = 0.5",
+            en: "ve motor;\n\n// Change sprite color and transparency\nspriteRenderer.color = \"#ff0000\"\nspriteRenderer.opacity = 0.5",
+            pt: "ve motor;\n\n// Mudar cor e transparência do sprite\nrenderizadorDeSprite.color = \"#ff0000\"\nrenderizadorDeSprite.opacity = 0.5",
+            ru: "ve motor;\n\n// Изменить цвет и прозрачность спрайта\nrenderizadorDeSprite.color = \"#ff0000\"\nrenderizadorDeSprite.opacity = 0.5",
+            zh: "ve motor;\n\n// 改变精灵图像的颜色和透明度\nspriteRenderer.color = \"#ff0000\"\nspriteRenderer.opacity = 0.5"
+        }
     },
     Rigidbody2D: {
         descripcion: "Añade comportamiento físico real a la entidad, permitiendo que le afecte la gravedad, el arrastre de aire, la masa y las fuerzas de impacto/reacción físicas.",
         uso: "Añádelo a entidades dinámicas. Configura la gravedad, el tipo de cuerpo ('Dynamic', 'Kinematic', 'Static') y las restricciones de rotación/posición.",
         combinaciones: "Requiere colisionadores como 'BoxCollider2D' o 'CircleCollider2D' para que el objeto interactúe físicamente con el entorno.",
-        scripting: "PROPIEDADES:\n- .bodyType (string: 'Dynamic'/'Kinematic'/'Static')\n- .mass (número)\n- .gravityScale (número)\n- .velocity (Vector2: {x, y})\n\nMÉTODOS:\n- addForce(x, y) [aplica fuerza continua]\n- addImpulse(x, y) [aplica fuerza de impulso]\n\nCÓDIGO DE EJEMPLO:\nconst rb = this.materia.getComponent(window.Components.Rigidbody2D);\nrb.addImpulse(0, 10); // Realiza un salto físico"
+        scripting: {
+            es: "ve motor;\n\n// Aplicar un impulso físico de salto hacia arriba\nfisica.applyImpulse(nuevo Vector2(0, -12))",
+            en: "ve motor;\n\n// Apply a physical jump impulse upwards\nfisica.applyImpulse(new Vector2(0, -12))",
+            pt: "ve motor;\n\n// Aplicar um impulso físico de salto\nfisica.applyImpulse(nuevo Vector2(0, -12))",
+            ru: "ve motor;\n\n// Приложить физический импульс прыжка вверх\nфизика.applyImpulse(nuevo Vector2(0, -12))",
+            zh: "ve motor;\n\n// 施加一个向上的跳跃物理脉冲\nfisica.applyImpulse(new Vector2(0, -12))"
+        }
     },
     Health: {
         descripcion: "Controla la salud y los puntos de vida de un personaje o entidad. Gestiona daño, curación, inmunidad temporal, y eventos/animación de muerte con destrucción retardada del objeto.",
         uso: "Configura la salud máxima, vida actual y si el objeto debe destruirse automáticamente al morir ('destroyOnDeath').",
         combinaciones: "Ideal para jugadores, enemigos, barriles destructibles, combinado con colisionadores y scripts.",
-        scripting: "PROPIEDADES:\n- .maxHealth (número)\n- .currentHealth (número)\n- .isDead (boolean)\n\nMÉTODOS:\n- damage(amount) [aplica daño]\n- heal(amount) [aplica curación]\n\nCÓDIGO DE EJEMPLO:\nconst hp = target.getComponent(window.Components.Health);\nhp.damage(25); // Restar vida"
+        scripting: {
+            es: "ve motor;\n\n// Quitar 20 puntos de vida o curar al jugador\nvida.damage(20)\nvida.heal(10)",
+            en: "ve motor;\n\n// Deal 20 damage or heal the player\nhealth.damage(20)\nhealth.heal(10)",
+            pt: "ve motor;\n\n// Retirar 20 de vida ou curar o jogador\nvida.damage(20)\nvida.heal(10)",
+            ru: "ve motor;\n\n// Нанести 20 урона или восстановить 10 здоровья\nздоровье.damage(20)\nздоровье.heal(10)",
+            zh: "ve motor;\n\n// 扣除 20 点生命值或治疗 10 点生命值\nvida.damage(20)\nvida.heal(10)"
+        }
     },
     Inventario: {
         descripcion: "Gestiona una base de datos local de objetos recolectables y acumulables para la entidad, limitando la cantidad máxima de espacios disponibles.",
         uso: "Añádelo al jugador para permitirle almacenar monedas, llaves y pociones, usándolo en combinación con 'RecolectorObjetos'.",
         combinaciones: "Combina perfectamente con 'RecolectorObjetos', 'UIController' (para mostrarlo visualmente) y scripts.",
-        scripting: "PROPIEDADES:\n- .maxEspacios (número)\n- .items (Array de {nombre, cantidad, datos})\n\nMÉTODOS:\n- agregarItem(nombre, cantidad, datos)\n- quitarItem(nombre, cantidad)\n- tieneItem(nombre, cantidad) [retorna boolean]\n\nCÓDIGO DE EJEMPLO:\nconst inv = this.materia.getComponent(window.Components.Inventario);\nif (inv.tieneItem('Llave', 1)) inv.quitarItem('Llave', 1);"
+        scripting: {
+            es: "ve motor;\n\n// Verificar si tiene una llave en el inventario y usarla\nvariable inv = obtenerComponente(\"Inventario\")\nsi (inv.tieneItem(\"Llave\", 1)) {\n    inv.quitarItem(\"Llave\", 1)\n}",
+            en: "ve motor;\n\n// Check if inventory has a key and use it\nvariable inv = getComponent(\"Inventario\")\nif (inv.tieneItem(\"Key\", 1)) {\n    inv.quitarItem(\"Key\", 1)\n}",
+            pt: "ve motor;\n\n// Verificar se tem uma chave no inventário e usar\nvariable inv = obterComponente(\"Inventario\")\nse (inv.tieneItem(\"Chave\", 1)) {\n    inv.quitarItem(\"Chave\", 1)\n}",
+            ru: "ve motor;\n\n// Проверить наличие ключа в инвентаре и использовать его\nvariable inv = получитьКомпонент(\"Inventario\")\nесли (inv.tieneItem(\"Key\", 1)) {\n    inv.quitarItem(\"Key\", 1)\n}",
+            zh: "ve motor;\n\n// 检查背包中是否有钥匙并使用它\nvariable inv = 获取组件(\"Inventario\")\n如果 (inv.tieneItem(\"Key\", 1)) {\n    inv.quitarItem(\"Key\", 1)\n}"
+        }
     }
 };
 
 window.showComponentHelp = function(componentName) {
     const L = window.Localization;
+    const currentLang = (L && L.currentLanguage) ? L.currentLanguage.toLowerCase() : 'es';
+
     const data = componentHelpData[componentName] || {
         descripcion: "Añade lógica y propiedades específicas a la entidad para expandir sus capacidades en el juego.",
         uso: "Configura las propiedades de este componente en el Inspector para adaptar su funcionamiento a tus necesidades.",
         combinaciones: "Compatible con cualquier 'Materia' que posea un 'Transform' para posicionamiento y lógica de juego básica.",
-        scripting: "PROPIEDADES:\n- Propiedades públicas editables expuestas en el Inspector.\n\nCÓDIGO DE EJEMPLO:\nconst comp = this.materia.getComponent(window.Components[componentName]);"
+        scripting: {
+            es: "ve motor;\n\n// Obtener componente\nvariable comp = obtenerComponente(\"" + componentName + "\")",
+            en: "ve motor;\n\n// Get component\nvariable comp = getComponent(\"" + componentName + "\")",
+            pt: "ve motor;\n\n// Obter componente\nvariable comp = obterComponente(\"" + componentName + "\")",
+            ru: "ve motor;\n\n// Получить компонент\nvariable comp = получитьКомпонент(\"" + componentName + "\")",
+            zh: "ve motor;\n\n// 获取组件\nvariable comp = 获取组件(\"" + componentName + "\")"
+        }
     };
+
+    let scriptingText = "";
+    if (data.scripting) {
+        scriptingText = data.scripting[currentLang] || data.scripting['es'] || data.scripting['en'] || "";
+    }
+
+    let copyText = "Copiar";
+    let copiedText = "¡Copiado!";
+    if (currentLang === 'en') {
+        copyText = "Copy";
+        copiedText = "Copied!";
+    } else if (currentLang === 'pt') {
+        copyText = "Copiar";
+        copiedText = "Copiado!";
+    } else if (currentLang === 'ru') {
+        copyText = "Копировать";
+        copiedText = "Скопировано!";
+    } else if (currentLang === 'zh') {
+        copyText = "复制";
+        copiedText = "已复制!";
+    }
 
     const dialogTitle = `${L?.get('INFORMACION_LEY', 'Información de Componente') || 'Información de Componente'}: ${componentName}`;
 
@@ -1364,9 +1453,10 @@ window.showComponentHelp = function(componentName) {
                 <p style="margin: 0; font-size: 0.85em; color: #e2e8f0; font-weight: 400;">${data.uso}</p>
             </div>
 
-            <div style="margin-bottom: 12px; background: rgba(148, 163, 184, 0.08); border-left: 3px solid #94a3b8; padding: 10px; border-radius: 4px; font-family: monospace;">
+            <div style="position: relative; margin-bottom: 12px; background: rgba(148, 163, 184, 0.08); border-left: 3px solid #94a3b8; padding: 10px; border-radius: 4px; font-family: monospace;">
                 <h4 style="margin: 0 0 4px 0; color: #e2e8f0; font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">Uso en Scripting & API</h4>
-                <pre style="margin: 0; font-size: 0.8em; color: #38bdf8; white-space: pre-wrap; font-weight: 400; line-height: 1.4;">${data.scripting}</pre>
+                <pre id="help-code-snippet" style="margin: 0; font-size: 0.8em; color: #38bdf8; white-space: pre-wrap; font-weight: 400; line-height: 1.4; padding-right: 70px;">${scriptingText}</pre>
+                <button onclick="navigator.clipboard.writeText(document.getElementById('help-code-snippet').innerText); this.innerText='${copiedText}'; setTimeout(() => this.innerText='${copyText}', 2000);" style="position: absolute; top: 10px; right: 10px; background: rgba(56, 189, 248, 0.2); border: 1px solid #38bdf8; color: #38bdf8; padding: 3px 6px; font-size: 0.7em; border-radius: 3px; cursor: pointer; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">${copyText}</button>
             </div>
 
             <div style="margin-bottom: 5px;">
