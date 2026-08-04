@@ -1284,11 +1284,11 @@ const componentHelpData = {
         uso: "Añade este componente al personaje jugador. Configura el 'Prefab Proyectil' arrastrando un archivo .ceprefab de bala y define la 'Tecla Disparo'. Asegúrate de que el personaje tenga una escala x correcta o mire a los lados para orientar el disparo.",
         combinaciones: "Se combina perfectamente con 'Transform', 'SpriteRenderer', 'Proyectil2D' (como bala) y 'Rigidbody2D' (para que el retroceso empuje al personaje físicamente).",
         scripting: {
-            es: "ve motor;\n\n// Recargar 10 balas en el cargador\nvariable arma = obtenerComponente(\"ManejoArmasLateral\")\narma.municionActual += 10\n\n// Disparar proyectil\narma.disparar()",
-            en: "ve motor;\n\n// Reload 10 bullets to the weapon\nvariable gun = getComponent(\"ManejoArmasLateral\")\ngun.municionActual += 10\n\n// Shoot projectile\ngun.disparar()",
-            pt: "ve motor;\n\n// Recarregar 10 balas na arma\nvariable arma = obterComponente(\"ManejoArmasLateral\")\narma.municionActual += 10\n\n// Disparar projétil\narma.disparar()",
-            ru: "ve motor;\n\n// Перезарядить 10 патронов\nvariable oruzhie = получитьКомпонент(\"ManejoArmasLateral\")\noruzhie.municionActual += 10\n\n// Выстрелить\noruzhie.disparar()",
-            zh: "ve motor;\n\n// 为武器弹匣装填 10 发子弹\nvariable gun = 获取组件(\"ManejoArmasLateral\")\ngun.municionActual += 10\n\n// 触发射击\ngun.disparar()"
+            es: "ve motor;\n\n// EJEMPLO 1: Recarga manual presionando la tecla R\nalActualizar(delta) {\n    variable arma = obtenerComponente(\"ManejoArmasLateral\")\n    si (teclaRecienPresionada(\"r\") y arma.municionActual < arma.municionMaxima) {\n        imprimir(\"Recargando arma...\")\n        arma.municionActual = arma.municionMaxima\n    }\n}\n\n// EJEMPLO 2: Disparo de ráfaga triple de balas\ndispararRafaga() {\n    variable arma = obtenerComponente(\"ManejoArmasLateral\")\n    arma.disparar()\n    esperar(0.12)\n    arma.disparar()\n    esperar(0.12)\n    arma.disparar()\n}",
+            en: "ve motor;\n\n// EXAMPLE 1: Manual reload by pressing the R key\nalActualizar(delta) {\n    variable gun = getComponent(\"ManejoArmasLateral\")\n    if (teclaRecienPresionada(\"r\") && gun.municionActual < gun.municionMaxima) {\n        log(\"Reloading weapon...\")\n        gun.municionActual = gun.municionMaxima\n    }\n}\n\n// EXAMPLE 2: Fire an automatic triple burst of bullets\nfireTripleBurst() {\n    variable gun = getComponent(\"ManejoArmasLateral\")\n    gun.disparar()\n    wait(0.12)\n    gun.disparar()\n    wait(0.12)\n    gun.disparar()\n}",
+            pt: "ve motor;\n\n// EXEMPLO 1: Recarga manual pressionando a tecla R\nalActualizar(delta) {\n    variable arma = obterComponente(\"ManejoArmasLateral\")\n    se (teclaRecemPressionada(\"r\") e arma.municionActual < arma.municionMaxima) {\n        imprimir(\"Recarregando arma...\")\n        arma.municionActual = arma.municionMaxima\n    }\n}\n\n// EXEMPLO 2: Disparo de rajada tripla automática\ndispararRajada() {\n    variable arma = obterComponente(\"ManejoArmasLateral\")\n    arma.disparar()\n    wait(0.12)\n    arma.disparar()\n    wait(0.12)\n    arma.disparar()\n}",
+            ru: "ve motor;\n\n// ПРИМЕР 1: Ручная перезарядка при нажатии клавиши R\nalActualizar(delta) {\n    variable oruzhie = получитьКомпонент(\"ManejoArmasLateral\")\n    если (клавишаТолькоЧтоНажата(\"r\") и oruzhie.municionActual < oruzhie.municionMaxima) {\n        imprimir(\"Перезарядка...\")\n        oruzhie.municionActual = oruzhie.municionMaxima\n    }\n}\n\n// ПРИМЕР 2: Выстрел тройной очередью патронов\nfireBurst() {\n    variable oruzhie = получитьКомпонент(\"ManejoArmasLateral\")\n    oruzhie.disparar()\n    ждать(0.12)\n    oruzhie.disparar()\n    ждать(0.12)\n    oruzhie.disparar()\n}",
+            zh: "ve motor;\n\n// 示例 1: 按下 R 键进行手动换弹的逻辑\nalActualizar(delta) {\n    variable gun = 获取组件(\"ManejoArmasLateral\")\n    如果 (按键刚刚按下(\"r\") 和 gun.municionActual < gun.municionMaxima) {\n        log(\"正在重新装填武器...\")\n        gun.municionActual = gun.municionMaxima\n    }\n}\n\n// 示例 2: 自动触发三连发子弹射击\nfireTripleBurst() {\n    variable gun = 获取组件(\"ManejoArmasLateral\")\n    gun.disparar()\n    等待(0.12)\n    gun.disparar()\n    等待(0.12)\n    gun.disparar()\n}"
         }
     },
     ManejoArmasCenital: {
@@ -1296,11 +1296,11 @@ const componentHelpData = {
         uso: "Añade este componente a tu personaje en un entorno Top-Down. Configura la 'Tecla Disparo' (usualmente 'Mouse0' para clic izquierdo) y ajusta la 'Fuerza de Retroceso' según lo desees.",
         combinaciones: "Combina de forma ideal con 'Transform', 'Camera' (para ubicar el puntero del ratón en el mundo), 'Proyectil2D' y 'Rigidbody2D'.",
         scripting: {
-            es: "ve motor;\n\n// Consultar munición actual del arma cenital\nvariable arma = obtenerComponente(\"ManejoArmasCenital\")\nimprimir(\"Balas: \" + arma.municionActual)",
-            en: "ve motor;\n\n// Get current ammo for the weapon\nvariable gun = getComponent(\"ManejoArmasCenital\")\nlog(\"Ammo: \" + gun.municionActual)",
-            pt: "ve motor;\n\n// Consultar munição atual da arma\nvariable arma = obterComponente(\"ManejoArmasCenital\")\nimprimir(\"Balas: \" + arma.municionActual)",
-            ru: "ve motor;\n\n// Получить количество патронов\nvariable oruzhie = получитьКомпонент(\"ManejoArmasCenital\")\nimprimir(\"Патроны: \" + oruzhie.municionActual)",
-            zh: "ve motor;\n\n// 检查俯视射击武器的当前子弹数\nvariable gun = 获取组件(\"ManejoArmasCenital\")\nlog(\"子弹: \" + gun.municionActual)"
+            es: "ve motor;\n\n// EJEMPLO 1: Comprobación de munición y tiro asistido\nalActualizar(delta) {\n    variable arma = obtenerComponente(\"ManejoArmasCenital\")\n    si (teclaRecienPresionada(\"f\")) {\n        si (arma.municionActual > 0) {\n            arma.disparar()\n        sino {\n            imprimir(\"¡Sin balas! Presiona R para recargar\")\n        }\n    }\n}",
+            en: "ve motor;\n\n// EXAMPLE 1: Ammo checking and assisted fire logic\nalActualizar(delta) {\n    variable gun = getComponent(\"ManejoArmasCenital\")\n    if (teclaRecienPresionada(\"f\")) {\n        if (gun.municionActual > 0) {\n            gun.disparar()\n        } else {\n            log(\"Out of ammo! Press R to reload\")\n        }\n    }\n}",
+            pt: "ve motor;\n\n// EXEMPLO 1: Verificação de munição e disparo assistido\nalActualizar(delta) {\n    variable arma = obterComponente(\"ManejoArmasCenital\")\n    se (teclaRecemPressionada(\"f\")) {\n        se (arma.municionActual > 0) {\n            arma.disparar()\n        } senão {\n            imprimir(\"Sem balas! Pressione R para recarregar\")\n        }\n    }\n}",
+            ru: "ve motor;\n\n// ПРИМЕР 1: Проверка патронов и стрельба по условию\nalActualizar(delta) {\n    variable oruzhie = получитьКомпонент(\"ManejoArmasCenital\")\n    если (клавишаТолькоЧтоНажата(\"f\")) {\n        если (oruzhie.municionActual > 0) {\n            oruzhie.disparar()\n        } иначе {\n            imprimir(\"Нет патронов! Нажмите R для перезарядки\")\n        }\n    }\n}",
+            zh: "ve motor;\n\n// 示例 1: 检查子弹并进行辅助射击的逻辑\nalActualizar(delta) {\n    variable gun = 获取组件(\"ManejoArmasCenital\")\n    如果 (按键刚刚按下(\"f\")) {\n        如果 (gun.municionActual > 0) {\n            gun.disparar()\n        } 否则 {\n            log(\"弹药不足！请按 R 键装弹\")\n        }\n    }\n}"
         }
     },
     Proyectil2D: {
@@ -1308,11 +1308,11 @@ const componentHelpData = {
         uso: "Añádelo a la entidad que funcionará como bala (generalmente tu prefab de proyectil). Configura la 'Velocidad', el 'Daño' y el 'Tiempo de Vida'.",
         combinaciones: "Compatible con 'CircleCollider2D', 'BoxCollider2D', 'SpriteRenderer' y 'DetectorBajas'.",
         scripting: {
-            es: "ve motor;\n\n// Configurar velocidad y daño de la bala al crearla\nvariable bala = crear balaPrefab\nvariable proj = bala.obtenerComponente(\"Proyectil2D\")\nproj.velocidad = 800\nproj.dano = 25",
-            en: "ve motor;\n\n// Configure bullet speed and damage upon creation\nvariable bullet = create bulletPrefab\nvariable proj = bullet.getComponent(\"Proyectil2D\")\nproj.velocidad = 800\nproj.dano = 25",
-            pt: "ve motor;\n\n// Configurar velocidade e dano ao criar o projétil\nvariable bala = criar balaPrefab\nvariable proj = bala.obterComponente(\"Proyectil2D\")\nproj.velocidad = 800\nproj.dano = 25",
-            ru: "ve motor;\n\n// Настроить скорость и урон пули при создании\nvariable pulya = создать pulyaPrefab\nvariable proj = pulya.получитьКомпонент(\"Proyectil2D\")\nproj.velocidad = 800\nproj.dano = 25",
-            zh: "ve motor;\n\n// 创建子弹时设置速度和伤害\nvariable bullet = 创建 bulletPrefab\nvariable proj = bullet.获取组件(\"Proyectil2D\")\nproj.velocidad = 800\nproj.dano = 25"
+            es: "ve motor;\n\n// EJEMPLO 1: Lanzamiento de misil con velocidad y daño mejorados\nlanzarMisilEspecial() {\n    variable misil = crear misilPrefab\n    variable proj = misil.obtenerComponente(\"Proyectil2D\")\n    proj.velocidad = 1200\n    proj.dano = 75\n    proj.tiempoVida = 5.0\n}",
+            en: "ve motor;\n\n// EXAMPLE 1: Fire special missile with boosted speed and damage\nfireSpecialMissile() {\n    variable missile = create missilePrefab\n    variable proj = missile.getComponent(\"Proyectil2D\")\n    proj.velocidad = 1200\n    proj.dano = 75\n    proj.tiempoVida = 5.0\n}",
+            pt: "ve motor;\n\n// EXEMPLO 1: Lançar míssil especial com velocidade e dano aumentados\nlancarMissilEspecial() {\n    variable missil = criar missilPrefab\n    variable proj = missil.obterComponente(\"Proyectil2D\")\n    proj.velocidad = 1200\n    proj.dano = 75\n    proj.tiempoVida = 5.0\n}",
+            ru: "ve motor;\n\n// ПРИМЕР 1: Запуск ракеты с повышенной скоростью и уроном\nfireSpecialMissile() {\n    variable missile = создать missilePrefab\n    variable proj = missile.получитьКомпонент(\"Proyectil2D\")\n    proj.velocidad = 1200\n    proj.dano = 75\n    proj.tiempoVida = 5.0\n}",
+            zh: "ve motor;\n\n// 示例 1: 发射具有更高速度和高额伤害的特殊特殊导弹\nfireSpecialMissile() {\n    variable missile = 创建 missilePrefab\n    variable proj = missile.获取组件(\"Proyectil2D\")\n    proj.velocidad = 1200\n    proj.dano = 75\n    proj.tiempoVida = 5.0\n}"
         }
     },
     DetectorBajas: {
@@ -1320,11 +1320,11 @@ const componentHelpData = {
         uso: "Agrégalo a tu personaje jugador para llevar la cuenta de sus bajas. Configura la puntuación y el 'Item a Recompensar' con el nombre exacto de la moneda o recompensa.",
         combinaciones: "Esencial en el personaje jugador junto con 'Inventario', 'Health', y componentes de disparo como 'ManejoArmasLateral' o 'ManejoArmasCenital'.",
         scripting: {
-            es: "ve motor;\n\n// Incrementar puntuación al eliminar enemigo\nvariable det = obtenerComponente(\"DetectorBajas\")\ndet.recompensaPuntos = 100",
-            en: "ve motor;\n\n// Increase score reward upon defeating enemy\nvariable det = getComponent(\"DetectorBajas\")\ndet.recompensaPuntos = 100",
-            pt: "ve motor;\n\n// Aumentar recompensa de pontos ao derrotar inimigo\nvariable det = obterComponente(\"DetectorBajas\")\ndet.recompensaPuntos = 100",
-            ru: "ve motor;\n\n// Настроить количество очков за убийство\nvariable det = получитьКомпонент(\"DetectorBajas\")\ndet.recompensaPuntos = 100",
-            zh: "ve motor;\n\n// 设置击杀敌人时奖励的分数\nvariable det = 获取组件(\"DetectorBajas\")\ndet.recompensaPuntos = 100"
+            es: "ve motor;\n\n// EJEMPLO 1: Recompensa multiplicada durante eventos especiales\nactivarDoblePuntos() {\n    variable det = obtenerComponente(\"DetectorBajas\")\n    det.recompensaPuntos = 200 // Puntos dobles\n    det.cantidadItem = 2\n}",
+            en: "ve motor;\n\n// EXAMPLE 1: Double kill rewards during special score events\nactivateDoublePoints() {\n    variable det = getComponent(\"DetectorBajas\")\n    det.recompensaPuntos = 200 // Double score\n    det.cantidadItem = 2\n}",
+            pt: "ve motor;\n\n// EXEMPLO 1: Recompensa multiplicada durante eventos especiais\nativarDobroPontos() {\n    variable det = obterComponente(\"DetectorBajas\")\n    det.recompensaPuntos = 200 // Pontos duplos\n    det.cantidadItem = 2\n}",
+            ru: "ve motor;\n\n// ПРИМЕР 1: Двойные награды во время специальных событий\nactivateDoublePoints() {\n    variable det = получитьКомпонент(\"DetectorBajas\")\n    det.recompensaPuntos = 200 // Двойные очки\n    det.cantidadItem = 2\n}",
+            zh: "ve motor;\n\n// 示例 1: 在特殊双倍积分活动期间获得翻倍的积分奖励\nactivateDoublePoints() {\n    variable det = 获取组件(\"DetectorBajas\")\n    det.recompensaPuntos = 200 // 双倍积分\n    det.cantidadItem = 2\n}"
         }
     },
     ItemRecolectable: {
@@ -1332,11 +1332,11 @@ const componentHelpData = {
         uso: "Coloca este componente en objetos esparcidos por el mapa (ej. una moneda flotante). Configura el nombre del item que se añadirá al inventario y selecciona un sonido de recogida.",
         combinaciones: "Combina con 'CircleCollider2D' o 'BoxCollider2D' (con isTrigger activado) y 'SpriteRenderer' para la representación visual.",
         scripting: {
-            es: "ve motor;\n\n// Personalizar moneda o gema dinámicamente\nvariable item = obtenerComponente(\"ItemRecolectable\")\nitem.nombreItem = \"Moneda_Oro\"\nitem.cantidad = 5",
-            en: "ve motor;\n\n// Customize coin or gem dynamically\nvariable item = getComponent(\"ItemRecolectable\")\nitem.nombreItem = \"Gold_Coin\"\nitem.cantidad = 5",
-            pt: "ve motor;\n\n// Personalizar moeda ou gema dinamicamente\nvariable item = obterComponente(\"ItemRecolectable\")\nitem.nombreItem = \"Moeda_Ouro\"\nitem.cantidad = 5",
-            ru: "ve motor;\n\n// Динамически настроить собираемый предмет\nvariable item = получитьКомпонент(\"ItemRecolectable\")\nitem.nombreItem = \"Gold_Coin\"\nitem.cantidad = 5",
-            zh: "ve motor;\n\n// 动态自定义金币或宝石属性\nvariable item = 获取组件(\"ItemRecolectable\")\nitem.nombreItem = \"Gold_Coin\"\nitem.cantidad = 5"
+            es: "ve motor;\n\n// EJEMPLO 1: Cofre de tesoro que genera 5 gemas al abrirse\nabrirCofre() {\n    variable gema = crear gemaPrefab\n    variable item = gema.obtenerComponente(\"ItemRecolectable\")\n    item.nombreItem = \"Gema_Azul\"\n    item.cantidad = 5\n    item.sonidoRecogida = \"audio/gem_pickup.wav\"\n}",
+            en: "ve motor;\n\n// EXAMPLE 1: Treasure chest spawns 5 gems when opened\nopenTreasureChest() {\n    variable gem = create gemPrefab\n    variable item = gem.getComponent(\"ItemRecolectable\")\n    item.nombreItem = \"Blue_Gem\"\n    item.cantidad = 5\n    item.sonidoRecogida = \"audio/gem_pickup.wav\"\n}",
+            pt: "ve motor;\n\n// EXEMPLO 1: Baú de tesouro que gera 5 gemas ao abrir\nabrirBau() {\n    variable gema = criar gemaPrefab\n    variable item = gema.obterComponente(\"ItemRecolectable\")\n    item.nombreItem = \"Gema_Azul\"\n    item.cantidad = 5\n    item.sonidoRecogida = \"audio/gem_pickup.wav\"\n}",
+            ru: "ve motor;\n\n// ПРИМЕР 1: Сундук сокровищ создает 5 синих самоцветов\nopenTreasure() {\n    variable gem = создать gemPrefab\n    variable item = gem.получитьКомпонент(\"ItemRecolectable\")\n    item.nombreItem = \"Blue_Gem\"\n    item.cantidad = 5\n    item.sonidoRecogida = \"audio/gem_pickup.wav\"\n}",
+            zh: "ve motor;\n\n// 示例 1: 宝箱被打开时在世界中生成 5 颗蓝色宝石\nopenTreasureChest() {\n    variable gem = 创建 gemPrefab\n    variable item = gem.获取组件(\"ItemRecolectable\")\n    item.nombreItem = \"Blue_Gem\"\n    item.cantidad = 5\n    item.sonidoRecogida = \"audio/gem_pickup.wav\"\n}"
         }
     },
     RecolectorObjetos: {
@@ -1344,23 +1344,23 @@ const componentHelpData = {
         uso: "Añádelo a tu personaje jugador. Si seleccionas el modo 'tecla', configura la 'Tecla de Recogida' y la 'Distancia de Detección' adecuada para interactuar con los objetos.",
         combinaciones: "Requiere que la entidad posea un componente 'Inventario' para almacenar los objetos y, opcionalmente, un 'AudioSource' para reproducir los sonidos de recogida.",
         scripting: {
-            es: "ve motor;\n\n// Buscar y recoger todos los items cercanos automáticamente\nvariable rec = obtenerComponente(\"RecolectorObjetos\")\nrec.buscarYRecogerCercanos()",
-            en: "ve motor;\n\n// Search and collect all nearby items automatically\nvariable rec = getComponent(\"RecolectorObjetos\")\nrec.buscarYRecogerCercanos()",
-            pt: "ve motor;\n\n// Procurar e coletar todos os itens próximos automaticamente\nvariable rec = obterComponente(\"RecolectorObjetos\")\nrec.buscarYRecogerCercanos()",
-            ru: "ve motor;\n\n// Найти и собрать все ближайшие предметы автоматически\nvariable rec = получитьКомпонент(\"RecolectorObjetos\")\nrec.buscarYRecogerCercanos()",
-            zh: "ve motor;\n\n// 自动搜索并收集附近的所有物品\nvariable rec = 获取组件(\"RecolectorObjetos\")\nrec.buscarYRecogerCercanos()"
+            es: "ve motor;\n\n// EJEMPLO 1: Cambiar modo de colisión a tecla al entrar en zona difícil\nactivarModoInteractuar() {\n    variable rec = obtenerComponente(\"RecolectorObjetos\")\n    rec.metodoRecogida = \"tecla\"\n    rec.teclaRecogida = \"KeyE\"\n    rec.distanciaDeteccion = 120\n}",
+            en: "ve motor;\n\n// EXAMPLE 1: Change collection method to key interaction when entering a special area\nswitchToKeyPickup() {\n    variable rec = getComponent(\"RecolectorObjetos\")\n    rec.metodoRecogida = \"tecla\"\n    rec.teclaRecogida = \"KeyE\"\n    rec.distanciaDeteccion = 120\n}",
+            pt: "ve motor;\n\n// EXEMPLO 1: Mudar método de coleta para interação por tecla\nativarModoInteracao() {\n    variable rec = obterComponente(\"RecolectorObjetos\")\n    rec.metodoRecogida = \"tecla\"\n    rec.teclaRecogida = \"KeyE\"\n    rec.distanciaDeteccion = 120\n}",
+            ru: "ve motor;\n\n// ПРИМЕР 1: Переключение с автосбора на сбор кнопкой E\nswitchToKeyInteraction() {\n    variable rec = получитьКомпонент(\"RecolectorObjetos\")\n    rec.metodoRecogida = \"tecla\"\n    rec.teclaRecogida = \"KeyE\"\n    rec.distanciaDeteccion = 120\n}",
+            zh: "ve motor;\n\n// 示例 1: 转换收集模式为按键交互收集（例如按 E 键收集）\nswitchToKeyPickup() {\n    variable rec = 获取组件(\"RecolectorObjetos\")\n    rec.metodoRecogida = \"tecla\"\n    rec.teclaRecogida = \"KeyE\"\n    rec.distanciaDeteccion = 120\n}"
         }
     },
     SpriteRenderer: {
         descripcion: "Representa visualmente un sprite 2D en el escenario. Soporta colorización, tintes, opacidad transparente, orden de dibujo en capas, pivots personalizables y carga de imágenes individuales o atlas .ceSprite.",
-        uso: "Añádelo a cualquier objeto 2D y arrastra una imagen de tus assets a la propiedad 'Source' para renderizarla.",
+        uso: "Añádelo a cualquier objeto 2D and arrastra una imagen de tus assets a la propiedad 'Source' para renderizarla.",
         combinaciones: "Se combina con 'Transform', 'Animator' y cualquier colisionador 2D.",
         scripting: {
-            es: "ve motor;\n\n// Cambiar color y transparencia de la imagen\nrenderizadorDeSprite.color = \"#ff0000\"\nrenderizadorDeSprite.opacity = 0.5",
-            en: "ve motor;\n\n// Change sprite color and transparency\nspriteRenderer.color = \"#ff0000\"\nspriteRenderer.opacity = 0.5",
-            pt: "ve motor;\n\n// Mudar cor e transparência do sprite\nrenderizadorDeSprite.color = \"#ff0000\"\nrenderizadorDeSprite.opacity = 0.5",
-            ru: "ve motor;\n\n// Изменить цвет и прозрачность спрайта\nrenderizadorDeSprite.color = \"#ff0000\"\nrenderizadorDeSprite.opacity = 0.5",
-            zh: "ve motor;\n\n// 改变精灵图像的颜色和透明度\nspriteRenderer.color = \"#ff0000\"\nspriteRenderer.opacity = 0.5"
+            es: "ve motor;\n\n// EJEMPLO 1: Parpadeo visual de daño (rojo translúcido)\nparpadearDano() {\n    renderizadorDeSprite.color = \"#ff5555\"\n    renderizadorDeSprite.opacity = 0.4\n    esperar(0.15)\n    renderizadorDeSprite.color = \"#ffffff\"\n    renderizadorDeSprite.opacity = 1.0\n}",
+            en: "ve motor;\n\n// EXAMPLE 1: Damage visual flash effect (translucent red)\nflashDamage() {\n    spriteRenderer.color = \"#ff5555\"\n    spriteRenderer.opacity = 0.4\n    wait(0.15)\n    spriteRenderer.color = \"#ffffff\"\n    spriteRenderer.opacity = 1.0\n}",
+            pt: "ve motor;\n\n// EXEMPLO 1: Efeito visual de dano piscando em vermelho translúcido\npiscarDano() {\n    renderizadorDeSprite.color = \"#ff5555\"\n    renderizadorDeSprite.opacity = 0.4\n    wait(0.15)\n    renderizadorDeSprite.color = \"#ffffff\"\n    renderizadorDeSprite.opacity = 1.0\n}",
+            ru: "ve motor;\n\n// ПРИМЕР 1: Визуальная вспышка получения урона (полупрозрачный красный)\nflashDamage() {\n    renderizadorDeSprite.color = \"#ff5555\"\n    renderizadorDeSprite.opacity = 0.4\n    ждать(0.15)\n    renderizadorDeSprite.color = \"#ffffff\"\n    renderizadorDeSprite.opacity = 1.0\n}",
+            zh: "ve motor;\n\n// 示例 1: 制作受伤时的红色半透明闪烁视觉特效\nflashDamage() {\n    spriteRenderer.color = \"#ff5555\"\n    spriteRenderer.opacity = 0.4\n    等待(0.15)\n    spriteRenderer.color = \"#ffffff\"\n    spriteRenderer.opacity = 1.0\n}"
         }
     },
     Rigidbody2D: {
@@ -1368,11 +1368,11 @@ const componentHelpData = {
         uso: "Añádelo a entidades dinámicas. Configura la gravedad, el tipo de cuerpo ('Dynamic', 'Kinematic', 'Static') y las restricciones de rotación/posición.",
         combinaciones: "Requiere colisionadores como 'BoxCollider2D' o 'CircleCollider2D' para que el objeto interactúe físicamente con el entorno.",
         scripting: {
-            es: "ve motor;\n\n// Aplicar un impulso físico de salto hacia arriba\nfisica.applyImpulse(nuevo Vector2(0, -12))",
-            en: "ve motor;\n\n// Apply a physical jump impulse upwards\nfisica.applyImpulse(new Vector2(0, -12))",
-            pt: "ve motor;\n\n// Aplicar um impulso físico de salto\nfisica.applyImpulse(nuevo Vector2(0, -12))",
-            ru: "ve motor;\n\n// Приложить физический импульс прыжка вверх\nфизика.applyImpulse(nuevo Vector2(0, -12))",
-            zh: "ve motor;\n\n// 施加一个向上的跳跃物理脉冲\nfisica.applyImpulse(new Vector2(0, -12))"
+            es: "ve motor;\n\n// EJEMPLO 1: Aplicar impulso físico de esquiva (Dash)\nesquivarLateral(derecha) {\n    variable empuje = derecha ? 18 : -18\n    fisica.applyImpulse(nuevo Vector2(empuje, 0))\n}",
+            en: "ve motor;\n\n// EXAMPLE 1: Physical dash impulse logic\ndashMove(goRight) {\n    variable push = goRight ? 18 : -18\n    fisica.applyImpulse(new Vector2(push, 0))\n}",
+            pt: "ve motor;\n\n// EXEMPLO 1: Aplicar impulso de esquiva física (Dash)\nesquivarFisico(direita) {\n    variable empuxo = direita ? 18 : -18\n    fisica.applyImpulse(nuevo Vector2(empuxo, 0))\n}",
+            ru: "ve motor;\n\n// ПРИМЕР 1: Приложить физический импульс рывка (Dash)\ndashMove(goRight) {\n    variable push = goRight ? 18 : -18\n    физика.applyImpulse(nuevo Vector2(push, 0))\n}",
+            zh: "ve motor;\n\n// 示例 1: 应用左右躲避（冲刺 Dash）的物理脉冲\ndashMove(goRight) {\n    variable push = goRight ? 18 : -18\n    fisica.applyImpulse(new Vector2(push, 0))\n}"
         }
     },
     Health: {
@@ -1380,11 +1380,11 @@ const componentHelpData = {
         uso: "Configura la salud máxima, vida actual y si el objeto debe destruirse automáticamente al morir ('destroyOnDeath').",
         combinaciones: "Ideal para jugadores, enemigos, barriles destructibles, combinado con colisionadores y scripts.",
         scripting: {
-            es: "ve motor;\n\n// Quitar 20 puntos de vida o curar al jugador\nvida.damage(20)\nvida.heal(10)",
-            en: "ve motor;\n\n// Deal 20 damage or heal the player\nhealth.damage(20)\nhealth.heal(10)",
-            pt: "ve motor;\n\n// Retirar 20 de vida ou curar o jogador\nvida.damage(20)\nvida.heal(10)",
-            ru: "ve motor;\n\n// Нанести 20 урона или восстановить 10 здоровья\nздоровье.damage(20)\nздоровье.heal(10)",
-            zh: "ve motor;\n\n// 扣除 20 点生命值或治疗 10 点生命值\nvida.damage(20)\nvida.heal(10)"
+            es: "ve motor;\n\n// EJEMPLO 1: Dañar al jugador con cooldown de inmunidad\nrecibirAtaqueEnemigo(cantidad) {\n    si (vida.currentHealth > 0) {\n        vida.damage(cantidad)\n        imprimir(\"Vida restante: \" + vida.currentHealth)\n    }\n}",
+            en: "ve motor;\n\n// EXAMPLE 1: Damage the player with safety checks\ntakeEnemyDamage(amount) {\n    if (health.currentHealth > 0) {\n        health.damage(amount)\n        log(\"Remaining health: \" + health.currentHealth)\n    }\n}",
+            pt: "ve motor;\n\n// EXEMPLO 1: Aplicar dano com verificação de segurança\nreceberAtaqueInimigo(quantidade) {\n    se (vida.currentHealth > 0) {\n        vida.damage(quantidade)\n        imprimir(\"Vida restante: \" + vida.currentHealth)\n    }\n}",
+            ru: "ve motor;\n\n// ПРИМЕР 1: Нанести урон игроку с проверкой на смерть\ntakeDamage(amount) {\n    если (здоровье.currentHealth > 0) {\n        здоровье.damage(amount)\n        imprimir(\"Осталось здоровья: \" + здоровье.currentHealth)\n    }\n}",
+            zh: "ve motor;\n\n// 示例 1: 在确保生存的情况下对玩家扣除生命值并记录日志\ntakeEnemyDamage(amount) {\n    如果 (vida.currentHealth > 0) {\n        vida.damage(amount)\n        log(\"剩余生命值: \" + vida.currentHealth)\n    }\n}"
         }
     },
     Inventario: {
@@ -1392,11 +1392,11 @@ const componentHelpData = {
         uso: "Añádelo al jugador para permitirle almacenar monedas, llaves y pociones, usándolo en combinación con 'RecolectorObjetos'.",
         combinaciones: "Combina perfectamente con 'RecolectorObjetos', 'UIController' (para mostrarlo visualmente) y scripts.",
         scripting: {
-            es: "ve motor;\n\n// Verificar si tiene una llave en el inventario y usarla\nvariable inv = obtenerComponente(\"Inventario\")\nsi (inv.tieneItem(\"Llave\", 1)) {\n    inv.quitarItem(\"Llave\", 1)\n}",
-            en: "ve motor;\n\n// Check if inventory has a key and use it\nvariable inv = getComponent(\"Inventario\")\nif (inv.tieneItem(\"Key\", 1)) {\n    inv.quitarItem(\"Key\", 1)\n}",
-            pt: "ve motor;\n\n// Verificar se tem uma chave no inventário e usar\nvariable inv = obterComponente(\"Inventario\")\nse (inv.tieneItem(\"Chave\", 1)) {\n    inv.quitarItem(\"Chave\", 1)\n}",
-            ru: "ve motor;\n\n// Проверить наличие ключа в инвентаре и использовать его\nvariable inv = получитьКомпонент(\"Inventario\")\nесли (inv.tieneItem(\"Key\", 1)) {\n    inv.quitarItem(\"Key\", 1)\n}",
-            zh: "ve motor;\n\n// 检查背包中是否有钥匙并使用它\nvariable inv = 获取组件(\"Inventario\")\n如果 (inv.tieneItem(\"Key\", 1)) {\n    inv.quitarItem(\"Key\", 1)\n}"
+            es: "ve motor;\n\n// EJEMPLO 1: Consumir una poción para curar 25 de vida\nusarPocionCurativa() {\n    variable inv = obtenerComponente(\"Inventario\")\n    si (inv.tieneItem(\"Pocion\", 1)) {\n        inv.quitarItem(\"Pocion\", 1)\n        vida.heal(25)\n        imprimir(\"Poción consumida. +25 de Vida\")\n    }\n}",
+            en: "ve motor;\n\n// EXAMPLE 1: Consume a health potion to restore 25 health points\nuseHealingPotion() {\n    variable inv = getComponent(\"Inventario\")\n    if (inv.tieneItem(\"Potion\", 1)) {\n        inv.quitarItem(\"Potion\", 1)\n        health.heal(25)\n        log(\"Potion consumed. Restored 25 HP\")\n    }\n}",
+            pt: "ve motor;\n\n// EXEMPLO 1: Consumir uma poção de cura para recuperar 25 de vida\nusarPocaoDeCura() {\n    variable inv = obterComponente(\"Inventario\")\n    se (inv.tieneItem(\"Pocao\", 1)) {\n        inv.quitarItem(\"Pocao\", 1)\n        vida.heal(25)\n        imprimir(\"Poção consumida. +25 de Vida\")\n    }\n}",
+            ru: "ve motor;\n\n// ПРИМЕР 1: Использовать зелье лечения и восстановить 25 здоровья\nusePotion() {\n    variable inv = получитьКомпонент(\"Inventario\")\n    если (inv.tieneItem(\"Potion\", 1)) {\n        inv.quitarItem(\"Potion\", 1)\n        здоровье.heal(25)\n        imprimir(\"Выпито зелье. +25 здоровья\")\n    }\n}",
+            zh: "ve motor;\n\n// 示例 1: 使用一瓶生命药水并为角色恢复 25 点生命值\nuseHealingPotion() {\n    variable inv = 获取组件(\"Inventario\")\n    如果 (inv.tieneItem(\"Potion\", 1)) {\n        inv.quitarItem(\"Potion\", 1)\n        vida.heal(25)\n        log(\"已使用生命药水，恢复了 25 点生命值\")\n    }\n}"
         }
     }
 };
