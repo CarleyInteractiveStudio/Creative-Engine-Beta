@@ -1202,7 +1202,38 @@ export class Camera extends Leyes {
         this.cullingMask = -1; // Bitmask, -1 means 'Everything'
         this.rect = { x: 0, y: 0, w: 1, h: 1 }; // Viewport rect (0-1)
         this.zoom = 1.0; // Editor-only zoom, not part of the component's data.
+
+        // Camera Shake State
+        this._shakeTime = 0;
+        this._shakeIntensity = 0;
+        this.shakeOffset = { x: 0, y: 0 };
     }
+
+    sacudir(duracion = 0.3, intensidad = 10) {
+        this._shakeTime = duracion;
+        this._shakeIntensity = intensidad;
+    }
+
+    update(deltaTime) {
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (!isGame) return;
+
+        if (this._shakeTime > 0) {
+            this._shakeTime -= deltaTime;
+            const angle = Math.random() * Math.PI * 2;
+            const offset = Math.random() * this._shakeIntensity;
+            this.shakeOffset.x = Math.cos(angle) * offset;
+            this.shakeOffset.y = Math.sin(angle) * offset;
+            if (this._shakeTime <= 0) {
+                this.shakeOffset.x = 0;
+                this.shakeOffset.y = 0;
+            }
+        } else {
+            this.shakeOffset.x = 0;
+            this.shakeOffset.y = 0;
+        }
+    }
+
     clone() {
         const newCamera = new Camera(null);
         newCamera.depth = this.depth;
@@ -8890,16 +8921,36 @@ export class Inventario extends Leyes {
         super(materia);
         this.items = [];
         this.maxEspacios = 20;
+        this.limitesMaximos = {};
+        this.cantidadMaximaPorDefecto = 99;
+    }
+
+    establecerLimite(nombre, maximo) {
+        this.limitesMaximos[nombre] = maximo;
+    }
+
+    obtenerCantidad(nombre) {
+        const item = this.items.find(i => i.nombre === nombre);
+        return item ? item.amount || item.cantidad : 0;
     }
 
     agregarItem(nombre, cantidad = 1, datos = {}) {
+        const limite = this.limitesMaximos[nombre] !== undefined ? this.limitesMaximos[nombre] : this.cantidadMaximaPorDefecto;
         const itemExistente = this.items.find(i => i.nombre === nombre);
+
         if (itemExistente) {
-            itemExistente.cantidad += cantidad;
+            const espacioDisponible = Math.max(0, limite - itemExistente.cantidad);
+            const aAgregar = Math.min(cantidad, espacioDisponible);
+            itemExistente.cantidad += aAgregar;
+            this._notificarCambio();
+            return cantidad - aAgregar; // Sobrante
         } else if (this.items.length < this.maxEspacios) {
-            this.items.push({ nombre, cantidad, datos });
+            const aAgregar = Math.min(cantidad, limite);
+            this.items.push({ nombre, cantidad: aAgregar, datos });
+            this._notificarCambio();
+            return cantidad - aAgregar; // Sobrante
         }
-        this._notificarCambio();
+        return cantidad;
     }
 
     quitarItem(nombre, cantidad = 1) {
@@ -8918,6 +8969,11 @@ export class Inventario extends Leyes {
         return item && item.cantidad >= cantidad;
     }
 
+    vaciarInventario() {
+        this.items = [];
+        this._notificarCambio();
+    }
+
     _notificarCambio() {
         if (this.materia) {
             this.materia.emitir('cambio-inventario', this.items);
@@ -8928,6 +8984,8 @@ export class Inventario extends Leyes {
         const copy = new Inventario(null);
         copy.items = JSON.parse(JSON.stringify(this.items));
         copy.maxEspacios = this.maxEspacios;
+        copy.limitesMaximos = { ...this.limitesMaximos };
+        copy.cantidadMaximaPorDefecto = this.cantidadMaximaPorDefecto;
         return copy;
     }
 }
@@ -9453,6 +9511,14 @@ export class ManejoArmasLateral extends Leyes {
         this.velocidadRetroceso = 5;
         this.dispararAutomatico = false;
 
+        // Camera Shake options
+        this.sacudirCamaraAlDisparar = false;
+        this.intensidadSacudida = 5;
+        this.duracionSacudida = 0.2;
+
+        // Animation options
+        this.animacionDisparo = "";
+
         this._cooldown = 0;
         this._initializedAmmo = false;
         this._lastKeyState = false;
@@ -9517,18 +9583,48 @@ export class ManejoArmasLateral extends Leyes {
             trans.x -= dirX * this.fuerzaRetroceso * 0.5;
         }
 
-        if (window.SceneManager && this.proyectilPrefab) {
-            try {
-                const proj = await window.SceneManager.instantiatePrefabFromPath(this.proyectilPrefab, spawnX, spawnY);
-                if (proj) {
-                    const bulletComp = proj.getComponent(Proyectil2D) || proj.addComponent(Proyectil2D);
-                    bulletComp.direccion = { x: dirX, y: 0 };
-                    bulletComp.autor = this.materia;
+        // Sacudida de cámara
+        if (this.sacudirCamaraAlDisparar && this.materia.scene) {
+            const cameras = this.materia.scene.getComponents(Camera);
+            if (cameras && cameras.length > 0) {
+                cameras.forEach(cam => {
+                    if (typeof cam.sacudir === 'function') {
+                        cam.sacudir(this.duracionSacudida, this.intensidadSacudida);
+                    }
+                });
+            }
+        }
+
+        // Animación de disparo
+        if (this.animacionDisparo) {
+            const animator = this.materia.getComponent(Animator) || this.materia.getComponent(AnimatorController);
+            if (animator && typeof animator.play === 'function') {
+                animator.play(this.animacionDisparo, { loop: false, force: true });
+            }
+        }
+
+        let proj = null;
+        if (typeof this.proyectilPrefab === 'object' && this.proyectilPrefab !== null) {
+            if (typeof this.proyectilPrefab.clone === 'function') {
+                proj = this.proyectilPrefab.clone();
+                proj.transform.position.x = spawnX;
+                proj.transform.position.y = spawnY;
+                if (this.materia.scene) {
+                    this.materia.scene.addMateria(proj);
                 }
+            }
+        } else if (window.SceneManager && typeof this.proyectilPrefab === 'string' && this.proyectilPrefab) {
+            try {
+                proj = await window.SceneManager.instantiatePrefabFromPath(this.proyectilPrefab, spawnX, spawnY);
             } catch (e) {
                 console.warn("[ManejoArmasLateral] No se pudo instanciar el prefab de bala, usando bala por defecto.", e);
-                this._crearBalaPorDefecto(spawnX, spawnY, dirX, 0);
             }
+        }
+
+        if (proj) {
+            const bulletComp = proj.getComponent(Proyectil2D) || proj.addComponent(Proyectil2D);
+            bulletComp.direccion = { x: dirX, y: 0 };
+            bulletComp.autor = this.materia;
         } else {
             this._crearBalaPorDefecto(spawnX, spawnY, dirX, 0);
         }
@@ -9580,6 +9676,14 @@ export class ManejoArmasCenital extends Leyes {
         this.fuerzaRetroceso = 15;
         this.velocidadRetroceso = 5;
         this.dispararAutomatico = false;
+
+        // Camera Shake options
+        this.sacudirCamaraAlDisparar = false;
+        this.intensidadSacudida = 5;
+        this.duracionSacudida = 0.2;
+
+        // Animation options
+        this.animacionDisparo = "";
 
         this._cooldown = 0;
         this._initializedAmmo = false;
@@ -9665,18 +9769,48 @@ export class ManejoArmasCenital extends Leyes {
             trans.y -= sinA * this.fuerzaRetroceso * 0.5;
         }
 
-        if (window.SceneManager && this.proyectilPrefab) {
-            try {
-                const proj = await window.SceneManager.instantiatePrefabFromPath(this.proyectilPrefab, spawnX, spawnY);
-                if (proj) {
-                    const bulletComp = proj.getComponent(Proyectil2D) || proj.addComponent(Proyectil2D);
-                    bulletComp.direccion = { x: cosA, y: sinA };
-                    bulletComp.autor = this.materia;
+        // Sacudida de cámara
+        if (this.sacudirCamaraAlDisparar && this.materia.scene) {
+            const cameras = this.materia.scene.getComponents(Camera);
+            if (cameras && cameras.length > 0) {
+                cameras.forEach(cam => {
+                    if (typeof cam.sacudir === 'function') {
+                        cam.sacudir(this.duracionSacudida, this.intensidadSacudida);
+                    }
+                });
+            }
+        }
+
+        // Animación de disparo
+        if (this.animacionDisparo) {
+            const animator = this.materia.getComponent(Animator) || this.materia.getComponent(AnimatorController);
+            if (animator && typeof animator.play === 'function') {
+                animator.play(this.animacionDisparo, { loop: false, force: true });
+            }
+        }
+
+        let proj = null;
+        if (typeof this.proyectilPrefab === 'object' && this.proyectilPrefab !== null) {
+            if (typeof this.proyectilPrefab.clone === 'function') {
+                proj = this.proyectilPrefab.clone();
+                proj.transform.position.x = spawnX;
+                proj.transform.position.y = spawnY;
+                if (this.materia.scene) {
+                    this.materia.scene.addMateria(proj);
                 }
+            }
+        } else if (window.SceneManager && typeof this.proyectilPrefab === 'string' && this.proyectilPrefab) {
+            try {
+                proj = await window.SceneManager.instantiatePrefabFromPath(this.proyectilPrefab, spawnX, spawnY);
             } catch (e) {
                 console.warn("[ManejoArmasCenital] No se pudo instanciar prefab, usando bala genérica.", e);
-                this._crearBalaPorDefecto(spawnX, spawnY, cosA, sinA);
             }
+        }
+
+        if (proj) {
+            const bulletComp = proj.getComponent(Proyectil2D) || proj.addComponent(Proyectil2D);
+            bulletComp.direccion = { x: cosA, y: sinA };
+            bulletComp.autor = this.materia;
         } else {
             this._crearBalaPorDefecto(spawnX, spawnY, cosA, sinA);
         }
