@@ -14,19 +14,69 @@ export function updateMateriaIdCounter(id) {
     }
 }
 
+const standardTags = {
+    'Untagged': ['untagged', 'sin etiqueta', 'sem etiqueta', 'без тега', '未标记'],
+    'Player': ['player', 'jugador', 'jogador', 'игрок', '玩家'],
+    'Enemy': ['enemy', 'enemigo', 'inimigo', 'враг', '敌人'],
+    'Ground': ['ground', 'suelo', 'solo', 'земля/пол', '地面', 'земля', 'пол'],
+    'Bullet': ['bullet', 'bala', 'пуля', '子弹'],
+    'Item': ['item', 'objeto', 'предмет', '物品'],
+    'Obstacle': ['obstacle', 'obstáculo', 'препятствие', '障碍物'],
+    'Water': ['water', 'agua', 'água', 'вода', '水'],
+    'NPC': ['npc', 'нпс'],
+    'Trigger': ['trigger', 'activador', 'gatilho', 'триггер', '触发器']
+};
+
+export function normalizeTag(tag) {
+    if (!tag) return 'untagged';
+    const t = tag.trim().toLowerCase();
+    for (const [key, aliases] of Object.entries(standardTags)) {
+        if (key.toLowerCase() === t || aliases.includes(t)) {
+            return key.toLowerCase();
+        }
+    }
+    return t;
+}
+
 export class Materia {
     constructor(name = 'Materia') {
         this.id = MATERIA_ID_COUNTER++;
         this.name = `${name}`;
         this.isActive = true;
         this.isCollapsed = false; // For hierarchy view
-        this.layer = 0; // Layer index, 0 is 'Default'
+        this._layers = [0]; // Render sorting layers indices
         this.tag = 'Untagged';
         this.flags = {};
         this.leyes = [];
         this.parent = null;
         this.children = [];
         this.prefabPath = null;
+    }
+
+    get layer() {
+        return (this._layers && this._layers.length > 0) ? this._layers[0] : 0;
+    }
+    set layer(val) {
+        const numericVal = parseInt(val, 10) || 0;
+        if (!this._layers) {
+            this._layers = [numericVal];
+        } else {
+            this._layers[0] = numericVal;
+        }
+    }
+
+    get layers() {
+        if (!this._layers) {
+            this._layers = [0];
+        }
+        return this._layers;
+    }
+    set layers(vals) {
+        if (Array.isArray(vals)) {
+            this._layers = vals.map(v => parseInt(v, 10) || 0);
+        } else {
+            this._layers = [parseInt(vals, 10) || 0];
+        }
     }
 
     setFlag(key, value) {
@@ -216,7 +266,13 @@ export class Materia {
      * @param {string} tag
      */
     tieneTag(tag) {
-        return this.tag === tag;
+        if (!tag) return false;
+        if (!this.tag) return false;
+
+        const queryNormalized = normalizeTag(tag);
+        const currentTags = this.tag.split(',').map(t => normalizeTag(t));
+
+        return currentTags.includes(queryNormalized);
     }
 
     // Alias en inglés
@@ -405,6 +461,7 @@ export class Materia {
         newMateria.isActive = this.isActive;
         newMateria.isCollapsed = this.isCollapsed;
         newMateria.layer = this.layer;
+        newMateria.layers = [...this.layers];
         newMateria.prefabPath = this.prefabPath;
         newMateria.tag = this.tag;
         newMateria.flags = JSON.parse(JSON.stringify(this.flags)); // Deep copy

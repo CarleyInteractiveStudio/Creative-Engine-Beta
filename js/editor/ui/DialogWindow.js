@@ -566,6 +566,17 @@ export function showSelection(title, message, items, onSelect) {
 }
 
 
+export function showCustomDialog(title, htmlContent, buttons = null) {
+    const L = window.Localization;
+    const container = document.createElement('div');
+    container.innerHTML = htmlContent;
+    const closeText = L ? L.get('CERRAR', 'Cerrar') : 'Cerrar';
+    const dialogButtons = buttons || [{ text: closeText }];
+    const dialog = new DialogWindow(title, container, dialogButtons);
+    dialog.show();
+    return dialog;
+}
+
 // Expose functions to the global scope for non-module scripts
 window.Dialogs = {
     showNotification,
@@ -574,5 +585,6 @@ window.Dialogs = {
     showSelection,
     showBuildDialog,
     showBuildSuccessDialog,
-    showProgressDialog
+    showProgressDialog,
+    showCustomDialog
 };

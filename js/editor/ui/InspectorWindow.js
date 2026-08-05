@@ -5,7 +5,7 @@ import { getURLForAssetPath, getFileHandleForPath } from '../../engine/AssetUtil
 import * as SpriteSlicer from './SpriteSlicerWindow.js';
 import { getCustomComponentDefinitions } from '../EngineAPIExtension.js';
 import * as CES_Transpiler from '../../editor/CES_Transpiler.js';
-import { showPrompt, showNotification } from './DialogWindow.js';
+import { showPrompt, showNotification, showCustomDialog } from './DialogWindow.js';
 import { TerrenoEditorWindow } from './TerrenoEditorWindow.js';
 import { Renderer3D } from '../../engine/Renderer3D.js';
 import { broadcastUpdate } from '../CollaborationSystem.js';
@@ -28,25 +28,205 @@ let isScanningForComponents = false;
 let getCurrentProjectConfig = () => ({}); // To access layers
 let enterAddTilemapLayerMode = () => {}; // Callback to notify SceneView
 
+async function openTagsSelectorDialog(selectedMateria) {
+    const L = window.Localization;
+    const config = getCurrentProjectConfig();
+    const currentTags = selectedMateria.tag ? selectedMateria.tag.split(',').map(t => t.trim()).filter(t => t !== '') : [];
+
+    let html = `
+        <div class="tags-selector-dialog-content" style="min-width: 300px;">
+            <p style="margin-bottom: 12px; color: var(--color-text-muted); font-size: 0.9em; line-height: 1.4;">
+                ${L.get('TAGS_SELECTOR_INSTRUCTION', 'Selecciona las etiquetas que deseas asignar a este objeto:')}
+            </p>
+            <div class="tags-checklist-container" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); background: var(--bg-secondary); padding: 8px; border-radius: 4px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+    `;
+
+    config.tags.forEach(tag => {
+        const isChecked = currentTags.includes(tag);
+        const displayName = L.get(tag.toUpperCase(), tag);
+        html += `
+            <div class="tag-checklist-item" style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="chk-tag-${tag}" class="tag-checklist-chk" value="${tag}" ${isChecked ? 'checked' : ''} style="cursor: pointer; width: 14px; height: 14px;">
+                <label for="chk-tag-${tag}" style="cursor: pointer; user-select: none; font-size: 0.9em; color: var(--color-text);">${displayName}</label>
+            </div>
+        `;
+    });
+
+    html += `
+            </div>
+            <div class="add-new-tag-inline" style="display: flex; gap: 8px; margin-bottom: 15px;">
+                <input type="text" autocomplete="off" id="new-tag-inline-input" placeholder="${L.get('NUEVO_TAG', 'Nuevo Tag')}" style="flex: 1; padding: 6px 8px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--color-text); font-size: 0.9em;">
+                <button id="add-new-tag-inline-btn" class="btn" style="padding: 6px 12px; background: var(--color-secondary); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; transition: background-color 0.15s ease;">
+                    ${L.get('AÑADIR', 'Añadir')}
+                </button>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button id="tags-selector-cancel-btn" class="btn" style="padding: 8px 16px; border: 1px solid var(--border-color); background: transparent; color: var(--color-text); border-radius: 4px; cursor: pointer; font-size: 0.9em;">
+                    ${L.get('CANCELAR', 'Cancelar')}
+                </button>
+                <button id="tags-selector-apply-btn" class="btn" style="padding: 8px 16px; background: var(--color-accent); border: none; color: white; border-radius: 4px; cursor: pointer; font-size: 0.9em;">
+                    ${L.get('APLICAR', 'Aplicar')}
+                </button>
+            </div>
+        </div>
+    `;
+
+    const dialog = window.Dialogs.showCustomDialog(L.get('SELECCIONAR_TAGS', 'Seleccionar Tags'), html, []);
+
+    const addBtn = dialog.dialogElement.querySelector('#add-new-tag-inline-btn');
+    const input = dialog.dialogElement.querySelector('#new-tag-inline-input');
+    const checklistContainer = dialog.dialogElement.querySelector('.tags-checklist-container');
+
+    addBtn.addEventListener('click', async () => {
+        const newTagName = input.value.trim();
+        if (newTagName && newTagName !== '') {
+            if (!config.tags.includes(newTagName)) {
+                config.tags.push(newTagName);
+                await saveProjectConfig();
+
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'tag-checklist-item';
+                itemDiv.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+                itemDiv.innerHTML = `
+                    <input type="checkbox" id="chk-tag-${newTagName}" class="tag-checklist-chk" value="${newTagName}" checked style="cursor: pointer; width: 14px; height: 14px;">
+                    <label for="chk-tag-${newTagName}" style="cursor: pointer; user-select: none; font-size: 0.9em; color: var(--color-text);">${newTagName}</label>
+                `;
+                checklistContainer.appendChild(itemDiv);
+
+                input.value = '';
+                window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('TAG_ANADIDO', 'Tag "{tag}" añadido.').replace('{tag}', newTagName)}`);
+            } else {
+                window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), `${L.get('TAG_EXISTE', 'El tag "{tag}" ya existe.').replace('{tag}', newTagName)}`);
+            }
+        }
+    });
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            addBtn.click();
+        }
+    });
+
+    const cancelBtn = dialog.dialogElement.querySelector('#tags-selector-cancel-btn');
+    const applyBtn = dialog.dialogElement.querySelector('#tags-selector-apply-btn');
+
+    cancelBtn.addEventListener('click', () => {
+        dialog.hide();
+    });
+
+    applyBtn.addEventListener('click', () => {
+        const checkedChks = dialog.dialogElement.querySelectorAll('.tag-checklist-chk:checked');
+        const selectedTags = Array.from(checkedChks).map(chk => chk.value);
+
+        selectedMateria.tag = selectedTags.length > 0 ? selectedTags.join(', ') : 'Untagged';
+
+        if (window.UndoRedoManager) window.UndoRedoManager.recordState();
+        updateInspector();
+        if (updateSceneCallback) updateSceneCallback();
+
+        dialog.hide();
+    });
+}
+
+function openLayersSelectorDialog(selectedMateria) {
+    const L = window.Localization;
+    const config = getCurrentProjectConfig();
+    const currentLayers = selectedMateria.layers || [0];
+
+    let html = `
+        <div class="layers-selector-dialog-content" style="min-width: 300px;">
+            <p style="margin-bottom: 12px; color: var(--color-text-muted); font-size: 0.9em; line-height: 1.4;">
+                ${L.get('LAYERS_SELECTOR_INSTRUCTION', 'Selecciona los renderizados (capas de dibujo) que deseas asignar a este objeto:')}
+            </p>
+            <div class="layers-checklist-container" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); background: var(--bg-secondary); padding: 8px; border-radius: 4px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+    `;
+
+    if (config.layers && config.layers.sortingLayers) {
+        config.layers.sortingLayers.forEach((layerName, index) => {
+            if (!layerName) return;
+            const isChecked = currentLayers.includes(index);
+            html += `
+                <div class="layer-checklist-item" style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="chk-layer-${index}" class="layer-checklist-chk" value="${index}" ${isChecked ? 'checked' : ''} style="cursor: pointer; width: 14px; height: 14px;">
+                    <label for="chk-layer-${index}" style="cursor: pointer; user-select: none; font-size: 0.9em; color: var(--color-text);">${index}: ${layerName}</label>
+                </div>
+            `;
+        });
+    }
+
+    html += `
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <button id="edit-layers-settings-btn" class="btn" style="padding: 6px 12px; border: 1px solid var(--border-color); background: var(--bg-tertiary); color: var(--color-text); border-radius: 4px; cursor: pointer; font-size: 0.85em; transition: background-color 0.15s ease;">
+                    ${L.get('EDIT_LAYERS_ELLIPSIS', 'Editar Renderizado...')}
+                </button>
+                <div style="display: flex; gap: 8px;">
+                    <button id="layers-selector-cancel-btn" class="btn" style="padding: 8px 16px; border: 1px solid var(--border-color); background: transparent; color: var(--color-text); border-radius: 4px; cursor: pointer; font-size: 0.9em;">
+                        ${L.get('CANCELAR', 'Cancelar')}
+                    </button>
+                    <button id="layers-selector-apply-btn" class="btn" style="padding: 8px 16px; background: var(--color-accent); border: none; color: white; border-radius: 4px; cursor: pointer; font-size: 0.9em;">
+                        ${L.get('APLICAR', 'Aplicar')}
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const dialog = window.Dialogs.showCustomDialog(L.get('SELECCIONAR_LAYERS', 'Seleccionar Renderizado'), html, []);
+
+    const editBtn = dialog.dialogElement.querySelector('#edit-layers-settings-btn');
+    editBtn.addEventListener('click', () => {
+        dialog.hide();
+        if (dom.projectSettingsModal) {
+            dom.projectSettingsModal.classList.add('is-open');
+        }
+    });
+
+    const cancelBtn = dialog.dialogElement.querySelector('#layers-selector-cancel-btn');
+    const applyBtn = dialog.dialogElement.querySelector('#layers-selector-apply-btn');
+
+    cancelBtn.addEventListener('click', () => {
+        dialog.hide();
+    });
+
+    applyBtn.addEventListener('click', () => {
+        const checkedChks = dialog.dialogElement.querySelectorAll('.layer-checklist-chk:checked');
+        let selectedLayers = Array.from(checkedChks).map(chk => parseInt(chk.value, 10));
+
+        if (selectedLayers.length === 0) {
+            selectedLayers = [0];
+        }
+
+        selectedMateria.layers = selectedLayers;
+
+        if (window.UndoRedoManager) window.UndoRedoManager.recordState();
+        updateInspector();
+        if (updateSceneCallback) updateSceneCallback();
+
+        dialog.hide();
+    });
+}
+
 const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
-    'CAT_RENDERIZADO': [Components.SpriteRenderer, Components.TextureRender, Components.DrawingOrder],
+    'CAT_RENDERIZADO': [Components.SpriteRenderer, Components.TextureRender, Components.DrawingOrder, Components.ParticleSystem],
     'CAT_MAPA': [Components.Grid, Components.Tilemap, Components.TilemapRenderer, Components.Parallax, Components.Terreno2D],
     'CAT_ILUMINACION': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
     'CAT_UTILIDADES': [Components.Gyzmo],
     'CAT_ANIMACION': [Components.Animator, Components.AnimatorController, Components.Bone, Components.SkeletonRenderer, Components.IKManager2D],
     'CAT_AUDIO': [Components.AudioSource],
     'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.PlatformEffector2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
-    'CAT_CAMARA': [Components.Camera],
+    'CAT_CAMARA': [Components.Camera, Components.CameraFollow],
     'CAT_VEHICULOS_LATERAL': [Components.Suspension, Components.VehicleSideView2D, Components.PlaneController, Components.HelicopterController],
     'CAT_VEHICULOS_CENITAL': [Components.VehicleTopDown],
     'CAT_DISPAROS_LATERAL': [Components.ProjectileLauncher],
     'CAT_DISPAROS_CENITAL': [Components.Attack],
-    'CAT_AVENTURA_ROL': [Components.Health, Components.Patrol, Components.BasicAI, Components.RaycastSource, Components.SceneLoader, Components.Inventario, Components.SistemaDialogos, Components.GestorMisiones],
-    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.AutoDestroy, Components.ParticleSystem],
+    'CAT_AVENTURA_ROL': [Components.Health, Components.Patrol, Components.BasicAI, Components.RaycastSource, Components.SceneLoader, Components.Inventario, Components.SistemaDialogos, Components.GestorMisiones, Components.Movement],
+    'CAT_FPS_LATERAL': [Components.ManejoArmasLateral, Components.Proyectil2D, Components.DetectorBajas, Components.ItemRecolectable, Components.RecolectorObjetos],
+    'CAT_FPS_CENITAL': [Components.ManejoArmasCenital, Components.Proyectil2D, Components.DetectorBajas, Components.ItemRecolectable, Components.RecolectorObjetos],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
-    'CAT_OPTIMIZACION': [Components.AutoCulling2D, Components.ObjectPooler, Components.DistanceDeactivator],
+    'CAT_OPTIMIZACION': [Components.AutoCulling2D, Components.ObjectPooler, Components.DistanceDeactivator, Components.AutoDestroy],
 
     // 3D Specific Categories
     'CAT_BASICO_3D': ['MovementControl3D', 'ThirdPersonController3D', 'HealthController3D', 'CameraControl3D'],
@@ -83,7 +263,13 @@ const componentIcons = {
     'HelicopterController': 'rocket',
     'Bone': 'bone',
     'SkeletonRenderer': 'layout',
-    'IKManager2D': 'mouse-pointer'
+    'IKManager2D': 'mouse-pointer',
+    'ManejoArmasLateral': 'crosshair',
+    'ManejoArmasCenital': 'crosshair',
+    'Proyectil2D': 'target',
+    'DetectorBajas': 'shield',
+    'ItemRecolectable': 'gift',
+    'RecolectorObjetos': 'mouse-pointer'
 };
 
 const fileIcons = {
@@ -582,45 +768,6 @@ async function handleInspectorChange(e) {
          selectedMateria.name = e.target.value;
          updateSceneCallback();
          needsUpdate = true;
-    } else if (e.target.matches('#materia-layer-select')) {
-        const selectedValue = e.target.value;
-        if (selectedValue === 'edit_layers') {
-            // Open the project settings modal
-            if (dom.projectSettingsModal) {
-                dom.projectSettingsModal.classList.add('is-open');
-            }
-            // Revert selection in dropdown
-            e.target.value = selectedMateria.layer;
-        } else {
-            selectedMateria.layer = parseInt(selectedValue, 10);
-        }
-        needsUpdate = true;
-    } else if (e.target.matches('#materia-tag-select')) {
-        const selectedValue = e.target.value;
-        if (selectedValue === 'add_new_tag') {
-            window.Dialogs.showPrompt(L.get('NUEVO_TAG', 'Nuevo Tag'), L.get('INTRODUCE_NOMBRE_TAG', 'Introduce el nombre para el nuevo tag:'), async (newTagName) => {
-                if (newTagName && newTagName.trim() !== '') {
-                    const config = getCurrentProjectConfig();
-                    if (!config.tags.includes(newTagName)) {
-                        config.tags.push(newTagName);
-                        await saveProjectConfig();
-                        selectedMateria.tag = newTagName;
-                        window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('TAG_ANADIDO', 'Tag "{tag}" añadido y seleccionado.').replace('{tag}', newTagName)}`);
-                        updateInspector();
-                    } else {
-                        window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), `${L.get('TAG_EXISTE', 'El tag "{tag}" ya existe.').replace('{tag}', newTagName)}`);
-                        // Revert selection in dropdown
-                        e.target.value = selectedMateria.tag;
-                    }
-                } else {
-                    // User cancelled or entered empty string, revert selection
-                    e.target.value = selectedMateria.tag;
-                }
-            });
-        } else {
-            selectedMateria.tag = selectedValue;
-        }
-        needsUpdate = true; // This will be handled by the async prompt callback
     }
 
     if (e.target.matches('.inspector-re-render')) {
@@ -654,6 +801,17 @@ async function handleInspectorChange(e) {
 function handleInspectorClick(e) {
     const selectedMateria = getSelectedMateria();
     const L = window.Localization;
+
+    if (!selectedMateria) return;
+
+    if (e.target.closest('#materia-tag-display')) {
+        openTagsSelectorDialog(selectedMateria);
+        return;
+    }
+    if (e.target.closest('#materia-layer-display')) {
+        openLayersSelectorDialog(selectedMateria);
+        return;
+    }
 
     if (e.target.closest('.property-dropper')) {
         const dropper = e.target.closest('.property-dropper');
@@ -1270,9 +1428,211 @@ export async function updateInspector() {
     });
 }
 
+// Dictionary with rich help descriptions, usage and combinations for the components.
+const componentHelpData = {
+    ManejoArmasLateral: {
+        descripcion: "Gestiona el equipamiento de armas, el conteo de munición inicial/máxima y actual, y la cadencia de fuego en juegos con perspectiva lateral 2D. Aplica un retroceso físico o visual configurable al disparar y detecta automáticamente la dirección hacia la que mira el personaje.",
+        uso: "Añade este componente al personaje jugador. Configura el 'Prefab Proyectil' arrastrando un archivo .ceprefab de bala y define la 'Tecla Disparo'. Asegúrate de que el personaje tenga una escala x correcta o mire a los lados para orientar el disparo.",
+        combinaciones: "Se combina perfectamente con 'Transform', 'SpriteRenderer', 'Proyectil2D' (como bala) y 'Rigidbody2D' (para que el retroceso empuje al personaje físicamente).",
+        scripting: {
+            es: "ve motor;\n\n// EJEMPLO 1: Recarga manual presionando la tecla R\nalActualizar(delta) {\n    variable arma = obtenerComponente(\"ManejoArmasLateral\")\n    si (teclaRecienPresionada(\"r\") y arma.municionActual < arma.municionMaxima) {\n        imprimir(\"Recargando arma...\")\n        arma.municionActual = arma.municionMaxima\n    }\n}\n\n// EJEMPLO 2: Disparo de ráfaga triple de balas\ndispararRafaga() {\n    variable arma = obtenerComponente(\"ManejoArmasLateral\")\n    arma.disparar()\n    esperar(0.12)\n    arma.disparar()\n    esperar(0.12)\n    arma.disparar()\n}",
+            en: "ve motor;\n\n// EXAMPLE 1: Manual reload by pressing the R key\nalActualizar(delta) {\n    variable gun = getComponent(\"ManejoArmasLateral\")\n    if (teclaRecienPresionada(\"r\") && gun.municionActual < gun.municionMaxima) {\n        log(\"Reloading weapon...\")\n        gun.municionActual = gun.municionMaxima\n    }\n}\n\n// EXAMPLE 2: Fire an automatic triple burst of bullets\nfireTripleBurst() {\n    variable gun = getComponent(\"ManejoArmasLateral\")\n    gun.disparar()\n    wait(0.12)\n    gun.disparar()\n    wait(0.12)\n    gun.disparar()\n}",
+            pt: "ve motor;\n\n// EXEMPLO 1: Recarga manual pressionando a tecla R\nalActualizar(delta) {\n    variable arma = obterComponente(\"ManejoArmasLateral\")\n    se (teclaRecemPressionada(\"r\") e arma.municionActual < arma.municionMaxima) {\n        imprimir(\"Recarregando arma...\")\n        arma.municionActual = arma.municionMaxima\n    }\n}\n\n// EXEMPLO 2: Disparo de rajada tripla automática\ndispararRajada() {\n    variable arma = obterComponente(\"ManejoArmasLateral\")\n    arma.disparar()\n    wait(0.12)\n    arma.disparar()\n    wait(0.12)\n    arma.disparar()\n}",
+            ru: "ve motor;\n\n// ПРИМЕР 1: Ручная перезарядка при нажатии клавиши R\nalActualizar(delta) {\n    variable oruzhie = получитьКомпонент(\"ManejoArmasLateral\")\n    если (клавишаТолькоЧтоНажата(\"r\") и oruzhie.municionActual < oruzhie.municionMaxima) {\n        imprimir(\"Перезарядка...\")\n        oruzhie.municionActual = oruzhie.municionMaxima\n    }\n}\n\n// ПРИМЕР 2: Выстрел тройной очередью патронов\nfireBurst() {\n    variable oruzhie = получитьКомпонент(\"ManejoArmasLateral\")\n    oruzhie.disparar()\n    ждать(0.12)\n    oruzhie.disparar()\n    ждать(0.12)\n    oruzhie.disparar()\n}",
+            zh: "ve motor;\n\n// 示例 1: 按下 R 键进行手动换弹的逻辑\nalActualizar(delta) {\n    variable gun = 获取组件(\"ManejoArmasLateral\")\n    如果 (按键刚刚按下(\"r\") 和 gun.municionActual < gun.municionMaxima) {\n        log(\"正在重新装填武器...\")\n        gun.municionActual = gun.municionMaxima\n    }\n}\n\n// 示例 2: 自动触发三连发子弹射击\nfireTripleBurst() {\n    variable gun = 获取组件(\"ManejoArmasLateral\")\n    gun.disparar()\n    等待(0.12)\n    gun.disparar()\n    等待(0.12)\n    gun.disparar()\n}"
+        }
+    },
+    ManejoArmasCenital: {
+        descripcion: "Administra el disparo y la munición en perspectiva superior/cenital 2D (Top-Down). Calcula de forma dinámica el ángulo en 360 grados hacia el cursor del ratón en el mundo para apuntar y disparar ráfagas o balas individuales, aplicando una fuerza de retroceso opuesta a la dirección del apuntado.",
+        uso: "Añade este componente a tu personaje en un entorno Top-Down. Configura la 'Tecla Disparo' (usualmente 'Mouse0' para clic izquierdo) y ajusta la 'Fuerza de Retroceso' según lo desees.",
+        combinaciones: "Combina de forma ideal con 'Transform', 'Camera' (para ubicar el puntero del ratón en el mundo), 'Proyectil2D' y 'Rigidbody2D'.",
+        scripting: {
+            es: "ve motor;\n\n// EJEMPLO 1: Comprobación de munición y tiro asistido\nalActualizar(delta) {\n    variable arma = obtenerComponente(\"ManejoArmasCenital\")\n    si (teclaRecienPresionada(\"f\")) {\n        si (arma.municionActual > 0) {\n            arma.disparar()\n        sino {\n            imprimir(\"¡Sin balas! Presiona R para recargar\")\n        }\n    }\n}",
+            en: "ve motor;\n\n// EXAMPLE 1: Ammo checking and assisted fire logic\nalActualizar(delta) {\n    variable gun = getComponent(\"ManejoArmasCenital\")\n    if (teclaRecienPresionada(\"f\")) {\n        if (gun.municionActual > 0) {\n            gun.disparar()\n        } else {\n            log(\"Out of ammo! Press R to reload\")\n        }\n    }\n}",
+            pt: "ve motor;\n\n// EXEMPLO 1: Verificação de munição e disparo assistido\nalActualizar(delta) {\n    variable arma = obterComponente(\"ManejoArmasCenital\")\n    se (teclaRecemPressionada(\"f\")) {\n        se (arma.municionActual > 0) {\n            arma.disparar()\n        } senão {\n            imprimir(\"Sem balas! Pressione R para recarregar\")\n        }\n    }\n}",
+            ru: "ve motor;\n\n// ПРИМЕР 1: Проверка патронов и стрельба по условию\nalActualizar(delta) {\n    variable oruzhie = получитьКомпонент(\"ManejoArmasCenital\")\n    если (клавишаТолькоЧтоНажата(\"f\")) {\n        если (oruzhie.municionActual > 0) {\n            oruzhie.disparar()\n        } иначе {\n            imprimir(\"Нет патронов! Нажмите R для перезарядки\")\n        }\n    }\n}",
+            zh: "ve motor;\n\n// 示例 1: 检查子弹并进行辅助射击的逻辑\nalActualizar(delta) {\n    variable gun = 获取组件(\"ManejoArmasCenital\")\n    如果 (按键刚刚按下(\"f\")) {\n        如果 (gun.municionActual > 0) {\n            gun.disparar()\n        } 否则 {\n            log(\"弹药不足！请按 R 键装弹\")\n        }\n    }\n}"
+        }
+    },
+    Proyectil2D: {
+        descripcion: "Controla el desplazamiento lineal de las balas y proyectiles de forma autónoma (usando velocidad directa o a través de físicas Rigidbody2D). Posee un temporizador de destrucción automática para evitar fugas de memoria y aplica daño al colisionar con cualquier entidad que posea una ley de Vida (Health), ignorando al autor que disparó el proyectil.",
+        uso: "Añádelo a la entidad que funcionará como bala (generalmente tu prefab de proyectil). Configura la 'Velocidad', el 'Daño' y el 'Tiempo de Vida'.",
+        combinaciones: "Compatible con 'CircleCollider2D', 'BoxCollider2D', 'SpriteRenderer' y 'DetectorBajas'.",
+        scripting: {
+            es: "ve motor;\n\n// EJEMPLO 1: Lanzamiento de misil con velocidad y daño mejorados\nlanzarMisilEspecial() {\n    variable misil = crear misilPrefab\n    variable proj = misil.obtenerComponente(\"Proyectil2D\")\n    proj.velocidad = 1200\n    proj.dano = 75\n    proj.tiempoVida = 5.0\n}",
+            en: "ve motor;\n\n// EXAMPLE 1: Fire special missile with boosted speed and damage\nfireSpecialMissile() {\n    variable missile = create missilePrefab\n    variable proj = missile.getComponent(\"Proyectil2D\")\n    proj.velocidad = 1200\n    proj.dano = 75\n    proj.tiempoVida = 5.0\n}",
+            pt: "ve motor;\n\n// EXEMPLO 1: Lançar míssil especial com velocidade e dano aumentados\nlancarMissilEspecial() {\n    variable missil = criar missilPrefab\n    variable proj = missil.obterComponente(\"Proyectil2D\")\n    proj.velocidad = 1200\n    proj.dano = 75\n    proj.tiempoVida = 5.0\n}",
+            ru: "ve motor;\n\n// ПРИМЕР 1: Запуск ракеты с повышенной скоростью и уроном\nfireSpecialMissile() {\n    variable missile = создать missilePrefab\n    variable proj = missile.получитьКомпонент(\"Proyectil2D\")\n    proj.velocidad = 1200\n    proj.dano = 75\n    proj.tiempoVida = 5.0\n}",
+            zh: "ve motor;\n\n// 示例 1: 发射具有更高速度和高额伤害的特殊特殊导弹\nfireSpecialMissile() {\n    variable missile = 创建 missilePrefab\n    variable proj = missile.获取组件(\"Proyectil2D\")\n    proj.velocidad = 1200\n    proj.dano = 75\n    proj.tiempoVida = 5.0\n}"
+        }
+    },
+    DetectorBajas: {
+        descripcion: "Registra cuando un proyectil disparado por el personaje elimina o causa la muerte a un enemigo (reduciendo su Vida a cero). Otorga una recompensa en puntos, emite eventos y puede añadir automáticamente items al componente Inventario del portador.",
+        uso: "Agrégalo a tu personaje jugador para llevar la cuenta de sus bajas. Configura la puntuación y el 'Item a Recompensar' con el nombre exacto de la moneda o recompensa.",
+        combinaciones: "Esencial en el personaje jugador junto con 'Inventario', 'Health', y componentes de disparo como 'ManejoArmasLateral' o 'ManejoArmasCenital'.",
+        scripting: {
+            es: "ve motor;\n\n// EJEMPLO 1: Recompensa multiplicada durante eventos especiales\nactivarDoblePuntos() {\n    variable det = obtenerComponente(\"DetectorBajas\")\n    det.recompensaPuntos = 200 // Puntos dobles\n    det.cantidadItem = 2\n}",
+            en: "ve motor;\n\n// EXAMPLE 1: Double kill rewards during special score events\nactivateDoublePoints() {\n    variable det = getComponent(\"DetectorBajas\")\n    det.recompensaPuntos = 200 // Double score\n    det.cantidadItem = 2\n}",
+            pt: "ve motor;\n\n// EXEMPLO 1: Recompensa multiplicada durante eventos especiais\nativarDobroPontos() {\n    variable det = obterComponente(\"DetectorBajas\")\n    det.recompensaPuntos = 200 // Pontos duplos\n    det.cantidadItem = 2\n}",
+            ru: "ve motor;\n\n// ПРИМЕР 1: Двойные награды во время специальных событий\nactivateDoublePoints() {\n    variable det = получитьКомпонент(\"DetectorBajas\")\n    det.recompensaPuntos = 200 // Двойные очки\n    det.cantidadItem = 2\n}",
+            zh: "ve motor;\n\n// 示例 1: 在特殊双倍积分活动期间获得翻倍的积分奖励\nactivateDoublePoints() {\n    variable det = 获取组件(\"DetectorBajas\")\n    det.recompensaPuntos = 200 // 双倍积分\n    det.cantidadItem = 2\n}"
+        }
+    },
+    ItemRecolectable: {
+        descripcion: "Convierte un objeto del escenario en un item físico interactivo que puede ser recogido (monedas, pociones, llaves, armas). Almacena el nombre del objeto, la cantidad a otorgar, la ruta del efecto de sonido y si debe destruirse de la escena al ser recogido.",
+        uso: "Coloca este componente en objetos esparcidos por el mapa (ej. una moneda flotante). Configura el nombre del item que se añadirá al inventario y selecciona un sonido de recogida.",
+        combinaciones: "Combina con 'CircleCollider2D' o 'BoxCollider2D' (con isTrigger activado) y 'SpriteRenderer' para la representación visual.",
+        scripting: {
+            es: "ve motor;\n\n// EJEMPLO 1: Cofre de tesoro que genera 5 gemas al abrirse\nabrirCofre() {\n    variable gema = crear gemaPrefab\n    variable item = gema.obtenerComponente(\"ItemRecolectable\")\n    item.nombreItem = \"Gema_Azul\"\n    item.cantidad = 5\n    item.sonidoRecogida = \"audio/gem_pickup.wav\"\n}",
+            en: "ve motor;\n\n// EXAMPLE 1: Treasure chest spawns 5 gems when opened\nopenTreasureChest() {\n    variable gem = create gemPrefab\n    variable item = gem.getComponent(\"ItemRecolectable\")\n    item.nombreItem = \"Blue_Gem\"\n    item.cantidad = 5\n    item.sonidoRecogida = \"audio/gem_pickup.wav\"\n}",
+            pt: "ve motor;\n\n// EXEMPLO 1: Baú de tesouro que gera 5 gemas ao abrir\nabrirBau() {\n    variable gema = criar gemaPrefab\n    variable item = gema.obterComponente(\"ItemRecolectable\")\n    item.nombreItem = \"Gema_Azul\"\n    item.cantidad = 5\n    item.sonidoRecogida = \"audio/gem_pickup.wav\"\n}",
+            ru: "ve motor;\n\n// ПРИМЕР 1: Сундук сокровищ создает 5 синих самоцветов\nopenTreasure() {\n    variable gem = создать gemPrefab\n    variable item = gem.получитьКомпонент(\"ItemRecolectable\")\n    item.nombreItem = \"Blue_Gem\"\n    item.cantidad = 5\n    item.sonidoRecogida = \"audio/gem_pickup.wav\"\n}",
+            zh: "ve motor;\n\n// 示例 1: 宝箱被打开时在世界中生成 5 颗蓝色宝石\nopenTreasureChest() {\n    variable gem = 创建 gemPrefab\n    variable item = gem.获取组件(\"ItemRecolectable\")\n    item.nombreItem = \"Blue_Gem\"\n    item.cantidad = 5\n    item.sonidoRecogida = \"audio/gem_pickup.wav\"\n}"
+        }
+    },
+    RecolectorObjetos: {
+        descripcion: "Permite a la entidad del jugador detectar y recoger de forma automática componentes ItemRecolectable en el escenario. Soporta dos modos profesionales: absorción instantánea al colisionar/entrar en contacto, o mediante la pulsación de una tecla interactiva (como 'E' o 'F') cuando el jugador se encuentra a una distancia configurable del objeto.",
+        uso: "Añádelo a tu personaje jugador. Si seleccionas el modo 'tecla', configura la 'Tecla de Recogida' y la 'Distancia de Detección' adecuada para interactuar con los objetos.",
+        combinaciones: "Requiere que la entidad posea un componente 'Inventario' para almacenar los objetos y, opcionalmente, un 'AudioSource' para reproducir los sonidos de recogida.",
+        scripting: {
+            es: "ve motor;\n\n// EJEMPLO 1: Cambiar modo de colisión a tecla al entrar en zona difícil\nactivarModoInteractuar() {\n    variable rec = obtenerComponente(\"RecolectorObjetos\")\n    rec.metodoRecogida = \"tecla\"\n    rec.teclaRecogida = \"KeyE\"\n    rec.distanciaDeteccion = 120\n}",
+            en: "ve motor;\n\n// EXAMPLE 1: Change collection method to key interaction when entering a special area\nswitchToKeyPickup() {\n    variable rec = getComponent(\"RecolectorObjetos\")\n    rec.metodoRecogida = \"tecla\"\n    rec.teclaRecogida = \"KeyE\"\n    rec.distanciaDeteccion = 120\n}",
+            pt: "ve motor;\n\n// EXEMPLO 1: Mudar método de coleta para interação por tecla\nativarModoInteracao() {\n    variable rec = obterComponente(\"RecolectorObjetos\")\n    rec.metodoRecogida = \"tecla\"\n    rec.teclaRecogida = \"KeyE\"\n    rec.distanciaDeteccion = 120\n}",
+            ru: "ve motor;\n\n// ПРИМЕР 1: Переключение с автосбора на сбор кнопкой E\nswitchToKeyInteraction() {\n    variable rec = получитьКомпонент(\"RecolectorObjetos\")\n    rec.metodoRecogida = \"tecla\"\n    rec.teclaRecogida = \"KeyE\"\n    rec.distanciaDeteccion = 120\n}",
+            zh: "ve motor;\n\n// 示例 1: 转换收集模式为按键交互收集（例如按 E 键收集）\nswitchToKeyPickup() {\n    variable rec = 获取组件(\"RecolectorObjetos\")\n    rec.metodoRecogida = \"tecla\"\n    rec.teclaRecogida = \"KeyE\"\n    rec.distanciaDeteccion = 120\n}"
+        }
+    },
+    SpriteRenderer: {
+        descripcion: "Representa visualmente un sprite 2D en el escenario. Soporta colorización, tintes, opacidad transparente, orden de dibujo en capas, pivots personalizables y carga de imágenes individuales o atlas .ceSprite.",
+        uso: "Añádelo a cualquier objeto 2D and arrastra una imagen de tus assets a la propiedad 'Source' para renderizarla.",
+        combinaciones: "Se combina con 'Transform', 'Animator' y cualquier colisionador 2D.",
+        scripting: {
+            es: "ve motor;\n\n// EJEMPLO 1: Parpadeo visual de daño (rojo translúcido)\nparpadearDano() {\n    renderizadorDeSprite.color = \"#ff5555\"\n    renderizadorDeSprite.opacity = 0.4\n    esperar(0.15)\n    renderizadorDeSprite.color = \"#ffffff\"\n    renderizadorDeSprite.opacity = 1.0\n}",
+            en: "ve motor;\n\n// EXAMPLE 1: Damage visual flash effect (translucent red)\nflashDamage() {\n    spriteRenderer.color = \"#ff5555\"\n    spriteRenderer.opacity = 0.4\n    wait(0.15)\n    spriteRenderer.color = \"#ffffff\"\n    spriteRenderer.opacity = 1.0\n}",
+            pt: "ve motor;\n\n// EXEMPLO 1: Efeito visual de dano piscando em vermelho translúcido\npiscarDano() {\n    renderizadorDeSprite.color = \"#ff5555\"\n    renderizadorDeSprite.opacity = 0.4\n    wait(0.15)\n    renderizadorDeSprite.color = \"#ffffff\"\n    renderizadorDeSprite.opacity = 1.0\n}",
+            ru: "ve motor;\n\n// ПРИМЕР 1: Визуальная вспышка получения урона (полупрозрачный красный)\nflashDamage() {\n    renderizadorDeSprite.color = \"#ff5555\"\n    renderizadorDeSprite.opacity = 0.4\n    ждать(0.15)\n    renderizadorDeSprite.color = \"#ffffff\"\n    renderizadorDeSprite.opacity = 1.0\n}",
+            zh: "ve motor;\n\n// 示例 1: 制作受伤时的红色半透明闪烁视觉特效\nflashDamage() {\n    spriteRenderer.color = \"#ff5555\"\n    spriteRenderer.opacity = 0.4\n    等待(0.15)\n    spriteRenderer.color = \"#ffffff\"\n    spriteRenderer.opacity = 1.0\n}"
+        }
+    },
+    Rigidbody2D: {
+        descripcion: "Añade comportamiento físico real a la entidad, permitiendo que le afecte la gravedad, el arrastre de aire, la masa y las fuerzas de impacto/reacción físicas.",
+        uso: "Añádelo a entidades dinámicas. Configura la gravedad, el tipo de cuerpo ('Dynamic', 'Kinematic', 'Static') y las restricciones de rotación/posición.",
+        combinaciones: "Requiere colisionadores como 'BoxCollider2D' o 'CircleCollider2D' para que el objeto interactúe físicamente con el entorno.",
+        scripting: {
+            es: "ve motor;\n\n// EJEMPLO 1: Aplicar impulso físico de esquiva (Dash)\nesquivarLateral(derecha) {\n    variable empuje = derecha ? 18 : -18\n    fisica.applyImpulse(nuevo Vector2(empuje, 0))\n}",
+            en: "ve motor;\n\n// EXAMPLE 1: Physical dash impulse logic\ndashMove(goRight) {\n    variable push = goRight ? 18 : -18\n    fisica.applyImpulse(new Vector2(push, 0))\n}",
+            pt: "ve motor;\n\n// EXEMPLO 1: Aplicar impulso de esquiva física (Dash)\nesquivarFisico(direita) {\n    variable empuxo = direita ? 18 : -18\n    fisica.applyImpulse(nuevo Vector2(empuxo, 0))\n}",
+            ru: "ve motor;\n\n// ПРИМЕР 1: Приложить физический импульс рывка (Dash)\ndashMove(goRight) {\n    variable push = goRight ? 18 : -18\n    физика.applyImpulse(nuevo Vector2(push, 0))\n}",
+            zh: "ve motor;\n\n// 示例 1: 应用左右躲避（冲刺 Dash）的物理脉冲\ndashMove(goRight) {\n    variable push = goRight ? 18 : -18\n    fisica.applyImpulse(new Vector2(push, 0))\n}"
+        }
+    },
+    Health: {
+        descripcion: "Controla la salud y los puntos de vida de un personaje o entidad. Gestiona daño, curación, inmunidad temporal, y eventos/animación de muerte con destrucción retardada del objeto.",
+        uso: "Configura la salud máxima, vida actual y si el objeto debe destruirse automáticamente al morir ('destroyOnDeath').",
+        combinaciones: "Ideal para jugadores, enemigos, barriles destructibles, combinado con colisionadores y scripts.",
+        scripting: {
+            es: "ve motor;\n\n// EJEMPLO 1: Dañar al jugador con cooldown de inmunidad\nrecibirAtaqueEnemigo(cantidad) {\n    si (vida.currentHealth > 0) {\n        vida.damage(cantidad)\n        imprimir(\"Vida restante: \" + vida.currentHealth)\n    }\n}",
+            en: "ve motor;\n\n// EXAMPLE 1: Damage the player with safety checks\ntakeEnemyDamage(amount) {\n    if (health.currentHealth > 0) {\n        health.damage(amount)\n        log(\"Remaining health: \" + health.currentHealth)\n    }\n}",
+            pt: "ve motor;\n\n// EXEMPLO 1: Aplicar dano com verificação de segurança\nreceberAtaqueInimigo(quantidade) {\n    se (vida.currentHealth > 0) {\n        vida.damage(quantidade)\n        imprimir(\"Vida restante: \" + vida.currentHealth)\n    }\n}",
+            ru: "ve motor;\n\n// ПРИМЕР 1: Нанести урон игроку с проверкой на смерть\ntakeDamage(amount) {\n    если (здоровье.currentHealth > 0) {\n        здоровье.damage(amount)\n        imprimir(\"Осталось здоровья: \" + здоровье.currentHealth)\n    }\n}",
+            zh: "ve motor;\n\n// 示例 1: 在确保生存的情况下对玩家扣除生命值并记录日志\ntakeEnemyDamage(amount) {\n    如果 (vida.currentHealth > 0) {\n        vida.damage(amount)\n        log(\"剩余生命值: \" + vida.currentHealth)\n    }\n}"
+        }
+    },
+    Inventario: {
+        descripcion: "Gestiona una base de datos local de objetos recolectables y acumulables para la entidad, limitando la cantidad máxima de espacios disponibles.",
+        uso: "Añádelo al jugador para permitirle almacenar monedas, llaves y pociones, usándolo en combinación con 'RecolectorObjetos'.",
+        combinaciones: "Combina perfectamente con 'RecolectorObjetos', 'UIController' (para mostrarlo visualmente) y scripts.",
+        scripting: {
+            es: "ve motor;\n\n// EJEMPLO 1: Consumir una poción para curar 25 de vida\nusarPocionCurativa() {\n    variable inv = obtenerComponente(\"Inventario\")\n    si (inv.tieneItem(\"Pocion\", 1)) {\n        inv.quitarItem(\"Pocion\", 1)\n        vida.heal(25)\n        imprimir(\"Poción consumida. +25 de Vida\")\n    }\n}",
+            en: "ve motor;\n\n// EXAMPLE 1: Consume a health potion to restore 25 health points\nuseHealingPotion() {\n    variable inv = getComponent(\"Inventario\")\n    if (inv.tieneItem(\"Potion\", 1)) {\n        inv.quitarItem(\"Potion\", 1)\n        health.heal(25)\n        log(\"Potion consumed. Restored 25 HP\")\n    }\n}",
+            pt: "ve motor;\n\n// EXEMPLO 1: Consumir uma poção de cura para recuperar 25 de vida\nusarPocaoDeCura() {\n    variable inv = obterComponente(\"Inventario\")\n    se (inv.tieneItem(\"Pocao\", 1)) {\n        inv.quitarItem(\"Pocao\", 1)\n        vida.heal(25)\n        imprimir(\"Poção consumida. +25 de Vida\")\n    }\n}",
+            ru: "ve motor;\n\n// ПРИМЕР 1: Использовать зелье лечения и восстановить 25 здоровья\nusePotion() {\n    variable inv = получитьКомпонент(\"Inventario\")\n    если (inv.tieneItem(\"Potion\", 1)) {\n        inv.quitarItem(\"Potion\", 1)\n        здоровье.heal(25)\n        imprimir(\"Выпито зелье. +25 здоровья\")\n    }\n}",
+            zh: "ve motor;\n\n// 示例 1: 使用一瓶生命药水并为角色恢复 25 点生命值\nuseHealingPotion() {\n    variable inv = 获取组件(\"Inventario\")\n    如果 (inv.tieneItem(\"Potion\", 1)) {\n        inv.quitarItem(\"Potion\", 1)\n        vida.heal(25)\n        log(\"已使用生命药水，恢复了 25 点生命值\")\n    }\n}"
+        }
+    }
+};
+
+window.showComponentHelp = function(componentName) {
+    const L = window.Localization;
+    const currentLang = (L && L.currentLanguage) ? L.currentLanguage.toLowerCase() : 'es';
+
+    const data = componentHelpData[componentName] || {
+        descripcion: "Añade lógica y propiedades específicas a la entidad para expandir sus capacidades en el juego.",
+        uso: "Configura las propiedades de este componente en el Inspector para adaptar su funcionamiento a tus necesidades.",
+        combinaciones: "Compatible con cualquier 'Materia' que posea un 'Transform' para posicionamiento y lógica de juego básica.",
+        scripting: {
+            es: "ve motor;\n\n// Obtener componente\nvariable comp = obtenerComponente(\"" + componentName + "\")",
+            en: "ve motor;\n\n// Get component\nvariable comp = getComponent(\"" + componentName + "\")",
+            pt: "ve motor;\n\n// Obter componente\nvariable comp = obterComponente(\"" + componentName + "\")",
+            ru: "ve motor;\n\n// Получить компонент\nvariable comp = получитьКомпонент(\"" + componentName + "\")",
+            zh: "ve motor;\n\n// 获取组件\nvariable comp = 获取组件(\"" + componentName + "\")"
+        }
+    };
+
+    let scriptingText = "";
+    if (data.scripting) {
+        scriptingText = data.scripting[currentLang] || data.scripting['es'] || data.scripting['en'] || "";
+    }
+
+    let copyText = "Copiar";
+    let copiedText = "¡Copiado!";
+    if (currentLang === 'en') {
+        copyText = "Copy";
+        copiedText = "Copied!";
+    } else if (currentLang === 'pt') {
+        copyText = "Copiar";
+        copiedText = "Copiado!";
+    } else if (currentLang === 'ru') {
+        copyText = "Копировать";
+        copiedText = "Скопировано!";
+    } else if (currentLang === 'zh') {
+        copyText = "复制";
+        copiedText = "已复制!";
+    }
+
+    const dialogTitle = `${L?.get('INFORMACION_LEY', 'Información de Componente') || 'Información de Componente'}: ${componentName}`;
+
+    const htmlContent = `
+        <div class="component-help-dialog" style="text-align: left; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #f1f5f9; width: 440px; max-width: 100%; box-sizing: border-box; padding: 5px;">
+            <div style="margin-bottom: 12px;">
+                <h4 style="margin: 0 0 4px 0; color: #94a3b8; font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">¿Qué hace?</h4>
+                <p style="margin: 0; font-size: 0.9em; color: #f1f5f9; text-align: justify; font-weight: 400;">${data.descripcion}</p>
+            </div>
+
+            <div style="margin-bottom: 12px; background: rgba(56, 189, 248, 0.08); border-left: 3px solid #38bdf8; padding: 10px; border-radius: 4px;">
+                <h4 style="margin: 0 0 4px 0; color: #38bdf8; font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">Cómo usarlo</h4>
+                <p style="margin: 0; font-size: 0.85em; color: #e2e8f0; font-weight: 400;">${data.uso}</p>
+            </div>
+
+            <div style="position: relative; margin-bottom: 12px; background: rgba(148, 163, 184, 0.08); border-left: 3px solid #94a3b8; padding: 10px; border-radius: 4px; font-family: monospace;">
+                <h4 style="margin: 0 0 4px 0; color: #e2e8f0; font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">Uso en Scripting & API</h4>
+                <pre id="help-code-snippet" style="margin: 0; font-size: 0.8em; color: #38bdf8; white-space: pre-wrap; font-weight: 400; line-height: 1.4; padding-right: 70px;">${scriptingText}</pre>
+                <button onclick="navigator.clipboard.writeText(document.getElementById('help-code-snippet').innerText); this.innerText='${copiedText}'; setTimeout(() => this.innerText='${copyText}', 2000);" style="position: absolute; top: 10px; right: 10px; background: rgba(56, 189, 248, 0.2); border: 1px solid #38bdf8; color: #38bdf8; padding: 3px 6px; font-size: 0.7em; border-radius: 3px; cursor: pointer; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">${copyText}</button>
+            </div>
+
+            <div style="margin-bottom: 5px;">
+                <h4 style="margin: 0 0 4px 0; color: #e2e8f0; font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">Compatibilidad y Combinación</h4>
+                <p style="margin: 0; font-size: 0.85em; color: #cbd5e1; font-weight: 400;">${data.combinaciones}</p>
+            </div>
+        </div>
+    `;
+
+    showCustomDialog(dialogTitle, htmlContent);
+};
+
 function renderComponentHeader(title, icon, leyIndex, canRemove = true) {
     const iconHTML = getIconHTML(icon);
     const L = window.Localization;
+    let componentName = '';
+    try {
+        const selectedMateria = typeof getSelectedMateria === 'function' ? getSelectedMateria() : null;
+        if (selectedMateria && selectedMateria.leyes && selectedMateria.leyes[leyIndex]) {
+            componentName = selectedMateria.leyes[leyIndex].constructor.name;
+        }
+    } catch (e) {
+        console.error("Error retrieving component name in header:", e);
+    }
+    const clickParam = componentName || (typeof title === 'string' ? title : '');
     return `
         <div class="component-header" data-ley-index="${leyIndex}">
             <div class="component-header-main">
@@ -1280,7 +1640,7 @@ function renderComponentHeader(title, icon, leyIndex, canRemove = true) {
                 <h4>${title}</h4>
             </div>
             <div class="component-header-controls">
-                <button class="help-component-btn" title="${L?.get('VER_AYUDA', 'Ver Ayuda')}" onclick="window.open('https://carleystudio.com/documentacion.html#componentes', '_blank')">?</button>
+                <button class="help-component-btn" title="${L?.get('VER_AYUDA', 'Ver Ayuda')}" onclick="window.showComponentHelp('${clickParam}')">?</button>
                 ${canRemove ? `<button class="remove-component-btn" title="Eliminar Componente" data-ley-index="${leyIndex}">&times;</button>` : ''}
             </div>
         </div>
@@ -1586,14 +1946,20 @@ async function updateInspectorForMateria(selectedMateria) {
             <input type="checkbox" id="materia-active-toggle" title="${L.get('ACTIVAR_DESACTIVAR_MATERIA', 'Activar/Desactivar Materia')}" ${selectedMateria.isActive ? 'checked' : ''}>
             <input type="text" autocomplete="off" id="materia-name-input" value="${selectedMateria.name}">
         </div>
-        <div class="tag-layer-container">
-            <div class="inspector-row">
-                <label for="materia-tag-select" data-i18n="TAG">${L.get('TAG', 'Tag')}</label>
-                <select id="materia-tag-select"></select>
+        <div class="tag-layer-row" style="display: flex; gap: 8px; margin-bottom: 12px; background: var(--bg-secondary); padding: 8px; border-radius: 6px; border: 1px solid var(--border-color);">
+            <div class="tag-column" style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+                <label data-i18n="TAG" style="font-size: 0.8em; font-weight: bold; color: var(--color-text-muted); text-transform: uppercase; margin: 0;">${L.get('TAG', 'Tag')}</label>
+                <div id="materia-tag-display" class="clickable-selector-box" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; color: var(--color-text); font-size: 0.85em; transition: border-color 0.15s ease;">
+                    <span id="materia-tag-display-text" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px;"></span>
+                    <span style="font-size: 0.75em; color: var(--color-text-muted);">▼</span>
+                </div>
             </div>
-            <div class="inspector-row">
-                <label for="materia-layer-select" data-i18n="LAYER">${L.get('LAYER', 'Layer')}</label>
-                <select id="materia-layer-select"></select>
+            <div class="layer-column" style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+                <label data-i18n="LAYER" style="font-size: 0.8em; font-weight: bold; color: var(--color-text-muted); text-transform: uppercase; margin: 0;">${L.get('LAYER', 'Renderizado')}</label>
+                <div id="materia-layer-display" class="clickable-selector-box" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; color: var(--color-text); font-size: 0.85em; transition: border-color 0.15s ease;">
+                    <span id="materia-layer-display-text" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px;"></span>
+                    <span style="font-size: 0.75em; color: var(--color-text-muted);">▼</span>
+                </div>
             </div>
         </div>
     `;
@@ -1601,53 +1967,39 @@ async function updateInspectorForMateria(selectedMateria) {
     if (currentId !== lastUpdateId) return;
     dom.inspectorContent.innerHTML = headerHTML;
 
-    // Populate Tags Dropdown
-    const tagSelect = dom.inspectorContent.querySelector('#materia-tag-select');
-    if (tagSelect && config.tags) {
-        config.tags.forEach(tag => {
-            const option = document.createElement('option');
-            option.value = tag;
-            option.textContent = tag;
-            if (selectedMateria.tag === tag) {
-                option.selected = true;
-            }
-            tagSelect.appendChild(option);
-        });
-        // Add a separator and the "Add Tag..." option
-        const separator = document.createElement('option');
-        separator.disabled = true;
-        separator.textContent = '──────────';
-        tagSelect.appendChild(separator);
-        const addTagOption = document.createElement('option');
-        addTagOption.value = 'add_new_tag';
-        addTagOption.dataset.i18n = 'ADD_TAG_ELLIPSIS';
-        addTagOption.textContent = L.get('ADD_TAG_ELLIPSIS', 'Añadir Tag...');
-        tagSelect.appendChild(addTagOption);
+    // Populate Tag Display
+    const tagDisplay = dom.inspectorContent.querySelector('#materia-tag-display-text');
+    if (tagDisplay) {
+        const currentTags = selectedMateria.tag ? selectedMateria.tag.split(',').map(t => t.trim()).filter(t => t !== '') : [];
+        if (currentTags.length === 0) {
+            tagDisplay.textContent = L.get('UNTAGGED', 'Sin Etiqueta');
+            tagDisplay.style.color = 'var(--color-text-muted)';
+        } else if (currentTags.length === 1) {
+            const singleTag = currentTags[0];
+            tagDisplay.textContent = L.get(singleTag.toUpperCase(), singleTag);
+            tagDisplay.style.color = 'var(--color-text)';
+        } else {
+            tagDisplay.textContent = `${L.get('MULTIPLE', 'Múltiple')} (${currentTags.length})`;
+            tagDisplay.style.color = '#00b4ff'; // High contrast neon blue
+        }
     }
 
-    // Populate Layers Dropdown
-    const layerSelect = dom.inspectorContent.querySelector('#materia-layer-select');
-    if (layerSelect && config.layers && config.layers.sortingLayers) {
-        config.layers.sortingLayers.forEach((layerName, index) => {
-            if (!layerName) return; // Skip empty layer names
-            const option = document.createElement('option');
-            option.value = index; // The value is the layer's index
-            option.textContent = `${index}: ${layerName}`;
-            if (selectedMateria.layer === index) {
-                option.selected = true;
-            }
-            layerSelect.appendChild(option);
-        });
-        // Add a separator and the "Edit Layers..." option
-        const separator = document.createElement('option');
-        separator.disabled = true;
-        separator.textContent = '──────────';
-        layerSelect.appendChild(separator);
-        const addLayerOption = document.createElement('option');
-        addLayerOption.value = 'edit_layers';
-        addLayerOption.dataset.i18n = 'EDIT_LAYERS_ELLIPSIS';
-        addLayerOption.textContent = L.get('EDIT_LAYERS_ELLIPSIS', 'Editar Layers...');
-        layerSelect.appendChild(addLayerOption);
+    // Populate Layer Display
+    const layerDisplay = dom.inspectorContent.querySelector('#materia-layer-display-text');
+    if (layerDisplay) {
+        const currentLayers = selectedMateria.layers || [selectedMateria.layer || 0];
+        if (currentLayers.length === 0) {
+            layerDisplay.textContent = 'None';
+            layerDisplay.style.color = 'var(--color-text-muted)';
+        } else if (currentLayers.length === 1) {
+            const layerIdx = currentLayers[0];
+            const layerName = config.layers?.sortingLayers[layerIdx] || `Layer ${layerIdx}`;
+            layerDisplay.textContent = `${layerIdx}: ${layerName}`;
+            layerDisplay.style.color = 'var(--color-text)';
+        } else {
+            layerDisplay.textContent = `${L.get('MULTIPLE', 'Múltiple')} (${currentLayers.length})`;
+            layerDisplay.style.color = '#4caf50'; // Vibrant green
+        }
     }
 
     // --- REORGANIZACIÓN POR CATEGORÍAS ---
@@ -1683,7 +2035,9 @@ async function updateInspectorForMateria(selectedMateria) {
             'Health', 'Attack', 'Patrol', 'ParticleSystem', 'RaycastSource', 'BasicAI', 'Water', 'LineCollider2D', 'Suspension',
             'VehicleTopDown', 'PlaneController', 'HelicopterController', 'Bone', 'SkeletonRenderer', 'IKManager2D', 'Animator', 'AnimatorController',
             'Canvas', 'UIImage', 'UIText', 'UITransform', 'Button', 'ProgressBar', 'UIScrollRect', 'UIMask', 'UICollider', 'UIController',
-            'VerticalLayoutGroup', 'HorizontalLayoutGroup', 'GridLayoutGroup', 'ContentSizeFitter'
+            'VerticalLayoutGroup', 'HorizontalLayoutGroup', 'GridLayoutGroup', 'ContentSizeFitter',
+            'ManejoArmasLateral', 'ManejoArmasCenital', 'Proyectil2D', 'DetectorBajas', 'ItemRecolectable', 'RecolectorObjetos',
+            'Inventario', 'SistemaDialogos', 'GestorMisiones'
         ];
         return known2D.includes(name);
     };
@@ -3238,6 +3592,179 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label>Fall</label>
                         <input type="text" autocomplete="off" class="prop-input" data-component="Movement" data-prop="fallAnim" value="${ley.fallAnim || ''}">
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.ManejoArmasLateral) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('MANEJO_ARMAS_LATERAL', "Manejo Armas Lateral"), icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Munición Máxima</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="1" data-component="ManejoArmasLateral" data-prop="municionMaxima" value="${ley.municionMaxima}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Munición Inicial</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="0" data-component="ManejoArmasLateral" data-prop="municionInicial" value="${ley.municionInicial}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Munición Actual</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="0" data-component="ManejoArmasLateral" data-prop="municionActual" value="${ley.municionActual}">
+                    </div>
+                    <div class="inspector-row">
+                        <label>Prefab Proyectil</label>
+                        <div class="file-picker">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="ManejoArmasLateral" data-prop="proyectilPrefab" value="${ley.proyectilPrefab}" placeholder="Arrastra un .ceprefab aquí">
+                            <button class="panel-tool-btn" onclick="window.openAssetSelector((h, p) => { const input = this.previousElementSibling; input.value = p; input.dispatchEvent(new Event('change', { bubbles: true })); }, '.ceprefab')">...</button>
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Tecla Disparo</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="ManejoArmasLateral" data-prop="teclaDisparo" value="${ley.teclaDisparo}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Cadencia (segs)</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="0.05" min="0" data-component="ManejoArmasLateral" data-prop="tiempoDisparo" value="${ley.tiempoDisparo}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Fuerza Retroceso</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="ManejoArmasLateral" data-prop="fuerzaRetroceso" value="${ley.fuerzaRetroceso}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Velocidad Recuperación</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="0.5" data-component="ManejoArmasLateral" data-prop="velocidadRetroceso" value="${ley.velocidadRetroceso}">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="ManejoArmasLateral" data-prop="dispararAutomatico" ${ley.dispararAutomatico ? 'checked' : ''}>
+                        <label>Disparo Automático</label>
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.ManejoArmasCenital) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('MANEJO_ARMAS_CENITAL', "Manejo Armas Cenital"), icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Munición Máxima</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="1" data-component="ManejoArmasCenital" data-prop="municionMaxima" value="${ley.municionMaxima}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Munición Inicial</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="0" data-component="ManejoArmasCenital" data-prop="municionInicial" value="${ley.municionInicial}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Munición Actual</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="0" data-component="ManejoArmasCenital" data-prop="municionActual" value="${ley.municionActual}">
+                    </div>
+                    <div class="inspector-row">
+                        <label>Prefab Proyectil</label>
+                        <div class="file-picker">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="ManejoArmasCenital" data-prop="proyectilPrefab" value="${ley.proyectilPrefab}" placeholder="Arrastra un .ceprefab aquí">
+                            <button class="panel-tool-btn" onclick="window.openAssetSelector((h, p) => { const input = this.previousElementSibling; input.value = p; input.dispatchEvent(new Event('change', { bubbles: true })); }, '.ceprefab')">...</button>
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Tecla Disparo</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="ManejoArmasCenital" data-prop="teclaDisparo" value="${ley.teclaDisparo}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Cadencia (segs)</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="0.05" min="0" data-component="ManejoArmasCenital" data-prop="tiempoDisparo" value="${ley.tiempoDisparo}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Fuerza Retroceso</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="ManejoArmasCenital" data-prop="fuerzaRetroceso" value="${ley.fuerzaRetroceso}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Velocidad Recuperación</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="0.5" data-component="ManejoArmasCenital" data-prop="velocidadRetroceso" value="${ley.velocidadRetroceso}">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="ManejoArmasCenital" data-prop="dispararAutomatico" ${ley.dispararAutomatico ? 'checked' : ''}>
+                        <label>Disparo Automático</label>
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.Proyectil2D) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('PROYECTIL_2D', "Proyectil 2D"), icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Velocidad</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="10" data-component="Proyectil2D" data-prop="velocidad" value="${ley.velocidad}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Daño</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" data-component="Proyectil2D" data-prop="dano" value="${ley.dano}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Tiempo de Vida (segs)</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="0.5" min="0.1" data-component="Proyectil2D" data-prop="tiempoVida" value="${ley.tiempoVida}">
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.DetectorBajas) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('DETECTOR_BAJAS', "Detector de Bajas"), icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Recompensa Puntos</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="10" data-component="DetectorBajas" data-prop="recompensaPuntos" value="${ley.recompensaPuntos}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Item a Recompensar</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="DetectorBajas" data-prop="itemARecompensar" value="${ley.itemARecompensar}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Cantidad Item</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="1" data-component="DetectorBajas" data-prop="cantidadItem" value="${ley.cantidadItem}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Mensaje Consola</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="DetectorBajas" data-prop="mensajeConsola" value="${ley.mensajeConsola}">
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.ItemRecolectable) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('ITEM_RECOLECTABLE', "Item Recolectable"), icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Nombre Item</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="ItemRecolectable" data-prop="nombreItem" value="${ley.nombreItem}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Cantidad</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="1" min="1" data-component="ItemRecolectable" data-prop="cantidad" value="${ley.cantidad}">
+                    </div>
+                    <div class="inspector-row">
+                        <label>Sonido Recogida</label>
+                        ${renderPropertyDropper('Audio', ley.sonidoRecogida, 'data-component="ItemRecolectable" data-prop="sonidoRecogida"')}
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="ItemRecolectable" data-prop="destruirAlRecoger" ${ley.destruirAlRecoger ? 'checked' : ''}>
+                        <label>Destruir al Recoger</label>
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.RecolectorObjetos) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('RECOLECTOR_OBJETOS', "Recolector de Objetos"), icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Método de Recogida</label>
+                        <select class="prop-input" data-component="RecolectorObjetos" data-prop="metodoRecogida">
+                            <option value="colision" ${ley.metodoRecogida === 'colision' ? 'selected' : ''}>Colisión/Solapamiento</option>
+                            <option value="tecla" ${ley.metodoRecogida === 'tecla' ? 'selected' : ''}>Presionando Tecla</option>
+                        </select>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Tecla de Recogida</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="RecolectorObjetos" data-prop="teclaRecogida" value="${ley.teclaRecogida}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Distancia Detección</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="5" data-component="RecolectorObjetos" data-prop="distanciaDeteccion" value="${ley.distanciaDeteccion}">
                     </div>
                 </div>
             `;

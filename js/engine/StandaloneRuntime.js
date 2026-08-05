@@ -13,6 +13,7 @@ import { Localization } from './Localization.js';
 
 export class StandaloneRuntime {
     constructor(canvasId) {
+        window.CE_Standalone_Runtime = this;
         this.canvas = document.getElementById(canvasId);
         this.renderer = null;
         this.physicsSystem = null;
@@ -613,7 +614,9 @@ export class StandaloneRuntime {
                         if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) continue;
                     }
                     const cameraComponent = cameraMateria.getComponent(Components.Camera);
-                    if ((cameraComponent.cullingMask & (1 << materia.layer)) === 0) continue;
+                    const mLayers = materia.layers || [materia.layer || 0];
+                    const isVisible = mLayers.some(l => (cameraComponent.cullingMask & (1 << l)) !== 0);
+                    if (!isVisible) continue;
                 }
 
                 if (vp) {

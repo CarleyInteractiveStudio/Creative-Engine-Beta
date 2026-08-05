@@ -458,9 +458,14 @@ PROP_FLIP_Y: Voltear Vertical
 NADA_SELECCIONADO: Nada seleccionado
 ACTIVAR_DESACTIVAR_MATERIA: Activar/Desactivar Materia
 TAG: Tag
-LAYER: Layer
+LAYER: Renderizado
 ADD_TAG_ELLIPSIS: Añadir Tag...
-EDIT_LAYERS_ELLIPSIS: Editar Layers...
+EDIT_LAYERS_ELLIPSIS: Editar Renderizado...
+SELECCIONAR_TAGS: Seleccionar Tags
+MULTIPLE: Múltiple
+TAGS_SELECTOR_INSTRUCTION: Selecciona las etiquetas que deseas asignar a este objeto:
+SELECCIONAR_LAYERS: Seleccionar Renderizado
+LAYERS_SELECTOR_INSTRUCTION: Selecciona los renderizados (capas de dibujo) que deseas asignar a este objeto:
 AÑADIR_LEY_TITULO: Añadir Ley (Componente)
 CAT_AUDIO: Audio/Video
 CAT_RENDERIZADO: Renderizado
@@ -477,7 +482,8 @@ CAT_VEHICULOS_CENITAL: Vehículos Vista Superior (Top-Down)
 CAT_DISPAROS_LATERAL: Disparos Vista Lateral
 CAT_DISPAROS_CENITAL: Disparos Vista Superior (Top-Down)
 CAT_AVENTURA_ROL: Aventura y Rol
-CAT_BASICO: Básico
+CAT_FPS_LATERAL: FPS Vista Lateral
+CAT_FPS_CENITAL: FPS Vista Superior
 CAT_BASICO_3D: Básico 3D
 CAT_FISICA_3D: Física 3D
 CAT_AUDIO_3D: Audio 3D
@@ -1157,9 +1163,14 @@ PROP_FLIP_Y: Flip Vertical
 NADA_SELECCIONADO: Nothing selected
 ACTIVAR_DESACTIVAR_MATERIA: Enable/Disable Matter
 TAG: Tag
-LAYER: Layer
+LAYER: Render Layer
 ADD_TAG_ELLIPSIS: Add Tag...
-EDIT_LAYERS_ELLIPSIS: Edit Layers...
+EDIT_LAYERS_ELLIPSIS: Edit Render Layers...
+SELECCIONAR_TAGS: Select Tags
+MULTIPLE: Multiple
+TAGS_SELECTOR_INSTRUCTION: Select the tags you want to assign to this object:
+SELECCIONAR_LAYERS: Select Render Layers
+LAYERS_SELECTOR_INSTRUCTION: Select the render layers (drawing layers) you want to assign to this object:
 AÑADIR_LEY_TITULO: Add Law (Component)
 CAT_AUDIO: Audio/Video
 CAT_RENDERIZADO: Rendering
@@ -1176,7 +1187,8 @@ CAT_VEHICULOS_CENITAL: Top-Down Vehicles
 CAT_DISPAROS_LATERAL: Side-View Shooter
 CAT_DISPAROS_CENITAL: Top-Down Shooter
 CAT_AVENTURA_ROL: Adventure & RPG
-CAT_BASICO: Basic
+CAT_FPS_LATERAL: Side-View FPS
+CAT_FPS_CENITAL: Top-Down FPS
 CAT_BASICO_3D: Basic 3D
 CAT_FISICA_3D: Physics 3D
 CAT_AUDIO_3D: Audio 3D
@@ -1767,9 +1779,14 @@ PROP_FLIP_Y: Inverter Vertical
 NADA_SELECCIONADO: Nada selecionado
 ACTIVAR_DESACTIVAR_MATERIA: Ativar/Desativar Matéria
 TAG: Tag
-LAYER: Camada
+LAYER: Renderização
 ADD_TAG_ELLIPSIS: Adicionar Tag...
-EDIT_LAYERS_ELLIPSIS: Editar Camadas...
+EDIT_LAYERS_ELLIPSIS: Editar Renderização...
+SELECCIONAR_TAGS: Selecionar Tags
+MULTIPLE: Múltiplo
+TAGS_SELECTOR_INSTRUCTION: Selecione as tags que deseja atribuir a este objeto:
+SELECCIONAR_LAYERS: Selecionar Renderização
+LAYERS_SELECTOR_INSTRUCTION: Selecione as renderizações (camadas de desenho) que deseja atribuir a este objeto:
 AÑADIR_LEY_TITULO: Adicionar Lei (Componente)
 CAT_AUDIO: Áudio/Vídeo
 CAT_RENDERIZADO: Renderização
@@ -1786,7 +1803,8 @@ CAT_VEHICULOS_CENITAL: Veículos de Visão Superior (Top-Down)
 CAT_DISPAROS_LATERAL: Tiro em Vista Lateral
 CAT_DISPAROS_CENITAL: Tiro em Visão Superior (Top-Down)
 CAT_AVENTURA_ROL: Aventura e RPG
-CAT_BASICO: Básico
+CAT_FPS_LATERAL: FPS de Vista Lateral
+CAT_FPS_CENITAL: FPS de Vista Superior
 CAT_BASICO_3D: Básico 3D
 CAT_FISICA_3D: Física 3D
 CAT_AUDIO_3D: Áudio 3D
@@ -2288,9 +2306,14 @@ PROP_FLIP_Y: Отразить по вертикали
 NADA_SELECCIONADO: Ничего не выбрано
 ACTIVAR_DESACTIVAR_MATERIA: Вкл/Выкл материю
 TAG: Тег
-LAYER: Слой
+LAYER: Рендеринг
 ADD_TAG_ELLIPSIS: Добавить тег...
-EDIT_LAYERS_ELLIPSIS: Редактировать слои...
+EDIT_LAYERS_ELLIPSIS: Редактировать рендеринг...
+SELECCIONAR_TAGS: Выбрать теги
+MULTIPLE: Несколько
+TAGS_SELECTOR_INSTRUCTION: Выберите теги, которые вы хотите присвоить этому объекту:
+SELECCIONAR_LAYERS: Выбрать слои рендеринга
+LAYERS_SELECTOR_INSTRUCTION: Выберите слои рендеринга (слои рисования), которые вы хотите присвоить этому объекту:
 AÑADIR_LEY_TITULO: Добавить закон (Компонент)
 CAT_AUDIO: Аудио/Видео
 CAT_RENDERIZADO: Рендеринг
@@ -2307,7 +2330,8 @@ CAT_VEHICULOS_CENITAL: Транспорт (Вид Сверху Top-Down)
 CAT_DISPAROS_LATERAL: Шутер (Вид Сбоку)
 CAT_DISPAROS_CENITAL: Шутер (Вид Сверху)
 CAT_AVENTURA_ROL: Приключения и Ролевые (RPG)
-CAT_BASICO: Базовый
+CAT_FPS_LATERAL: Шутер (Вид сбоку)
+CAT_FPS_CENITAL: Шутер (Вид сверху)
 CAT_BASICO_3D: Базовый 3D
 CAT_FISICA_3D: Физика 3D
 CAT_AUDIO_3D: Аудио 3D
@@ -2827,9 +2851,14 @@ PROP_FLIP_Y: 垂直翻转
 NADA_SELECCIONADO: 未选择任何内容
 ACTIVAR_DESACTIVAR_MATERIA: 启用/禁用物质
 TAG: 标签
-LAYER: 图层
+LAYER: 渲染层
 ADD_TAG_ELLIPSIS: 添加标签...
-EDIT_LAYERS_ELLIPSIS: 编辑图层...
+EDIT_LAYERS_ELLIPSIS: 编辑渲染层...
+SELECCIONAR_TAGS: 选择标签
+MULTIPLE: 多个
+TAGS_SELECTOR_INSTRUCTION: 选择要分配给此对象的标签：
+SELECCIONAR_LAYERS: 选择渲染层
+LAYERS_SELECTOR_INSTRUCTION: 选择要分配给该对象的渲染层（绘制层）：
 AÑADIR_LEY_TITULO: 添加法律 (组件)
 CAT_AUDIO: 音频/视频
 CAT_RENDERIZADO: 渲染
@@ -2846,7 +2875,8 @@ CAT_VEHICULOS_CENITAL: 俯视角载具 (Top-Down)
 CAT_DISPAROS_LATERAL: 横版射击 (Side-View)
 CAT_DISPAROS_CENITAL: 俯视角射击 (Top-Down)
 CAT_AVENTURA_ROL: 冒险与角色扮演 (RPG)
-CAT_BASICO: 基础
+CAT_FPS_LATERAL: 横版射击 (FPS)
+CAT_FPS_CENITAL: 俯视角射击 (FPS)
 CAT_BASICO_3D: 基础 3D
 CAT_FISICA_3D: 物理 3D
 CAT_AUDIO_3D: 音频 3D

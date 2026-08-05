@@ -2,6 +2,7 @@
 // This file contains all the component classes.
 
 import { Leyes } from './Leyes.js';
+import { Materia } from './Materia.js';
 import { registerComponent } from './ComponentRegistry.js';
 import { getURLForAssetPath, getFileHandleForPath, recordFetch } from './AssetUtils.js';
 import { InputManager } from './Input.js';
@@ -260,7 +261,7 @@ export class CreativeScriptBehavior {
      * Comprueba si la materia tiene una etiqueta específica.
      */
     tieneTag(tag) {
-        return this.materia && this.materia.tag === tag;
+        return this.materia && this.materia.tieneTag(tag);
     }
     hasTag(tag) { return this.tieneTag(tag); }
 
@@ -1201,7 +1202,38 @@ export class Camera extends Leyes {
         this.cullingMask = -1; // Bitmask, -1 means 'Everything'
         this.rect = { x: 0, y: 0, w: 1, h: 1 }; // Viewport rect (0-1)
         this.zoom = 1.0; // Editor-only zoom, not part of the component's data.
+
+        // Camera Shake State
+        this._shakeTime = 0;
+        this._shakeIntensity = 0;
+        this.shakeOffset = { x: 0, y: 0 };
     }
+
+    sacudir(duracion = 0.3, intensidad = 10) {
+        this._shakeTime = duracion;
+        this._shakeIntensity = intensidad;
+    }
+
+    update(deltaTime) {
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (!isGame) return;
+
+        if (this._shakeTime > 0) {
+            this._shakeTime -= deltaTime;
+            const angle = Math.random() * Math.PI * 2;
+            const offset = Math.random() * this._shakeIntensity;
+            this.shakeOffset.x = Math.cos(angle) * offset;
+            this.shakeOffset.y = Math.sin(angle) * offset;
+            if (this._shakeTime <= 0) {
+                this.shakeOffset.x = 0;
+                this.shakeOffset.y = 0;
+            }
+        } else {
+            this.shakeOffset.x = 0;
+            this.shakeOffset.y = 0;
+        }
+    }
+
     clone() {
         const newCamera = new Camera(null);
         newCamera.depth = this.depth;
@@ -8618,7 +8650,7 @@ export class SceneLoader extends Leyes {
 
     alEntrarEnColision(col) {
         if (this._isSceneLoaded || !this.scenePath) return;
-        if (this.triggerTag && col.materia && col.materia.tag === this.triggerTag) {
+        if (this.triggerTag && col.materia && col.materia.tieneTag(this.triggerTag)) {
             this.load();
         }
     }
@@ -8889,16 +8921,36 @@ export class Inventario extends Leyes {
         super(materia);
         this.items = [];
         this.maxEspacios = 20;
+        this.limitesMaximos = {};
+        this.cantidadMaximaPorDefecto = 99;
+    }
+
+    establecerLimite(nombre, maximo) {
+        this.limitesMaximos[nombre] = maximo;
+    }
+
+    obtenerCantidad(nombre) {
+        const item = this.items.find(i => i.nombre === nombre);
+        return item ? item.amount || item.cantidad : 0;
     }
 
     agregarItem(nombre, cantidad = 1, datos = {}) {
+        const limite = this.limitesMaximos[nombre] !== undefined ? this.limitesMaximos[nombre] : this.cantidadMaximaPorDefecto;
         const itemExistente = this.items.find(i => i.nombre === nombre);
+
         if (itemExistente) {
-            itemExistente.cantidad += cantidad;
+            const espacioDisponible = Math.max(0, limite - itemExistente.cantidad);
+            const aAgregar = Math.min(cantidad, espacioDisponible);
+            itemExistente.cantidad += aAgregar;
+            this._notificarCambio();
+            return cantidad - aAgregar; // Sobrante
         } else if (this.items.length < this.maxEspacios) {
-            this.items.push({ nombre, cantidad, datos });
+            const aAgregar = Math.min(cantidad, limite);
+            this.items.push({ nombre, cantidad: aAgregar, datos });
+            this._notificarCambio();
+            return cantidad - aAgregar; // Sobrante
         }
-        this._notificarCambio();
+        return cantidad;
     }
 
     quitarItem(nombre, cantidad = 1) {
@@ -8917,6 +8969,11 @@ export class Inventario extends Leyes {
         return item && item.cantidad >= cantidad;
     }
 
+    vaciarInventario() {
+        this.items = [];
+        this._notificarCambio();
+    }
+
     _notificarCambio() {
         if (this.materia) {
             this.materia.emitir('cambio-inventario', this.items);
@@ -8927,6 +8984,8 @@ export class Inventario extends Leyes {
         const copy = new Inventario(null);
         copy.items = JSON.parse(JSON.stringify(this.items));
         copy.maxEspacios = this.maxEspacios;
+        copy.limitesMaximos = { ...this.limitesMaximos };
+        copy.cantidadMaximaPorDefecto = this.cantidadMaximaPorDefecto;
         return copy;
     }
 }
@@ -9040,7 +9099,7 @@ export class UIController extends Leyes {
             // Intento de auto-detección de Jugador
             const scene = this.materia.scene;
             if (scene) {
-                const player = scene.getAllMaterias().find(m => m.tag === 'Player' || m.name.toLowerCase().includes('jugador'));
+                const player = scene.getAllMaterias().find(m => m.tieneTag('Player') || m.name.toLowerCase().includes('jugador'));
                 if (player) {
                     this.targetMateriaName = player.name;
                     console.log(`[UIController] Auto-configurado: Objetivo detectado -> ${player.name}`);
@@ -9302,3 +9361,621 @@ export class DistanceDeactivator extends Leyes {
 registerComponent('AutoCulling2D', AutoCulling2D);
 registerComponent('ObjectPooler', ObjectPooler);
 registerComponent('DistanceDeactivator', DistanceDeactivator);
+
+
+/**
+ * Componente Proyectil2D: Controla el movimiento lineal de un proyectil,
+ * su tiempo de vida, y realiza daño a cualquier entidad con Health al impactar.
+ */
+export class Proyectil2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.velocidad = 500;
+        this.dano = 10;
+        this.direccion = { x: 1, y: 0 };
+        this.tiempoVida = 5.0;
+        this.autor = null; // Materia que disparó la bala
+        this._hasCollided = false;
+    }
+
+    update(deltaTime) {
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (!isGame) return;
+
+        const rb = this.materia.getComponent(Rigidbody2D);
+        if (rb) {
+            rb.velocity = {
+                x: (this.direccion.x * this.velocidad) / 100,
+                y: (this.direccion.y * this.velocidad) / 100
+            };
+        } else {
+            const trans = this.materia.getComponent(Transform);
+            if (trans) {
+                trans.x += this.direccion.x * this.velocidad * deltaTime;
+                trans.y += this.direccion.y * this.velocidad * deltaTime;
+            }
+        }
+
+        this.tiempoVida -= deltaTime;
+        if (this.tiempoVida <= 0) {
+            this.destroyBullet();
+        }
+    }
+
+    alEntrarEnColision(collision) {
+        this.handleHit(collision.materia);
+    }
+
+    alEntrarEnTrigger(collision) {
+        this.handleHit(collision.materia);
+    }
+
+    handleHit(otherMateria) {
+        if (this._hasCollided) return;
+
+        // Evitar colisionar con el autor o con otros proyectiles del mismo autor
+        if (this.autor && otherMateria.id === this.autor.id) return;
+        const otherProj = otherMateria.getComponent(Proyectil2D);
+        if (otherProj && otherProj.autor && this.autor && otherProj.autor.id === this.autor.id) return;
+
+        this._hasCollided = true;
+
+        const health = otherMateria.getComponent(Health);
+        if (health) {
+            const wasDeadBefore = health.isDead || (health.currentHealth <= 0);
+            health.damage(this.dano);
+            const isDeadAfter = health.isDead || (health.currentHealth <= 0);
+
+            if (!wasDeadBefore && isDeadAfter && this.autor) {
+                this.rewardAuthor(this.autor, otherMateria);
+            }
+        }
+
+        this.destroyBullet();
+    }
+
+    rewardAuthor(autor, target) {
+        autor.emitir('kill', { target, bullet: this.materia });
+        const reward = autor.getComponent(DetectorBajas);
+        if (reward) {
+            reward.concederRecompensa(target);
+        }
+    }
+
+    destroyBullet() {
+        if (this.materia && this.materia.scene) {
+            this.materia.scene.removeMateria(this.materia.id);
+        }
+    }
+
+    clone() {
+        const copy = new Proyectil2D(null);
+        copy.velocidad = this.velocidad;
+        copy.dano = this.dano;
+        copy.direccion = { ...this.direccion };
+        copy.tiempoVida = this.tiempoVida;
+        return copy;
+    }
+}
+
+/**
+ * Componente DetectorBajas: Otorga recompensas (puntos, items de inventario, etc.)
+ * cuando el portador elimina/mata a un enemigo usando proyectiles.
+ */
+export class DetectorBajas extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.recompensaPuntos = 100;
+        this.itemARecompensar = "";
+        this.cantidadItem = 1;
+        this.mensajeConsola = "¡Enemigo eliminado!";
+    }
+
+    concederRecompensa(target) {
+        console.log(`[DetectorBajas] ${this.mensajeConsola}. Víctima: ${target.name}`);
+        this.materia.emitir('score-add', this.recompensaPuntos);
+
+        if (this.itemARecompensar) {
+            const inv = this.materia.getComponent(Inventario);
+            if (inv) {
+                inv.agregarItem(this.itemARecompensar, this.cantidadItem);
+                console.log(`[DetectorBajas] Se otorgó ${this.cantidadItem}x ${this.itemARecompensar} al inventario.`);
+            }
+        }
+    }
+
+    clone() {
+        const copy = new DetectorBajas(null);
+        copy.recompensaPuntos = this.recompensaPuntos;
+        copy.itemARecompensar = this.itemARecompensar;
+        copy.cantidadItem = this.cantidadItem;
+        copy.mensajeConsola = this.mensajeConsola;
+        return copy;
+    }
+}
+
+/**
+ * Componente ManejoArmasLateral: Controla el sistema de armas y munición
+ * en un juego con vista lateral (Side-Scrolling / Plataformas).
+ */
+export class ManejoArmasLateral extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.municionMaxima = 30;
+        this.municionInicial = 30;
+        this.municionActual = 30;
+        this.proyectilPrefab = "";
+        this.teclaDisparo = "Space";
+        this.tiempoDisparo = 0.2;
+        this.fuerzaRetroceso = 15;
+        this.velocidadRetroceso = 5;
+        this.dispararAutomatico = false;
+
+        // Camera Shake options
+        this.sacudirCamaraAlDisparar = false;
+        this.intensidadSacudida = 5;
+        this.duracionSacudida = 0.2;
+
+        // Animation options
+        this.animacionDisparo = "";
+
+        this._cooldown = 0;
+        this._initializedAmmo = false;
+        this._lastKeyState = false;
+    }
+
+    onEnable() {
+        if (!this._initializedAmmo) {
+            this.municionActual = this.municionInicial;
+            this._initializedAmmo = true;
+        }
+    }
+
+    update(deltaTime) {
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (!isGame) return;
+
+        if (this._cooldown > 0) {
+            this._cooldown -= deltaTime;
+        }
+
+        // Obtener estado de entrada
+        let isPressed = false;
+        if (this.teclaDisparo === "Mouse0" || this.teclaDisparo === "Click" || this.teclaDisparo === "MouseLeft") {
+            isPressed = InputManager.getMouseButton(0);
+        } else {
+            isPressed = InputManager.isKeyPressed(this.teclaDisparo);
+        }
+
+        const canShoot = this.dispararAutomatico ? isPressed : (isPressed && !this._lastKeyState);
+        this._lastKeyState = isPressed;
+
+        if (canShoot && this._cooldown <= 0 && this.municionActual > 0) {
+            this.disparar();
+        }
+    }
+
+    async disparar() {
+        this.municionActual--;
+        this._cooldown = this.tiempoDisparo;
+
+        const trans = this.materia.getComponent(Transform);
+        if (!trans) return;
+
+        // Determinar dirección de disparo basada en flipX de SpriteRenderer o escala horizontal
+        let dirX = 1;
+        const sr = this.materia.getComponent(SpriteRenderer);
+        if (sr && (sr.flipX || (sr.sprite && sr.sprite.src && sr.sprite.src.includes('flip')))) {
+            dirX = -1;
+        } else if (trans.scale && trans.scale.x < 0) {
+            dirX = -1;
+        }
+
+        // Punto de aparición de bala
+        const spawnX = trans.x + dirX * 30;
+        const spawnY = trans.y;
+
+        // Efecto retroceso (visual o físico)
+        const rb = this.materia.getComponent(Rigidbody2D);
+        if (rb) {
+            rb.velocity.x -= dirX * this.fuerzaRetroceso * 0.1;
+        } else {
+            trans.x -= dirX * this.fuerzaRetroceso * 0.5;
+        }
+
+        // Sacudida de cámara
+        if (this.sacudirCamaraAlDisparar && this.materia.scene) {
+            const cameras = this.materia.scene.getComponents(Camera);
+            if (cameras && cameras.length > 0) {
+                cameras.forEach(cam => {
+                    if (typeof cam.sacudir === 'function') {
+                        cam.sacudir(this.duracionSacudida, this.intensidadSacudida);
+                    }
+                });
+            }
+        }
+
+        // Animación de disparo
+        if (this.animacionDisparo) {
+            const animator = this.materia.getComponent(Animator) || this.materia.getComponent(AnimatorController);
+            if (animator && typeof animator.play === 'function') {
+                animator.play(this.animacionDisparo, { loop: false, force: true });
+            }
+        }
+
+        let proj = null;
+        if (typeof this.proyectilPrefab === 'object' && this.proyectilPrefab !== null) {
+            if (typeof this.proyectilPrefab.clone === 'function') {
+                proj = this.proyectilPrefab.clone();
+                proj.transform.position.x = spawnX;
+                proj.transform.position.y = spawnY;
+                if (this.materia.scene) {
+                    this.materia.scene.addMateria(proj);
+                }
+            }
+        } else if (window.SceneManager && typeof this.proyectilPrefab === 'string' && this.proyectilPrefab) {
+            try {
+                proj = await window.SceneManager.instantiatePrefabFromPath(this.proyectilPrefab, spawnX, spawnY);
+            } catch (e) {
+                console.warn("[ManejoArmasLateral] No se pudo instanciar el prefab de bala, usando bala por defecto.", e);
+            }
+        }
+
+        if (proj) {
+            const bulletComp = proj.getComponent(Proyectil2D) || proj.addComponent(Proyectil2D);
+            bulletComp.direccion = { x: dirX, y: 0 };
+            bulletComp.autor = this.materia;
+        } else {
+            this._crearBalaPorDefecto(spawnX, spawnY, dirX, 0);
+        }
+    }
+
+    _crearBalaPorDefecto(x, y, dx, dy) {
+        if (this.materia.scene) {
+            const bullet = new Materia("Bala_Lateral");
+            const trans = bullet.addComponent(Transform);
+            trans.x = x;
+            trans.y = y;
+            const sr = bullet.addComponent(SpriteRenderer);
+            sr.color = "#ffdd00";
+
+            const col = bullet.addComponent(CircleCollider2D);
+            col.radius = 4;
+            col.isTrigger = true;
+
+            const bulletComp = bullet.addComponent(Proyectil2D);
+            bulletComp.direccion = { x: dx, y: dy };
+            bulletComp.autor = this.materia;
+
+            this.materia.scene.addMateria(bullet);
+        }
+    }
+
+    clone() {
+        const copy = new ManejoArmasLateral(null);
+        Object.assign(copy, this);
+        copy._cooldown = 0;
+        copy._lastKeyState = false;
+        return copy;
+    }
+}
+
+/**
+ * Componente ManejoArmasCenital: Controla el sistema de armas y munición
+ * en un juego con vista superior / cenital (Top-Down), apuntando hacia el ratón.
+ */
+export class ManejoArmasCenital extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.municionMaxima = 30;
+        this.municionInicial = 30;
+        this.municionActual = 30;
+        this.proyectilPrefab = "";
+        this.teclaDisparo = "Mouse0";
+        this.tiempoDisparo = 0.2;
+        this.fuerzaRetroceso = 15;
+        this.velocidadRetroceso = 5;
+        this.dispararAutomatico = false;
+
+        // Camera Shake options
+        this.sacudirCamaraAlDisparar = false;
+        this.intensidadSacudida = 5;
+        this.duracionSacudida = 0.2;
+
+        // Animation options
+        this.animacionDisparo = "";
+
+        this._cooldown = 0;
+        this._initializedAmmo = false;
+        this._lastKeyState = false;
+    }
+
+    onEnable() {
+        if (!this._initializedAmmo) {
+            this.municionActual = this.municionInicial;
+            this._initializedAmmo = true;
+        }
+    }
+
+    update(deltaTime) {
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (!isGame) return;
+
+        if (this._cooldown > 0) {
+            this._cooldown -= deltaTime;
+        }
+
+        let isPressed = false;
+        if (this.teclaDisparo === "Mouse0" || this.teclaDisparo === "Click" || this.teclaDisparo === "MouseLeft") {
+            isPressed = InputManager.getMouseButton(0);
+        } else {
+            isPressed = InputManager.isKeyPressed(this.teclaDisparo);
+        }
+
+        const canShoot = this.dispararAutomatico ? isPressed : (isPressed && !this._lastKeyState);
+        this._lastKeyState = isPressed;
+
+        if (canShoot && this._cooldown <= 0 && this.municionActual > 0) {
+            this.disparar();
+        }
+    }
+
+    async disparar() {
+        const trans = this.materia.getComponent(Transform);
+        if (!trans) return;
+
+        // Calcular ángulo hacia el puntero del ratón en el mundo
+        let angle = 0;
+        const scene = this.materia.scene;
+        if (scene) {
+            const camMateria = scene.findFirstCamera();
+            if (camMateria) {
+                const camera = camMateria.getComponent(Camera);
+                let r = window.renderer;
+                if (!r && typeof window !== 'undefined' && window.CE_Standalone_Runtime) {
+                    r = window.CE_Standalone_Runtime.renderer;
+                }
+                const canvas = InputManager.activeCanvas || InputManager.sceneCanvas || InputManager.gameCanvas || (r ? r.canvas : null);
+                if (camera && canvas) {
+                    // Adapt camera zoom format for InputManager
+                    const camFake = {
+                        effectiveZoom: r && r.camera ? r.camera.effectiveZoom : 1.0,
+                        x: camMateria.getComponent(Transform)?.x || 0,
+                        y: camMateria.getComponent(Transform)?.y || 0
+                    };
+                    const mouseWorld = InputManager.getMouseWorldPosition(camFake, canvas);
+                    angle = Math.atan2(mouseWorld.y - trans.y, mouseWorld.x - trans.x);
+                }
+            }
+        }
+
+        this.municionActual--;
+        this._cooldown = this.tiempoDisparo;
+
+        const cosA = Math.cos(angle);
+        const sinA = Math.sin(angle);
+
+        // Punto de aparición de bala
+        const spawnX = trans.x + cosA * 30;
+        const spawnY = trans.y + sinA * 30;
+
+        // Retroceso físico/visual
+        const rb = this.materia.getComponent(Rigidbody2D);
+        if (rb) {
+            rb.velocity.x -= cosA * this.fuerzaRetroceso * 0.1;
+            rb.velocity.y -= sinA * this.fuerzaRetroceso * 0.1;
+        } else {
+            trans.x -= cosA * this.fuerzaRetroceso * 0.5;
+            trans.y -= sinA * this.fuerzaRetroceso * 0.5;
+        }
+
+        // Sacudida de cámara
+        if (this.sacudirCamaraAlDisparar && this.materia.scene) {
+            const cameras = this.materia.scene.getComponents(Camera);
+            if (cameras && cameras.length > 0) {
+                cameras.forEach(cam => {
+                    if (typeof cam.sacudir === 'function') {
+                        cam.sacudir(this.duracionSacudida, this.intensidadSacudida);
+                    }
+                });
+            }
+        }
+
+        // Animación de disparo
+        if (this.animacionDisparo) {
+            const animator = this.materia.getComponent(Animator) || this.materia.getComponent(AnimatorController);
+            if (animator && typeof animator.play === 'function') {
+                animator.play(this.animacionDisparo, { loop: false, force: true });
+            }
+        }
+
+        let proj = null;
+        if (typeof this.proyectilPrefab === 'object' && this.proyectilPrefab !== null) {
+            if (typeof this.proyectilPrefab.clone === 'function') {
+                proj = this.proyectilPrefab.clone();
+                proj.transform.position.x = spawnX;
+                proj.transform.position.y = spawnY;
+                if (this.materia.scene) {
+                    this.materia.scene.addMateria(proj);
+                }
+            }
+        } else if (window.SceneManager && typeof this.proyectilPrefab === 'string' && this.proyectilPrefab) {
+            try {
+                proj = await window.SceneManager.instantiatePrefabFromPath(this.proyectilPrefab, spawnX, spawnY);
+            } catch (e) {
+                console.warn("[ManejoArmasCenital] No se pudo instanciar prefab, usando bala genérica.", e);
+            }
+        }
+
+        if (proj) {
+            const bulletComp = proj.getComponent(Proyectil2D) || proj.addComponent(Proyectil2D);
+            bulletComp.direccion = { x: cosA, y: sinA };
+            bulletComp.autor = this.materia;
+        } else {
+            this._crearBalaPorDefecto(spawnX, spawnY, cosA, sinA);
+        }
+    }
+
+    _crearBalaPorDefecto(x, y, dx, dy) {
+        if (this.materia.scene) {
+            const bullet = new Materia("Bala_Cenital");
+            const trans = bullet.addComponent(Transform);
+            trans.x = x;
+            trans.y = y;
+            const sr = bullet.addComponent(SpriteRenderer);
+            sr.color = "#ff5500";
+
+            const col = bullet.addComponent(CircleCollider2D);
+            col.radius = 4;
+            col.isTrigger = true;
+
+            const bulletComp = bullet.addComponent(Proyectil2D);
+            bulletComp.direccion = { x: dx, y: dy };
+            bulletComp.autor = this.materia;
+
+            this.materia.scene.addMateria(bullet);
+        }
+    }
+
+    clone() {
+        const copy = new ManejoArmasCenital(null);
+        Object.assign(copy, this);
+        copy._cooldown = 0;
+        copy._lastKeyState = false;
+        return copy;
+    }
+}
+
+/**
+ * Componente ItemRecolectable: Almacena información sobre un objeto
+ * que puede ser recogido por un jugador.
+ */
+export class ItemRecolectable extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.nombreItem = "Moneda";
+        this.cantidad = 1;
+        this.sonidoRecogida = "";
+        this.destruirAlRecoger = true;
+    }
+
+    clone() {
+        const copy = new ItemRecolectable(null);
+        copy.nombreItem = this.nombreItem;
+        copy.cantidad = this.cantidad;
+        copy.sonidoRecogida = this.sonidoRecogida;
+        copy.destruirAlRecoger = this.destruirAlRecoger;
+        return copy;
+    }
+}
+
+/**
+ * Componente RecolectorObjetos: Permite a la entidad absorber objetos
+ * del tipo ItemRecolectable por colisión o presionando una tecla interactiva.
+ */
+export class RecolectorObjetos extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.metodoRecogida = "colision"; // "colision" o "tecla"
+        this.teclaRecogida = "KeyE";
+        this.distanciaDeteccion = 100;
+        this._lastKeyState = false;
+    }
+
+    update(deltaTime) {
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (!isGame) return;
+
+        if (this.metodoRecogida === "tecla") {
+            const isPressed = InputManager.isKeyPressed(this.teclaRecogida);
+            const keyJustPressed = isPressed && !this._lastKeyState;
+            this._lastKeyState = isPressed;
+
+            if (keyJustPressed) {
+                this.buscarYRecogerCercanos();
+            }
+        }
+    }
+
+    alEntrarEnColision(collision) {
+        if (this.metodoRecogida === "colision") {
+            this.intentarRecoger(collision.materia);
+        }
+    }
+
+    alEntrarEnTrigger(collision) {
+        if (this.metodoRecogida === "colision") {
+            this.intentarRecoger(collision.materia);
+        }
+    }
+
+    buscarYRecogerCercanos() {
+        const scene = this.materia.scene;
+        if (!scene) return;
+
+        const myTrans = this.materia.getComponent(Transform);
+        if (!myTrans) return;
+
+        const items = scene.getAllMaterias().filter(m => m.isActive && m.getComponent(ItemRecolectable));
+
+        for (const itemMateria of items) {
+            const itemTrans = itemMateria.getComponent(Transform);
+            if (!itemTrans) continue;
+
+            const dist = Math.hypot(itemTrans.x - myTrans.x, itemTrans.y - myTrans.y);
+            if (dist <= this.distanciaDeteccion) {
+                this.intentarRecoger(itemMateria);
+            }
+        }
+    }
+
+    intentarRecoger(itemMateria) {
+        const item = itemMateria.getComponent(ItemRecolectable);
+        if (!item) return;
+
+        // Requiere un componente Inventario en este recolector
+        const inv = this.materia.getComponent(Inventario);
+        if (inv) {
+            inv.agregarItem(item.nombreItem, item.cantidad);
+            console.log(`[RecolectorObjetos] Recogido: ${item.cantidad}x ${item.nombreItem}`);
+
+            // Reproducir sonido si existe AudioSource
+            if (item.sonidoRecogida) {
+                const audio = this.materia.getComponent(AudioSource);
+                if (audio) {
+                    audio.play(item.sonidoRecogida);
+                }
+            }
+
+            itemMateria.emitir('recogido', { recolector: this.materia });
+            this.materia.emitir('objeto-recogido', { item: itemMateria, info: item });
+
+            if (item.destruirAlRecoger) {
+                if (itemMateria.scene) {
+                    itemMateria.scene.removeMateria(itemMateria.id);
+                }
+            }
+        } else {
+            console.warn("[RecolectorObjetos] El recolector necesita tener un componente 'Inventario' para guardar los objetos.");
+        }
+    }
+
+    clone() {
+        const copy = new RecolectorObjetos(null);
+        copy.metodoRecogida = this.metodoRecogida;
+        copy.teclaRecogida = this.teclaRecogida;
+        copy.distanciaDeteccion = this.distanciaDeteccion;
+        return copy;
+    }
+}
+
+
+registerComponent('AutoCulling2D', AutoCulling2D);
+registerComponent('ObjectPooler', ObjectPooler);
+registerComponent('DistanceDeactivator', DistanceDeactivator);
+registerComponent('Proyectil2D', Proyectil2D);
+registerComponent('DetectorBajas', DetectorBajas);
+registerComponent('ManejoArmasLateral', ManejoArmasLateral);
+registerComponent('ManejoArmasCenital', ManejoArmasCenital);
+registerComponent('ItemRecolectable', ItemRecolectable);
+registerComponent('RecolectorObjetos', RecolectorObjetos);

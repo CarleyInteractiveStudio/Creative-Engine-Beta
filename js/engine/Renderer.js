@@ -147,7 +147,13 @@ export class Renderer {
             } else {
                 effectiveZoom = 1 / Math.tan(cameraComponent.fov * 0.5 * Math.PI / 180);
             }
-            activeCamera = { x: cameraTransform.x, y: cameraTransform.y, effectiveZoom, rect: { cx, cy, cw, ch } };
+            let cameraX = cameraTransform.x;
+            let cameraY = cameraTransform.y;
+            if (cameraComponent.shakeOffset) {
+                cameraX += cameraComponent.shakeOffset.x;
+                cameraY += cameraComponent.shakeOffset.y;
+            }
+            activeCamera = { x: cameraX, y: cameraY, effectiveZoom, rect: { cx, cy, cw, ch } };
             transform = cameraTransform;
         } else if (this.isEditor) {
             this.clear(null);
