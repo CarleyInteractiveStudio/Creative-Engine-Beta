@@ -1539,7 +1539,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 layers: {
                     sortingLayers: ['Default', 'TransparentFX', 'Ignore Raycast', '', 'Agua', 'UI', 'Background', 'Midground', 'Foreground', 'Player', 'Enemy', 'Items', 'VFX'],
                     collisionLayers: ['Default', 'TransparentFX', 'Ignore Raycast', '', 'Agua', 'UI', 'Ground', 'Player', 'Enemy', 'NPC', 'Items', 'VFX', 'Trigger']
-                }
+                },
+                tags: ['Untagged', 'Player', 'Enemy', 'Ground', 'Bullet', 'Item', 'Obstacle', 'Water', 'NPC', 'Trigger']
             };
             // Automatically save the default config file if it doesn't exist
             // This now needs to be handled carefully as saveProjectConfig is in another module
@@ -1566,9 +1567,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Ensure tags config exists for older projects
         if (!currentProjectConfig.tags) {
-            currentProjectConfig.tags = ['Untagged', 'Agua'];
-        } else if (!currentProjectConfig.tags.includes('Agua')) {
-            currentProjectConfig.tags.push('Agua');
+            currentProjectConfig.tags = ['Untagged', 'Player', 'Enemy', 'Ground', 'Bullet', 'Item', 'Obstacle', 'Water', 'NPC', 'Trigger'];
+        } else {
+            const defaults = ['Untagged', 'Player', 'Enemy', 'Ground', 'Bullet', 'Item', 'Obstacle', 'Water', 'NPC', 'Trigger'];
+            defaults.forEach(d => {
+                if (!currentProjectConfig.tags.includes(d)) {
+                    currentProjectConfig.tags.push(d);
+                }
+            });
         }
 
         if (!currentProjectConfig.ramLimit) {
@@ -2145,8 +2151,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     if (cameraForCulling) {
                         const cameraComponent = cameraForCulling.getComponent(Components.Camera);
-                        const objectLayerBit = 1 << materia.layer;
-                        if ((cameraComponent.cullingMask & objectLayerBit) === 0) continue;
+                        const mLayers = materia.layers || [materia.layer || 0];
+                        const isVisible = mLayers.some(l => (cameraComponent.cullingMask & (1 << l)) !== 0);
+                        if (!isVisible) continue;
                     }
                 }
 
@@ -2385,8 +2392,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     const objectBounds = MathUtils.getOOB(materia);
                     if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) continue;
                     const cameraComponent = cameraForCulling.getComponent(Components.Camera);
-                    const objectLayerBit = 1 << materia.layer;
-                    if ((cameraComponent.cullingMask & objectLayerBit) === 0) continue;
+                    const mLayers = materia.layers || [materia.layer || 0];
+                    const isVisible = mLayers.some(l => (cameraComponent.cullingMask & (1 << l)) !== 0);
+                    if (!isVisible) continue;
                 }
 
                 const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
@@ -2471,14 +2479,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isRealista) {
                 // Separar objetos en filtrados y excluidos
-                const filteredMaterias = materiasToRender.filter(m => !capasExcluidas.includes(m.layer));
-                const excludedMaterias = materiasToRender.filter(m => capasExcluidas.includes(m.layer));
+                const filteredMaterias = materiasToRender.filter(m => {
+                    const mLayers = m.layers || [m.layer || 0];
+                    return !mLayers.some(l => capasExcluidas.includes(l));
+                });
+                const excludedMaterias = materiasToRender.filter(m => {
+                    const mLayers = m.layers || [m.layer || 0];
+                    return mLayers.some(l => capasExcluidas.includes(l));
+                });
 
-                const filteredTilemaps = tilemapsToRender.filter(m => !capasExcluidas.includes(m.layer));
-                const excludedTilemaps = tilemapsToRender.filter(m => capasExcluidas.includes(m.layer));
+                const filteredTilemaps = tilemapsToRender.filter(m => {
+                    const mLayers = m.layers || [m.layer || 0];
+                    return !mLayers.some(l => capasExcluidas.includes(l));
+                });
+                const excludedTilemaps = tilemapsToRender.filter(m => {
+                    const mLayers = m.layers || [m.layer || 0];
+                    return mLayers.some(l => capasExcluidas.includes(l));
+                });
 
-                const filteredCanvases = canvasesToRender.filter(m => !capasExcluidas.includes(m.layer));
-                const excludedCanvases = canvasesToRender.filter(m => capasExcluidas.includes(m.layer));
+                const filteredCanvases = canvasesToRender.filter(m => {
+                    const mLayers = m.layers || [m.layer || 0];
+                    return !mLayers.some(l => capasExcluidas.includes(l));
+                });
+                const excludedCanvases = canvasesToRender.filter(m => {
+                    const mLayers = m.layers || [m.layer || 0];
+                    return mLayers.some(l => capasExcluidas.includes(l));
+                });
 
                 // 1. Dibujar objetos que SI reciben el filtro/luces
                 drawObjects(rendererInstance.ctx, camera, filteredMaterias, filteredTilemaps, filteredCanvases);
@@ -5388,8 +5414,11 @@ public start() {
                     keystore: { path: '', pass: '', alias: '', aliasPass: '' },
                     iconPath: '',
                     splashLogos: [],
-                    layers: { sortingLayers: ['Default', 'Agua'], collisionLayers: ['Default', 'Agua'] },
-                    tags: ['Untagged', 'Agua']
+                    layers: {
+                        sortingLayers: ['Default', 'TransparentFX', 'Ignore Raycast', '', 'Agua', 'UI', 'Background', 'Midground', 'Foreground', 'Player', 'Enemy', 'Items', 'VFX'],
+                        collisionLayers: ['Default', 'TransparentFX', 'Ignore Raycast', '', 'Agua', 'UI', 'Ground', 'Player', 'Enemy', 'NPC', 'Items', 'VFX', 'Trigger']
+                    },
+                    tags: ['Untagged', 'Player', 'Enemy', 'Ground', 'Bullet', 'Item', 'Obstacle', 'Water', 'NPC', 'Trigger']
                 };
                 currentProjectConfig = defaultConfig;
                 window.currentProjectConfig = currentProjectConfig;

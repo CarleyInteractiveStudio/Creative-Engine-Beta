@@ -458,9 +458,13 @@ PROP_FLIP_Y: Voltear Vertical
 NADA_SELECCIONADO: Nada seleccionado
 ACTIVAR_DESACTIVAR_MATERIA: Activar/Desactivar Materia
 TAG: Tag
-LAYER: Layer
+LAYER: Renderizado
 ADD_TAG_ELLIPSIS: Añadir Tag...
-EDIT_LAYERS_ELLIPSIS: Editar Layers...
+EDIT_LAYERS_ELLIPSIS: Editar Renderizado...
+SELECCIONAR_TAGS: Seleccionar Tags
+TAGS_SELECTOR_INSTRUCTION: Selecciona las etiquetas que deseas asignar a este objeto:
+SELECCIONAR_LAYERS: Seleccionar Renderizado
+LAYERS_SELECTOR_INSTRUCTION: Selecciona los renderizados (capas de dibujo) que deseas asignar a este objeto:
 AÑADIR_LEY_TITULO: Añadir Ley (Componente)
 CAT_AUDIO: Audio/Video
 CAT_RENDERIZADO: Renderizado
@@ -1158,9 +1162,13 @@ PROP_FLIP_Y: Flip Vertical
 NADA_SELECCIONADO: Nothing selected
 ACTIVAR_DESACTIVAR_MATERIA: Enable/Disable Matter
 TAG: Tag
-LAYER: Layer
+LAYER: Render Layer
 ADD_TAG_ELLIPSIS: Add Tag...
-EDIT_LAYERS_ELLIPSIS: Edit Layers...
+EDIT_LAYERS_ELLIPSIS: Edit Render Layers...
+SELECCIONAR_TAGS: Select Tags
+TAGS_SELECTOR_INSTRUCTION: Select the tags you want to assign to this object:
+SELECCIONAR_LAYERS: Select Render Layers
+LAYERS_SELECTOR_INSTRUCTION: Select the render layers (drawing layers) you want to assign to this object:
 AÑADIR_LEY_TITULO: Add Law (Component)
 CAT_AUDIO: Audio/Video
 CAT_RENDERIZADO: Rendering
@@ -1769,9 +1777,13 @@ PROP_FLIP_Y: Inverter Vertical
 NADA_SELECCIONADO: Nada selecionado
 ACTIVAR_DESACTIVAR_MATERIA: Ativar/Desativar Matéria
 TAG: Tag
-LAYER: Camada
+LAYER: Renderização
 ADD_TAG_ELLIPSIS: Adicionar Tag...
-EDIT_LAYERS_ELLIPSIS: Editar Camadas...
+EDIT_LAYERS_ELLIPSIS: Editar Renderização...
+SELECCIONAR_TAGS: Selecionar Tags
+TAGS_SELECTOR_INSTRUCTION: Selecione as tags que deseja atribuir a este objeto:
+SELECCIONAR_LAYERS: Selecionar Renderização
+LAYERS_SELECTOR_INSTRUCTION: Selecione as renderizações (camadas de desenho) que deseja atribuir a este objeto:
 AÑADIR_LEY_TITULO: Adicionar Lei (Componente)
 CAT_AUDIO: Áudio/Vídeo
 CAT_RENDERIZADO: Renderização
@@ -2291,9 +2303,13 @@ PROP_FLIP_Y: Отразить по вертикали
 NADA_SELECCIONADO: Ничего не выбрано
 ACTIVAR_DESACTIVAR_MATERIA: Вкл/Выкл материю
 TAG: Тег
-LAYER: Слой
+LAYER: Рендеринг
 ADD_TAG_ELLIPSIS: Добавить тег...
-EDIT_LAYERS_ELLIPSIS: Редактировать слои...
+EDIT_LAYERS_ELLIPSIS: Редактировать рендеринг...
+SELECCIONAR_TAGS: Выбрать теги
+TAGS_SELECTOR_INSTRUCTION: Выберите теги, которые вы хотите присвоить этому объекту:
+SELECCIONAR_LAYERS: Выбрать слои рендеринга
+LAYERS_SELECTOR_INSTRUCTION: Выберите слои рендеринга (слои рисования), которые вы хотите присвоить этому объекту:
 AÑADIR_LEY_TITULO: Добавить закон (Компонент)
 CAT_AUDIO: Аудио/Видео
 CAT_RENDERIZADO: Рендеринг
@@ -2831,9 +2847,13 @@ PROP_FLIP_Y: 垂直翻转
 NADA_SELECCIONADO: 未选择任何内容
 ACTIVAR_DESACTIVAR_MATERIA: 启用/禁用物质
 TAG: 标签
-LAYER: 图层
+LAYER: 渲染层
 ADD_TAG_ELLIPSIS: 添加标签...
-EDIT_LAYERS_ELLIPSIS: 编辑图层...
+EDIT_LAYERS_ELLIPSIS: 编辑渲染层...
+SELECCIONAR_TAGS: 选择标签
+TAGS_SELECTOR_INSTRUCTION: 选择要分配给此对象的标签：
+SELECCIONAR_LAYERS: 选择渲染层
+LAYERS_SELECTOR_INSTRUCTION: 选择要分配给该对象的渲染层（绘制层）：
 AÑADIR_LEY_TITULO: 添加法律 (组件)
 CAT_AUDIO: 音频/视频
 CAT_RENDERIZADO: 渲染

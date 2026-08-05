@@ -28,6 +28,185 @@ let isScanningForComponents = false;
 let getCurrentProjectConfig = () => ({}); // To access layers
 let enterAddTilemapLayerMode = () => {}; // Callback to notify SceneView
 
+async function openTagsSelectorDialog(selectedMateria) {
+    const L = window.Localization;
+    const config = getCurrentProjectConfig();
+    const currentTags = selectedMateria.tag ? selectedMateria.tag.split(',').map(t => t.trim()).filter(t => t !== '') : [];
+
+    let html = `
+        <div class="tags-selector-dialog-content" style="min-width: 300px;">
+            <p style="margin-bottom: 12px; color: var(--color-text-muted); font-size: 0.9em; line-height: 1.4;">
+                ${L.get('TAGS_SELECTOR_INSTRUCTION', 'Selecciona las etiquetas que deseas asignar a este objeto:')}
+            </p>
+            <div class="tags-checklist-container" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); background: var(--bg-secondary); padding: 8px; border-radius: 4px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+    `;
+
+    config.tags.forEach(tag => {
+        const isChecked = currentTags.includes(tag);
+        const displayName = L.get(tag.toUpperCase(), tag);
+        html += `
+            <div class="tag-checklist-item" style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="chk-tag-${tag}" class="tag-checklist-chk" value="${tag}" ${isChecked ? 'checked' : ''} style="cursor: pointer; width: 14px; height: 14px;">
+                <label for="chk-tag-${tag}" style="cursor: pointer; user-select: none; font-size: 0.9em; color: var(--color-text);">${displayName}</label>
+            </div>
+        `;
+    });
+
+    html += `
+            </div>
+            <div class="add-new-tag-inline" style="display: flex; gap: 8px; margin-bottom: 15px;">
+                <input type="text" autocomplete="off" id="new-tag-inline-input" placeholder="${L.get('NUEVO_TAG', 'Nuevo Tag')}" style="flex: 1; padding: 6px 8px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--color-text); font-size: 0.9em;">
+                <button id="add-new-tag-inline-btn" class="btn" style="padding: 6px 12px; background: var(--color-secondary); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; transition: background-color 0.15s ease;">
+                    ${L.get('AÑADIR', 'Añadir')}
+                </button>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button id="tags-selector-cancel-btn" class="btn" style="padding: 8px 16px; border: 1px solid var(--border-color); background: transparent; color: var(--color-text); border-radius: 4px; cursor: pointer; font-size: 0.9em;">
+                    ${L.get('CANCELAR', 'Cancelar')}
+                </button>
+                <button id="tags-selector-apply-btn" class="btn" style="padding: 8px 16px; background: var(--color-accent); border: none; color: white; border-radius: 4px; cursor: pointer; font-size: 0.9em;">
+                    ${L.get('APLICAR', 'Aplicar')}
+                </button>
+            </div>
+        </div>
+    `;
+
+    const dialog = window.Dialogs.showCustomDialog(L.get('SELECCIONAR_TAGS', 'Seleccionar Tags'), html, []);
+
+    const addBtn = dialog.dialogElement.querySelector('#add-new-tag-inline-btn');
+    const input = dialog.dialogElement.querySelector('#new-tag-inline-input');
+    const checklistContainer = dialog.dialogElement.querySelector('.tags-checklist-container');
+
+    addBtn.addEventListener('click', async () => {
+        const newTagName = input.value.trim();
+        if (newTagName && newTagName !== '') {
+            if (!config.tags.includes(newTagName)) {
+                config.tags.push(newTagName);
+                await saveProjectConfig();
+
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'tag-checklist-item';
+                itemDiv.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+                itemDiv.innerHTML = `
+                    <input type="checkbox" id="chk-tag-${newTagName}" class="tag-checklist-chk" value="${newTagName}" checked style="cursor: pointer; width: 14px; height: 14px;">
+                    <label for="chk-tag-${newTagName}" style="cursor: pointer; user-select: none; font-size: 0.9em; color: var(--color-text);">${newTagName}</label>
+                `;
+                checklistContainer.appendChild(itemDiv);
+
+                input.value = '';
+                window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('TAG_ANADIDO', 'Tag "{tag}" añadido.').replace('{tag}', newTagName)}`);
+            } else {
+                window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), `${L.get('TAG_EXISTE', 'El tag "{tag}" ya existe.').replace('{tag}', newTagName)}`);
+            }
+        }
+    });
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            addBtn.click();
+        }
+    });
+
+    const cancelBtn = dialog.dialogElement.querySelector('#tags-selector-cancel-btn');
+    const applyBtn = dialog.dialogElement.querySelector('#tags-selector-apply-btn');
+
+    cancelBtn.addEventListener('click', () => {
+        dialog.hide();
+    });
+
+    applyBtn.addEventListener('click', () => {
+        const checkedChks = dialog.dialogElement.querySelectorAll('.tag-checklist-chk:checked');
+        const selectedTags = Array.from(checkedChks).map(chk => chk.value);
+
+        selectedMateria.tag = selectedTags.length > 0 ? selectedTags.join(', ') : 'Untagged';
+
+        if (window.UndoRedoManager) window.UndoRedoManager.recordState();
+        updateInspector();
+        if (updateSceneCallback) updateSceneCallback();
+
+        dialog.hide();
+    });
+}
+
+function openLayersSelectorDialog(selectedMateria) {
+    const L = window.Localization;
+    const config = getCurrentProjectConfig();
+    const currentLayers = selectedMateria.layers || [0];
+
+    let html = `
+        <div class="layers-selector-dialog-content" style="min-width: 300px;">
+            <p style="margin-bottom: 12px; color: var(--color-text-muted); font-size: 0.9em; line-height: 1.4;">
+                ${L.get('LAYERS_SELECTOR_INSTRUCTION', 'Selecciona los renderizados (capas de dibujo) que deseas asignar a este objeto:')}
+            </p>
+            <div class="layers-checklist-container" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); background: var(--bg-secondary); padding: 8px; border-radius: 4px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+    `;
+
+    if (config.layers && config.layers.sortingLayers) {
+        config.layers.sortingLayers.forEach((layerName, index) => {
+            if (!layerName) return;
+            const isChecked = currentLayers.includes(index);
+            html += `
+                <div class="layer-checklist-item" style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="chk-layer-${index}" class="layer-checklist-chk" value="${index}" ${isChecked ? 'checked' : ''} style="cursor: pointer; width: 14px; height: 14px;">
+                    <label for="chk-layer-${index}" style="cursor: pointer; user-select: none; font-size: 0.9em; color: var(--color-text);">${index}: ${layerName}</label>
+                </div>
+            `;
+        });
+    }
+
+    html += `
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <button id="edit-layers-settings-btn" class="btn" style="padding: 6px 12px; border: 1px solid var(--border-color); background: var(--bg-tertiary); color: var(--color-text); border-radius: 4px; cursor: pointer; font-size: 0.85em; transition: background-color 0.15s ease;">
+                    ${L.get('EDIT_LAYERS_ELLIPSIS', 'Editar Renderizado...')}
+                </button>
+                <div style="display: flex; gap: 8px;">
+                    <button id="layers-selector-cancel-btn" class="btn" style="padding: 8px 16px; border: 1px solid var(--border-color); background: transparent; color: var(--color-text); border-radius: 4px; cursor: pointer; font-size: 0.9em;">
+                        ${L.get('CANCELAR', 'Cancelar')}
+                    </button>
+                    <button id="layers-selector-apply-btn" class="btn" style="padding: 8px 16px; background: var(--color-accent); border: none; color: white; border-radius: 4px; cursor: pointer; font-size: 0.9em;">
+                        ${L.get('APLICAR', 'Aplicar')}
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const dialog = window.Dialogs.showCustomDialog(L.get('SELECCIONAR_LAYERS', 'Seleccionar Renderizado'), html, []);
+
+    const editBtn = dialog.dialogElement.querySelector('#edit-layers-settings-btn');
+    editBtn.addEventListener('click', () => {
+        dialog.hide();
+        if (dom.projectSettingsModal) {
+            dom.projectSettingsModal.classList.add('is-open');
+        }
+    });
+
+    const cancelBtn = dialog.dialogElement.querySelector('#layers-selector-cancel-btn');
+    const applyBtn = dialog.dialogElement.querySelector('#layers-selector-apply-btn');
+
+    cancelBtn.addEventListener('click', () => {
+        dialog.hide();
+    });
+
+    applyBtn.addEventListener('click', () => {
+        const checkedChks = dialog.dialogElement.querySelectorAll('.layer-checklist-chk:checked');
+        let selectedLayers = Array.from(checkedChks).map(chk => parseInt(chk.value, 10));
+
+        if (selectedLayers.length === 0) {
+            selectedLayers = [0];
+        }
+
+        selectedMateria.layers = selectedLayers;
+
+        if (window.UndoRedoManager) window.UndoRedoManager.recordState();
+        updateInspector();
+        if (updateSceneCallback) updateSceneCallback();
+
+        dialog.hide();
+    });
+}
+
 const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
@@ -589,45 +768,6 @@ async function handleInspectorChange(e) {
          selectedMateria.name = e.target.value;
          updateSceneCallback();
          needsUpdate = true;
-    } else if (e.target.matches('#materia-layer-select')) {
-        const selectedValue = e.target.value;
-        if (selectedValue === 'edit_layers') {
-            // Open the project settings modal
-            if (dom.projectSettingsModal) {
-                dom.projectSettingsModal.classList.add('is-open');
-            }
-            // Revert selection in dropdown
-            e.target.value = selectedMateria.layer;
-        } else {
-            selectedMateria.layer = parseInt(selectedValue, 10);
-        }
-        needsUpdate = true;
-    } else if (e.target.matches('#materia-tag-select')) {
-        const selectedValue = e.target.value;
-        if (selectedValue === 'add_new_tag') {
-            window.Dialogs.showPrompt(L.get('NUEVO_TAG', 'Nuevo Tag'), L.get('INTRODUCE_NOMBRE_TAG', 'Introduce el nombre para el nuevo tag:'), async (newTagName) => {
-                if (newTagName && newTagName.trim() !== '') {
-                    const config = getCurrentProjectConfig();
-                    if (!config.tags.includes(newTagName)) {
-                        config.tags.push(newTagName);
-                        await saveProjectConfig();
-                        selectedMateria.tag = newTagName;
-                        window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('TAG_ANADIDO', 'Tag "{tag}" añadido y seleccionado.').replace('{tag}', newTagName)}`);
-                        updateInspector();
-                    } else {
-                        window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), `${L.get('TAG_EXISTE', 'El tag "{tag}" ya existe.').replace('{tag}', newTagName)}`);
-                        // Revert selection in dropdown
-                        e.target.value = selectedMateria.tag;
-                    }
-                } else {
-                    // User cancelled or entered empty string, revert selection
-                    e.target.value = selectedMateria.tag;
-                }
-            });
-        } else {
-            selectedMateria.tag = selectedValue;
-        }
-        needsUpdate = true; // This will be handled by the async prompt callback
     }
 
     if (e.target.matches('.inspector-re-render')) {
@@ -661,6 +801,45 @@ async function handleInspectorChange(e) {
 function handleInspectorClick(e) {
     const selectedMateria = getSelectedMateria();
     const L = window.Localization;
+
+    if (!selectedMateria) return;
+
+    if (e.target.closest('#add-tag-badge-btn')) {
+        openTagsSelectorDialog(selectedMateria);
+        return;
+    }
+    if (e.target.closest('#add-layer-badge-btn')) {
+        openLayersSelectorDialog(selectedMateria);
+        return;
+    }
+    if (e.target.closest('.badge-remove-btn')) {
+        const tagToRemove = e.target.dataset.tag;
+        const layerToRemove = e.target.dataset.layer;
+
+        if (tagToRemove) {
+            const currentTags = selectedMateria.tag ? selectedMateria.tag.split(',').map(t => t.trim()).filter(t => t !== '') : [];
+            const index = currentTags.indexOf(tagToRemove);
+            if (index !== -1) {
+                currentTags.splice(index, 1);
+                selectedMateria.tag = currentTags.length > 0 ? currentTags.join(', ') : 'Untagged';
+                if (window.UndoRedoManager) window.UndoRedoManager.recordState();
+                updateInspector();
+                if (updateSceneCallback) updateSceneCallback();
+            }
+        } else if (layerToRemove !== undefined) {
+            const idx = parseInt(layerToRemove, 10);
+            const currentLayers = selectedMateria.layers || [0];
+            const index = currentLayers.indexOf(idx);
+            if (index !== -1 && currentLayers.length > 1) {
+                currentLayers.splice(index, 1);
+                selectedMateria.layers = currentLayers;
+                if (window.UndoRedoManager) window.UndoRedoManager.recordState();
+                updateInspector();
+                if (updateSceneCallback) updateSceneCallback();
+            }
+        }
+        return;
+    }
 
     if (e.target.closest('.property-dropper')) {
         const dropper = e.target.closest('.property-dropper');
@@ -1795,14 +1974,20 @@ async function updateInspectorForMateria(selectedMateria) {
             <input type="checkbox" id="materia-active-toggle" title="${L.get('ACTIVAR_DESACTIVAR_MATERIA', 'Activar/Desactivar Materia')}" ${selectedMateria.isActive ? 'checked' : ''}>
             <input type="text" autocomplete="off" id="materia-name-input" value="${selectedMateria.name}">
         </div>
-        <div class="tag-layer-container">
-            <div class="inspector-row">
-                <label for="materia-tag-select" data-i18n="TAG">${L.get('TAG', 'Tag')}</label>
-                <select id="materia-tag-select"></select>
+        <div class="tag-layer-container-vertical">
+            <div class="inspector-tag-section">
+                <div class="inspector-section-header">
+                    <label data-i18n="TAG">${L.get('TAG', 'Tag')}</label>
+                    <button id="add-tag-badge-btn" class="add-badge-btn" title="${L.get('ADD_TAG_ELLIPSIS', 'Añadir Tag...')}">+</button>
+                </div>
+                <div class="tag-badges-list" id="materia-tags-badges-list"></div>
             </div>
-            <div class="inspector-row">
-                <label for="materia-layer-select" data-i18n="LAYER">${L.get('LAYER', 'Layer')}</label>
-                <select id="materia-layer-select"></select>
+            <div class="inspector-layer-section">
+                <div class="inspector-section-header">
+                    <label data-i18n="LAYER">${L.get('LAYER', 'Renderizado')}</label>
+                    <button id="add-layer-badge-btn" class="add-badge-btn" title="${L.get('EDIT_LAYERS_ELLIPSIS', 'Editar Renderizado...')}">+</button>
+                </div>
+                <div class="layer-badges-list" id="materia-layers-badges-list"></div>
             </div>
         </div>
     `;
@@ -1810,53 +1995,61 @@ async function updateInspectorForMateria(selectedMateria) {
     if (currentId !== lastUpdateId) return;
     dom.inspectorContent.innerHTML = headerHTML;
 
-    // Populate Tags Dropdown
-    const tagSelect = dom.inspectorContent.querySelector('#materia-tag-select');
-    if (tagSelect && config.tags) {
-        config.tags.forEach(tag => {
-            const option = document.createElement('option');
-            option.value = tag;
-            option.textContent = tag;
-            if (selectedMateria.tag === tag) {
-                option.selected = true;
-            }
-            tagSelect.appendChild(option);
-        });
-        // Add a separator and the "Add Tag..." option
-        const separator = document.createElement('option');
-        separator.disabled = true;
-        separator.textContent = '──────────';
-        tagSelect.appendChild(separator);
-        const addTagOption = document.createElement('option');
-        addTagOption.value = 'add_new_tag';
-        addTagOption.dataset.i18n = 'ADD_TAG_ELLIPSIS';
-        addTagOption.textContent = L.get('ADD_TAG_ELLIPSIS', 'Añadir Tag...');
-        tagSelect.appendChild(addTagOption);
+    // Populate Tag Badges
+    const tagsListDiv = dom.inspectorContent.querySelector('#materia-tags-badges-list');
+    if (tagsListDiv) {
+        tagsListDiv.innerHTML = '';
+        const currentTags = selectedMateria.tag ? selectedMateria.tag.split(',').map(t => t.trim()).filter(t => t !== '') : [];
+        if (currentTags.length === 0) {
+            const emptySpan = document.createElement('span');
+            emptySpan.className = 'empty-badge-msg';
+            emptySpan.textContent = L.get('UNTAGGED', 'Sin Etiqueta');
+            tagsListDiv.appendChild(emptySpan);
+        } else {
+            currentTags.forEach(tag => {
+                const badge = document.createElement('span');
+                badge.className = 'inspector-badge tag-badge';
+                badge.textContent = L.get(tag.toUpperCase(), tag);
+
+                const removeBtn = document.createElement('span');
+                removeBtn.className = 'badge-remove-btn';
+                removeBtn.innerHTML = '&times;';
+                removeBtn.dataset.tag = tag;
+                badge.appendChild(removeBtn);
+
+                tagsListDiv.appendChild(badge);
+            });
+        }
     }
 
-    // Populate Layers Dropdown
-    const layerSelect = dom.inspectorContent.querySelector('#materia-layer-select');
-    if (layerSelect && config.layers && config.layers.sortingLayers) {
-        config.layers.sortingLayers.forEach((layerName, index) => {
-            if (!layerName) return; // Skip empty layer names
-            const option = document.createElement('option');
-            option.value = index; // The value is the layer's index
-            option.textContent = `${index}: ${layerName}`;
-            if (selectedMateria.layer === index) {
-                option.selected = true;
-            }
-            layerSelect.appendChild(option);
-        });
-        // Add a separator and the "Edit Layers..." option
-        const separator = document.createElement('option');
-        separator.disabled = true;
-        separator.textContent = '──────────';
-        layerSelect.appendChild(separator);
-        const addLayerOption = document.createElement('option');
-        addLayerOption.value = 'edit_layers';
-        addLayerOption.dataset.i18n = 'EDIT_LAYERS_ELLIPSIS';
-        addLayerOption.textContent = L.get('EDIT_LAYERS_ELLIPSIS', 'Editar Layers...');
-        layerSelect.appendChild(addLayerOption);
+    // Populate Layer Badges
+    const layersListDiv = dom.inspectorContent.querySelector('#materia-layers-badges-list');
+    if (layersListDiv) {
+        layersListDiv.innerHTML = '';
+        const currentLayers = selectedMateria.layers || [selectedMateria.layer || 0];
+        if (currentLayers.length === 0) {
+            const emptySpan = document.createElement('span');
+            emptySpan.className = 'empty-badge-msg';
+            emptySpan.textContent = 'None';
+            layersListDiv.appendChild(emptySpan);
+        } else {
+            currentLayers.forEach(layerIdx => {
+                const layerName = config.layers?.sortingLayers[layerIdx] || `Layer ${layerIdx}`;
+                const badge = document.createElement('span');
+                badge.className = 'inspector-badge layer-badge';
+                badge.textContent = `${layerIdx}: ${layerName}`;
+
+                if (currentLayers.length > 1) {
+                    const removeBtn = document.createElement('span');
+                    removeBtn.className = 'badge-remove-btn';
+                    removeBtn.innerHTML = '&times;';
+                    removeBtn.dataset.layer = layerIdx;
+                    badge.appendChild(removeBtn);
+                }
+
+                layersListDiv.appendChild(badge);
+            });
+        }
     }
 
     // --- REORGANIZACIÓN POR CATEGORÍAS ---

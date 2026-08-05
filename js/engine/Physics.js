@@ -2507,12 +2507,12 @@ export class PhysicsSystem {
                             const otherMateria = id1 === targetId ? materiaB : materiaA;
                             const thisMateria = id1 === targetId ? materiaA : materiaB;
 
-                            if (!trimmedTag || otherMateria.tag.trim() === trimmedTag) {
+                            if (!trimmedTag || otherMateria.tieneTag(trimmedTag)) {
                                 collisions.push(new Collision(thisMateria, otherMateria, this.getCollider(otherMateria)));
                             }
                         } else {
                             // Búsqueda global por tag
-                            if (!trimmedTag || materiaA.tag.trim() === trimmedTag || materiaB.tag.trim() === trimmedTag) {
+                            if (!trimmedTag || materiaA.tieneTag(trimmedTag) || materiaB.tieneTag(trimmedTag)) {
                                 collisions.push(new Collision(materiaA, materiaB, this.getCollider(materiaB)));
                             }
                         }
@@ -2560,7 +2560,7 @@ export class PhysicsSystem {
         for (const materia of collidables) {
             if (excludedIds.includes(materia.id)) continue;
             if (excludedAncestors.some(ancestor => ancestor.id === materia.id || ancestor.isAncestorOf(materia))) continue;
-            if (targetTags.length > 0 && !targetTags.includes(materia.tag)) continue;
+            if (targetTags.length > 0 && !targetTags.some(t => materia.tieneTag(t))) continue;
 
             const transform = materia.getComponent(Components.Transform);
             const collider = this.getCollider(materia);

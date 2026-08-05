@@ -261,7 +261,7 @@ export class CreativeScriptBehavior {
      * Comprueba si la materia tiene una etiqueta específica.
      */
     tieneTag(tag) {
-        return this.materia && this.materia.tag === tag;
+        return this.materia && this.materia.tieneTag(tag);
     }
     hasTag(tag) { return this.tieneTag(tag); }
 
@@ -8650,7 +8650,7 @@ export class SceneLoader extends Leyes {
 
     alEntrarEnColision(col) {
         if (this._isSceneLoaded || !this.scenePath) return;
-        if (this.triggerTag && col.materia && col.materia.tag === this.triggerTag) {
+        if (this.triggerTag && col.materia && col.materia.tieneTag(this.triggerTag)) {
             this.load();
         }
     }
@@ -9099,7 +9099,7 @@ export class UIController extends Leyes {
             // Intento de auto-detección de Jugador
             const scene = this.materia.scene;
             if (scene) {
-                const player = scene.getAllMaterias().find(m => m.tag === 'Player' || m.name.toLowerCase().includes('jugador'));
+                const player = scene.getAllMaterias().find(m => m.tieneTag('Player') || m.name.toLowerCase().includes('jugador'));
                 if (player) {
                     this.targetMateriaName = player.name;
                     console.log(`[UIController] Auto-configurado: Objetivo detectado -> ${player.name}`);
