@@ -804,40 +804,12 @@ function handleInspectorClick(e) {
 
     if (!selectedMateria) return;
 
-    if (e.target.closest('#add-tag-badge-btn')) {
+    if (e.target.closest('#materia-tag-display')) {
         openTagsSelectorDialog(selectedMateria);
         return;
     }
-    if (e.target.closest('#add-layer-badge-btn')) {
+    if (e.target.closest('#materia-layer-display')) {
         openLayersSelectorDialog(selectedMateria);
-        return;
-    }
-    if (e.target.closest('.badge-remove-btn')) {
-        const tagToRemove = e.target.dataset.tag;
-        const layerToRemove = e.target.dataset.layer;
-
-        if (tagToRemove) {
-            const currentTags = selectedMateria.tag ? selectedMateria.tag.split(',').map(t => t.trim()).filter(t => t !== '') : [];
-            const index = currentTags.indexOf(tagToRemove);
-            if (index !== -1) {
-                currentTags.splice(index, 1);
-                selectedMateria.tag = currentTags.length > 0 ? currentTags.join(', ') : 'Untagged';
-                if (window.UndoRedoManager) window.UndoRedoManager.recordState();
-                updateInspector();
-                if (updateSceneCallback) updateSceneCallback();
-            }
-        } else if (layerToRemove !== undefined) {
-            const idx = parseInt(layerToRemove, 10);
-            const currentLayers = selectedMateria.layers || [0];
-            const index = currentLayers.indexOf(idx);
-            if (index !== -1 && currentLayers.length > 1) {
-                currentLayers.splice(index, 1);
-                selectedMateria.layers = currentLayers;
-                if (window.UndoRedoManager) window.UndoRedoManager.recordState();
-                updateInspector();
-                if (updateSceneCallback) updateSceneCallback();
-            }
-        }
         return;
     }
 
@@ -1974,20 +1946,20 @@ async function updateInspectorForMateria(selectedMateria) {
             <input type="checkbox" id="materia-active-toggle" title="${L.get('ACTIVAR_DESACTIVAR_MATERIA', 'Activar/Desactivar Materia')}" ${selectedMateria.isActive ? 'checked' : ''}>
             <input type="text" autocomplete="off" id="materia-name-input" value="${selectedMateria.name}">
         </div>
-        <div class="tag-layer-container-vertical">
-            <div class="inspector-tag-section">
-                <div class="inspector-section-header">
-                    <label data-i18n="TAG">${L.get('TAG', 'Tag')}</label>
-                    <button id="add-tag-badge-btn" class="add-badge-btn" title="${L.get('ADD_TAG_ELLIPSIS', 'Añadir Tag...')}">+</button>
+        <div class="tag-layer-row" style="display: flex; gap: 8px; margin-bottom: 12px; background: var(--bg-secondary); padding: 8px; border-radius: 6px; border: 1px solid var(--border-color);">
+            <div class="tag-column" style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+                <label data-i18n="TAG" style="font-size: 0.8em; font-weight: bold; color: var(--color-text-muted); text-transform: uppercase; margin: 0;">${L.get('TAG', 'Tag')}</label>
+                <div id="materia-tag-display" class="clickable-selector-box" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; color: var(--color-text); font-size: 0.85em; transition: border-color 0.15s ease;">
+                    <span id="materia-tag-display-text" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px;"></span>
+                    <span style="font-size: 0.75em; color: var(--color-text-muted);">▼</span>
                 </div>
-                <div class="tag-badges-list" id="materia-tags-badges-list"></div>
             </div>
-            <div class="inspector-layer-section">
-                <div class="inspector-section-header">
-                    <label data-i18n="LAYER">${L.get('LAYER', 'Renderizado')}</label>
-                    <button id="add-layer-badge-btn" class="add-badge-btn" title="${L.get('EDIT_LAYERS_ELLIPSIS', 'Editar Renderizado...')}">+</button>
+            <div class="layer-column" style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+                <label data-i18n="LAYER" style="font-size: 0.8em; font-weight: bold; color: var(--color-text-muted); text-transform: uppercase; margin: 0;">${L.get('LAYER', 'Renderizado')}</label>
+                <div id="materia-layer-display" class="clickable-selector-box" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; color: var(--color-text); font-size: 0.85em; transition: border-color 0.15s ease;">
+                    <span id="materia-layer-display-text" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px;"></span>
+                    <span style="font-size: 0.75em; color: var(--color-text-muted);">▼</span>
                 </div>
-                <div class="layer-badges-list" id="materia-layers-badges-list"></div>
             </div>
         </div>
     `;
@@ -1995,60 +1967,38 @@ async function updateInspectorForMateria(selectedMateria) {
     if (currentId !== lastUpdateId) return;
     dom.inspectorContent.innerHTML = headerHTML;
 
-    // Populate Tag Badges
-    const tagsListDiv = dom.inspectorContent.querySelector('#materia-tags-badges-list');
-    if (tagsListDiv) {
-        tagsListDiv.innerHTML = '';
+    // Populate Tag Display
+    const tagDisplay = dom.inspectorContent.querySelector('#materia-tag-display-text');
+    if (tagDisplay) {
         const currentTags = selectedMateria.tag ? selectedMateria.tag.split(',').map(t => t.trim()).filter(t => t !== '') : [];
         if (currentTags.length === 0) {
-            const emptySpan = document.createElement('span');
-            emptySpan.className = 'empty-badge-msg';
-            emptySpan.textContent = L.get('UNTAGGED', 'Sin Etiqueta');
-            tagsListDiv.appendChild(emptySpan);
+            tagDisplay.textContent = L.get('UNTAGGED', 'Sin Etiqueta');
+            tagDisplay.style.color = 'var(--color-text-muted)';
+        } else if (currentTags.length === 1) {
+            const singleTag = currentTags[0];
+            tagDisplay.textContent = L.get(singleTag.toUpperCase(), singleTag);
+            tagDisplay.style.color = 'var(--color-text)';
         } else {
-            currentTags.forEach(tag => {
-                const badge = document.createElement('span');
-                badge.className = 'inspector-badge tag-badge';
-                badge.textContent = L.get(tag.toUpperCase(), tag);
-
-                const removeBtn = document.createElement('span');
-                removeBtn.className = 'badge-remove-btn';
-                removeBtn.innerHTML = '&times;';
-                removeBtn.dataset.tag = tag;
-                badge.appendChild(removeBtn);
-
-                tagsListDiv.appendChild(badge);
-            });
+            tagDisplay.textContent = `${L.get('MULTIPLE', 'Múltiple')} (${currentTags.length})`;
+            tagDisplay.style.color = '#00b4ff'; // High contrast neon blue
         }
     }
 
-    // Populate Layer Badges
-    const layersListDiv = dom.inspectorContent.querySelector('#materia-layers-badges-list');
-    if (layersListDiv) {
-        layersListDiv.innerHTML = '';
+    // Populate Layer Display
+    const layerDisplay = dom.inspectorContent.querySelector('#materia-layer-display-text');
+    if (layerDisplay) {
         const currentLayers = selectedMateria.layers || [selectedMateria.layer || 0];
         if (currentLayers.length === 0) {
-            const emptySpan = document.createElement('span');
-            emptySpan.className = 'empty-badge-msg';
-            emptySpan.textContent = 'None';
-            layersListDiv.appendChild(emptySpan);
+            layerDisplay.textContent = 'None';
+            layerDisplay.style.color = 'var(--color-text-muted)';
+        } else if (currentLayers.length === 1) {
+            const layerIdx = currentLayers[0];
+            const layerName = config.layers?.sortingLayers[layerIdx] || `Layer ${layerIdx}`;
+            layerDisplay.textContent = `${layerIdx}: ${layerName}`;
+            layerDisplay.style.color = 'var(--color-text)';
         } else {
-            currentLayers.forEach(layerIdx => {
-                const layerName = config.layers?.sortingLayers[layerIdx] || `Layer ${layerIdx}`;
-                const badge = document.createElement('span');
-                badge.className = 'inspector-badge layer-badge';
-                badge.textContent = `${layerIdx}: ${layerName}`;
-
-                if (currentLayers.length > 1) {
-                    const removeBtn = document.createElement('span');
-                    removeBtn.className = 'badge-remove-btn';
-                    removeBtn.innerHTML = '&times;';
-                    removeBtn.dataset.layer = layerIdx;
-                    badge.appendChild(removeBtn);
-                }
-
-                layersListDiv.appendChild(badge);
-            });
+            layerDisplay.textContent = `${L.get('MULTIPLE', 'Múltiple')} (${currentLayers.length})`;
+            layerDisplay.style.color = '#4caf50'; // Vibrant green
         }
     }
 

@@ -462,6 +462,7 @@ LAYER: Renderizado
 ADD_TAG_ELLIPSIS: Añadir Tag...
 EDIT_LAYERS_ELLIPSIS: Editar Renderizado...
 SELECCIONAR_TAGS: Seleccionar Tags
+MULTIPLE: Múltiple
 TAGS_SELECTOR_INSTRUCTION: Selecciona las etiquetas que deseas asignar a este objeto:
 SELECCIONAR_LAYERS: Seleccionar Renderizado
 LAYERS_SELECTOR_INSTRUCTION: Selecciona los renderizados (capas de dibujo) que deseas asignar a este objeto:
@@ -1166,6 +1167,7 @@ LAYER: Render Layer
 ADD_TAG_ELLIPSIS: Add Tag...
 EDIT_LAYERS_ELLIPSIS: Edit Render Layers...
 SELECCIONAR_TAGS: Select Tags
+MULTIPLE: Multiple
 TAGS_SELECTOR_INSTRUCTION: Select the tags you want to assign to this object:
 SELECCIONAR_LAYERS: Select Render Layers
 LAYERS_SELECTOR_INSTRUCTION: Select the render layers (drawing layers) you want to assign to this object:
@@ -1781,6 +1783,7 @@ LAYER: Renderização
 ADD_TAG_ELLIPSIS: Adicionar Tag...
 EDIT_LAYERS_ELLIPSIS: Editar Renderização...
 SELECCIONAR_TAGS: Selecionar Tags
+MULTIPLE: Múltiplo
 TAGS_SELECTOR_INSTRUCTION: Selecione as tags que deseja atribuir a este objeto:
 SELECCIONAR_LAYERS: Selecionar Renderização
 LAYERS_SELECTOR_INSTRUCTION: Selecione as renderizações (camadas de desenho) que deseja atribuir a este objeto:
@@ -2307,6 +2310,7 @@ LAYER: Рендеринг
 ADD_TAG_ELLIPSIS: Добавить тег...
 EDIT_LAYERS_ELLIPSIS: Редактировать рендеринг...
 SELECCIONAR_TAGS: Выбрать теги
+MULTIPLE: Несколько
 TAGS_SELECTOR_INSTRUCTION: Выберите теги, которые вы хотите присвоить этому объекту:
 SELECCIONAR_LAYERS: Выбрать слои рендеринга
 LAYERS_SELECTOR_INSTRUCTION: Выберите слои рендеринга (слои рисования), которые вы хотите присвоить этому объекту:
@@ -2851,6 +2855,7 @@ LAYER: 渲染层
 ADD_TAG_ELLIPSIS: 添加标签...
 EDIT_LAYERS_ELLIPSIS: 编辑渲染层...
 SELECCIONAR_TAGS: 选择标签
+MULTIPLE: 多个
 TAGS_SELECTOR_INSTRUCTION: 选择要分配给此对象的标签：
 SELECCIONAR_LAYERS: 选择渲染层
 LAYERS_SELECTOR_INSTRUCTION: 选择要分配给该对象的渲染层（绘制层）：

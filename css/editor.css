@@ -6840,3 +6840,10 @@ body.mobile-mode .submenu li {
 .badge-remove-btn:hover {
     color: var(--color-danger);
 }
+
+/* --- Clickable Selector Boxes --- */
+.clickable-selector-box:hover {
+    border-color: var(--color-accent) !important;
+    background-color: var(--bg-secondary) !important;
+    box-shadow: 0 0 4px rgba(0, 180, 255, 0.2);
+}
