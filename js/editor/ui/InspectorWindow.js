@@ -3540,6 +3540,10 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="JUMP_KEY">${L.get('JUMP_KEY', 'Tecla Salto')}</label>
                         <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="jumpKey" value="${ley.jumpKey}">
                     </div>
+                    <div class="prop-row-multi">
+                        <label>Tecla Agachado</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="downKey" value="${ley.downKey || 's'}">
+                    </div>
                     <hr>
                     <div class="inspector-section-header"><span>${L.get('SETTINGS', 'Configuración')}</span></div>
                     <div class="prop-row-multi">
@@ -3590,6 +3594,10 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label>Fall</label>
                         <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="fallAnim" value="${ley.fallAnim || ''}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Crouch</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="crouchAnim" value="${ley.crouchAnim || 'crouch'}">
                     </div>
                     ` : `
                     <div style="font-size:11px; color:#aaa; margin: 5px 10px; line-height: 1.3;">

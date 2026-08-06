@@ -4269,12 +4269,14 @@ export class LateralMovement extends Leyes {
         super(materia);
         this.leftKey = 'a';
         this.rightKey = 'd';
+        this.downKey = 's'; // Tecla para agacharse
         this.jumpKey = 'space';
         this.speed = 200;
         this.jumpForce = 400;
         this.useRigidbody = true;
         this.groundTag = 'Ground';
         this.isGrounded = false;
+        this.isCrouching = false;
         this.lastMove = { x: 0, y: 0 };
 
         this.moveSound = ""; // Ruta al sonido de movimiento
@@ -4287,6 +4289,7 @@ export class LateralMovement extends Leyes {
         this.runAnim = "run";
         this.jumpAnim = "jump";
         this.fallAnim = "fall";
+        this.crouchAnim = "crouch"; // Animación de agachado
 
         this._warnedMissing = new Set();
         this._lastErrorTime = 0;
@@ -4324,14 +4327,18 @@ export class LateralMovement extends Leyes {
         this.lastMove.x = moveX;
         this.lastMove.y = 0;
 
+        const isCrouching = this.isGrounded && input.isKeyPressed(this.downKey);
+        this.isCrouching = isCrouching;
+        const currentSpeed = isCrouching ? this.speed * 0.5 : this.speed;
+
         const rb = this.materia.getComponent(Rigidbody2D);
         const transform = this.materia.getComponent(Transform);
 
         if (this.useRigidbody) {
             if (rb) {
-                rb.velocity.x = moveX * (this.speed / 10);
+                rb.velocity.x = moveX * (currentSpeed / 10);
 
-                if (this.isGrounded && input.isKeyJustPressed(this.jumpKey)) {
+                if (this.isGrounded && input.isKeyJustPressed(this.jumpKey) && !isCrouching) {
                     rb.addImpulse(0, this.jumpForce / 10);
 
                     // Stop running sound when jumping
@@ -4352,10 +4359,10 @@ export class LateralMovement extends Leyes {
                 throw new Error(`El componente 'LateralMovement' tiene activado 'Usar Rigidbody' pero no hay un 'Rigidbody2D' en el objeto.`);
             }
         } else if (transform) {
-            transform.x += moveX * this.speed * deltaTime;
+            transform.x += moveX * currentSpeed * deltaTime;
         }
 
-        // Sonido de movimiento
+        // Sonido de movimiento (no reproducir si está quieto o agachado sin moverse, o agachado si lo prefieres)
         if (this.isGrounded && moveX !== 0 && this.moveSound) {
             const audio = this.materia.getComponent(AudioSource);
             if (audio) {
@@ -4394,7 +4401,12 @@ export class LateralMovement extends Leyes {
             if (rb.velocity.y > 0.1) play(this.jumpAnim);
             else if (rb.velocity.y < -0.1) play(this.fallAnim);
         } else {
-            if (Math.abs(moveX) > 0.01) {
+            if (this.isCrouching) {
+                play(this.crouchAnim);
+                if (transform && moveX !== 0) {
+                    transform.flipX = moveX < 0;
+                }
+            } else if (Math.abs(moveX) > 0.01) {
                 play(this.runAnim);
                 if (transform && moveX !== 0) {
                     transform.flipX = moveX < 0;
@@ -4428,6 +4440,7 @@ export class LateralMovement extends Leyes {
         const newMovement = new LateralMovement(null);
         newMovement.leftKey = this.leftKey;
         newMovement.rightKey = this.rightKey;
+        newMovement.downKey = this.downKey;
         newMovement.jumpKey = this.jumpKey;
         newMovement.speed = this.speed;
         newMovement.jumpForce = this.jumpForce;
@@ -4440,6 +4453,7 @@ export class LateralMovement extends Leyes {
         newMovement.runAnim = this.runAnim;
         newMovement.jumpAnim = this.jumpAnim;
         newMovement.fallAnim = this.fallAnim;
+        newMovement.crouchAnim = this.crouchAnim;
         return newMovement;
     }
 }

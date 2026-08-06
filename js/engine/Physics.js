@@ -1478,7 +1478,8 @@ export class PhysicsSystem {
         const collider = this.getCollider(materia);
         let w = 50, h = 50;
         if (collider) {
-            if (collider instanceof Components.TilemapCollider2D || collider instanceof Components.TerrenoCollider2D) {
+            const colliderName = collider.constructor.name;
+            if (colliderName === 'TilemapCollider2D' || colliderName === 'TerrenoCollider2D') {
                 if (collider.isDirty) {
                     collider.generate();
                 }
