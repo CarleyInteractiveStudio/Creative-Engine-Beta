@@ -222,7 +222,7 @@ const availableComponents = {
     'CAT_VEHICULOS_CENITAL': [Components.VehicleTopDown],
     'CAT_DISPAROS_LATERAL': [Components.ProjectileLauncher],
     'CAT_DISPAROS_CENITAL': [Components.Attack],
-    'CAT_AVENTURA_ROL': [Components.Health, Components.Patrol, Components.BasicAI, Components.RaycastSource, Components.SceneLoader, Components.Inventario, Components.SistemaDialogos, Components.GestorMisiones, Components.Movement],
+    'CAT_AVENTURA_ROL': [Components.Health, Components.Patrol, Components.BasicAI, Components.RaycastSource, Components.SceneLoader, Components.Inventario, Components.SistemaDialogos, Components.GestorMisiones, Components.LateralMovement, Components.TopDownMovement],
     'CAT_FPS_LATERAL': [Components.ManejoArmasLateral, Components.Proyectil2D, Components.DetectorBajas, Components.ItemRecolectable, Components.RecolectorObjetos],
     'CAT_FPS_CENITAL': [Components.ManejoArmasCenital, Components.Proyectil2D, Components.DetectorBajas, Components.ItemRecolectable, Components.RecolectorObjetos],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
@@ -248,7 +248,7 @@ const componentIcons = {
     Terreno2D: 'mountain', TerrenoCollider2D: 'mountain',
     Button: 'mouse-pointer', UIText: 'type', Canvas: 'image',
     VerticalLayoutGroup: 'layers', HorizontalLayoutGroup: 'layers', GridLayoutGroup: 'grid', ContentSizeFitter: 'maximize',
-    Movement: 'run', CameraFollow: 'video', Parallax: 'mountain-snow', DrawingOrder: 'layers', ProjectileLauncher: 'rocket', AutoDestroy: 'timer', Health: 'heart', Attack: 'target', Patrol: 'route',
+    LateralMovement: 'run', TopDownMovement: 'compass', CameraFollow: 'video', Parallax: 'mountain-snow', DrawingOrder: 'layers', ProjectileLauncher: 'rocket', AutoDestroy: 'timer', Health: 'heart', Attack: 'target', Patrol: 'route',
     Water: 'bucket', LineCollider2D: 'route', ProgressBar: 'maximize',
     'ParticleSystem': 'sparkles',
     'Inventario': 'briefcase',
@@ -2031,7 +2031,7 @@ async function updateInspectorForMateria(selectedMateria) {
         const known2D = [
             'SpriteRenderer', 'Rigidbody2D', 'BoxCollider2D', 'CircleCollider2D', 'PolygonCollider2D', 'CapsuleCollider2D',
             'Tilemap', 'TilemapRenderer', 'TilemapCollider2D', 'Grid', 'TextureRender', 'Parallax', 'Terreno2D', 'TerrenoCollider2D',
-            'PointLight2D', 'SpotLight2D', 'FreeformLight2D', 'SpriteLight2D', 'Movement', 'CameraFollow', 'ProjectileLauncher',
+            'PointLight2D', 'SpotLight2D', 'FreeformLight2D', 'SpriteLight2D', 'LateralMovement', 'TopDownMovement', 'CameraFollow', 'ProjectileLauncher',
             'Health', 'Attack', 'Patrol', 'ParticleSystem', 'RaycastSource', 'BasicAI', 'Water', 'LineCollider2D', 'Suspension',
             'VehicleTopDown', 'PlaneController', 'HelicopterController', 'Bone', 'SkeletonRenderer', 'IKManager2D', 'Animator', 'AnimatorController',
             'Canvas', 'UIImage', 'UIText', 'UITransform', 'Button', 'ProgressBar', 'UIScrollRect', 'UIMask', 'UICollider', 'UIController',
@@ -3518,81 +3518,147 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.Movement) {
+        } else if (ley instanceof Components.LateralMovement) {
             let warningHTML = '';
             if (ley.useRigidbody && !selectedMateria.getComponentByName('Rigidbody2D')) {
-                warningHTML = renderDependencyWarning('Movement', 'Rigidbody2D');
+                warningHTML = renderDependencyWarning('LateralMovement', 'Rigidbody2D');
             }
 
             componentHTML = `
-                ${renderComponentHeader(L.get('MOVEMENT_BASIC', "Movimiento (Básico)"), icon, index)}
+                ${renderComponentHeader(L.get('MOVEMENT_LATERAL', "Movimiento Lateral (2D)"), icon, index)}
+                <div class="component-content">
+                    ${warningHTML}
+                    <div class="inspector-section-header"><span>${L.get('CONTROLS', 'Controles')}</span></div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="KEYS_LEFT_RIGHT">${L.get('KEYS_LEFT_RIGHT', 'Teclas (Izq/Der)')}</label>
+                        <div class="prop-inputs">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="leftKey" value="${ley.leftKey}" title="${L.get('LEFT', 'Izquierda')}">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="rightKey" value="${ley.rightKey}" title="${L.get('RIGHT', 'Derecha')}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="JUMP_KEY">${L.get('JUMP_KEY', 'Tecla Salto')}</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="jumpKey" value="${ley.jumpKey}">
+                    </div>
+                    <hr>
+                    <div class="inspector-section-header"><span>${L.get('SETTINGS', 'Configuración')}</span></div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="SPEED">${L.get('SPEED', 'Velocidad')}</label>
+                        <input type="number" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="speed" value="${ley.speed}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="JUMP_FORCE">${L.get('JUMP_FORCE', 'Fuerza Salto')}</label>
+                        <input type="number" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="jumpForce" value="${ley.jumpForce}">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="LateralMovement" data-prop="useRigidbody" ${ley.useRigidbody ? 'checked' : ''}>
+                        <label data-i18n="USE_RIGIDBODY">${L.get('USE_RIGIDBODY', 'Usar Rigidbody')}</label>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="GROUND_TAG">${L.get('GROUND_TAG', 'Tag del Suelo')}</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="groundTag" value="${ley.groundTag || 'Ground'}">
+                    </div>
+                    <hr>
+                    <div class="inspector-section-header"><span>${L.get('SOUNDS', 'Sonidos')}</span></div>
+                    <div class="inspector-row">
+                        <label>Sonido Mov</label>
+                        ${renderPropertyDropper('Audio', ley.moveSound, 'data-component="LateralMovement" data-prop="moveSound"')}
+                    </div>
+                    <div class="inspector-row">
+                        <label>Sonido Salto</label>
+                        ${renderPropertyDropper('Audio', ley.jumpSound, 'data-component="LateralMovement" data-prop="jumpSound"')}
+                    </div>
+                    <hr>
+                    <div class="inspector-section-header"><span>${L.get('ANIMATIONS', 'Animaciones')}</span></div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input inspector-re-render" data-component="LateralMovement" data-prop="useCustomAnimations" ${ley.useCustomAnimations ? 'checked' : ''}>
+                        <label>Animaciones Específicas</label>
+                    </div>
+                    ${ley.useCustomAnimations ? `
+                    <div class="prop-row-multi">
+                        <label>Idle</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="idleAnim" value="${ley.idleAnim || ''}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Run</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="runAnim" value="${ley.runAnim || ''}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Jump</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="jumpAnim" value="${ley.jumpAnim || ''}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Fall</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="fallAnim" value="${ley.fallAnim || ''}">
+                    </div>
+                    ` : `
+                    <div style="font-size:11px; color:#aaa; margin: 5px 10px; line-height: 1.3;">
+                        <em>Trabajando con Animator / AnimatorController adjunto (Variables horizontales, verticales, etc.)</em>
+                    </div>
+                    `}
+                </div>
+            `;
+        } else if (ley instanceof Components.TopDownMovement) {
+            let warningHTML = '';
+            if (ley.useRigidbody && !selectedMateria.getComponentByName('Rigidbody2D')) {
+                warningHTML = renderDependencyWarning('TopDownMovement', 'Rigidbody2D');
+            }
+
+            componentHTML = `
+                ${renderComponentHeader(L.get('MOVEMENT_TOPDOWN', "Movimiento Superior (2D)"), icon, index)}
                 <div class="component-content">
                     ${warningHTML}
                     <div class="inspector-section-header"><span>${L.get('CONTROLS', 'Controles')}</span></div>
                     <div class="prop-row-multi">
                         <label data-i18n="KEYS_UP_DOWN">${L.get('KEYS_UP_DOWN', 'Teclas (Arriba/Abajo)')}</label>
                         <div class="prop-inputs">
-                            <input type="text" autocomplete="off" class="prop-input" data-component="Movement" data-prop="upKey" value="${ley.upKey}" title="${L.get('UP', 'Arriba')}">
-                            <input type="text" autocomplete="off" class="prop-input" data-component="Movement" data-prop="downKey" value="${ley.downKey}" title="${L.get('DOWN', 'Abajo')}">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="TopDownMovement" data-prop="upKey" value="${ley.upKey}" title="${L.get('UP', 'Arriba')}">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="TopDownMovement" data-prop="downKey" value="${ley.downKey}" title="${L.get('DOWN', 'Abajo')}">
                         </div>
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="KEYS_LEFT_RIGHT">${L.get('KEYS_LEFT_RIGHT', 'Teclas (Izq/Der)')}</label>
                         <div class="prop-inputs">
-                            <input type="text" autocomplete="off" class="prop-input" data-component="Movement" data-prop="leftKey" value="${ley.leftKey}" title="${L.get('LEFT', 'Izquierda')}">
-                            <input type="text" autocomplete="off" class="prop-input" data-component="Movement" data-prop="rightKey" value="${ley.rightKey}" title="${L.get('RIGHT', 'Derecha')}">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="TopDownMovement" data-prop="leftKey" value="${ley.leftKey}" title="${L.get('LEFT', 'Izquierda')}">
+                            <input type="text" autocomplete="off" class="prop-input" data-component="TopDownMovement" data-prop="rightKey" value="${ley.rightKey}" title="${L.get('RIGHT', 'Derecha')}">
                         </div>
-                    </div>
-                    <div class="prop-row-multi">
-                        <label data-i18n="JUMP_KEY">${L.get('JUMP_KEY', 'Tecla Salto')}</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="Movement" data-prop="jumpKey" value="${ley.jumpKey}">
                     </div>
                     <hr>
                     <div class="inspector-section-header"><span>${L.get('SETTINGS', 'Configuración')}</span></div>
                     <div class="prop-row-multi">
                         <label data-i18n="SPEED">${L.get('SPEED', 'Velocidad')}</label>
-                        <input type="number" autocomplete="off" class="prop-input" data-component="Movement" data-prop="speed" value="${ley.speed}">
-                    </div>
-                    <div class="prop-row-multi">
-                        <label data-i18n="JUMP_FORCE">${L.get('JUMP_FORCE', 'Fuerza Salto')}</label>
-                        <input type="number" autocomplete="off" class="prop-input" data-component="Movement" data-prop="jumpForce" value="${ley.jumpForce}">
+                        <input type="number" autocomplete="off" class="prop-input" data-component="TopDownMovement" data-prop="speed" value="${ley.speed}">
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
-                        <input type="checkbox" class="prop-input" data-component="Movement" data-prop="useRigidbody" ${ley.useRigidbody ? 'checked' : ''}>
+                        <input type="checkbox" class="prop-input" data-component="TopDownMovement" data-prop="useRigidbody" ${ley.useRigidbody ? 'checked' : ''}>
                         <label data-i18n="USE_RIGIDBODY">${L.get('USE_RIGIDBODY', 'Usar Rigidbody')}</label>
-                    </div>
-                    <div class="prop-row-multi">
-                        <label data-i18n="GROUND_TAG">${L.get('GROUND_TAG', 'Tag del Suelo')}</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="Movement" data-prop="groundTag" value="${ley.groundTag || 'Ground'}">
                     </div>
                     <hr>
                     <div class="inspector-section-header"><span>${L.get('SOUNDS', 'Sonidos')}</span></div>
                     <div class="inspector-row">
                         <label>Sonido Mov</label>
-                        ${renderPropertyDropper('Audio', ley.moveSound, 'data-component="Movement" data-prop="moveSound"')}
-                    </div>
-                    <div class="inspector-row">
-                        <label>Sonido Salto</label>
-                        ${renderPropertyDropper('Audio', ley.jumpSound, 'data-component="Movement" data-prop="jumpSound"')}
+                        ${renderPropertyDropper('Audio', ley.moveSound, 'data-component="TopDownMovement" data-prop="moveSound"')}
                     </div>
                     <hr>
                     <div class="inspector-section-header"><span>${L.get('ANIMATIONS', 'Animaciones')}</span></div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input inspector-re-render" data-component="TopDownMovement" data-prop="useCustomAnimations" ${ley.useCustomAnimations ? 'checked' : ''}>
+                        <label>Animaciones Específicas</label>
+                    </div>
+                    ${ley.useCustomAnimations ? `
                     <div class="prop-row-multi">
                         <label>Idle</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="Movement" data-prop="idleAnim" value="${ley.idleAnim || ''}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="TopDownMovement" data-prop="idleAnim" value="${ley.idleAnim || ''}">
                     </div>
                     <div class="prop-row-multi">
                         <label>Run</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="Movement" data-prop="runAnim" value="${ley.runAnim || ''}">
+                        <input type="text" autocomplete="off" class="prop-input" data-component="TopDownMovement" data-prop="runAnim" value="${ley.runAnim || ''}">
                     </div>
-                    <div class="prop-row-multi">
-                        <label>Jump</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="Movement" data-prop="jumpAnim" value="${ley.jumpAnim || ''}">
+                    ` : `
+                    <div style="font-size:11px; color:#aaa; margin: 5px 10px; line-height: 1.3;">
+                        <em>Trabajando con Animator / AnimatorController adjunto (Variables horizontales, verticales, etc.)</em>
                     </div>
-                    <div class="prop-row-multi">
-                        <label>Fall</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="Movement" data-prop="fallAnim" value="${ley.fallAnim || ''}">
-                    </div>
+                    `}
                 </div>
             `;
         } else if (ley instanceof Components.ManejoArmasLateral) {

@@ -416,6 +416,8 @@ POSICION: Posición
 ROTACION: Rotación
 ESCALA: Escala
 MOVEMENT_BASIC: Movimiento (Básico)
+MOVEMENT_LATERAL: Movimiento Lateral (2D)
+MOVEMENT_TOPDOWN: Movimiento Superior (2D)
 TEXTURE_RENDER: Renderizador de Textura
 VERTICAL_LAYOUT: Auto-Disposición Vertical
 HORIZONTAL_LAYOUT: Auto-Disposición Horizontal
@@ -1120,6 +1122,8 @@ POSICION: Position
 ROTACION: Rotation
 ESCALA: Scale
 MOVEMENT_BASIC: Movement (Basic)
+MOVEMENT_LATERAL: Lateral Movement (2D)
+MOVEMENT_TOPDOWN: Top-Down Movement (2D)
 TEXTURE_RENDER: Texture Renderer
 VERTICAL_LAYOUT: Vertical Layout
 HORIZONTAL_LAYOUT: Horizontal Layout
@@ -1736,6 +1740,8 @@ POSICION: Posição
 ROTACION: Rotação
 ESCALA: Escala
 MOVEMENT_BASIC: Movimento (Básico)
+MOVEMENT_LATERAL: Movimento Lateral (2D)
+MOVEMENT_TOPDOWN: Movimento Superior (2D)
 TEXTURE_RENDER: Renderizador de Textura
 VERTICAL_LAYOUT: Auto-Disposição Vertical
 HORIZONTAL_LAYOUT: Auto-Disposição Horizontal
@@ -2263,6 +2269,8 @@ POSICION: Позиция
 ROTACION: Вращение
 ESCALA: Масштаб
 MOVEMENT_BASIC: Движение (Базовое)
+MOVEMENT_LATERAL: Боковое движение (2D)
+MOVEMENT_TOPDOWN: Движение сверху вниз (2D)
 TEXTURE_RENDER: Рендерер текстуры
 VERTICAL_LAYOUT: Вертикальная компоновка
 HORIZONTAL_LAYOUT: Горизонтальная компоновка
@@ -2808,6 +2816,8 @@ POSICION: 位置
 ROTACION: 旋转
 ESCALA: 缩放
 MOVEMENT_BASIC: 基础移动
+MOVEMENT_LATERAL: 侧面移动 (2D)
+MOVEMENT_TOPDOWN: 自上而下移动 (2D)
 TEXTURE_RENDER: 纹理渲染器
 VERTICAL_LAYOUT: 垂直布局
 HORIZONTAL_LAYOUT: 水平布局

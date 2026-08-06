@@ -28,7 +28,7 @@ const cesTypes = [
     "BoxCollider2D", "CapsuleCollider2D", "Animator", "AnimatorController",
     "Camera", "CreativeScript", "PointLight2D", "SpotLight2D", "FreeformLight2D",
     "SpriteLight2D", "Tilemap", "TilemapRenderer", "TilemapCollider2D", "UIImage",
-    "UIText", "Canvas", "Button", "UIEventTrigger", "Parallax", "Movement",
+    "UIText", "Canvas", "Button", "UIEventTrigger", "Parallax", "LateralMovement", "TopDownMovement",
     "Water", "LineCollider2D", "ParticleSystem", "DrawingOrder", "CameraFollow",
     "VerticalLayoutGroup", "HorizontalLayoutGroup", "GridLayoutGroup", "ContentSizeFitter",
     "Health", "Attack", "ProgressBar", "any"
