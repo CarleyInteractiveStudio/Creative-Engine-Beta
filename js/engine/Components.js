@@ -3387,10 +3387,6 @@ export class AnimatorController extends Leyes {
     async initialize(projectsDirHandle) {
         this.projectsDirHandle = projectsDirHandle;
         this.animator = this.materia.getComponent(Animator);
-        if (!this.animator) {
-            console.error('AnimatorController requires an Animator component on the same Materia.');
-            return;
-        }
         await this.loadController(projectsDirHandle);
 
         if (this.controller && this.controller.entryState) {
@@ -3398,9 +3394,14 @@ export class AnimatorController extends Leyes {
             this.currentStateName = this.controller.entryState;
             const state = this.states.get(this.currentStateName);
             if (state && state.animationClip) {
-                this.animator.animationClipPath = state.animationClip;
-                // Just load it to show the first frame
-                this.animator.loadAnimationClip(projectsDirHandle);
+                const animators = this._resolveAllTargets();
+                for (let i = 0; i < animators.length; i++) {
+                    const anim = animators[i];
+                    anim.animationClipPath = state.animationClip;
+                    anim.projectsDirHandle = projectsDirHandle;
+                    // Just load it to show the first frame
+                    anim.loadAnimationClip(projectsDirHandle);
+                }
             }
         }
     }
