@@ -52,7 +52,8 @@ const componentAliases = {
     'UIEventTrigger': 'disparadorDeEventosUI',
     'CustomComponent': 'componentePersonalizado',
     'Parallax': 'parallax',
-    'Movement': 'movimiento',
+    'LateralMovement': 'movimientoLateral',
+    'TopDownMovement': 'movimientoSuperior',
     'CameraFollow': 'seguimientoDeCamara',
     'DrawingOrder': 'ordenDeDibujo',
     'ProjectileLauncher': 'lanzadorDeProyectiles',
@@ -3330,6 +3331,8 @@ export class AnimatorController extends Leyes {
     constructor(materia) {
         super(materia);
         this.controllerPath = ''; // Path to the .ceanim asset
+        this.targetMateria = null; // Materia principal a la que se le hará el seguimiento de movimiento y animación
+        this.extraTargets = ""; // IDs extras de materias (separadas por comas) para animar en conjunto
 
         // Internal state
         this.controller = null; // The loaded controller data
@@ -3439,6 +3442,51 @@ export class AnimatorController extends Leyes {
         }
     }
 
+    _resolveMateria(val) {
+        if (!val) return null;
+        if (typeof val === 'object') return val;
+        if (typeof val === 'number' || typeof val === 'string') {
+            const id = parseInt(val, 10);
+            if (isNaN(id)) return null;
+            const scene = this.materia.scene || (typeof window !== 'undefined' ? window.SceneManager?.currentScene : null);
+            if (scene) return scene.findMateriaById(id);
+        }
+        return null;
+    }
+
+    _resolveAllTargets() {
+        const list = [];
+        // Local animator
+        if (!this.animator && this.materia) {
+            this.animator = this.materia.getComponent(Animator);
+        }
+        if (this.animator) {
+            list.push(this.animator);
+        }
+        // Primary target animator
+        const primary = this._resolveMateria(this.targetMateria);
+        if (primary) {
+            const anim = primary.getComponent(Animator);
+            if (anim && !list.includes(anim)) {
+                list.push(anim);
+            }
+        }
+        // Extra target animators
+        if (this.extraTargets) {
+            const parts = String(this.extraTargets).split(',');
+            for (let i = 0; i < parts.length; i++) {
+                const target = this._resolveMateria(parts[i].trim());
+                if (target) {
+                    const anim = target.getComponent(Animator);
+                    if (anim && !list.includes(anim)) {
+                        list.push(anim);
+                    }
+                }
+            }
+        }
+        return list;
+    }
+
     play(stateName, force = false, overrides = {}) {
         if (!stateName) return;
         const debug = window.CE_DEBUG_ANIMATION;
@@ -3453,17 +3501,8 @@ export class AnimatorController extends Leyes {
             }
         }
 
-        if (!this.animator && this.materia) {
-            this.animator = this.materia.getComponent(Animator);
-        }
-
         if (!(this.states instanceof Map)) {
             this.states = new Map();
-        }
-
-        if (!this.animator) {
-            if (debug) console.warn(`[AnimatorController] No se pudo encontrar el componente Animator.`);
-            return;
         }
 
         if (!this.states.has(stateName)) {
@@ -3471,40 +3510,47 @@ export class AnimatorController extends Leyes {
             return;
         }
 
-        // If animator is under script control, don't interrupt unless forced
-        if (!force && this.animator._controlSource === 'script' && this.animator.isPlaying) {
+        const animators = this._resolveAllTargets();
+        if (animators.length === 0) {
+            if (debug) console.warn(`[AnimatorController] No se encontraron animadores para reproducir.`);
+            return;
+        }
+
+        // If animator is under script control, don't interrupt unless forced (checked on primary/local animator)
+        const primaryAnim = this.animator || animators[0];
+        if (!force && primaryAnim && primaryAnim._controlSource === 'script' && primaryAnim.isPlaying) {
             if (debug) console.log(`[AnimatorController] Ignorando cambio a '${stateName}' porque el script tiene la prioridad.`);
             return;
         }
 
         const state = this.states.get(stateName);
-        const isSameState = this.currentStateName === stateName;
-
-        if (debug) console.log(`[AnimatorController] Cambiando a estado: ${stateName} (Clip: ${state.animationClip || 'Ninguno'})`);
         this.currentStateName = stateName;
 
-        // Handle flipping
-        const transform = this.materia.getComponent(Transform);
-        if (transform) {
-            transform.flipX = !!state.flipX;
-            transform.flipY = !!state.flipY;
-        }
+        for (let i = 0; i < animators.length; i++) {
+            const anim = animators[i];
+            // Handle flipping
+            const transform = anim.materia ? anim.materia.getComponent(Transform) : null;
+            if (transform) {
+                transform.flipX = !!state.flipX;
+                transform.flipY = !!state.flipY;
+            }
 
-        // Handle empty clip
-        if (!state.animationClip) {
-            this.animator.stop();
-            return;
-        }
+            // Handle empty clip
+            if (!state.animationClip) {
+                anim.stop();
+                continue;
+            }
 
-        // Pass control to animator with overrides support
-        this.animator.play(state.animationClip, {
-            loop: overrides.loop !== undefined ? overrides.loop : (state.loop !== undefined ? state.loop : true),
-            speed: overrides.speed || state.speed || 12,
-            startFrame: overrides.startFrame !== undefined ? overrides.startFrame : (state.startFrame || 0),
-            endFrame: overrides.endFrame !== undefined ? overrides.endFrame : (state.endFrame !== undefined ? state.endFrame : -1),
-            source: 'controller',
-            force: force
-        });
+            // Pass control to animator with overrides support
+            anim.play(state.animationClip, {
+                loop: overrides.loop !== undefined ? overrides.loop : (state.loop !== undefined ? state.loop : true),
+                speed: overrides.speed || state.speed || 12,
+                startFrame: overrides.startFrame !== undefined ? overrides.startFrame : (state.startFrame || 0),
+                endFrame: overrides.endFrame !== undefined ? overrides.endFrame : (state.endFrame !== undefined ? state.endFrame : -1),
+                source: 'controller',
+                force: force
+            });
+        }
     }
 
     /** Alias en español */
@@ -3572,23 +3618,28 @@ export class AnimatorController extends Leyes {
             }
         }
 
-        if (!this.animator || !this.controller) return;
+        const animators = this._resolveAllTargets();
+        if (animators.length === 0 || !this.controller) return;
 
         // Fallback to Principal (Entry State) on animation failure
-        if (this.animator.hasError && this.controller.entryState && this.currentStateName !== this.controller.entryState) {
+        const primaryAnim = this.animator || animators[0];
+        if (primaryAnim && primaryAnim.hasError && this.controller.entryState && this.currentStateName !== this.controller.entryState) {
             if (debug) console.log(`[AnimatorController] Fallback a estado principal '${this.controller.entryState}' por error en animación.`);
             this.play(this.controller.entryState, true); // force fallback
-            this.animator.hasError = false; // reset error after fallback
+            primaryAnim.hasError = false; // reset error after fallback
         }
 
+        // Resolve tracking target materia (parent/assigned target)
+        const trackingMateria = this._resolveMateria(this.targetMateria) || this.materia;
+
         // Auto-update parameters from components
-        const rb = this.materia.getComponent(Rigidbody2D);
-        const movement = this.materia.getComponent(Movement);
-        const transform = this.materia.getComponent(Transform);
+        const rb = trackingMateria.getComponent(Rigidbody2D);
+        const movement = trackingMateria.getComponent(LateralMovement) || trackingMateria.getComponent(TopDownMovement);
+        const transform = trackingMateria.getComponent(Transform);
 
         // Intention check: is the user trying to move via Input?
         const isIntentionalStop = movement && movement.isActive && movement.lastMove.x === 0 && movement.lastMove.y === 0;
-        const isGrounded = movement && movement.isActive && movement.isGrounded;
+        const isGrounded = movement && movement.isActive && (movement.isGrounded !== undefined ? movement.isGrounded : true);
 
         let horiz = 0, vert = 0, moving = false;
 
@@ -4258,7 +4309,7 @@ export class Parallax extends Leyes {
 }
 registerComponent('Parallax', Parallax);
 
-export class Movement extends Leyes {
+export class LateralMovement extends Leyes {
     static actionableMethods = {
         'jump': ['saltar', 'прыгать', '跳跃'],
         'stop': ['detener', 'остановить', '停止']
@@ -4266,26 +4317,29 @@ export class Movement extends Leyes {
 
     constructor(materia) {
         super(materia);
-        this.upKey = 'w';
-        this.downKey = 's';
         this.leftKey = 'a';
         this.rightKey = 'd';
+        this.downKey = 's'; // Tecla para agacharse
         this.jumpKey = 'space';
         this.speed = 200;
         this.jumpForce = 400;
         this.useRigidbody = true;
         this.groundTag = 'Ground';
         this.isGrounded = false;
+        this.isCrouching = false;
         this.lastMove = { x: 0, y: 0 };
 
         this.moveSound = ""; // Ruta al sonido de movimiento
         this.jumpSound = ""; // Ruta al sonido de salto
+
+        this.useCustomAnimations = true; // Casilla para animaciones específicas
 
         // Animations
         this.idleAnim = "idle";
         this.runAnim = "run";
         this.jumpAnim = "jump";
         this.fallAnim = "fall";
+        this.crouchAnim = "crouch"; // Animación de agachado
 
         this._warnedMissing = new Set();
         this._lastErrorTime = 0;
@@ -4293,17 +4347,15 @@ export class Movement extends Leyes {
 
     start() {
         if (this.useRigidbody && !this.materia.getComponentByName('Rigidbody2D')) {
-            console.error(`[Movement] El objeto '${this.materia.name}' requiere un componente 'Rigidbody2D' (Fisicas) para caer y moverse.`);
+            console.error(`[LateralMovement] El objeto '${this.materia.name}' requiere un componente 'Rigidbody2D' (Fisicas) para caer y moverse.`);
         }
     }
     update(deltaTime) {
         if (this.useRigidbody && !this.materia.getComponentByName('Rigidbody2D')) {
-            // Notificar de nuevo cada 5 segundos si sigue faltando el componente
             if (!this._lastErrorTime || (performance.now() - this._lastErrorTime > 5000)) {
                 console.error(`[FÍSICAS] ¡El objeto '${this.materia.name}' no tiene Rigidbody2D! No podrá caer ni moverse físicamente.`);
                 this._lastErrorTime = performance.now();
             }
-            // En modo no-rigidbody el update seguiría, pero aquí devolvemos para no causar errores de 'null' velocity
             return;
         }
 
@@ -4313,11 +4365,193 @@ export class Movement extends Leyes {
 
         // Ground check
         if (this.groundTag && engine) {
-            // Usamos estaTocandoTag para mayor robustez (detecta frame de inicio, frames de permanencia y triggers)
             this.isGrounded = engine.isTouchingTag(this.materia, this.groundTag);
         } else {
-            this.isGrounded = true; // No ground tag means always grounded
+            this.isGrounded = true;
         }
+
+        let moveX = 0;
+        if (input.isKeyPressed(this.rightKey)) moveX += 1;
+        if (input.isKeyPressed(this.leftKey)) moveX -= 1;
+
+        this.lastMove.x = moveX;
+        this.lastMove.y = 0;
+
+        const isCrouching = this.isGrounded && input.isKeyPressed(this.downKey);
+        this.isCrouching = isCrouching;
+        const currentSpeed = isCrouching ? this.speed * 0.5 : this.speed;
+
+        const rb = this.materia.getComponent(Rigidbody2D);
+        const transform = this.materia.getComponent(Transform);
+
+        if (this.useRigidbody) {
+            if (rb) {
+                rb.velocity.x = moveX * (currentSpeed / 10);
+
+                if (this.isGrounded && input.isKeyJustPressed(this.jumpKey) && !isCrouching) {
+                    rb.addImpulse(0, this.jumpForce / 10);
+
+                    // Stop running sound when jumping
+                    const audio = this.materia.getComponent(AudioSource);
+                    if (audio && this.moveSound && audio.isPlaying) audio.stop();
+
+                    if (this.jumpSound) {
+                        const audio = this.materia.getComponent(AudioSource);
+                        if (audio) audio.play(this.jumpSound);
+                        else if (!this._warnedMissing.has('AudioSource')) {
+                            this._warnedMissing.add('AudioSource');
+                            throw new Error(`El componente 'LateralMovement' requiere un 'AudioSource' para reproducir el sonido de salto.`);
+                        }
+                    }
+                }
+            } else if (!this._warnedMissing.has('Rigidbody2D')) {
+                this._warnedMissing.add('Rigidbody2D');
+                throw new Error(`El componente 'LateralMovement' tiene activado 'Usar Rigidbody' pero no hay un 'Rigidbody2D' en el objeto.`);
+            }
+        } else if (transform) {
+            transform.x += moveX * currentSpeed * deltaTime;
+        }
+
+        // Sonido de movimiento (no reproducir si está quieto o agachado sin moverse, o agachado si lo prefieres)
+        if (this.isGrounded && moveX !== 0 && this.moveSound) {
+            const audio = this.materia.getComponent(AudioSource);
+            if (audio) {
+                if (!audio.isPlaying) audio.play(this.moveSound);
+            } else if (!this._warnedMissing.has('AudioSource')) {
+                this._warnedMissing.add('AudioSource');
+                throw new Error(`El componente 'LateralMovement' requiere un 'AudioSource' para reproducir el sonido de movimiento.`);
+            }
+        } else if (moveX === 0 || !this.isGrounded) {
+            const audio = this.materia.getComponent(AudioSource);
+            if (audio && audio.isPlaying && this.moveSound) {
+                if (audio.source === this.moveSound) audio.stop();
+            }
+        }
+
+        // --- Animation Integration ---
+        this._updateAnimations(moveX, 0, rb);
+    }
+
+    _updateAnimations(moveX, moveY, rb) {
+        if (!this.useCustomAnimations) return;
+
+        const controller = this.materia.getComponent(AnimatorController);
+        const animator = this.materia.getComponent(Animator);
+        if (!controller && !animator) return;
+
+        const play = (name) => {
+            if (!name) return;
+            if (controller) controller.play(name);
+            else animator.play(name);
+        };
+
+        const transform = this.materia.getComponent(Transform);
+
+        if (!this.isGrounded && rb) {
+            if (rb.velocity.y > 0.1) play(this.jumpAnim);
+            else if (rb.velocity.y < -0.1) play(this.fallAnim);
+        } else {
+            if (this.isCrouching) {
+                play(this.crouchAnim);
+                if (transform && moveX !== 0) {
+                    transform.flipX = moveX < 0;
+                }
+            } else if (Math.abs(moveX) > 0.01) {
+                play(this.runAnim);
+                if (transform && moveX !== 0) {
+                    transform.flipX = moveX < 0;
+                }
+            } else {
+                play(this.idleAnim);
+            }
+        }
+    }
+
+    jump() {
+        const rb = this.materia.getComponent(Rigidbody2D);
+        if (rb && this.isGrounded) {
+            rb.addImpulse(0, this.jumpForce / 10);
+            if (this.jumpSound) {
+                const audio = this.materia.getComponent(AudioSource);
+                if (audio) audio.play(this.jumpSound);
+            }
+        }
+    }
+
+    stop() {
+        const rb = this.materia.getComponent(Rigidbody2D);
+        if (rb) {
+            rb.velocity.x = 0;
+        }
+        this.lastMove.x = 0;
+    }
+
+    clone() {
+        const newMovement = new LateralMovement(null);
+        newMovement.leftKey = this.leftKey;
+        newMovement.rightKey = this.rightKey;
+        newMovement.downKey = this.downKey;
+        newMovement.jumpKey = this.jumpKey;
+        newMovement.speed = this.speed;
+        newMovement.jumpForce = this.jumpForce;
+        newMovement.useRigidbody = this.useRigidbody;
+        newMovement.groundTag = this.groundTag;
+        newMovement.moveSound = this.moveSound;
+        newMovement.jumpSound = this.jumpSound;
+        newMovement.useCustomAnimations = this.useCustomAnimations;
+        newMovement.idleAnim = this.idleAnim;
+        newMovement.runAnim = this.runAnim;
+        newMovement.jumpAnim = this.jumpAnim;
+        newMovement.fallAnim = this.fallAnim;
+        newMovement.crouchAnim = this.crouchAnim;
+        return newMovement;
+    }
+}
+registerComponent('LateralMovement', LateralMovement);
+
+export class TopDownMovement extends Leyes {
+    static actionableMethods = {
+        'stop': ['detener', 'остановить', '停止']
+    };
+
+    constructor(materia) {
+        super(materia);
+        this.upKey = 'w';
+        this.downKey = 's';
+        this.leftKey = 'a';
+        this.rightKey = 'd';
+        this.speed = 200;
+        this.useRigidbody = true;
+        this.lastMove = { x: 0, y: 0 };
+
+        this.moveSound = ""; // Ruta al sonido de movimiento
+
+        this.useCustomAnimations = true; // Casilla para animaciones específicas
+
+        // Animations
+        this.idleAnim = "idle";
+        this.runAnim = "run";
+
+        this._warnedMissing = new Set();
+        this._lastErrorTime = 0;
+    }
+
+    start() {
+        if (this.useRigidbody && !this.materia.getComponentByName('Rigidbody2D')) {
+            console.error(`[TopDownMovement] El objeto '${this.materia.name}' requiere un componente 'Rigidbody2D' (Fisicas) para moverse.`);
+        }
+    }
+    update(deltaTime) {
+        if (this.useRigidbody && !this.materia.getComponentByName('Rigidbody2D')) {
+            if (!this._lastErrorTime || (performance.now() - this._lastErrorTime > 5000)) {
+                console.error(`[FÍSICAS] ¡El objeto '${this.materia.name}' no tiene Rigidbody2D! No podrá moverse físicamente.`);
+                this._lastErrorTime = performance.now();
+            }
+            return;
+        }
+
+        const input = RuntimeAPIManager.getAPI('input');
+        if (!input) return;
 
         let moveX = 0;
         let moveY = 0;
@@ -4345,31 +4579,10 @@ export class Movement extends Leyes {
         if (this.useRigidbody) {
             if (rb) {
                 rb.velocity.x = moveX * (this.speed / 10);
-
-                // If gravity is disabled, allow vertical movement (Top-Down)
-                if (rb.gravityScale === 0) {
-                    rb.velocity.y = moveY * (this.speed / 10);
-                }
-
-                if (this.isGrounded && input.isKeyJustPressed(this.jumpKey)) {
-                    rb.addImpulse(0, this.jumpForce / 10);
-
-                    // Stop running sound when jumping
-                    const audio = this.materia.getComponent(AudioSource);
-                    if (audio && this.moveSound && audio.isPlaying) audio.stop();
-
-                    if (this.jumpSound) {
-                        const audio = this.materia.getComponent(AudioSource);
-                        if (audio) audio.play(this.jumpSound);
-                        else if (!this._warnedMissing.has('AudioSource')) {
-                            this._warnedMissing.add('AudioSource');
-                            throw new Error(`El componente 'Movement' requiere un 'AudioSource' para reproducir el sonido de salto.`);
-                        }
-                    }
-                }
+                rb.velocity.y = moveY * (this.speed / 10);
             } else if (!this._warnedMissing.has('Rigidbody2D')) {
                 this._warnedMissing.add('Rigidbody2D');
-                throw new Error(`El componente 'Movement' tiene activado 'Usar Rigidbody' pero no hay un 'Rigidbody2D' en el objeto.`);
+                throw new Error(`El componente 'TopDownMovement' tiene activado 'Usar Rigidbody' pero no hay un 'Rigidbody2D' en el objeto.`);
             }
         } else if (transform) {
             transform.x += moveX * this.speed * deltaTime;
@@ -4377,18 +4590,17 @@ export class Movement extends Leyes {
         }
 
         // Sonido de movimiento
-        if (this.isGrounded && (moveX !== 0 || moveY !== 0) && this.moveSound) {
+        if ((moveX !== 0 || moveY !== 0) && this.moveSound) {
             const audio = this.materia.getComponent(AudioSource);
             if (audio) {
                 if (!audio.isPlaying) audio.play(this.moveSound);
             } else if (!this._warnedMissing.has('AudioSource')) {
                 this._warnedMissing.add('AudioSource');
-                throw new Error(`El componente 'Movement' requiere un 'AudioSource' para reproducir el sonido de movimiento.`);
+                throw new Error(`El componente 'TopDownMovement' requiere un 'AudioSource' para reproducir el sonido de movimiento.`);
             }
-        } else if ((moveX === 0 && moveY === 0) || !this.isGrounded) {
+        } else if (moveX === 0 && moveY === 0) {
             const audio = this.materia.getComponent(AudioSource);
             if (audio && audio.isPlaying && this.moveSound) {
-                // Check if current sound is indeed the moveSound before stopping
                 if (audio.source === this.moveSound) audio.stop();
             }
         }
@@ -4398,6 +4610,8 @@ export class Movement extends Leyes {
     }
 
     _updateAnimations(moveX, moveY, rb) {
+        if (!this.useCustomAnimations) return;
+
         const controller = this.materia.getComponent(AnimatorController);
         const animator = this.materia.getComponent(Animator);
         if (!controller && !animator) return;
@@ -4410,38 +4624,42 @@ export class Movement extends Leyes {
 
         const transform = this.materia.getComponent(Transform);
 
-        if (!this.isGrounded && rb) {
-            if (rb.velocity.y > 0.1) play(this.jumpAnim);
-            else if (rb.velocity.y < -0.1) play(this.fallAnim);
-        } else {
-            if (Math.abs(moveX) > 0.01 || Math.abs(moveY) > 0.01) {
-                play(this.runAnim);
-                // Auto-flip based on direction
-                if (transform && moveX !== 0) {
-                    transform.flipX = moveX < 0;
-                }
-            } else {
-                play(this.idleAnim);
+        if (Math.abs(moveX) > 0.01 || Math.abs(moveY) > 0.01) {
+            play(this.runAnim);
+            if (transform && moveX !== 0) {
+                transform.flipX = moveX < 0;
             }
+        } else {
+            play(this.idleAnim);
         }
     }
+
+    stop() {
+        const rb = this.materia.getComponent(Rigidbody2D);
+        if (rb) {
+            rb.velocity.x = 0;
+            rb.velocity.y = 0;
+        }
+        this.lastMove.x = 0;
+        this.lastMove.y = 0;
+    }
+
     clone() {
-        const newMovement = new Movement(null);
+        const newMovement = new TopDownMovement(null);
         newMovement.upKey = this.upKey;
         newMovement.downKey = this.downKey;
         newMovement.leftKey = this.leftKey;
         newMovement.rightKey = this.rightKey;
-        newMovement.jumpKey = this.jumpKey;
         newMovement.speed = this.speed;
-        newMovement.jumpForce = this.jumpForce;
         newMovement.useRigidbody = this.useRigidbody;
-        newMovement.groundTag = this.groundTag;
         newMovement.moveSound = this.moveSound;
-        newMovement.jumpSound = this.jumpSound;
+        newMovement.useCustomAnimations = this.useCustomAnimations;
+        newMovement.idleAnim = this.idleAnim;
+        newMovement.runAnim = this.runAnim;
         return newMovement;
     }
 }
-registerComponent('Movement', Movement);
+registerComponent('TopDownMovement', TopDownMovement);
 
 export class CameraFollow extends Leyes {
     constructor(materia) {

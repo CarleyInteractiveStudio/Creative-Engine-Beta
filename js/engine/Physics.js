@@ -1478,7 +1478,55 @@ export class PhysicsSystem {
         const collider = this.getCollider(materia);
         let w = 50, h = 50;
         if (collider) {
-            if (collider.size) {
+            const colliderName = collider.constructor.name;
+            if (colliderName === 'TilemapCollider2D' || colliderName === 'TerrenoCollider2D') {
+                if (collider.isDirty) {
+                    collider.generate();
+                }
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                const scaleX = Math.abs(transform.scale.x);
+                const scaleY = Math.abs(transform.scale.y);
+
+                if (collider.generatedColliders && collider.generatedColliders.length > 0) {
+                    for (let i = 0; i < collider.generatedColliders.length; i++) {
+                        const rect = collider.generatedColliders[i];
+                        const rx = transform.x + rect.x * transform.scale.x;
+                        const ry = transform.y + rect.y * transform.scale.y;
+                        const rw = rect.width * scaleX;
+                        const rh = rect.height * scaleY;
+
+                        const rMinX = rx - rw / 2;
+                        const rMaxX = rx + rw / 2;
+                        const rMinY = ry - rh / 2;
+                        const rMaxY = ry + rh / 2;
+
+                        if (rMinX < minX) minX = rMinX;
+                        if (rMaxX > maxX) maxX = rMaxX;
+                        if (rMinY < minY) minY = rMinY;
+                        if (rMaxY > maxY) maxY = rMaxY;
+                    }
+                }
+                if (collider.generatedPolygons && collider.generatedPolygons.length > 0) {
+                    for (let i = 0; i < collider.generatedPolygons.length; i++) {
+                        const poly = collider.generatedPolygons[i];
+                        for (let j = 0; j < poly.vertices.length; j++) {
+                            const v = poly.vertices[j];
+                            const vx = transform.x + v.x * transform.scale.x;
+                            const vy = transform.y + v.y * transform.scale.y;
+                            if (vx < minX) minX = vx;
+                            if (vx > maxX) maxX = vx;
+                            if (vy < minY) minY = vy;
+                            if (vy > maxY) maxY = vy;
+                        }
+                    }
+                }
+
+                if (minX !== Infinity) {
+                    return { minX, minY, maxX, maxY };
+                }
+                // Fallback to transform position if no colliders generated yet
+                return { minX: transform.x - 25, minY: transform.y - 25, maxX: transform.x + 25, maxY: transform.y + 25 };
+            } else if (collider.size) {
                 w = collider.size.x * Math.abs(transform.scale.x);
                 h = collider.size.y * Math.abs(transform.scale.y);
             } else if (collider.radius !== undefined) {
