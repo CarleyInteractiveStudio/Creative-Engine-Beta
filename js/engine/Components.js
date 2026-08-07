@@ -3331,6 +3331,8 @@ export class AnimatorController extends Leyes {
     constructor(materia) {
         super(materia);
         this.controllerPath = ''; // Path to the .ceanim asset
+        this.targetMateria = null; // Materia principal a la que se le hará el seguimiento de movimiento y animación
+        this.extraTargets = ""; // IDs extras de materias (separadas por comas) para animar en conjunto
 
         // Internal state
         this.controller = null; // The loaded controller data
@@ -3440,6 +3442,51 @@ export class AnimatorController extends Leyes {
         }
     }
 
+    _resolveMateria(val) {
+        if (!val) return null;
+        if (typeof val === 'object') return val;
+        if (typeof val === 'number' || typeof val === 'string') {
+            const id = parseInt(val, 10);
+            if (isNaN(id)) return null;
+            const scene = this.materia.scene || (typeof window !== 'undefined' ? window.SceneManager?.currentScene : null);
+            if (scene) return scene.findMateriaById(id);
+        }
+        return null;
+    }
+
+    _resolveAllTargets() {
+        const list = [];
+        // Local animator
+        if (!this.animator && this.materia) {
+            this.animator = this.materia.getComponent(Animator);
+        }
+        if (this.animator) {
+            list.push(this.animator);
+        }
+        // Primary target animator
+        const primary = this._resolveMateria(this.targetMateria);
+        if (primary) {
+            const anim = primary.getComponent(Animator);
+            if (anim && !list.includes(anim)) {
+                list.push(anim);
+            }
+        }
+        // Extra target animators
+        if (this.extraTargets) {
+            const parts = String(this.extraTargets).split(',');
+            for (let i = 0; i < parts.length; i++) {
+                const target = this._resolveMateria(parts[i].trim());
+                if (target) {
+                    const anim = target.getComponent(Animator);
+                    if (anim && !list.includes(anim)) {
+                        list.push(anim);
+                    }
+                }
+            }
+        }
+        return list;
+    }
+
     play(stateName, force = false, overrides = {}) {
         if (!stateName) return;
         const debug = window.CE_DEBUG_ANIMATION;
@@ -3454,17 +3501,8 @@ export class AnimatorController extends Leyes {
             }
         }
 
-        if (!this.animator && this.materia) {
-            this.animator = this.materia.getComponent(Animator);
-        }
-
         if (!(this.states instanceof Map)) {
             this.states = new Map();
-        }
-
-        if (!this.animator) {
-            if (debug) console.warn(`[AnimatorController] No se pudo encontrar el componente Animator.`);
-            return;
         }
 
         if (!this.states.has(stateName)) {
@@ -3472,40 +3510,47 @@ export class AnimatorController extends Leyes {
             return;
         }
 
-        // If animator is under script control, don't interrupt unless forced
-        if (!force && this.animator._controlSource === 'script' && this.animator.isPlaying) {
+        const animators = this._resolveAllTargets();
+        if (animators.length === 0) {
+            if (debug) console.warn(`[AnimatorController] No se encontraron animadores para reproducir.`);
+            return;
+        }
+
+        // If animator is under script control, don't interrupt unless forced (checked on primary/local animator)
+        const primaryAnim = this.animator || animators[0];
+        if (!force && primaryAnim && primaryAnim._controlSource === 'script' && primaryAnim.isPlaying) {
             if (debug) console.log(`[AnimatorController] Ignorando cambio a '${stateName}' porque el script tiene la prioridad.`);
             return;
         }
 
         const state = this.states.get(stateName);
-        const isSameState = this.currentStateName === stateName;
-
-        if (debug) console.log(`[AnimatorController] Cambiando a estado: ${stateName} (Clip: ${state.animationClip || 'Ninguno'})`);
         this.currentStateName = stateName;
 
-        // Handle flipping
-        const transform = this.materia.getComponent(Transform);
-        if (transform) {
-            transform.flipX = !!state.flipX;
-            transform.flipY = !!state.flipY;
-        }
+        for (let i = 0; i < animators.length; i++) {
+            const anim = animators[i];
+            // Handle flipping
+            const transform = anim.materia ? anim.materia.getComponent(Transform) : null;
+            if (transform) {
+                transform.flipX = !!state.flipX;
+                transform.flipY = !!state.flipY;
+            }
 
-        // Handle empty clip
-        if (!state.animationClip) {
-            this.animator.stop();
-            return;
-        }
+            // Handle empty clip
+            if (!state.animationClip) {
+                anim.stop();
+                continue;
+            }
 
-        // Pass control to animator with overrides support
-        this.animator.play(state.animationClip, {
-            loop: overrides.loop !== undefined ? overrides.loop : (state.loop !== undefined ? state.loop : true),
-            speed: overrides.speed || state.speed || 12,
-            startFrame: overrides.startFrame !== undefined ? overrides.startFrame : (state.startFrame || 0),
-            endFrame: overrides.endFrame !== undefined ? overrides.endFrame : (state.endFrame !== undefined ? state.endFrame : -1),
-            source: 'controller',
-            force: force
-        });
+            // Pass control to animator with overrides support
+            anim.play(state.animationClip, {
+                loop: overrides.loop !== undefined ? overrides.loop : (state.loop !== undefined ? state.loop : true),
+                speed: overrides.speed || state.speed || 12,
+                startFrame: overrides.startFrame !== undefined ? overrides.startFrame : (state.startFrame || 0),
+                endFrame: overrides.endFrame !== undefined ? overrides.endFrame : (state.endFrame !== undefined ? state.endFrame : -1),
+                source: 'controller',
+                force: force
+            });
+        }
     }
 
     /** Alias en español */
@@ -3573,19 +3618,24 @@ export class AnimatorController extends Leyes {
             }
         }
 
-        if (!this.animator || !this.controller) return;
+        const animators = this._resolveAllTargets();
+        if (animators.length === 0 || !this.controller) return;
 
         // Fallback to Principal (Entry State) on animation failure
-        if (this.animator.hasError && this.controller.entryState && this.currentStateName !== this.controller.entryState) {
+        const primaryAnim = this.animator || animators[0];
+        if (primaryAnim && primaryAnim.hasError && this.controller.entryState && this.currentStateName !== this.controller.entryState) {
             if (debug) console.log(`[AnimatorController] Fallback a estado principal '${this.controller.entryState}' por error en animación.`);
             this.play(this.controller.entryState, true); // force fallback
-            this.animator.hasError = false; // reset error after fallback
+            primaryAnim.hasError = false; // reset error after fallback
         }
 
+        // Resolve tracking target materia (parent/assigned target)
+        const trackingMateria = this._resolveMateria(this.targetMateria) || this.materia;
+
         // Auto-update parameters from components
-        const rb = this.materia.getComponent(Rigidbody2D);
-        const movement = this.materia.getComponent(LateralMovement) || this.materia.getComponent(TopDownMovement);
-        const transform = this.materia.getComponent(Transform);
+        const rb = trackingMateria.getComponent(Rigidbody2D);
+        const movement = trackingMateria.getComponent(LateralMovement) || trackingMateria.getComponent(TopDownMovement);
+        const transform = trackingMateria.getComponent(Transform);
 
         // Intention check: is the user trying to move via Input?
         const isIntentionalStop = movement && movement.isActive && movement.lastMove.x === 0 && movement.lastMove.y === 0;

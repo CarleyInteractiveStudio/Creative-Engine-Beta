@@ -2934,6 +2934,14 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="CONTROLLER">${L.get('CONTROLLER', 'Controller')}</label>
                         ${renderPropertyDropper('AnimatorController', ley.controllerPath, 'data-component="AnimatorController" data-prop="controllerPath"')}
                     </div>
+                    <div class="inspector-row">
+                        <label>Materia Objetivo</label>
+                        ${renderPropertyDropper('Materia', ley.targetMateria, 'data-component="AnimatorController" data-prop="targetMateria"')}
+                    </div>
+                    <div class="inspector-row">
+                        <label title="IDs de otras materias separadas por comas">Otros Animadores (IDs)</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="AnimatorController" data-prop="extraTargets" value="${ley.extraTargets || ''}" placeholder="Ej: 15, 23">
+                    </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="AnimatorController" data-prop="smartMode" ${ley.smartMode ? 'checked' : ''}>
                         <label data-i18n="SMART_MODE_DIRECTIONS">${L.get('SMART_MODE_DIRECTIONS', 'Modo Inteligente (Direcciones)')}</label>
