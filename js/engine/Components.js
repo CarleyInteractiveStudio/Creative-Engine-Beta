@@ -2546,6 +2546,9 @@ export class Animator extends Leyes {
     }
 
     applyCurrentFrame() {
+        if (!this.spriteRenderer && this.materia) {
+            this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
+        }
         if (!this.animationClip || !this.spriteRenderer) return;
 
         const clip = this.animationClip;
@@ -3528,6 +3531,11 @@ export class AnimatorController extends Leyes {
 
         for (let i = 0; i < animators.length; i++) {
             const anim = animators[i];
+            // Handle projectsDirHandle assignment for external animators
+            if (this.projectsDirHandle) {
+                anim.projectsDirHandle = this.projectsDirHandle;
+            }
+
             // Handle flipping
             const transform = anim.materia ? anim.materia.getComponent(Transform) : null;
             if (transform) {
