@@ -269,14 +269,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     message: fullMessage,
                     isSystemString: true
                 };
-                window._CodeEditor.setLastRuntimeError(structuredError);
+                if (window._CodeEditor && typeof window._CodeEditor.setLastRuntimeError === 'function') {
+                    window._CodeEditor.setLastRuntimeError(structuredError);
+                }
             }
         }
 
         // 4. Final preparation for structured display (if matched)
         if (structuredError) {
             if (structuredError.scriptName) {
-                window._CodeEditor.setLastRuntimeError(structuredError);
+                if (window._CodeEditor && typeof window._CodeEditor.setLastRuntimeError === 'function') {
+                    window._CodeEditor.setLastRuntimeError(structuredError);
+                }
             }
             const lineStr = structuredError.line ? `[Linea ${structuredError.line}] ` : '';
             const scriptStr = structuredError.scriptName ? `en '${structuredError.scriptName}' ` : '';
