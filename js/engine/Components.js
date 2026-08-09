@@ -3491,7 +3491,7 @@ export class AnimatorController extends Leyes {
         return list;
     }
 
-    play(stateName, force = false, overrides = {}) {
+    play(stateName, force = true, overrides = {}) {
         if (!stateName) return;
         const debug = window.CE_DEBUG_ANIMATION;
 
@@ -3651,12 +3651,23 @@ export class AnimatorController extends Leyes {
         const isGrounded = movement && movement.isActive && (movement.isGrounded !== undefined ? movement.isGrounded : true);
 
         let horiz = 0, vert = 0, moving = false;
+        const isLateral = movement instanceof LateralMovement;
 
         // 1. Check Movement component (Highest priority for intentional input)
         if (movement && movement.isActive && !isIntentionalStop) {
             horiz = movement.lastMove.x;
-            vert = movement.lastMove.y;
-            moving = true;
+            if (isLateral && !isGrounded) {
+                // In the air, vertical movement is driven by physics (jump/fall)
+                if (rb && rb.isActive) {
+                    vert = rb.velocity.y;
+                } else {
+                    vert = 0;
+                }
+                moving = true;
+            } else {
+                vert = movement.lastMove.y;
+                moving = true;
+            }
             if (debug && Math.random() < 0.05) console.log(`[AnimatorController] Movimiento detectado vía componente Movement: ${horiz.toFixed(2)}, ${vert.toFixed(2)}`);
         }
 
@@ -3784,6 +3795,10 @@ export class AnimatorController extends Leyes {
             return;
         }
 
+        const trackingMateria = this._resolveMateria(this.targetMateria) || this.materia;
+        const movement = trackingMateria.getComponent(LateralMovement) || trackingMateria.getComponent(TopDownMovement);
+        const isLateral = movement instanceof LateralMovement;
+
         let currentDirIndex = 4; // Center (Idle)
 
         if (p.isMoving) {
@@ -3796,7 +3811,7 @@ export class AnimatorController extends Leyes {
             if (p.vertical > dz) v = 1;
             else if (p.vertical < -dz) v = -1;
 
-            currentDirIndex = (v + 1) * 3 + (h + 1);
+            currentDirIndex = (1 - v) * 3 + (h + 1);
         }
 
         // Direction Stability Check
@@ -3860,11 +3875,17 @@ export class AnimatorController extends Leyes {
 
                 let fallbackState = null;
                 if (h !== 0 && v !== 0) {
-                    // Try pure horizontal
-                    fallbackState = this.controller.movementMapping[(1) * 3 + (h + 1)];
-                    if (!fallbackState || !this.states.has(fallbackState)) {
-                        // Try pure vertical
-                        fallbackState = this.controller.movementMapping[(v + 1) * 3 + (1)];
+                    if (v !== 0 && isLateral) {
+                        // In lateral movement, if in the air, do NOT fall back to walking (horizontal).
+                        // Instead, try the pure vertical animation first (like Up / Down).
+                        fallbackState = this.controller.movementMapping[(1 - v) * 3 + 1];
+                    } else {
+                        // Try pure horizontal
+                        fallbackState = this.controller.movementMapping[(1) * 3 + (h + 1)];
+                        if (!fallbackState || !this.states.has(fallbackState)) {
+                            // Try pure vertical
+                            fallbackState = this.controller.movementMapping[(1 - v) * 3 + 1];
+                        }
                     }
                 }
 
@@ -3903,9 +3924,9 @@ export class AnimatorController extends Leyes {
             if (trans.from === this.currentStateName) {
                 if (this._evaluateConditions(trans.conditions)) {
                     if (trans.duration > 0) {
-                        this.crossfade(trans.to, trans.duration);
+                        this.crossfade(trans.to, trans.duration, false);
                     } else {
-                        this.play(trans.to);
+                        this.play(trans.to, false);
                     }
                     break;
                 }
@@ -3913,7 +3934,7 @@ export class AnimatorController extends Leyes {
         }
     }
 
-    crossfade(stateName, duration = 0.3, force = false, overrides = {}) {
+    crossfade(stateName, duration = 0.3, force = true, overrides = {}) {
         if (!stateName) return;
         const debug = window.CE_DEBUG_ANIMATION;
 
@@ -4384,10 +4405,10 @@ export class LateralMovement extends Leyes {
         if (input.isKeyPressed(this.leftKey)) moveX -= 1;
 
         this.lastMove.x = moveX;
-        this.lastMove.y = 0;
 
         const isCrouching = this.isGrounded && input.isKeyPressed(this.downKey);
         this.isCrouching = isCrouching;
+        this.lastMove.y = isCrouching ? -1 : 0;
         const currentSpeed = isCrouching ? this.speed * 0.5 : this.speed;
 
         const rb = this.materia.getComponent(Rigidbody2D);
@@ -4459,6 +4480,10 @@ export class LateralMovement extends Leyes {
         if (!this.isGrounded && rb) {
             if (rb.velocity.y > 0.1) play(this.jumpAnim);
             else if (rb.velocity.y < -0.1) play(this.fallAnim);
+
+            if (transform && moveX !== 0) {
+                transform.flipX = moveX < 0;
+            }
         } else {
             if (this.isCrouching) {
                 play(this.crouchAnim);
