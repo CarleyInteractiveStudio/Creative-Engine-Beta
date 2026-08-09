@@ -3841,12 +3841,28 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="jumpAnim" value="${ley.jumpAnim || ''}">
                     </div>
                     <div class="prop-row-multi">
+                        <label>Jump Left</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="jumpLeftAnim" value="${ley.jumpLeftAnim || ''}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Jump Right</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="jumpRightAnim" value="${ley.jumpRightAnim || ''}">
+                    </div>
+                    <div class="prop-row-multi">
                         <label>Fall</label>
                         <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="fallAnim" value="${ley.fallAnim || ''}">
                     </div>
                     <div class="prop-row-multi">
                         <label>Crouch</label>
                         <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="crouchAnim" value="${ley.crouchAnim || 'crouch'}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Crouch Left</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="crouchLeftAnim" value="${ley.crouchLeftAnim || ''}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Crouch Right</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="crouchRightAnim" value="${ley.crouchRightAnim || ''}">
                     </div>
                     ` : `
                     <div style="font-size:11px; color:#aaa; margin: 5px 10px; line-height: 1.3;">
