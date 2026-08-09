@@ -3733,6 +3733,11 @@ export class AnimatorController extends Leyes {
             this._hasLastPosition = true;
         }
 
+        if (isLateral && !isGrounded) {
+            vert = 1.0;
+            this._lastMovingVert = 1.0;
+        }
+
         // Apply smoothing/hysteresis to 'moving' state to prevent flickering
         if (moving) {
             this._isMovingSmooth = true;
