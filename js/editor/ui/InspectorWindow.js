@@ -486,6 +486,26 @@ async function handleInspectorDrop(e) {
     }
 
     if (isValid && valueToAssign !== null) {
+        // Special case: AnimatorController extraTargets dynamic list assignment
+        if (componentName === 'AnimatorController' && propName && propName.startsWith('extraTargets.')) {
+            const animatorCtrl = selectedMateria.getComponent(Components.AnimatorController);
+            const index = parseInt(propName.split('.')[1], 10);
+            if (animatorCtrl && !isNaN(index)) {
+                let targets = [];
+                if (animatorCtrl.extraTargets) {
+                    targets = String(animatorCtrl.extraTargets).split(',').map(t => t.trim()).filter(t => t !== '');
+                }
+                targets[index] = valueToAssign; // Assign the dropped Materia ID
+                animatorCtrl.extraTargets = targets.join(', ');
+                updateInspector();
+                if (typeof window.setSceneDirty === 'function') {
+                    window.setSceneDirty(true);
+                }
+                if (updateSceneCallback) updateSceneCallback();
+                return;
+            }
+        }
+
         // Find the target component instance
         let targetComponent;
         if (componentName === 'CreativeScript') {
@@ -817,6 +837,50 @@ function handleInspectorClick(e) {
     const L = window.Localization;
 
     if (!selectedMateria) return;
+
+    // --- AnimatorController extraTargets dynamic list buttons ---
+    const targetAddBtn = e.target.closest('.extra-target-add-btn');
+    if (targetAddBtn) {
+        e.stopPropagation();
+        const component = selectedMateria.getComponent(Components.AnimatorController);
+        if (component) {
+            let targets = [];
+            if (component.extraTargets) {
+                targets = String(component.extraTargets).split(',').map(t => t.trim()).filter(t => t !== '');
+            }
+            targets.push(""); // Add placeholder/empty string
+            component.extraTargets = targets.join(', ');
+            updateInspector();
+            if (typeof window.setSceneDirty === 'function') {
+                window.setSceneDirty(true);
+            }
+            if (updateSceneCallback) updateSceneCallback();
+        }
+        return;
+    }
+
+    const targetDelBtn = e.target.closest('.extra-target-delete-btn');
+    if (targetDelBtn) {
+        e.stopPropagation();
+        const component = selectedMateria.getComponent(Components.AnimatorController);
+        if (component) {
+            const idx = parseInt(targetDelBtn.dataset.index, 10);
+            let targets = [];
+            if (component.extraTargets) {
+                targets = String(component.extraTargets).split(',').map(t => t.trim()).filter(t => t !== '');
+            }
+            if (idx >= 0 && idx < targets.length) {
+                targets.splice(idx, 1);
+                component.extraTargets = targets.join(', ');
+                updateInspector();
+                if (typeof window.setSceneDirty === 'function') {
+                    window.setSceneDirty(true);
+                }
+                if (updateSceneCallback) updateSceneCallback();
+            }
+        }
+        return;
+    }
 
     // --- Array Item Add/Delete Buttons ---
     const addBtn = e.target.closest('.array-item-add-btn');
@@ -3088,9 +3152,36 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label>Materia Objetivo</label>
                         ${renderPropertyDropper('Materia', ley.targetMateria, 'data-component="AnimatorController" data-prop="targetMateria"')}
                     </div>
-                    <div class="inspector-row">
-                        <label title="IDs de otras materias separadas por comas">Otros Animadores (IDs)</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="AnimatorController" data-prop="extraTargets" value="${ley.extraTargets || ''}" placeholder="Ej: 15, 23">
+                    <div class="inspector-section-header" style="margin-top: 10px; margin-bottom: 5px;"><span style="font-weight: bold; font-size: 0.85em; text-transform: uppercase; color: var(--color-text-muted);">Otros Animadores en Sincronía</span></div>
+                    <div style="background:var(--bg-tertiary); border:1px solid var(--border-color); border-radius:6px; padding:8px; margin-bottom:12px; width: 100%;">
+                        <div class="extra-targets-list">
+                            ${(() => {
+                                let targetsArr = [];
+                                if (ley.extraTargets) {
+                                    targetsArr = String(ley.extraTargets).split(',').map(t => t.trim()).filter(t => t !== '');
+                                }
+                                if (targetsArr.length === 0) {
+                                    return `<p style="font-size:11px; color:#aaa; margin:5px 0; text-align: center;">No hay animadores adicionales. Arrastra objetos abajo para agregarlos.</p>`;
+                                }
+                                return targetsArr.map((targetId, idx) => {
+                                    return `
+                                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px; width: 100%;">
+                                            <div style="flex-grow:1;">
+                                                ${renderPropertyDropper('Materia', parseInt(targetId, 10), `data-component="AnimatorController" data-prop="extraTargets.${idx}"`)}
+                                            </div>
+                                            <button class="extra-target-delete-btn"
+                                                    data-component="AnimatorController"
+                                                    data-index="${idx}"
+                                                    style="background:transparent; border:none; color:#ff4d4d; font-size:16px; cursor:pointer; padding:2px 6px;"
+                                                    title="Eliminar">✕</button>
+                                        </div>
+                                    `;
+                                }).join('');
+                            })()}
+                        </div>
+                        <button class="extra-target-add-btn"
+                                data-component="AnimatorController"
+                                style="background:#00b4ff; border:none; color:white; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold; width:100%; text-align:center; margin-top:4px;">+ Añadir Animador</button>
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="AnimatorController" data-prop="smartMode" ${ley.smartMode ? 'checked' : ''}>

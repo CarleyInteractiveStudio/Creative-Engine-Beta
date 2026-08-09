@@ -3491,7 +3491,7 @@ export class AnimatorController extends Leyes {
         return list;
     }
 
-    play(stateName, force = true, overrides = {}) {
+    play(stateName, force = false, overrides = {}) {
         if (!stateName) return;
         const debug = window.CE_DEBUG_ANIMATION;
 
@@ -3934,7 +3934,7 @@ export class AnimatorController extends Leyes {
         }
     }
 
-    crossfade(stateName, duration = 0.3, force = true, overrides = {}) {
+    crossfade(stateName, duration = 0.3, force = false, overrides = {}) {
         if (!stateName) return;
         const debug = window.CE_DEBUG_ANIMATION;
 
@@ -4473,7 +4473,7 @@ export class LateralMovement extends Leyes {
 
         const play = (name) => {
             if (!name) return;
-            if (controller) controller.play(name);
+            if (controller) controller.play(name, true); // Explicitly force-play direct calls from LateralMovement
             else animator.play(name);
         };
 
