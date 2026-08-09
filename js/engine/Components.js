@@ -3846,7 +3846,7 @@ export class AnimatorController extends Leyes {
 
         if (stateName) {
             const isSameState = this.currentStateName === stateName;
-            if (!isSameState || !this.animator.isPlaying) {
+            if (!isSameState || !this.animator || !this.animator.isPlaying) {
                 // Smart mode follows transitions
                 if (isSameState || this.canTransitionTo(stateName)) {
                     this.play(stateName);
@@ -3860,7 +3860,7 @@ export class AnimatorController extends Leyes {
                     } else if (idleState && idleState !== this.currentStateName) {
                         // If even fallback to idle is denied by graph, but we are stuck in a non-looping finished animation
                         // we MUST return to principal to avoid freezing, as it is the "root" animation.
-                        if (!this.animator.isPlaying && this.animator._controlSource === 'controller') {
+                        if (this.animator && !this.animator.isPlaying && this.animator._controlSource === 'controller') {
                             if (debug) console.log(`[AnimatorController] SmartMode: Stuck and denied. Forcing fallback to Principal '${this.controller.entryState}'.`);
                             this.play(this.controller.entryState, true);
                         }
@@ -3893,7 +3893,7 @@ export class AnimatorController extends Leyes {
                     fallbackState = this.controller.movementMapping[4]; // Idle (Principal)
                 }
 
-                if (fallbackState && (this.currentStateName !== fallbackState || !this.animator.isPlaying)) {
+                if (fallbackState && (this.currentStateName !== fallbackState || !this.animator || !this.animator.isPlaying)) {
                     if (this.canTransitionTo(fallbackState)) {
                         if (debug) console.log(`[AnimatorController] SmartMode Fallback: Usando '${fallbackState}' por falta de mapeo o denegación.`);
                         this.play(fallbackState);
@@ -4030,6 +4030,8 @@ export class AnimatorController extends Leyes {
     clone() {
         const newController = new AnimatorController(null);
         newController.controllerPath = this.controllerPath;
+        newController.targetMateria = this.targetMateria;
+        newController.extraTargets = this.extraTargets;
         newController.smartMode = this.smartMode;
         newController.deadZone = this.deadZone;
         newController.startDelay = this.startDelay;
