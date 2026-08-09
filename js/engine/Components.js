@@ -3657,12 +3657,8 @@ export class AnimatorController extends Leyes {
         if (movement && movement.isActive && !isIntentionalStop) {
             horiz = movement.lastMove.x;
             if (isLateral && !isGrounded) {
-                // In the air, vertical movement is driven by physics (jump/fall)
-                if (rb && rb.isActive) {
-                    vert = rb.velocity.y;
-                } else {
-                    vert = 0;
-                }
+                // In the air, vertical state is always UP (airborne/jump/fall row)
+                vert = 1.0;
                 moving = true;
             } else {
                 vert = movement.lastMove.y;
@@ -3683,7 +3679,11 @@ export class AnimatorController extends Leyes {
 
             if (Math.abs(rb.velocity.x) > rbThreshold || (checkY && Math.abs(rb.velocity.y) > rbThreshold)) {
                 horiz = rb.velocity.x;
-                vert = rb.velocity.y;
+                if (isLateral && !isGrounded) {
+                    vert = 1.0;
+                } else {
+                    vert = rb.velocity.y;
+                }
                 moving = true;
                 if (debug && Math.random() < 0.02) console.log(`[AnimatorController] Movimiento detectado vía Rigidbody2D: H=${horiz.toFixed(2)}, V=${vert.toFixed(2)} (Threshold: ${rbThreshold})`);
             }
