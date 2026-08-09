@@ -5813,7 +5813,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
                     </fieldset>
                 </div>
 
-                <button id="save-meta-btn" class="primary-btn ${metaData.textureType === 'Animation Sheet' ? 'hidden' : ''}" style="width: 100%; margin-top: 10px;" data-i18n="APPLY">${L.get('APPLY', 'Aplicar')}</button>
+                <button id="save-meta-btn" class="primary-btn" style="width: 100%; margin-top: 10px;" data-i18n="APPLY">${L.get('APPLY', 'Aplicar')}</button>
                 <hr>
                 <div class="preview-container" style="text-align: center; margin-top: 10px;"><img id="inspector-preview-img" src="" alt="Preview" style="max-width: 100%; max-height: 150px; object-fit: contain; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px;"></div>
             `;
