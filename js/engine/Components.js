@@ -3491,7 +3491,7 @@ export class AnimatorController extends Leyes {
         return list;
     }
 
-    play(stateName, force = false, overrides = {}) {
+    play(stateName, force = true, overrides = {}) {
         if (!stateName) return;
         const debug = window.CE_DEBUG_ANIMATION;
 
@@ -3910,7 +3910,7 @@ export class AnimatorController extends Leyes {
         }
     }
 
-    crossfade(stateName, duration = 0.3, force = false, overrides = {}) {
+    crossfade(stateName, duration = 0.3, force = true, overrides = {}) {
         if (!stateName) return;
         const debug = window.CE_DEBUG_ANIMATION;
 
