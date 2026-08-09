@@ -3847,25 +3847,9 @@ export class AnimatorController extends Leyes {
         if (stateName) {
             const isSameState = this.currentStateName === stateName;
             if (!isSameState || !this.animator || !this.animator.isPlaying) {
-                // Smart mode follows transitions
-                if (isSameState || this.canTransitionTo(stateName)) {
-                    this.play(stateName);
-                } else {
-                    // If transition to movement state is denied, try to fallback to Idle (Principal)
-                    // if it's connected, as requested by the user.
-                    const idleState = this.controller.movementMapping[4] || this.controller.entryState;
-                    if (idleState && idleState !== this.currentStateName && this.canTransitionTo(idleState)) {
-                        if (debug) console.log(`[AnimatorController] SmartMode: Transición a '${stateName}' denegada. Volviendo a Idle '${idleState}'.`);
-                        this.play(idleState);
-                    } else if (idleState && idleState !== this.currentStateName) {
-                        // If even fallback to idle is denied by graph, but we are stuck in a non-looping finished animation
-                        // we MUST return to principal to avoid freezing, as it is the "root" animation.
-                        if (this.animator && !this.animator.isPlaying && this.animator._controlSource === 'controller') {
-                            if (debug) console.log(`[AnimatorController] SmartMode: Stuck and denied. Forcing fallback to Principal '${this.controller.entryState}'.`);
-                            this.play(this.controller.entryState, true);
-                        }
-                    }
-                }
+                // Smart mode should play the direction state directly (bypassing graph transition restrictions)
+                // to make movement 100% responsive and avoid requiring 72 manual transition connections.
+                this.play(stateName, true);
             }
         } else if (!stateName) {
             if (p.isMoving) {
@@ -3894,22 +3878,14 @@ export class AnimatorController extends Leyes {
                 }
 
                 if (fallbackState && (this.currentStateName !== fallbackState || !this.animator || !this.animator.isPlaying)) {
-                    if (this.canTransitionTo(fallbackState)) {
-                        if (debug) console.log(`[AnimatorController] SmartMode Fallback: Usando '${fallbackState}' por falta de mapeo o denegación.`);
-                        this.play(fallbackState);
-                    }
+                    this.play(fallbackState, true);
                 }
             } else {
                 // If not moving and dirIndex 4 is not mapped directly, or we are in a walking state
                 // and want to return to Idle.
                 const idleState = this.controller.movementMapping[4];
                 if (idleState && this.currentStateName !== idleState) {
-                    if (this.canTransitionTo(idleState)) {
-                        if (debug) console.log(`[AnimatorController] SmartMode: Deteniendo movimiento, volviendo a Idle '${idleState}'.`);
-                        this.play(idleState);
-                    }
-                    // Else: continue playing current animation if no connection back to Idle
-                    // as requested by the user ("se segura reproduciendo el de caminar por que no hay a donde devolver el estado")
+                    this.play(idleState, true);
                 }
             }
         } else if (stateName && !this.states.has(stateName)) {
