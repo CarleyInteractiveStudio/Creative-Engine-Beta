@@ -3491,7 +3491,7 @@ export class AnimatorController extends Leyes {
         return list;
     }
 
-    play(stateName, force = false, overrides = {}) {
+    play(stateName, force = true, overrides = {}) {
         if (!stateName) return;
         const debug = window.CE_DEBUG_ANIMATION;
 
@@ -3651,12 +3651,19 @@ export class AnimatorController extends Leyes {
         const isGrounded = movement && movement.isActive && (movement.isGrounded !== undefined ? movement.isGrounded : true);
 
         let horiz = 0, vert = 0, moving = false;
+        const isLateral = movement instanceof LateralMovement;
 
         // 1. Check Movement component (Highest priority for intentional input)
         if (movement && movement.isActive && !isIntentionalStop) {
             horiz = movement.lastMove.x;
-            vert = movement.lastMove.y;
-            moving = true;
+            if (isLateral && !isGrounded) {
+                // In the air, vertical state is always UP (airborne/jump/fall row)
+                vert = 1.0;
+                moving = true;
+            } else {
+                vert = movement.lastMove.y;
+                moving = true;
+            }
             if (debug && Math.random() < 0.05) console.log(`[AnimatorController] Movimiento detectado vía componente Movement: ${horiz.toFixed(2)}, ${vert.toFixed(2)}`);
         }
 
@@ -3672,7 +3679,11 @@ export class AnimatorController extends Leyes {
 
             if (Math.abs(rb.velocity.x) > rbThreshold || (checkY && Math.abs(rb.velocity.y) > rbThreshold)) {
                 horiz = rb.velocity.x;
-                vert = rb.velocity.y;
+                if (isLateral && !isGrounded) {
+                    vert = 1.0;
+                } else {
+                    vert = rb.velocity.y;
+                }
                 moving = true;
                 if (debug && Math.random() < 0.02) console.log(`[AnimatorController] Movimiento detectado vía Rigidbody2D: H=${horiz.toFixed(2)}, V=${vert.toFixed(2)} (Threshold: ${rbThreshold})`);
             }
@@ -3720,6 +3731,11 @@ export class AnimatorController extends Leyes {
             this._lastPosition.x = transform.x;
             this._lastPosition.y = transform.y;
             this._hasLastPosition = true;
+        }
+
+        if (isLateral && !isGrounded) {
+            vert = 1.0;
+            this._lastMovingVert = 1.0;
         }
 
         // Apply smoothing/hysteresis to 'moving' state to prevent flickering
@@ -3784,6 +3800,10 @@ export class AnimatorController extends Leyes {
             return;
         }
 
+        const trackingMateria = this._resolveMateria(this.targetMateria) || this.materia;
+        const movement = trackingMateria.getComponent(LateralMovement) || trackingMateria.getComponent(TopDownMovement);
+        const isLateral = movement instanceof LateralMovement;
+
         let currentDirIndex = 4; // Center (Idle)
 
         if (p.isMoving) {
@@ -3796,7 +3816,7 @@ export class AnimatorController extends Leyes {
             if (p.vertical > dz) v = 1;
             else if (p.vertical < -dz) v = -1;
 
-            currentDirIndex = (v + 1) * 3 + (h + 1);
+            currentDirIndex = (1 - v) * 3 + (h + 1);
         }
 
         // Direction Stability Check
@@ -3831,26 +3851,10 @@ export class AnimatorController extends Leyes {
 
         if (stateName) {
             const isSameState = this.currentStateName === stateName;
-            if (!isSameState || !this.animator.isPlaying) {
-                // Smart mode follows transitions
-                if (isSameState || this.canTransitionTo(stateName)) {
-                    this.play(stateName);
-                } else {
-                    // If transition to movement state is denied, try to fallback to Idle (Principal)
-                    // if it's connected, as requested by the user.
-                    const idleState = this.controller.movementMapping[4] || this.controller.entryState;
-                    if (idleState && idleState !== this.currentStateName && this.canTransitionTo(idleState)) {
-                        if (debug) console.log(`[AnimatorController] SmartMode: Transición a '${stateName}' denegada. Volviendo a Idle '${idleState}'.`);
-                        this.play(idleState);
-                    } else if (idleState && idleState !== this.currentStateName) {
-                        // If even fallback to idle is denied by graph, but we are stuck in a non-looping finished animation
-                        // we MUST return to principal to avoid freezing, as it is the "root" animation.
-                        if (!this.animator.isPlaying && this.animator._controlSource === 'controller') {
-                            if (debug) console.log(`[AnimatorController] SmartMode: Stuck and denied. Forcing fallback to Principal '${this.controller.entryState}'.`);
-                            this.play(this.controller.entryState, true);
-                        }
-                    }
-                }
+            if (!isSameState || !this.animator || !this.animator.isPlaying) {
+                // Smart mode should play the direction state directly (bypassing graph transition restrictions)
+                // to make movement 100% responsive and avoid requiring 72 manual transition connections.
+                this.play(stateName, true);
             }
         } else if (!stateName) {
             if (p.isMoving) {
@@ -3860,11 +3864,17 @@ export class AnimatorController extends Leyes {
 
                 let fallbackState = null;
                 if (h !== 0 && v !== 0) {
-                    // Try pure horizontal
-                    fallbackState = this.controller.movementMapping[(1) * 3 + (h + 1)];
-                    if (!fallbackState || !this.states.has(fallbackState)) {
-                        // Try pure vertical
-                        fallbackState = this.controller.movementMapping[(v + 1) * 3 + (1)];
+                    if (v !== 0 && isLateral) {
+                        // In lateral movement, if in the air, do NOT fall back to walking (horizontal).
+                        // Instead, try the pure vertical animation first (like Up / Down).
+                        fallbackState = this.controller.movementMapping[(1 - v) * 3 + 1];
+                    } else {
+                        // Try pure horizontal
+                        fallbackState = this.controller.movementMapping[(1) * 3 + (h + 1)];
+                        if (!fallbackState || !this.states.has(fallbackState)) {
+                            // Try pure vertical
+                            fallbackState = this.controller.movementMapping[(1 - v) * 3 + 1];
+                        }
                     }
                 }
 
@@ -3872,23 +3882,15 @@ export class AnimatorController extends Leyes {
                     fallbackState = this.controller.movementMapping[4]; // Idle (Principal)
                 }
 
-                if (fallbackState && (this.currentStateName !== fallbackState || !this.animator.isPlaying)) {
-                    if (this.canTransitionTo(fallbackState)) {
-                        if (debug) console.log(`[AnimatorController] SmartMode Fallback: Usando '${fallbackState}' por falta de mapeo o denegación.`);
-                        this.play(fallbackState);
-                    }
+                if (fallbackState && (this.currentStateName !== fallbackState || !this.animator || !this.animator.isPlaying)) {
+                    this.play(fallbackState, true);
                 }
             } else {
                 // If not moving and dirIndex 4 is not mapped directly, or we are in a walking state
                 // and want to return to Idle.
                 const idleState = this.controller.movementMapping[4];
                 if (idleState && this.currentStateName !== idleState) {
-                    if (this.canTransitionTo(idleState)) {
-                        if (debug) console.log(`[AnimatorController] SmartMode: Deteniendo movimiento, volviendo a Idle '${idleState}'.`);
-                        this.play(idleState);
-                    }
-                    // Else: continue playing current animation if no connection back to Idle
-                    // as requested by the user ("se segura reproduciendo el de caminar por que no hay a donde devolver el estado")
+                    this.play(idleState, true);
                 }
             }
         } else if (stateName && !this.states.has(stateName)) {
@@ -3903,9 +3905,9 @@ export class AnimatorController extends Leyes {
             if (trans.from === this.currentStateName) {
                 if (this._evaluateConditions(trans.conditions)) {
                     if (trans.duration > 0) {
-                        this.crossfade(trans.to, trans.duration);
+                        this.crossfade(trans.to, trans.duration, false);
                     } else {
-                        this.play(trans.to);
+                        this.play(trans.to, false);
                     }
                     break;
                 }
@@ -3913,7 +3915,7 @@ export class AnimatorController extends Leyes {
         }
     }
 
-    crossfade(stateName, duration = 0.3, force = false, overrides = {}) {
+    crossfade(stateName, duration = 0.3, force = true, overrides = {}) {
         if (!stateName) return;
         const debug = window.CE_DEBUG_ANIMATION;
 
@@ -4009,6 +4011,8 @@ export class AnimatorController extends Leyes {
     clone() {
         const newController = new AnimatorController(null);
         newController.controllerPath = this.controllerPath;
+        newController.targetMateria = this.targetMateria;
+        newController.extraTargets = this.extraTargets;
         newController.smartMode = this.smartMode;
         newController.deadZone = this.deadZone;
         newController.startDelay = this.startDelay;
@@ -4384,10 +4388,10 @@ export class LateralMovement extends Leyes {
         if (input.isKeyPressed(this.leftKey)) moveX -= 1;
 
         this.lastMove.x = moveX;
-        this.lastMove.y = 0;
 
         const isCrouching = this.isGrounded && input.isKeyPressed(this.downKey);
         this.isCrouching = isCrouching;
+        this.lastMove.y = isCrouching ? -1 : 0;
         const currentSpeed = isCrouching ? this.speed * 0.5 : this.speed;
 
         const rb = this.materia.getComponent(Rigidbody2D);
@@ -4450,7 +4454,7 @@ export class LateralMovement extends Leyes {
 
         const play = (name) => {
             if (!name) return;
-            if (controller) controller.play(name);
+            if (controller) controller.play(name, true); // Explicitly force-play direct calls from LateralMovement
             else animator.play(name);
         };
 
@@ -4459,6 +4463,10 @@ export class LateralMovement extends Leyes {
         if (!this.isGrounded && rb) {
             if (rb.velocity.y > 0.1) play(this.jumpAnim);
             else if (rb.velocity.y < -0.1) play(this.fallAnim);
+
+            if (transform && moveX !== 0) {
+                transform.flipX = moveX < 0;
+            }
         } else {
             if (this.isCrouching) {
                 play(this.crouchAnim);

@@ -1,6 +1,7 @@
 // js/editor/ui/VisualScriptingWindow.js
 
 import { VisualScriptingCore } from '../VisualScriptingCore.js';
+import { transpile } from '../CES_Transpiler.js';
 
 let dom;
 let blocks = [];
@@ -982,9 +983,34 @@ function updateConnections(svg) {
 
 async function applyLogic() {
     const cesCode = VisualScriptingCore.translateToCES({ blocks });
+    const tempScriptName = currentMateria ? `${currentMateria.name}_VisualScript` : 'VisualScript';
 
+    // Validate generated CES code
+    const validation = transpile(cesCode, tempScriptName);
     const L = window.Localization;
-    window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), "Lógica visual aplicada y traducida a CES.");
+
+    if (validation.errors && validation.errors.length > 0) {
+        // Construct a highly detailed error list
+        let errorMsg = `<div style="text-align: left; max-height: 250px; overflow-y: auto; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; border: 1px solid var(--border-color); margin-top: 10px;">`;
+        validation.errors.forEach(err => {
+            errorMsg += `<p style="color: #ff4d4d; margin: 4px 0;">🔴 <strong>Línea ${err.line || '?'}:</strong> ${err.message}</p>`;
+        });
+        errorMsg += `</div>`;
+
+        // Show compile failure rejection dialog using our custom dialog window helper
+        window.Dialogs.showCustomDialog(
+            L.get('ERROR_GUARDAR', 'No se pudo guardar la lógica'),
+            `<div style="text-align: center; color: var(--color-text);">
+                <p style="font-weight: bold; margin-bottom: 10px;">${L.get('ERROR_LOGICA_VISUAL', 'La lógica visual tiene errores de traducción o sintaxis.')}</p>
+                <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">Tus cambios han sido RECHAZADOS para evitar fallos críticos al ejecutar el juego. Por favor, revisa las conexiones o variables del bloque con error.</p>
+                ${errorMsg}
+            </div>`
+        );
+        console.error("[VisualScripting] Cambios rechazados por errores de traducción:", validation.errors);
+        return;
+    }
+
+    window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), "Lógica visual verificada y guardada sin ningún error de sintaxis.");
 
     // Optionally open the code view to show what happened
     if (window._CodeEditor) {

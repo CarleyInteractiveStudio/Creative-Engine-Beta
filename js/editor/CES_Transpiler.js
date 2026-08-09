@@ -95,6 +95,9 @@ const typeMap = {
     'controlador': 'AnimatorController',
     'accion': 'Action',
     'evento': 'Action',
+    'estado_animacion': 'AnimationState',
+    'estadoAnimacion': 'AnimationState',
+    'AnimationState': 'AnimationState',
     // Engine Components
     'Transform': 'Transform',
     'posicion': 'Transform',
@@ -849,17 +852,19 @@ export function transpile(code, scriptName = 'unnamed.ces') {
     // 1.c: Parse and remove public and private variables (multilingual with new syntax)
     // Scope is optional, defaults to public
     // Added support for common typos: bublico, bublica, piblico, piblica
-    const varRegex = /^\s*(?:(public|private|publico|público|bublico|bublica|piblico|piblica|privado|закрытый|закрытая|открытый|открытая|公开|私有)\s+)?(?!(?:si|sino|se|senão|mientras|enquanto|para|cada|go|ve|engine|motor|двигатель|引擎|если|иначе|пока|для|如果|否则|当|对于|crear|create|criar|создать|创建|esperar|aguardar|ждать|等待|alActualizar|alEmpezar|start|update|iniciar|actualizar|começar|atualizar|начать|обновить|开始|更新)(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5]))([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)\s+([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)\s*(?:=\s*([^;{}\n\r]+))?;?/gm;
+    const varRegex = /^\s*(?:(public|private|publico|público|bublico|bublica|piblico|piblica|privado|закрытый|закрытая|открытый|открытая|公开|私有)\s+)?(?!(?:si|sino|se|senão|mientras|enquanto|para|cada|go|ve|engine|motor|двигатель|引擎|если|иначе|пока|для|如果|否则|当|对于|crear|create|criar|создать|创建|esperar|aguardar|ждать|等待|alActualizar|alEmpezar|start|update|iniciar|actualizar|começar|atualizar|начать|обновить|开始|更新)(?![.\w\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FA5]))([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥\[\]]*)\s+([a-zA-Z_\u00C0-\u017Fа-яА-Я一-龥][\w\u00C0-\u017Fа-яА-Я一-龥]*)\s*(?:=\s*([^;{}\n\r]+))?;?/gm;
     let varMatch;
     while ((varMatch = varRegex.exec(unprocessedCode)) !== null) {
         const scopeMatch = (varMatch[1] || 'public').toLowerCase();
         const scope = scopeMatch.replace(/publico|público|bublico|bublica|piblico|piblica|открытый|открытая|公开/, 'public')
                                 .replace(/privado|закрытый|закрытая|私有/, 'private');
-        const typeInput = varMatch[2];
+        let typeInput = varMatch[2];
+        const isArray = typeInput.endsWith('[]');
+        const baseTypeInput = isArray ? typeInput.slice(0, -2) : typeInput;
         const name = varMatch[3];
         const value = varMatch[4];
 
-        const canonicalType = typeMap[typeInput];
+        const canonicalType = typeMap[baseTypeInput];
         if (!canonicalType) {
             errors.push({
                 line: getLineNumber(code, varMatch.index),
@@ -867,10 +872,28 @@ export function transpile(code, scriptName = 'unnamed.ces') {
                 word: typeInput
             });
         } else {
-            const parsedValue = value ? parseInitialValue(value.trim(), canonicalType) : getDefaultValueForType(canonicalType);
+            let parsedValue = [];
+            if (isArray) {
+                if (value) {
+                    const trimmedValue = value.trim();
+                    if (trimmedValue.startsWith('[') && trimmedValue.endsWith(']')) {
+                        try {
+                            parsedValue = JSON.parse(trimmedValue.replace(/'/g, '"'));
+                        } catch (e) {
+                            parsedValue = trimmedValue.slice(1, -1).split(',').map(v => parseInitialValue(v.trim(), canonicalType));
+                        }
+                    } else {
+                        parsedValue = [parseInitialValue(trimmedValue, canonicalType)];
+                    }
+                } else {
+                    parsedValue = [];
+                }
+            } else {
+                parsedValue = value ? parseInitialValue(value.trim(), canonicalType) : getDefaultValueForType(canonicalType);
+            }
 
             if (scope === 'public') {
-                publicVars.push({ type: canonicalType, name: name, value: value, defaultValue: parsedValue });
+                publicVars.push({ type: canonicalType, name: name, value: value, defaultValue: parsedValue, isArray: isArray });
             } else {
                 privateVars.push({ name: name, value: value });
             }
@@ -881,7 +904,7 @@ export function transpile(code, scriptName = 'unnamed.ces') {
 
     // Almacenar los metadatos de las variables públicas
     const metadata = {
-        publicVars: publicVars.map(pv => ({ name: pv.name, type: pv.type, defaultValue: pv.defaultValue })),
+        publicVars: publicVars.map(pv => ({ name: pv.name, type: pv.type, defaultValue: pv.defaultValue, isArray: pv.isArray })),
         publicFunctions: publicFunctions,
         lineMap: lineMap
     };

@@ -486,6 +486,26 @@ async function handleInspectorDrop(e) {
     }
 
     if (isValid && valueToAssign !== null) {
+        // Special case: AnimatorController extraTargets dynamic list assignment
+        if (componentName === 'AnimatorController' && propName && propName.startsWith('extraTargets.')) {
+            const animatorCtrl = selectedMateria.getComponent(Components.AnimatorController);
+            const index = parseInt(propName.split('.')[1], 10);
+            if (animatorCtrl && !isNaN(index)) {
+                let targets = [];
+                if (animatorCtrl.extraTargets) {
+                    targets = String(animatorCtrl.extraTargets).split(',').map(t => t.trim()).filter(t => t !== '');
+                }
+                targets[index] = valueToAssign; // Assign the dropped Materia ID
+                animatorCtrl.extraTargets = targets.join(', ');
+                updateInspector();
+                if (typeof window.setSceneDirty === 'function') {
+                    window.setSceneDirty(true);
+                }
+                if (updateSceneCallback) updateSceneCallback();
+                return;
+            }
+        }
+
         // Find the target component instance
         let targetComponent;
         if (componentName === 'CreativeScript') {
@@ -597,7 +617,11 @@ function handleInspectorInput(e) {
             const props = propPath.split('.');
             let current = script.publicVars;
             for (let i = 0; i < props.length - 1; i++) {
-                if (!current[props[i]] || typeof current[props[i]] !== 'object') current[props[i]] = {};
+                const nextProp = props[i+1];
+                const isNextIndex = !isNaN(parseInt(nextProp, 10));
+                if (!current[props[i]] || typeof current[props[i]] !== 'object') {
+                    current[props[i]] = isNextIndex ? [] : {};
+                }
                 current = current[props[i]];
             }
             current[props[props.length - 1]] = value;
@@ -609,7 +633,17 @@ function handleInspectorInput(e) {
         const componentId = e.target.dataset.componentId; // Unique identifier if multiple custom components
         const component = selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == componentId);
         if (component) {
-            component.publicVars[propPath] = value;
+            const props = propPath.split('.');
+            let current = component.publicVars;
+            for (let i = 0; i < props.length - 1; i++) {
+                const nextProp = props[i+1];
+                const isNextIndex = !isNaN(parseInt(nextProp, 10));
+                if (!current[props[i]] || typeof current[props[i]] !== 'object') {
+                    current[props[i]] = isNextIndex ? [] : {};
+                }
+                current = current[props[i]];
+            }
+            current[props[props.length - 1]] = value;
         }
         return;
     }
@@ -803,6 +837,113 @@ function handleInspectorClick(e) {
     const L = window.Localization;
 
     if (!selectedMateria) return;
+
+    // --- AnimatorController extraTargets dynamic list buttons ---
+    const targetAddBtn = e.target.closest('.extra-target-add-btn');
+    if (targetAddBtn) {
+        e.stopPropagation();
+        const component = selectedMateria.getComponent(Components.AnimatorController);
+        if (component) {
+            let targets = [];
+            if (component.extraTargets) {
+                targets = String(component.extraTargets).split(',').map(t => t.trim()).filter(t => t !== '');
+            }
+            targets.push(""); // Add placeholder/empty string
+            component.extraTargets = targets.join(', ');
+            updateInspector();
+            if (typeof window.setSceneDirty === 'function') {
+                window.setSceneDirty(true);
+            }
+            if (updateSceneCallback) updateSceneCallback();
+        }
+        return;
+    }
+
+    const targetDelBtn = e.target.closest('.extra-target-delete-btn');
+    if (targetDelBtn) {
+        e.stopPropagation();
+        const component = selectedMateria.getComponent(Components.AnimatorController);
+        if (component) {
+            const idx = parseInt(targetDelBtn.dataset.index, 10);
+            let targets = [];
+            if (component.extraTargets) {
+                targets = String(component.extraTargets).split(',').map(t => t.trim()).filter(t => t !== '');
+            }
+            if (idx >= 0 && idx < targets.length) {
+                targets.splice(idx, 1);
+                component.extraTargets = targets.join(', ');
+                updateInspector();
+                if (typeof window.setSceneDirty === 'function') {
+                    window.setSceneDirty(true);
+                }
+                if (updateSceneCallback) updateSceneCallback();
+            }
+        }
+        return;
+    }
+
+    // --- Array Item Add/Delete Buttons ---
+    const addBtn = e.target.closest('.array-item-add-btn');
+    if (addBtn) {
+        e.stopPropagation();
+        const compType = addBtn.dataset.component;
+        const prop = addBtn.dataset.prop;
+        const sName = addBtn.dataset.scriptName;
+        const componentId = addBtn.dataset.componentId;
+
+        let targetComponent;
+        if (compType === 'CreativeScript') {
+            targetComponent = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === sName);
+        } else if (compType === 'CustomComponent') {
+            targetComponent = selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == componentId);
+        }
+
+        if (targetComponent) {
+            let arr = targetComponent.publicVars[prop];
+            if (!Array.isArray(arr)) {
+                arr = (arr !== undefined && arr !== null) ? [arr] : [];
+            }
+            arr.push(""); // Add an empty value as default
+            targetComponent.publicVars[prop] = arr;
+            updateInspector();
+            if (typeof window.setSceneDirty === 'function') {
+                window.setSceneDirty(true);
+            }
+            if (updateSceneCallback) updateSceneCallback();
+        }
+        return;
+    }
+
+    const delBtn = e.target.closest('.array-item-delete-btn');
+    if (delBtn) {
+        e.stopPropagation();
+        const compType = delBtn.dataset.component;
+        const prop = delBtn.dataset.prop;
+        const sName = delBtn.dataset.scriptName;
+        const componentId = delBtn.dataset.componentId;
+        const idx = parseInt(delBtn.dataset.index, 10);
+
+        let targetComponent;
+        if (compType === 'CreativeScript') {
+            targetComponent = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === sName);
+        } else if (compType === 'CustomComponent') {
+            targetComponent = selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == componentId);
+        }
+
+        if (targetComponent) {
+            let arr = targetComponent.publicVars[prop];
+            if (Array.isArray(arr)) {
+                arr.splice(idx, 1);
+                targetComponent.publicVars[prop] = arr;
+                updateInspector();
+                if (typeof window.setSceneDirty === 'function') {
+                    window.setSceneDirty(true);
+                }
+                if (updateSceneCallback) updateSceneCallback();
+            }
+        }
+        return;
+    }
 
     if (e.target.closest('#materia-tag-display')) {
         openTagsSelectorDialog(selectedMateria);
@@ -1844,8 +1985,9 @@ function renderActionInput(variable, currentValue, componentType, identifier) {
     `;
 }
 
-function renderPublicVarInput(variable, currentValue, componentType, identifier) {
-    let commonAttrs = `class="prop-input" data-prop="${variable.name}"`;
+function renderSinglePublicVarInput(variable, currentValue, componentType, identifier, propPathOverride = null) {
+    const propPath = propPathOverride || variable.name;
+    let commonAttrs = `class="prop-input" data-prop="${propPath}"`;
     if (componentType === 'CreativeScript') {
         commonAttrs += ` data-component="CreativeScript" data-script-name="${identifier}"`;
     } else if (componentType === 'CustomComponent') {
@@ -1867,16 +2009,16 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
         case 'Vector2':
             return `
                 <div class="prop-inputs">
-                    <input type="number" autocomplete="off" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.x"`)} value="${currentValue?.x || 0}" title="X">
-                    <input type="number" autocomplete="off" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.y"`)} value="${currentValue?.y || 0}" title="Y">
+                    <input type="number" autocomplete="off" class="prop-input" ${commonAttrs.replace(`data-prop="${propPath}"`, `data-prop="${propPath}.x"`)} value="${currentValue?.x || 0}" title="X">
+                    <input type="number" autocomplete="off" class="prop-input" ${commonAttrs.replace(`data-prop="${propPath}"`, `data-prop="${propPath}.y"`)} value="${currentValue?.y || 0}" title="Y">
                 </div>
             `;
         case 'Vector3':
             return `
                 <div class="prop-inputs">
-                    <input type="number" autocomplete="off" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.x"`)} value="${currentValue?.x || 0}" title="X">
-                    <input type="number" autocomplete="off" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.y"`)} value="${currentValue?.y || 0}" title="Y">
-                    <input type="number" autocomplete="off" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.z"`)} value="${currentValue?.z || 0}" title="Z">
+                    <input type="number" autocomplete="off" class="prop-input" ${commonAttrs.replace(`data-prop="${propPath}"`, `data-prop="${propPath}.x"`)} value="${currentValue?.x || 0}" title="X">
+                    <input type="number" autocomplete="off" class="prop-input" ${commonAttrs.replace(`data-prop="${propPath}"`, `data-prop="${propPath}.y"`)} value="${currentValue?.y || 0}" title="Y">
+                    <input type="number" autocomplete="off" class="prop-input" ${commonAttrs.replace(`data-prop="${propPath}"`, `data-prop="${propPath}.z"`)} value="${currentValue?.z || 0}" title="Z">
                 </div>
             `;
         case 'Tag':
@@ -1898,6 +2040,29 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
                         ${layers.map((l, i) => l ? `<option value="${i}" ${currentValue == i ? 'selected' : ''}>${i}: ${l}</option>` : '').join('')}
                     </select>
                 `;
+            }
+        case 'AnimationState':
+        case 'estado_animacion':
+        case 'estadoAnimacion':
+            {
+                const selectedMateria = getSelectedMateria();
+                let states = [];
+                if (selectedMateria) {
+                    const controller = selectedMateria.getComponentByName('AnimatorController');
+                    if (controller && controller.states) {
+                        states = Array.from(controller.states.keys());
+                    }
+                }
+                if (states.length > 0) {
+                    return `
+                        <select ${commonAttrs}>
+                            <option value="" ${!currentValue ? 'selected' : ''}>-- Seleccionar Estado --</option>
+                            ${states.map(s => `<option value="${s}" ${currentValue === s ? 'selected' : ''}>${s}</option>`).join('')}
+                        </select>
+                    `;
+                } else {
+                    return `<input type="text" autocomplete="off" ${commonAttrs} value="${currentValue || ''}" placeholder="Escribe el estado de animación">`;
+                }
             }
         case 'Sprite':
         case 'sprite':
@@ -1925,13 +2090,62 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
         case 'Action':
             return renderActionInput(variable, currentValue, componentType, identifier);
         default:
-            // Check if it's a component type
             if (componentIcons[variable.type]) {
                 return renderPropertyDropper(variable.type, currentValue, commonAttrs);
             }
-            // Para 'any' o tipos desconocidos, usar un campo de texto
             return `<input type="text" autocomplete="off" ${commonAttrs} value="${currentValue}">`;
     }
+}
+
+function renderPublicVarInput(variable, currentValue, componentType, identifier) {
+    if (variable.isArray || variable.type.endsWith('[]')) {
+        let baseType = variable.type;
+        if (baseType.endsWith('[]')) {
+            baseType = baseType.slice(0, -2);
+        }
+
+        let arrValue = currentValue;
+        if (!Array.isArray(arrValue)) {
+            if (arrValue !== undefined && arrValue !== null) {
+                arrValue = [arrValue];
+            } else {
+                arrValue = [];
+            }
+        }
+
+        const singleVar = { ...variable, type: baseType, isArray: false };
+        let itemsHTML = '';
+        arrValue.forEach((val, idx) => {
+            const inputHTML = renderSinglePublicVarInput(singleVar, val, componentType, identifier, `${variable.name}.${idx}`);
+            itemsHTML += `
+                <div class="array-item-row" style="display:flex; align-items:center; gap:8px; margin-bottom:4px; width: 100%;">
+                    <div style="flex-grow:1;">${inputHTML}</div>
+                    <button class="array-item-delete-btn"
+                            data-component="${componentType}"
+                            data-prop="${variable.name}"
+                            data-script-name="${identifier}"
+                            ${componentType === 'CustomComponent' ? `data-component-id="${identifier}"` : ''}
+                            data-index="${idx}"
+                            style="background:transparent; border:none; color:#ff4d4d; font-size:16px; cursor:pointer; padding:2px 6px;"
+                            title="Eliminar elemento">✕</button>
+                </div>
+            `;
+        });
+
+        return `
+            <div class="array-var-container" style="background:var(--bg-tertiary); border:1px solid var(--border-color); border-radius:6px; padding:8px; margin-bottom:8px; width: 100%;">
+                <div class="array-items-list">${itemsHTML}</div>
+                <button class="array-item-add-btn"
+                        data-component="${componentType}"
+                        data-prop="${variable.name}"
+                        data-script-name="${identifier}"
+                        ${componentType === 'CustomComponent' ? `data-component-id="${identifier}"` : ''}
+                        style="background:#00b4ff; border:none; color:white; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold; width:100%; text-align:center; margin-top:4px;">+ Añadir elemento</button>
+            </div>
+        `;
+    }
+
+    return renderSinglePublicVarInput(variable, currentValue, componentType, identifier);
 }
 
 
@@ -2938,9 +3152,36 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label>Materia Objetivo</label>
                         ${renderPropertyDropper('Materia', ley.targetMateria, 'data-component="AnimatorController" data-prop="targetMateria"')}
                     </div>
-                    <div class="inspector-row">
-                        <label title="IDs de otras materias separadas por comas">Otros Animadores (IDs)</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="AnimatorController" data-prop="extraTargets" value="${ley.extraTargets || ''}" placeholder="Ej: 15, 23">
+                    <div class="inspector-section-header" style="margin-top: 10px; margin-bottom: 5px;"><span style="font-weight: bold; font-size: 0.85em; text-transform: uppercase; color: var(--color-text-muted);">Otros Animadores en Sincronía</span></div>
+                    <div style="background:var(--bg-tertiary); border:1px solid var(--border-color); border-radius:6px; padding:8px; margin-bottom:12px; width: 100%;">
+                        <div class="extra-targets-list">
+                            ${(() => {
+                                let targetsArr = [];
+                                if (ley.extraTargets) {
+                                    targetsArr = String(ley.extraTargets).split(',').map(t => t.trim()).filter(t => t !== '');
+                                }
+                                if (targetsArr.length === 0) {
+                                    return `<p style="font-size:11px; color:#aaa; margin:5px 0; text-align: center;">No hay animadores adicionales. Arrastra objetos abajo para agregarlos.</p>`;
+                                }
+                                return targetsArr.map((targetId, idx) => {
+                                    return `
+                                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px; width: 100%;">
+                                            <div style="flex-grow:1;">
+                                                ${renderPropertyDropper('Materia', parseInt(targetId, 10), `data-component="AnimatorController" data-prop="extraTargets.${idx}"`)}
+                                            </div>
+                                            <button class="extra-target-delete-btn"
+                                                    data-component="AnimatorController"
+                                                    data-index="${idx}"
+                                                    style="background:transparent; border:none; color:#ff4d4d; font-size:16px; cursor:pointer; padding:2px 6px;"
+                                                    title="Eliminar">✕</button>
+                                        </div>
+                                    `;
+                                }).join('');
+                            })()}
+                        </div>
+                        <button class="extra-target-add-btn"
+                                data-component="AnimatorController"
+                                style="background:#00b4ff; border:none; color:white; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold; width:100%; text-align:center; margin-top:4px;">+ Añadir Animador</button>
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="AnimatorController" data-prop="smartMode" ${ley.smartMode ? 'checked' : ''}>
@@ -5572,7 +5813,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
                     </fieldset>
                 </div>
 
-                <button id="save-meta-btn" class="primary-btn ${metaData.textureType === 'Animation Sheet' ? 'hidden' : ''}" style="width: 100%; margin-top: 10px;" data-i18n="APPLY">${L.get('APPLY', 'Aplicar')}</button>
+                <button id="save-meta-btn" class="primary-btn" style="width: 100%; margin-top: 10px;" data-i18n="APPLY">${L.get('APPLY', 'Aplicar')}</button>
                 <hr>
                 <div class="preview-container" style="text-align: center; margin-top: 10px;"><img id="inspector-preview-img" src="" alt="Preview" style="max-width: 100%; max-height: 150px; object-fit: contain; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px;"></div>
             `;
