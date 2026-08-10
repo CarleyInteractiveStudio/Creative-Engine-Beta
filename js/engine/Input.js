@@ -239,10 +239,13 @@ class InputManager {
         if (this._isGameRunning && !isFromGameWindow && !isGameCanvas) return;
 
         const key = event.key;
-        if (!this._keys.get(key)) {
-            this._keysDown.add(key);
+        const keysToSet = key.length === 1 ? [key.toLowerCase(), key.toUpperCase()] : [key];
+        for (const k of keysToSet) {
+            if (!this._keys.get(k)) {
+                this._keysDown.add(k);
+            }
+            this._keys.set(k, true);
         }
-        this._keys.set(key, true);
     }
 
     static _onKeyUp(event) {
@@ -254,8 +257,11 @@ class InputManager {
         if (this._isGameRunning && !isFromGameWindow && !isGameCanvas) return;
 
         const key = event.key;
-        this._keys.set(key, false);
-        this._keysUp.add(key);
+        const keysToSet = key.length === 1 ? [key.toLowerCase(), key.toUpperCase()] : [key];
+        for (const k of keysToSet) {
+            this._keys.set(k, false);
+            this._keysUp.add(k);
+        }
     }
 
     /**
