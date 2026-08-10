@@ -4397,11 +4397,19 @@ export class LateralMovement extends Leyes {
         const engine = RuntimeAPIManager.getAPI('engine');
         if (!input) return;
 
+        const rb = this.materia.getComponent(Rigidbody2D);
+        const transform = this.materia.getComponent(Transform);
+
         // Ground check
         if (this.groundTag && engine) {
             this.isGrounded = engine.isTouchingTag(this.materia, this.groundTag);
         } else {
             this.isGrounded = true;
+        }
+
+        // Safeguard: If we have a Rigidbody2D and it is moving vertically, we are not grounded
+        if (rb && Math.abs(rb.velocity.y) > 1.0) {
+            this.isGrounded = false;
         }
 
         let moveX = 0;
@@ -4414,9 +4422,6 @@ export class LateralMovement extends Leyes {
         this.isCrouching = isCrouching;
         this.lastMove.y = isCrouching ? -1 : 0;
         const currentSpeed = isCrouching ? this.speed * 0.5 : this.speed;
-
-        const rb = this.materia.getComponent(Rigidbody2D);
-        const transform = this.materia.getComponent(Transform);
 
         if (this.useRigidbody) {
             if (rb) {
@@ -4473,6 +4478,13 @@ export class LateralMovement extends Leyes {
 
         const transform = this.materia.getComponent(Transform);
 
+        // Determine active horizontal direction from keys or physics velocity (for jump/fall accuracy)
+        let activeMoveX = moveX;
+        if (activeMoveX === 0 && rb) {
+            if (rb.velocity.x > 0.5) activeMoveX = 1;
+            else if (rb.velocity.x < -0.5) activeMoveX = -1;
+        }
+
         if (!this.useCustomAnimations) {
             // If useCustomAnimations is false, and there's an AnimatorController, LateralMovement takes direct control
             // of driving the states mapped to the 3x3 direction grid (Smart Mode)
@@ -4480,36 +4492,48 @@ export class LateralMovement extends Leyes {
                 let dirIndex = 4; // Center (Idle)
 
                 if (!this.isGrounded) {
-                    if (moveX < -0.01) {
+                    if (activeMoveX < -0.01) {
                         dirIndex = 0; // Up-Left (Jump Left)
-                    } else if (moveX > 0.01) {
+                    } else if (activeMoveX > 0.01) {
                         dirIndex = 2; // Up-Right (Jump Right)
                     } else {
                         dirIndex = 1; // Up (Jump straight)
                     }
                 } else if (this.isCrouching) {
-                    if (moveX < -0.01) {
+                    if (activeMoveX < -0.01) {
                         dirIndex = 6; // Down-Left (Crouch Left)
-                    } else if (moveX > 0.01) {
+                    } else if (activeMoveX > 0.01) {
                         dirIndex = 8; // Down-Right (Crouch Right)
                     } else {
                         dirIndex = 7; // Down (Crouch still)
                     }
                 } else {
-                    if (moveX < -0.01) {
+                    if (activeMoveX < -0.01) {
                         dirIndex = 3; // Left (Run Left)
-                    } else if (moveX > 0.01) {
+                    } else if (activeMoveX > 0.01) {
                         dirIndex = 5; // Right (Run Right)
                     } else {
                         dirIndex = 4; // Idle / Center
                     }
                 }
 
-                const stateName = controller.controller.movementMapping[dirIndex];
+                let stateName = controller.controller.movementMapping[dirIndex];
+                if (!stateName) {
+                    // Fallback for missing diagonal or specific states
+                    if (dirIndex === 0 || dirIndex === 2) {
+                        stateName = controller.controller.movementMapping[1]; // Fallback to Up (Jump straight)
+                    } else if (dirIndex === 6 || dirIndex === 8) {
+                        stateName = controller.controller.movementMapping[7]; // Fallback to Down (Crouch still)
+                    }
+                    if (!stateName) {
+                        stateName = controller.controller.movementMapping[4]; // Final fallback to Idle
+                    }
+                }
+
                 if (stateName) {
                     controller.play(stateName, true);
-                    if (transform && moveX !== 0) {
-                        transform.flipX = moveX < 0;
+                    if (transform && activeMoveX !== 0) {
+                        transform.flipX = activeMoveX < 0;
                     }
                     return;
                 }
@@ -4525,9 +4549,9 @@ export class LateralMovement extends Leyes {
 
         if (!this.isGrounded) {
             let animToPlay = "";
-            if (moveX < -0.01) {
+            if (activeMoveX < -0.01) {
                 animToPlay = this.jumpLeftAnim || this.jumpAnim || this.fallAnim || "jump";
-            } else if (moveX > 0.01) {
+            } else if (activeMoveX > 0.01) {
                 animToPlay = this.jumpRightAnim || this.jumpAnim || this.fallAnim || "jump";
             } else {
                 if (rb && rb.velocity.y < -0.1) {
@@ -4537,27 +4561,27 @@ export class LateralMovement extends Leyes {
                 }
             }
             play(animToPlay);
-            if (transform && moveX !== 0) {
-                transform.flipX = moveX < 0;
+            if (transform && activeMoveX !== 0) {
+                transform.flipX = activeMoveX < 0;
             }
         } else {
             if (this.isCrouching) {
                 let animToPlay = "";
-                if (moveX < -0.01) {
+                if (activeMoveX < -0.01) {
                     animToPlay = this.crouchLeftAnim || this.crouchAnim || "crouch";
-                } else if (moveX > 0.01) {
+                } else if (activeMoveX > 0.01) {
                     animToPlay = this.crouchRightAnim || this.crouchAnim || "crouch";
                 } else {
                     animToPlay = this.crouchAnim || "crouch";
                 }
                 play(animToPlay);
-                if (transform && moveX !== 0) {
-                    transform.flipX = moveX < 0;
+                if (transform && activeMoveX !== 0) {
+                    transform.flipX = activeMoveX < 0;
                 }
-            } else if (Math.abs(moveX) > 0.01) {
+            } else if (Math.abs(activeMoveX) > 0.01) {
                 play(this.runAnim || "run");
-                if (transform && moveX !== 0) {
-                    transform.flipX = moveX < 0;
+                if (transform && activeMoveX !== 0) {
+                    transform.flipX = activeMoveX < 0;
                 }
             } else {
                 play(this.idleAnim || "idle");
