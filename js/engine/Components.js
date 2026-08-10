@@ -3568,6 +3568,7 @@ export class AnimatorController extends Leyes {
                 continue;
             }
 
+            const sameClip = anim.animationClipPath === state.animationClip && anim.isPlaying;
             // Pass control to animator with overrides support
             anim.play(state.animationClip, {
                 loop: overrides.loop !== undefined ? overrides.loop : (state.loop !== undefined ? state.loop : true),
@@ -3575,7 +3576,7 @@ export class AnimatorController extends Leyes {
                 startFrame: overrides.startFrame !== undefined ? overrides.startFrame : (state.startFrame || 0),
                 endFrame: overrides.endFrame !== undefined ? overrides.endFrame : (state.endFrame !== undefined ? state.endFrame : -1),
                 source: 'controller',
-                force: force
+                force: sameClip ? false : force
             });
         }
     }
@@ -3665,11 +3666,11 @@ export class AnimatorController extends Leyes {
         const transform = trackingMateria.getComponent(Transform);
 
         const isGrounded = movement && movement.isActive && (movement.isGrounded !== undefined ? movement.isGrounded : true);
+        const isLateral = movement instanceof LateralMovement;
         // Intention check: is the user trying to move via Input?
-        const isIntentionalStop = movement && movement.isActive && movement.lastMove.x === 0 && movement.lastMove.y === 0 && isGrounded;
+        const isIntentionalStop = movement && movement.isActive && movement.lastMove.x === 0 && (isLateral || movement.lastMove.y === 0) && isGrounded;
 
         let horiz = 0, vert = 0, moving = false;
-        const isLateral = movement instanceof LateralMovement;
 
         // 1. Check Movement component (Highest priority for intentional input)
         if (movement && movement.isActive && !isIntentionalStop) {
@@ -3802,7 +3803,11 @@ export class AnimatorController extends Leyes {
             if (this.smartMode && !isLateral) {
                 this._handleSmartMode();
             }
-            this._checkTransitions();
+            // Bypass graph transitions if LateralMovement is directly driving the states (Smart Mode)
+            const bypassTransitions = isLateral && movement && !movement.useCustomAnimations;
+            if (!bypassTransitions) {
+                this._checkTransitions();
+            }
         }
     }
 
@@ -4401,12 +4406,23 @@ export class LateralMovement extends Leyes {
         const rb = this.materia.getComponent(Rigidbody2D);
         const transform = this.materia.getComponent(Transform);
 
-        // Ground check
+        // Ground check with stability buffer to avoid contact flicker
+        let grounded = false;
         if (this.groundTag && engine) {
-            this.isGrounded = engine.isTouchingTag(this.materia, this.groundTag);
+            grounded = engine.isTouchingTag(this.materia, this.groundTag);
         } else {
-            this.isGrounded = true;
+            grounded = true;
         }
+
+        // Stability buffer: if the physics engine has a tiny fluctuation but vertical velocity is close to zero,
+        // and we were already grounded, keep us grounded to prevent single-frame air stutters.
+        if (rb) {
+            const isRestingY = Math.abs(rb.velocity.y) < 1.0;
+            if (!grounded && isRestingY && this.isGrounded) {
+                grounded = true;
+            }
+        }
+        this.isGrounded = grounded;
 
         let moveX = 0;
         if (input.isKeyPressed(this.rightKey)) moveX += 1;
