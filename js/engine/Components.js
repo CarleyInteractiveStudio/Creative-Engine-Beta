@@ -3515,6 +3515,7 @@ export class AnimatorController extends Leyes {
         }
 
         const state = this.states.get(stateName);
+        if (!state) return;
 
         // Guard: Prevent redundant play calls from resetting current animation frame on every frame.
         if (this.currentStateName === stateName && !overrides.forceRestart) {
@@ -4407,18 +4408,13 @@ export class LateralMovement extends Leyes {
             this.isGrounded = true;
         }
 
-        // Safeguard: If we have a Rigidbody2D and it is moving vertically, we are not grounded
-        if (rb && Math.abs(rb.velocity.y) > 1.0) {
-            this.isGrounded = false;
-        }
-
         let moveX = 0;
         if (input.isKeyPressed(this.rightKey)) moveX += 1;
         if (input.isKeyPressed(this.leftKey)) moveX -= 1;
 
         this.lastMove.x = moveX;
 
-        const isCrouching = this.isGrounded && input.isKeyPressed(this.downKey);
+        const isCrouching = this.isGrounded && input.isKeyPressed(this.downKey) && (!rb || Math.abs(rb.velocity.y) < 1.0);
         this.isCrouching = isCrouching;
         this.lastMove.y = isCrouching ? -1 : 0;
         const currentSpeed = isCrouching ? this.speed * 0.5 : this.speed;
