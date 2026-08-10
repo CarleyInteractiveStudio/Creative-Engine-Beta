@@ -3798,7 +3798,7 @@ export class AnimatorController extends Leyes {
         const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
 
         if (isGame) {
-            if (this.smartMode) {
+            if (this.smartMode && !isLateral) {
                 this._handleSmartMode();
             }
             this._checkTransitions();
@@ -4362,7 +4362,7 @@ export class LateralMovement extends Leyes {
         this.moveSound = ""; // Ruta al sonido de movimiento
         this.jumpSound = ""; // Ruta al sonido de salto
 
-        this.useCustomAnimations = true; // Casilla para animaciones específicas
+        this.useCustomAnimations = false; // Casilla para animaciones específicas
 
         // Animations
         this.idleAnim = "idle";
