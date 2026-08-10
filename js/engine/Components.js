@@ -4538,7 +4538,7 @@ export class LateralMovement extends Leyes {
                         stateName = controller.controller.movementMapping[7]; // Fallback to Down (Crouch still)
                     }
                     if (!stateName) {
-                        stateName = controller.controller.movementMapping[4]; // Final fallback to Idle
+                        stateName = controller.controller.movementMapping[4] || controller.controller.entryState; // Final fallback to Idle or Entry State
                     }
                 }
 
