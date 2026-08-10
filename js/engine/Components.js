@@ -4474,9 +4474,9 @@ export class LateralMovement extends Leyes {
 
         const transform = this.materia.getComponent(Transform);
 
-        // Determine active horizontal direction from keys or physics velocity (for jump/fall accuracy)
+        // Determine active horizontal direction from keys or physics velocity (ONLY while in the air for jump/fall accuracy)
         let activeMoveX = moveX;
-        if (activeMoveX === 0 && rb) {
+        if (!this.isGrounded && activeMoveX === 0 && rb) {
             if (rb.velocity.x > 0.5) activeMoveX = 1;
             else if (rb.velocity.x < -0.5) activeMoveX = -1;
         }
