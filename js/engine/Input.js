@@ -251,17 +251,20 @@ class InputManager {
     static _onKeyUp(event) {
         if (event.target.matches('input, textarea, select')) return;
 
-        const isFromGameWindow = this._gameWindows.has(event.view);
-        const isGameCanvas = (this._activeCanvas && (this._activeCanvas.id === 'game-canvas' || this._activeCanvas.id === 'game-canvas-3d'));
-
-        if (this._isGameRunning && !isFromGameWindow && !isGameCanvas) return;
-
+        // For robustness and to avoid any keys getting stuck (such as the crouch key),
+        // we always register the keyup event to set key state to false,
+        // even if focus/active canvas conditions are not fully met.
         const key = event.key;
         const keysToSet = key.length === 1 ? [key.toLowerCase(), key.toUpperCase()] : [key];
         for (const k of keysToSet) {
             this._keys.set(k, false);
             this._keysUp.add(k);
         }
+
+        const isFromGameWindow = this._gameWindows.has(event.view);
+        const isGameCanvas = (this._activeCanvas && (this._activeCanvas.id === 'game-canvas' || this._activeCanvas.id === 'game-canvas-3d'));
+
+        if (this._isGameRunning && !isFromGameWindow && !isGameCanvas) return;
     }
 
     /**

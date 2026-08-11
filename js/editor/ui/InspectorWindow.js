@@ -6620,7 +6620,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
                         animationClip: "",
                         speed: 12.0,
                         startFrame: 0,
-                        endFrame: 5,
+                        endFrame: -1,
                         loop: true,
                         position: { x: 50 + Math.random() * 150, y: 50 + Math.random() * 150 }
                     });
