@@ -4446,7 +4446,7 @@ export class LateralMovement extends Leyes {
 
         this.lastMove.x = moveX;
 
-        const isCrouching = this.isGrounded && input.isKeyPressed(this.downKey) && (!rb || Math.abs(rb.velocity.y) < 1.0);
+        const isCrouching = this.isGrounded && input.isKeyPressed(this.downKey) && (!rb || Math.abs(rb.velocity.y) < 5.0);
         this.isCrouching = isCrouching;
         this.lastMove.y = isCrouching ? -1 : 0;
         const currentSpeed = isCrouching ? this.speed * 0.5 : this.speed;
