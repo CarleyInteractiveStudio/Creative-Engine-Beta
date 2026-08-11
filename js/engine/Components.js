@@ -2327,7 +2327,11 @@ export class Animator extends Leyes {
 
         // Trigger immediate load if needed
         if (!this.animationClip && this.animationClipPath && !this._isLoading) {
+            const desiredLoop = options.loop !== undefined ? options.loop : this.loop;
             this.loadAnimationClip(this.projectsDirHandle || window.projectsDirHandle).then(() => {
+                if (desiredLoop !== undefined) {
+                    this.loop = desiredLoop;
+                }
                 if (this.isPlaying) this.applyCurrentFrame();
             });
         } else if (this.animationClip) {
@@ -3667,8 +3671,9 @@ export class AnimatorController extends Leyes {
 
         const isGrounded = movement && movement.isActive && (movement.isGrounded !== undefined ? movement.isGrounded : true);
         const isLateral = movement instanceof LateralMovement;
-        // Intention check: is the user trying to move via Input?
-        const isIntentionalStop = movement && movement.isActive && movement.lastMove.x === 0 && (isLateral || movement.lastMove.y === 0) && isGrounded;
+        const isCrouching = movement && movement.isActive && (movement.isCrouching === true);
+        // Intention check: is the user trying to move via Input? (Crouching is an active movement state and shouldn't be counted as a stopped state)
+        const isIntentionalStop = movement && movement.isActive && movement.lastMove.x === 0 && ((isLateral && !isCrouching) || movement.lastMove.y === 0) && isGrounded;
 
         let horiz = 0, vert = 0, moving = false;
 
@@ -3994,6 +3999,17 @@ export class AnimatorController extends Leyes {
     onAnimationEnd(clipName) {
         // Handle transitions with hasExitTime
         if (!this.controller || !this.controller.transitions) return;
+
+        // Bypass transitions and safety fallback if LateralMovement is directly driving the states (Smart Mode)
+        const trackingMateria = this._resolveMateria(this.targetMateria) || this.materia;
+        if (trackingMateria) {
+            const movement = trackingMateria.getComponent(LateralMovement) || trackingMateria.getComponent(TopDownMovement);
+            const isLateral = movement instanceof LateralMovement;
+            const bypassTransitions = isLateral && movement && !movement.useCustomAnimations;
+            if (bypassTransitions) {
+                return;
+            }
+        }
 
         let transitionFound = false;
 
