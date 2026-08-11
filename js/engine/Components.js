@@ -4438,6 +4438,8 @@ export class LateralMovement extends Leyes {
                 grounded = true;
             }
         }
+
+        const wasGrounded = this._lastLoggedGrounded !== undefined ? this._lastLoggedGrounded : this.isGrounded;
         this.isGrounded = grounded;
 
         let moveX = 0;
@@ -4446,10 +4448,17 @@ export class LateralMovement extends Leyes {
 
         this.lastMove.x = moveX;
 
+        const wasCrouching = this._lastLoggedCrouching !== undefined ? this._lastLoggedCrouching : this.isCrouching;
         const isCrouching = this.isGrounded && input.isKeyPressed(this.downKey) && (!rb || Math.abs(rb.velocity.y) < 5.0);
         this.isCrouching = isCrouching;
         this.lastMove.y = isCrouching ? -1 : 0;
         const currentSpeed = isCrouching ? this.speed * 0.5 : this.speed;
+
+        if (this.isGrounded !== wasGrounded || this.isCrouching !== wasCrouching) {
+            console.log(`[LateralMovement DEBUG] grounded: ${wasGrounded} -> ${this.isGrounded} | crouching: ${wasCrouching} -> ${this.isCrouching} (rb.velocity.y: ${rb ? rb.velocity.y.toFixed(2) : '0.00'})`);
+            this._lastLoggedGrounded = this.isGrounded;
+            this._lastLoggedCrouching = this.isCrouching;
+        }
 
         if (this.useRigidbody) {
             if (rb) {
