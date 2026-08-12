@@ -3841,6 +3841,10 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="GROUND_TAG">${L.get('GROUND_TAG', 'Tag del Suelo')}</label>
                         <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="groundTag" value="${ley.groundTag || 'Ground'}">
                     </div>
+                    <div class="prop-row-multi">
+                        <label>Mult. Vel. Agachado</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="0.05" min="0" max="1" data-component="LateralMovement" data-prop="crouchSpeedMultiplier" value="${ley.crouchSpeedMultiplier !== undefined ? ley.crouchSpeedMultiplier : 0.5}">
+                    </div>
                     <hr>
                     <div class="inspector-section-header"><span>${L.get('SOUNDS', 'Sonidos')}</span></div>
                     <div class="inspector-row">
@@ -3859,39 +3863,39 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     ${ley.useCustomAnimations ? `
                     <div class="prop-row-multi">
-                        <label>Idle</label>
+                        <label>Quieto (Idle)</label>
                         ${renderAnimationStateSelectOrInput(selectedMateria, "idleAnim", ley.idleAnim)}
                     </div>
                     <div class="prop-row-multi">
-                        <label>Run</label>
+                        <label>Correr (Run)</label>
                         ${renderAnimationStateSelectOrInput(selectedMateria, "runAnim", ley.runAnim)}
                     </div>
                     <div class="prop-row-multi">
-                        <label>Jump</label>
+                        <label>Saltar (Jump)</label>
                         ${renderAnimationStateSelectOrInput(selectedMateria, "jumpAnim", ley.jumpAnim)}
                     </div>
                     <div class="prop-row-multi">
-                        <label>Jump Left</label>
+                        <label>Saltar Izquierda (Jump Left)</label>
                         ${renderAnimationStateSelectOrInput(selectedMateria, "jumpLeftAnim", ley.jumpLeftAnim)}
                     </div>
                     <div class="prop-row-multi">
-                        <label>Jump Right</label>
+                        <label>Saltar Derecha (Jump Right)</label>
                         ${renderAnimationStateSelectOrInput(selectedMateria, "jumpRightAnim", ley.jumpRightAnim)}
                     </div>
                     <div class="prop-row-multi">
-                        <label>Fall</label>
+                        <label>Caer (Fall)</label>
                         ${renderAnimationStateSelectOrInput(selectedMateria, "fallAnim", ley.fallAnim)}
                     </div>
                     <div class="prop-row-multi">
-                        <label>Crouch</label>
+                        <label>Agacharse (Crouch)</label>
                         ${renderAnimationStateSelectOrInput(selectedMateria, "crouchAnim", ley.crouchAnim || 'crouch')}
                     </div>
                     <div class="prop-row-multi">
-                        <label>Crouch Left</label>
+                        <label>Agacharse Izquierda (Crouch Left)</label>
                         ${renderAnimationStateSelectOrInput(selectedMateria, "crouchLeftAnim", ley.crouchLeftAnim)}
                     </div>
                     <div class="prop-row-multi">
-                        <label>Crouch Right</label>
+                        <label>Agacharse Derecha (Crouch Right)</label>
                         ${renderAnimationStateSelectOrInput(selectedMateria, "crouchRightAnim", ley.crouchRightAnim)}
                     </div>
                     ` : `

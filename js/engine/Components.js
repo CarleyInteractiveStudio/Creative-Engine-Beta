@@ -2111,17 +2111,24 @@ export class Animator extends Leyes {
     async loadAnimationClip(projectsDirHandle) {
         if (!this.animationClipPath) return;
         this.projectsDirHandle = projectsDirHandle;
+        const pathToLoad = this.animationClipPath;
+        this._loadingPath = pathToLoad;
         this._isLoading = true;
 
         this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
 
         try {
-            const url = await getURLForAssetPath(this.animationClipPath, projectsDirHandle);
-            if (!url) throw new Error(`Could not get URL for animation clip: ${this.animationClipPath}`);
+            const url = await getURLForAssetPath(pathToLoad, projectsDirHandle);
+            if (!url) throw new Error(`Could not get URL for animation clip: ${pathToLoad}`);
 
             const response = await fetch(url);
             if (typeof recordFetch === 'function') await recordFetch(response);
             const data = await response.json();
+
+            // Ignore stale load result if the path was changed during asynchronous load
+            if (this.animationClipPath !== pathToLoad) {
+                return;
+            }
 
             // Handle both .cea and .ceanimclip formats
             let clip;
@@ -2326,7 +2333,8 @@ export class Animator extends Leyes {
         this.frameTimer = 0;
 
         // Trigger immediate load if needed
-        if (!this.animationClip && this.animationClipPath && !this._isLoading) {
+        const needsLoad = !this.animationClip && this.animationClipPath && (!this._isLoading || this._loadingPath !== this.animationClipPath);
+        if (needsLoad) {
             const desiredLoop = options.loop !== undefined ? options.loop : this.loop;
             this.loadAnimationClip(this.projectsDirHandle || window.projectsDirHandle).then(() => {
                 if (desiredLoop !== undefined) {
@@ -4395,6 +4403,7 @@ export class LateralMovement extends Leyes {
         this.speed = 200;
         this.jumpForce = 400;
         this.useRigidbody = true;
+        this.crouchSpeedMultiplier = 0.5; // Multiplicador de velocidad al agacharse
         this.groundTag = 'Ground';
         this.isGrounded = false;
         this.isCrouching = false;
@@ -4468,10 +4477,10 @@ export class LateralMovement extends Leyes {
         this.lastMove.x = moveX;
 
         const wasCrouching = this._lastLoggedCrouching !== undefined ? this._lastLoggedCrouching : this.isCrouching;
-        const isCrouching = this.isGrounded && input.isKeyPressed(this.downKey) && (!rb || Math.abs(rb.velocity.y) < 5.0);
+        const isCrouching = this.isGrounded && input.isKeyPressed(this.downKey);
         this.isCrouching = isCrouching;
         this.lastMove.y = isCrouching ? -1 : 0;
-        const currentSpeed = isCrouching ? this.speed * 0.5 : this.speed;
+        const currentSpeed = isCrouching ? this.speed * (this.crouchSpeedMultiplier !== undefined ? this.crouchSpeedMultiplier : 0.5) : this.speed;
 
         if (this.isGrounded !== wasGrounded || this.isCrouching !== wasCrouching) {
             console.log(`[LateralMovement DEBUG] grounded: ${wasGrounded} -> ${this.isGrounded} | crouching: ${wasCrouching} -> ${this.isCrouching} (rb.velocity.y: ${rb ? rb.velocity.y.toFixed(2) : '0.00'})`);
@@ -4673,6 +4682,7 @@ export class LateralMovement extends Leyes {
         newMovement.speed = this.speed;
         newMovement.jumpForce = this.jumpForce;
         newMovement.useRigidbody = this.useRigidbody;
+        newMovement.crouchSpeedMultiplier = this.crouchSpeedMultiplier;
         newMovement.groundTag = this.groundTag;
         newMovement.moveSound = this.moveSound;
         newMovement.jumpSound = this.jumpSound;
