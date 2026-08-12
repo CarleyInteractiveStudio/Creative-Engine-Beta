@@ -1836,6 +1836,28 @@ function renderLightColorPresets(componentName) {
     `;
 }
 
+function renderAnimationStateSelectOrInput(selectedMateria, propName, currentValue) {
+    let states = [];
+    if (selectedMateria) {
+        const controller = selectedMateria.getComponentByName('AnimatorController');
+        if (controller && controller.states) {
+            states = Array.from(controller.states.keys());
+        }
+    }
+    const commonAttrs = `data-component="LateralMovement" data-prop="${propName}"`;
+    if (states.length > 0) {
+        return `
+            <select class="prop-input" ${commonAttrs}>
+                <option value="" ${!currentValue ? 'selected' : ''}>-- Seleccionar Estado --</option>
+                ${states.map(s => `<option value="${s}" ${currentValue === s ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
+        `;
+    } else {
+        return `<input type="text" autocomplete="off" class="prop-input" ${commonAttrs} value="${currentValue || ''}">`;
+    }
+}
+window.renderAnimationStateSelectOrInput = renderAnimationStateSelectOrInput;
+
 function renderPropertyDropper(type, currentValue, commonAttrs) {
     const L = window.Localization;
     let displayName = 'None';
@@ -3830,39 +3852,39 @@ async function updateInspectorForMateria(selectedMateria) {
                     ${ley.useCustomAnimations ? `
                     <div class="prop-row-multi">
                         <label>Idle</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="idleAnim" value="${ley.idleAnim || ''}">
+                        ${renderAnimationStateSelectOrInput(selectedMateria, "idleAnim", ley.idleAnim)}
                     </div>
                     <div class="prop-row-multi">
                         <label>Run</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="runAnim" value="${ley.runAnim || ''}">
+                        ${renderAnimationStateSelectOrInput(selectedMateria, "runAnim", ley.runAnim)}
                     </div>
                     <div class="prop-row-multi">
                         <label>Jump</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="jumpAnim" value="${ley.jumpAnim || ''}">
+                        ${renderAnimationStateSelectOrInput(selectedMateria, "jumpAnim", ley.jumpAnim)}
                     </div>
                     <div class="prop-row-multi">
                         <label>Jump Left</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="jumpLeftAnim" value="${ley.jumpLeftAnim || ''}">
+                        ${renderAnimationStateSelectOrInput(selectedMateria, "jumpLeftAnim", ley.jumpLeftAnim)}
                     </div>
                     <div class="prop-row-multi">
                         <label>Jump Right</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="jumpRightAnim" value="${ley.jumpRightAnim || ''}">
+                        ${renderAnimationStateSelectOrInput(selectedMateria, "jumpRightAnim", ley.jumpRightAnim)}
                     </div>
                     <div class="prop-row-multi">
                         <label>Fall</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="fallAnim" value="${ley.fallAnim || ''}">
+                        ${renderAnimationStateSelectOrInput(selectedMateria, "fallAnim", ley.fallAnim)}
                     </div>
                     <div class="prop-row-multi">
                         <label>Crouch</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="crouchAnim" value="${ley.crouchAnim || 'crouch'}">
+                        ${renderAnimationStateSelectOrInput(selectedMateria, "crouchAnim", ley.crouchAnim || 'crouch')}
                     </div>
                     <div class="prop-row-multi">
                         <label>Crouch Left</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="crouchLeftAnim" value="${ley.crouchLeftAnim || ''}">
+                        ${renderAnimationStateSelectOrInput(selectedMateria, "crouchLeftAnim", ley.crouchLeftAnim)}
                     </div>
                     <div class="prop-row-multi">
                         <label>Crouch Right</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="crouchRightAnim" value="${ley.crouchRightAnim || ''}">
+                        ${renderAnimationStateSelectOrInput(selectedMateria, "crouchRightAnim", ley.crouchRightAnim)}
                     </div>
                     ` : `
                     <div style="font-size:11px; color:#aaa; margin: 5px 10px; line-height: 1.3;">

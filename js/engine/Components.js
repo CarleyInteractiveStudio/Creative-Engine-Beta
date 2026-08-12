@@ -3808,8 +3808,9 @@ export class AnimatorController extends Leyes {
             if (this.smartMode && !isLateral) {
                 this._handleSmartMode();
             }
-            // Bypass graph transitions if LateralMovement is directly driving the states (Smart Mode)
-            const bypassTransitions = isLateral && movement && !movement.useCustomAnimations;
+            // Bypass graph transitions if LateralMovement is active
+            // to allow exclusive control over driving states.
+            const bypassTransitions = isLateral && movement && movement.isActive;
             if (!bypassTransitions) {
                 this._checkTransitions();
             }
@@ -3927,8 +3928,9 @@ export class AnimatorController extends Leyes {
     }
 
     _checkTransitions() {
-        if (!this.controller.transitions) return;
+        if (!this.controller || !this.controller.transitions) return;
 
+        let transitionTaken = false;
         for (const trans of this.controller.transitions) {
             if (trans.from === this.currentStateName) {
                 if (this._evaluateConditions(trans.conditions)) {
@@ -3937,7 +3939,24 @@ export class AnimatorController extends Leyes {
                     } else {
                         this.play(trans.to, false);
                     }
+                    transitionTaken = true;
                     break;
+                }
+            }
+        }
+
+        // Automatic fallback if we are in a sub-state and none of its incoming conditions are met anymore
+        if (!transitionTaken && this.currentStateName && this.controller.entryState && this.currentStateName !== this.controller.entryState) {
+            const incomingTransitions = this.controller.transitions.filter(t => t.to === this.currentStateName);
+            if (incomingTransitions.length > 0) {
+                const anyIncomingMet = incomingTransitions.some(t => {
+                    return !t.conditions || t.conditions.length === 0 || this._evaluateConditions(t.conditions);
+                });
+                if (!anyIncomingMet) {
+                    if (window.CE_DEBUG_ANIMATION) {
+                        console.log(`[AnimatorController] Las condiciones para estar en el estado '${this.currentStateName}' ya no se cumplen. Volviendo al estado principal '${this.controller.entryState}'.`);
+                    }
+                    this.play(this.controller.entryState, true);
                 }
             }
         }
@@ -4005,7 +4024,7 @@ export class AnimatorController extends Leyes {
         if (trackingMateria) {
             const movement = trackingMateria.getComponent(LateralMovement) || trackingMateria.getComponent(TopDownMovement);
             const isLateral = movement instanceof LateralMovement;
-            const bypassTransitions = isLateral && movement && !movement.useCustomAnimations;
+            const bypassTransitions = isLateral && movement && movement.isActive;
             if (bypassTransitions) {
                 return;
             }
