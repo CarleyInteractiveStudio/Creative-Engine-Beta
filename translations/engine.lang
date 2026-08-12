@@ -483,6 +483,7 @@ CAT_VEHICULOS_LATERAL: Vehículos Vista Lateral (2D)
 CAT_VEHICULOS_CENITAL: Vehículos Vista Superior (Top-Down)
 CAT_DISPAROS_LATERAL: Disparos Vista Lateral
 CAT_DISPAROS_CENITAL: Disparos Vista Superior (Top-Down)
+CAT_IA: Inteligencia Artificial (IA)
 CAT_AVENTURA_ROL: Aventura y Rol
 CAT_FPS_LATERAL: FPS Vista Lateral
 CAT_FPS_CENITAL: FPS Vista Superior

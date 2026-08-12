@@ -222,10 +222,11 @@ const availableComponents = {
     'CAT_VEHICULOS_CENITAL': [Components.VehicleTopDown],
     'CAT_DISPAROS_LATERAL': [Components.ProjectileLauncher],
     'CAT_DISPAROS_CENITAL': [Components.Attack],
+    'CAT_IA': [Components.BasicAI, Components.Patrol, Components.IAAmiga, Components.IAEnemiga, Components.Health, Components.Attack],
     'CAT_AVENTURA_ROL': [Components.Health, Components.Patrol, Components.BasicAI, Components.RaycastSource, Components.SceneLoader, Components.Inventario, Components.SistemaDialogos, Components.GestorMisiones, Components.LateralMovement, Components.TopDownMovement],
-    'CAT_FPS_LATERAL': [Components.ManejoArmasLateral, Components.Proyectil2D, Components.DetectorBajas, Components.ItemRecolectable, Components.RecolectorObjetos],
+    'CAT_FPS_LATERAL': [Components.ManejoArmasLateral, Components.Proyectil2D, Components.DetectorBajas, Components.ItemRecolectable, Components.RecolectorObjetos, Components.ControlesTactiles],
     'CAT_FPS_CENITAL': [Components.ManejoArmasCenital, Components.Proyectil2D, Components.DetectorBajas, Components.ItemRecolectable, Components.RecolectorObjetos],
-    'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
+    'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter, Components.ControlesTactiles],
     'CAT_OPTIMIZACION': [Components.AutoCulling2D, Components.ObjectPooler, Components.DistanceDeactivator, Components.AutoDestroy],
 
     // 3D Specific Categories
@@ -257,6 +258,9 @@ const componentIcons = {
     'Gyzmo': 'target',
     'RaycastSource': 'route',
     'BasicAI': 'bot',
+    'IAAmiga': 'bot',
+    'IAEnemiga': 'bot',
+    'ControlesTactiles': 'gamepad',
     'Suspension': 'wrench',
     'VehicleTopDown': 'rocket',
     'PlaneController': 'rocket',
@@ -434,6 +438,9 @@ async function handleInspectorDrop(e) {
                 'rallo': Components.RaycastSource,
                 'BasicAI': Components.BasicAI,
                 'iaBasica': Components.BasicAI,
+                 'IAAmiga': Components.IAAmiga,
+                 'IAEnemiga': Components.IAEnemiga,
+                 'ControlesTactiles': Components.ControlesTactiles,
                 'VideoPlayer': Components.VideoPlayer,
                 'video': Components.VideoPlayer
             }[expectedType] || Components[expectedType];
@@ -5187,6 +5194,84 @@ async function updateInspectorForMateria(selectedMateria) {
                     ${renderAIFuncInput('onAttackRange', L.get('ON_ATTACK_RANGE', 'Rango Ataque'))}
                 </div>
             `;
+        } else if (ley instanceof Components.IAAmiga) {
+            componentHTML = `
+                ${renderComponentHeader("IA Amiga / Compañero", icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Tag Objetivo</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="IAAmiga" data-prop="targetTag" value="${ley.targetTag || 'Player'}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Velocidad</label>
+                        <input type="number" autocomplete="off" class="prop-input" data-component="IAAmiga" data-prop="speed" value="${ley.speed}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Distancia Parada</label>
+                        <input type="number" autocomplete="off" class="prop-input" data-component="IAAmiga" data-prop="stopDistance" value="${ley.stopDistance}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Puntos Patrulla (X)</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="IAAmiga" data-prop="patrolPoints" value="${ley.patrolPoints || ''}" placeholder="ej: 100, 300, 500">
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.IAEnemiga) {
+            componentHTML = `
+                ${renderComponentHeader("IA Enemiga", icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Tag Objetivo</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="IAEnemiga" data-prop="targetTag" value="${ley.targetTag || 'Player'}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Velocidad</label>
+                        <input type="number" autocomplete="off" class="prop-input" data-component="IAEnemiga" data-prop="speed" value="${ley.speed}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Dist. Detección</label>
+                        <input type="number" autocomplete="off" class="prop-input" data-component="IAEnemiga" data-prop="detectionDistance" value="${ley.detectionDistance}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Dist. Ataque</label>
+                        <input type="number" autocomplete="off" class="prop-input" data-component="IAEnemiga" data-prop="attackDistance" value="${ley.attackDistance}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Daño causado</label>
+                        <input type="number" autocomplete="off" class="prop-input" data-component="IAEnemiga" data-prop="damageAmount" value="${ley.damageAmount}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Cooldown Ataque (s)</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="IAEnemiga" data-prop="attackCooldown" value="${ley.attackCooldown}">
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.ControlesTactiles) {
+            componentHTML = `
+                ${renderComponentHeader("Controles Táctiles (Móvil)", icon, index)}
+                <div class="component-content">
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="ControlesTactiles" data-prop="izquierdaSuelo" ${ley.izquierdaSuelo ? 'checked' : ''}>
+                        <label>Mostrar Joystick (Izq.)</label>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="ControlesTactiles" data-prop="botonSaltar" ${ley.botonSaltar ? 'checked' : ''}>
+                        <label>Mostrar Botón Salto</label>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="ControlesTactiles" data-prop="botonAgachar" ${ley.botonAgachar ? 'checked' : ''}>
+                        <label>Mostrar Botón Agachar</label>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="ControlesTactiles" data-prop="usarJoystickCircular" ${ley.usarJoystickCircular ? 'checked' : ''}>
+                        <label>Joystick Circular ("Gizmo")</label>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Color Principal</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="ControlesTactiles" data-prop="colorPrincipal" value="${ley.colorPrincipal || 'rgba(255, 255, 255, 0.3)'}">
+                    </div>
+                </div>
+            `;
         } else if (ley.constructor.name === 'SkinnedMeshRenderer3D') {
             componentHTML = `
                 ${renderComponentHeader(L.get('SKINNED_MESH_RENDERER_3D', "Skinned Mesh Renderer 3D"), icon, index)}
@@ -6964,6 +7049,9 @@ export async function showAddComponentModal() {
             else if (compTitle === 'Rigidbody2D') compTitle = L.get('RIGIDBODY_2D', 'Rigidbody 2D');
             else if (compTitle === 'SceneLoader') compTitle = L.get('SCENE_LOADER', 'Cargar Escena');
             else if (compTitle === 'BasicAI') compTitle = L.get('BASIC_AI', 'IA Básica');
+            else if (compTitle === 'IAAmiga') compTitle = L.get('IA_AMIGA', 'IA Amiga / Compañero');
+            else if (compTitle === 'IAEnemiga') compTitle = L.get('IA_ENEMIGA', 'IA Enemiga');
+            else if (compTitle === 'ControlesTactiles') compTitle = L.get('CONTROLES_TACTILES', 'Controles Táctiles (Móvil)');
 
             componentItem.innerHTML = `
                 <span class="component-icon">${getIconHTML(componentIcons[compName] || 'box')}</span>
