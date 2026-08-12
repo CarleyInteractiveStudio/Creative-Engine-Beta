@@ -807,7 +807,15 @@ async function handleInspectorChange(e) {
     if (e.target.matches('.inspector-re-render')) {
         const componentName = e.target.dataset.component;
         const propPath = e.target.dataset.prop;
-        const value = e.target.value;
+        let value;
+        if (e.target.type === 'checkbox') {
+            value = e.target.checked;
+        } else if (e.target.type === 'number' || e.target.type === 'range') {
+            value = parseFloat(e.target.value);
+            if (isNaN(value)) value = 0;
+        } else {
+            value = e.target.value;
+        }
 
         const ComponentClass = Components[componentName] || (window.Components3D ? window.Components3D[componentName] : null) || getComponent(componentName);
         if (ComponentClass) {
