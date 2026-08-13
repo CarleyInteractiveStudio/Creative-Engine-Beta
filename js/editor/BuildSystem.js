@@ -186,6 +186,23 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
 
         if (!options.includeUnusedAssets) {
             usedAssets = await collectUsedAssets(projectHandle);
+
+            // Ensure the game icon (portada) is included in optimized builds
+            if (mergedConfig.appIcon) {
+                const iconPath = mergedConfig.appIcon.startsWith('Assets/') ? mergedConfig.appIcon : `Assets/${mergedConfig.appIcon}`;
+                usedAssets.add(iconPath);
+            }
+
+            // Ensure custom splash screen logos are included in optimized builds
+            if (mergedConfig.splashScreens && Array.isArray(mergedConfig.splashScreens.list)) {
+                mergedConfig.splashScreens.list.forEach(splash => {
+                    if (splash.path) {
+                        const splashPath = splash.path.startsWith('Assets/') ? splash.path : `Assets/${splash.path}`;
+                        usedAssets.add(splashPath);
+                    }
+                });
+            }
+
             // Add all scenes anyway as they are needed to load levels
             if (options.includedScenes && options.includedScenes.length > 0) {
                 options.includedScenes.forEach(s => usedAssets.add(s.startsWith('Assets/') ? s : `Assets/${s}`));
