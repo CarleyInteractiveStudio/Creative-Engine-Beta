@@ -187,6 +187,10 @@ export class StandaloneRuntime {
         this.deltaTime = Math.min((timestamp - this.lastTime) / 1000, 0.1);
         this.lastTime = timestamp;
 
+        if (perfMonitor) {
+            perfMonitor.recordFrame(this.deltaTime);
+        }
+
         // --- Fixed Update Loop ---
         const subSteps = perfMonitor ? perfMonitor.getPhysicsSubSteps() : 4;
         this.fixedAccumulator += this.deltaTime;
@@ -292,7 +296,7 @@ export class StandaloneRuntime {
             container.appendChild(statusText);
 
             try {
-                // 1. Collect all scenes to scan for assets
+                // 1. Collect initial assets to load
                 const scenesToScan = this.config.allScenes || [];
                 const startScene = this.config.startScene || 'default.ceScene';
                 if (!scenesToScan.includes(startScene)) scenesToScan.push(startScene);
@@ -304,24 +308,78 @@ export class StandaloneRuntime {
 
                 // Add splash screens
                 if (this.config.splashScreens && this.config.splashScreens.list) {
-                    this.config.splashScreens.list.forEach(s => assetsToLoad.add(s.path));
+                    this.config.splashScreens.list.forEach(s => {
+                        if (s.path) assetsToLoad.add(s.path);
+                        if (s.sound) assetsToLoad.add(s.sound);
+                    });
                 }
 
-                // 2. Scan scenes for asset references
-                for (const scenePath of scenesToScan) {
-                    statusText.textContent = `Analizando escena: ${scenePath}`;
-                    try {
-                        const path = scenePath.startsWith('Assets/') ? scenePath : `Assets/${scenePath}`;
-                        const url = await getURLForAssetPath(path);
-                        const resp = await fetch(url);
-                        if (resp.ok) {
-                            const sceneData = await resp.json();
-                            this._extractAssetsFromSceneData(sceneData, assetsToLoad);
+                // Add scenes
+                scenesToScan.forEach(scenePath => {
+                    const path = scenePath.startsWith('Assets/') ? scenePath : `Assets/${scenePath}`;
+                    assetsToLoad.add(path);
+                });
+
+                // Helper to extract nested asset paths starting with "Assets/" from any JSON/string
+                const extractAssetsFromStringOrObject = (obj, set) => {
+                    if (typeof obj === 'string') {
+                        if (obj.startsWith('Assets/')) {
+                            set.add(obj);
                         }
-                    } catch (e) { console.warn("Failed to scan scene for preloading:", scenePath, e); }
+                    } else if (obj && typeof obj === 'object') {
+                        for (const key in obj) {
+                            if (obj.hasOwnProperty(key)) {
+                                extractAssetsFromStringOrObject(obj[key], set);
+                            }
+                        }
+                    }
+                };
+
+                // Queue of assets to process/scan for sub-dependencies (recursive scanning)
+                const scannedAssets = new Set();
+                const queue = [...assetsToLoad];
+                let queueIndex = 0;
+
+                while (queueIndex < queue.length) {
+                    const assetPath = queue[queueIndex++];
+                    if (scannedAssets.has(assetPath)) continue;
+                    scannedAssets.add(assetPath);
+
+                    const ext = assetPath.split('.').pop().toLowerCase();
+                    if (['cescene', 'ceanim', 'cea', 'cesprite'].includes(ext)) {
+                        statusText.textContent = `Analizando dependencias de: ${assetPath}`;
+                        try {
+                            const url = await getURLForAssetPath(assetPath);
+                            if (url) {
+                                const resp = await fetch(url);
+                                if (resp.ok) {
+                                    const data = await resp.json();
+
+                                    // Extract all strings starting with Assets/
+                                    const localAssets = new Set();
+                                    extractAssetsFromStringOrObject(data, localAssets);
+
+                                    // Special cases (like spritesheet source image which might not start with Assets/)
+                                    if (ext === 'cesprite' && data.sourceImage) {
+                                        const sourceImgPath = data.sourceImage.startsWith('Assets/') ? data.sourceImage : `Assets/${data.sourceImage}`;
+                                        localAssets.add(sourceImgPath);
+                                    }
+
+                                    for (const loc of localAssets) {
+                                        if (!assetsToLoad.has(loc)) {
+                                            assetsToLoad.add(loc);
+                                            queue.push(loc);
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            console.warn("Failed to scan asset for dependencies:", assetPath, e);
+                        }
+                    }
                 }
 
-                // 3. Load everything
+                // 2. Load everything
                 const total = assetsToLoad.size;
                 let current = 0;
 
@@ -371,32 +429,6 @@ export class StandaloneRuntime {
                 }, 500);
             }
         });
-    }
-
-    _extractAssetsFromSceneData(sceneData, assetSet) {
-        if (!sceneData.materias) return;
-
-        const scanMateria = (m) => {
-            if (m.leyes) {
-                m.leyes.forEach(ley => {
-                    if (ley.properties) {
-                        const findAssets = (obj) => {
-                            for (const key in obj) {
-                                const val = obj[key];
-                                if (typeof val === 'string' && val.startsWith('Assets/')) {
-                                    assetSet.add(val);
-                                } else if (val && typeof val === 'object' && !val.__materiaId) {
-                                    findAssets(val);
-                                }
-                            }
-                        };
-                        findAssets(ley.properties);
-                    }
-                });
-            }
-            if (m.children) m.children.forEach(scanMateria);
-        };
-        sceneData.materias.forEach(scanMateria);
     }
 
     async playSplashScreens() {
@@ -505,9 +537,12 @@ export class StandaloneRuntime {
                 m.getComponent(Components.SpriteRenderer) ||
                 m.getComponent(Components.TextureRender) ||
                 m.getComponent(Components.TilemapRenderer) ||
+                m.getComponent(Components.Terreno2D) ||
                 m.getComponent(Components.VideoPlayer) ||
                 m.getComponent(Components.Water) ||
-                m.getComponent(Components.LineCollider2D)
+                m.getComponent(Components.LineCollider2D) ||
+                m.getComponent(Components.SkeletonRenderer) ||
+                m.getComponent(Components.Bone)
             ))
             .sort((a, b) => {
                 const drawingOrderA = a.getComponent(Components.DrawingOrder);
@@ -519,8 +554,8 @@ export class StandaloneRuntime {
                 if (a.isAncestorOf(b)) return -1;
                 if (b.isAncestorOf(a)) return 1;
 
-                const rendererA = a.getComponent(Components.SpriteRenderer) || a.getComponent(Components.TextureRender) || a.getComponent(Components.TilemapRenderer);
-                const rendererB = b.getComponent(Components.SpriteRenderer) || b.getComponent(Components.TextureRender) || b.getComponent(Components.TilemapRenderer);
+                const rendererA = a.getComponent(Components.SpriteRenderer) || a.getComponent(Components.TextureRender) || a.getComponent(Components.TilemapRenderer) || a.getComponent(Components.Terreno2D) || a.getComponent(Components.Water) || a.getComponent(Components.LineCollider2D) || a.getComponent(Components.SkeletonRenderer) || a.getComponent(Components.Bone);
+                const rendererB = b.getComponent(Components.SpriteRenderer) || b.getComponent(Components.TextureRender) || b.getComponent(Components.TilemapRenderer) || b.getComponent(Components.Terreno2D) || b.getComponent(Components.Water) || b.getComponent(Components.LineCollider2D) || b.getComponent(Components.SkeletonRenderer) || b.getComponent(Components.Bone);
                 const orderA = rendererA ? (rendererA.orderInLayer || 0) : 0;
                 const orderB = rendererB ? (rendererB.orderInLayer || 0) : 0;
                 if (orderA !== orderB) return orderA - orderB;
@@ -549,6 +584,21 @@ export class StandaloneRuntime {
             for (const materia of allInLayer) {
                 if (!materia.isActive) continue;
 
+                ctx.save();
+
+                // --- Apply Layer Settings ---
+                const layerSettings = SceneManager.currentScene.layerSettings ? SceneManager.currentScene.layerSettings[materia.layer] : null;
+                if (layerSettings) {
+                    if (layerSettings.visible === false) {
+                        ctx.restore();
+                        continue;
+                    }
+                    if (layerSettings.opacity !== undefined) ctx.globalAlpha *= layerSettings.opacity;
+                    if (layerSettings.pixelated !== undefined) {
+                        ctx.imageSmoothingEnabled = !layerSettings.pixelated;
+                    }
+                }
+
                 const transform = materia.getComponent(Components.Transform);
                 const parallax = materia.getComponent(Components.Parallax);
                 const sr = materia.getComponent(Components.SpriteRenderer);
@@ -559,6 +609,7 @@ export class StandaloneRuntime {
                 const lineCollider = materia.getComponent(Components.LineCollider2D);
                 const skeleton = materia.getComponent(Components.SkeletonRenderer);
                 const bone = materia.getComponent(Components.Bone);
+                const terreno2D = materia.getComponent(Components.Terreno2D);
 
                 // --- Parallax Displacement ---
                 let worldPosition = transform.position;
@@ -612,12 +663,18 @@ export class StandaloneRuntime {
                     const isRepeating = !!parallax;
                     if (!isRepeating) {
                         const objectBounds = MathUtils.getOOB(materia, worldPosition);
-                        if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) continue;
+                        if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) {
+                            ctx.restore();
+                            continue;
+                        }
                     }
                     const cameraComponent = cameraMateria.getComponent(Components.Camera);
                     const mLayers = materia.layers || [materia.layer || 0];
                     const isVisible = mLayers.some(l => (cameraComponent.cullingMask & (1 << l)) !== 0);
-                    if (!isVisible) continue;
+                    if (!isVisible) {
+                        ctx.restore();
+                        continue;
+                    }
                 }
 
                 if (vp) {
@@ -742,6 +799,8 @@ export class StandaloneRuntime {
                     }
                 } else if (tmr) {
                     this.renderer.drawTilemap(tmr);
+                } else if (terreno2D) {
+                    this.renderer.drawTerreno2D(terreno2D);
                 } else if (water) {
                     this.renderer.drawWater(water, worldPosition.x, worldPosition.y);
                 } else if (lineCollider) {
@@ -751,6 +810,8 @@ export class StandaloneRuntime {
                 } else if (bone) {
                     this.renderer.drawBone(bone);
                 }
+
+                ctx.restore();
             }
 
             for (const materia of canvasesToRender) {

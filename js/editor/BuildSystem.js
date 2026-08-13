@@ -509,6 +509,25 @@ async function collectUsedAssets(projectHandle) {
                     } catch (e) {
                         console.error(`Error parsing scene ${entry.name}:`, e);
                     }
+                } else if (entry.name.endsWith('.ceSprite')) {
+                    try {
+                        const file = await entry.getFile();
+                        const content = await file.text();
+                        const data = JSON.parse(content);
+                        if (data.sourceImage) {
+                            const imgPath = data.sourceImage.startsWith('Assets/') ? data.sourceImage : `Assets/${data.sourceImage}`;
+                            usedAssets.add(imgPath);
+                        }
+                        // Also do normal regex matching on other fields just in case
+                        let match;
+                        assetRegex.lastIndex = 0;
+                        while ((match = assetRegex.exec(content)) !== null) {
+                            const cleanPath = match[0].replace(/[.,;:!]+$/, '');
+                            usedAssets.add(cleanPath);
+                        }
+                    } catch (e) {
+                        console.warn(`Error parsing .ceSprite ${entryPath}:`, e);
+                    }
                 } else if (!binaryExtensions.has(ext)) {
                     // Scan text or JSON configs/animations/sprites/scripts for references to assets
                     try {
