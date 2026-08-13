@@ -589,31 +589,61 @@ export async function showBuildDialog(projectConfig, onConfirm) {
                     }
                 };
 
+                // PREVENT POPUP BLOCKER: Open the preview window immediately (synchronously)
+                let previewWindow = null;
+                if (options.runAfterBuild) {
+                    previewWindow = window.open('about:blank', 'CreativeEngineStandalonePreview', 'width=800,height=600');
+                    if (previewWindow) {
+                        previewWindow.document.write(`
+                            <html>
+                            <head><title>Generando Build...</title></head>
+                            <body style="background:#111; color:white; font-family:sans-serif; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; margin:0;">
+                                <div style="text-align:center;">
+                                    <h2 style="margin-bottom:10px;">Generando Build del Juego...</h2>
+                                    <p style="color:#888;">La previsualización se cargará automáticamente cuando el build finalice.</p>
+                                </div>
+                            </body>
+                            </html>
+                        `);
+                    }
+                    options.previewWindow = previewWindow;
+                }
+
                 // Automatically increment the project version!
                 let currentVer = options.appVersion || "1.0.0";
                 const verParts = currentVer.split('.').map(x => parseInt(x, 10));
+                let nextVer = currentVer;
                 if (verParts.length > 0 && !verParts.some(isNaN)) {
                     verParts[verParts.length - 1]++;
-                    const nextVer = verParts.join('.');
-                    projectConfig.appVersion = nextVer;
-                    projectConfig.appAuthor = options.appAuthor;
-                    projectConfig.appName = options.appName;
-                    projectConfig.appIcon = options.appIcon;
+                    nextVer = verParts.join('.');
+                }
 
-                    // Save config directly to project.ceconfig file!
-                    try {
-                        const projectName = new URLSearchParams(window.location.search).get('project');
-                        if (window.projectsDirHandle && projectName) {
-                            const projectHandle = await window.projectsDirHandle.getDirectoryHandle(projectName);
-                            const fileHandle = await projectHandle.getFileHandle('project.ceconfig', { create: true });
-                            const writable = await fileHandle.createWritable();
-                            await writable.write(JSON.stringify(projectConfig, null, 4));
-                            await writable.close();
-                            console.log("[BuildDialog] Project config saved successfully with auto-incremented version:", nextVer);
-                        }
-                    } catch (e) {
-                        console.error("[BuildDialog] Error saving project.ceconfig:", e);
+                // Update ALL options back to projectConfig to persist them permanently
+                projectConfig.appVersion = nextVer;
+                projectConfig.appAuthor = options.appAuthor;
+                projectConfig.appName = options.appName;
+                projectConfig.appIcon = options.appIcon;
+                projectConfig.resourceLoadingMode = options.resourceLoadingMode;
+                projectConfig.includeUnusedAssets = options.includeUnusedAssets;
+                projectConfig.runAfterBuild = options.runAfterBuild;
+                projectConfig.exportTarget = options.exportTarget;
+                projectConfig.startScene = options.startScene;
+                projectConfig.includedScenes = options.includedScenes;
+                projectConfig.splashScreens = options.splashScreens;
+
+                // Save config directly to project.ceconfig file!
+                try {
+                    const projectName = new URLSearchParams(window.location.search).get('project');
+                    if (window.projectsDirHandle && projectName) {
+                        const projectHandle = await window.projectsDirHandle.getDirectoryHandle(projectName);
+                        const fileHandle = await projectHandle.getFileHandle('project.ceconfig', { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(JSON.stringify(projectConfig, null, 4));
+                        await writable.close();
+                        console.log("[BuildDialog] Project config saved successfully:", nextVer);
                     }
+                } catch (e) {
+                    console.error("[BuildDialog] Error saving project.ceconfig:", e);
                 }
 
                 panelElement.remove();
