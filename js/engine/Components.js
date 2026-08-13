@@ -2111,17 +2111,24 @@ export class Animator extends Leyes {
     async loadAnimationClip(projectsDirHandle) {
         if (!this.animationClipPath) return;
         this.projectsDirHandle = projectsDirHandle;
+        const pathToLoad = this.animationClipPath;
+        this._loadingPath = pathToLoad;
         this._isLoading = true;
 
         this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
 
         try {
-            const url = await getURLForAssetPath(this.animationClipPath, projectsDirHandle);
-            if (!url) throw new Error(`Could not get URL for animation clip: ${this.animationClipPath}`);
+            const url = await getURLForAssetPath(pathToLoad, projectsDirHandle);
+            if (!url) throw new Error(`Could not get URL for animation clip: ${pathToLoad}`);
 
             const response = await fetch(url);
             if (typeof recordFetch === 'function') await recordFetch(response);
             const data = await response.json();
+
+            // Ignore stale load result if the path was changed during asynchronous load
+            if (this.animationClipPath !== pathToLoad) {
+                return;
+            }
 
             // Handle both .cea and .ceanimclip formats
             let clip;
@@ -2326,7 +2333,8 @@ export class Animator extends Leyes {
         this.frameTimer = 0;
 
         // Trigger immediate load if needed
-        if (!this.animationClip && this.animationClipPath && !this._isLoading) {
+        const needsLoad = !this.animationClip && this.animationClipPath && (!this._isLoading || this._loadingPath !== this.animationClipPath);
+        if (needsLoad) {
             const desiredLoop = options.loop !== undefined ? options.loop : this.loop;
             this.loadAnimationClip(this.projectsDirHandle || window.projectsDirHandle).then(() => {
                 if (desiredLoop !== undefined) {
@@ -3808,8 +3816,9 @@ export class AnimatorController extends Leyes {
             if (this.smartMode && !isLateral) {
                 this._handleSmartMode();
             }
-            // Bypass graph transitions if LateralMovement is directly driving the states (Smart Mode)
-            const bypassTransitions = isLateral && movement && !movement.useCustomAnimations;
+            // Bypass graph transitions if LateralMovement is active
+            // to allow exclusive control over driving states.
+            const bypassTransitions = isLateral && movement && movement.isActive;
             if (!bypassTransitions) {
                 this._checkTransitions();
             }
@@ -3927,8 +3936,9 @@ export class AnimatorController extends Leyes {
     }
 
     _checkTransitions() {
-        if (!this.controller.transitions) return;
+        if (!this.controller || !this.controller.transitions) return;
 
+        let transitionTaken = false;
         for (const trans of this.controller.transitions) {
             if (trans.from === this.currentStateName) {
                 if (this._evaluateConditions(trans.conditions)) {
@@ -3937,7 +3947,24 @@ export class AnimatorController extends Leyes {
                     } else {
                         this.play(trans.to, false);
                     }
+                    transitionTaken = true;
                     break;
+                }
+            }
+        }
+
+        // Automatic fallback if we are in a sub-state and none of its incoming conditions are met anymore
+        if (!transitionTaken && this.currentStateName && this.controller.entryState && this.currentStateName !== this.controller.entryState) {
+            const incomingTransitions = this.controller.transitions.filter(t => t.to === this.currentStateName);
+            if (incomingTransitions.length > 0) {
+                const anyIncomingMet = incomingTransitions.some(t => {
+                    return !t.conditions || t.conditions.length === 0 || this._evaluateConditions(t.conditions);
+                });
+                if (!anyIncomingMet) {
+                    if (window.CE_DEBUG_ANIMATION) {
+                        console.log(`[AnimatorController] Las condiciones para estar en el estado '${this.currentStateName}' ya no se cumplen. Volviendo al estado principal '${this.controller.entryState}'.`);
+                    }
+                    this.play(this.controller.entryState, true);
                 }
             }
         }
@@ -4005,7 +4032,7 @@ export class AnimatorController extends Leyes {
         if (trackingMateria) {
             const movement = trackingMateria.getComponent(LateralMovement) || trackingMateria.getComponent(TopDownMovement);
             const isLateral = movement instanceof LateralMovement;
-            const bypassTransitions = isLateral && movement && !movement.useCustomAnimations;
+            const bypassTransitions = isLateral && movement && movement.isActive;
             if (bypassTransitions) {
                 return;
             }
@@ -4376,6 +4403,7 @@ export class LateralMovement extends Leyes {
         this.speed = 200;
         this.jumpForce = 400;
         this.useRigidbody = true;
+        this.crouchSpeedMultiplier = 0.5; // Multiplicador de velocidad al agacharse
         this.groundTag = 'Ground';
         this.isGrounded = false;
         this.isCrouching = false;
@@ -4449,10 +4477,10 @@ export class LateralMovement extends Leyes {
         this.lastMove.x = moveX;
 
         const wasCrouching = this._lastLoggedCrouching !== undefined ? this._lastLoggedCrouching : this.isCrouching;
-        const isCrouching = this.isGrounded && input.isKeyPressed(this.downKey) && (!rb || Math.abs(rb.velocity.y) < 5.0);
+        const isCrouching = this.isGrounded && input.isKeyPressed(this.downKey);
         this.isCrouching = isCrouching;
         this.lastMove.y = isCrouching ? -1 : 0;
-        const currentSpeed = isCrouching ? this.speed * 0.5 : this.speed;
+        const currentSpeed = isCrouching ? this.speed * (this.crouchSpeedMultiplier !== undefined ? this.crouchSpeedMultiplier : 0.5) : this.speed;
 
         if (this.isGrounded !== wasGrounded || this.isCrouching !== wasCrouching) {
             console.log(`[LateralMovement DEBUG] grounded: ${wasGrounded} -> ${this.isGrounded} | crouching: ${wasCrouching} -> ${this.isCrouching} (rb.velocity.y: ${rb ? rb.velocity.y.toFixed(2) : '0.00'})`);
@@ -4654,6 +4682,7 @@ export class LateralMovement extends Leyes {
         newMovement.speed = this.speed;
         newMovement.jumpForce = this.jumpForce;
         newMovement.useRigidbody = this.useRigidbody;
+        newMovement.crouchSpeedMultiplier = this.crouchSpeedMultiplier;
         newMovement.groundTag = this.groundTag;
         newMovement.moveSound = this.moveSound;
         newMovement.jumpSound = this.jumpSound;
@@ -6215,6 +6244,11 @@ export class Health extends Leyes {
  * Componente que gestiona el ataque de un objeto.
  */
 export class Attack extends Leyes {
+    static actionableMethods = {
+        'attack': ['atacar', 'выполнитьАтаку', '进行攻击'],
+        'atacar': ['atacar', 'выполнитьАтаку', '进行攻击']
+    };
+
     constructor(materia) {
         super(materia);
         this.attacks = [
@@ -6367,6 +6401,31 @@ export class Attack extends Leyes {
     set клавишаЦикла(v) { this.cycleKey = v; }
     get 循环按键() { return this.cycleKey; }
     set 循环按键(v) { this.cycleKey = v; }
+
+    attack(index = 0) {
+        if (this._timer > 0 || this._isAttacking) return;
+        const atk = this.attacks[index];
+        if (!atk) return;
+        this._currentAttack = atk;
+        this._isAttacking = true;
+        this._attackWindow = atk.duration;
+        this._timer = this.cooldown;
+        this._hitObjects.clear();
+
+        // Play sound/animation if any
+        if (atk.sound) {
+            const audio = this.materia.getComponent(AudioSource);
+            if (audio) audio.play(atk.sound);
+        }
+        if (atk.animation) {
+            const controller = this.materia.getComponent(AnimatorController);
+            if (controller) controller.play(atk.animation, true);
+        }
+    }
+
+    atacar(index = 0) {
+        this.attack(index);
+    }
 
     clone() {
         const newAtk = new Attack(null);
@@ -10360,3 +10419,418 @@ registerComponent('ManejoArmasLateral', ManejoArmasLateral);
 registerComponent('ManejoArmasCenital', ManejoArmasCenital);
 registerComponent('ItemRecolectable', ItemRecolectable);
 registerComponent('RecolectorObjetos', RecolectorObjetos);
+
+/**
+ * Componente IAAmiga: IA para aliados o compañeros que siguen al jugador o patrullan.
+ */
+export class IAAmiga extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.targetTag = 'Player';
+        this.speed = 120;
+        this.stopDistance = 60;
+        this.patrolPoints = ""; // Coordenadas X separadas por comas (ej. 100, 300)
+
+        this._currentPatrolIdx = 0;
+        this._patrolCoords = [];
+        this._direction = 1;
+    }
+
+    start() {
+        if (this.patrolPoints) {
+            this._patrolCoords = this.patrolPoints.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+        }
+    }
+
+    update(deltaTime) {
+        const transform = this.materia.getComponent(Transform);
+        const rb = this.materia.getComponent(Rigidbody2D);
+        if (!transform) return;
+
+        const engine = RuntimeAPIManager.getAPI('engine');
+        let targetMateria = null;
+
+        if (this.targetTag && engine) {
+            // Find first active materia with targetTag
+            const scene = this.materia.scene || window.SceneManager?.currentScene;
+            if (scene) {
+                targetMateria = scene.materias.find(m => m.tag && m.tag.split(',').map(t => t.trim()).includes(this.targetTag));
+            }
+        }
+
+        if (targetMateria) {
+            const targetTrans = targetMateria.getComponent(Transform);
+            if (targetTrans) {
+                const dx = targetTrans.x - transform.x;
+                const dist = Math.abs(dx);
+                if (dist > this.stopDistance) {
+                    const dir = dx > 0 ? 1 : -1;
+                    if (rb) {
+                        rb.velocity.x = dir * (this.speed / 10);
+                    } else {
+                        transform.x += dir * this.speed * deltaTime;
+                    }
+                    transform.flipX = dir < 0;
+                } else if (rb) {
+                    rb.velocity.x = 0;
+                }
+            }
+        } else if (this._patrolCoords.length > 0) {
+            const targetX = this._patrolCoords[this._currentPatrolIdx];
+            const dx = targetX - transform.x;
+            if (Math.abs(dx) < 5) {
+                this._currentPatrolIdx = (this._currentPatrolIdx + 1) % this._patrolCoords.length;
+            } else {
+                const dir = dx > 0 ? 1 : -1;
+                if (rb) {
+                    rb.velocity.x = dir * (this.speed / 10);
+                } else {
+                    transform.x += dir * this.speed * deltaTime;
+                }
+                transform.flipX = dir < 0;
+            }
+        }
+    }
+
+    clone() {
+        const copy = new IAAmiga(null);
+        copy.targetTag = this.targetTag;
+        copy.speed = this.speed;
+        copy.stopDistance = this.stopDistance;
+        copy.patrolPoints = this.patrolPoints;
+        return copy;
+    }
+}
+registerComponent('IAAmiga', IAAmiga);
+
+/**
+ * Componente IAEnemiga: IA agresiva que busca al jugador y lo ataca al estar cerca.
+ */
+export class IAEnemiga extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.targetTag = 'Player';
+        this.speed = 100;
+        this.detectionDistance = 300;
+        this.attackDistance = 40;
+        this.damageAmount = 10;
+        this.attackCooldown = 1.5;
+
+        this._cooldownTimer = 0;
+    }
+
+    update(deltaTime) {
+        if (this._cooldownTimer > 0) this._cooldownTimer -= deltaTime;
+
+        const transform = this.materia.getComponent(Transform);
+        const rb = this.materia.getComponent(Rigidbody2D);
+        if (!transform) return;
+
+        // Find Player
+        const scene = this.materia.scene || window.SceneManager?.currentScene;
+        if (!scene) return;
+
+        const player = scene.materias.find(m => m.tag && m.tag.split(',').map(t => t.trim()).includes(this.targetTag));
+        if (!player) return;
+
+        const playerTrans = player.getComponent(Transform);
+        if (!playerTrans) return;
+
+        const dx = playerTrans.x - transform.x;
+        const dy = playerTrans.y - transform.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+
+        if (dist <= this.detectionDistance) {
+            const dirX = dx > 0 ? 1 : -1;
+            transform.flipX = dirX < 0;
+
+            if (dist > this.attackDistance) {
+                // Move towards Player
+                if (rb) {
+                    rb.velocity.x = dirX * (this.speed / 10);
+                } else {
+                    transform.x += dirX * this.speed * deltaTime;
+                }
+            } else {
+                // Stop and attack
+                if (rb) rb.velocity.x = 0;
+
+                if (this._cooldownTimer <= 0) {
+                    this._cooldownTimer = this.attackCooldown;
+
+                    // Try to trigger Attack component if present
+                    const attackComp = this.materia.getComponent(Attack);
+                    if (attackComp) {
+                        attackComp.attack(0);
+                    } else {
+                        // Directly deal damage to player's Health component
+                        const playerHealth = player.getComponent(Health);
+                        if (playerHealth) {
+                            playerHealth.damage(this.damageAmount);
+                        }
+                    }
+
+                    // Play attack animation if we have an AnimatorController
+                    const controller = this.materia.getComponent(AnimatorController);
+                    if (controller && controller.states.has("attack")) {
+                        controller.play("attack", true);
+                    }
+                }
+            }
+        } else if (rb) {
+            rb.velocity.x = 0;
+        }
+    }
+
+    clone() {
+        const copy = new IAEnemiga(null);
+        copy.targetTag = this.targetTag;
+        copy.speed = this.speed;
+        copy.detectionDistance = this.detectionDistance;
+        copy.attackDistance = this.attackDistance;
+        copy.damageAmount = this.damageAmount;
+        copy.attackCooldown = this.attackCooldown;
+        return copy;
+    }
+}
+registerComponent('IAEnemiga', IAEnemiga);
+
+/**
+ * Componente ControlesTactiles: Ofrece una superposición de controles táctiles en pantalla para móviles (Joystick y Botones).
+ */
+export class ControlesTactiles extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.izquierdaSuelo = true; // Mostrar Joystick a la izquierda
+        this.botonSaltar = true; // Botón de Salto a la derecha
+        this.botonAgachar = true; // Botón de Agachar a la derecha
+        this.colorPrincipal = "rgba(255, 255, 255, 0.3)";
+        this.usarJoystickCircular = true; // El joystick con diseño circular ("cosita redonda dentro de forma redonda")
+
+        this._container = null;
+    }
+
+    start() {
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (!isGame) return; // Only instantiate in-game
+
+        // Build HTML overlay
+        const container = document.createElement('div');
+        container.id = 'touch-controls-overlay';
+        container.style.cssText = `
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            height: 180px;
+            pointer-events: none;
+            z-index: 999999;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            user-select: none;
+            -webkit-user-select: none;
+        `;
+
+        const input = RuntimeAPIManager.getAPI('input');
+
+        // Create Joystick (circular thumb inside circular base)
+        if (this.izquierdaSuelo) {
+            const joystickBase = document.createElement('div');
+            joystickBase.style.cssText = `
+                width: 120px;
+                height: 120px;
+                background: ${this.colorPrincipal};
+                border: 2px solid rgba(255, 255, 255, 0.4);
+                border-radius: 50%;
+                position: relative;
+                pointer-events: auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                backdrop-filter: blur(5px);
+            `;
+
+            const joystickKnob = document.createElement('div');
+            joystickKnob.style.cssText = `
+                width: 50px;
+                height: 50px;
+                background: rgba(255, 255, 255, 0.8);
+                border-radius: 50%;
+                position: absolute;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                transition: transform 0.05s ease;
+                pointer-events: none;
+            `;
+
+            joystickBase.appendChild(joystickKnob);
+            container.appendChild(joystickBase);
+
+            // Handle touch drag events for joystick
+            let activeTouchId = null;
+
+            const handleStart = (e) => {
+                e.preventDefault();
+                const touch = e.changedTouches[0];
+                activeTouchId = touch.identifier;
+                updateJoystickPosition(touch);
+            };
+
+            const handleMove = (e) => {
+                e.preventDefault();
+                for (let i = 0; i < e.touches.length; i++) {
+                    const touch = e.touches[i];
+                    if (touch.identifier === activeTouchId) {
+                        updateJoystickPosition(touch);
+                        break;
+                    }
+                }
+            };
+
+            const handleEnd = (e) => {
+                e.preventDefault();
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    const touch = e.changedTouches[i];
+                    if (touch.identifier === activeTouchId) {
+                        activeTouchId = null;
+                        resetJoystick();
+                        break;
+                    }
+                }
+            };
+
+            const updateJoystickPosition = (touch) => {
+                const rect = joystickBase.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                let dx = touch.clientX - centerX;
+                let dy = touch.clientY - centerY;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                const maxDist = 45; // limit drag distance
+
+                if (dist > maxDist) {
+                    dx = (dx / dist) * maxDist;
+                    dy = (dy / dist) * maxDist;
+                }
+
+                joystickKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+
+                // Update InputManager._virtualKeys
+                if (input && InputManager) {
+                    InputManager._virtualKeys.set('a', dx < -15);
+                    InputManager._virtualKeys.set('d', dx > 15);
+                    InputManager._virtualKeys.set('w', dy < -15);
+                    InputManager._virtualKeys.set('s', dy > 15);
+                    // Support Arrow keys too
+                    InputManager._virtualKeys.set('ArrowLeft', dx < -15);
+                    InputManager._virtualKeys.set('ArrowRight', dx > 15);
+                    InputManager._virtualKeys.set('ArrowUp', dy < -15);
+                    InputManager._virtualKeys.set('ArrowDown', dy > 15);
+                }
+            };
+
+            const resetJoystick = () => {
+                joystickKnob.style.transform = 'translate(0px, 0px)';
+                if (input && InputManager) {
+                    InputManager._virtualKeys.set('a', false);
+                    InputManager._virtualKeys.set('d', false);
+                    InputManager._virtualKeys.set('w', false);
+                    InputManager._virtualKeys.set('s', false);
+                    InputManager._virtualKeys.set('ArrowLeft', false);
+                    InputManager._virtualKeys.set('ArrowRight', false);
+                    InputManager._virtualKeys.set('ArrowUp', false);
+                    InputManager._virtualKeys.set('ArrowDown', false);
+                }
+            };
+
+            joystickBase.addEventListener('touchstart', handleStart);
+            joystickBase.addEventListener('touchmove', handleMove);
+            joystickBase.addEventListener('touchend', handleEnd);
+            joystickBase.addEventListener('touchcancel', handleEnd);
+        }
+
+        // Action Buttons on Right
+        const buttonsContainer = document.createElement('div');
+        buttonsContainer.style.cssText = `
+            display: flex;
+            gap: 15px;
+            pointer-events: none;
+        `;
+
+        const createButton = (label, keySymbol) => {
+            const btn = document.createElement('div');
+            btn.textContent = label;
+            btn.style.cssText = `
+                width: 65px;
+                height: 65px;
+                background: ${this.colorPrincipal};
+                border: 2px solid rgba(255, 255, 255, 0.4);
+                border-radius: 50%;
+                color: white;
+                font-weight: bold;
+                font-size: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                pointer-events: auto;
+                cursor: pointer;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+                backdrop-filter: blur(5px);
+            `;
+
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                btn.style.background = 'rgba(255, 255, 255, 0.6)';
+                if (InputManager) {
+                    InputManager._virtualKeys.set(keySymbol, true);
+                    InputManager._keysDown.add(keySymbol);
+                }
+            });
+
+            const release = (e) => {
+                e.preventDefault();
+                btn.style.background = this.colorPrincipal;
+                if (InputManager) {
+                    InputManager._virtualKeys.set(keySymbol, false);
+                    InputManager._keysUp.add(keySymbol);
+                }
+            };
+
+            btn.addEventListener('touchend', release);
+            btn.addEventListener('touchcancel', release);
+
+            return btn;
+        };
+
+        if (this.botonAgachar) {
+            const agacharBtn = createButton('Agachar', 's');
+            buttonsContainer.appendChild(agacharBtn);
+        }
+
+        if (this.botonSaltar) {
+            const saltarBtn = createButton('Salto', ' ');
+            buttonsContainer.appendChild(saltarBtn);
+        }
+
+        container.appendChild(buttonsContainer);
+        document.body.appendChild(container);
+        this._container = container;
+    }
+
+    onDestroy() {
+        if (this._container && this._container.parentNode) {
+            this._container.parentNode.removeChild(this._container);
+        }
+    }
+
+    clone() {
+        const copy = new ControlesTactiles(null);
+        copy.izquierdaSuelo = this.izquierdaSuelo;
+        copy.botonSaltar = this.botonSaltar;
+        copy.botonAgachar = this.botonAgachar;
+        copy.colorPrincipal = this.colorPrincipal;
+        copy.usarJoystickCircular = this.usarJoystickCircular;
+        return copy;
+    }
+}
+registerComponent('ControlesTactiles', ControlesTactiles);

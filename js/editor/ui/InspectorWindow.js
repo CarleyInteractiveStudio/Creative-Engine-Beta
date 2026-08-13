@@ -222,10 +222,11 @@ const availableComponents = {
     'CAT_VEHICULOS_CENITAL': [Components.VehicleTopDown],
     'CAT_DISPAROS_LATERAL': [Components.ProjectileLauncher],
     'CAT_DISPAROS_CENITAL': [Components.Attack],
+    'CAT_IA': [Components.BasicAI, Components.Patrol, Components.IAAmiga, Components.IAEnemiga, Components.Health, Components.Attack],
     'CAT_AVENTURA_ROL': [Components.Health, Components.Patrol, Components.BasicAI, Components.RaycastSource, Components.SceneLoader, Components.Inventario, Components.SistemaDialogos, Components.GestorMisiones, Components.LateralMovement, Components.TopDownMovement],
-    'CAT_FPS_LATERAL': [Components.ManejoArmasLateral, Components.Proyectil2D, Components.DetectorBajas, Components.ItemRecolectable, Components.RecolectorObjetos],
+    'CAT_FPS_LATERAL': [Components.ManejoArmasLateral, Components.Proyectil2D, Components.DetectorBajas, Components.ItemRecolectable, Components.RecolectorObjetos, Components.ControlesTactiles],
     'CAT_FPS_CENITAL': [Components.ManejoArmasCenital, Components.Proyectil2D, Components.DetectorBajas, Components.ItemRecolectable, Components.RecolectorObjetos],
-    'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
+    'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.ProgressBar, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter, Components.ControlesTactiles],
     'CAT_OPTIMIZACION': [Components.AutoCulling2D, Components.ObjectPooler, Components.DistanceDeactivator, Components.AutoDestroy],
 
     // 3D Specific Categories
@@ -257,6 +258,9 @@ const componentIcons = {
     'Gyzmo': 'target',
     'RaycastSource': 'route',
     'BasicAI': 'bot',
+    'IAAmiga': 'bot',
+    'IAEnemiga': 'bot',
+    'ControlesTactiles': 'gamepad',
     'Suspension': 'wrench',
     'VehicleTopDown': 'rocket',
     'PlaneController': 'rocket',
@@ -434,6 +438,9 @@ async function handleInspectorDrop(e) {
                 'rallo': Components.RaycastSource,
                 'BasicAI': Components.BasicAI,
                 'iaBasica': Components.BasicAI,
+                 'IAAmiga': Components.IAAmiga,
+                 'IAEnemiga': Components.IAEnemiga,
+                 'ControlesTactiles': Components.ControlesTactiles,
                 'VideoPlayer': Components.VideoPlayer,
                 'video': Components.VideoPlayer
             }[expectedType] || Components[expectedType];
@@ -807,7 +814,15 @@ async function handleInspectorChange(e) {
     if (e.target.matches('.inspector-re-render')) {
         const componentName = e.target.dataset.component;
         const propPath = e.target.dataset.prop;
-        const value = e.target.value;
+        let value;
+        if (e.target.type === 'checkbox') {
+            value = e.target.checked;
+        } else if (e.target.type === 'number' || e.target.type === 'range') {
+            value = parseFloat(e.target.value);
+            if (isNaN(value)) value = 0;
+        } else {
+            value = e.target.value;
+        }
 
         const ComponentClass = Components[componentName] || (window.Components3D ? window.Components3D[componentName] : null) || getComponent(componentName);
         if (ComponentClass) {
@@ -1835,6 +1850,28 @@ function renderLightColorPresets(componentName) {
         </div>
     `;
 }
+
+function renderAnimationStateSelectOrInput(selectedMateria, propName, currentValue) {
+    let states = [];
+    if (selectedMateria) {
+        const controller = selectedMateria.getComponentByName('AnimatorController');
+        if (controller && controller.states) {
+            states = Array.from(controller.states.keys());
+        }
+    }
+    const commonAttrs = `data-component="LateralMovement" data-prop="${propName}"`;
+    if (states.length > 0) {
+        return `
+            <select class="prop-input" ${commonAttrs}>
+                <option value="" ${!currentValue ? 'selected' : ''}>-- Seleccionar Estado --</option>
+                ${states.map(s => `<option value="${s}" ${currentValue === s ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
+        `;
+    } else {
+        return `<input type="text" autocomplete="off" class="prop-input" ${commonAttrs} value="${currentValue || ''}">`;
+    }
+}
+window.renderAnimationStateSelectOrInput = renderAnimationStateSelectOrInput;
 
 function renderPropertyDropper(type, currentValue, commonAttrs) {
     const L = window.Localization;
@@ -3811,6 +3848,10 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="GROUND_TAG">${L.get('GROUND_TAG', 'Tag del Suelo')}</label>
                         <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="groundTag" value="${ley.groundTag || 'Ground'}">
                     </div>
+                    <div class="prop-row-multi">
+                        <label>Mult. Vel. Agachado</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="0.05" min="0" max="1" data-component="LateralMovement" data-prop="crouchSpeedMultiplier" value="${ley.crouchSpeedMultiplier !== undefined ? ley.crouchSpeedMultiplier : 0.5}">
+                    </div>
                     <hr>
                     <div class="inspector-section-header"><span>${L.get('SOUNDS', 'Sonidos')}</span></div>
                     <div class="inspector-row">
@@ -3829,40 +3870,40 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     ${ley.useCustomAnimations ? `
                     <div class="prop-row-multi">
-                        <label>Idle</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="idleAnim" value="${ley.idleAnim || ''}">
+                        <label>Quieto (Idle)</label>
+                        ${renderAnimationStateSelectOrInput(selectedMateria, "idleAnim", ley.idleAnim)}
                     </div>
                     <div class="prop-row-multi">
-                        <label>Run</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="runAnim" value="${ley.runAnim || ''}">
+                        <label>Correr (Run)</label>
+                        ${renderAnimationStateSelectOrInput(selectedMateria, "runAnim", ley.runAnim)}
                     </div>
                     <div class="prop-row-multi">
-                        <label>Jump</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="jumpAnim" value="${ley.jumpAnim || ''}">
+                        <label>Saltar (Jump)</label>
+                        ${renderAnimationStateSelectOrInput(selectedMateria, "jumpAnim", ley.jumpAnim)}
                     </div>
                     <div class="prop-row-multi">
-                        <label>Jump Left</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="jumpLeftAnim" value="${ley.jumpLeftAnim || ''}">
+                        <label>Saltar Izquierda (Jump Left)</label>
+                        ${renderAnimationStateSelectOrInput(selectedMateria, "jumpLeftAnim", ley.jumpLeftAnim)}
                     </div>
                     <div class="prop-row-multi">
-                        <label>Jump Right</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="jumpRightAnim" value="${ley.jumpRightAnim || ''}">
+                        <label>Saltar Derecha (Jump Right)</label>
+                        ${renderAnimationStateSelectOrInput(selectedMateria, "jumpRightAnim", ley.jumpRightAnim)}
                     </div>
                     <div class="prop-row-multi">
-                        <label>Fall</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="fallAnim" value="${ley.fallAnim || ''}">
+                        <label>Caer (Fall)</label>
+                        ${renderAnimationStateSelectOrInput(selectedMateria, "fallAnim", ley.fallAnim)}
                     </div>
                     <div class="prop-row-multi">
-                        <label>Crouch</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="crouchAnim" value="${ley.crouchAnim || 'crouch'}">
+                        <label>Agacharse (Crouch)</label>
+                        ${renderAnimationStateSelectOrInput(selectedMateria, "crouchAnim", ley.crouchAnim || 'crouch')}
                     </div>
                     <div class="prop-row-multi">
-                        <label>Crouch Left</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="crouchLeftAnim" value="${ley.crouchLeftAnim || ''}">
+                        <label>Agacharse Izquierda (Crouch Left)</label>
+                        ${renderAnimationStateSelectOrInput(selectedMateria, "crouchLeftAnim", ley.crouchLeftAnim)}
                     </div>
                     <div class="prop-row-multi">
-                        <label>Crouch Right</label>
-                        <input type="text" autocomplete="off" class="prop-input" data-component="LateralMovement" data-prop="crouchRightAnim" value="${ley.crouchRightAnim || ''}">
+                        <label>Agacharse Derecha (Crouch Right)</label>
+                        ${renderAnimationStateSelectOrInput(selectedMateria, "crouchRightAnim", ley.crouchRightAnim)}
                     </div>
                     ` : `
                     <div style="font-size:11px; color:#aaa; margin: 5px 10px; line-height: 1.3;">
@@ -5151,6 +5192,84 @@ async function updateInspectorForMateria(selectedMateria) {
                     ${renderAIFuncInput('onTargetLost', L.get('ON_TARGET_LOST', 'Al perder Objetivo'))}
                     ${renderAIFuncInput('onTargetNear', L.get('ON_TARGET_NEAR', 'Al estar cerca'))}
                     ${renderAIFuncInput('onAttackRange', L.get('ON_ATTACK_RANGE', 'Rango Ataque'))}
+                </div>
+            `;
+        } else if (ley instanceof Components.IAAmiga) {
+            componentHTML = `
+                ${renderComponentHeader("IA Amiga / Compañero", icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Tag Objetivo</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="IAAmiga" data-prop="targetTag" value="${ley.targetTag || 'Player'}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Velocidad</label>
+                        <input type="number" autocomplete="off" class="prop-input" data-component="IAAmiga" data-prop="speed" value="${ley.speed}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Distancia Parada</label>
+                        <input type="number" autocomplete="off" class="prop-input" data-component="IAAmiga" data-prop="stopDistance" value="${ley.stopDistance}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Puntos Patrulla (X)</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="IAAmiga" data-prop="patrolPoints" value="${ley.patrolPoints || ''}" placeholder="ej: 100, 300, 500">
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.IAEnemiga) {
+            componentHTML = `
+                ${renderComponentHeader("IA Enemiga", icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Tag Objetivo</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="IAEnemiga" data-prop="targetTag" value="${ley.targetTag || 'Player'}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Velocidad</label>
+                        <input type="number" autocomplete="off" class="prop-input" data-component="IAEnemiga" data-prop="speed" value="${ley.speed}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Dist. Detección</label>
+                        <input type="number" autocomplete="off" class="prop-input" data-component="IAEnemiga" data-prop="detectionDistance" value="${ley.detectionDistance}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Dist. Ataque</label>
+                        <input type="number" autocomplete="off" class="prop-input" data-component="IAEnemiga" data-prop="attackDistance" value="${ley.attackDistance}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Daño causado</label>
+                        <input type="number" autocomplete="off" class="prop-input" data-component="IAEnemiga" data-prop="damageAmount" value="${ley.damageAmount}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Cooldown Ataque (s)</label>
+                        <input type="number" autocomplete="off" class="prop-input" step="0.1" data-component="IAEnemiga" data-prop="attackCooldown" value="${ley.attackCooldown}">
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.ControlesTactiles) {
+            componentHTML = `
+                ${renderComponentHeader("Controles Táctiles (Móvil)", icon, index)}
+                <div class="component-content">
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="ControlesTactiles" data-prop="izquierdaSuelo" ${ley.izquierdaSuelo ? 'checked' : ''}>
+                        <label>Mostrar Joystick (Izq.)</label>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="ControlesTactiles" data-prop="botonSaltar" ${ley.botonSaltar ? 'checked' : ''}>
+                        <label>Mostrar Botón Salto</label>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="ControlesTactiles" data-prop="botonAgachar" ${ley.botonAgachar ? 'checked' : ''}>
+                        <label>Mostrar Botón Agachar</label>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="ControlesTactiles" data-prop="usarJoystickCircular" ${ley.usarJoystickCircular ? 'checked' : ''}>
+                        <label>Joystick Circular ("Gizmo")</label>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Color Principal</label>
+                        <input type="text" autocomplete="off" class="prop-input" data-component="ControlesTactiles" data-prop="colorPrincipal" value="${ley.colorPrincipal || 'rgba(255, 255, 255, 0.3)'}">
+                    </div>
                 </div>
             `;
         } else if (ley.constructor.name === 'SkinnedMeshRenderer3D') {
@@ -6930,6 +7049,9 @@ export async function showAddComponentModal() {
             else if (compTitle === 'Rigidbody2D') compTitle = L.get('RIGIDBODY_2D', 'Rigidbody 2D');
             else if (compTitle === 'SceneLoader') compTitle = L.get('SCENE_LOADER', 'Cargar Escena');
             else if (compTitle === 'BasicAI') compTitle = L.get('BASIC_AI', 'IA Básica');
+            else if (compTitle === 'IAAmiga') compTitle = L.get('IA_AMIGA', 'IA Amiga / Compañero');
+            else if (compTitle === 'IAEnemiga') compTitle = L.get('IA_ENEMIGA', 'IA Enemiga');
+            else if (compTitle === 'ControlesTactiles') compTitle = L.get('CONTROLES_TACTILES', 'Controles Táctiles (Móvil)');
 
             componentItem.innerHTML = `
                 <span class="component-icon">${getIconHTML(componentIcons[compName] || 'box')}</span>

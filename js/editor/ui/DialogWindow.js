@@ -263,6 +263,14 @@ export async function showBuildDialog(projectConfig, onConfirm) {
                     <input type="text" id="build-app-name" value="${projectConfig.appName || projectName}" style="width:100%; padding:8px; background:#222; border:1px solid #444; color:white;">
                 </div>
                 <div class="dialog-row" style="margin-bottom:15px;">
+                    <label style="display:block; margin-bottom:5px;">${L.get('GAME_AUTHOR', 'Autor del Juego:')}</label>
+                    <input type="text" id="build-app-author" value="${projectConfig.appAuthor || ''}" style="width:100%; padding:8px; background:#222; border:1px solid #444; color:white;" placeholder="ej: Mi Nombre">
+                </div>
+                <div class="dialog-row" style="margin-bottom:15px;">
+                    <label style="display:block; margin-bottom:5px;">${L.get('GAME_VERSION', 'Versión del Juego:')}</label>
+                    <input type="text" id="build-app-version" value="${projectConfig.appVersion || '1.0.0'}" style="width:100%; padding:8px; background:#222; border:1px solid #444; color:white;">
+                </div>
+                <div class="dialog-row" style="margin-bottom:15px;">
                     <label style="display:block; margin-bottom:5px;">${L.get('ICON_FAVICON', 'Icono (Favicon):')}</label>
                     <div style="display:flex; gap:10px;">
                         <input type="text" id="build-app-icon" value="${projectConfig.appIcon || 'image/Logo_C.png'}" style="flex:1; padding:8px; background:#222; border:1px solid #444; color:white;" readonly>
@@ -358,11 +366,84 @@ export async function showBuildDialog(projectConfig, onConfirm) {
     `;
 
     const dialog = new DialogWindow(L.get('BUILD_CONFIG', 'Configuración Avanzada de Build'), content, [
-        {
-            text: L.get('CONSTRUIR_JUEGO', 'Construir Juego'),
-            callback: async () => {
+        { text: L.get('CANCELAR', 'Cancelar') }
+    ]);
+
+    const footer = dialog.dialogElement.querySelector('.dialog-footer');
+
+    const updateBuildDialogButtons = () => {
+        const activeTabBtn = dialog.dialogElement.querySelector('.build-tab-btn.active');
+        const activeTabId = activeTabBtn ? activeTabBtn.dataset.tab : 'tab-general';
+
+        footer.innerHTML = ''; // Clear existing buttons
+
+        const btnCancel = document.createElement('button');
+        btnCancel.className = 'dialog-button';
+        btnCancel.textContent = L.get('CANCELAR', 'Cancelar');
+        btnCancel.onclick = () => dialog.hide();
+
+        if (activeTabId === 'tab-general') {
+            const btnNext = document.createElement('button');
+            btnNext.className = 'dialog-button primary';
+            btnNext.textContent = L.get('SIGUIENTE', 'Siguiente');
+            btnNext.onclick = () => {
+                const nextTab = dialog.dialogElement.querySelector('[data-tab="tab-scenes"]');
+                if (nextTab) nextTab.click();
+            };
+            footer.appendChild(btnNext);
+            footer.appendChild(btnCancel);
+        } else if (activeTabId === 'tab-scenes') {
+            const btnBack = document.createElement('button');
+            btnBack.className = 'dialog-button';
+            btnBack.textContent = L.get('ATRÁS', 'Atrás');
+            btnBack.onclick = () => {
+                const prevTab = dialog.dialogElement.querySelector('[data-tab="tab-general"]');
+                if (prevTab) prevTab.click();
+            };
+            const btnNext = document.createElement('button');
+            btnNext.className = 'dialog-button primary';
+            btnNext.textContent = L.get('SIGUIENTE', 'Siguiente');
+            btnNext.onclick = () => {
+                const nextTab = dialog.dialogElement.querySelector('[data-tab="tab-splash"]');
+                if (nextTab) nextTab.click();
+            };
+            footer.appendChild(btnBack);
+            footer.appendChild(btnNext);
+            footer.appendChild(btnCancel);
+        } else if (activeTabId === 'tab-splash') {
+            const btnBack = document.createElement('button');
+            btnBack.className = 'dialog-button';
+            btnBack.textContent = L.get('ATRÁS', 'Atrás');
+            btnBack.onclick = () => {
+                const prevTab = dialog.dialogElement.querySelector('[data-tab="tab-scenes"]');
+                if (prevTab) prevTab.click();
+            };
+            const btnNext = document.createElement('button');
+            btnNext.className = 'dialog-button primary';
+            btnNext.textContent = L.get('SIGUIENTE', 'Siguiente');
+            btnNext.onclick = () => {
+                const nextTab = dialog.dialogElement.querySelector('[data-tab="tab-export"]');
+                if (nextTab) nextTab.click();
+            };
+            footer.appendChild(btnBack);
+            footer.appendChild(btnNext);
+            footer.appendChild(btnCancel);
+        } else if (activeTabId === 'tab-export') {
+            const btnBack = document.createElement('button');
+            btnBack.className = 'dialog-button';
+            btnBack.textContent = L.get('ATRÁS', 'Atrás');
+            btnBack.onclick = () => {
+                const prevTab = dialog.dialogElement.querySelector('[data-tab="tab-splash"]');
+                if (prevTab) prevTab.click();
+            };
+            const btnBuild = document.createElement('button');
+            btnBuild.className = 'dialog-button primary';
+            btnBuild.textContent = L.get('CONSTRUIR_JUEGO', 'Construir Juego');
+            btnBuild.onclick = async () => {
                 const options = {
                     appName: dialog.dialogElement.querySelector('#build-app-name').value,
+                    appAuthor: dialog.dialogElement.querySelector('#build-app-author').value,
+                    appVersion: dialog.dialogElement.querySelector('#build-app-version').value,
                     appIcon: dialog.dialogElement.querySelector('#build-app-icon').value,
                     method: dialog.dialogElement.querySelector('#build-method').value,
                     includeUnusedAssets: dialog.dialogElement.querySelector('#include-unused').checked,
@@ -381,11 +462,42 @@ export async function showBuildDialog(projectConfig, onConfirm) {
                         }))
                     }
                 };
+
+                // Automatically increment the project version!
+                let currentVer = options.appVersion || "1.0.0";
+                const verParts = currentVer.split('.').map(x => parseInt(x, 10));
+                if (verParts.length > 0 && !verParts.some(isNaN)) {
+                    verParts[verParts.length - 1]++;
+                    const nextVer = verParts.join('.');
+                    projectConfig.appVersion = nextVer;
+                    projectConfig.appAuthor = options.appAuthor;
+                    projectConfig.appName = options.appName;
+                    projectConfig.appIcon = options.appIcon;
+
+                    // Save config directly to project.ceconfig file!
+                    try {
+                        const projectName = new URLSearchParams(window.location.search).get('project');
+                        if (window.projectsDirHandle && projectName) {
+                            const projectHandle = await window.projectsDirHandle.getDirectoryHandle(projectName);
+                            const fileHandle = await projectHandle.getFileHandle('project.ceconfig', { create: true });
+                            const writable = await fileHandle.createWritable();
+                            await writable.write(JSON.stringify(projectConfig, null, 4));
+                            await writable.close();
+                            console.log("[BuildDialog] Project config saved successfully with auto-incremented version:", nextVer);
+                        }
+                    } catch (e) {
+                        console.error("[BuildDialog] Error saving project.ceconfig:", e);
+                    }
+                }
+
+                dialog.hide();
                 if (onConfirm) await onConfirm(options);
-            }
-        },
-        { text: L.get('CANCELAR', 'Cancelar') }
-    ]);
+            };
+            footer.appendChild(btnBack);
+            footer.appendChild(btnBuild);
+            footer.appendChild(btnCancel);
+        }
+    };
 
     // Handle Tabs
     const tabs = dialog.dialogElement.querySelectorAll('.build-tab-btn');
@@ -398,8 +510,11 @@ export async function showBuildDialog(projectConfig, onConfirm) {
             tab.style.borderBottom = '2px solid #3498db';
             tab.style.color = 'white';
             dialog.dialogElement.querySelector(`#${tab.dataset.tab}`).style.display = 'block';
+            updateBuildDialogButtons();
         };
     });
+
+    updateBuildDialogButtons();
 
     // Handle Splash Toggle
     const showSplash = dialog.dialogElement.querySelector('#show-splash');
