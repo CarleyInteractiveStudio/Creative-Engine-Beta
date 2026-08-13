@@ -16,15 +16,50 @@ class DialogWindow {
         // Overlay container
         this.dialogElement = document.createElement('div');
         this.dialogElement.className = 'custom-dialog';
+        this.dialogElement.style.pointerEvents = 'none';
+        this.dialogElement.style.backgroundColor = 'rgba(0, 0, 0, 0.4)'; // Translucent background
 
         // Actual dialog content container
         const container = document.createElement('div');
         container.className = 'dialog-container';
+        container.style.pointerEvents = 'auto';
 
         // Header
         const header = document.createElement('div');
         header.className = 'dialog-header';
-        header.textContent = this.title;
+        header.style.cssText = 'display:flex; justify-content:space-between; align-items:center; cursor:move; user-select:none;';
+
+        const titleSpan = document.createElement('span');
+        titleSpan.textContent = this.title;
+        header.appendChild(titleSpan);
+
+        // Control buttons
+        const controls = document.createElement('div');
+        controls.className = 'panel-header-controls';
+        controls.style.cssText = 'display:flex; gap:5px;';
+
+        const btnMinimize = document.createElement('button');
+        btnMinimize.className = 'panel-tool-btn minimize-btn';
+        btnMinimize.style.cssText = 'background:none; border:none; color:white; cursor:pointer; font-size:12px;';
+        btnMinimize.innerHTML = '―';
+        btnMinimize.title = 'Minimizar';
+
+        const btnMaximize = document.createElement('button');
+        btnMaximize.className = 'panel-tool-btn maximize-btn';
+        btnMaximize.style.cssText = 'background:none; border:none; color:white; cursor:pointer; font-size:12px;';
+        btnMaximize.innerHTML = '⛶';
+        btnMaximize.title = 'Maximizar/Restaurar';
+
+        const btnClose = document.createElement('button');
+        btnClose.className = 'close-panel-btn';
+        btnClose.style.cssText = 'background:none; border:none; color:white; font-size:16px; cursor:pointer; line-height:1; padding:0 5px;';
+        btnClose.innerHTML = '&times;';
+        btnClose.title = 'Cerrar';
+
+        controls.appendChild(btnMinimize);
+        controls.appendChild(btnMaximize);
+        controls.appendChild(btnClose);
+        header.appendChild(controls);
         container.appendChild(header);
 
         // Content
@@ -61,6 +96,77 @@ class DialogWindow {
             footer.appendChild(button);
         });
         container.appendChild(footer);
+
+        // Minimize functionality
+        btnMinimize.onclick = (e) => {
+            e.stopPropagation();
+            if (contentDiv.style.display !== 'none') {
+                contentDiv.style.display = 'none';
+                footer.style.display = 'none';
+                container.style.height = 'auto';
+            } else {
+                contentDiv.style.display = 'block';
+                footer.style.display = 'flex';
+            }
+        };
+
+        // Maximize functionality
+        let isMaximized = false;
+        let originalStyle = '';
+        btnMaximize.onclick = (e) => {
+            e.stopPropagation();
+            if (!isMaximized) {
+                originalStyle = container.style.cssText;
+                container.style.cssText = 'position:absolute; top:10px; left:10px; width:calc(100vw - 20px); height:calc(100vh - 20px); max-height:none; min-width:none; z-index:99999; margin:0; pointer-events:auto;';
+                isMaximized = true;
+            } else {
+                container.style.cssText = originalStyle;
+                isMaximized = false;
+            }
+        };
+
+        // Close functionality
+        btnClose.onclick = (e) => {
+            e.stopPropagation();
+            this.hide();
+        };
+
+        // Absolute Position Dragging Logic
+        let isDragging = false;
+        let startX, startY;
+        let initialLeft = 0, initialTop = 0;
+
+        header.addEventListener('mousedown', (e) => {
+            if (e.target.closest('button, input, select')) return;
+            if (isMaximized) return; // Prevent dragging when maximized
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+
+            const rect = container.getBoundingClientRect();
+            initialLeft = rect.left;
+            initialTop = rect.top;
+
+            container.style.position = 'absolute';
+            container.style.margin = '0';
+            container.style.left = `${initialLeft}px`;
+            container.style.top = `${initialTop}px`;
+        });
+
+        const handleDragMove = (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            container.style.left = `${initialLeft + dx}px`;
+            container.style.top = `${initialTop + dy}px`;
+        };
+
+        const handleDragEnd = () => {
+            isDragging = false;
+        };
+
+        document.addEventListener('mousemove', handleDragMove);
+        document.addEventListener('mouseup', handleDragEnd);
 
         this.dialogElement.appendChild(container);
         document.body.appendChild(this.dialogElement);
