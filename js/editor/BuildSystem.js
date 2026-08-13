@@ -121,6 +121,9 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
         resourceLoadingMode: options.resourceLoadingMode || currentProjectConfig.resourceLoadingMode || 'lazy'
     };
 
+    // Remove reference to Window object to avoid circular JSON serialization error
+    delete mergedConfig.previewWindow;
+
         let outputHandle = null;
         let zip = null;
 
