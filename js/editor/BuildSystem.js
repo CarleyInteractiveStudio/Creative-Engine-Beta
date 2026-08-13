@@ -170,6 +170,7 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
         updateProgress("Generando index.html y PWA...");
         await writeFile('index.html', generateIndexHtml(mergedConfig));
         await writeFile('manifest.json', generateManifest(mergedConfig));
+        await writeFile('.nojekyll', ''); // Disable Jekyll on GitHub Pages to allow files/folders starting with underscores
         try {
             const swResp = await fetch('js/engine/sw.js');
             if (swResp.ok) await writeFile('sw.js', await swResp.text());
