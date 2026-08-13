@@ -681,6 +681,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const selectorPanel = dom.assetSelectorBubble;
+
+        // Calculate highest z-index to avoid appearing behind modals/dialogs (like the Build dialog)
+        const baseZ = 20000;
+        const highestZ = Array.from(document.querySelectorAll('.floating-panel, .custom-dialog.is-open, .modal.is-open'))
+            .reduce((maxZ, el) => {
+                if (el === selectorPanel) return maxZ;
+                return Math.max(maxZ, parseInt(window.getComputedStyle(el).zIndex) || 0);
+            }, baseZ);
+        selectorPanel.style.zIndex = highestZ + 1000;
+
         const titleEl = dom.assetSelectorTitle;
         const breadcrumbsEl = dom.assetSelectorBreadcrumbs;
         const gridView = dom.assetSelectorGridView;
