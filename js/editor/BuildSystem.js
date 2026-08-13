@@ -173,7 +173,12 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
         await writeFile('.nojekyll', ''); // Disable Jekyll on GitHub Pages to allow files/folders starting with underscores
         try {
             const swResp = await fetch('js/engine/sw.js');
-            if (swResp.ok) await writeFile('sw.js', await swResp.text());
+            if (swResp.ok) {
+                let swText = await swResp.text();
+                const uniqueCacheName = `ce-game-cache-${Date.now()}`;
+                swText = swText.replace(/const CACHE_NAME = '[^']+';/, `const CACHE_NAME = '${uniqueCacheName}';`);
+                await writeFile('sw.js', swText);
+            }
         } catch(e) {}
 
         // 2. Export engine and runtime
