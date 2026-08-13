@@ -314,6 +314,13 @@ function generateIndexHtml(config) {
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#000000">
     <link rel="icon" type="image/png" href="${config.appIcon || 'image/Logo_C.png'}">
+    <script type="importmap">
+        {
+            "imports": {
+                "gl-matrix": "https://esm.sh/gl-matrix@3.4.3"
+            }
+        }
+    </script>
     <link rel="stylesheet" href="style.css">
     <style>
         #cors-warning {
@@ -393,7 +400,22 @@ async function addEngineFilesToZip(zipOrHandle) {
         'js/engine/UIEventSystem.js',
         'js/engine/UITransformUtils.js',
         'js/engine/ui/UISystem.js',
-        'js/engine/StandaloneRuntime.js'
+        'js/engine/StandaloneRuntime.js',
+        'js/engine/PerformanceAPI.js',
+        'js/engine/PerformanceMonitor.js',
+        'js/engine/NetworkMonitor.js',
+        'js/engine/Components3D.js',
+        'js/engine/Renderer3D.js',
+        'js/engine/ModelLoader3D.js',
+        'js/engine/ExtensionsManager.js',
+        'js/carley-world/CarleyComponents.js',
+        'js/carley-world/CarleyLeyes3D.js',
+        'js/carley-world/CarleyMateria3D.js',
+        'js/carley-world/CarleyMateriaFactory.js',
+        'js/carley-world/CarleyMath.js',
+        'js/carley-world/CarleyModelLoader3D.js',
+        'js/carley-world/CarleyRenderer.js',
+        'js/carley-world/CarleyWorld.js'
     ];
 
     // Add engine files

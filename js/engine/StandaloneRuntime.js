@@ -48,6 +48,7 @@ export class StandaloneRuntime {
                 this.config = {};
             }
         }
+        window.currentProjectConfig = this.config;
 
         // Initialize Performance Monitor with config
         const perfMonitor = EngineAPI.getPerformanceMonitor();
