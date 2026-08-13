@@ -292,7 +292,7 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
 
         // 12. Run after build if requested
         if (options.runAfterBuild) {
-            runStandalonePreview(buildConfig);
+            runStandalonePreview(buildConfig, options.previewWindow);
         }
 
     } catch (error) {
@@ -467,12 +467,18 @@ async function addEngineFilesToZip(zipOrHandle) {
 
 async function collectUsedAssets(projectHandle) {
     const usedAssets = new Set();
-    const assetRegex = /Assets\/[a-zA-Z0-9_\-\/]+\.[a-z0-9]+/g;
+    // Supporting case-insensitive and any-case extensions (like .ceSprite, .PNG, .cea)
+    const assetRegex = /Assets\/[a-zA-Z0-9_\-\/]+\.[a-zA-Z0-9]+/g;
+
+    const binaryExtensions = new Set([
+        'png', 'jpg', 'jpeg', 'gif', 'webp', 'mp3', 'wav', 'ogg', 'mp4', 'webm', 'ttf', 'woff', 'woff2', 'bin', 'obj', 'fbx', 'gltf', 'glb'
+    ]);
 
     async function scanDirectory(handle, path) {
         for await (const entry of handle.values()) {
             const entryPath = path ? `${path}/${entry.name}` : entry.name;
             if (entry.kind === 'file') {
+                const ext = entry.name.split('.').pop().toLowerCase();
                 if (entry.name.endsWith('.ceScene')) {
                     const file = await entry.getFile();
                     const content = await file.text();
@@ -482,12 +488,18 @@ async function collectUsedAssets(projectHandle) {
                     } catch (e) {
                         console.error(`Error parsing scene ${entry.name}:`, e);
                     }
-                } else if (entry.name.endsWith('.ces') || entry.name.endsWith('.chc') || entry.name.endsWith('.js') || entry.name.endsWith('.ceanim')) {
-                    const file = await entry.getFile();
-                    const content = await file.text();
-                    let match;
-                    while ((match = assetRegex.exec(content)) !== null) {
-                        usedAssets.add(match[0]);
+                } else if (!binaryExtensions.has(ext)) {
+                    // Scan text or JSON configs/animations/sprites/scripts for references to assets
+                    try {
+                        const file = await entry.getFile();
+                        const content = await file.text();
+                        let match;
+                        assetRegex.lastIndex = 0;
+                        while ((match = assetRegex.exec(content)) !== null) {
+                            usedAssets.add(match[0]);
+                        }
+                    } catch (e) {
+                        console.warn(`Error scanning text file ${entryPath} for asset references:`, e);
                     }
                 }
             } else if (entry.kind === 'directory') {
@@ -533,11 +545,19 @@ async function collectUsedAssets(projectHandle) {
  * Opens a new window that runs the game using the StandaloneRuntime logic
  * but reading from the local project handles.
  */
-export async function runStandalonePreview(config) {
-    const previewWindow = window.open('runner.html?standalone=true&preview=true', 'CreativeEngineStandalonePreview', 'width=800,height=600');
+export async function runStandalonePreview(config, existingWindow = null) {
+    const previewWindow = existingWindow || window.open('runner.html?standalone=true&preview=true', 'CreativeEngineStandalonePreview', 'width=800,height=600');
     if (!previewWindow) {
         showNotification('Error', 'No se pudo abrir la ventana de previsualización. Comprueba el bloqueador de popups.');
         return;
+    }
+
+    if (existingWindow) {
+        try {
+            previewWindow.location.href = 'runner.html?standalone=true&preview=true';
+        } catch (e) {
+            console.error("Failed to redirect existing window:", e);
+        }
     }
 
     // Prepare scripts and metadata
