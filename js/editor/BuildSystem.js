@@ -185,57 +185,53 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
         updateProgress("Copiando archivos del motor...");
         await addEngineFilesToZip(zip || outputHandle);
 
-        // 3. Collect used assets (if requested)
+        // 3. Collect used assets (always collected to resolve case-insensitive mismatches)
         updateProgress("Analizando dependencias de assets...");
         const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
-        let usedAssets = null;
+        const usedAssets = await collectUsedAssets(projectHandle);
 
-        if (!options.includeUnusedAssets) {
-            usedAssets = await collectUsedAssets(projectHandle);
+        // Ensure the game icon (portada) is included in builds
+        if (mergedConfig.appIcon) {
+            const iconPath = mergedConfig.appIcon.startsWith('Assets/') ? mergedConfig.appIcon : `Assets/${mergedConfig.appIcon}`;
+            usedAssets.add(iconPath);
+        }
 
-            // Ensure the game icon (portada) is included in optimized builds
-            if (mergedConfig.appIcon) {
-                const iconPath = mergedConfig.appIcon.startsWith('Assets/') ? mergedConfig.appIcon : `Assets/${mergedConfig.appIcon}`;
-                usedAssets.add(iconPath);
-            }
+        // Ensure custom splash screen logos are included in builds
+        if (mergedConfig.splashScreens && Array.isArray(mergedConfig.splashScreens.list)) {
+            mergedConfig.splashScreens.list.forEach(splash => {
+                if (splash.path) {
+                    const splashPath = splash.path.startsWith('Assets/') ? splash.path : `Assets/${splash.path}`;
+                    usedAssets.add(splashPath);
+                }
+            });
+        }
 
-            // Ensure custom splash screen logos are included in optimized builds
-            if (mergedConfig.splashScreens && Array.isArray(mergedConfig.splashScreens.list)) {
-                mergedConfig.splashScreens.list.forEach(splash => {
-                    if (splash.path) {
-                        const splashPath = splash.path.startsWith('Assets/') ? splash.path : `Assets/${splash.path}`;
-                        usedAssets.add(splashPath);
-                    }
-                });
-            }
-
-            // Add all scenes anyway as they are needed to load levels
-            if (options.includedScenes && options.includedScenes.length > 0) {
-                options.includedScenes.forEach(s => usedAssets.add(s.startsWith('Assets/') ? s : `Assets/${s}`));
-            } else {
-                async function addAllScenes(handle, path) {
-                    for await (const entry of handle.values()) {
-                        const entryPath = `${path}/${entry.name}`;
-                        if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
-                            usedAssets.add(entryPath);
-                        } else if (entry.kind === 'directory') {
-                            await addAllScenes(entry, entryPath);
-                        }
+        // Add all scenes anyway as they are needed to load levels
+        if (options.includedScenes && options.includedScenes.length > 0) {
+            options.includedScenes.forEach(s => usedAssets.add(s.startsWith('Assets/') ? s : `Assets/${s}`));
+        } else {
+            async function addAllScenes(handle, path) {
+                for await (const entry of handle.values()) {
+                    const entryPath = `${path}/${entry.name}`;
+                    if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
+                        usedAssets.add(entryPath);
+                    } else if (entry.kind === 'directory') {
+                        await addAllScenes(entry, entryPath);
                     }
                 }
-                await addAllScenes(assetsHandle, 'Assets');
             }
+            await addAllScenes(assetsHandle, 'Assets');
         }
 
         // 4. Export project assets
         updateProgress("Exportando assets del proyecto...");
-        await addAssetsToZip(zip || outputHandle, assetsHandle, 'Assets', usedAssets);
+        await addAssetsToZip(zip || outputHandle, assetsHandle, 'Assets', usedAssets, options.includeUnusedAssets);
 
         // 5. Export project libraries
         updateProgress("Exportando librerías...");
         try {
             const libHandle = await projectHandle.getDirectoryHandle('lib');
-            await addAssetsToZip(zip || outputHandle, libHandle, 'lib'); // Add all .celib files
+            await addAssetsToZip(zip || outputHandle, libHandle, 'lib', null, true); // Add all .celib files
         } catch (e) {
             console.log("No lib folder found in project, skipping libraries.");
         }
@@ -637,18 +633,18 @@ export async function runStandalonePreview(config, existingWindow = null) {
     });
 }
 
-async function addAssetsToZip(zipOrHandle, dirHandle, path, usedAssets = null) {
+async function addAssetsToZip(zipOrHandle, dirHandle, path, usedAssets = null, includeUnusedAssets = false) {
     for await (const entry of dirHandle.values()) {
         const entryPath = `${path}/${entry.name}`;
         if (entry.kind === 'file') {
-            let hasAsset = !usedAssets || usedAssets.has(entryPath);
+            let hasAsset = includeUnusedAssets || !usedAssets || usedAssets.has(entryPath);
             let targetPath = entryPath;
 
             // Handle casing mismatches gracefully by finding the original casing requested by the game assets/configs
-            if (usedAssets && !hasAsset) {
+            if (usedAssets) {
                 const requestedPath = [...usedAssets].find(p => p.toLowerCase() === entryPath.toLowerCase());
                 if (requestedPath) {
-                    hasAsset = true;
+                    hasAsset = true; // Always make sure we export it if it is requested!
                     targetPath = requestedPath;
                 }
             }
