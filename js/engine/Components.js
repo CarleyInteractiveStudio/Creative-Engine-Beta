@@ -2122,6 +2122,7 @@ export class Animator extends Leyes {
             if (!url) throw new Error(`Could not get URL for animation clip: ${pathToLoad}`);
 
             const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             if (typeof recordFetch === 'function') await recordFetch(response);
             const data = await response.json();
 

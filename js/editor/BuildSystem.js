@@ -487,8 +487,8 @@ async function addEngineFilesToZip(zipOrHandle) {
 
 async function collectUsedAssets(projectHandle) {
     const usedAssets = new Set();
-    // Supporting case-insensitive and any-case extensions (like .ceSprite, .PNG, .cea)
-    const assetRegex = /Assets\/[a-zA-Z0-9_\-\/]+\.[a-zA-Z0-9]+/g;
+    // Robust regex to extract any quoted or space-delimited Asset paths (with spaces, underscores, capitals, etc.)
+    const assetRegex = /Assets\/[^"'\s>]+/g;
 
     const binaryExtensions = new Set([
         'png', 'jpg', 'jpeg', 'gif', 'webp', 'mp3', 'wav', 'ogg', 'mp4', 'webm', 'ttf', 'woff', 'woff2', 'bin', 'obj', 'fbx', 'gltf', 'glb'
@@ -516,7 +516,9 @@ async function collectUsedAssets(projectHandle) {
                         let match;
                         assetRegex.lastIndex = 0;
                         while ((match = assetRegex.exec(content)) !== null) {
-                            usedAssets.add(match[0]);
+                            // Strip any trailing punctuation (like trailing periods or commas) in comments/code
+                            const cleanPath = match[0].replace(/[.,;:!]+$/, '');
+                            usedAssets.add(cleanPath);
                         }
                     } catch (e) {
                         console.warn(`Error scanning text file ${entryPath} for asset references:`, e);
@@ -614,12 +616,24 @@ async function addAssetsToZip(zipOrHandle, dirHandle, path, usedAssets = null) {
     for await (const entry of dirHandle.values()) {
         const entryPath = `${path}/${entry.name}`;
         if (entry.kind === 'file') {
-            if (!usedAssets || usedAssets.has(entryPath)) {
+            let hasAsset = !usedAssets || usedAssets.has(entryPath);
+            let targetPath = entryPath;
+
+            // Handle casing mismatches gracefully by finding the original casing requested by the game assets/configs
+            if (usedAssets && !hasAsset) {
+                const requestedPath = [...usedAssets].find(p => p.toLowerCase() === entryPath.toLowerCase());
+                if (requestedPath) {
+                    hasAsset = true;
+                    targetPath = requestedPath;
+                }
+            }
+
+            if (hasAsset) {
                 const file = await entry.getFile();
                 if (zipOrHandle.file) {
-                    zipOrHandle.file(entryPath, file);
+                    zipOrHandle.file(targetPath, file);
                 } else {
-                    const parts = entryPath.split('/');
+                    const parts = targetPath.split('/');
                     const fileName = parts.pop();
                     let current = zipOrHandle;
                     for (const part of parts) {
@@ -630,7 +644,7 @@ async function addAssetsToZip(zipOrHandle, dirHandle, path, usedAssets = null) {
                     await writable.write(file);
                     await writable.close();
                 }
-                console.log(`Added asset: ${entryPath}`);
+                console.log(`Added asset: ${targetPath}`);
             }
         } else if (entry.kind === 'directory') {
             await addAssetsToZip(zipOrHandle, entry, entryPath, usedAssets);
