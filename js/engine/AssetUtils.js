@@ -52,6 +52,17 @@ export { recordFetch };
 export async function getURLForAssetPath(path, projectsDirHandle) {
     if (!path) return null;
 
+    // --- Embedded Assets Support ---
+    if (typeof window !== 'undefined' && window.CE_Standalone_Assets_Data && window.CE_Standalone_Assets_Data[path]) {
+        const data = window.CE_Standalone_Assets_Data[path];
+        try {
+            const dataUrl = "data:application/json;base64," + btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+            return dataUrl;
+        } catch (e) {
+            console.warn("[AssetUtils] Failed to create data URL for embedded asset:", path, e);
+        }
+    }
+
     // --- Data, Blob, and HTTP URL Support ---
     if (path.startsWith('data:') || path.startsWith('blob:')) {
         return path;

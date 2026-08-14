@@ -226,9 +226,10 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
             await addAllScenes(assetsHandle, 'Assets');
         }
 
-        // 4. Export project assets
+        // 4. Export project assets (and compile configurations in-memory)
         updateProgress("Exportando assets del proyecto...");
-        await addAssetsToZip(zip || outputHandle, assetsHandle, 'Assets', usedAssets, options.includeUnusedAssets);
+        const assetsData = {};
+        await addAssetsToZip(zip || outputHandle, assetsHandle, 'Assets', usedAssets, options.includeUnusedAssets, assetsData);
 
         // 5. Export project libraries
         updateProgress("Exportando librerías...");
@@ -274,6 +275,7 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
             window.CE_Standalone_Scripts = ${JSON.stringify(scriptData)};
             window.CE_Script_Metadata = ${JSON.stringify(metadata)};
             window.CE_Custom_Components = ${JSON.stringify(customComponents)};
+            window.CE_Standalone_Assets_Data = ${JSON.stringify(assetsData)};
         `);
 
         // 8. CSS
@@ -636,7 +638,7 @@ export async function runStandalonePreview(config, existingWindow = null) {
     });
 }
 
-async function addAssetsToZip(zipOrHandle, dirHandle, path, usedAssets = null, includeUnusedAssets = false) {
+async function addAssetsToZip(zipOrHandle, dirHandle, path, usedAssets = null, includeUnusedAssets = false, assetsData = null) {
     for await (const entry of dirHandle.values()) {
         const entryPath = `${path}/${entry.name}`;
         if (entry.kind === 'file') {
@@ -654,6 +656,20 @@ async function addAssetsToZip(zipOrHandle, dirHandle, path, usedAssets = null, i
 
             if (hasAsset) {
                 const file = await entry.getFile();
+
+                // If it is a non-binary config file, collect its content for in-memory bundling
+                if (assetsData) {
+                    const ext = entry.name.split('.').pop().toLowerCase();
+                    if (['cescene', 'ceanim', 'cea', 'cesprite'].includes(ext)) {
+                        try {
+                            const content = await file.text();
+                            assetsData[targetPath] = JSON.parse(content);
+                        } catch (e) {
+                            console.warn(`[BuildSystem] Failed to parse JSON for bundling: ${entryPath}`, e);
+                        }
+                    }
+                }
+
                 if (zipOrHandle.file) {
                     zipOrHandle.file(targetPath, file);
                 } else {
