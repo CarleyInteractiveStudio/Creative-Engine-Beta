@@ -7063,6 +7063,7 @@ export async function showAddComponentModal() {
             let compTitle = compName;
             if (compTitle === 'Transform') compTitle = L.get('TRANSFORM', 'Posición (Transform)');
             else if (compTitle === 'UITransform') compTitle = L.get('UI_TRANSFORM', 'Transformación UI');
+            else if (compTitle === 'DrawingOrder') compTitle = L.get('DRAWING_ORDER_COMPONENT', 'Orden de Dibujo (DrawingOrder)');
             else if (L.get(compTitle.toUpperCase()) !== compTitle.toUpperCase()) compTitle = L.get(compTitle.toUpperCase());
             else if (compTitle === 'Rigidbody2D') compTitle = L.get('RIGIDBODY_2D', 'Rigidbody 2D');
             else if (compTitle === 'SceneLoader') compTitle = L.get('SCENE_LOADER', 'Cargar Escena');
