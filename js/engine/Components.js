@@ -3817,9 +3817,9 @@ export class AnimatorController extends Leyes {
             if (this.smartMode && !isLateral) {
                 this._handleSmartMode();
             }
-            // Bypass graph transitions if LateralMovement is active
+            // Bypass graph transitions if LateralMovement is active or Smart Mode is enabled
             // to allow exclusive control over driving states.
-            const bypassTransitions = isLateral && movement && movement.isActive;
+            const bypassTransitions = (isLateral && movement && movement.isActive) || this.smartMode;
             if (!bypassTransitions) {
                 this._checkTransitions();
             }

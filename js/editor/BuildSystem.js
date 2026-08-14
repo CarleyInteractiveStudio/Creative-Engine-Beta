@@ -118,7 +118,7 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
     const mergedConfig = {
         ...currentProjectConfig,
         ...options,
-        resourceLoadingMode: options.resourceLoadingMode || currentProjectConfig.resourceLoadingMode || 'lazy'
+        resourceLoadingMode: options.resourceLoadingMode || currentProjectConfig.resourceLoadingMode || 'preload'
     };
 
     // Remove reference to Window object to avoid circular JSON serialization error
@@ -171,66 +171,71 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
         await writeFile('index.html', generateIndexHtml(mergedConfig));
         await writeFile('manifest.json', generateManifest(mergedConfig));
         await writeFile('.nojekyll', ''); // Disable Jekyll on GitHub Pages to allow files/folders starting with underscores
+        await writeFile('server.js', generateLocalServerJs());
+        await writeFile('jugar.bat', generateJugarBat());
+        await writeFile('jugar.sh', generateJugarSh());
         try {
             const swResp = await fetch('js/engine/sw.js');
-            if (swResp.ok) await writeFile('sw.js', await swResp.text());
+            if (swResp.ok) {
+                let swText = await swResp.text();
+                const uniqueCacheName = `ce-game-cache-${Date.now()}`;
+                swText = swText.replace(/const CACHE_NAME = '[^']+';/, `const CACHE_NAME = '${uniqueCacheName}';`);
+                await writeFile('sw.js', swText);
+            }
         } catch(e) {}
 
         // 2. Export engine and runtime
         updateProgress("Copiando archivos del motor...");
         await addEngineFilesToZip(zip || outputHandle);
 
-        // 3. Collect used assets (if requested)
+        // 3. Collect used assets (always collected to resolve case-insensitive mismatches)
         updateProgress("Analizando dependencias de assets...");
         const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
-        let usedAssets = null;
+        const usedAssets = await collectUsedAssets(projectHandle);
 
-        if (!options.includeUnusedAssets) {
-            usedAssets = await collectUsedAssets(projectHandle);
-
-            // Ensure the game icon (portada) is included in optimized builds
-            if (mergedConfig.appIcon) {
-                const iconPath = mergedConfig.appIcon.startsWith('Assets/') ? mergedConfig.appIcon : `Assets/${mergedConfig.appIcon}`;
-                usedAssets.add(iconPath);
-            }
-
-            // Ensure custom splash screen logos are included in optimized builds
-            if (mergedConfig.splashScreens && Array.isArray(mergedConfig.splashScreens.list)) {
-                mergedConfig.splashScreens.list.forEach(splash => {
-                    if (splash.path) {
-                        const splashPath = splash.path.startsWith('Assets/') ? splash.path : `Assets/${splash.path}`;
-                        usedAssets.add(splashPath);
-                    }
-                });
-            }
-
-            // Add all scenes anyway as they are needed to load levels
-            if (options.includedScenes && options.includedScenes.length > 0) {
-                options.includedScenes.forEach(s => usedAssets.add(s.startsWith('Assets/') ? s : `Assets/${s}`));
-            } else {
-                async function addAllScenes(handle, path) {
-                    for await (const entry of handle.values()) {
-                        const entryPath = `${path}/${entry.name}`;
-                        if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
-                            usedAssets.add(entryPath);
-                        } else if (entry.kind === 'directory') {
-                            await addAllScenes(entry, entryPath);
-                        }
-                    }
-                }
-                await addAllScenes(assetsHandle, 'Assets');
-            }
+        // Ensure the game icon (portada) is included in builds
+        if (mergedConfig.appIcon) {
+            const iconPath = mergedConfig.appIcon.startsWith('Assets/') ? mergedConfig.appIcon : `Assets/${mergedConfig.appIcon}`;
+            usedAssets.add(iconPath);
         }
 
-        // 4. Export project assets
+        // Ensure custom splash screen logos are included in builds
+        if (mergedConfig.splashScreens && Array.isArray(mergedConfig.splashScreens.list)) {
+            mergedConfig.splashScreens.list.forEach(splash => {
+                if (splash.path) {
+                    const splashPath = splash.path.startsWith('Assets/') ? splash.path : `Assets/${splash.path}`;
+                    usedAssets.add(splashPath);
+                }
+            });
+        }
+
+        // Add all scenes anyway as they are needed to load levels
+        if (options.includedScenes && options.includedScenes.length > 0) {
+            options.includedScenes.forEach(s => usedAssets.add(s.startsWith('Assets/') ? s : `Assets/${s}`));
+        } else {
+            async function addAllScenes(handle, path) {
+                for await (const entry of handle.values()) {
+                    const entryPath = `${path}/${entry.name}`;
+                    if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
+                        usedAssets.add(entryPath);
+                    } else if (entry.kind === 'directory') {
+                        await addAllScenes(entry, entryPath);
+                    }
+                }
+            }
+            await addAllScenes(assetsHandle, 'Assets');
+        }
+
+        // 4. Export project assets (and compile configurations in-memory)
         updateProgress("Exportando assets del proyecto...");
-        await addAssetsToZip(zip || outputHandle, assetsHandle, 'Assets', usedAssets);
+        const assetsData = {};
+        await addAssetsToZip(zip || outputHandle, assetsHandle, 'Assets', usedAssets, options.includeUnusedAssets, assetsData);
 
         // 5. Export project libraries
         updateProgress("Exportando librerías...");
         try {
             const libHandle = await projectHandle.getDirectoryHandle('lib');
-            await addAssetsToZip(zip || outputHandle, libHandle, 'lib'); // Add all .celib files
+            await addAssetsToZip(zip || outputHandle, libHandle, 'lib', null, true); // Add all .celib files
         } catch (e) {
             console.log("No lib folder found in project, skipping libraries.");
         }
@@ -270,6 +275,7 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
             window.CE_Standalone_Scripts = ${JSON.stringify(scriptData)};
             window.CE_Script_Metadata = ${JSON.stringify(metadata)};
             window.CE_Custom_Components = ${JSON.stringify(customComponents)};
+            window.CE_Standalone_Assets_Data = ${JSON.stringify(assetsData)};
         `);
 
         // 8. CSS
@@ -509,6 +515,25 @@ async function collectUsedAssets(projectHandle) {
                     } catch (e) {
                         console.error(`Error parsing scene ${entry.name}:`, e);
                     }
+                } else if (entry.name.endsWith('.ceSprite')) {
+                    try {
+                        const file = await entry.getFile();
+                        const content = await file.text();
+                        const data = JSON.parse(content);
+                        if (data.sourceImage) {
+                            const imgPath = data.sourceImage.startsWith('Assets/') ? data.sourceImage : `Assets/${data.sourceImage}`;
+                            usedAssets.add(imgPath);
+                        }
+                        // Also do normal regex matching on other fields just in case
+                        let match;
+                        assetRegex.lastIndex = 0;
+                        while ((match = assetRegex.exec(content)) !== null) {
+                            const cleanPath = match[0].replace(/[.,;:!]+$/, '');
+                            usedAssets.add(cleanPath);
+                        }
+                    } catch (e) {
+                        console.warn(`Error parsing .ceSprite ${entryPath}:`, e);
+                    }
                 } else if (!binaryExtensions.has(ext)) {
                     // Scan text or JSON configs/animations/sprites/scripts for references to assets
                     try {
@@ -613,24 +638,38 @@ export async function runStandalonePreview(config, existingWindow = null) {
     });
 }
 
-async function addAssetsToZip(zipOrHandle, dirHandle, path, usedAssets = null) {
+async function addAssetsToZip(zipOrHandle, dirHandle, path, usedAssets = null, includeUnusedAssets = false, assetsData = null) {
     for await (const entry of dirHandle.values()) {
         const entryPath = `${path}/${entry.name}`;
         if (entry.kind === 'file') {
-            let hasAsset = !usedAssets || usedAssets.has(entryPath);
+            let hasAsset = includeUnusedAssets || !usedAssets || usedAssets.has(entryPath);
             let targetPath = entryPath;
 
             // Handle casing mismatches gracefully by finding the original casing requested by the game assets/configs
-            if (usedAssets && !hasAsset) {
+            if (usedAssets) {
                 const requestedPath = [...usedAssets].find(p => p.toLowerCase() === entryPath.toLowerCase());
                 if (requestedPath) {
-                    hasAsset = true;
+                    hasAsset = true; // Always make sure we export it if it is requested!
                     targetPath = requestedPath;
                 }
             }
 
             if (hasAsset) {
                 const file = await entry.getFile();
+
+                // If it is a non-binary config file, collect its content for in-memory bundling
+                if (assetsData) {
+                    const ext = entry.name.split('.').pop().toLowerCase();
+                    if (['cescene', 'ceanim', 'cea', 'cesprite'].includes(ext)) {
+                        try {
+                            const content = await file.text();
+                            assetsData[targetPath] = JSON.parse(content);
+                        } catch (e) {
+                            console.warn(`[BuildSystem] Failed to parse JSON for bundling: ${entryPath}`, e);
+                        }
+                    }
+                }
+
                 if (zipOrHandle.file) {
                     zipOrHandle.file(targetPath, file);
                 } else {
@@ -686,4 +725,117 @@ function generateManifest(config) {
         ]
     };
     return JSON.stringify(manifest, null, 2);
+}
+
+function generateLocalServerJs() {
+    return `const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const { exec } = require('child_process');
+
+const MIME_TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css',
+  '.js': 'application/javascript',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.ogg': 'audio/ogg',
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
+  '.ttf': 'font/ttf',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.cea': 'application/json',
+  '.ceanim': 'application/json',
+  '.ceScene': 'application/json',
+  '.ceSprite': 'application/json',
+  '.celib': 'application/json',
+  '.ico': 'image/x-icon'
+};
+
+function startServer(port) {
+  const server = http.createServer((req, res) => {
+    let filePath = '.' + decodeURIComponent(req.url.split('?')[0]);
+    if (filePath === './') filePath = './index.html';
+
+    const ext = path.extname(filePath).toLowerCase();
+    const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+    fs.readFile(filePath, (error, content) => {
+      if (error) {
+        if (error.code === 'ENOENT') {
+          res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+          res.end('404 Not Found: ' + filePath);
+        } else {
+          res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+          res.end('Error interno: ' + error.code);
+        }
+      } else {
+        res.writeHead(200, {
+          'Content-Type': contentType,
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'no-cache'
+        });
+        res.end(content, 'utf-8');
+      }
+    });
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.log(\`Puerto \${port} ocupado. Probando con \${port + 1}...\`);
+      startServer(port + 1);
+    } else {
+      console.error('Error del servidor:', err);
+    }
+  });
+
+  server.listen(port, () => {
+    const url = \`http://localhost:\${port}\`;
+    console.log('==================================================');
+    console.log(\`🎮 ¡Servidor de juego iniciado con éxito!\`);
+    console.log(\`🔗 Abre este enlace en tu navegador para jugar:\`);
+    console.log(\`   👉 \\x1b[36m\${url}\\x1b[0m\`);
+    console.log('==================================================');
+    console.log('Presiona Ctrl+C para cerrar el servidor.');
+
+    const start = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
+    exec(\`\${start} \${url}\`).catch(() => {});
+  });
+}
+
+startServer(8000);`;
+}
+
+function generateJugarBat() {
+    return `@echo off
+title Servidor de Juego - Creative Engine
+echo Iniciando servidor local...
+node server.js
+if %errorlevel% neq 0 (
+    echo.
+    echo [ERROR] No se pudo iniciar el servidor. Asegurate de tener Node.js instalado.
+    echo Puedes descargarlo desde: https://nodejs.org
+    echo.
+    pause
+)`;
+}
+
+function generateJugarSh() {
+    return `#!/bin/bash
+echo "Iniciando servidor local..."
+if ! command -v node &> /dev/null
+then
+    echo "[ERROR] No se pudo encontrar 'node'. Por favor, instala Node.js desde https://nodejs.org"
+    read -p "Presiona Enter para salir..."
+    exit 1
+fi
+node server.js`;
 }

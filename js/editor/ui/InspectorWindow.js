@@ -6872,6 +6872,24 @@ async function updateInspectorForAsset(assetName, assetPath) {
             }
             settingsContainer.innerHTML = html;
             dom.inspectorContent.appendChild(settingsContainer);
+        } else if (lowerName.endsWith('.cepalette')) {
+            const content = await file.text();
+            let paletteData = { name: assetName.replace('.cepalette', '') };
+            try {
+                paletteData = JSON.parse(content);
+            } catch (e) {}
+            const preview = document.createElement('div');
+            preview.className = 'asset-preview';
+
+            preview.innerHTML = `
+                <img src="image/Paquete.png" class="asset-preview-icon" style="width: 64px; height: 64px; border-radius: 5px;">
+                <h3 style="margin-top: 10px; margin-bottom: 5px;">${paletteData.name || assetName.replace('.cepalette', '')}</h3>
+                <p style="font-size: 0.9em; color: var(--color-text-secondary);">Tipo: Paleta de Tiles</p>
+                <hr style="margin: 10px 0;">
+                <p>Usa esta paleta en el editor de mapas para pintar escenarios.</p>
+                <p style="margin-top: 15px; font-style: italic; font-size: 0.8em;">Doble-click en el Navegador para abrir en el panel de Paleta de Tiles.</p>
+            `;
+            dom.inspectorContent.appendChild(preview);
         } else if (lowerName.endsWith('.celib')) {
             const content = await file.text();
             const libData = JSON.parse(content);
