@@ -118,7 +118,7 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
     const mergedConfig = {
         ...currentProjectConfig,
         ...options,
-        resourceLoadingMode: options.resourceLoadingMode || currentProjectConfig.resourceLoadingMode || 'lazy'
+        resourceLoadingMode: options.resourceLoadingMode || currentProjectConfig.resourceLoadingMode || 'preload'
     };
 
     // Remove reference to Window object to avoid circular JSON serialization error
