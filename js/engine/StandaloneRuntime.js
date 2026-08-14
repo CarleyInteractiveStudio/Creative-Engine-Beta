@@ -565,6 +565,14 @@ export class StandaloneRuntime {
                 const isParallaxB = !!b.getComponent(Components.Parallax);
                 if (isParallaxA !== isParallaxB) return isParallaxA ? -1 : 1;
 
+                if (isParallaxA && isParallaxB) {
+                    const parallaxA = a.getComponent(Components.Parallax);
+                    const parallaxB = b.getComponent(Components.Parallax);
+                    const factorA = parallaxA.scrollFactor ? (parallaxA.scrollFactor.x || 0) : 0;
+                    const factorB = parallaxB.scrollFactor ? (parallaxB.scrollFactor.x || 0) : 0;
+                    if (factorA !== factorB) return factorA - factorB;
+                }
+
                 const transformA = a.getComponent(Components.Transform);
                 const transformB = b.getComponent(Components.Transform);
                 return (transformA ? transformA.y : 0) - (transformB ? transformB.y : 0);
@@ -782,7 +790,8 @@ export class StandaloneRuntime {
                     };
 
                     if ((mirrorX > 0 || mirrorY > 0) && viewport) {
-                        const stepX = mirrorX || dWidth, stepY = mirrorY || dHeight;
+                        const stepX = Math.max(1, mirrorX || dWidth);
+                        const stepY = Math.max(1, mirrorY || dHeight);
                         const startX = mirrorX > 0 ? Math.floor((viewport.left - worldPosition.x + dWidth / 2) / stepX) * stepX : 0;
                         const endX = mirrorX > 0 ? Math.ceil((viewport.right - worldPosition.x + dWidth / 2) / stepX) * stepX + stepX : dWidth;
                         const startY = mirrorY > 0 ? Math.floor((viewport.top - worldPosition.y + dHeight / 2) / stepY) * stepY : 0;

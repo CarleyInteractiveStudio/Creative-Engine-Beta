@@ -13,6 +13,7 @@ let selectedTileId = -1;
 let selectedGridCoord = null; // For deleting tiles in organize mode
 let activeTool = 'tile-brush'; // Default tool
 let isOrganizeMode = false;
+let updateWindowMenuUICallback = null;
 
 // Viewport state for the infinite grid
 let cameraOffset = { x: 0, y: 0 };
@@ -52,6 +53,7 @@ export function initialize(dependencies) {
     projectsDirHandle = dependencies.projectsDirHandle;
     openAssetSelectorCallback = dependencies.openAssetSelectorCallback;
     setActiveToolCallback = dependencies.setActiveToolCallback;
+    updateWindowMenuUICallback = dependencies.updateWindowMenuUI;
 
 
     // Initially, the panel is in its "empty" state
@@ -131,6 +133,9 @@ export async function openPalette(fileHandle) {
 
         selectedTileId = -1;
         dom.panel.classList.remove('hidden');
+        if (typeof updateWindowMenuUICallback === 'function') {
+            updateWindowMenuUICallback();
+        }
         dom.overlay.style.display = 'none';
         dom.fileNameSpan.textContent = file.name;
         dom.selectedTileIdSpan.textContent = '-';
