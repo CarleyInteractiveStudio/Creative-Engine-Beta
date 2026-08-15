@@ -53,13 +53,38 @@ export async function getURLForAssetPath(path, projectsDirHandle) {
     if (!path) return null;
 
     // --- Embedded Assets Support ---
-    if (typeof window !== 'undefined' && window.CE_Standalone_Assets_Data && window.CE_Standalone_Assets_Data[path]) {
-        const data = window.CE_Standalone_Assets_Data[path];
-        try {
-            const dataUrl = "data:application/json;base64," + btoa(unescape(encodeURIComponent(JSON.stringify(data))));
-            return dataUrl;
-        } catch (e) {
-            console.warn("[AssetUtils] Failed to create data URL for embedded asset:", path, e);
+    if (typeof window !== 'undefined' && window.CE_Standalone_Assets_Data) {
+        let embeddedData = window.CE_Standalone_Assets_Data[path];
+
+        if (!embeddedData) {
+            const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+            const assetsPath = cleanPath.startsWith('Assets/') ? cleanPath : `Assets/${cleanPath}`;
+            const noAssetsPath = cleanPath.startsWith('Assets/') ? cleanPath.substring(7) : cleanPath;
+
+            embeddedData = window.CE_Standalone_Assets_Data[cleanPath] ||
+                           window.CE_Standalone_Assets_Data[assetsPath] ||
+                           window.CE_Standalone_Assets_Data[noAssetsPath];
+
+            if (!embeddedData) {
+                const lowerPath = cleanPath.toLowerCase();
+                const lowerAssets = assetsPath.toLowerCase();
+                for (const key in window.CE_Standalone_Assets_Data) {
+                    const lowerKey = key.toLowerCase();
+                    if (lowerKey === lowerPath || lowerKey === lowerAssets) {
+                        embeddedData = window.CE_Standalone_Assets_Data[key];
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (embeddedData) {
+            try {
+                const dataUrl = "data:application/json;base64," + btoa(unescape(encodeURIComponent(JSON.stringify(embeddedData))));
+                return dataUrl;
+            } catch (e) {
+                console.warn("[AssetUtils] Failed to create data URL for embedded asset:", path, e);
+            }
         }
     }
 

@@ -586,8 +586,22 @@ export function createSprite(name, imagePath) {
  */
 export async function instanciarPrefabDesdeRuta(path, x, y) {
     try {
+        const dirHandle = window.projectsDirHandle;
+        if (!dirHandle) {
+            const { getURLForAssetPath } = await import('./AssetUtils.js');
+            const url = await getURLForAssetPath(path);
+            if (!url) throw new Error(`Could not find URL for prefab: ${path}`);
+            const resp = await fetch(url);
+            const prefabData = await resp.json();
+            const newMateria = await instanciarPrefab(prefabData, x, y);
+            if (newMateria) {
+                newMateria.prefabPath = path;
+            }
+            return newMateria;
+        }
+
         const projectName = new URLSearchParams(window.location.search).get('project');
-        let currentHandle = await window.projectsDirHandle.getDirectoryHandle(projectName);
+        let currentHandle = await dirHandle.getDirectoryHandle(projectName);
         const parts = path.split('/');
         const fileName = parts.pop();
 
@@ -623,8 +637,56 @@ export const instantiatePrefabFromPath = instanciarPrefabDesdeRuta;
  */
 export async function loadSceneByPath(path) {
     try {
+        const dirHandle = window.projectsDirHandle;
+        if (!dirHandle) {
+            const { getURLForAssetPath } = await import('./AssetUtils.js');
+            let sceneUrl = await getURLForAssetPath(path);
+            if (!sceneUrl && !path.startsWith('Assets/')) {
+                sceneUrl = await getURLForAssetPath(`Assets/${path}`);
+            }
+            if (!sceneUrl) throw new Error(`Could not find URL for scene: ${path}`);
+            const resp = await fetch(sceneUrl);
+            const sceneData = await resp.json();
+            const scene = await deserializeScene(sceneData, null);
+            setCurrentScene(scene);
+
+            if (window.CE_Standalone_Runtime) {
+                const runtime = window.CE_Standalone_Runtime;
+                runtime.physicsSystem = new (await import('./Physics.js')).PhysicsSystem(scene);
+                scene.physicsSystem = runtime.physicsSystem;
+                (await import('./ui/UISystem.js')).initialize(scene);
+
+                const Components = await import('./Components.js');
+                for (const materia of scene.getAllMaterias()) {
+                    for (const ley of materia.leyes) {
+                        if (ley instanceof Components.CreativeScript) {
+                            await ley.initializeInstance();
+                            if (ley.isInitialized) {
+                                try { ley.start(); } catch(e) {}
+                                try { ley.onEnable(); } catch(e) {}
+                            }
+                        } else if (ley instanceof Components.AnimatorController) {
+                            await ley.initialize(null);
+                        } else if (ley instanceof Components.Animator) {
+                            if (!materia.getComponent(Components.AnimatorController)) {
+                                await ley.loadAnimationClip(null);
+                            }
+                        }
+
+                        if (!(ley instanceof Components.CreativeScript) && typeof ley.start === 'function') {
+                            try { await ley.start(); } catch(e) {}
+                        }
+                    }
+                }
+            } else if (window.Runtime && typeof window.Runtime.restartWithScene === 'function') {
+                window.Runtime.restartWithScene(scene);
+            }
+
+            return scene;
+        }
+
         const projectName = new URLSearchParams(window.location.search).get('project');
-        let currentHandle = await window.projectsDirHandle.getDirectoryHandle(projectName);
+        let currentHandle = await dirHandle.getDirectoryHandle(projectName);
         const parts = path.split('/');
         const fileName = parts.pop();
 
@@ -637,7 +699,7 @@ export async function loadSceneByPath(path) {
         }
 
         const fileHandle = await currentHandle.getFileHandle(fileName);
-        const result = await loadScene(fileHandle, window.projectsDirHandle);
+        const result = await loadScene(fileHandle, dirHandle);
 
         if (result) {
             setCurrentScene(result.scene);
