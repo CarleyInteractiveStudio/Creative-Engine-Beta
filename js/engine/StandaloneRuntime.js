@@ -160,8 +160,11 @@ export class StandaloneRuntime {
             console.error("Failed to load scene", e);
         }
 
-        // 4. Initial Resize
+        // 4. Initial Resize & Window Resize Listener
         if (this.renderer) this.renderer.resize();
+        window.addEventListener('resize', () => {
+            if (this.renderer) this.renderer.resize();
+        });
 
         // 5. Start Loop
         this.lastTime = performance.now();
@@ -218,8 +221,6 @@ export class StandaloneRuntime {
             SceneManager.currentScene.getAllMaterias().forEach(m => {
                 if (m.isActive) m.update(this.deltaTime);
             });
-
-            this.renderer.resize();
 
             const cameras = SceneManager.currentScene.findAllCameras()
                 .sort((a, b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth);
@@ -402,15 +403,7 @@ export class StandaloneRuntime {
                                     img.src = url;
                                 });
                             } else if (['mp3', 'wav', 'ogg'].includes(ext)) {
-                                await new Promise((res) => {
-                                    const audio = new Audio();
-                                    audio.oncanplaythrough = res;
-                                    audio.onerror = res;
-                                    audio.src = url;
-                                    audio.load();
-                                    // Fallback for some browsers that won't fire canplaythrough without user interaction
-                                    setTimeout(res, 500);
-                                });
+                                await fetch(url).catch(() => {});
                             } else {
                                 // Just fetch the file to put it in browser cache
                                 await fetch(url).catch(() => {});

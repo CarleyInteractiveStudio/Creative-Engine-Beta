@@ -1942,7 +1942,8 @@ export class SpriteRenderer extends Leyes {
             this.spriteSheet = await response.json();
 
             // Set source from the sheet and load the actual image
-            this.source = `Assets/${this.spriteSheet.sourceImage}`;
+            const srcImg = this.spriteSheet.sourceImage || '';
+            this.source = srcImg.startsWith('Assets/') ? srcImg : `Assets/${srcImg}`;
             await this.loadSprite(projectsDirHandle);
 
             // Default to the first sprite if none is selected
@@ -2184,7 +2185,8 @@ export class Animator extends Leyes {
                                     }
                                 }
                                 if (sheet && sheet.sourceImage) {
-                                    imagePath = `Assets/${sheet.sourceImage}`;
+                                    const srcImg = sheet.sourceImage;
+                                    imagePath = srcImg.startsWith('Assets/') ? srcImg : `Assets/${srcImg}`;
                                 }
                             } else {
                                 imagePath = assetPath;

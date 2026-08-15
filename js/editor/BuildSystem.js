@@ -663,7 +663,11 @@ async function addAssetsToZip(zipOrHandle, dirHandle, path, usedAssets = null, i
                     if (['cescene', 'ceanim', 'cea', 'cesprite'].includes(ext)) {
                         try {
                             const content = await file.text();
-                            assetsData[targetPath] = JSON.parse(content);
+                            const parsed = JSON.parse(content);
+                            assetsData[targetPath] = parsed;
+                            if (targetPath.startsWith('Assets/')) {
+                                assetsData[targetPath.substring(7)] = parsed;
+                            }
                         } catch (e) {
                             console.warn(`[BuildSystem] Failed to parse JSON for bundling: ${entryPath}`, e);
                         }
