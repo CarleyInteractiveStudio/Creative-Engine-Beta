@@ -26,7 +26,7 @@ const defaultPrefs = {
     showOrientationGizmo: true,
     showSeeThroughGizmo: true,
     showBlueSkeletonGizmo: true,
-    enableOcclusionCulling: true,
+    enableOcclusionCulling: false,
     invertXAxis: false,
     invertYAxis: false,
     snapping: false,

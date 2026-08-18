@@ -2093,7 +2093,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // --- Occlusion Culling Pre-pass ---
             const occludedSet = new Set();
             const prefs = getPreferences ? getPreferences() : {};
-            const enableOcclusion = prefs.enableOcclusionCulling !== false && window.CE_OcclusionCulling !== false;
+            const enableOcclusion = !!prefs.enableOcclusionCulling && window.CE_OcclusionCulling !== false;
 
             if (enableOcclusion && allInLayer.length > 1) {
                 const opaqueBoxes = [];
@@ -2152,7 +2152,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             isOpaque = false;
                         }
 
-                        if (isOpaque) {
+                        if (isOpaque && opaqueBoxes.length < 32) {
                             opaqueBoxes.push(bounds);
                         }
                     }

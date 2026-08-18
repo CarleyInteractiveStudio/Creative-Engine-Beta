@@ -588,7 +588,7 @@ export class StandaloneRuntime {
         const drawObjects = () => {
             // --- Occlusion Culling Pre-pass ---
             const occludedSet = new Set();
-            const enableOcclusion = window.CE_OcclusionCulling !== false && (!window.currentProjectConfig || window.currentProjectConfig.enableOcclusionCulling !== false);
+            const enableOcclusion = !!window.CE_OcclusionCulling && (!!window.currentProjectConfig && !!window.currentProjectConfig.enableOcclusionCulling);
 
             if (enableOcclusion && allInLayer.length > 1) {
                 const opaqueBoxes = [];
@@ -646,7 +646,7 @@ export class StandaloneRuntime {
                             isOpaque = false;
                         }
 
-                        if (isOpaque) {
+                        if (isOpaque && opaqueBoxes.length < 32) {
                             opaqueBoxes.push(bounds);
                         }
                     }
