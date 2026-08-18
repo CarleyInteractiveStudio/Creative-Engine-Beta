@@ -580,7 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Animation Skeletal Elements
             'animation-type-selector', 'animation-record-btn', 'skeletal-timeline', 'animation-time-slider', 'skeletal-tracks',
             'scene-canvas-3d', 'game-canvas-3d', 'prefs-show-origin-axes', 'prefs-show-orientation-gizmo',
-            'prefs-show-see-through-gizmo', 'prefs-show-blue-skeleton-gizmo',
+            'prefs-show-see-through-gizmo', 'prefs-show-blue-skeleton-gizmo', 'prefs-occlusion-culling',
             'prefs-invert-x-axis', 'prefs-invert-y-axis',
             'prefs-child-creation-mode',
             'btn-snap-toggle', 'btn-child-mode-toggle', 'icon-child-mode', 'label-child-mode'
@@ -2083,11 +2083,84 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 5. Y position (Isometric/Depth)
                 const transformA = a.getComponent(Components.Transform);
                 const transformB = b.getComponent(Components.Transform);
-                return (transformA ? transformA.y : 0) - (transformB ? transformB.y : 0);
+                const yDiff = (transformA ? transformA.y : 0) - (transformB ? transformB.y : 0);
+                if (Math.abs(yDiff) > 0.0001) return yDiff;
+
+                // 6. Creation order tie-breaker (Materia ID: newer drawn on top)
+                return (a.id || 0) - (b.id || 0);
             });
 
+            // --- Occlusion Culling Pre-pass ---
+            const occludedSet = new Set();
+            const prefs = getPreferences ? getPreferences() : {};
+            const enableOcclusion = prefs.enableOcclusionCulling !== false && window.CE_OcclusionCulling !== false;
+
+            if (enableOcclusion && allInLayer.length > 1) {
+                const opaqueBoxes = [];
+                for (let i = allInLayer.length - 1; i >= 0; i--) {
+                    const m = allInLayer[i];
+                    if (!m.isActive) continue;
+
+                    const transform = m.getComponent(Components.Transform);
+                    if (!transform) continue;
+
+                    const parallax = m.getComponent(Components.Parallax);
+                    const isGame = (typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts));
+                    let pos = transform.position;
+                    if (parallax && (isGame || isGameView)) {
+                        pos = {
+                            x: pos.x + parallax.offset.x + (parallax._autoOffset ? parallax._autoOffset.x : 0),
+                            y: pos.y + parallax.offset.y + (parallax._autoOffset ? parallax._autoOffset.y : 0)
+                        };
+                    }
+
+                    const corners = MathUtils.getOOB(m, pos);
+                    if (!corners) continue;
+                    const bounds = MathUtils.getBoundsFromCorners(corners);
+                    if (!bounds) continue;
+
+                    for (const box of opaqueBoxes) {
+                        if (box.left <= bounds.left && box.right >= bounds.right &&
+                            box.top <= bounds.top && box.bottom >= bounds.bottom) {
+                            occludedSet.add(m.id);
+                            break;
+                        }
+                    }
+
+                    if (!occludedSet.has(m.id)) {
+                        const spriteRenderer = m.getComponent(Components.SpriteRenderer);
+                        const textureRender = m.getComponent(Components.TextureRender);
+
+                        let isOpaque = false;
+                        if (spriteRenderer && spriteRenderer.sprite && spriteRenderer.sprite.naturalWidth > 0) {
+                            const opacityVal = typeof spriteRenderer.opacity === 'number' ? spriteRenderer.opacity : parseFloat(spriteRenderer.opacity || 1);
+                            const rot = Math.abs(transform.rotation % 360);
+                            const isAxisAligned = (rot < 0.1 || Math.abs(rot - 90) < 0.1 || Math.abs(rot - 180) < 0.1 || Math.abs(rot - 270) < 0.1);
+                            if (opacityVal >= 0.99 && isAxisAligned && !spriteRenderer.isError) {
+                                isOpaque = true;
+                            }
+                        } else if (textureRender && textureRender.shape === 'Rectangle') {
+                            const rot = Math.abs(transform.rotation % 360);
+                            const isAxisAligned = (rot < 0.1 || Math.abs(rot - 90) < 0.1 || Math.abs(rot - 180) < 0.1 || Math.abs(rot - 270) < 0.1);
+                            if (isAxisAligned) {
+                                isOpaque = true;
+                            }
+                        }
+
+                        const layerSettings = SceneManager.currentScene.layerSettings[m.layer];
+                        if (layerSettings && layerSettings.opacity !== undefined && layerSettings.opacity < 0.99) {
+                            isOpaque = false;
+                        }
+
+                        if (isOpaque) {
+                            opaqueBoxes.push(bounds);
+                        }
+                    }
+                }
+            }
+
             for (const materia of allInLayer) {
-                if (!materia.isActive) continue;
+                if (!materia.isActive || occludedSet.has(materia.id)) continue;
 
                 // --- Apply Layer Settings ---
                 const layerSettings = SceneManager.currentScene.layerSettings[materia.layer];

@@ -26,6 +26,7 @@ const defaultPrefs = {
     showOrientationGizmo: true,
     showSeeThroughGizmo: true,
     showBlueSkeletonGizmo: true,
+    enableOcclusionCulling: true,
     invertXAxis: false,
     invertYAxis: false,
     snapping: false,
@@ -179,6 +180,7 @@ async function savePreferences() {
     currentPreferences.showOrientationGizmo = _dom.prefsShowOrientationGizmo.checked;
     currentPreferences.showSeeThroughGizmo = _dom.prefsShowSeeThroughGizmo.checked;
     currentPreferences.showBlueSkeletonGizmo = _dom.prefsShowBlueSkeletonGizmo.checked;
+    if (_dom.prefsOcclusionCulling) currentPreferences.enableOcclusionCulling = _dom.prefsOcclusionCulling.checked;
     currentPreferences.invertXAxis = _dom.prefsInvertXAxis.checked;
     currentPreferences.invertYAxis = _dom.prefsInvertYAxis.checked;
     currentPreferences.snapping = _dom.prefsSnappingToggle.checked;
@@ -260,6 +262,7 @@ function loadPreferences() {
     if (_dom.prefsShowOrientationGizmo) _dom.prefsShowOrientationGizmo.checked = currentPreferences.showOrientationGizmo !== false;
     if (_dom.prefsShowSeeThroughGizmo) _dom.prefsShowSeeThroughGizmo.checked = currentPreferences.showSeeThroughGizmo !== false;
     if (_dom.prefsShowBlueSkeletonGizmo) _dom.prefsShowBlueSkeletonGizmo.checked = currentPreferences.showBlueSkeletonGizmo !== false;
+    if (_dom.prefsOcclusionCulling) _dom.prefsOcclusionCulling.checked = currentPreferences.enableOcclusionCulling !== false;
     if (_dom.prefsInvertXAxis) _dom.prefsInvertXAxis.checked = !!currentPreferences.invertXAxis;
     if (_dom.prefsInvertYAxis) _dom.prefsInvertYAxis.checked = !!currentPreferences.invertYAxis;
     if (_dom.prefsSnappingToggle) _dom.prefsSnappingToggle.checked = currentPreferences.snapping;
