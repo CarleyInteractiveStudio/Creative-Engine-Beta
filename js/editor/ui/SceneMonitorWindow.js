@@ -466,16 +466,16 @@ export function update() {
                 fpsHistory.shift();
             }
 
-            // Real-time drop threshold detection (< 40 FPS indicates a stutter)
-            // Skip the first 15 frames of warmup to avoid false alarms immediately on game start!
-            if (frameCounter > 15) {
-                if (fpsVal < 40) {
+            // Real-time drop threshold detection (< 30 FPS indicates a major drop of 3+ bars)
+            // Skip the first 20 frames of warmup to avoid false alarms immediately on game start!
+            if (frameCounter > 20) {
+                if (fpsVal < 30) {
                     consecutiveDropFrames++;
-                    if (consecutiveDropFrames >= 10) {
+                    if (consecutiveDropFrames >= 25) { // Requires sustained drop (~5 intervals)
                         if (!isCurrentlyDropping) {
                             isCurrentlyDropping = true;
                             dropStartFrame = frameCounter - consecutiveDropFrames + 1;
-                            logEvent('Caída FPS', `Se detectó una caída continua de rendimiento (${displayFPS} FPS) desde el fotograma ${dropStartFrame} (Duración: ${consecutiveDropFrames} fotogramas). Causa probable: ${attributedCause} (${maxTime.toFixed(1)}ms).`, 'error');
+                            logEvent('Caída FPS', `Se detectó una caída de rendimiento (${displayFPS} FPS) desde el fotograma ${dropStartFrame} (Duración: ${consecutiveDropFrames} fotogramas). Causa probable: ${attributedCause} (${maxTime.toFixed(1)}ms).`, 'error');
                         }
                     }
                 } else {

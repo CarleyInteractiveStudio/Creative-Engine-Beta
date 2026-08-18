@@ -102,58 +102,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let carlTipNotification = null;
 
     function showCarlProactiveTip(errorMsg, structuredError) {
-        if (carlTipNotification) return;
-
-        carlTipNotification = document.createElement('div');
-        carlTipNotification.className = 'carl-tip-notification';
-
-        const title = Localization.get('CARL_TIP_TITLE', 'Carl tiene un consejo');
-        const actionText = Localization.get('CARL_TIP_ACTION', 'Ver sugerencia');
+        // Alarms & tips are routed to dedicated panels (Console / Carl IA) without screen popups
         const promptText = (Localization.get('CARL_TIP_FIX_PROMPT', 'He notado que tienes este error varias veces: "{error}". ¿Quieres que analice tu código y te proponga una solución?'))
             .replace('{error}', translateErrorMessage(errorMsg));
 
-        carlTipNotification.innerHTML = `
-            <div class="tip-header">
-                <img src="https://raw.githubusercontent.com/CarleyInteractiveStudio/Carley-Interactive-Studio/main/carley_foto_web/Carl_model.jpeg" class="carl-avatar-small">
-                <span>${title}</span>
-                <button class="close-tip">×</button>
-            </div>
-            <div class="tip-body">
-                ${promptText}
-            </div>
-            <div class="tip-footer">
-                <button class="tip-action">${actionText}</button>
-            </div>
-        `;
-
-        document.body.appendChild(carlTipNotification);
-
-        // Trigger animation
-        setTimeout(() => carlTipNotification.classList.add('visible'), 100);
-
-        carlTipNotification.querySelector('.close-tip').onclick = () => {
-            carlTipNotification.classList.remove('visible');
-            setTimeout(() => {
-                carlTipNotification.remove();
-                carlTipNotification = null;
-            }, 500);
-        };
-
-        carlTipNotification.querySelector('.tip-action').onclick = () => {
-            // Open Carl Panel and send the error message
-            if (dom.carlIaPanel.classList.contains('hidden')) {
-                dom.menubarCarlIaBtn.click();
-            }
-
-            const context = structuredError.scriptName ? ` en el archivo ${structuredError.scriptName}` : '';
-            const helpPrompt = `He tenido este error varias veces: "${errorMsg}"${context}. ¿Me puedes ayudar a arreglarlo?`;
-
-            const input = dom.carlIaInput;
-            input.value = helpPrompt;
-            dom.carlIaSendBtn.click();
-
-            carlTipNotification.querySelector('.close-tip').click();
-        };
+        logToUIConsole({
+            message: `💡 Carl: ${promptText}`,
+            isSystemString: true,
+            isOptimizer: true,
+            culpritType: 'ErrorRecurrente'
+        }, 'info');
     }
 
     let gamePerfStats = {

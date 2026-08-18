@@ -26,6 +26,11 @@ export class PerformanceMonitor {
         this.maxSnapshots = 5;
         this.frameAnalysisResults = null;
         this.hasNotifiedOptimization = false;
+
+        // Intelligent Alarm Counter
+        this.lowFpsOccurrences = 0;
+        this.requiredOccurrencesForAlarm = 5; // Must drop significantly 5 times
+        this.significantFpsDropThreshold = 15; // 3 bars drop equivalent (~15 FPS)
     }
 
     updateConfig(config) {
@@ -75,12 +80,23 @@ export class PerformanceMonitor {
         // Do not automatically trigger optimizations if disabled!
         if (this.autoOptimize === false) return;
 
-        // Optimization logic
-        // Only trigger optimization if FPS falls below the absolute target minimum,
-        // to prevent micro-stutters from triggering persistent optimization cycles.
-        if (this.fps < this.targetMinFps) {
-            this.analyzeFramePerformance();
-            this.increaseOptimization();
+        const targetFps = this.targetMaxFps > 0 ? this.targetMaxFps : 60;
+        const dropAmount = targetFps - this.fps;
+
+        // Require a significant drop of at least 3 bars (>= 15 FPS drop below target) or below (targetMinFps - 10)
+        if (dropAmount >= this.significantFpsDropThreshold || this.fps < (this.targetMinFps - 10)) {
+            this.lowFpsOccurrences++;
+            // Only trigger alarm and optimization after at least 5 significant occurrences!
+            if (this.lowFpsOccurrences >= this.requiredOccurrencesForAlarm) {
+                this.analyzeFramePerformance();
+                this.increaseOptimization();
+                this.lowFpsOccurrences = 0; // Reset counter after alarm
+            }
+        } else {
+            // Decay occurrence counter when performance is normal
+            if (this.lowFpsOccurrences > 0) {
+                this.lowFpsOccurrences--;
+            }
         }
     }
 
