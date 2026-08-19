@@ -1041,8 +1041,9 @@ export class Renderer3D {
 
     resize() {
         if (!this.canvas || !this.gl) return;
-        const displayWidth  = this.canvas.clientWidth;
-        const displayHeight = this.canvas.clientHeight;
+        const rect = this.canvas.getBoundingClientRect();
+        const displayWidth  = Math.max(1, Math.floor(rect.width || this.canvas.clientWidth || 800));
+        const displayHeight = Math.max(1, Math.floor(rect.height || this.canvas.clientHeight || 600));
         if (this.canvas.width !== displayWidth || this.canvas.height !== displayHeight) {
             this.canvas.width  = displayWidth;
             this.canvas.height = displayHeight;
@@ -1114,7 +1115,9 @@ export class Renderer3D {
 
     pick(scene, cameraMateria, x, y, options = {}) {
         if (!this.initialized || !this.gl) return null;
+        this.resize();
         const gl = this.gl;
+        const rect = gl.canvas.getBoundingClientRect();
         const w = gl.canvas.width, h = gl.canvas.height;
 
         if (!this.pickFB || this._pickW !== w || this._pickH !== h) {
@@ -1147,15 +1150,23 @@ export class Renderer3D {
         const pickColorLoc = gl.getUniformLocation(program, 'uPickColor');
 
         const idMap = new Map();
+        const mat4 = window.glMatrix?.mat4;
         scene.getAllMaterias().forEach((m, index) => {
             if (!m.isActive) return;
-            const mesh = m.getComponent(Components3D.MeshRenderer3D);
+            const mesh = m.getComponent(Components3D.MeshRenderer3D) ||
+                         m.getComponentByName?.('CarleyMeshRenderer3D') ||
+                         m.getComponent?.('CarleyMeshRenderer3D') ||
+                         m.getComponentByName?.('CarleySkinnedMeshRenderer3D') ||
+                         m.getComponent?.('CarleySkinnedMeshRenderer3D');
             if (!mesh) return;
+
+            const transform = m.transform || m.getComponent(Components.Transform) || m.getComponentByName?.('Transform') || m.getComponentByName?.('CarleyTransform3D');
+            if (!transform) return;
 
             const id = index + 1;
             idMap.set(id, m.id);
             gl.uniform4f(pickColorLoc, (id & 0xFF)/255, ((id >> 8) & 0xFF)/255, ((id >> 16) & 0xFF)/255, 1.0);
-            gl.uniformMatrix4fv(modelLoc, false, m.getComponent(Components.Transform).worldMatrix);
+            gl.uniformMatrix4fv(modelLoc, false, transform.worldMatrix || (mat4 ? mat4.create() : new Float32Array(16)));
 
             if (mesh.meshType === 'Cube' || !mesh.meshType) {
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cube);
@@ -1183,7 +1194,6 @@ export class Renderer3D {
         });
 
         const pixels = new Uint8Array(4);
-        const rect = gl.canvas.getBoundingClientRect();
         gl.readPixels((x / rect.width) * w, (h - 1) - (y / rect.height) * h, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         return idMap.get(pixels[0] + (pixels[1] << 8) + (pixels[2] << 16)) || null;

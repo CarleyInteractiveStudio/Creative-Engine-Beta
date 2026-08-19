@@ -72,6 +72,32 @@ export class CarleyTransform3D extends CarleyLeyes3D {
     get localScale() { return this._scale; }
     set localScale(v) { this.scale = v; }
 
+    // Matrix computation for physics, rendering and picking
+    get worldMatrix() {
+        const glm = window.glMatrix;
+        if (!glm) return null;
+        const m = glm.mat4.create();
+        const q = glm.quat.create();
+        glm.quat.fromEuler(q, this._rotation.x || 0, this._rotation.y || 0, this._rotation.z || 0);
+
+        const pos = [this._position.x || 0, this._position.y || 0, this._position.z || 0];
+        const scale = [this._scale.x || 1, this._scale.y || 1, this._scale.z || 1];
+
+        glm.mat4.fromRotationTranslationScale(m, q, pos, scale);
+
+        if (this.materia && this.materia.parent) {
+            let parentMateria = this.materia.parent;
+            if (typeof parentMateria === 'number') {
+                parentMateria = (this.materia.scene || window.SceneManager?.currentScene)?.findMateriaById(parentMateria);
+            }
+            const parentTransform = parentMateria ? (parentMateria.transform || parentMateria.getComponentByName?.('Transform') || parentMateria.getComponentByName?.('CarleyTransform3D')) : null;
+            if (parentTransform && parentTransform.worldMatrix) {
+                glm.mat4.multiply(m, parentTransform.worldMatrix, m);
+            }
+        }
+        return m;
+    }
+
     // Español (Simplificado)
     get posicion() { return this.position; }
     set posicion(v) { this.position = v; }
