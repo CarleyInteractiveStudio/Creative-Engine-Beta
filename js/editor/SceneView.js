@@ -157,7 +157,15 @@ function checkGizmoHit(canvasPos) {
     const is3D = isProject3D(config);
     const is3DActive = is3D && config.viewMode !== '2d';
 
-    if (is3DActive) {
+    const is3DMateria = selectedMateria && (
+        selectedMateria.getComponentByName?.('CarleyMeshRenderer3D') ||
+        selectedMateria.getComponentByName?.('CarleyTransform3D') ||
+        selectedMateria.getComponentByName?.('MeshRenderer3D') ||
+        selectedMateria.getComponent?.('CarleyMeshRenderer3D') ||
+        selectedMateria.transform?.constructor?.name === 'CarleyTransform3D'
+    );
+
+    if (is3DActive || is3DMateria) {
         return check3DGizmoHit(canvasPos, selectedMateria);
     }
 
@@ -704,7 +712,15 @@ function drawGizmos(renderer, materia, proj = null, view = null, cw = null, ch =
     const is3D = isProject3D(config);
     const is3DActive = is3D && config.viewMode !== '2d';
 
-    if (is3DActive) {
+    const is3DMateria = materia && (
+        materia.getComponentByName?.('CarleyMeshRenderer3D') ||
+        materia.getComponentByName?.('CarleyTransform3D') ||
+        materia.getComponentByName?.('MeshRenderer3D') ||
+        materia.getComponent?.('CarleyMeshRenderer3D') ||
+        materia.transform?.constructor?.name === 'CarleyTransform3D'
+    );
+
+    if (is3DActive || is3DMateria) {
         draw3DGizmos(materia, proj, view, cw, ch);
         return;
     }
@@ -888,15 +904,10 @@ export function initialize(dependencies) {
 
                                 const pixelsAlongAxis = mouseDx * dirX + mouseDy * dirY;
                                 const worldPerPixel = sampleOffset / len2D;
-                                const deltaU = pixelsAlongAxis * worldPerPixel;
+                                const rawDeltaU = pixelsAlongAxis * worldPerPixel;
+                                const deltaU = snapEnabled ? Math.round(rawDeltaU / snapSize) * snapSize : rawDeltaU;
 
                                 let nextPos = [p0[0] + worldAxis[0] * deltaU, p0[1] + worldAxis[1] * deltaU, p0[2] + worldAxis[2] * deltaU];
-
-                                if (snapEnabled) {
-                                    nextPos[0] = Math.round(nextPos[0] / snapSize) * snapSize;
-                                    nextPos[1] = Math.round(nextPos[1] / snapSize) * snapSize;
-                                    nextPos[2] = Math.round(nextPos[2] / snapSize) * snapSize;
-                                }
 
                                 transform.x = nextPos[0];
                                 transform.y = nextPos[1];
@@ -3045,7 +3056,8 @@ function check3DGizmoHit(canvasPos, materia) {
     const r3d = window._Renderer3D;
     const proj = r3d?.lastProjectionMatrix;
     const view = r3d?.lastViewMatrix;
-    const cw = r3d?.canvas?.width, ch = r3d?.canvas?.height;
+    const cw = renderer?.canvas?.clientWidth || renderer?.canvas?.width || 800;
+    const ch = renderer?.canvas?.clientHeight || renderer?.canvas?.height || 600;
 
     const axes = getMateriaAxes(materia);
     const center = { x: axes.worldCenter[0], y: axes.worldCenter[1], z: axes.worldCenter[2] };
@@ -3065,18 +3077,19 @@ function check3DGizmoHit(canvasPos, materia) {
         return Math.hypot(p.x - (a.x + t * (b.x - a.x)), p.y - (a.y + t * (b.y - a.y)));
     };
 
-    if (activeTool === 'move' || activeTool === 'universal' || activeTool === 'scale') {
+    if (activeTool === 'move' || activeTool === 'universal' || activeTool === 'scale' || activeTool === 'select' || !activeTool) {
         const dx = canvasPos.x - screenPos.x;
         const dy = canvasPos.y - screenPos.y;
         if (Math.hypot(dx, dy) < 10) return activeTool === 'scale' ? 'scale-all' : 'move-xy';
 
+        const isScale = activeTool === 'scale';
         const handles = [
-            { axis: axes.x, handlePos: activeTool === 'scale' ? 'scale-x' : 'move-x' },
-            { axis: [-axes.x[0], -axes.x[1], -axes.x[2]], handlePos: activeTool === 'scale' ? 'scale-x-neg' : 'move-x-neg' },
-            { axis: axes.y, handlePos: activeTool === 'scale' ? 'scale-y' : 'move-y' },
-            { axis: [-axes.y[0], -axes.y[1], -axes.y[2]], handlePos: activeTool === 'scale' ? 'scale-y-neg' : 'move-y-neg' },
-            { axis: axes.z, handlePos: activeTool === 'scale' ? 'scale-z' : 'move-z' },
-            { axis: [-axes.z[0], -axes.z[1], -axes.z[2]], handlePos: activeTool === 'scale' ? 'scale-z-neg' : 'move-z-neg' }
+            { axis: axes.x, handlePos: isScale ? 'scale-x' : 'move-x' },
+            { axis: [-axes.x[0], -axes.x[1], -axes.x[2]], handlePos: isScale ? 'scale-x-neg' : 'move-x-neg' },
+            { axis: axes.y, handlePos: isScale ? 'scale-y' : 'move-y' },
+            { axis: [-axes.y[0], -axes.y[1], -axes.y[2]], handlePos: isScale ? 'scale-y-neg' : 'move-y-neg' },
+            { axis: axes.z, handlePos: isScale ? 'scale-z' : 'move-z' },
+            { axis: [-axes.z[0], -axes.z[1], -axes.z[2]], handlePos: isScale ? 'scale-z-neg' : 'move-z-neg' }
         ];
 
         let bestHandle = null;
@@ -3143,8 +3156,8 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
     // Use current rendering matrices for correct projection
     const proj = customProj || r3d.lastProjectionMatrix;
     const view = customView || r3d.lastViewMatrix;
-    const cw = customCw || r3d.canvas.width;
-    const ch = customCh || r3d.canvas.height;
+    const cw = customCw || renderer?.canvas?.clientWidth || renderer?.canvas?.width || 800;
+    const ch = customCh || renderer?.canvas?.clientHeight || renderer?.canvas?.height || 600;
 
     const axes = getMateriaAxes(materia);
     const center = { x: axes.worldCenter[0], y: axes.worldCenter[1], z: axes.worldCenter[2] };
@@ -3240,7 +3253,7 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
         ctx.restore();
     };
 
-    if (activeTool === 'move' || activeTool === 'universal' || activeTool === 'scale') {
+    if (activeTool === 'move' || activeTool === 'universal' || activeTool === 'scale' || activeTool === 'select' || !activeTool) {
         // Roblox style 6 directional handles (+X, -X, +Y, -Y, +Z, -Z)
         drawAxis(axes.x, '#ff4444'); // +X (Red - Right)
         drawAxis([-axes.x[0], -axes.x[1], -axes.x[2]], '#ff7777'); // -X (Light Red - Left)

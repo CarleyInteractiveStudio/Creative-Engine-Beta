@@ -501,6 +501,11 @@ class InputManager {
     }
 
     static _onMouseDown(event) {
+        const canvas = event.currentTarget || event.target;
+        if (canvas && typeof canvas.getBoundingClientRect === 'function') {
+            const rect = canvas.getBoundingClientRect();
+            this._updatePointerPosition(event.clientX, event.clientY, rect);
+        }
         this._onPointerDown(event.button);
     }
 

@@ -1315,13 +1315,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // View Mode determines interaction, but 3D is always the motor
 
         if (dom.sceneCanvas) {
-            dom.sceneCanvas.style.pointerEvents = is2DLocked ? 'all' : 'none';
-            dom.sceneCanvas.style.zIndex = is2DLocked ? '1' : '2';
+            dom.sceneCanvas.style.pointerEvents = 'all';
+            dom.sceneCanvas.style.zIndex = '2';
             dom.sceneCanvas.style.display = 'block';
         }
         if (dom.sceneCanvas3d) {
-            dom.sceneCanvas3d.style.pointerEvents = is2DLocked ? 'none' : 'all';
-            dom.sceneCanvas3d.style.zIndex = is2DLocked ? '2' : '1';
+            dom.sceneCanvas3d.style.pointerEvents = 'all';
+            dom.sceneCanvas3d.style.zIndex = '1';
         }
 
         if (dom.gameCanvas) {
