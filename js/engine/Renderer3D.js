@@ -1115,6 +1115,15 @@ export class Renderer3D {
     pick(scene, cameraMateria, x, y, options = {}) {
         if (!this.initialized || !this.gl) return null;
         const gl = this.gl;
+        const rect = gl.canvas.getBoundingClientRect();
+        const displayWidth  = Math.max(1, Math.floor(rect.width || gl.canvas.clientWidth || 800));
+        const displayHeight = Math.max(1, Math.floor(rect.height || gl.canvas.clientHeight || 600));
+
+        if (gl.canvas.width !== displayWidth || gl.canvas.height !== displayHeight) {
+            gl.canvas.width  = displayWidth;
+            gl.canvas.height = displayHeight;
+        }
+
         const w = gl.canvas.width, h = gl.canvas.height;
 
         if (!this.pickFB || this._pickW !== w || this._pickH !== h) {
@@ -1147,15 +1156,23 @@ export class Renderer3D {
         const pickColorLoc = gl.getUniformLocation(program, 'uPickColor');
 
         const idMap = new Map();
+        const mat4 = window.glMatrix?.mat4;
         scene.getAllMaterias().forEach((m, index) => {
             if (!m.isActive) return;
-            const mesh = m.getComponent(Components3D.MeshRenderer3D);
+            const mesh = m.getComponent(Components3D.MeshRenderer3D) ||
+                         m.getComponentByName?.('CarleyMeshRenderer3D') ||
+                         m.getComponent?.('CarleyMeshRenderer3D') ||
+                         m.getComponentByName?.('CarleySkinnedMeshRenderer3D') ||
+                         m.getComponent?.('CarleySkinnedMeshRenderer3D');
             if (!mesh) return;
+
+            const transform = m.transform || m.getComponent(Components.Transform) || m.getComponentByName?.('Transform') || m.getComponentByName?.('CarleyTransform3D');
+            if (!transform) return;
 
             const id = index + 1;
             idMap.set(id, m.id);
             gl.uniform4f(pickColorLoc, (id & 0xFF)/255, ((id >> 8) & 0xFF)/255, ((id >> 16) & 0xFF)/255, 1.0);
-            gl.uniformMatrix4fv(modelLoc, false, m.getComponent(Components.Transform).worldMatrix);
+            gl.uniformMatrix4fv(modelLoc, false, transform.worldMatrix || (mat4 ? mat4.create() : new Float32Array(16)));
 
             if (mesh.meshType === 'Cube' || !mesh.meshType) {
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.cube);
