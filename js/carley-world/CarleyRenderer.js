@@ -32,7 +32,73 @@ export class CarleyRenderer {
     }
 
     pick(scene, camera, mouseX, mouseY, options) {
-        return null;
+        const scn = scene || window.SceneManager?.currentScene;
+        if (!scn) return null;
+
+        const proj = this.lastProjectionMatrix || window._Renderer3D?.lastProjectionMatrix;
+        const view = this.lastViewMatrix || window._Renderer3D?.lastViewMatrix;
+        if (!proj || !view || !window.glMatrix) return null;
+
+        const glm = window.glMatrix;
+        const cw = this.canvas ? (this.canvas.width || 800) : 800;
+        const ch = this.canvas ? (this.canvas.height || 600) : 600;
+
+        let closestId = null;
+        let minDepth = Infinity;
+
+        const materias = scn.getAllMaterias ? scn.getAllMaterias() : [];
+        for (const m of materias) {
+            if (!m.isActive) continue;
+
+            const mesh = m.getComponent?.('CarleyMeshRenderer3D') ||
+                         m.getComponentByName?.('CarleyMeshRenderer3D') ||
+                         m.getComponentByName?.('MeshRenderer3D') ||
+                         m.getComponent?.('MeshRenderer3D') ||
+                         m.getComponentByName?.('CarleySkinnedMeshRenderer3D') ||
+                         m.getComponent?.('CarleySkinnedMeshRenderer3D');
+            if (!mesh) continue;
+
+            const transform = m.transform || m.getComponent?.('Transform') || m.getComponentByName?.('Transform') || m.getComponentByName?.('CarleyTransform3D');
+            if (!transform) continue;
+
+            const center = [transform.x || 0, transform.y || 0, transform.z || 0];
+            const worldVec = glm.vec4.fromValues(center[0], center[1], center[2], 1.0);
+
+            const viewPos = glm.vec4.create();
+            glm.vec4.transformMat4(viewPos, worldVec, view);
+            const depth = Math.abs(viewPos[2]);
+            if (depth <= 0.01) continue;
+
+            const clipPos = glm.vec4.create();
+            const mvp = glm.mat4.create();
+            glm.mat4.multiply(mvp, proj, view);
+            glm.vec4.transformMat4(clipPos, worldVec, mvp);
+
+            if (clipPos[3] < 0.01) continue;
+
+            const ndcX = clipPos[0] / clipPos[3];
+            const ndcY = clipPos[1] / clipPos[3];
+
+            const screenX = (ndcX * 0.5 + 0.5) * cw;
+            const screenY = (0.5 - ndcY * 0.5) * ch;
+
+            const scaleMax = Math.max(
+                Math.abs(transform.scale?.x ?? transform.scaleX ?? 1),
+                Math.abs(transform.scale?.y ?? transform.scaleY ?? 1),
+                Math.abs(transform.scale?.z ?? transform.scaleZ ?? 1)
+            );
+
+            const projFactor = Math.abs(proj[5] || 1.0) * (ch * 0.5);
+            const screenRadius = Math.max(30, (scaleMax * 100 * projFactor) / depth);
+
+            const dist = Math.hypot(mouseX - screenX, mouseY - screenY);
+            if (dist <= screenRadius && depth < minDepth) {
+                minDepth = depth;
+                closestId = m.id;
+            }
+        }
+
+        return closestId;
     }
 
     clear() {

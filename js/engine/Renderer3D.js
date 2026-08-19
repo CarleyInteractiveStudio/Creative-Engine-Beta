@@ -1041,8 +1041,9 @@ export class Renderer3D {
 
     resize() {
         if (!this.canvas || !this.gl) return;
-        const displayWidth  = this.canvas.clientWidth;
-        const displayHeight = this.canvas.clientHeight;
+        const rect = this.canvas.getBoundingClientRect();
+        const displayWidth  = Math.max(1, Math.floor(rect.width || this.canvas.clientWidth || 800));
+        const displayHeight = Math.max(1, Math.floor(rect.height || this.canvas.clientHeight || 600));
         if (this.canvas.width !== displayWidth || this.canvas.height !== displayHeight) {
             this.canvas.width  = displayWidth;
             this.canvas.height = displayHeight;
@@ -1114,16 +1115,9 @@ export class Renderer3D {
 
     pick(scene, cameraMateria, x, y, options = {}) {
         if (!this.initialized || !this.gl) return null;
+        this.resize();
         const gl = this.gl;
         const rect = gl.canvas.getBoundingClientRect();
-        const displayWidth  = Math.max(1, Math.floor(rect.width || gl.canvas.clientWidth || 800));
-        const displayHeight = Math.max(1, Math.floor(rect.height || gl.canvas.clientHeight || 600));
-
-        if (gl.canvas.width !== displayWidth || gl.canvas.height !== displayHeight) {
-            gl.canvas.width  = displayWidth;
-            gl.canvas.height = displayHeight;
-        }
-
         const w = gl.canvas.width, h = gl.canvas.height;
 
         if (!this.pickFB || this._pickW !== w || this._pickH !== h) {
