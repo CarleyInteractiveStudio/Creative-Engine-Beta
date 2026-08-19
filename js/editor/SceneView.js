@@ -857,8 +857,6 @@ export function initialize(dependencies) {
         const dx = currentMouseWorld.x - lastMouseWorld.x;
         const dy = currentMouseWorld.y - lastMouseWorld.y;
 
-        const glm = window.glMatrix;
-
         const prefs = getPreferences ? getPreferences() : {};
         const snapEnabled = prefs.snapping === true;
         const snapSize = parseFloat(prefs.gridSize) || 1;
