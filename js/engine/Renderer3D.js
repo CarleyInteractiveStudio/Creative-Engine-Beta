@@ -1200,7 +1200,6 @@ export class Renderer3D {
         });
 
         const pixels = new Uint8Array(4);
-        const rect = gl.canvas.getBoundingClientRect();
         gl.readPixels((x / rect.width) * w, (h - 1) - (y / rect.height) * h, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         return idMap.get(pixels[0] + (pixels[1] << 8) + (pixels[2] << 16)) || null;
