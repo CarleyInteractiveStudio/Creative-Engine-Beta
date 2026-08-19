@@ -849,9 +849,6 @@ export function initialize(dependencies) {
             case 'move-z-neg':
                 {
                     if (is3DActive && glm) {
-                        const ray = getMouseRay3D(moveEvent.clientX, moveEvent.clientY);
-                        if (!ray) break;
-
                         let localAxis = [1, 0, 0];
                         if (dragState.handle === 'move-x-neg') localAxis = [-1, 0, 0];
                         else if (dragState.handle === 'move-y') localAxis = [0, 1, 0];
@@ -864,35 +861,47 @@ export function initialize(dependencies) {
                         const worldAxis = glm.vec3.create();
                         glm.vec3.transformQuat(worldAxis, localAxis, q);
 
-                        const p0 = glm.vec3.fromValues(dragState.initialTransform.x, dragState.initialTransform.y, dragState.initialTransform.z || 0);
-                        const v = worldAxis;
-                        const q0 = ray.origin;
-                        const w = ray.direction;
+                        const p0 = [dragState.initialTransform.x, dragState.initialTransform.y, dragState.initialTransform.z || 0];
 
-                        const w1 = glm.vec3.create();
-                        glm.vec3.subtract(w1, p0, q0);
-                        const a = glm.vec3.dot(v, v);
-                        const b = glm.vec3.dot(v, w);
-                        const c = glm.vec3.dot(w, w);
-                        const d = glm.vec3.dot(v, w1);
-                        const e = glm.vec3.dot(w, w1);
-                        const denom = a * c - b * b;
+                        const r3d = window._Renderer3D;
+                        const proj = customProj || r3d?.lastProjectionMatrix;
+                        const view = customView || r3d?.lastViewMatrix;
+                        const cw = customCw || r3d?.canvas?.width || 800;
+                        const ch = customCh || r3d?.canvas?.height || 600;
 
-                        if (Math.abs(denom) > 1e-6) {
-                            const u = (b * e - c * d) / denom;
-                            const deltaU = u - (dragState.initialU || 0);
+                        const screenCenter = world3DToScreen({ x: p0[0], y: p0[1], z: p0[2] }, proj, view, cw, ch);
+                        const sampleOffset = 10.0;
+                        const axisEndWorld = { x: p0[0] + worldAxis[0] * sampleOffset, y: p0[1] + worldAxis[1] * sampleOffset, z: p0[2] + worldAxis[2] * sampleOffset };
+                        const screenAxisEnd = world3DToScreen(axisEndWorld, proj, view, cw, ch);
 
-                            let nextPos = [p0[0] + v[0] * deltaU, p0[1] + v[1] * deltaU, p0[2] + v[2] * deltaU];
+                        if (screenCenter && screenAxisEnd) {
+                            const dx2D = screenAxisEnd.x - screenCenter.x;
+                            const dy2D = screenAxisEnd.y - screenCenter.y;
+                            const len2D = Math.hypot(dx2D, dy2D);
 
-                            if (snapEnabled) {
-                                nextPos[0] = Math.round(nextPos[0] / snapSize) * snapSize;
-                                nextPos[1] = Math.round(nextPos[1] / snapSize) * snapSize;
-                                nextPos[2] = Math.round(nextPos[2] / snapSize) * snapSize;
+                            if (len2D > 0.01) {
+                                const dirX = dx2D / len2D;
+                                const dirY = dy2D / len2D;
+
+                                const mouseDx = moveEvent.clientX - dragState.initialMousePos.x;
+                                const mouseDy = moveEvent.clientY - dragState.initialMousePos.y;
+
+                                const pixelsAlongAxis = mouseDx * dirX + mouseDy * dirY;
+                                const worldPerPixel = sampleOffset / len2D;
+                                const deltaU = pixelsAlongAxis * worldPerPixel;
+
+                                let nextPos = [p0[0] + worldAxis[0] * deltaU, p0[1] + worldAxis[1] * deltaU, p0[2] + worldAxis[2] * deltaU];
+
+                                if (snapEnabled) {
+                                    nextPos[0] = Math.round(nextPos[0] / snapSize) * snapSize;
+                                    nextPos[1] = Math.round(nextPos[1] / snapSize) * snapSize;
+                                    nextPos[2] = Math.round(nextPos[2] / snapSize) * snapSize;
+                                }
+
+                                transform.x = nextPos[0];
+                                transform.y = nextPos[1];
+                                transform.z = nextPos[2];
                             }
-
-                            transform.x = nextPos[0];
-                            transform.y = nextPos[1];
-                            transform.z = nextPos[2];
                         }
                     } else {
                         if (dragState.handle.startsWith('move-x')) transform.x = dragState.initialTransform.x + (snapEnabled ? Math.round(totalDx / snapSize) * snapSize : totalDx);
@@ -3059,7 +3068,7 @@ function check3DGizmoHit(canvasPos, materia) {
     if (activeTool === 'move' || activeTool === 'universal' || activeTool === 'scale') {
         const dx = canvasPos.x - screenPos.x;
         const dy = canvasPos.y - screenPos.y;
-        if (Math.hypot(dx, dy) < 20) return activeTool === 'scale' ? 'scale-all' : 'move-xy';
+        if (Math.hypot(dx, dy) < 10) return activeTool === 'scale' ? 'scale-all' : 'move-xy';
 
         const handles = [
             { axis: axes.x, handlePos: activeTool === 'scale' ? 'scale-x' : 'move-x' },
