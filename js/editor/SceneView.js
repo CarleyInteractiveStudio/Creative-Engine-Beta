@@ -828,7 +828,18 @@ export function initialize(dependencies) {
         const is3D = isProject3D(config);
         const is3DActive = is3D && config.viewMode !== '2d';
 
-        const transform = is3D
+        const is3DMateria = dragState.materia && (
+            dragState.materia.getComponentByName?.('CarleyMeshRenderer3D') ||
+            dragState.materia.getComponentByName?.('CarleyTransform3D') ||
+            dragState.materia.getComponentByName?.('MeshRenderer3D') ||
+            dragState.materia.getComponent?.('CarleyMeshRenderer3D') ||
+            dragState.materia.transform?.constructor?.name === 'CarleyTransform3D'
+        );
+
+        const glm = window.glMatrix;
+        const use3D = (is3DActive || is3DMateria) && glm;
+
+        const transform = (use3D || is3D)
             ? (dragState.materia.transform || dragState.materia.getComponentByName?.('Transform') || dragState.materia.getComponentByName?.('CarleyTransform3D'))
             : dragState.materia.getComponent(Components.Transform);
         const uiTransform = dragState.materia.getComponent(Components.UITransform);
@@ -864,7 +875,7 @@ export function initialize(dependencies) {
             case 'move-z':
             case 'move-z-neg':
                 {
-                    if (is3DActive && glm) {
+                    if (use3D) {
                         let localAxis = [1, 0, 0];
                         if (dragState.handle === 'move-x-neg') localAxis = [-1, 0, 0];
                         else if (dragState.handle === 'move-y') localAxis = [0, 1, 0];
@@ -922,7 +933,7 @@ export function initialize(dependencies) {
                 break;
             case 'move-xy':
                 {
-                    if (is3DActive && glm) {
+                    if (use3D) {
                         const ray = getMouseRay3D(moveEvent.clientX, moveEvent.clientY);
                         if (!ray) break;
 
