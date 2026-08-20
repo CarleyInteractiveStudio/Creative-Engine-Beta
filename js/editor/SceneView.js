@@ -889,10 +889,10 @@ export function initialize(dependencies) {
                         const p0 = [dragState.initialTransform.x, dragState.initialTransform.y, dragState.initialTransform.z || 0];
 
                         const r3d = window._Renderer3D;
-                        const proj = customProj || r3d?.lastProjectionMatrix;
-                        const view = customView || r3d?.lastViewMatrix;
-                        const cw = customCw || r3d?.canvas?.width || 800;
-                        const ch = customCh || r3d?.canvas?.height || 600;
+                        const proj = r3d?.lastProjectionMatrix;
+                        const view = r3d?.lastViewMatrix;
+                        const cw = renderer?.canvas?.clientWidth || renderer?.canvas?.width || 800;
+                        const ch = renderer?.canvas?.clientHeight || renderer?.canvas?.height || 600;
 
                         const screenCenter = world3DToScreen({ x: p0[0], y: p0[1], z: p0[2] }, proj, view, cw, ch);
                         const sampleOffset = 10.0;
@@ -994,10 +994,62 @@ export function initialize(dependencies) {
             case 'scale-z':
             case 'scale-z-neg':
                 {
-                    const screenDx = moveEvent.clientX - dragState.initialMousePos.x;
-                    const screenDy = moveEvent.clientY - dragState.initialMousePos.y;
-                    const sign = dragState.handle.endsWith('-neg') ? -1 : 1;
-                    const amount = ((screenDx - screenDy) / 100) * sign;
+                    if (!glm) break;
+                    const r3d = window._Renderer3D;
+                    const proj = r3d?.lastProjectionMatrix;
+                    const view = r3d?.lastViewMatrix;
+                    const cw = renderer?.canvas?.clientWidth || renderer?.canvas?.width || 800;
+                    const ch = renderer?.canvas?.clientHeight || renderer?.canvas?.height || 600;
+
+                    let amount = 0;
+                    let localAxis = [1, 0, 0];
+                    if (dragState.handle.startsWith('scale-x')) localAxis = dragState.handle.endsWith('-neg') ? [-1, 0, 0] : [1, 0, 0];
+                    else if (dragState.handle.startsWith('scale-y')) localAxis = dragState.handle.endsWith('-neg') ? [0, -1, 0] : [0, 1, 0];
+                    else if (dragState.handle.startsWith('scale-z')) localAxis = dragState.handle.endsWith('-neg') ? [0, 0, -1] : [0, 0, 1];
+
+                    const q = glm.quat.create();
+                    glm.quat.fromEuler(q, dragState.initialTransform.rotationX || 0, dragState.initialTransform.rotationY || 0, dragState.initialTransform.rotationZ || 0);
+                    const worldAxis = glm.vec3.create();
+                    glm.vec3.transformQuat(worldAxis, localAxis, q);
+
+                    const p0 = [dragState.initialTransform.x, dragState.initialTransform.y, dragState.initialTransform.z || 0];
+                    const screenCenter = world3DToScreen({ x: p0[0], y: p0[1], z: p0[2] }, proj, view, cw, ch);
+                    const axisEndWorld = { x: p0[0] + worldAxis[0] * 10.0, y: p0[1] + worldAxis[1] * 10.0, z: p0[2] + worldAxis[2] * 10.0 };
+                    const screenAxisEnd = world3DToScreen(axisEndWorld, proj, view, cw, ch);
+
+                    let initialScaleVal = 1;
+                    if (dragState.handle.startsWith('scale-x')) initialScaleVal = Math.abs(dragState.initialTransform.scale.x);
+                    else if (dragState.handle.startsWith('scale-y')) initialScaleVal = Math.abs(dragState.initialTransform.scale.y);
+                    else if (dragState.handle.startsWith('scale-z')) initialScaleVal = Math.abs(dragState.initialTransform.scale.z || 1);
+
+                    if (screenCenter && screenAxisEnd) {
+                        const dx2D = screenAxisEnd.x - screenCenter.x;
+                        const dy2D = screenAxisEnd.y - screenCenter.y;
+                        const len2D = Math.hypot(dx2D, dy2D);
+
+                        if (len2D > 0.01) {
+                            const dirX = dx2D / len2D;
+                            const dirY = dy2D / len2D;
+                            const mouseDx = moveEvent.clientX - dragState.initialMousePos.x;
+                            const mouseDy = moveEvent.clientY - dragState.initialMousePos.y;
+                            const pixelsAlongAxis = mouseDx * dirX + mouseDy * dirY;
+                            // 1:1 proportional scale based on pixel ratio along handle vector
+                            amount = (pixelsAlongAxis / len2D) * initialScaleVal;
+                        }
+                    }
+
+                    if (amount === 0) {
+                        const screenDx = moveEvent.clientX - dragState.initialMousePos.x;
+                        const screenDy = moveEvent.clientY - dragState.initialMousePos.y;
+                        const sign = dragState.handle.endsWith('-neg') ? -1 : 1;
+                        amount = ((screenDx - screenDy) / 100) * sign * initialScaleVal;
+                    }
+
+                    if (snapEnabled) {
+                        const snapScaleStep = parseFloat(prefs.scaleSnap) || 0.1;
+                        amount = Math.round(amount / snapScaleStep) * snapScaleStep;
+                    }
+
                     const newScale = { ...transform.localScale };
                     if (dragState.handle.startsWith('scale-x')) newScale.x = Math.max(0.01, dragState.initialTransform.scale.x + amount);
                     if (dragState.handle.startsWith('scale-y')) newScale.y = Math.max(0.01, dragState.initialTransform.scale.y + amount);
@@ -1009,15 +1061,43 @@ export function initialize(dependencies) {
             case 'rotate-y':
             case 'rotate-z':
                 {
-                    const screenDx = moveEvent.clientX - dragState.initialMousePos.x;
-                    const screenDy = moveEvent.clientY - dragState.initialMousePos.y;
-                    const amount = screenDx - screenDy;
-                    if (dragState.handle === 'rotate-x') {
-                        transform.rotationX = (dragState.initialTransform.rotationX || 0) + amount;
-                    } else if (dragState.handle === 'rotate-y') {
-                        transform.rotationY = (dragState.initialTransform.rotationY || 0) + amount;
-                    } else if (dragState.handle === 'rotate-z') {
-                        transform.rotationZ = (dragState.initialTransform.rotationZ || 0) + amount;
+                    const r3d = window._Renderer3D;
+                    const proj = r3d?.lastProjectionMatrix;
+                    const view = r3d?.lastViewMatrix;
+                    const cw = renderer?.canvas?.clientWidth || renderer?.canvas?.width || 800;
+                    const ch = renderer?.canvas?.clientHeight || renderer?.canvas?.height || 600;
+
+                    const p0 = [dragState.initialTransform.x, dragState.initialTransform.y, dragState.initialTransform.z || 0];
+                    const screenCenter = world3DToScreen({ x: p0[0], y: p0[1], z: p0[2] }, proj, view, cw, ch);
+
+                    if (screenCenter) {
+                        const initAngle = Math.atan2(dragState.initialMousePos.y - screenCenter.y, dragState.initialMousePos.x - screenCenter.x);
+                        const currentAngle = Math.atan2(moveEvent.clientY - screenCenter.y, moveEvent.clientX - screenCenter.x);
+                        let deltaAngleDeg = (currentAngle - initAngle) * (180 / Math.PI);
+
+                        if (snapEnabled) {
+                            const snapStep = parseFloat(prefs.rotationSnap) || 15;
+                            deltaAngleDeg = Math.round(deltaAngleDeg / snapStep) * snapStep;
+                        }
+
+                        if (dragState.handle === 'rotate-x') {
+                            transform.rotationX = (dragState.initialTransform.rotationX || 0) + deltaAngleDeg;
+                        } else if (dragState.handle === 'rotate-y') {
+                            transform.rotationY = (dragState.initialTransform.rotationY || 0) + deltaAngleDeg;
+                        } else if (dragState.handle === 'rotate-z') {
+                            transform.rotationZ = (dragState.initialTransform.rotationZ || 0) + deltaAngleDeg;
+                        }
+                    } else {
+                        const screenDx = moveEvent.clientX - dragState.initialMousePos.x;
+                        const screenDy = moveEvent.clientY - dragState.initialMousePos.y;
+                        const amount = screenDx - screenDy;
+                        if (dragState.handle === 'rotate-x') {
+                            transform.rotationX = (dragState.initialTransform.rotationX || 0) + amount;
+                        } else if (dragState.handle === 'rotate-y') {
+                            transform.rotationY = (dragState.initialTransform.rotationY || 0) + amount;
+                        } else if (dragState.handle === 'rotate-z') {
+                            transform.rotationZ = (dragState.initialTransform.rotationZ || 0) + amount;
+                        }
                     }
                 }
                 break;
@@ -1769,6 +1849,7 @@ export function initialize(dependencies) {
         }
 
         if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+        if (isNavigating3D || (InputManager && InputManager.getMouseButton(2))) return;
 
         switch (e.key.toLowerCase()) {
             case 'w': setActiveTool('move'); break;
@@ -3049,14 +3130,10 @@ function getMateriaAxes(materia) {
         CarleyMath.mat4Multiply(matrix, matrix, scaleMat);
     }
 
-    // Extract basis vectors from world matrix columns
-    const xAxis = glm.vec3.fromValues(matrix[0], matrix[1], matrix[2]);
-    const yAxis = glm.vec3.fromValues(matrix[4], matrix[5], matrix[6]);
-    const zAxis = glm.vec3.fromValues(matrix[8], matrix[9], matrix[10]);
-
-    glm.vec3.normalize(xAxis, xAxis);
-    glm.vec3.normalize(yAxis, yAxis);
-    glm.vec3.normalize(zAxis, zAxis);
+    // Always use global World Space basis vectors so gizmo handles stay pointing world +X, +Y, +Z
+    const xAxis = glm.vec3.fromValues(1, 0, 0);
+    const yAxis = glm.vec3.fromValues(0, 1, 0);
+    const zAxis = glm.vec3.fromValues(0, 0, 1);
 
     return { x: xAxis, y: yAxis, z: zAxis, worldCenter: [matrix[12], matrix[13], matrix[14]] };
 }
@@ -3075,8 +3152,8 @@ function check3DGizmoHit(canvasPos, materia) {
     if (!screenPos) return null;
 
     const gizmoScale = getGizmoScale(center, proj, view, cw, ch);
-    const hitRadius = 25;
-    const gizmoLen = 120 * gizmoScale;
+    const hitRadius = 30;
+    const gizmoLen = 220 * gizmoScale;
 
     const distanceToSegment = (p, a, b) => {
         const l2 = (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
@@ -3086,40 +3163,10 @@ function check3DGizmoHit(canvasPos, materia) {
         return Math.hypot(p.x - (a.x + t * (b.x - a.x)), p.y - (a.y + t * (b.y - a.y)));
     };
 
-    if (activeTool === 'move' || activeTool === 'universal' || activeTool === 'scale' || activeTool === 'select' || !activeTool) {
-        const dx = canvasPos.x - screenPos.x;
-        const dy = canvasPos.y - screenPos.y;
-        if (Math.hypot(dx, dy) < 10) return activeTool === 'scale' ? 'scale-all' : 'move-xy';
-
-        const isScale = activeTool === 'scale';
-        const handles = [
-            { axis: axes.x, handlePos: isScale ? 'scale-x' : 'move-x' },
-            { axis: [-axes.x[0], -axes.x[1], -axes.x[2]], handlePos: isScale ? 'scale-x-neg' : 'move-x-neg' },
-            { axis: axes.y, handlePos: isScale ? 'scale-y' : 'move-y' },
-            { axis: [-axes.y[0], -axes.y[1], -axes.y[2]], handlePos: isScale ? 'scale-y-neg' : 'move-y-neg' },
-            { axis: axes.z, handlePos: isScale ? 'scale-z' : 'move-z' },
-            { axis: [-axes.z[0], -axes.z[1], -axes.z[2]], handlePos: isScale ? 'scale-z-neg' : 'move-z-neg' }
-        ];
-
-        let bestHandle = null;
-        let minDistance = hitRadius;
-
-        for (const h of handles) {
-            const axisEnd = { x: center.x + h.axis[0] * gizmoLen, y: center.y + h.axis[1] * gizmoLen, z: center.z + h.axis[2] * gizmoLen };
-            const screenEnd = world3DToScreen(axisEnd, proj, view, cw, ch);
-            if (!screenEnd) continue;
-            const dist = distanceToSegment(canvasPos, screenPos, screenEnd);
-            if (dist < minDistance) {
-                minDistance = dist;
-                bestHandle = h.handlePos;
-            }
-        }
-
-        if (bestHandle) return bestHandle;
-    } else if (activeTool === 'rotate') {
+    const checkRotationHits = () => {
         let closestAxis = null;
-        let minDistance = 15; // Hit radius
-        const radius = 60 * gizmoScale;
+        let minDistance = 22;
+        const radius = 110 * gizmoScale;
         const segments = 16;
         for (let axisIndex = 0; axisIndex < 3; axisIndex++) {
             for (let i = 0; i < segments; i++) {
@@ -3150,7 +3197,95 @@ function check3DGizmoHit(canvasPos, materia) {
                 }
             }
         }
-        if (closestAxis) return closestAxis;
+        return closestAxis;
+    };
+
+    if (activeTool === 'universal') {
+        const dx = canvasPos.x - screenPos.x;
+        const dy = canvasPos.y - screenPos.y;
+        if (Math.hypot(dx, dy) < 10) return 'move-xy';
+
+        const rotHit = checkRotationHits();
+        if (rotHit) return rotHit;
+
+        // Check scale handles at 0.65 length
+        const scaleLen = gizmoLen * 0.65;
+        const scaleHandles = [
+            { axis: axes.x, handlePos: 'scale-x' },
+            { axis: [-axes.x[0], -axes.x[1], -axes.x[2]], handlePos: 'scale-x-neg' },
+            { axis: axes.y, handlePos: 'scale-y' },
+            { axis: [-axes.y[0], -axes.y[1], -axes.y[2]], handlePos: 'scale-y-neg' },
+            { axis: axes.z, handlePos: 'scale-z' },
+            { axis: [-axes.z[0], -axes.z[1], -axes.z[2]], handlePos: 'scale-z-neg' }
+        ];
+
+        for (const h of scaleHandles) {
+            const axisEnd = { x: center.x + h.axis[0] * scaleLen, y: center.y + h.axis[1] * scaleLen, z: center.z + h.axis[2] * scaleLen };
+            const screenEnd = world3DToScreen(axisEnd, proj, view, cw, ch);
+            if (!screenEnd) continue;
+            if (Math.hypot(canvasPos.x - screenEnd.x, canvasPos.y - screenEnd.y) < 15) {
+                return h.handlePos;
+            }
+        }
+
+        // Check move handles
+        const moveHandles = [
+            { axis: axes.x, handlePos: 'move-x' },
+            { axis: [-axes.x[0], -axes.x[1], -axes.x[2]], handlePos: 'move-x-neg' },
+            { axis: axes.y, handlePos: 'move-y' },
+            { axis: [-axes.y[0], -axes.y[1], -axes.y[2]], handlePos: 'move-y-neg' },
+            { axis: axes.z, handlePos: 'move-z' },
+            { axis: [-axes.z[0], -axes.z[1], -axes.z[2]], handlePos: 'move-z-neg' }
+        ];
+
+        let bestHandle = null;
+        let minDistance = hitRadius;
+
+        for (const h of moveHandles) {
+            const axisEnd = { x: center.x + h.axis[0] * gizmoLen, y: center.y + h.axis[1] * gizmoLen, z: center.z + h.axis[2] * gizmoLen };
+            const screenEnd = world3DToScreen(axisEnd, proj, view, cw, ch);
+            if (!screenEnd) continue;
+            const dist = distanceToSegment(canvasPos, screenPos, screenEnd);
+            if (dist < minDistance) {
+                minDistance = dist;
+                bestHandle = h.handlePos;
+            }
+        }
+
+        if (bestHandle) return bestHandle;
+    } else if (activeTool === 'move' || activeTool === 'scale' || activeTool === 'select' || !activeTool) {
+        const dx = canvasPos.x - screenPos.x;
+        const dy = canvasPos.y - screenPos.y;
+        if (Math.hypot(dx, dy) < 10) return activeTool === 'scale' ? 'scale-all' : 'move-xy';
+
+        const isScale = activeTool === 'scale';
+        const handles = [
+            { axis: axes.x, handlePos: isScale ? 'scale-x' : 'move-x' },
+            { axis: [-axes.x[0], -axes.x[1], -axes.x[2]], handlePos: isScale ? 'scale-x-neg' : 'move-x-neg' },
+            { axis: axes.y, handlePos: isScale ? 'scale-y' : 'move-y' },
+            { axis: [-axes.y[0], -axes.y[1], -axes.y[2]], handlePos: isScale ? 'scale-y-neg' : 'move-y-neg' },
+            { axis: axes.z, handlePos: isScale ? 'scale-z' : 'move-z' },
+            { axis: [-axes.z[0], -axes.z[1], -axes.z[2]], handlePos: isScale ? 'scale-z-neg' : 'move-z-neg' }
+        ];
+
+        let bestHandle = null;
+        let minDistance = hitRadius;
+
+        for (const h of handles) {
+            const axisEnd = { x: center.x + h.axis[0] * gizmoLen, y: center.y + h.axis[1] * gizmoLen, z: center.z + h.axis[2] * gizmoLen };
+            const screenEnd = world3DToScreen(axisEnd, proj, view, cw, ch);
+            if (!screenEnd) continue;
+            const dist = distanceToSegment(canvasPos, screenPos, screenEnd);
+            if (dist < minDistance) {
+                minDistance = dist;
+                bestHandle = h.handlePos;
+            }
+        }
+
+        if (bestHandle) return bestHandle;
+    } else if (activeTool === 'rotate') {
+        const rotHit = checkRotationHits();
+        if (rotHit) return rotHit;
     }
     return null;
 }
@@ -3177,10 +3312,10 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
     const { ctx } = renderer;
     const gizmoScale = getGizmoScale(center, proj, view, cw, ch);
 
-    // GIZMO_SIZE is the line length in world units. It scales with distance to appear constant on screen.
-    const GIZMO_SIZE = 120 * gizmoScale;
+    // GIZMO_SIZE is the line length in world units. Scaled up for better visibility.
+    const GIZMO_SIZE = 220 * gizmoScale;
     // ARROW_SIZE is the handle size in constant screen PIXELS.
-    const ARROW_SIZE = 18;
+    const ARROW_SIZE = 28;
 
     if (materia.getComponent(Components.Camera)) {
         drawCameraGizmos(renderer, proj, view, cw, ch);
@@ -3231,90 +3366,125 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
         }
     }
 
-    const drawAxis = (worldAxis, color) => {
-        const endPos = { x: center.x + worldAxis[0] * GIZMO_SIZE, y: center.y + worldAxis[1] * GIZMO_SIZE, z: center.z + worldAxis[2] * GIZMO_SIZE };
+    const drawAxis = (worldAxis, color, handleType = 'arrow', lengthRatio = 1.0) => {
+        const len = GIZMO_SIZE * lengthRatio;
+        const endPos = { x: center.x + worldAxis[0] * len, y: center.y + worldAxis[1] * len, z: center.z + worldAxis[2] * len };
 
-        // Draw clipped line for the axis stem
-        drawLineClipped(ctx, center, endPos, color, 3, proj, view, cw, ch);
+        // Only draw stem line for arrow handles (not for dot/ball scale handles)
+        if (handleType === 'arrow') {
+            drawLineClipped(ctx, center, endPos, color, 3, proj, view, cw, ch);
+        }
 
         const endScreen = world3DToScreen(endPos, proj, view, cw, ch);
         if (!endScreen) return;
 
-        // Draw arrowhead only if it's not overlapping too much with the center
+        // Draw handle head only if it's not overlapping too much with the center
         const screenDist = Math.hypot(endScreen.x - screenPos.x, endScreen.y - screenPos.y);
         if (screenDist < ARROW_SIZE) return;
 
         const angle = Math.atan2(endScreen.y - screenPos.y, endScreen.x - screenPos.x);
         ctx.save();
         ctx.translate(endScreen.x, endScreen.y);
-        ctx.rotate(angle);
         ctx.fillStyle = color;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        if (activeTool === 'scale') {
-            ctx.rect(-ARROW_SIZE/2, -ARROW_SIZE/2, ARROW_SIZE, ARROW_SIZE);
+        if (handleType === 'box' || handleType === 'dot') {
+            // Draw Roblox-style sphere/dot handle without line stem
+            const ballRadius = ARROW_SIZE * 0.5;
+            ctx.arc(0, 0, ballRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
         } else {
+            ctx.rotate(angle);
             ctx.moveTo(ARROW_SIZE, 0);
             ctx.lineTo(0, -ARROW_SIZE / 2);
             ctx.lineTo(0, ARROW_SIZE / 2);
             ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
         }
-        ctx.fill();
         ctx.restore();
     };
 
-    if (activeTool === 'move' || activeTool === 'universal' || activeTool === 'scale' || activeTool === 'select' || !activeTool) {
-        // Roblox style 6 directional handles (+X, -X, +Y, -Y, +Z, -Z)
-        drawAxis(axes.x, '#ff4444'); // +X (Red - Right)
-        drawAxis([-axes.x[0], -axes.x[1], -axes.x[2]], '#ff7777'); // -X (Light Red - Left)
-        drawAxis(axes.y, '#44ff44'); // +Y (Green - Up)
-        drawAxis([-axes.y[0], -axes.y[1], -axes.y[2]], '#77ff77'); // -Y (Light Green - Down)
-        drawAxis(axes.z, '#4444ff'); // +Z (Blue - Forward)
-        drawAxis([-axes.z[0], -axes.z[1], -axes.z[2]], '#7777ff'); // -Z (Light Blue - Backward)
+    const drawRotationCircle = (axisIndex, color) => {
+        const segments = 40;
+        const radius = 110 * gizmoScale;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        let first = true;
+        for (let i = 0; i <= segments; i++) {
+            const angle = (i / segments) * Math.PI * 2;
+            const cos = Math.cos(angle);
+            const sin = Math.sin(angle);
+            let offset = { x: 0, y: 0, z: 0 };
+            if (axisIndex === 0) { // X-axis (Y-Z plane)
+                offset = { x: 0, y: cos * radius, z: sin * radius };
+            } else if (axisIndex === 1) { // Y-axis (X-Z plane)
+                offset = { x: cos * radius, y: 0, z: sin * radius };
+            } else { // Z-axis (X-Y plane)
+                offset = { x: cos * radius, y: sin * radius, z: 0 };
+            }
+            const worldOffset = {
+                x: axes.x[0] * offset.x + axes.y[0] * offset.y + axes.z[0] * offset.z,
+                y: axes.x[1] * offset.x + axes.y[1] * offset.y + axes.z[1] * offset.z,
+                z: axes.x[2] * offset.x + axes.y[2] * offset.y + axes.z[2] * offset.z
+            };
+            const pWorld = { x: center.x + worldOffset.x, y: center.y + worldOffset.y, z: center.z + worldOffset.z };
+            const pScreen = world3DToScreen(pWorld, proj, view, cw, ch);
+            if (pScreen) {
+                if (first) {
+                    ctx.moveTo(pScreen.x, pScreen.y);
+                    first = false;
+                } else {
+                    ctx.lineTo(pScreen.x, pScreen.y);
+                }
+            }
+        }
+        ctx.stroke();
+    };
+
+    if (activeTool === 'universal') {
+        // Render 3D rotation circles
+        drawRotationCircle(0, '#ff4444');
+        drawRotationCircle(1, '#44ff44');
+        drawRotationCircle(2, '#4444ff');
+
+        // Render Scale Dots at 0.65 length
+        drawAxis(axes.x, '#ff4444', 'dot', 0.65);
+        drawAxis([-axes.x[0], -axes.x[1], -axes.x[2]], '#ff7777', 'dot', 0.65);
+        drawAxis(axes.y, '#44ff44', 'dot', 0.65);
+        drawAxis([-axes.y[0], -axes.y[1], -axes.y[2]], '#77ff77', 'dot', 0.65);
+        drawAxis(axes.z, '#4444ff', 'dot', 0.65);
+        drawAxis([-axes.z[0], -axes.z[1], -axes.z[2]], '#7777ff', 'dot', 0.65);
+
+        // Render Movement Arrowheads at full length
+        drawAxis(axes.x, '#ff4444', 'arrow', 1.0);
+        drawAxis([-axes.x[0], -axes.x[1], -axes.x[2]], '#ff7777', 'arrow', 1.0);
+        drawAxis(axes.y, '#44ff44', 'arrow', 1.0);
+        drawAxis([-axes.y[0], -axes.y[1], -axes.y[2]], '#77ff77', 'arrow', 1.0);
+        drawAxis(axes.z, '#4444ff', 'arrow', 1.0);
+        drawAxis([-axes.z[0], -axes.z[1], -axes.z[2]], '#7777ff', 'arrow', 1.0);
+
+        // Center handle
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(screenPos.x, screenPos.y, 8, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
+    } else if (activeTool === 'move' || activeTool === 'scale' || activeTool === 'select' || !activeTool) {
+        const handleType = activeTool === 'scale' ? 'dot' : 'arrow';
+        drawAxis(axes.x, '#ff4444', handleType);
+        drawAxis([-axes.x[0], -axes.x[1], -axes.x[2]], '#ff7777', handleType);
+        drawAxis(axes.y, '#44ff44', handleType);
+        drawAxis([-axes.y[0], -axes.y[1], -axes.y[2]], '#77ff77', handleType);
+        drawAxis(axes.z, '#4444ff', handleType);
+        drawAxis([-axes.z[0], -axes.z[1], -axes.z[2]], '#7777ff', handleType);
 
         // Center handle
         ctx.fillStyle = activeTool === 'scale' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)';
         ctx.beginPath(); ctx.arc(screenPos.x, screenPos.y, 8, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
     } else if (activeTool === 'rotate') {
-        // Draw 3D rotation circles!
-        const drawRotationCircle = (axisIndex, color) => {
-            const segments = 40;
-            const radius = 60 * gizmoScale;
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            let first = true;
-            for (let i = 0; i <= segments; i++) {
-                const angle = (i / segments) * Math.PI * 2;
-                const cos = Math.cos(angle);
-                const sin = Math.sin(angle);
-                let offset = { x: 0, y: 0, z: 0 };
-                if (axisIndex === 0) { // X-axis (Y-Z plane)
-                    offset = { x: 0, y: cos * radius, z: sin * radius };
-                } else if (axisIndex === 1) { // Y-axis (X-Z plane)
-                    offset = { x: cos * radius, y: 0, z: sin * radius };
-                } else { // Z-axis (X-Y plane)
-                    offset = { x: cos * radius, y: sin * radius, z: 0 };
-                }
-                const worldOffset = {
-                    x: axes.x[0] * offset.x + axes.y[0] * offset.y + axes.z[0] * offset.z,
-                    y: axes.x[1] * offset.x + axes.y[1] * offset.y + axes.z[1] * offset.z,
-                    z: axes.x[2] * offset.x + axes.y[2] * offset.y + axes.z[2] * offset.z
-                };
-                const pWorld = { x: center.x + worldOffset.x, y: center.y + worldOffset.y, z: center.z + worldOffset.z };
-                const pScreen = world3DToScreen(pWorld, proj, view, cw, ch);
-                if (pScreen) {
-                    if (first) {
-                        ctx.moveTo(pScreen.x, pScreen.y);
-                        first = false;
-                    } else {
-                        ctx.lineTo(pScreen.x, pScreen.y);
-                    }
-                }
-            }
-            ctx.stroke();
-        };
-
         drawRotationCircle(0, '#ff4444'); // X (Red)
         drawRotationCircle(1, '#44ff44'); // Y (Green)
         drawRotationCircle(2, '#4444ff'); // Z (Blue)
