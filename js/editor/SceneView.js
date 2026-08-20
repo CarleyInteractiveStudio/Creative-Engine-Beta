@@ -994,6 +994,7 @@ export function initialize(dependencies) {
             case 'scale-z':
             case 'scale-z-neg':
                 {
+                    if (!glm) break;
                     const r3d = window._Renderer3D;
                     const proj = r3d?.lastProjectionMatrix;
                     const view = r3d?.lastViewMatrix;
@@ -1016,6 +1017,11 @@ export function initialize(dependencies) {
                     const axisEndWorld = { x: p0[0] + worldAxis[0] * 10.0, y: p0[1] + worldAxis[1] * 10.0, z: p0[2] + worldAxis[2] * 10.0 };
                     const screenAxisEnd = world3DToScreen(axisEndWorld, proj, view, cw, ch);
 
+                    let initialScaleVal = 1;
+                    if (dragState.handle.startsWith('scale-x')) initialScaleVal = Math.abs(dragState.initialTransform.scale.x);
+                    else if (dragState.handle.startsWith('scale-y')) initialScaleVal = Math.abs(dragState.initialTransform.scale.y);
+                    else if (dragState.handle.startsWith('scale-z')) initialScaleVal = Math.abs(dragState.initialTransform.scale.z || 1);
+
                     if (screenCenter && screenAxisEnd) {
                         const dx2D = screenAxisEnd.x - screenCenter.x;
                         const dy2D = screenAxisEnd.y - screenCenter.y;
@@ -1027,7 +1033,8 @@ export function initialize(dependencies) {
                             const mouseDx = moveEvent.clientX - dragState.initialMousePos.x;
                             const mouseDy = moveEvent.clientY - dragState.initialMousePos.y;
                             const pixelsAlongAxis = mouseDx * dirX + mouseDy * dirY;
-                            amount = pixelsAlongAxis / 50.0;
+                            // 1:1 proportional scale based on pixel ratio along handle vector
+                            amount = (pixelsAlongAxis / len2D) * initialScaleVal;
                         }
                     }
 
@@ -1035,7 +1042,7 @@ export function initialize(dependencies) {
                         const screenDx = moveEvent.clientX - dragState.initialMousePos.x;
                         const screenDy = moveEvent.clientY - dragState.initialMousePos.y;
                         const sign = dragState.handle.endsWith('-neg') ? -1 : 1;
-                        amount = ((screenDx - screenDy) / 50) * sign;
+                        amount = ((screenDx - screenDy) / 100) * sign * initialScaleVal;
                     }
 
                     if (snapEnabled) {
@@ -1842,6 +1849,7 @@ export function initialize(dependencies) {
         }
 
         if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+        if (isNavigating3D || (InputManager && InputManager.getMouseButton(2))) return;
 
         switch (e.key.toLowerCase()) {
             case 'w': setActiveTool('move'); break;
@@ -3149,7 +3157,7 @@ function check3DGizmoHit(canvasPos, materia) {
 
     const gizmoScale = getGizmoScale(center, proj, view, cw, ch);
     const hitRadius = 25;
-    const gizmoLen = 120 * gizmoScale;
+    const gizmoLen = 160 * gizmoScale;
 
     const distanceToSegment = (p, a, b) => {
         const l2 = (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
@@ -3161,8 +3169,8 @@ function check3DGizmoHit(canvasPos, materia) {
 
     const checkRotationHits = () => {
         let closestAxis = null;
-        let minDistance = 15;
-        const radius = 60 * gizmoScale;
+        let minDistance = 18;
+        const radius = 80 * gizmoScale;
         const segments = 16;
         for (let axisIndex = 0; axisIndex < 3; axisIndex++) {
             for (let i = 0; i < segments; i++) {
@@ -3308,10 +3316,10 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
     const { ctx } = renderer;
     const gizmoScale = getGizmoScale(center, proj, view, cw, ch);
 
-    // GIZMO_SIZE is the line length in world units. It scales with distance to appear constant on screen.
-    const GIZMO_SIZE = 120 * gizmoScale;
+    // GIZMO_SIZE is the line length in world units. Scaled up for better visibility.
+    const GIZMO_SIZE = 160 * gizmoScale;
     // ARROW_SIZE is the handle size in constant screen PIXELS.
-    const ARROW_SIZE = 18;
+    const ARROW_SIZE = 22;
 
     if (materia.getComponent(Components.Camera)) {
         drawCameraGizmos(renderer, proj, view, cw, ch);
@@ -3379,24 +3387,31 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
         const angle = Math.atan2(endScreen.y - screenPos.y, endScreen.x - screenPos.x);
         ctx.save();
         ctx.translate(endScreen.x, endScreen.y);
-        ctx.rotate(angle);
         ctx.fillStyle = color;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        if (handleType === 'box') {
-            ctx.rect(-ARROW_SIZE/2, -ARROW_SIZE/2, ARROW_SIZE, ARROW_SIZE);
+        if (handleType === 'box' || handleType === 'dot') {
+            // Draw Roblox-style sphere/dot handle
+            const ballRadius = ARROW_SIZE * 0.45;
+            ctx.arc(0, 0, ballRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
         } else {
+            ctx.rotate(angle);
             ctx.moveTo(ARROW_SIZE, 0);
             ctx.lineTo(0, -ARROW_SIZE / 2);
             ctx.lineTo(0, ARROW_SIZE / 2);
             ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
         }
-        ctx.fill();
         ctx.restore();
     };
 
     const drawRotationCircle = (axisIndex, color) => {
         const segments = 40;
-        const radius = 60 * gizmoScale;
+        const radius = 80 * gizmoScale;
         ctx.strokeStyle = color;
         ctx.lineWidth = 3;
         ctx.beginPath();
@@ -3438,13 +3453,13 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
         drawRotationCircle(1, '#44ff44');
         drawRotationCircle(2, '#4444ff');
 
-        // Render Scale Boxes at 0.65 length
-        drawAxis(axes.x, '#ff8888', 'box', 0.65);
-        drawAxis([-axes.x[0], -axes.x[1], -axes.x[2]], '#ffaaaa', 'box', 0.65);
-        drawAxis(axes.y, '#88ff88', 'box', 0.65);
-        drawAxis([-axes.y[0], -axes.y[1], -axes.y[2]], '#aaffaa', 'box', 0.65);
-        drawAxis(axes.z, '#8888ff', 'box', 0.65);
-        drawAxis([-axes.z[0], -axes.z[1], -axes.z[2]], '#aaaaff', 'box', 0.65);
+        // Render Scale Dots at 0.65 length
+        drawAxis(axes.x, '#ff4444', 'dot', 0.65);
+        drawAxis([-axes.x[0], -axes.x[1], -axes.x[2]], '#ff7777', 'dot', 0.65);
+        drawAxis(axes.y, '#44ff44', 'dot', 0.65);
+        drawAxis([-axes.y[0], -axes.y[1], -axes.y[2]], '#77ff77', 'dot', 0.65);
+        drawAxis(axes.z, '#4444ff', 'dot', 0.65);
+        drawAxis([-axes.z[0], -axes.z[1], -axes.z[2]], '#7777ff', 'dot', 0.65);
 
         // Render Movement Arrowheads at full length
         drawAxis(axes.x, '#ff4444', 'arrow', 1.0);
@@ -3459,7 +3474,7 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
         ctx.beginPath(); ctx.arc(screenPos.x, screenPos.y, 8, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
     } else if (activeTool === 'move' || activeTool === 'scale' || activeTool === 'select' || !activeTool) {
-        const handleType = activeTool === 'scale' ? 'box' : 'arrow';
+        const handleType = activeTool === 'scale' ? 'dot' : 'arrow';
         drawAxis(axes.x, '#ff4444', handleType);
         drawAxis([-axes.x[0], -axes.x[1], -axes.x[2]], '#ff7777', handleType);
         drawAxis(axes.y, '#44ff44', handleType);
