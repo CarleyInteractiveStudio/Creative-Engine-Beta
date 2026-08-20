@@ -3130,14 +3130,10 @@ function getMateriaAxes(materia) {
         CarleyMath.mat4Multiply(matrix, matrix, scaleMat);
     }
 
-    // Extract basis vectors from world matrix columns
-    const xAxis = glm.vec3.fromValues(matrix[0], matrix[1], matrix[2]);
-    const yAxis = glm.vec3.fromValues(matrix[4], matrix[5], matrix[6]);
-    const zAxis = glm.vec3.fromValues(matrix[8], matrix[9], matrix[10]);
-
-    glm.vec3.normalize(xAxis, xAxis);
-    glm.vec3.normalize(yAxis, yAxis);
-    glm.vec3.normalize(zAxis, zAxis);
+    // Always use global World Space basis vectors so gizmo handles stay pointing world +X, +Y, +Z
+    const xAxis = glm.vec3.fromValues(1, 0, 0);
+    const yAxis = glm.vec3.fromValues(0, 1, 0);
+    const zAxis = glm.vec3.fromValues(0, 0, 1);
 
     return { x: xAxis, y: yAxis, z: zAxis, worldCenter: [matrix[12], matrix[13], matrix[14]] };
 }
@@ -3156,8 +3152,8 @@ function check3DGizmoHit(canvasPos, materia) {
     if (!screenPos) return null;
 
     const gizmoScale = getGizmoScale(center, proj, view, cw, ch);
-    const hitRadius = 25;
-    const gizmoLen = 160 * gizmoScale;
+    const hitRadius = 30;
+    const gizmoLen = 220 * gizmoScale;
 
     const distanceToSegment = (p, a, b) => {
         const l2 = (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
@@ -3169,8 +3165,8 @@ function check3DGizmoHit(canvasPos, materia) {
 
     const checkRotationHits = () => {
         let closestAxis = null;
-        let minDistance = 18;
-        const radius = 80 * gizmoScale;
+        let minDistance = 22;
+        const radius = 110 * gizmoScale;
         const segments = 16;
         for (let axisIndex = 0; axisIndex < 3; axisIndex++) {
             for (let i = 0; i < segments; i++) {
@@ -3317,9 +3313,9 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
     const gizmoScale = getGizmoScale(center, proj, view, cw, ch);
 
     // GIZMO_SIZE is the line length in world units. Scaled up for better visibility.
-    const GIZMO_SIZE = 160 * gizmoScale;
+    const GIZMO_SIZE = 220 * gizmoScale;
     // ARROW_SIZE is the handle size in constant screen PIXELS.
-    const ARROW_SIZE = 22;
+    const ARROW_SIZE = 28;
 
     if (materia.getComponent(Components.Camera)) {
         drawCameraGizmos(renderer, proj, view, cw, ch);
@@ -3374,8 +3370,10 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
         const len = GIZMO_SIZE * lengthRatio;
         const endPos = { x: center.x + worldAxis[0] * len, y: center.y + worldAxis[1] * len, z: center.z + worldAxis[2] * len };
 
-        // Draw clipped line for the axis stem
-        drawLineClipped(ctx, center, endPos, color, 3, proj, view, cw, ch);
+        // Only draw stem line for arrow handles (not for dot/ball scale handles)
+        if (handleType === 'arrow') {
+            drawLineClipped(ctx, center, endPos, color, 3, proj, view, cw, ch);
+        }
 
         const endScreen = world3DToScreen(endPos, proj, view, cw, ch);
         if (!endScreen) return;
@@ -3392,8 +3390,8 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         if (handleType === 'box' || handleType === 'dot') {
-            // Draw Roblox-style sphere/dot handle
-            const ballRadius = ARROW_SIZE * 0.45;
+            // Draw Roblox-style sphere/dot handle without line stem
+            const ballRadius = ARROW_SIZE * 0.5;
             ctx.arc(0, 0, ballRadius, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
@@ -3411,7 +3409,7 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
 
     const drawRotationCircle = (axisIndex, color) => {
         const segments = 40;
-        const radius = 80 * gizmoScale;
+        const radius = 110 * gizmoScale;
         ctx.strokeStyle = color;
         ctx.lineWidth = 3;
         ctx.beginPath();
