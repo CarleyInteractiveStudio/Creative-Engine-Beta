@@ -202,7 +202,7 @@ export class Renderer3D {
                 vec4 worldPos = uModelMatrix * aVertexPosition;
                 vWorldPos = worldPos.xyz;
                 gl_Position = uProjectionMatrix * uViewMatrix * worldPos;
-                vNormal = (uModelMatrix * vec4(aVertexNormal, 0.0)).xyz;
+                vNormal = mat3(uModelMatrix) * aVertexNormal;
                 vColor = aVertexColor;
                 vTextureCoord = aTextureCoord;
             }
@@ -236,12 +236,12 @@ export class Renderer3D {
             }
 
             void main() {
-                vec3 normal = normalize(vNormal);
+                vec3 normal = length(vNormal) > 0.001 ? normalize(vNormal) : vec3(0.0, 1.0, 0.0);
                 if (uUseNormalMap) {
                     normal = perturbNormal(normal, vWorldPos, vTextureCoord);
                 }
 
-                float diff = max(dot(normal, normalize(uLightDir)), 0.2);
+                float diff = max(abs(dot(normal, normalize(uLightDir))), 0.35);
                 vec4 texColor = uUseMainTex ? texture2D(uMainTex, vTextureCoord) : vec4(1.0);
                 vec4 baseColor = (vColor.a > 0.0) ? vColor : uColor;
                 gl_FragColor = vec4(baseColor.rgb * texColor.rgb * diff, baseColor.a * texColor.a);
@@ -279,7 +279,7 @@ export class Renderer3D {
                 vWorldPos = worldPosition.xyz;
                 gl_Position = uProjectionMatrix * uViewMatrix * worldPosition;
 
-                vNormal = (uModelMatrix * skinMatrix * vec4(aVertexNormal, 0.0)).xyz;
+                vNormal = mat3(uModelMatrix * skinMatrix) * aVertexNormal;
                 vColor = aVertexColor;
                 vTextureCoord = aTextureCoord;
             }
@@ -314,12 +314,12 @@ export class Renderer3D {
             }
 
             void main() {
-                vec3 normal = normalize(vNormal);
+                vec3 normal = length(vNormal) > 0.001 ? normalize(vNormal) : vec3(0.0, 1.0, 0.0);
                 if (uUseNormalMap) {
                     normal = perturbNormal(normal, vWorldPos, vTextureCoord);
                 }
 
-                float diff = max(dot(normal, normalize(uLightDir)), 0.25);
+                float diff = max(abs(dot(normal, normalize(uLightDir))), 0.35);
                 vec4 texColor = uUseMainTex ? texture2D(uMainTex, vTextureCoord) : vec4(1.0);
                 vec3 baseColor = (vColor.a > 0.05) ? vColor.rgb : uColor.rgb;
                 gl_FragColor = vec4(baseColor * texColor.rgb * diff, uColor.a * texColor.a);

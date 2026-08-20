@@ -1002,15 +1002,10 @@ export function initialize(dependencies) {
                     const ch = renderer?.canvas?.clientHeight || renderer?.canvas?.height || 600;
 
                     let amount = 0;
-                    let localAxis = [1, 0, 0];
-                    if (dragState.handle.startsWith('scale-x')) localAxis = dragState.handle.endsWith('-neg') ? [-1, 0, 0] : [1, 0, 0];
-                    else if (dragState.handle.startsWith('scale-y')) localAxis = dragState.handle.endsWith('-neg') ? [0, -1, 0] : [0, 1, 0];
-                    else if (dragState.handle.startsWith('scale-z')) localAxis = dragState.handle.endsWith('-neg') ? [0, 0, -1] : [0, 0, 1];
-
-                    const q = glm.quat.create();
-                    glm.quat.fromEuler(q, dragState.initialTransform.rotationX || 0, dragState.initialTransform.rotationY || 0, dragState.initialTransform.rotationZ || 0);
-                    const worldAxis = glm.vec3.create();
-                    glm.vec3.transformQuat(worldAxis, localAxis, q);
+                    let worldAxis = [1, 0, 0];
+                    if (dragState.handle.startsWith('scale-x')) worldAxis = dragState.handle.endsWith('-neg') ? [-1, 0, 0] : [1, 0, 0];
+                    else if (dragState.handle.startsWith('scale-y')) worldAxis = dragState.handle.endsWith('-neg') ? [0, -1, 0] : [0, 1, 0];
+                    else if (dragState.handle.startsWith('scale-z')) worldAxis = dragState.handle.endsWith('-neg') ? [0, 0, -1] : [0, 0, 1];
 
                     const p0 = [dragState.initialTransform.x, dragState.initialTransform.y, dragState.initialTransform.z || 0];
                     const screenCenter = world3DToScreen({ x: p0[0], y: p0[1], z: p0[2] }, proj, view, cw, ch);
