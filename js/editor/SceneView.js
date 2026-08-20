@@ -3087,6 +3087,23 @@ function getGizmoScale(center, customProj = null, customView = null, cw = null, 
     return dist / 800;
 }
 
+function getMateriaExtents3D(materia, transform, gizmoScale) {
+    const sx = Math.abs(transform?.scale?.x ?? 1);
+    const sy = Math.abs(transform?.scale?.y ?? 1);
+    const sz = Math.abs(transform?.scale?.z ?? transform?.scaleZ ?? 1);
+
+    const margin = 20 * gizmoScale;
+    const minExtent = 40 * gizmoScale;
+
+    const extX = Math.max(minExtent, sx + margin);
+    const extY = Math.max(minExtent, sy + margin);
+    const extZ = Math.max(minExtent, sz + margin);
+
+    const radius = Math.max(70 * gizmoScale, Math.hypot(sx, sy, sz) + margin);
+
+    return { extX, extY, extZ, radius };
+}
+
 function getMateriaAxes(materia) {
     const transform = materia.transform || materia.getComponentByName?.('Transform') || materia.getComponent?.('Transform');
     const glm = window.glMatrix;
@@ -3163,10 +3180,13 @@ function check3DGizmoHit(canvasPos, materia) {
         return Math.hypot(p.x - (a.x + t * (b.x - a.x)), p.y - (a.y + t * (b.y - a.y)));
     };
 
+    const transform = materia.transform || materia.getComponentByName?.('Transform') || materia.getComponent?.('Transform');
+    const extents = getMateriaExtents3D(materia, transform, gizmoScale);
+
     const checkRotationHits = () => {
         let closestAxis = null;
         let minDistance = 22;
-        const radius = 110 * gizmoScale;
+        const radius = extents.radius;
         const segments = 16;
         for (let axisIndex = 0; axisIndex < 3; axisIndex++) {
             for (let i = 0; i < segments; i++) {
@@ -3208,22 +3228,20 @@ function check3DGizmoHit(canvasPos, materia) {
         const rotHit = checkRotationHits();
         if (rotHit) return rotHit;
 
-        // Check scale handles at 0.65 length
-        const scaleLen = gizmoLen * 0.65;
         const scaleHandles = [
-            { axis: axes.x, handlePos: 'scale-x' },
-            { axis: [-axes.x[0], -axes.x[1], -axes.x[2]], handlePos: 'scale-x-neg' },
-            { axis: axes.y, handlePos: 'scale-y' },
-            { axis: [-axes.y[0], -axes.y[1], -axes.y[2]], handlePos: 'scale-y-neg' },
-            { axis: axes.z, handlePos: 'scale-z' },
-            { axis: [-axes.z[0], -axes.z[1], -axes.z[2]], handlePos: 'scale-z-neg' }
+            { axis: axes.x, dist: extents.extX, handlePos: 'scale-x' },
+            { axis: [-axes.x[0], -axes.x[1], -axes.x[2]], dist: extents.extX, handlePos: 'scale-x-neg' },
+            { axis: axes.y, dist: extents.extY, handlePos: 'scale-y' },
+            { axis: [-axes.y[0], -axes.y[1], -axes.y[2]], dist: extents.extY, handlePos: 'scale-y-neg' },
+            { axis: axes.z, dist: extents.extZ, handlePos: 'scale-z' },
+            { axis: [-axes.z[0], -axes.z[1], -axes.z[2]], dist: extents.extZ, handlePos: 'scale-z-neg' }
         ];
 
         for (const h of scaleHandles) {
-            const axisEnd = { x: center.x + h.axis[0] * scaleLen, y: center.y + h.axis[1] * scaleLen, z: center.z + h.axis[2] * scaleLen };
+            const axisEnd = { x: center.x + h.axis[0] * h.dist, y: center.y + h.axis[1] * h.dist, z: center.z + h.axis[2] * h.dist };
             const screenEnd = world3DToScreen(axisEnd, proj, view, cw, ch);
             if (!screenEnd) continue;
-            if (Math.hypot(canvasPos.x - screenEnd.x, canvasPos.y - screenEnd.y) < 15) {
+            if (Math.hypot(canvasPos.x - screenEnd.x, canvasPos.y - screenEnd.y) < 20) {
                 return h.handlePos;
             }
         }
@@ -3407,9 +3425,11 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
         ctx.restore();
     };
 
+    const extents = getMateriaExtents3D(materia, transform, gizmoScale);
+
     const drawRotationCircle = (axisIndex, color) => {
         const segments = 40;
-        const radius = 110 * gizmoScale;
+        const radius = extents.radius;
         ctx.strokeStyle = color;
         ctx.lineWidth = 3;
         ctx.beginPath();
@@ -3451,13 +3471,13 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
         drawRotationCircle(1, '#44ff44');
         drawRotationCircle(2, '#4444ff');
 
-        // Render Scale Dots at 0.65 length
-        drawAxis(axes.x, '#ff4444', 'dot', 0.65);
-        drawAxis([-axes.x[0], -axes.x[1], -axes.x[2]], '#ff7777', 'dot', 0.65);
-        drawAxis(axes.y, '#44ff44', 'dot', 0.65);
-        drawAxis([-axes.y[0], -axes.y[1], -axes.y[2]], '#77ff77', 'dot', 0.65);
-        drawAxis(axes.z, '#4444ff', 'dot', 0.65);
-        drawAxis([-axes.z[0], -axes.z[1], -axes.z[2]], '#7777ff', 'dot', 0.65);
+        // Render Scale Dots at actual object extents
+        drawAxis(axes.x, '#ff4444', 'dot', extents.extX / GIZMO_SIZE);
+        drawAxis([-axes.x[0], -axes.x[1], -axes.x[2]], '#ff7777', 'dot', extents.extX / GIZMO_SIZE);
+        drawAxis(axes.y, '#44ff44', 'dot', extents.extY / GIZMO_SIZE);
+        drawAxis([-axes.y[0], -axes.y[1], -axes.y[2]], '#77ff77', 'dot', extents.extY / GIZMO_SIZE);
+        drawAxis(axes.z, '#4444ff', 'dot', extents.extZ / GIZMO_SIZE);
+        drawAxis([-axes.z[0], -axes.z[1], -axes.z[2]], '#7777ff', 'dot', extents.extZ / GIZMO_SIZE);
 
         // Render Movement Arrowheads at full length
         drawAxis(axes.x, '#ff4444', 'arrow', 1.0);
@@ -3472,13 +3492,21 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
         ctx.beginPath(); ctx.arc(screenPos.x, screenPos.y, 8, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
     } else if (activeTool === 'move' || activeTool === 'scale' || activeTool === 'select' || !activeTool) {
-        const handleType = activeTool === 'scale' ? 'dot' : 'arrow';
-        drawAxis(axes.x, '#ff4444', handleType);
-        drawAxis([-axes.x[0], -axes.x[1], -axes.x[2]], '#ff7777', handleType);
-        drawAxis(axes.y, '#44ff44', handleType);
-        drawAxis([-axes.y[0], -axes.y[1], -axes.y[2]], '#77ff77', handleType);
-        drawAxis(axes.z, '#4444ff', handleType);
-        drawAxis([-axes.z[0], -axes.z[1], -axes.z[2]], '#7777ff', handleType);
+        if (activeTool === 'scale') {
+            drawAxis(axes.x, '#ff4444', 'dot', extents.extX / GIZMO_SIZE);
+            drawAxis([-axes.x[0], -axes.x[1], -axes.x[2]], '#ff7777', 'dot', extents.extX / GIZMO_SIZE);
+            drawAxis(axes.y, '#44ff44', 'dot', extents.extY / GIZMO_SIZE);
+            drawAxis([-axes.y[0], -axes.y[1], -axes.y[2]], '#77ff77', 'dot', extents.extY / GIZMO_SIZE);
+            drawAxis(axes.z, '#4444ff', 'dot', extents.extZ / GIZMO_SIZE);
+            drawAxis([-axes.z[0], -axes.z[1], -axes.z[2]], '#7777ff', 'dot', extents.extZ / GIZMO_SIZE);
+        } else {
+            drawAxis(axes.x, '#ff4444', 'arrow');
+            drawAxis([-axes.x[0], -axes.x[1], -axes.x[2]], '#ff7777', 'arrow');
+            drawAxis(axes.y, '#44ff44', 'arrow');
+            drawAxis([-axes.y[0], -axes.y[1], -axes.y[2]], '#7777ff', 'arrow');
+            drawAxis(axes.z, '#4444ff', 'arrow');
+            drawAxis([-axes.z[0], -axes.z[1], -axes.z[2]], '#7777ff', 'arrow');
+        }
 
         // Center handle
         ctx.fillStyle = activeTool === 'scale' ? '#ffffff' : 'rgba(255, 255, 255, 0.5)';

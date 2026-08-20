@@ -5,6 +5,17 @@ import { world3DToScreen, drawLineClipped } from './MathUtils.js';
 
 export const Gizmos = {
     /**
+     * Gets standard rotation matrix matching WebGL Renderer3D transform order.
+     */
+    getRotationMatrix(glm, rotation) {
+        const q = glm.quat.create();
+        glm.quat.fromEuler(q, rotation.x || 0, rotation.y || 0, rotation.z || 0);
+        const rotMat = glm.mat4.create();
+        glm.mat4.fromQuat(rotMat, q);
+        return rotMat;
+    },
+
+    /**
      * Draws a wireframe cube in 3D space.
      */
     drawWireCube(ctx, center, size, rotation = {x:0, y:0, z:0}, color = 'rgba(0, 255, 255, 0.8)', proj = null, view = null, cw = null, ch = null, width = 2) {
@@ -19,15 +30,7 @@ export const Gizmos = {
             [ -hw, -hh, hd ], [ hw, -hh, hd ], [ hw, hh, hd ], [ -hw, hh, hd ]
         ];
 
-        const rotMat = new Float32Array(16);
-        if (window.CarleyMath && window.CarleyMath.mat4RotationYXZ) {
-            window.CarleyMath.mat4RotationYXZ(rotMat, rotation.x || 0, rotation.y || 0, rotation.z || 0);
-        } else {
-            glm.mat4.identity(rotMat);
-            glm.mat4.rotateY(rotMat, rotMat, (rotation.y || 0) * Math.PI / 180);
-            glm.mat4.rotateX(rotMat, rotMat, (rotation.x || 0) * Math.PI / 180);
-            glm.mat4.rotateZ(rotMat, rotMat, (rotation.z || 0) * Math.PI / 180);
-        }
+        const rotMat = this.getRotationMatrix(glm, rotation);
 
         const worldPoints = points.map(p => {
             const rotated = glm.vec3.create();
@@ -53,15 +56,7 @@ export const Gizmos = {
         const glm = window.glMatrix;
         if (!glm) return;
         const segments = 16;
-        const rotMat = new Float32Array(16);
-        if (window.CarleyMath && window.CarleyMath.mat4RotationYXZ) {
-            window.CarleyMath.mat4RotationYXZ(rotMat, rotation.x || 0, rotation.y || 0, rotation.z || 0);
-        } else {
-            glm.mat4.identity(rotMat);
-            glm.mat4.rotateY(rotMat, rotMat, (rotation.y || 0) * Math.PI / 180);
-            glm.mat4.rotateX(rotMat, rotMat, (rotation.x || 0) * Math.PI / 180);
-            glm.mat4.rotateZ(rotMat, rotMat, (rotation.z || 0) * Math.PI / 180);
-        }
+        const rotMat = this.getRotationMatrix(glm, rotation);
 
         const drawRing = (axis) => {
             let lastWorld = null;
@@ -93,15 +88,7 @@ export const Gizmos = {
         if (!glm) return;
         const hw = size.x / 2;
         const hh = size.y / 2;
-        const rotMat = new Float32Array(16);
-        if (window.CarleyMath && window.CarleyMath.mat4RotationYXZ) {
-            window.CarleyMath.mat4RotationYXZ(rotMat, rotation.x || 0, rotation.y || 0, rotation.z || 0);
-        } else {
-            glm.mat4.identity(rotMat);
-            glm.mat4.rotateY(rotMat, rotMat, (rotation.y || 0) * Math.PI / 180);
-            glm.mat4.rotateX(rotMat, rotMat, (rotation.x || 0) * Math.PI / 180);
-            glm.mat4.rotateZ(rotMat, rotMat, (rotation.z || 0) * Math.PI / 180);
-        }
+        const rotMat = this.getRotationMatrix(glm, rotation);
 
         const points = [[0, hh, 0], [-hw, -hh, 0], [hw, -hh, 0]].map(p => {
             const rotated = glm.vec3.create();
@@ -119,15 +106,7 @@ export const Gizmos = {
         if (!glm) return;
         const hw = size.x / 2;
         const hd = size.z / 2;
-        const rotMat = new Float32Array(16);
-        if (window.CarleyMath && window.CarleyMath.mat4RotationYXZ) {
-            window.CarleyMath.mat4RotationYXZ(rotMat, rotation.x || 0, rotation.y || 0, rotation.z || 0);
-        } else {
-            glm.mat4.identity(rotMat);
-            glm.mat4.rotateY(rotMat, rotMat, (rotation.y || 0) * Math.PI / 180);
-            glm.mat4.rotateX(rotMat, rotMat, (rotation.x || 0) * Math.PI / 180);
-            glm.mat4.rotateZ(rotMat, rotMat, (rotation.z || 0) * Math.PI / 180);
-        }
+        const rotMat = this.getRotationMatrix(glm, rotation);
 
         const points = [[-hw, 0, -hd], [hw, 0, -hd], [hw, 0, hd], [-hw, 0, hd]].map(p => {
             const rotated = glm.vec3.create();
@@ -142,15 +121,7 @@ export const Gizmos = {
         const glm = window.glMatrix;
         if (!glm) return;
         const hh = height / 2;
-        const rotMat = new Float32Array(16);
-        if (window.CarleyMath && window.CarleyMath.mat4RotationYXZ) {
-            window.CarleyMath.mat4RotationYXZ(rotMat, rotation.x || 0, rotation.y || 0, rotation.z || 0);
-        } else {
-            glm.mat4.identity(rotMat);
-            glm.mat4.rotateY(rotMat, rotMat, (rotation.y || 0) * Math.PI / 180);
-            glm.mat4.rotateX(rotMat, rotMat, (rotation.x || 0) * Math.PI / 180);
-            glm.mat4.rotateZ(rotMat, rotMat, (rotation.z || 0) * Math.PI / 180);
-        }
+        const rotMat = this.getRotationMatrix(glm, rotation);
 
         const drawL = (lx, lz) => {
             const r1 = glm.vec3.create(), r2 = glm.vec3.create();
