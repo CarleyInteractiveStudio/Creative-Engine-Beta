@@ -1064,8 +1064,11 @@ export class Renderer3D {
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
 
         (async () => {
-            const { getURLForAssetPath } = await import('./AssetUtils.js');
-            const url = await getURLForAssetPath(path, window.projectsDirHandle);
+            let url = path;
+            if (!path.startsWith('data:') && !path.startsWith('blob:') && !path.startsWith('http:') && !path.startsWith('https:')) {
+                const { getURLForAssetPath } = await import('./AssetUtils.js');
+                url = await getURLForAssetPath(path, window.projectsDirHandle);
+            }
             if (!url) return;
 
             const img = new Image();

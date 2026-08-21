@@ -177,11 +177,16 @@ export async function createSkinnedMeshObject(modelPath, parent = null, options 
 
                     if (primitive.material !== undefined && modelData.materials) {
                         const mat = modelData.materials[primitive.material];
-                        if (mat && mat.baseColor) {
-                            const r = Math.floor(mat.baseColor[0] * 255).toString(16).padStart(2, '0');
-                            const g = Math.floor(mat.baseColor[1] * 255).toString(16).padStart(2, '0');
-                            const b = Math.floor(mat.baseColor[2] * 255).toString(16).padStart(2, '0');
-                            renderer.color = `#${r}${g}${b}`;
+                        if (mat) {
+                            if (mat.baseColor) {
+                                const r = Math.floor(mat.baseColor[0] * 255).toString(16).padStart(2, '0');
+                                const g = Math.floor(mat.baseColor[1] * 255).toString(16).padStart(2, '0');
+                                const b = Math.floor(mat.baseColor[2] * 255).toString(16).padStart(2, '0');
+                                renderer.color = `#${r}${g}${b}`;
+                            }
+                            if (mat.textureUrl || mat.texturePath) {
+                                renderer.texturePath = mat.textureUrl || mat.texturePath;
+                            }
                         }
                     }
 
