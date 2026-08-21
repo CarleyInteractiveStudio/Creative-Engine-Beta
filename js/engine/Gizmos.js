@@ -2,16 +2,15 @@
 // A collection of utility functions to draw gizmos in both 2D and 3D scenes.
 
 import { world3DToScreen, drawLineClipped } from './MathUtils.js';
+import { CarleyMath } from '../carley-world/CarleyMath.js';
 
 export const Gizmos = {
     /**
-     * Gets standard rotation matrix matching WebGL Renderer3D transform order.
+     * Gets standard rotation matrix matching WebGL Renderer3D / CarleyRenderer transform order (YXZ).
      */
     getRotationMatrix(glm, rotation) {
-        const q = glm.quat.create();
-        glm.quat.fromEuler(q, rotation.x || 0, rotation.y || 0, rotation.z || 0);
-        const rotMat = glm.mat4.create();
-        glm.mat4.fromQuat(rotMat, q);
+        const rotMat = glm ? glm.mat4.create() : new Float32Array(16);
+        CarleyMath.mat4RotationYXZ(rotMat, rotation.x || 0, rotation.y || 0, rotation.z || 0);
         return rotMat;
     },
 

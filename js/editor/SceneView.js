@@ -3848,8 +3848,8 @@ function draw3DGyzmoRects(gyzmo, customProj = null, customView = null, customCw 
         z: transform.rotationZ || 0
     };
     const glm = window.glMatrix;
-    const q = glm.quat.create();
-    glm.quat.fromEuler(q, rotation.x, rotation.y, rotation.z);
+    const rotMat = glm ? glm.mat4.create() : new Float32Array(16);
+    CarleyMath.mat4RotationYXZ(rotMat, rotation.x, rotation.y, rotation.z);
 
     for (const layer of gyzmo.layers) {
         const { x: lx, y: ly, width, height, color } = layer;
@@ -3859,7 +3859,7 @@ function draw3DGyzmoRects(gyzmo, customProj = null, customView = null, customCw 
         const getPt = (ox, oy) => {
             const localPos = [(lx + ox) * transform.scale.x, (ly + oy) * transform.scale.y, 0];
             const rotated = glm.vec3.create();
-            glm.vec3.transformQuat(rotated, localPos, q);
+            glm.vec3.transformMat4(rotated, localPos, rotMat);
             return { x: transform.x + rotated[0], y: transform.y + rotated[1], z: (transform.z || 0) + rotated[2] };
         };
 
