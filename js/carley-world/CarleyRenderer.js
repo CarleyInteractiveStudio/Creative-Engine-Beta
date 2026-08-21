@@ -650,6 +650,33 @@ export class CarleyRenderer {
         let iBuffer = this.cubeIndexBuffer;
         let count = 36;
 
+        if (meshRenderer.cpuPositions) {
+            if (!meshRenderer._glBuffers) meshRenderer._glBuffers = new Map();
+            let buffers = meshRenderer._glBuffers.get(this.gl);
+            if (!buffers) {
+                buffers = {
+                    positions: this.gl.createBuffer(),
+                    normals: meshRenderer.cpuNormals ? this.gl.createBuffer() : null,
+                    uvs: meshRenderer.cpuUVs ? this.gl.createBuffer() : null,
+                    indices: meshRenderer.cpuIndices ? this.gl.createBuffer() : null
+                };
+                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffers.positions);
+                this.gl.bufferData(this.gl.ARRAY_BUFFER, meshRenderer.cpuPositions, this.gl.STATIC_DRAW);
+                if (buffers.normals) {
+                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffers.normals);
+                    this.gl.bufferData(this.gl.ARRAY_BUFFER, meshRenderer.cpuNormals, this.gl.STATIC_DRAW);
+                }
+                if (buffers.indices) {
+                    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+                    this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, meshRenderer.cpuIndices, this.gl.STATIC_DRAW);
+                }
+                meshRenderer._glBuffers.set(this.gl, buffers);
+            }
+            vBuffer = buffers.positions;
+            iBuffer = buffers.indices;
+            count = meshRenderer.indexCount || (meshRenderer.cpuIndices ? meshRenderer.cpuIndices.length : meshRenderer.cpuPositions.length / 3);
+        }
+
         const meshType = meshRenderer.meshType;
         if (meshType === 'Sphere') {
             vBuffer = this.sphereBuffer;
@@ -673,8 +700,13 @@ export class CarleyRenderer {
         this.gl.enableVertexAttribArray(this.shadowAttribs.position);
         this.gl.vertexAttribPointer(this.shadowAttribs.position, 3, this.gl.FLOAT, false, 0, 0);
 
-        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, iBuffer);
-        this.gl.drawElements(this.gl.TRIANGLES, count, this.gl.UNSIGNED_SHORT, 0);
+        if (iBuffer) {
+            this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, iBuffer);
+            const idxType = (meshRenderer.cpuIndices && meshRenderer.cpuIndices instanceof Uint32Array) ? this.gl.UNSIGNED_INT : this.gl.UNSIGNED_SHORT;
+            this.gl.drawElements(this.gl.TRIANGLES, count, idxType, 0);
+        } else {
+            this.gl.drawArrays(this.gl.TRIANGLES, 0, count);
+        }
     }
 
     endShadowPass() {
@@ -898,6 +930,34 @@ export class CarleyRenderer {
         let iBuffer = this.cubeIndexBuffer;
         let count = 36;
 
+        if (meshRenderer.cpuPositions) {
+            if (!meshRenderer._glBuffers) meshRenderer._glBuffers = new Map();
+            let buffers = meshRenderer._glBuffers.get(this.gl);
+            if (!buffers) {
+                buffers = {
+                    positions: this.gl.createBuffer(),
+                    normals: meshRenderer.cpuNormals ? this.gl.createBuffer() : null,
+                    uvs: meshRenderer.cpuUVs ? this.gl.createBuffer() : null,
+                    indices: meshRenderer.cpuIndices ? this.gl.createBuffer() : null
+                };
+                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffers.positions);
+                this.gl.bufferData(this.gl.ARRAY_BUFFER, meshRenderer.cpuPositions, this.gl.STATIC_DRAW);
+                if (buffers.normals) {
+                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffers.normals);
+                    this.gl.bufferData(this.gl.ARRAY_BUFFER, meshRenderer.cpuNormals, this.gl.STATIC_DRAW);
+                }
+                if (buffers.indices) {
+                    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+                    this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, meshRenderer.cpuIndices, this.gl.STATIC_DRAW);
+                }
+                meshRenderer._glBuffers.set(this.gl, buffers);
+            }
+            vBuffer = buffers.positions;
+            nBuffer = buffers.normals || this.cubeNormalBuffer;
+            iBuffer = buffers.indices;
+            count = meshRenderer.indexCount || (meshRenderer.cpuIndices ? meshRenderer.cpuIndices.length : meshRenderer.cpuPositions.length / 3);
+        }
+
         const meshType = meshRenderer.meshType;
         if (meshType === 'Sphere') {
             vBuffer = this.sphereBuffer;
@@ -929,7 +989,12 @@ export class CarleyRenderer {
         this.gl.enableVertexAttribArray(this.attribs.normal);
         this.gl.vertexAttribPointer(this.attribs.normal, 3, this.gl.FLOAT, false, 0, 0);
 
-        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, iBuffer);
-        this.gl.drawElements(this.gl.TRIANGLES, count, this.gl.UNSIGNED_SHORT, 0);
+        if (iBuffer) {
+            this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, iBuffer);
+            const idxType = (meshRenderer.cpuIndices && meshRenderer.cpuIndices instanceof Uint32Array) ? this.gl.UNSIGNED_INT : this.gl.UNSIGNED_SHORT;
+            this.gl.drawElements(this.gl.TRIANGLES, count, idxType, 0);
+        } else {
+            this.gl.drawArrays(this.gl.TRIANGLES, 0, count);
+        }
     }
 }

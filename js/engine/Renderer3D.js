@@ -60,6 +60,7 @@ export class Renderer3D {
         // Global State
         gl.enable(gl.DEPTH_TEST);
         gl.depthFunc(gl.LEQUAL);
+        gl.getExtension('OES_element_index_uint');
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         gl.enable(gl.CULL_FACE);
@@ -1032,7 +1033,8 @@ export class Renderer3D {
 
             if (buffers.indices) {
                 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
-                gl.drawElements(gl.TRIANGLES, mesh.indexCount, gl.UNSIGNED_SHORT, 0);
+                const idxType = (mesh.cpuIndices && mesh.cpuIndices instanceof Uint32Array) ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT;
+                gl.drawElements(gl.TRIANGLES, mesh.indexCount, idxType, 0);
             } else {
                 gl.drawArrays(gl.TRIANGLES, 0, mesh.indexCount);
             }
