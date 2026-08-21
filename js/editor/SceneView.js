@@ -1076,11 +1076,11 @@ export function initialize(dependencies) {
                         }
 
                         if (dragState.handle === 'rotate-x') {
-                            transform.rotationX = (dragState.initialTransform.rotationX || 0) + deltaAngleDeg;
+                            transform.rotationX = (dragState.initialTransform.rotationX || 0) - deltaAngleDeg;
                         } else if (dragState.handle === 'rotate-y') {
-                            transform.rotationY = (dragState.initialTransform.rotationY || 0) + deltaAngleDeg;
+                            transform.rotationY = (dragState.initialTransform.rotationY || 0) - deltaAngleDeg;
                         } else if (dragState.handle === 'rotate-z') {
-                            transform.rotationZ = (dragState.initialTransform.rotationZ || 0) + deltaAngleDeg;
+                            transform.rotationZ = (dragState.initialTransform.rotationZ || 0) - deltaAngleDeg;
                         }
                     } else {
                         const screenDx = moveEvent.clientX - dragState.initialMousePos.x;
