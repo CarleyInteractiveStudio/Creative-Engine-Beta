@@ -660,13 +660,21 @@ export class ModelLoader3D {
                 materialMap.set(id, { id, name, baseColor: color, textureUrl: null });
             } else if (obj.name === 'Video' || obj.name === 'Texture') {
                 const contentNode = obj.nodes.find(n => n.name === 'Content');
-                if (contentNode && contentNode.props[0] instanceof Uint8Array) {
-                    const blob = new Blob([contentNode.props[0]], { type: 'image/png' });
-                    textureMap.set(id, URL.createObjectURL(blob));
-                } else {
+                const rawContent = contentNode ? (contentNode.nodes.find(cn => cn.name === 'a')?.props || contentNode.props[0]) : null;
+                if (rawContent && (rawContent instanceof Uint8Array || rawContent.buffer || Array.isArray(rawContent))) {
+                    const u8 = rawContent instanceof Uint8Array ? rawContent : new Uint8Array(rawContent.buffer || rawContent);
+                    if (u8.length > 0) {
+                        const blob = new Blob([u8], { type: 'image/png' });
+                        textureMap.set(id, URL.createObjectURL(blob));
+                    }
+                }
+                if (!textureMap.has(id)) {
                     const fileNameNode = obj.nodes.find(n => n.name === 'FileName' || n.name === 'RelativeFilename');
-                    if (fileNameNode) {
-                        textureMap.set(id, fileNameNode.props[0]);
+                    if (fileNameNode && fileNameNode.props && fileNameNode.props[0]) {
+                        let rawFile = fileNameNode.props[0].toString().trim();
+                        const cleanFileName = rawFile.split(/[\\/]/).pop();
+                        const folder = basePath ? basePath.substring(0, basePath.lastIndexOf('/') + 1) : '';
+                        textureMap.set(id, folder + cleanFileName);
                     }
                 }
             } else if (obj.name === 'AnimationStack') {
@@ -835,69 +843,115 @@ export class ModelLoader3D {
         const aIdxNode = idxNode.nodes.find(n => n.name === 'a');
         const rawIndices = (aIdxNode ? aIdxNode.props : idxNode.props[0]) || [];
 
-        const indices = [];
+        // Normals
+        let rawNorms = null;
+        let normMapping = 'ByPolygonVertex';
+        if (normNode) {
+            const aNormNode = normNode.nodes.find(n => n.name === 'Normals')?.nodes.find(n => n.name === 'a');
+            rawNorms = aNormNode ? aNormNode.props : normNode.nodes.find(n => n.name === 'Normals')?.props[0];
+            const mapNode = normNode.nodes.find(n => n.name === 'MappingInformationType');
+            if (mapNode && mapNode.props && mapNode.props[0]) {
+                normMapping = mapNode.props[0].toString();
+            }
+        }
 
-        // Triangulate FBX polygons (where negative index indicates end of polygon face)
+        // UVs
+        let rawUVs = null;
+        let uvIndices = null;
+        let uvMapping = 'ByPolygonVertex';
+        if (uvNode) {
+            const aUVNode = uvNode.nodes.find(n => n.name === 'UV')?.nodes.find(n => n.name === 'a');
+            rawUVs = aUVNode ? aUVNode.props : uvNode.nodes.find(n => n.name === 'UV')?.props[0];
+
+            const aUVIndexNode = uvNode.nodes.find(n => n.name === 'UVIndex')?.nodes.find(n => n.name === 'a');
+            uvIndices = aUVIndexNode ? aUVIndexNode.props : uvNode.nodes.find(n => n.name === 'UVIndex')?.props[0];
+
+            const mapNode = uvNode.nodes.find(n => n.name === 'MappingInformationType');
+            if (mapNode && mapNode.props && mapNode.props[0]) {
+                uvMapping = mapNode.props[0].toString();
+            }
+        }
+
+        const outPositions = [];
+        const outNormals = [];
+        const outUVs = [];
+        const outIndices = [];
+
+        const vertexMap = new Map();
+        let nextIndex = 0;
+
         let polygon = [];
-        for (let i = 0; i < rawIndices.length; i++) {
-            let idx = rawIndices[i];
+
+        for (let p = 0; p < rawIndices.length; p++) {
+            let rawIdx = rawIndices[p];
             let isEnd = false;
-            if (idx < 0) {
-                idx = (-idx) - 1;
+            if (rawIdx < 0) {
+                rawIdx = (-rawIdx) - 1;
                 isEnd = true;
             }
-            polygon.push(idx);
+
+            polygon.push({ p, vIdx: rawIdx });
 
             if (isEnd) {
-                // Fan triangulation
                 for (let j = 1; j < polygon.length - 1; j++) {
-                    indices.push(polygon[0], polygon[j], polygon[j + 1]);
+                    const triVerts = [polygon[0], polygon[j], polygon[j + 1]];
+                    for (const item of triVerts) {
+                        const v = item.vIdx;
+                        const polyIndex = item.p;
+
+                        // Position
+                        const px = rawVerts[v * 3] || 0;
+                        const py = rawVerts[v * 3 + 1] || 0;
+                        const pz = rawVerts[v * 3 + 2] || 0;
+
+                        // Normal
+                        let nx = 0, ny = 1, nz = 0;
+                        if (rawNorms) {
+                            let nIdx = normMapping === 'ByControlPoint' ? v : polyIndex;
+                            if (nIdx * 3 + 2 < rawNorms.length) {
+                                nx = rawNorms[nIdx * 3];
+                                ny = rawNorms[nIdx * 3 + 1];
+                                nz = rawNorms[nIdx * 3 + 2];
+                            }
+                        }
+
+                        // UV
+                        let u = 0, vCoord = 0;
+                        if (rawUVs) {
+                            let uIdx = polyIndex;
+                            if (uvIndices && polyIndex < uvIndices.length) {
+                                uIdx = uvIndices[polyIndex];
+                            } else if (uvMapping === 'ByControlPoint') {
+                                uIdx = v;
+                            }
+                            if (uIdx * 2 + 1 < rawUVs.length) {
+                                u = rawUVs[uIdx * 2];
+                                vCoord = rawUVs[uIdx * 2 + 1];
+                            }
+                        }
+
+                        const key = `${v}_${nx.toFixed(4)}_${ny.toFixed(4)}_${nz.toFixed(4)}_${u.toFixed(4)}_${vCoord.toFixed(4)}`;
+                        let finalIdx = vertexMap.get(key);
+                        if (finalIdx === undefined) {
+                            finalIdx = nextIndex++;
+                            vertexMap.set(key, finalIdx);
+                            outPositions.push(px, py, pz);
+                            outNormals.push(nx, ny, nz);
+                            outUVs.push(u, vCoord);
+                        }
+                        outIndices.push(finalIdx);
+                    }
                 }
                 polygon = [];
             }
         }
 
-        const vertCount = Math.floor(rawVerts.length / 3);
-        const positions = new Float32Array(rawVerts.length);
-        if (rawVerts instanceof Float32Array || rawVerts instanceof Float64Array) {
-            positions.set(rawVerts);
-        } else {
-            for (let i = 0; i < rawVerts.length; i++) positions[i] = rawVerts[i];
-        }
-
-        const normals = new Float32Array(rawVerts.length);
-        for (let i = 0; i < vertCount; i++) {
-            normals[i * 3 + 1] = 1.0;
-        }
-
-        const uvs = new Float32Array(vertCount * 2);
-
-        if (normNode) {
-            const rawNorms = normNode.nodes.find(n => n.name === 'Normals')?.props[0];
-            if (rawNorms) {
-                const len = Math.min(normals.length, rawNorms.length);
-                for (let i = 0; i < len; i++) {
-                    normals[i] = rawNorms[i];
-                }
-            }
-        }
-
-        if (uvNode) {
-            const rawUVs = uvNode.nodes.find(n => n.name === 'UV')?.props[0];
-            if (rawUVs) {
-                const len = Math.min(uvs.length, rawUVs.length);
-                for (let i = 0; i < len; i++) {
-                    uvs[i] = rawUVs[i];
-                }
-            }
-        }
-
-        const IndexArrayType = vertCount > 65535 ? Uint32Array : Uint16Array;
+        const IndexArrayType = nextIndex > 65535 ? Uint32Array : Uint16Array;
         return {
-            positions,
-            normals,
-            uvs,
-            indices: new IndexArrayType(indices)
+            positions: new Float32Array(outPositions),
+            normals: new Float32Array(outNormals),
+            uvs: new Float32Array(outUVs),
+            indices: new IndexArrayType(outIndices)
         };
     }
 

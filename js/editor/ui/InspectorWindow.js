@@ -5633,15 +5633,30 @@ async function updateInspectorForAsset(assetName, assetPath) {
         const file = await fileHandle.getFile();
         const lowerName = assetName.toLowerCase();
 
-        if (selectedAsset && selectedAsset.kind === 'sub-sprite') {
-            const subSpriteName = selectedAsset.subSpriteName;
-            const content = await file.text();
-            const spriteAsset = JSON.parse(content);
-            const spriteData = spriteAsset.sprites[subSpriteName];
+        if (selectedAsset && selectedAsset.kind === 'sub-model') {
+            dom.inspectorContent.innerHTML += `
+                <div class="inspector-section" style="padding: 10px;">
+                    <p style="font-weight: bold; color: var(--accent-color); margin-bottom: 6px;">Sub-asset 3D: ${selectedAsset.name}</p>
+                    <p style="font-size: 0.85em; opacity: 0.8; margin-bottom: 10px;">Origen: ${selectedAsset.path || assetName}</p>
+                    <p style="font-size: 0.8em; opacity: 0.6;">Puedes arrastrar esta sub-malla o animación directamente a la escena o a las propiedades de componentes compatibles.</p>
+                </div>
+            `;
+            return;
+        }
 
-            if (spriteData) {
-                await renderSingleSubSpriteInspector(spriteAsset, spriteData, dirHandle, selectedAsset.path, fileHandle.name);
-                return;
+        if (selectedAsset && selectedAsset.kind === 'sub-sprite') {
+            try {
+                const subSpriteName = selectedAsset.subSpriteName;
+                const content = await file.text();
+                const spriteAsset = JSON.parse(content);
+                const spriteData = spriteAsset && spriteAsset.sprites ? spriteAsset.sprites[subSpriteName] : null;
+
+                if (spriteData) {
+                    await renderSingleSubSpriteInspector(spriteAsset, spriteData, dirHandle, selectedAsset.path, fileHandle.name);
+                    return;
+                }
+            } catch (err) {
+                console.warn("[Inspector] Error parsing sub-sprite asset:", err);
             }
         }
 
@@ -6959,7 +6974,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             await renderAudioInspector(assetName, assetPath);
         } else if (lowerName.endsWith('.mp4') || lowerName.endsWith('.webm') || lowerName.endsWith('.ogv')) {
             await renderVideoInspector(assetName, assetPath);
-        } else if (lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.endsWith('.obj')) {
+        } else if (lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.endsWith('.obj') || lowerName.endsWith('.fbx')) {
             await renderModel3DInspector(assetName, assetPath, currentId);
         } else {
              dom.inspectorContent.innerHTML += `

@@ -369,6 +369,31 @@ export class CarleySkinnedMeshRenderer3D extends CarleyMeshRenderer3D {
         this.isLoaded = false;
     }
 
+    update(deltaTime) {
+        super.update(deltaTime);
+        this.updateBoneMatrices();
+    }
+
+    updateBoneMatrices() {
+        if (!this.skeleton || !this.skeleton.joints) return;
+        const glm = window.glMatrix;
+        if (!glm) return;
+        const scene = this.materia ? (this.materia.scene || window.SceneManager?.currentScene) : null;
+        if (!scene) return;
+
+        for (let i = 0; i < this.skeleton.joints.length && i < 64; i++) {
+            const jointMateria = scene.findMateriaById(this.skeleton.joints[i]);
+            if (!jointMateria) continue;
+            const transform = jointMateria.transform || jointMateria.getComponentByName?.('Transform') || jointMateria.getComponentByName?.('CarleyTransform3D');
+            if (!transform) continue;
+            const invBind = new Float32Array(this.skeleton.inverseBindMatrices.buffer, this.skeleton.inverseBindMatrices.byteOffset + i * 64, 16);
+            const boneMat = glm.mat4.create();
+            const worldM = transform.worldMatrix || glm.mat4.create();
+            glm.mat4.multiply(boneMat, worldM, invBind);
+            this.boneMatrices.set(boneMat, i * 16);
+        }
+    }
+
     clone() {
         const copy = new CarleySkinnedMeshRenderer3D(null);
         Object.assign(copy, this);

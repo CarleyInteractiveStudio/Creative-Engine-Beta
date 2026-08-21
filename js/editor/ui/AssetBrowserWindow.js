@@ -1759,7 +1759,7 @@ function createSubAssetItem(container, name, icon, dragData) {
     item.draggable = true;
     item.dataset.name = name;
     item.dataset.path = dragData.assetPath || dragData.modelPath || '';
-    item.dataset.kind = 'sub-sprite';
+    item.dataset.kind = 'sub-model';
     item.dataset.subSpriteName = name;
 
     const iconContainer = document.createElement('div');

@@ -2711,13 +2711,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (window.Components3D) {
-                    const skinned = materia.getComponent(window.Components3D.SkinnedMeshRenderer3D);
-                    if (skinned && skinned.isLoaded) {
+                    const skinned = materia.getComponent(window.Components3D.SkinnedMeshRenderer3D) ||
+                                    materia.getComponentByName?.('CarleySkinnedMeshRenderer3D') ||
+                                    materia.getComponentByName?.('SkinnedMeshRenderer3D');
+                    if (skinned && skinned.isLoaded && typeof skinned.updateBoneMatrices === 'function') {
                         skinned.updateBoneMatrices();
                     }
-                    const anim3d = materia.getComponent(window.Components3D.Animator3D);
+                    const anim3d = materia.getComponent(window.Components3D.Animator3D) ||
+                                   materia.getComponentByName?.('CarleyAnimator3D') ||
+                                   materia.getComponentByName?.('Animator3D');
                     if (anim3d && (anim3d.isPlaying || materia === selectedMateria)) {
-                        anim3d.update(deltaTime);
+                        if (typeof anim3d.update === 'function') {
+                            anim3d.update(deltaTime);
+                        }
                     }
                 }
 
