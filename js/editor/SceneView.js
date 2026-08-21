@@ -1066,8 +1066,8 @@ export function initialize(dependencies) {
                     const screenCenter = world3DToScreen({ x: p0[0], y: p0[1], z: p0[2] }, proj, view, cw, ch);
 
                     if (screenCenter) {
-                        const initAngle = Math.atan2(dragState.initialMousePos.y - screenCenter.y, dragState.initialMousePos.x - screenCenter.x);
-                        const currentAngle = Math.atan2(moveEvent.clientY - screenCenter.y, moveEvent.clientX - screenCenter.x);
+                        const initAngle = Math.atan2(screenCenter.y - dragState.initialMousePos.y, dragState.initialMousePos.x - screenCenter.x);
+                        const currentAngle = Math.atan2(screenCenter.y - moveEvent.clientY, moveEvent.clientX - screenCenter.x);
                         let deltaAngleDeg = (currentAngle - initAngle) * (180 / Math.PI);
 
                         if (snapEnabled) {
