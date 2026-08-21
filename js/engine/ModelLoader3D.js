@@ -835,9 +835,6 @@ export class ModelLoader3D {
         const aIdxNode = idxNode.nodes.find(n => n.name === 'a');
         const rawIndices = (aIdxNode ? aIdxNode.props : idxNode.props[0]) || [];
 
-        const positions = [];
-        const normals = [];
-        const uvs = [];
         const indices = [];
 
         // Triangulate FBX polygons (where negative index indicates end of polygon face)
@@ -854,28 +851,32 @@ export class ModelLoader3D {
             if (isEnd) {
                 // Fan triangulation
                 for (let j = 1; j < polygon.length - 1; j++) {
-                    const i0 = polygon[0];
-                    const i1 = polygon[j];
-                    const i2 = polygon[j + 1];
-
-                    indices.push(i0, i1, i2);
+                    indices.push(polygon[0], polygon[j], polygon[j + 1]);
                 }
                 polygon = [];
             }
         }
 
-        // Duplicate or map vertex attributes
-        const vertCount = rawVerts.length / 3;
-        for (let i = 0; i < vertCount; i++) {
-            positions.push(rawVerts[i * 3], rawVerts[i * 3 + 1], rawVerts[i * 3 + 2]);
-            normals.push(0, 1, 0);
-            uvs.push(0, 0);
+        const vertCount = Math.floor(rawVerts.length / 3);
+        const positions = new Float32Array(rawVerts.length);
+        if (rawVerts instanceof Float32Array || rawVerts instanceof Float64Array) {
+            positions.set(rawVerts);
+        } else {
+            for (let i = 0; i < rawVerts.length; i++) positions[i] = rawVerts[i];
         }
+
+        const normals = new Float32Array(rawVerts.length);
+        for (let i = 0; i < vertCount; i++) {
+            normals[i * 3 + 1] = 1.0;
+        }
+
+        const uvs = new Float32Array(vertCount * 2);
 
         if (normNode) {
             const rawNorms = normNode.nodes.find(n => n.name === 'Normals')?.props[0];
             if (rawNorms) {
-                for (let i = 0; i < Math.min(normals.length, rawNorms.length); i++) {
+                const len = Math.min(normals.length, rawNorms.length);
+                for (let i = 0; i < len; i++) {
                     normals[i] = rawNorms[i];
                 }
             }
@@ -884,18 +885,18 @@ export class ModelLoader3D {
         if (uvNode) {
             const rawUVs = uvNode.nodes.find(n => n.name === 'UV')?.props[0];
             if (rawUVs) {
-                for (let i = 0; i < Math.min(uvs.length / 2, rawUVs.length / 2); i++) {
-                    uvs[i * 2] = rawUVs[i * 2];
-                    uvs[i * 2 + 1] = rawUVs[i * 2 + 1];
+                const len = Math.min(uvs.length, rawUVs.length);
+                for (let i = 0; i < len; i++) {
+                    uvs[i] = rawUVs[i];
                 }
             }
         }
 
-        const IndexArrayType = positions.length / 3 > 65535 ? Uint32Array : Uint16Array;
+        const IndexArrayType = vertCount > 65535 ? Uint32Array : Uint16Array;
         return {
-            positions: new Float32Array(positions),
-            normals: new Float32Array(normals),
-            uvs: new Float32Array(uvs),
+            positions,
+            normals,
+            uvs,
             indices: new IndexArrayType(indices)
         };
     }

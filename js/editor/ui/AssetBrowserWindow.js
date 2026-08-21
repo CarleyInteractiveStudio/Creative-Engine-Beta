@@ -914,7 +914,7 @@ export async function updateAssetBrowser() {
                 iconContainer.innerHTML = `<img src="icons/image.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (lowerName.endsWith('.cescene')) {
                 iconContainer.innerHTML = `<img src="icons/map.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
-            } else if (lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.endsWith('.obj')) {
+            } else if (lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.endsWith('.obj') || lowerName.endsWith('.fbx')) {
                 iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                 // Try to load a thumbnail if it exists (.thumb.png)
                 const thumbPath = fullPath + '.thumb.png';
@@ -954,7 +954,7 @@ export async function updateAssetBrowser() {
             }
 
             // --- Model Expansion Toggle ---
-            if (entry.kind === 'file' && (lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.endsWith('.obj'))) {
+            if (entry.kind === 'file' && (lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.endsWith('.obj') || lowerName.endsWith('.fbx'))) {
                 const toggle = document.createElement('div');
                 toggle.className = 'model-expand-toggle';
                 toggle.innerHTML = `<img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; transition: transform 0.2s; ${expandedModels.has(fullPath) ? 'transform: rotate(90deg);' : ''}">`;
@@ -1238,7 +1238,7 @@ export async function updateAssetBrowser() {
                  } else if (lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
                      iconName = 'image';
                      fileClass = 'file-image';
-                 } else if (lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.endsWith('.obj')) {
+                 } else if (lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.endsWith('.obj') || lowerName.endsWith('.fbx')) {
                      iconName = 'box';
                      fileClass = 'file-model3d';
                  }

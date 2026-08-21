@@ -539,7 +539,7 @@ export async function handleContextMenuAction(action) {
             {
                 const input = document.createElement('input');
                 input.type = 'file';
-                input.accept = '.glb,.gltf,.obj';
+                input.accept = '.glb,.gltf,.obj,.fbx';
                 input.onchange = async (e) => {
                     const file = e.target.files[0];
                     if (!file) return;
@@ -874,7 +874,8 @@ function setupEventListeners() {
                 return;
             }
 
-            const isModel = data.name && (data.name.endsWith('.glb') || data.name.endsWith('.gltf') || data.name.endsWith('.obj'));
+            const lowerDataName = (data.name || '').toLowerCase();
+            const isModel = lowerDataName.endsWith('.glb') || lowerDataName.endsWith('.gltf') || lowerDataName.endsWith('.obj') || lowerDataName.endsWith('.fbx');
             if (isModel) {
                 const { createSkinnedMeshObject } = await import('../MateriaFactory.js');
                 const m = await createSkinnedMeshObject(data.path, targetMateria);
