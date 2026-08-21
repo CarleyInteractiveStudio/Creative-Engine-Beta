@@ -1056,19 +1056,61 @@ export function initialize(dependencies) {
             case 'rotate-y':
             case 'rotate-z':
                 {
-                    const r3d = window._Renderer3D;
-                    const proj = r3d?.lastProjectionMatrix;
-                    const view = r3d?.lastViewMatrix;
-                    const cw = renderer?.canvas?.clientWidth || renderer?.canvas?.width || 800;
-                    const ch = renderer?.canvas?.clientHeight || renderer?.canvas?.height || 600;
+                    if (use3D) {
+                        const ray = getMouseRay3D(moveEvent.clientX, moveEvent.clientY);
+                        const p0 = [dragState.initialTransform.x, dragState.initialTransform.y, dragState.initialTransform.z || 0];
 
-                    const p0 = [dragState.initialTransform.x, dragState.initialTransform.y, dragState.initialTransform.z || 0];
-                    const screenCenter = world3DToScreen({ x: p0[0], y: p0[1], z: p0[2] }, proj, view, cw, ch);
+                        // Global World Space rotation plane normal matching getMateriaAxes
+                        let planeNormal = [0, 0, 1];
+                        if (dragState.handle === 'rotate-x') planeNormal = [1, 0, 0];
+                        else if (dragState.handle === 'rotate-y') planeNormal = [0, 1, 0];
 
-                    if (screenCenter) {
-                        const initAngle = Math.atan2(dragState.initialMousePos.y - screenCenter.y, dragState.initialMousePos.x - screenCenter.x);
-                        const currentAngle = Math.atan2(moveEvent.clientY - screenCenter.y, moveEvent.clientX - screenCenter.x);
-                        let deltaAngleDeg = (currentAngle - initAngle) * (180 / Math.PI);
+                        let deltaAngleDeg = 0;
+                        let computedVia3D = false;
+
+                        if (ray && dragState.offsetFromRay) {
+                            const denom = glm.vec3.dot(ray.direction, planeNormal);
+                            if (Math.abs(denom) > 1e-6) {
+                                const p0_l0 = glm.vec3.subtract(glm.vec3.create(), p0, ray.origin);
+                                const t = glm.vec3.dot(p0_l0, planeNormal) / denom;
+                                if (t >= 0) {
+                                    const currentHitPt = glm.vec3.scaleAndAdd(glm.vec3.create(), ray.origin, ray.direction, t);
+                                    const currentDirVec = glm.vec3.subtract(glm.vec3.create(), currentHitPt, p0);
+                                    if (glm.vec3.length(currentDirVec) > 1e-6) {
+                                        const v0 = dragState.offsetFromRay; // Initial normalized direction on plane
+                                        const v1 = glm.vec3.normalize(glm.vec3.create(), currentDirVec);
+
+                                        const cosTheta = Math.max(-1, Math.min(1, glm.vec3.dot(v0, v1)));
+                                        const crossVec = glm.vec3.cross(glm.vec3.create(), v0, v1);
+                                        const sinTheta = glm.vec3.dot(crossVec, planeNormal);
+
+                                        deltaAngleDeg = Math.atan2(sinTheta, cosTheta) * (180 / Math.PI);
+                                        computedVia3D = true;
+                                    }
+                                }
+                            }
+                        }
+
+                        if (!computedVia3D) {
+                            const r3d = window._Renderer3D;
+                            const proj = r3d?.lastProjectionMatrix;
+                            const view = r3d?.lastViewMatrix;
+                            const cw = renderer?.canvas?.clientWidth || renderer?.canvas?.width || 800;
+                            const ch = renderer?.canvas?.clientHeight || renderer?.canvas?.height || 600;
+                            const screenCenter = world3DToScreen({ x: p0[0], y: p0[1], z: p0[2] }, proj, view, cw, ch);
+
+                            if (screenCenter) {
+                                const initAngle = Math.atan2(screenCenter.y - dragState.initialMousePos.y, dragState.initialMousePos.x - screenCenter.x);
+                                const currentAngle = Math.atan2(screenCenter.y - moveEvent.clientY, moveEvent.clientX - screenCenter.x);
+                                deltaAngleDeg = (currentAngle - initAngle) * (180 / Math.PI);
+                                while (deltaAngleDeg > 180) deltaAngleDeg -= 360;
+                                while (deltaAngleDeg < -180) deltaAngleDeg += 360;
+                            } else {
+                                const screenDx = moveEvent.clientX - dragState.initialMousePos.x;
+                                const screenDy = moveEvent.clientY - dragState.initialMousePos.y;
+                                deltaAngleDeg = screenDx - screenDy;
+                            }
+                        }
 
                         if (snapEnabled) {
                             const snapStep = parseFloat(prefs.rotationSnap) || 15;
@@ -1083,16 +1125,13 @@ export function initialize(dependencies) {
                             transform.rotationZ = (dragState.initialTransform.rotationZ || 0) + deltaAngleDeg;
                         }
                     } else {
-                        const screenDx = moveEvent.clientX - dragState.initialMousePos.x;
-                        const screenDy = moveEvent.clientY - dragState.initialMousePos.y;
-                        const amount = screenDx - screenDy;
-                        if (dragState.handle === 'rotate-x') {
-                            transform.rotationX = (dragState.initialTransform.rotationX || 0) + amount;
-                        } else if (dragState.handle === 'rotate-y') {
-                            transform.rotationY = (dragState.initialTransform.rotationY || 0) + amount;
-                        } else if (dragState.handle === 'rotate-z') {
-                            transform.rotationZ = (dragState.initialTransform.rotationZ || 0) + amount;
+                        const worldMouse = screenToWorld(moveEvent.clientX - dom.sceneCanvas.getBoundingClientRect().left, moveEvent.clientY - dom.sceneCanvas.getBoundingClientRect().top);
+                        let newRot = Math.atan2(worldMouse.y - transform.y, worldMouse.x - transform.x) * 180 / Math.PI;
+                        if (snapEnabled) {
+                            const snapDeg = 15;
+                            newRot = Math.round(newRot / snapDeg) * snapDeg;
                         }
+                        transform.rotation = newRot;
                     }
                 }
                 break;
@@ -2322,6 +2361,24 @@ export function initialize(dependencies) {
                             const denom = a * c - b * b;
                             if (Math.abs(denom) > 1e-6) {
                                 initialU = (b * e - c * d) / denom;
+                            }
+                        } else if (hitHandle.startsWith('rotate-')) {
+                            // Global World Space plane normal matching getMateriaAxes
+                            let rotAxis = [0, 0, 1];
+                            if (hitHandle === 'rotate-x') rotAxis = [1, 0, 0];
+                            else if (hitHandle === 'rotate-y') rotAxis = [0, 1, 0];
+
+                            const denom = glm.vec3.dot(ray.direction, rotAxis);
+                            if (Math.abs(denom) > 1e-6) {
+                                const p0_l0 = glm.vec3.subtract(glm.vec3.create(), p0, ray.origin);
+                                const t = glm.vec3.dot(p0_l0, rotAxis) / denom;
+                                if (t >= 0) {
+                                    const hitPt = glm.vec3.scaleAndAdd(glm.vec3.create(), ray.origin, ray.direction, t);
+                                    const dirVec = glm.vec3.subtract(glm.vec3.create(), hitPt, p0);
+                                    if (glm.vec3.length(dirVec) > 1e-6) {
+                                        offsetFromRay = glm.vec3.normalize(glm.vec3.create(), dirVec);
+                                    }
+                                }
                             }
                         }
                     }
@@ -3848,8 +3905,8 @@ function draw3DGyzmoRects(gyzmo, customProj = null, customView = null, customCw 
         z: transform.rotationZ || 0
     };
     const glm = window.glMatrix;
-    const q = glm.quat.create();
-    glm.quat.fromEuler(q, rotation.x, rotation.y, rotation.z);
+    const rotMat = glm ? glm.mat4.create() : new Float32Array(16);
+    CarleyMath.mat4RotationYXZ(rotMat, rotation.x, rotation.y, rotation.z);
 
     for (const layer of gyzmo.layers) {
         const { x: lx, y: ly, width, height, color } = layer;
@@ -3859,7 +3916,7 @@ function draw3DGyzmoRects(gyzmo, customProj = null, customView = null, customCw 
         const getPt = (ox, oy) => {
             const localPos = [(lx + ox) * transform.scale.x, (ly + oy) * transform.scale.y, 0];
             const rotated = glm.vec3.create();
-            glm.vec3.transformQuat(rotated, localPos, q);
+            glm.vec3.transformMat4(rotated, localPos, rotMat);
             return { x: transform.x + rotated[0], y: transform.y + rotated[1], z: (transform.z || 0) + rotated[2] };
         };
 
