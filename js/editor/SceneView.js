@@ -1078,12 +1078,29 @@ export function initialize(dependencies) {
                             deltaAngleDeg = Math.round(deltaAngleDeg / snapStep) * snapStep;
                         }
 
+                        let localAxis = [0, 0, 1];
+                        if (dragState.handle === 'rotate-x') localAxis = [1, 0, 0];
+                        else if (dragState.handle === 'rotate-y') localAxis = [0, 1, 0];
+
+                        const q = glm.quat.create();
+                        glm.quat.fromEuler(q, dragState.initialTransform.rotationX || 0, dragState.initialTransform.rotationY || 0, dragState.initialTransform.rotationZ || 0);
+                        const worldAxis = glm.vec3.create();
+                        glm.vec3.transformQuat(worldAxis, localAxis, q);
+
+                        const viewAxis = glm.vec3.create();
+                        const viewMat3 = glm.mat3.fromMat4(glm.mat3.create(), view);
+                        glm.vec3.transformMat3(viewAxis, worldAxis, viewMat3);
+
+                        // If viewAxis[2] > 0, axis points towards camera; if < 0, away from camera
+                        const axisFacingSign = viewAxis[2] >= 0 ? 1 : -1;
+                        const finalDelta = deltaAngleDeg * axisFacingSign;
+
                         if (dragState.handle === 'rotate-x') {
-                            transform.rotationX = (dragState.initialTransform.rotationX || 0) - deltaAngleDeg;
+                            transform.rotationX = (dragState.initialTransform.rotationX || 0) + finalDelta;
                         } else if (dragState.handle === 'rotate-y') {
-                            transform.rotationY = (dragState.initialTransform.rotationY || 0) - deltaAngleDeg;
+                            transform.rotationY = (dragState.initialTransform.rotationY || 0) + finalDelta;
                         } else if (dragState.handle === 'rotate-z') {
-                            transform.rotationZ = (dragState.initialTransform.rotationZ || 0) - deltaAngleDeg;
+                            transform.rotationZ = (dragState.initialTransform.rotationZ || 0) + finalDelta;
                         }
                     } else {
                         const screenDx = moveEvent.clientX - dragState.initialMousePos.x;
