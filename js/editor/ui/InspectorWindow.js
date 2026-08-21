@@ -7581,6 +7581,8 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
     let animationId = null;
     let previewMateria = null;
     let lastViewMatrix = window.glMatrix.mat4.create();
+    let handleGlobalMouseUp = null;
+    let handleGlobalMouseMove = null;
 
     const captureThumbnail = async () => {
         if (!canvas || !previewMateria) return;
@@ -7711,10 +7713,10 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
         };
         canvas.oncontextmenu = (e) => e.preventDefault();
 
-        const handleGlobalMouseUp = () => { isOrbiting = false; isPanning = false; };
+        handleGlobalMouseUp = () => { isOrbiting = false; isPanning = false; };
         window.addEventListener('mouseup', handleGlobalMouseUp);
 
-        const handleGlobalMouseMove = (e) => {
+        handleGlobalMouseMove = (e) => {
             if (!isOrbiting && !isPanning) return;
             e.stopPropagation();
             const dx = e.clientX - lastMouseX;
