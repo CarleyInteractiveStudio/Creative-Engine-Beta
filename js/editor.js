@@ -5300,6 +5300,22 @@ public start() {
                     case 'jpeg':
                         SpriteSlicer.open(fileHandle, dirHandle, saveAssetMeta);
                         break;
+                    case 'obj':
+                    case 'fbx':
+                    case 'gltf':
+                    case 'glb':
+                        (async () => {
+                            const assetPath = options.path || `Assets/${name}`;
+                            console.log(`Instanciando modelo 3D desde asset browser: ${assetPath}`);
+                            const m = await MateriaFactory.createSkinnedMeshObject(assetPath, null);
+                            if (m) {
+                                selectMateria(m);
+                                updateHierarchy();
+                                updateInspector();
+                                updateScene(renderer, false);
+                            }
+                        })();
+                        break;
                     default:
                         console.log(`No double-click action defined for file: ${name}`);
                         break;

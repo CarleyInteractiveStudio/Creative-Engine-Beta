@@ -7581,9 +7581,22 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
     let animationId = null;
     let previewMateria = null;
     let lastViewMatrix = window.glMatrix.mat4.create();
+    let handleGlobalMouseUp = null;
+    let handleGlobalMouseMove = null;
 
-    const captureThumbnail = async () => {
+    const captureThumbnail = async (force = false) => {
         if (!canvas || !previewMateria) return;
+        const thumbName = assetName + '.thumb.png';
+        const dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
+        if (!dirHandle) return;
+
+        if (!force) {
+            try {
+                await dirHandle.getFileHandle(thumbName, { create: false });
+                return; // Thumbnail already exists, skip regenerating to prevent lag/DOM churn
+            } catch (e) {}
+        }
+
         const thumbCanvas = document.createElement('canvas');
         thumbCanvas.width = 128;
         thumbCanvas.height = 128;
@@ -7625,9 +7638,6 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
         thumbCtx.drawImage(canvas, 0, 0, 128, 128);
 
         thumbCanvas.toBlob(async (blob) => {
-            const thumbName = assetName + '.thumb.png';
-            const dirHandle = getCurrentDirectoryHandleCallback ? getCurrentDirectoryHandleCallback() : null;
-            if (!dirHandle) return;
             try {
                 const thumbHandle = await dirHandle.getFileHandle(thumbName, { create: true });
                 const writable = await thumbHandle.createWritable();
@@ -7711,10 +7721,10 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
         };
         canvas.oncontextmenu = (e) => e.preventDefault();
 
-        const handleGlobalMouseUp = () => { isOrbiting = false; isPanning = false; };
+        handleGlobalMouseUp = () => { isOrbiting = false; isPanning = false; };
         window.addEventListener('mouseup', handleGlobalMouseUp);
 
-        const handleGlobalMouseMove = (e) => {
+        handleGlobalMouseMove = (e) => {
             if (!isOrbiting && !isPanning) return;
             e.stopPropagation();
             const dx = e.clientX - lastMouseX;
@@ -7791,10 +7801,8 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
         };
         animationId = requestAnimationFrame(loop);
 
-        // Auto-capture thumbnail after a delay to ensure model is loaded
-        setTimeout(captureThumbnail, 2000);
-        // Also try once immediately after a short tick
-        setTimeout(captureThumbnail, 500);
+        // Auto-capture thumbnail after a delay to ensure model is loaded if not already generated
+        setTimeout(() => captureThumbnail(false), 1000);
     };
 
     startPreview();
@@ -7835,8 +7843,12 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
     const observer = new MutationObserver((mutations) => {
         if (!document.getElementById('model-preview-canvas')) {
             if (animationId) cancelAnimationFrame(animationId);
-            window.removeEventListener('mouseup', handleGlobalMouseUp);
-            window.removeEventListener('mousemove', handleGlobalMouseMove);
+            if (handleGlobalMouseUp) window.removeEventListener('mouseup', handleGlobalMouseUp);
+            if (handleGlobalMouseMove) window.removeEventListener('mousemove', handleGlobalMouseMove);
+            if (previewMateria) {
+                previewMateria.destroy();
+                previewMateria = null;
+            }
             observer.disconnect();
         }
     });
