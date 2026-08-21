@@ -919,7 +919,7 @@ export async function updateAssetBrowser() {
                 // Try to load a thumbnail if it exists (.thumb.png)
                 const thumbPath = fullPath + '.thumb.png';
                 const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
-                getURLForAssetPath(thumbPath, currentDirHandle).then(url => {
+                getURLForAssetPath(thumbPath, currentDirHandle, true).then(url => {
                     if (url) {
                         imgIcon.src = url;
                         iconContainer.innerHTML = '';

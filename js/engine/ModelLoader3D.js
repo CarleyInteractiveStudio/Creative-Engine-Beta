@@ -126,7 +126,7 @@ export class ModelLoader3D {
             try {
                 const folder = basePath.substring(0, basePath.lastIndexOf('/') + 1);
                 const fullMtlPath = folder + mtlLibPath;
-                const mtlUrl = await getURLForAssetPath(fullMtlPath, projectsDirHandle);
+                const mtlUrl = await getURLForAssetPath(fullMtlPath, projectsDirHandle, true);
                 if (mtlUrl) {
                     const mtlRes = await fetch(mtlUrl);
                     const mtlText = await mtlRes.text();
@@ -909,9 +909,9 @@ export class ModelLoader3D {
                         if (rawNorms) {
                             let nIdx = normMapping === 'ByControlPoint' ? v : polyIndex;
                             if (nIdx * 3 + 2 < rawNorms.length) {
-                                nx = rawNorms[nIdx * 3];
-                                ny = rawNorms[nIdx * 3 + 1];
-                                nz = rawNorms[nIdx * 3 + 2];
+                                nx = Number(rawNorms[nIdx * 3]) || 0;
+                                ny = Number(rawNorms[nIdx * 3 + 1]) || 0;
+                                nz = Number(rawNorms[nIdx * 3 + 2]) || 0;
                             }
                         }
 
@@ -925,8 +925,8 @@ export class ModelLoader3D {
                                 uIdx = v;
                             }
                             if (uIdx * 2 + 1 < rawUVs.length) {
-                                u = rawUVs[uIdx * 2];
-                                vCoord = rawUVs[uIdx * 2 + 1];
+                                u = Number(rawUVs[uIdx * 2]) || 0;
+                                vCoord = Number(rawUVs[uIdx * 2 + 1]) || 0;
                             }
                         }
 

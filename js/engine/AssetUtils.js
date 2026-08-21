@@ -49,7 +49,7 @@ async function recordFetch(response, path = null) {
 
 export { recordFetch };
 
-export async function getURLForAssetPath(path, projectsDirHandle) {
+export async function getURLForAssetPath(path, projectsDirHandle, silent = false) {
     if (!path) return null;
 
     // --- Embedded Assets Support ---
@@ -217,15 +217,17 @@ export async function getURLForAssetPath(path, projectsDirHandle) {
             return url;
 
         } catch (error) {
-            if (error.name === 'NotFoundError') {
-                if (typeof window !== 'undefined' && window.logToUIConsole) {
-                    window.logToUIConsole({
-                        message: `NotFoundError: El asset '${path}' no existe.`,
-                        scriptName: null
-                    }, 'error', true);
+            if (!silent) {
+                if (error.name === 'NotFoundError') {
+                    if (typeof window !== 'undefined' && window.logToUIConsole) {
+                        window.logToUIConsole({
+                            message: `NotFoundError: El asset '${path}' no existe.`,
+                            scriptName: null
+                        }, 'error', true);
+                    }
                 }
+                console.error(`Could not create URL for asset path: ${path}`, error);
             }
-            console.error(`Could not create URL for asset path: ${path}`, error);
             return null;
         } finally {
             // Remove from promise cache once finished (it's now in assetUrlCache or failed)

@@ -7607,7 +7607,7 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
 
         if (!force) {
             try {
-                await dirHandle.getFileHandle(thumbName, { create: false });
+                await await getURLForAssetPath(assetName + '.thumb.png', dirHandle, true);
                 return; // Thumbnail already exists, skip regenerating to prevent lag/DOM churn
             } catch (e) {}
         }
