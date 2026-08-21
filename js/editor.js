@@ -574,6 +574,40 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
     }
 
+    const preloadAll3DModels = async function(rootDirHandle) {
+        if (!rootDirHandle) return;
+        try {
+            const { ModelLoader3D } = await import("./engine/ModelLoader3D.js");
+            const projectName = new URLSearchParams(window.location.search).get("project");
+            if (!projectName) return;
+            const projectHandle = await rootDirHandle.getDirectoryHandle(projectName);
+            const assetsHandle = await projectHandle.getDirectoryHandle("Assets");
+
+            async function scanDir(dirHandle, currentPath) {
+                for await (const entry of dirHandle.values()) {
+                    const fullPath = `${currentPath}/${entry.name}`;
+                    if (entry.kind === "file") {
+                        const lower = entry.name.toLowerCase();
+                        if (lower.endsWith(".fbx") || lower.endsWith(".obj") || lower.endsWith(".gltf") || lower.endsWith(".glb")) {
+                            console.log(`[Preloader3D] Precargando modelo 3D en segundo plano: ${fullPath}`);
+                            ModelLoader3D.loadModel(fullPath, rootDirHandle).catch(err => {
+                                console.warn(`[Preloader3D] Error al precargar ${fullPath}:`, err);
+                            });
+                        }
+                    } else if (entry.kind === "directory") {
+                        try {
+                            await scanDir(entry, fullPath);
+                        } catch (e) {}
+                    }
+                }
+            }
+
+            await scanDir(assetsHandle, "Assets");
+        } catch (e) {
+            console.warn("[Preloader3D] No se pudieron precargar modelos 3D:", e);
+        }
+    };
+
     // --- 5. Core Editor Functions ---
     var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, openMarkdownViewerCallback, saveAssetContentCallback, hotReloadScript, scanAndTranspileAllScripts, updateCanvasInteractivity;
 
@@ -1051,6 +1085,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`Asset '${fileName}' creado exitosamente.`);
             if (typeof updateAssetBrowser === 'function') {
                 await updateAssetBrowser();
+            preloadAll3DModels(projectsDirHandle);
             }
             return fileHandle;
         } catch (error) {

@@ -201,6 +201,28 @@ export async function createSkinnedMeshObject(modelPath, parent = null, options 
                 m.setParent(rootMateria, false);
             }
         });
+
+        try {
+            const { getAABB3D } = await import("../engine/MathUtils.js");
+            rootMateria.updateWorldMatrix(true);
+            const aabb = getAABB3D(rootMateria);
+            if (aabb && aabb.size) {
+                const maxDim = Math.max(aabb.size[0], aabb.size[1], aabb.size[2]);
+                if (maxDim > 100) {
+                    const scaleFactor = 10 / maxDim;
+                    const rootTransform = rootMateria.getComponent(Components.Transform);
+                    if (rootTransform) {
+                        rootTransform.localScale = { x: scaleFactor, y: scaleFactor, z: scaleFactor };
+                    }
+                } else if (maxDim < 0.05 && maxDim > 0) {
+                    const scaleFactor = 2.0 / maxDim;
+                    const rootTransform = rootMateria.getComponent(Components.Transform);
+                    if (rootTransform) {
+                        rootTransform.localScale = { x: scaleFactor, y: scaleFactor, z: scaleFactor };
+                    }
+                }
+            }
+        } catch (e) {}
     } else {
         const renderer = new C3D.SkinnedMeshRenderer3D(rootMateria);
         renderer.modelPath = modelPath;

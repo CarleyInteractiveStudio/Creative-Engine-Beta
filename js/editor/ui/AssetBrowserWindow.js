@@ -858,7 +858,7 @@ export async function updateAssetBrowser() {
                 iconContainer.innerHTML = `<img src="image/Script.png" style="width: 32px; height: 32px; object-fit: contain;">`;
             } else if (lowerName.endsWith('.chc')) {
                 iconContainer.innerHTML = `<img src="icons/sparkles.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
-            } else if (lowerName.endsWith('.cea')) {
+            } else if (lowerName.endsWith('.cea') || lowerName.endsWith('.ceanimclip')) {
                 iconContainer.innerHTML = `<img src="image/cea.png" style="width: 32px; height: 32px; object-fit: contain;">`;
             } else if (lowerName.endsWith('.ceanim')) {
                 iconContainer.innerHTML = `<img src="icons/route.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
@@ -1220,7 +1220,7 @@ export async function updateAssetBrowser() {
                  } else if (lowerName.endsWith('.css')) {
                      iconName = 'sparkles';
                      fileClass = 'file-css';
-                 } else if (lowerName.endsWith('.cea') || lowerName.endsWith('.ceanim')) {
+                 } else if (lowerName.endsWith('.cea') || lowerName.endsWith('.ceanim') || lowerName.endsWith('.ceanimclip')) {
                      iconName = 'play';
                      fileClass = 'file-animation';
                  } else if (lowerName.endsWith('.cepalette')) {

@@ -6,20 +6,36 @@
 
 import { getURLForAssetPath } from './AssetUtils.js';
 
+const modelCache = new Map();
+
 export class ModelLoader3D {
+    static clearCache(path = null) {
+        if (path) modelCache.delete(path);
+        else modelCache.clear();
+    }
+
     static async loadModel(path, projectsDirHandle) {
+        if (modelCache.has(path)) {
+            return modelCache.get(path);
+        }
+
         const ext = path.split('.').pop().toLowerCase();
         const url = await getURLForAssetPath(path, projectsDirHandle);
         if (!url) return null;
 
+        let result = null;
         if (ext === 'obj') {
-            return await this.loadOBJ(url, path, projectsDirHandle);
+            result = await this.loadOBJ(url, path, projectsDirHandle);
         } else if (ext === 'gltf' || ext === 'glb') {
-            return await this.loadGLTF(url);
+            result = await this.loadGLTF(url);
         } else if (ext === 'fbx') {
-            return await this.loadFBX(url, path, projectsDirHandle);
+            result = await this.loadFBX(url, path, projectsDirHandle);
         }
-        return null;
+
+        if (result) {
+            modelCache.set(path, result);
+        }
+        return result;
     }
 
     // ==========================================
