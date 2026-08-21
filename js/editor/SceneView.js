@@ -1070,6 +1070,9 @@ export function initialize(dependencies) {
                         const currentAngle = Math.atan2(screenCenter.y - moveEvent.clientY, moveEvent.clientX - screenCenter.x);
                         let deltaAngleDeg = (currentAngle - initAngle) * (180 / Math.PI);
 
+                        while (deltaAngleDeg > 180) deltaAngleDeg -= 360;
+                        while (deltaAngleDeg < -180) deltaAngleDeg += 360;
+
                         if (snapEnabled) {
                             const snapStep = parseFloat(prefs.rotationSnap) || 15;
                             deltaAngleDeg = Math.round(deltaAngleDeg / snapStep) * snapStep;
