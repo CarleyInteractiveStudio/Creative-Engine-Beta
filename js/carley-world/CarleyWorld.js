@@ -119,10 +119,24 @@ export class CarleyWorld {
         CarleyMath.mat4Perspective(lightProj, 90, 1.0, 1.0, 5000);
         CarleyMath.mat4Multiply(lightSpaceMatrix, lightProj, lightView);
 
+        // Helper to retrieve any 3D mesh renderer component on a materia
+        const getMeshRenderer = (m) => {
+            if (!m) return null;
+            return m.meshRenderer ||
+                   (typeof m.getComponentByName === 'function' ? m.getComponentByName('MeshRenderer3D') : null) ||
+                   (typeof m.getComponentByName === 'function' ? m.getComponentByName('SkinnedMeshRenderer3D') : null) ||
+                   (typeof m.getComponentByName === 'function' ? m.getComponentByName('CarleyMeshRenderer3D') : null) ||
+                   (typeof m.getComponentByName === 'function' ? m.getComponentByName('CarleySkinnedMeshRenderer3D') : null) ||
+                   (typeof m.getComponent === 'function' ? m.getComponent('MeshRenderer3D') : null) ||
+                   (typeof m.getComponent === 'function' ? m.getComponent('SkinnedMeshRenderer3D') : null);
+        };
+
         // 3. Pase de Sombras (Shadow Pass)
         this.renderer.beginShadowPass(lightSpaceMatrix);
         for (const m of all) {
-            if (m.isActive && m.meshRenderer && m.meshRenderer.castShadows) {
+            if (!m.isActive) continue;
+            const mr = getMeshRenderer(m);
+            if (mr && mr.castShadows) {
                 this.renderer.renderMateriaShadow(m);
             }
         }
@@ -160,7 +174,9 @@ export class CarleyWorld {
 
         // Renderizar cada objeto de la escena
         for (const m of all) {
-            if (m.isActive && m.meshRenderer) {
+            if (!m.isActive) continue;
+            const mr = getMeshRenderer(m);
+            if (mr) {
                 this.renderer.renderMateria(
                     m,
                     viewMatrix,

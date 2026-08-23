@@ -611,16 +611,27 @@ document.addEventListener('DOMContentLoaded', () => {
                         await ModelLoader3D.loadModel(fullPath, rootDirHandle);
                         loadedCount++;
                         if (typeof onProgress === 'function') {
-                            onProgress(loadedCount, totalModels);
+                            onProgress(loadedCount, totalModels, fullPath.split('/').pop());
                         }
                     } catch (err) {
                         console.warn(`[Preloader3D] Error al precargar ${fullPath}:`, err);
+                        loadedCount++;
+                        if (typeof onProgress === 'function') {
+                            onProgress(loadedCount, totalModels, fullPath.split('/').pop());
+                        }
                     }
                 }));
                 console.log(`[Preloader3D] ${totalModels} modelos 3D precargados completamente en memoria.`);
+            } else {
+                if (typeof onProgress === 'function') {
+                    onProgress(0, 0, null);
+                }
             }
         } catch (e) {
             console.warn("[Preloader3D] No se pudieron precargar modelos 3D:", e);
+            if (typeof onProgress === 'function') {
+                onProgress(0, 0, null);
+            }
         }
     };
 
@@ -5553,10 +5564,15 @@ public start() {
                 populateProjectSettingsUI(defaultConfig, null);
             }
 
-            updateLoadingProgress(85, "Precargando modelos 3D y recursos...");
-            await preloadAll3DModels(projectsDirHandle, (loaded, total) => {
-                const pct = Math.floor(85 + (loaded / total) * 10);
-                updateLoadingProgress(pct, `Precargando modelos 3D (${loaded}/${total})...`);
+            updateLoadingProgress(85, "Escaneando modelos 3D...");
+            await preloadAll3DModels(projectsDirHandle, (loaded, total, modelName) => {
+                if (total === 0) {
+                    updateLoadingProgress(92, "Modelos 3D verificados (0 archivos).");
+                } else {
+                    const pct = Math.floor(85 + (loaded / total) * 8);
+                    const nameStr = modelName ? `: ${modelName}` : '';
+                    updateLoadingProgress(pct, `Cargando modelo 3D (${loaded}/${total})${nameStr}...`);
+                }
             });
 
             updateLoadingProgress(95, "Actualizando paneles...");
