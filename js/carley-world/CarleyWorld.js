@@ -96,7 +96,10 @@ export class CarleyWorld {
         let mainLight = null;
         for (const m of all) {
             if (m.isActive) {
-                const light = m.getLaw(CarleyDirectionalLight3D);
+                const light = (typeof m.getLaw === 'function' ? m.getLaw(CarleyDirectionalLight3D) : null) ||
+                              (typeof m.getComponentByName === 'function' ? m.getComponentByName('DirectionalLight3D') : null) ||
+                              (typeof m.getComponentByName === 'function' ? m.getComponentByName('CarleyDirectionalLight3D') : null) ||
+                              (typeof m.getComponent === 'function' ? m.getComponent('DirectionalLight3D') : null);
                 if (light) {
                     mainLight = light;
                     break;
