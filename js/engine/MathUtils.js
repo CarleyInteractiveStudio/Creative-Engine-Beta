@@ -203,35 +203,51 @@ export function cos(degrees) { return Math.cos(degrees * Math.PI / 180); }
  * Calculates the Axis-Aligned Bounding Box (AABB) for a Materia and its children in 3D.
  */
 export function getAABB3D(materia) {
+    if (!materia) return null;
     let minX = Infinity, minY = Infinity, minZ = Infinity;
     let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
     let found = false;
 
     const glm = window.glMatrix;
-    if (!materia) return null;
+    if (typeof materia.updateWorldMatrix === 'function') {
+        materia.updateWorldMatrix(true);
+    }
 
-    materia.traverse(mtr => {
+    const processMateria = (mtr) => {
         const smr = mtr.getComponentByName ? (mtr.getComponentByName('SkinnedMeshRenderer3D') || mtr.getComponentByName('CarleySkinnedMeshRenderer3D')) : null;
         const mr = mtr.getComponentByName ? (mtr.getComponentByName('MeshRenderer3D') || mtr.getComponentByName('CarleyMeshRenderer3D')) : null;
+        const r = smr || mr;
         const transform = mtr.getComponentByName ? (mtr.getComponentByName('Transform') || mtr.getComponentByName('CarleyTransform3D')) : null;
+        const worldMatrix = transform ? transform.worldMatrix : mtr.worldMatrix;
 
-        if ((smr || mr) && transform && glm) {
-            const worldMatrix = transform.worldMatrix;
-            const positions = smr ? smr.cpuPositions : (mr ? mr.cpuPositions : null);
-
-            if (positions) {
+        if (r && worldMatrix && glm) {
+            const positions = r.cpuPositions || r.positions;
+            if (positions && positions.length > 0) {
+                let lMinX = Infinity, lMinY = Infinity, lMinZ = Infinity;
+                let lMaxX = -Infinity, lMaxY = -Infinity, lMaxZ = -Infinity;
                 for (let i = 0; i < positions.length; i += 3) {
-                    const v = glm.vec4.fromValues(positions[i], positions[i+1], positions[i+2], 1.0);
-                    const wp = glm.vec4.create();
-                    glm.vec4.transformMat4(wp, v, worldMatrix);
-
-                    minX = Math.min(minX, wp[0]); minY = Math.min(minY, wp[1]); minZ = Math.min(minZ, wp[2]);
-                    maxX = Math.max(maxX, wp[0]); maxY = Math.max(maxY, wp[1]); maxZ = Math.max(maxZ, wp[2]);
+                    const x = positions[i], y = positions[i+1], z = positions[i+2];
+                    if (x < lMinX) lMinX = x; if (x > lMaxX) lMaxX = x;
+                    if (y < lMinY) lMinY = y; if (y > lMaxY) lMaxY = y;
+                    if (z < lMinZ) lMinZ = z; if (z > lMaxZ) lMaxZ = z;
+                }
+                if (lMinX !== Infinity) {
+                    const corners = [
+                        [lMinX, lMinY, lMinZ], [lMaxX, lMinY, lMinZ], [lMinX, lMaxY, lMinZ], [lMaxX, lMaxY, lMinZ],
+                        [lMinX, lMinY, lMaxZ], [lMaxX, lMinY, lMaxZ], [lMinX, lMaxY, lMaxZ], [lMaxX, lMaxY, lMaxZ]
+                    ];
+                    corners.forEach(c => {
+                        const v = glm.vec4.fromValues(c[0], c[1], c[2], 1.0);
+                        const wp = glm.vec4.create();
+                        glm.vec4.transformMat4(wp, v, worldMatrix);
+                        if (wp[0] < minX) minX = wp[0]; if (wp[0] > maxX) maxX = wp[0];
+                        if (wp[1] < minY) minY = wp[1]; if (wp[1] > maxY) maxY = wp[1];
+                        if (wp[2] < minZ) minZ = wp[2]; if (wp[2] > maxZ) maxZ = wp[2];
+                    });
                     found = true;
                 }
-            } else if (mr) {
-                // Primitives
-                const half = 50; // Standard size in CE is 100 (half 50)
+            } else if (r.meshType) {
+                const half = 50;
                 const corners = [
                     [-half, -half, -half], [half, -half, -half], [-half, half, -half], [half, half, -half],
                     [-half, -half, half], [half, -half, half], [-half, half, half], [half, half, half]
@@ -240,13 +256,20 @@ export function getAABB3D(materia) {
                     const v = glm.vec4.fromValues(c[0], c[1], c[2], 1.0);
                     const wp = glm.vec4.create();
                     glm.vec4.transformMat4(wp, v, worldMatrix);
-                    minX = Math.min(minX, wp[0]); minY = Math.min(minY, wp[1]); minZ = Math.min(minZ, wp[2]);
-                    maxX = Math.max(maxX, wp[0]); maxY = Math.max(maxY, wp[1]); maxZ = Math.max(maxZ, wp[2]);
+                    if (wp[0] < minX) minX = wp[0]; if (wp[0] > maxX) maxX = wp[0];
+                    if (wp[1] < minY) minY = wp[1]; if (wp[1] > maxY) maxY = wp[1];
+                    if (wp[2] < minZ) minZ = wp[2]; if (wp[2] > maxZ) maxZ = wp[2];
                 });
                 found = true;
             }
         }
-    });
+
+        if (mtr.children && Array.isArray(mtr.children)) {
+            mtr.children.forEach(child => processMateria(child));
+        }
+    };
+
+    processMateria(materia);
 
     if (!found) return null;
     return {

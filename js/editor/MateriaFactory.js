@@ -215,12 +215,73 @@ export async function createSkinnedMeshObject(modelPath, parent = null, options 
             }
         });
 
+        // Center model geometry so rootMateria (0,0,0) is at the exact center of the model's AABB
         try {
+            const renderers = [];
+            rootMateria.traverse(mtr => {
+                const r = mtr.getComponentByName ? (mtr.getComponentByName('SkinnedMeshRenderer3D') || mtr.getComponentByName('MeshRenderer3D')) : null;
+                if (r && r.cpuPositions && r.cpuPositions.length > 0) {
+                    renderers.push({ mtr, renderer: r });
+                }
+            });
+
+            if (renderers.length > 0 && window.glMatrix) {
+                rootMateria.updateWorldMatrix(true);
+                const rootWorldInv = window.glMatrix.mat4.create();
+                window.glMatrix.mat4.invert(rootWorldInv, rootMateria.worldMatrix);
+
+                let minX = Infinity, minY = Infinity, minZ = Infinity;
+                let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+
+                for (const { mtr, renderer } of renderers) {
+                    const relMatrix = window.glMatrix.mat4.create();
+                    window.glMatrix.mat4.multiply(relMatrix, rootWorldInv, mtr.worldMatrix);
+
+                    const pos = renderer.cpuPositions;
+                    for (let i = 0; i < pos.length; i += 3) {
+                        const vx = pos[i], vy = pos[i + 1], vz = pos[i + 2];
+                        const rx = relMatrix[0] * vx + relMatrix[4] * vy + relMatrix[8] * vz + relMatrix[12];
+                        const ry = relMatrix[1] * vx + relMatrix[5] * vy + relMatrix[9] * vz + relMatrix[13];
+                        const rz = relMatrix[2] * vx + relMatrix[6] * vy + relMatrix[10] * vz + relMatrix[14];
+
+                        if (rx < minX) minX = rx; if (rx > maxX) maxX = rx;
+                        if (ry < minY) minY = ry; if (ry > maxY) maxY = ry;
+                        if (rz < minZ) minZ = rz; if (rz > maxZ) maxZ = rz;
+                    }
+                }
+
+                if (minX !== Infinity) {
+                    const centerX = (minX + maxX) / 2;
+                    const centerY = (minY + maxY) / 2;
+                    const centerZ = (minZ + maxZ) / 2;
+
+                    if (Math.abs(centerX) > 0.01 || Math.abs(centerY) > 0.01 || Math.abs(centerZ) > 0.01) {
+                        for (const { mtr, renderer } of renderers) {
+                            const relMatrix = window.glMatrix.mat4.create();
+                            window.glMatrix.mat4.multiply(relMatrix, rootWorldInv, mtr.worldMatrix);
+                            const relInv = window.glMatrix.mat4.create();
+                            window.glMatrix.mat4.invert(relInv, relMatrix);
+
+                            const localOffsetX = relInv[0] * centerX + relInv[4] * centerY + relInv[8] * centerZ;
+                            const localOffsetY = relInv[1] * centerX + relInv[5] * centerY + relInv[9] * centerZ;
+                            const localOffsetZ = relInv[2] * centerX + relInv[6] * centerY + relInv[10] * centerZ;
+
+                            const pos = renderer.cpuPositions;
+                            for (let i = 0; i < pos.length; i += 3) {
+                                pos[i] -= localOffsetX;
+                                pos[i + 1] -= localOffsetY;
+                                pos[i + 2] -= localOffsetZ;
+                            }
+                        }
+                    }
+                }
+            }
+
             const { getAABB3D } = await import("../engine/MathUtils.js");
             rootMateria.updateWorldMatrix(true);
             const aabb = getAABB3D(rootMateria);
             if (aabb && aabb.size) {
-                const maxDim = Math.max(aabb.size[0], aabb.size[1], aabb.size[2]);
+                const maxDim = Math.max(aabb.size.x, aabb.size.y, aabb.size.z);
                 if (maxDim > 100) {
                     const scaleFactor = 10 / maxDim;
                     const rootTransform = rootMateria.getComponent(Components.Transform);
@@ -235,7 +296,9 @@ export async function createSkinnedMeshObject(modelPath, parent = null, options 
                     }
                 }
             }
-        } catch (e) {}
+        } catch (e) {
+            console.warn('[MateriaFactory] Failed to center 3D model geometry:', e);
+        }
     } else {
         const renderer = new C3D.SkinnedMeshRenderer3D(rootMateria);
         renderer.modelPath = modelPath;
