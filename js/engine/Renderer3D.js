@@ -263,6 +263,7 @@ export class Renderer3D {
             uniform mat4 uViewMatrix;
             uniform mat4 uProjectionMatrix;
             uniform mat4 uBoneMatrices[64];
+            uniform bool uHasSkeleton;
 
             varying vec3 vNormal;
             varying vec4 vColor;
@@ -270,11 +271,14 @@ export class Renderer3D {
             varying vec3 vWorldPos;
 
             void main() {
-                mat4 skinMatrix =
-                    uBoneMatrices[int(aJointIndices.x)] * aJointWeights.x +
-                    uBoneMatrices[int(aJointIndices.y)] * aJointWeights.y +
-                    uBoneMatrices[int(aJointIndices.z)] * aJointWeights.z +
-                    uBoneMatrices[int(aJointIndices.w)] * aJointWeights.w;
+                mat4 skinMatrix = mat4(1.0);
+                if (uHasSkeleton) {
+                    skinMatrix =
+                        uBoneMatrices[int(aJointIndices.x)] * aJointWeights.x +
+                        uBoneMatrices[int(aJointIndices.y)] * aJointWeights.y +
+                        uBoneMatrices[int(aJointIndices.z)] * aJointWeights.z +
+                        uBoneMatrices[int(aJointIndices.w)] * aJointWeights.w;
+                }
 
                 vec4 worldPosition = uModelMatrix * skinMatrix * aVertexPosition;
                 vWorldPos = worldPosition.xyz;
@@ -901,12 +905,13 @@ export class Renderer3D {
 
         // Identity for skinned meshes as bone matrices are in world space.
         // If it's a non-skinned primitive of a model, use the world matrix.
-        const hasSkeleton = !!(mesh.skeleton && mesh.skeleton.joints && mesh.skeleton.joints.length > 0);
+        const hasSkeleton = !!(mesh.skeleton && mesh.skeleton.joints && mesh.skeleton.joints.length > 0 && mesh.cpuWeights);
         const modelMatrix = hasSkeleton ? mat4.create() : (transform.worldMatrix || mat4.create());
         gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uModelMatrix'), false, modelMatrix);
+        gl.uniform1i(gl.getUniformLocation(program, 'uHasSkeleton'), hasSkeleton ? 1 : 0);
         gl.uniform4f(gl.getUniformLocation(program, 'uColor'), color[0], color[1], color[2], 1.0);
 
-        if (mesh.boneMatrices) gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uBoneMatrices'), false, mesh.boneMatrices);
+        if (mesh.boneMatrices && hasSkeleton) gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uBoneMatrices'), false, mesh.boneMatrices);
 
         // Textures
         const useMainTexLoc = gl.getUniformLocation(program, 'uUseMainTex');

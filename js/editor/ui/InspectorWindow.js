@@ -2306,6 +2306,18 @@ async function updateInspectorForMateria(selectedMateria) {
         }
     });
 
+    if (!selectedMateria.leyes.some(l => l.constructor.name.includes('MeshRenderer3D'))) {
+        selectedMateria.traverse(child => {
+            if (child !== selectedMateria) {
+                child.leyes.forEach((ley) => {
+                    if (ley.constructor.name.includes('MeshRenderer3D')) {
+                        components3D['otros'].push({ ley, index: -1, childMateria: child });
+                    }
+                });
+            }
+        });
+    }
+
     const renderComponentList = (list, container) => {
         list.forEach(({ ley, index }) => {
             try {

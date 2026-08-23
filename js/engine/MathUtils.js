@@ -208,24 +208,20 @@ export function getAABB3D(materia) {
     let found = false;
 
     const glm = window.glMatrix;
+    if (!materia) return null;
 
     materia.traverse(mtr => {
-        const smr = mtr.getComponentByName('SkinnedMeshRenderer3D');
-        const mr = mtr.getComponentByName('MeshRenderer3D');
-        const transform = mtr.getComponentByName('Transform');
+        const smr = mtr.getComponentByName ? (mtr.getComponentByName('SkinnedMeshRenderer3D') || mtr.getComponentByName('CarleySkinnedMeshRenderer3D')) : null;
+        const mr = mtr.getComponentByName ? (mtr.getComponentByName('MeshRenderer3D') || mtr.getComponentByName('CarleyMeshRenderer3D')) : null;
+        const transform = mtr.getComponentByName ? (mtr.getComponentByName('Transform') || mtr.getComponentByName('CarleyTransform3D')) : null;
 
-        if ((smr || mr) && transform) {
+        if ((smr || mr) && transform && glm) {
             const worldMatrix = transform.worldMatrix;
-            const positions = smr ? smr.cpuPositions : null;
-            // MeshRenderer3D uses primitive buffers, we can use their standard bounds
+            const positions = smr ? smr.cpuPositions : (mr ? mr.cpuPositions : null);
 
             if (positions) {
                 for (let i = 0; i < positions.length; i += 3) {
                     const v = glm.vec4.fromValues(positions[i], positions[i+1], positions[i+2], 1.0);
-                    // For skinned mesh, if it's the root and identity, positions are already world-ish in bind pose?
-                    // Actually MateriaFactory for characters uses world-ish positions.
-                    // But for GLB/GLTF, positions are local to node.
-
                     const wp = glm.vec4.create();
                     glm.vec4.transformMat4(wp, v, worldMatrix);
 
@@ -253,7 +249,12 @@ export function getAABB3D(materia) {
     });
 
     if (!found) return null;
-    return { min: [minX, minY, minZ], max: [maxX, maxY, maxZ], center: [(minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2] };
+    return {
+        min: [minX, minY, minZ],
+        max: [maxX, maxY, maxZ],
+        center: { x: (minX + maxX) / 2, y: (minY + maxY) / 2, z: (minZ + maxZ) / 2 },
+        size: { x: maxX - minX, y: maxY - minY, z: maxZ - minZ }
+    };
 }
 
 // --- 3D Projection Utilities ---

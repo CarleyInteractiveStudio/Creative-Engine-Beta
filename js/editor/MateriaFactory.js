@@ -175,6 +175,9 @@ export async function createSkinnedMeshObject(modelPath, parent = null, options 
                         renderer.skeleton = { joints: skin.joints.map(idx => nodeMaterias[idx].id), inverseBindMatrices: skin.inverseBindMatrices };
                     }
 
+                    const modelFolder = modelPath.includes('/') ? modelPath.substring(0, modelPath.lastIndexOf('/') + 1) : 'Assets/';
+                    let assignedTex = null;
+
                     if (primitive.material !== undefined && modelData.materials) {
                         const mat = modelData.materials[primitive.material];
                         if (mat) {
@@ -184,10 +187,20 @@ export async function createSkinnedMeshObject(modelPath, parent = null, options 
                                 const b = Math.floor(mat.baseColor[2] * 255).toString(16).padStart(2, '0');
                                 renderer.color = `#${r}${g}${b}`;
                             }
-                            if (mat.textureUrl || mat.texturePath) {
-                                renderer.texturePath = mat.textureUrl || mat.texturePath;
-                            }
+                            assignedTex = mat.textureUrl || mat.texturePath;
                         }
+                    }
+
+                    if (!assignedTex && modelData.materials && modelData.materials.length > 0) {
+                        const fallbackMat = modelData.materials.find(m => m.textureUrl || m.texturePath);
+                        if (fallbackMat) assignedTex = fallbackMat.textureUrl || fallbackMat.texturePath;
+                    }
+
+                    if (assignedTex) {
+                        if (!assignedTex.startsWith('Assets/') && !assignedTex.startsWith('blob:') && !assignedTex.startsWith('data:') && !assignedTex.startsWith('http')) {
+                            assignedTex = modelFolder + assignedTex.replace(/^\/+/, '');
+                        }
+                        renderer.texturePath = assignedTex;
                     }
 
                     renderer.isLoaded = true;

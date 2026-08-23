@@ -3428,10 +3428,13 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
                 else if (meshRenderer.meshType === 'Capsule') Gizmos.drawWireCapsule(ctx, center, Math.max(scale.x, scale.z) * 0.25, scale.y, rotation, clr, proj, view, cw, ch, 3);
                 else Gizmos.drawWireCube(ctx, center, scale, rotation, clr, proj, view, cw, ch, 3);
             } else {
-                // For any other object, draw a beautiful 3D bounding box overlay based on its scale
-                console.log(`[SceneView] Bounding box fallback`);
-                const size = scale.x === 2 && scale.y === 2 && scale.z === 2 ? { x: 100, y: 100, z: 100 } : scale;
-                Gizmos.drawWireCube(ctx, center, size, rotation, clrFallback, proj, view, cw, ch, 3);
+                const aabb = MathUtils.getAABB3D(materia);
+                if (aabb && aabb.size && aabb.size.x > 0.01 && aabb.size.y > 0.01 && aabb.size.z > 0.01) {
+                    Gizmos.drawWireCube(ctx, aabb.center, aabb.size, { x: 0, y: 0, z: 0 }, clrFallback, proj, view, cw, ch, 3);
+                } else {
+                    const size = scale.x === 2 && scale.y === 2 && scale.z === 2 ? { x: 100, y: 100, z: 100 } : scale;
+                    Gizmos.drawWireCube(ctx, center, size, rotation, clrFallback, proj, view, cw, ch, 3);
+                }
             }
         }
     }
