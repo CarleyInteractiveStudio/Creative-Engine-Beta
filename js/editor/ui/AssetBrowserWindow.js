@@ -1714,21 +1714,51 @@ async function renderModelSubAssets(gridContainer, fileEntry, modelPath) {
         const data = await Loader.loadModel(modelPath, window.projectsDirHandle);
         if (!data) return;
 
-        // 1. Meshes
-        if (data.meshes) {
+        // 1. Child Nodes / Sub-models
+        if (data.nodes && data.nodes.length > 0) {
+            data.nodes.forEach((n, i) => {
+                if (n.name) {
+                    createSubAssetItem(gridContainer, n.name, 'layers', { type: 'ModelNode', modelPath, nodeIndex: i });
+                }
+            });
+        }
+
+        // 2. Meshes
+        if (data.meshes && data.meshes.length > 0) {
             data.meshes.forEach((m, i) => {
                 createSubAssetItem(gridContainer, m.name || `Mesh ${i}`, 'box', { type: 'ModelMesh', modelPath, meshIndex: i });
             });
         }
 
-        // 2. Animations (Embedded)
-        if (data.animations) {
+        // 3. Materials
+        if (data.materials && data.materials.length > 0) {
+            data.materials.forEach((mat, i) => {
+                createSubAssetItem(gridContainer, mat.name || `Material ${i}`, 'palette', { type: 'ModelMaterial', modelPath, materialIndex: i, material: mat });
+            });
+        }
+
+        // 4. Embedded Textures
+        if (data.materials) {
+            const texturePaths = new Set();
+            data.materials.forEach(mat => {
+                if (mat.textureUrl || mat.texturePath) {
+                    texturePaths.add(mat.textureUrl || mat.texturePath);
+                }
+            });
+            texturePaths.forEach(tex => {
+                const texName = tex.split('/').pop().split('?')[0];
+                createSubAssetItem(gridContainer, texName, 'image', { type: 'ModelTexture', modelPath, texturePath: tex });
+            });
+        }
+
+        // 5. Animations (Embedded)
+        if (data.animations && data.animations.length > 0) {
             data.animations.forEach((a, i) => {
                 createSubAssetItem(gridContainer, a.name || `Anim ${i}`, 'route', { type: 'ModelAnimation', modelPath, animIndex: i, isEmbedded: true });
             });
         }
 
-        // 2.1 Animations (Extracted / Meta)
+        // 5.1 Animations (Extracted / Meta)
         const dirHandle = currentDirectoryHandle.handle;
         try {
             const fileName = modelPath.split('/').pop();
@@ -1743,7 +1773,7 @@ async function renderModelSubAssets(gridContainer, fileEntry, modelPath) {
             }
         } catch (e) {}
 
-        // 3. Skeleton
+        // 6. Skeleton
         if (data.skins && data.skins.length > 0) {
             createSubAssetItem(gridContainer, 'Skeleton', 'user', { type: 'ModelSkeleton', modelPath });
         }
@@ -1761,6 +1791,18 @@ function createSubAssetItem(container, name, icon, dragData) {
     item.dataset.path = dragData.assetPath || dragData.modelPath || '';
     item.dataset.kind = 'sub-model';
     item.dataset.subSpriteName = name;
+
+    item.onclick = (e) => {
+        e.stopPropagation();
+        if (typeof onAssetSelected === 'function') {
+            onAssetSelected({
+                name,
+                path: dragData.assetPath || dragData.modelPath || '',
+                kind: 'sub-model',
+                dragData
+            });
+        }
+    };
 
     const iconContainer = document.createElement('div');
     iconContainer.className = 'icon';

@@ -574,7 +574,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
     }
 
-    const preloadAll3DModels = async function(rootDirHandle) {
+    const preloadAll3DModels = async function(rootDirHandle, onProgress = null) {
         if (!rootDirHandle) return;
         try {
             const { ModelLoader3D } = await import("./engine/ModelLoader3D.js");
@@ -583,16 +583,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const projectHandle = await rootDirHandle.getDirectoryHandle(projectName);
             const assetsHandle = await projectHandle.getDirectoryHandle("Assets");
 
+            const modelFiles = [];
             async function scanDir(dirHandle, currentPath) {
                 for await (const entry of dirHandle.values()) {
                     const fullPath = `${currentPath}/${entry.name}`;
                     if (entry.kind === "file") {
                         const lower = entry.name.toLowerCase();
                         if (lower.endsWith(".fbx") || lower.endsWith(".obj") || lower.endsWith(".gltf") || lower.endsWith(".glb")) {
-                            console.log(`[Preloader3D] Precargando modelo 3D en segundo plano: ${fullPath}`);
-                            ModelLoader3D.loadModel(fullPath, rootDirHandle).catch(err => {
-                                console.warn(`[Preloader3D] Error al precargar ${fullPath}:`, err);
-                            });
+                            modelFiles.push(fullPath);
                         }
                     } else if (entry.kind === "directory") {
                         try {
@@ -603,6 +601,24 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             await scanDir(assetsHandle, "Assets");
+
+            let loadedCount = 0;
+            const totalModels = modelFiles.length;
+            if (totalModels > 0) {
+                console.log(`[Preloader3D] Precargando ${totalModels} modelos 3D al arrancar...`);
+                await Promise.all(modelFiles.map(async (fullPath) => {
+                    try {
+                        await ModelLoader3D.loadModel(fullPath, rootDirHandle);
+                        loadedCount++;
+                        if (typeof onProgress === 'function') {
+                            onProgress(loadedCount, totalModels);
+                        }
+                    } catch (err) {
+                        console.warn(`[Preloader3D] Error al precargar ${fullPath}:`, err);
+                    }
+                }));
+                console.log(`[Preloader3D] ${totalModels} modelos 3D precargados completamente en memoria.`);
+            }
         } catch (e) {
             console.warn("[Preloader3D] No se pudieron precargar modelos 3D:", e);
         }
@@ -5537,7 +5553,13 @@ public start() {
                 populateProjectSettingsUI(defaultConfig, null);
             }
 
-            updateLoadingProgress(85, "Actualizando paneles...");
+            updateLoadingProgress(85, "Precargando modelos 3D y recursos...");
+            await preloadAll3DModels(projectsDirHandle, (loaded, total) => {
+                const pct = Math.floor(85 + (loaded / total) * 10);
+                updateLoadingProgress(pct, `Precargando modelos 3D (${loaded}/${total})...`);
+            });
+
+            updateLoadingProgress(95, "Actualizando paneles...");
             updateCanvasInteractivity();
 
             // Sync 2D/3D toggle button on load

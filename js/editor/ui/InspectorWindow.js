@@ -5634,11 +5634,31 @@ async function updateInspectorForAsset(assetName, assetPath) {
         const lowerName = assetName.toLowerCase();
 
         if (selectedAsset && selectedAsset.kind === 'sub-model') {
+            const dragData = selectedAsset.dragData || {};
+            let subTypeLabel = "Elemento 3D";
+            let previewDetails = "";
+
+            if (dragData.type === 'ModelNode') subTypeLabel = "Nodo de Modelo 3D (Sub-modelo)";
+            else if (dragData.type === 'ModelMesh') subTypeLabel = "Malla 3D (Mesh)";
+            else if (dragData.type === 'ModelMaterial') subTypeLabel = "Material 3D";
+            else if (dragData.type === 'ModelTexture') subTypeLabel = "Textura 3D Vinculada";
+            else if (dragData.type === 'ModelAnimation') subTypeLabel = "Animación 3D";
+            else if (dragData.type === 'ModelSkeleton') subTypeLabel = "Esqueleto 3D (Bones)";
+
+            if (dragData.material) {
+                const colorHex = dragData.material.baseColor ? `#${Math.floor(dragData.material.baseColor[0]*255).toString(16).padStart(2,'0')}${Math.floor(dragData.material.baseColor[1]*255).toString(16).padStart(2,'0')}${Math.floor(dragData.material.baseColor[2]*255).toString(16).padStart(2,'0')}` : '#ffffff';
+                previewDetails = `<div style="display:flex; align-items:center; gap:8px; margin-top:8px;"><div style="width:20px; height:20px; border-radius:4px; background-color:${colorHex}; border:1px solid #666;"></div> <span>Color base: ${colorHex}</span></div>`;
+            } else if (dragData.texturePath) {
+                previewDetails = `<div style="margin-top:8px;"><img src="${dragData.texturePath}" style="max-width:100px; max-height:100px; border-radius:4px; border:1px solid #444;" /></div>`;
+            }
+
             dom.inspectorContent.innerHTML += `
-                <div class="inspector-section" style="padding: 10px;">
-                    <p style="font-weight: bold; color: var(--accent-color); margin-bottom: 6px;">Sub-asset 3D: ${selectedAsset.name}</p>
-                    <p style="font-size: 0.85em; opacity: 0.8; margin-bottom: 10px;">Origen: ${selectedAsset.path || assetName}</p>
-                    <p style="font-size: 0.8em; opacity: 0.6;">Puedes arrastrar esta sub-malla o animación directamente a la escena o a las propiedades de componentes compatibles.</p>
+                <div class="inspector-section" style="padding: 12px; background: rgba(0,0,0,0.2); border-radius: 6px; margin: 8px;">
+                    <h4 style="margin-top:0; color: var(--accent-color); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;">${selectedAsset.name}</h4>
+                    <p style="font-size: 0.85em; opacity: 0.9; margin: 4px 0;"><strong>Tipo:</strong> ${subTypeLabel}</p>
+                    <p style="font-size: 0.85em; opacity: 0.8; margin: 4px 0;"><strong>Modelo origen:</strong> ${selectedAsset.path || assetName}</p>
+                    ${previewDetails}
+                    <p style="font-size: 0.8em; opacity: 0.6; margin-top: 10px;">Puedes arrastrar esta sub-malla, material o nodo directamente a la escena o a la jerarquía para instanciarlo.</p>
                 </div>
             `;
             return;
