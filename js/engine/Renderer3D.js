@@ -661,13 +661,17 @@ export class Renderer3D {
                 return;
             }
 
-            const skinnedMesh = materia.getComponent(Components3D.SkinnedMeshRenderer3D);
+            const skinnedMesh = materia.getComponent(Components3D.SkinnedMeshRenderer3D) ||
+                                (typeof materia.getComponentByName === 'function' ? materia.getComponentByName('SkinnedMeshRenderer3D') : null) ||
+                                (typeof materia.getComponentByName === 'function' ? materia.getComponentByName('CarleySkinnedMeshRenderer3D') : null);
             if (skinnedMesh && skinnedMesh.isLoaded && skinnedMesh.isActive) {
                 this.drawSkinnedMesh(materia, skinnedMesh);
                 return;
             }
 
-            const mesh = materia.getComponent(Components3D.MeshRenderer3D);
+            const mesh = materia.getComponent(Components3D.MeshRenderer3D) ||
+                         (typeof materia.getComponentByName === 'function' ? materia.getComponentByName('MeshRenderer3D') : null) ||
+                         (typeof materia.getComponentByName === 'function' ? materia.getComponentByName('CarleyMeshRenderer3D') : null);
             if (!mesh || !mesh.isActive) return;
 
             const program = mesh.isUnlit ? this.programs.unlit : this.programs.standard;

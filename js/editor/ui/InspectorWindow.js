@@ -5285,6 +5285,8 @@ async function updateInspectorForMateria(selectedMateria) {
                             <label data-i18n="COLOR">Color</label>
                             <input type="color" class="prop-input" data-component="SkinnedMeshRenderer3D" data-prop="color" value="${ley.color}">
                         </div>
+                        ${renderPropertyDropper('Sprite', ley.texturePath, 'data-component="SkinnedMeshRenderer3D" data-prop="texturePath"')}
+                        ${renderPropertyDropper('Sprite', ley.normalMapPath, 'data-component="SkinnedMeshRenderer3D" data-prop="normalMapPath"')}
                     </div>
                 </div>
             `;
@@ -5329,6 +5331,8 @@ async function updateInspectorForMateria(selectedMateria) {
                             <label data-i18n="COLOR">Color</label>
                             <input type="color" class="prop-input" data-component="MeshRenderer3D" data-prop="color" value="${ley.color}">
                         </div>
+                        ${renderPropertyDropper('Sprite', ley.texturePath, 'data-component="MeshRenderer3D" data-prop="texturePath"')}
+                        ${renderPropertyDropper('Sprite', ley.normalMapPath, 'data-component="MeshRenderer3D" data-prop="normalMapPath"')}
                     </div>
                     <div class="inspector-group">
                         <div class="checkbox-field padded-checkbox-field">
