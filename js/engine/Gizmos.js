@@ -196,6 +196,121 @@ export const Gizmos = {
     },
 
     /**
+     * Computes the 2D convex hull of an array of points {x, y} using Andrew's Monotone Chain algorithm.
+     */
+    convexHull2D(points) {
+        if (points.length <= 3) return points;
+
+        const sorted = points.slice().sort((a, b) => a.x === b.x ? a.y - b.y : a.x - b.x);
+        const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+
+        const lower = [];
+        for (const p of sorted) {
+            while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) {
+                lower.pop();
+            }
+            lower.push(p);
+        }
+
+        const upper = [];
+        for (let i = sorted.length - 1; i >= 0; i--) {
+            const p = sorted[i];
+            while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) {
+                upper.pop();
+            }
+            upper.push(p);
+        }
+
+        lower.pop();
+        upper.pop();
+        return lower.concat(upper);
+    },
+
+    /**
+     * Draws a smooth see-through X-Ray 2D Silhouette / Outline around a 3D model and its children.
+     */
+    drawSilhouette(ctx, materia, color = '#00ffff', proj = null, view = null, cw = null, ch = null, width = 3) {
+        const glm = window.glMatrix;
+        if (!glm || !materia) return;
+
+        if (typeof materia.updateWorldMatrix === 'function') {
+            materia.updateWorldMatrix(true);
+        }
+
+        const screenPoints = [];
+
+        const collectPoints = (mtr) => {
+            const smr = mtr.getComponentByName ? (mtr.getComponentByName('SkinnedMeshRenderer3D') || mtr.getComponentByName('CarleySkinnedMeshRenderer3D')) : null;
+            const mr = mtr.getComponentByName ? (mtr.getComponentByName('MeshRenderer3D') || mtr.getComponentByName('CarleyMeshRenderer3D')) : null;
+            const r = smr || mr;
+            const transform = mtr.getComponentByName ? (mtr.getComponentByName('Transform') || mtr.getComponentByName('CarleyTransform3D')) : null;
+            const worldMatrix = transform ? transform.worldMatrix : mtr.worldMatrix;
+
+            if (r && worldMatrix) {
+                const positions = r.cpuPositions || r.positions;
+                if (positions && positions.length > 0) {
+                    const step = positions.length > 3000 ? Math.ceil(positions.length / 1000) * 3 : 3;
+                    for (let i = 0; i < positions.length; i += step) {
+                        const v = glm.vec4.fromValues(positions[i], positions[i + 1], positions[i + 2], 1.0);
+                        const wp = glm.vec4.create();
+                        glm.vec4.transformMat4(wp, v, worldMatrix);
+                        const sp = world3DToScreen({ x: wp[0], y: wp[1], z: wp[2] }, proj, view, cw, ch);
+                        if (sp) screenPoints.push(sp);
+                    }
+                } else if (r.meshType) {
+                    const half = 50;
+                    const corners = [
+                        [-half, -half, -half], [half, -half, -half], [-half, half, -half], [half, half, -half],
+                        [-half, -half, half], [half, -half, half], [-half, half, half], [half, half, half]
+                    ];
+                    corners.forEach(c => {
+                        const v = glm.vec4.fromValues(c[0], c[1], c[2], 1.0);
+                        const wp = glm.vec4.create();
+                        glm.vec4.transformMat4(wp, v, worldMatrix);
+                        const sp = world3DToScreen({ x: wp[0], y: wp[1], z: wp[2] }, proj, view, cw, ch);
+                        if (sp) screenPoints.push(sp);
+                    });
+                }
+            }
+
+            if (mtr.children && Array.isArray(mtr.children)) {
+                mtr.children.forEach(child => collectPoints(child));
+            }
+        };
+
+        collectPoints(materia);
+
+        if (screenPoints.length < 3) return;
+
+        const hull = this.convexHull2D(screenPoints);
+        if (hull.length < 3) return;
+
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+        ctx.fillStyle = 'rgba(0, 240, 255, 0.15)';
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        ctx.beginPath();
+        ctx.moveTo(hull[0].x, hull[0].y);
+        for (let i = 1; i < hull.length; i++) {
+            ctx.lineTo(hull[i].x, hull[i].y);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = Math.max(1, width - 1.5);
+        ctx.stroke();
+
+        ctx.restore();
+    },
+
+    /**
      * Draws the 3D wireframe mesh geometry for a materia and all its child sub-meshes.
      */
     drawWireMesh(ctx, materia, color = 'rgba(0, 255, 255, 0.8)', proj = null, view = null, cw = null, ch = null, width = 1.5) {
