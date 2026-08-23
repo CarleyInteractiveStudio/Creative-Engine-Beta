@@ -138,5 +138,74 @@ export const Gizmos = {
         const bPos = glm.vec3.create(); glm.vec3.transformMat4(bPos, [0, -hh, 0], rotMat);
         this.drawWireSphere(ctx, { x: center.x + tPos[0], y: center.y + tPos[1], z: (center.z||0) + tPos[2] }, radius, rotation, color, proj, view, cw, ch, width);
         this.drawWireSphere(ctx, { x: center.x + bPos[0], y: center.y + bPos[1], z: (center.z||0) + bPos[2] }, radius, rotation, color, proj, view, cw, ch, width);
+    },
+
+    /**
+     * Draws the exact 3D wireframe mesh geometry of a single materia.
+     */
+    drawSingleWireMesh(ctx, materia, color = 'rgba(0, 255, 255, 0.8)', proj = null, view = null, cw = null, ch = null, width = 1.5) {
+        const glm = window.glMatrix;
+        if (!glm || !materia) return;
+
+        const smr = materia.getComponentByName ? (materia.getComponentByName('SkinnedMeshRenderer3D') || materia.getComponentByName('CarleySkinnedMeshRenderer3D')) : null;
+        const mr = materia.getComponentByName ? (materia.getComponentByName('MeshRenderer3D') || materia.getComponentByName('CarleyMeshRenderer3D')) : null;
+        const renderer = smr || mr;
+        const transform = materia.getComponentByName ? (materia.getComponentByName('Transform') || materia.getComponentByName('CarleyTransform3D')) : null;
+
+        if (!renderer || !renderer.cpuPositions || !transform) return;
+
+        const worldMatrix = transform.worldMatrix;
+        const positions = renderer.cpuPositions;
+        const indices = renderer.cpuIndices;
+
+        // Transform vertices to 3D world space
+        const worldVerts = [];
+        for (let i = 0; i < positions.length; i += 3) {
+            const v = glm.vec4.fromValues(positions[i], positions[i + 1], positions[i + 2], 1.0);
+            const wp = glm.vec4.create();
+            glm.vec4.transformMat4(wp, v, worldMatrix);
+            worldVerts.push({ x: wp[0], y: wp[1], z: wp[2] });
+        }
+
+        const numIndices = indices ? indices.length : worldVerts.length;
+        const step = numIndices > 3000 ? Math.ceil(numIndices / 1500) : 1;
+
+        if (indices) {
+            for (let i = 0; i < indices.length; i += 3 * step) {
+                const i0 = indices[i];
+                const i1 = indices[i + 1];
+                const i2 = indices[i + 2];
+                if (worldVerts[i0] && worldVerts[i1] && worldVerts[i2]) {
+                    drawLineClipped(ctx, worldVerts[i0], worldVerts[i1], color, width, proj, view, cw, ch);
+                    drawLineClipped(ctx, worldVerts[i1], worldVerts[i2], color, width, proj, view, cw, ch);
+                    drawLineClipped(ctx, worldVerts[i2], worldVerts[i0], color, width, proj, view, cw, ch);
+                }
+            }
+        } else {
+            for (let i = 0; i < worldVerts.length; i += 3 * step) {
+                const p0 = worldVerts[i];
+                const p1 = worldVerts[i + 1];
+                const p2 = worldVerts[i + 2];
+                if (p0 && p1 && p2) {
+                    drawLineClipped(ctx, p0, p1, color, width, proj, view, cw, ch);
+                    drawLineClipped(ctx, p1, p2, color, width, proj, view, cw, ch);
+                    drawLineClipped(ctx, p2, p0, color, width, proj, view, cw, ch);
+                }
+            }
+        }
+    },
+
+    /**
+     * Draws the 3D wireframe mesh geometry for a materia and all its child sub-meshes.
+     */
+    drawWireMesh(ctx, materia, color = 'rgba(0, 255, 255, 0.8)', proj = null, view = null, cw = null, ch = null, width = 1.5) {
+        if (!materia) return;
+        if (typeof materia.traverse === 'function') {
+            materia.traverse(mtr => {
+                this.drawSingleWireMesh(ctx, mtr, color, proj, view, cw, ch, width);
+            });
+        } else {
+            this.drawSingleWireMesh(ctx, materia, color, proj, view, cw, ch, width);
+        }
     }
 };
