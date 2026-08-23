@@ -7713,6 +7713,12 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
         previewScene.ambiente.skyMode = 'SolidColor';
         previewScene.ambiente.skyColor = '#111111';
 
+        // Orbit camera state
+        let orbitYaw = 180;
+        let orbitPitch = 15;
+        let orbitDistance = 500;
+        let orbitTarget = [0, -50, 0];
+
         console.log(`[Inspector] Iniciando carga de vista previa para: ${assetPath}`);
         previewMateria = await createSkinnedMeshObject(assetPath, null, { addToScene: false });
         if (previewMateria) {
@@ -7722,41 +7728,39 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
             // Auto-frame for interactive preview as well
             const { getAABB3D } = await import('../../engine/MathUtils.js');
             const aabb = getAABB3D(previewMateria);
-            if (aabb) {
+            if (aabb && aabb.min && aabb.max && aabb.center) {
                 const glm = window.glMatrix;
                 const size = glm.vec3.distance(aabb.min, aabb.max);
                 orbitDistance = Math.max(size * 1.5, 50);
-                orbitTarget = [...aabb.center];
+                const c = aabb.center;
+                orbitTarget = [c.x !== undefined ? c.x : c[0], c.y !== undefined ? c.y : c[1], c.z !== undefined ? c.z : c[2]];
                 console.log(`[Inspector] Encuadre automático: distancia=${orbitDistance}, objetivo=[${orbitTarget}]`);
             }
 
             // Populate animations list
             const animList = document.getElementById('model-animations-list');
             const animator = previewMateria.getComponentByName('Animator3D');
-            if (animator && animator.animations && animator.animations.length > 0) {
-                animList.innerHTML = animator.animations.map((a, i) => `
-                    <div class="layer-item" style="padding: 4px 8px; font-size: 0.85em; display: flex; justify-content: space-between;">
-                        <span>${a.name || 'Anim ' + i}</span>
-                        <button class="small-btn play-preview-anim" data-index="${i}">▶</button>
-                    </div>
-                `).join('');
+            if (animList) {
+                if (animator && animator.animations && animator.animations.length > 0) {
+                    animList.innerHTML = animator.animations.map((a, i) => `
+                        <div class="layer-item" style="padding: 4px 8px; font-size: 0.85em; display: flex; justify-content: space-between;">
+                            <span>${a.name || 'Anim ' + i}</span>
+                            <button class="small-btn play-preview-anim" data-index="${i}">▶</button>
+                        </div>
+                    `).join('');
 
-                animList.querySelectorAll('.play-preview-anim').forEach(btn => {
-                    btn.onclick = () => {
-                        animator.play(animator.animations[parseInt(btn.dataset.index)].name);
-                    };
-                });
-            } else {
-                animList.innerHTML = `<p class="field-description" style="opacity: 0.5;">No hay animaciones embebidas.</p>`;
+                    animList.querySelectorAll('.play-preview-anim').forEach(btn => {
+                        btn.onclick = () => {
+                            animator.play(animator.animations[parseInt(btn.dataset.index)].name);
+                        };
+                    });
+                } else {
+                    animList.innerHTML = `<p class="field-description" style="opacity: 0.5;">No hay animaciones embebidas.</p>`;
+                }
             }
         }
 
         let lastTime = performance.now();
-        // Orbit camera state
-        let orbitYaw = 180;
-        let orbitPitch = 15;
-        let orbitDistance = 500;
-        let orbitTarget = [0, -50, 0];
 
         let isOrbiting = false;
         let isPanning = false;

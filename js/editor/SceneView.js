@@ -1,4 +1,5 @@
-import { world3DToScreen, drawLineClipped } from '../engine/MathUtils.js';
+import * as MathUtils from '../engine/MathUtils.js';
+const { world3DToScreen, drawLineClipped, getAABB3D } = MathUtils;
 // --- Module for Scene View Interactions and Gizmos ---
 
 import { getAbsoluteRect, getClosestAnchorPoint, getAnchorPosition } from '../engine/UITransformUtils.js';
