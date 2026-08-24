@@ -1563,6 +1563,8 @@ export async function updateInspector() {
 
     if (selectedMateria) {
         await updateInspectorForMateria(selectedMateria);
+    } else if (selectedAsset && selectedAsset.kind === 'sub-model') {
+        await renderSubModelInspector(selectedAsset);
     } else if (selectedAsset) {
         await updateInspectorForAsset(selectedAsset.name, selectedAsset.path);
     } else {
@@ -7614,6 +7616,7 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
         <div class="inspector-section">
             <label data-i18n="ACTIONS">${L.get('ACTIONS', 'Acciones')}</label>
             <button id="btn-import-model-scene" class="primary-btn" style="width: 100%; margin-top: 10px;">Importar a la Escena</button>
+            <button id="btn-reset-model-pos" class="panel-tool-btn" style="width: 100%; margin-top: 5px; background: rgba(0, 180, 255, 0.2); color: #00ffcc; border: 1px solid #00ffcc;">Resetear Posición (0, 0, 0)</button>
             <button id="btn-extract-animations" class="panel-tool-btn" style="width: 100%; margin-top: 5px;">Extraer Animaciones (.cea)</button>
             <button id="btn-auto-rig" class="panel-tool-btn" style="width: 100%; margin-top: 5px;" title="Añade componentes de Hueso a la jerarquía del modelo automáticamente.">Generar Rigging (Huesos)</button>
             <p class="field-description" style="margin-top: 10px;">${L.get('HINT_ARRASTRAR_MODELO', 'Puedes arrastrar este archivo a la escena para importarlo.')}</p>
@@ -7918,6 +7921,20 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
             if (window.selectMateria) window.selectMateria(m.id);
         }
     };
+
+    const resetPosBtn = document.getElementById('btn-reset-model-pos');
+    if (resetPosBtn) {
+        resetPosBtn.onclick = async () => {
+            if (previewMateria) {
+                const t = previewMateria.getComponent(Components.Transform);
+                if (t) {
+                    t.position = { x: 0, y: 0, z: 0 };
+                    t.localPosition = { x: 0, y: 0, z: 0 };
+                }
+            }
+            window.Dialogs.showNotification("Posición Reseteada", `La posición del modelo '${assetName}' se ha colocado en (0, 0, 0).`);
+        };
+    }
 
     document.getElementById('btn-extract-animations').onclick = async () => {
         if (!previewMateria) return;
@@ -8548,6 +8565,56 @@ async function autoDetectSheetGrid(imgUrl) {
         };
         img.src = imgUrl;
     });
+}
+
+async function renderSubModelInspector(subModelAsset) {
+    const L = window.Localization;
+    const subName = subModelAsset.name || 'Sub-Modelo';
+    const modelPath = subModelAsset.path || '';
+    const dragData = subModelAsset.dragData || {};
+
+    const container = document.createElement('div');
+    container.className = 'asset-settings';
+    container.innerHTML = `
+        <div class="inspector-section">
+            <label>Sub-Modelo 3D</label>
+            <div class="model-info-bubble" style="padding: 10px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+                <span class="asset-preview-icon" style="display: block; width: 24px; height: 24px;">${getIconHTML('layers')}</span>
+                <span style="font-weight: bold; flex-grow: 1; font-size: 0.9em;">${subName}</span>
+                <span style="font-size: 0.75em; opacity: 0.6;">${dragData.type || 'Child Node'}</span>
+            </div>
+            <p class="field-description" style="margin-top: 8px;">Modelo hijo o sub-malla extraída del archivo principal '${modelPath.split('/').pop()}'.</p>
+        </div>
+
+        <div class="inspector-section">
+            <label>${L.get('ACTIONS', 'Acciones')}</label>
+            <button id="btn-import-submodel-scene" class="primary-btn" style="width: 100%; margin-top: 10px;">Importar Sub-modelo a la Escena</button>
+            <button id="btn-reset-submodel-pos" class="panel-tool-btn" style="width: 100%; margin-top: 5px; background: rgba(0, 180, 255, 0.2); color: #00ffcc; border: 1px solid #00ffcc;">Resetear Posición (0, 0, 0)</button>
+            <p class="field-description" style="margin-top: 10px;">Puedes arrastrar este sub-modelo directamente al escenario.</p>
+        </div>
+    `;
+
+    dom.inspectorContent.appendChild(container);
+
+    const importBtn = document.getElementById('btn-import-submodel-scene');
+    if (importBtn) {
+        importBtn.onclick = async () => {
+            const { createSkinnedMeshObject } = await import('../MateriaFactory.js');
+            const m = await createSkinnedMeshObject(modelPath, null, { meshIndex: dragData.meshIndex });
+            if (m) {
+                if (window.updateHierarchy) window.updateHierarchy();
+                if (window.updateScene) window.updateScene();
+                if (window.selectMateria) window.selectMateria(m.id);
+            }
+        };
+    }
+
+    const resetBtn = document.getElementById('btn-reset-submodel-pos');
+    if (resetBtn) {
+        resetBtn.onclick = () => {
+            window.Dialogs.showNotification("Posición Reseteada", `La posición del sub-modelo '${subName}' se ha restablecido a (0, 0, 0).`);
+        };
+    }
 }
 
 async function renderSingleSubSpriteInspector(spriteAsset, spriteData, dirHandle, assetPath, ceSpriteFileName) {

@@ -1791,13 +1791,11 @@ function createSubAssetItem(container, name, icon, dragData) {
 
     item.onclick = (e) => {
         e.stopPropagation();
+        dom.assetGridView.querySelectorAll('.grid-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+
         if (typeof onAssetSelected === 'function') {
-            onAssetSelected({
-                name,
-                path: dragData.assetPath || dragData.modelPath || '',
-                kind: 'sub-model',
-                dragData
-            });
+            onAssetSelected(name, dragData.modelPath || dragData.assetPath || '', 'sub-model', dragData, currentDirectoryHandle.handle, name);
         }
     };
 
@@ -1814,7 +1812,13 @@ function createSubAssetItem(container, name, icon, dragData) {
 
     item.ondragstart = (e) => {
         e.stopPropagation();
-        e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+            type: 'Asset',
+            name: name,
+            kind: 'sub-model',
+            path: dragData.modelPath || dragData.assetPath || '',
+            dragData: dragData
+        }));
     };
     container.appendChild(item);
 }
@@ -1966,6 +1970,9 @@ function start3DPreviewLoop() {
 
                             const model = await createSkinnedMeshObject(entry.path, null, { addToScene: false });
                             if (model) {
+                                if (typeof model.updateWorldMatrix === 'function') {
+                                    model.updateWorldMatrix(true);
+                                }
                                 const scene = new Scene();
                                 scene.ambiente.skyMode = 'SolidColor';
                                 scene.ambiente.skyColor = '#000000';
@@ -1989,7 +1996,7 @@ function start3DPreviewLoop() {
                     let orbitTarget = [0, 0, 0];
                     let orbitDistance = 150;
 
-                    if (entry.aabb) {
+                    if (entry.aabb && entry.aabb.size && (entry.aabb.size.x > 0.01 || entry.aabb.size.y > 0.01 || entry.aabb.size.z > 0.01)) {
                         orbitTarget = [entry.aabb.center.x, entry.aabb.center.y, entry.aabb.center.z];
                         const size = Math.max(entry.aabb.size.x, entry.aabb.size.y, entry.aabb.size.z);
                         orbitDistance = Math.max(size * 1.6, 20);
