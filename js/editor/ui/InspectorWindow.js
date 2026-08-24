@@ -7725,6 +7725,23 @@ async function renderModel3DInspector(assetName, assetPath, currentId, options =
         console.log(`[Inspector] Iniciando carga de vista previa para: ${assetPath}`);
         previewMateria = await createSkinnedMeshObject(assetPath, null, { addToScene: false, meshIndex: options.meshIndex });
         if (previewMateria) {
+            // Isolate ONLY the requested mesh/child node if meshIndex is specified
+            if (options.meshIndex !== undefined) {
+                let meshCounter = 0;
+                previewMateria.traverse(mtr => {
+                    const smr = mtr.getComponentByName('SkinnedMeshRenderer3D') || mtr.getComponentByName('MeshRenderer3D');
+                    if (smr) {
+                        if (meshCounter === options.meshIndex) {
+                            smr.isActive = true;
+                            mtr.isActive = true;
+                        } else {
+                            smr.isActive = false;
+                        }
+                        meshCounter++;
+                    }
+                });
+            }
+
             previewScene.addMateria(previewMateria);
             console.log(`[Inspector] Modelo cargado en vista previa.`);
 
