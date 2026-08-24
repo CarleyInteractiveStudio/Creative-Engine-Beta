@@ -226,16 +226,53 @@ export async function createSkinnedMeshObject(modelPath, parent = null, options 
             });
 
             if (renderers.length > 0 && window.glMatrix) {
-                rootMateria.updateWorldMatrix(true);
+                const updateHierarchyWorldMatrices = (m) => {
+                    const t = m.getComponent(Components.Transform);
+                    if (t) {
+                        const glm = window.glMatrix;
+                        const translationMat = glm.mat4.create();
+                        const rotationMat = glm.mat4.create();
+                        const scaleMat = glm.mat4.create();
+
+                        glm.mat4.fromTranslation(translationMat, [t.localPosition.x || 0, t.localPosition.y || 0, t.localPosition.z || 0]);
+                        const q = glm.quat.create();
+                        glm.quat.fromEuler(q, t.localRotation.x || 0, t.localRotation.y || 0, t.localRotation.z || 0);
+                        glm.mat4.fromQuat(rotationMat, q);
+                        glm.mat4.fromScaling(scaleMat, [t.localScale.x || 1, t.localScale.y || 1, t.localScale.z || 1]);
+
+                        const localMat = glm.mat4.create();
+                        glm.mat4.multiply(localMat, translationMat, rotationMat);
+                        glm.mat4.multiply(localMat, localMat, scaleMat);
+
+                        if (m.parent) {
+                            const pt = m.parent.getComponent(Components.Transform);
+                            if (pt && pt.worldMatrix) {
+                                glm.mat4.multiply(t.worldMatrix, pt.worldMatrix, localMat);
+                            } else {
+                                glm.mat4.copy(t.worldMatrix, localMat);
+                            }
+                        } else {
+                            glm.mat4.copy(t.worldMatrix, localMat);
+                        }
+                    }
+                    if (m.children) m.children.forEach(updateHierarchyWorldMatrices);
+                };
+
+                updateHierarchyWorldMatrices(rootMateria);
+
+                const rootTransform = rootMateria.getComponent(Components.Transform);
+                const rootWorldMat = rootTransform ? rootTransform.worldMatrix : window.glMatrix.mat4.create();
                 const rootWorldInv = window.glMatrix.mat4.create();
-                window.glMatrix.mat4.invert(rootWorldInv, rootMateria.worldMatrix);
+                window.glMatrix.mat4.invert(rootWorldInv, rootWorldMat);
 
                 let minX = Infinity, minY = Infinity, minZ = Infinity;
                 let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
 
                 for (const { mtr, renderer } of renderers) {
+                    const t = mtr.getComponent(Components.Transform);
+                    const mtrWorldMat = t ? t.worldMatrix : rootWorldMat;
                     const relMatrix = window.glMatrix.mat4.create();
-                    window.glMatrix.mat4.multiply(relMatrix, rootWorldInv, mtr.worldMatrix);
+                    window.glMatrix.mat4.multiply(relMatrix, rootWorldInv, mtrWorldMat);
 
                     const pos = renderer.cpuPositions;
                     for (let i = 0; i < pos.length; i += 3) {
@@ -257,8 +294,10 @@ export async function createSkinnedMeshObject(modelPath, parent = null, options 
 
                     if (Math.abs(centerX) > 0.01 || Math.abs(centerY) > 0.01 || Math.abs(centerZ) > 0.01) {
                         for (const { mtr, renderer } of renderers) {
+                            const t = mtr.getComponent(Components.Transform);
+                            const mtrWorldMat = t ? t.worldMatrix : rootWorldMat;
                             const relMatrix = window.glMatrix.mat4.create();
-                            window.glMatrix.mat4.multiply(relMatrix, rootWorldInv, mtr.worldMatrix);
+                            window.glMatrix.mat4.multiply(relMatrix, rootWorldInv, mtrWorldMat);
                             const relInv = window.glMatrix.mat4.create();
                             window.glMatrix.mat4.invert(relInv, relMatrix);
 
@@ -278,7 +317,6 @@ export async function createSkinnedMeshObject(modelPath, parent = null, options 
             }
 
             const { getAABB3D } = await import("../engine/MathUtils.js");
-            rootMateria.updateWorldMatrix(true);
             const aabb = getAABB3D(rootMateria);
             if (aabb && aabb.size) {
                 const maxDim = Math.max(aabb.size.x, aabb.size.y, aabb.size.z);

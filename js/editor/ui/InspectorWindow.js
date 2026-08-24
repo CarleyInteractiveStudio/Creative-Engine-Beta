@@ -7932,6 +7932,15 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
                     t.localPosition = { x: 0, y: 0, z: 0 };
                 }
             }
+            const selectedMateria = getSelectedMateria ? getSelectedMateria() : null;
+            if (selectedMateria) {
+                const t = selectedMateria.getComponent(Components.Transform);
+                if (t) {
+                    t.position = { x: 0, y: 0, z: 0 };
+                    t.localPosition = { x: 0, y: 0, z: 0 };
+                }
+                if (updateSceneCallback) updateSceneCallback();
+            }
             window.Dialogs.showNotification("Posición Reseteada", `La posición del modelo '${assetName}' se ha colocado en (0, 0, 0).`);
         };
     }
@@ -8577,13 +8586,33 @@ async function renderSubModelInspector(subModelAsset) {
     container.className = 'asset-settings';
     container.innerHTML = `
         <div class="inspector-section">
-            <label>Sub-Modelo 3D</label>
+            <label>Sub-Modelo 3D (Hijo / Malla)</label>
             <div class="model-info-bubble" style="padding: 10px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; margin-top: 10px; display: flex; align-items: center; gap: 10px;">
                 <span class="asset-preview-icon" style="display: block; width: 24px; height: 24px;">${getIconHTML('layers')}</span>
                 <span style="font-weight: bold; flex-grow: 1; font-size: 0.9em;">${subName}</span>
-                <span style="font-size: 0.75em; opacity: 0.6;">${dragData.type || 'Child Node'}</span>
+                <span style="font-size: 0.75em; opacity: 0.6;">${dragData.type || 'Sub-Mesh'}</span>
             </div>
-            <p class="field-description" style="margin-top: 8px;">Modelo hijo o sub-malla extraída del archivo principal '${modelPath.split('/').pop()}'.</p>
+            <p class="field-description" style="margin-top: 8px;">Sub-elemento derivado del modelo padre '${modelPath.split('/').pop()}'. Se puede inspeccionar, configurar y exportar a la escena independientemente.</p>
+        </div>
+
+        <div class="inspector-section">
+            <label>${L.get('TRANSFORM', 'Transformación Base')}</label>
+            <div class="prop-row-multi" style="margin-top: 8px;">
+                <label>Posición</label>
+                <div class="prop-inputs">
+                    <input type="number" autocomplete="off" class="prop-input" value="0" readonly title="X">
+                    <input type="number" autocomplete="off" class="prop-input" value="0" readonly title="Y">
+                    <input type="number" autocomplete="off" class="prop-input" value="0" readonly title="Z">
+                </div>
+            </div>
+            <div class="prop-row-multi" style="margin-top: 6px;">
+                <label>Escala</label>
+                <div class="prop-inputs">
+                    <input type="number" autocomplete="off" class="prop-input" value="1" readonly title="X">
+                    <input type="number" autocomplete="off" class="prop-input" value="1" readonly title="Y">
+                    <input type="number" autocomplete="off" class="prop-input" value="1" readonly title="Z">
+                </div>
+            </div>
         </div>
 
         <div class="inspector-section">
@@ -8612,6 +8641,15 @@ async function renderSubModelInspector(subModelAsset) {
     const resetBtn = document.getElementById('btn-reset-submodel-pos');
     if (resetBtn) {
         resetBtn.onclick = () => {
+            const selectedMateria = getSelectedMateria ? getSelectedMateria() : null;
+            if (selectedMateria) {
+                const t = selectedMateria.getComponent(Components.Transform);
+                if (t) {
+                    t.position = { x: 0, y: 0, z: 0 };
+                    t.localPosition = { x: 0, y: 0, z: 0 };
+                }
+                if (updateSceneCallback) updateSceneCallback();
+            }
             window.Dialogs.showNotification("Posición Reseteada", `La posición del sub-modelo '${subName}' se ha restablecido a (0, 0, 0).`);
         };
     }
