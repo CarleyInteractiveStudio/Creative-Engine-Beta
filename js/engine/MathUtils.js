@@ -303,10 +303,8 @@ export function world3DToScreen(worldPos, customProj = null, customView = null, 
     const clipPos = glm.vec4.create();
     glm.vec4.transformMat4(clipPos, worldVec, mvp);
 
-    if (clipPos[3] < 0.01) return null;
-
-    const ndc = [clipPos[0] / clipPos[3], clipPos[1] / clipPos[3], clipPos[2] / clipPos[3]];
-    if (Math.abs(ndc[0]) > 10.0 || Math.abs(ndc[1]) > 10.0) return null;
+    const w = clipPos[3] < 0.001 ? 0.001 : clipPos[3];
+    const ndc = [clipPos[0] / w, clipPos[1] / w, clipPos[2] / w];
 
     // NDC Y mapping: NDC +1 is UP, NDC -1 is DOWN.
     // Screen: TOP is 0. So NDC +1 (UP) -> 0.

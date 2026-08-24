@@ -262,9 +262,9 @@ export async function createSkinnedMeshObject(modelPath, parent = null, options 
                             const relInv = window.glMatrix.mat4.create();
                             window.glMatrix.mat4.invert(relInv, relMatrix);
 
-                            const localOffsetX = relInv[0] * centerX + relInv[4] * centerY + relInv[8] * centerZ;
-                            const localOffsetY = relInv[1] * centerX + relInv[5] * centerY + relInv[9] * centerZ;
-                            const localOffsetZ = relInv[2] * centerX + relInv[6] * centerY + relInv[10] * centerZ;
+                            const localOffsetX = relInv[0] * centerX + relInv[4] * centerY + relInv[8] * centerZ + relInv[12];
+                            const localOffsetY = relInv[1] * centerX + relInv[5] * centerY + relInv[9] * centerZ + relInv[13];
+                            const localOffsetZ = relInv[2] * centerX + relInv[6] * centerY + relInv[10] * centerZ + relInv[14];
 
                             const pos = renderer.cpuPositions;
                             for (let i = 0; i < pos.length; i += 3) {

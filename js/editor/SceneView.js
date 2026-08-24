@@ -3421,10 +3421,6 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
             console.log(`[SceneView] Drawing with clr=${clr}, scale=${JSON.stringify(scale)}, rotation=${JSON.stringify(rotation)}, center=${JSON.stringify(center)}`);
 
             Gizmos.drawSilhouette(ctx, materia, clr, proj, view, cw, ch, 3);
-            const aabb = MathUtils.getAABB3D(materia);
-            if (aabb && aabb.size && aabb.size.x > 0.01 && aabb.size.y > 0.01 && aabb.size.z > 0.01) {
-                Gizmos.drawWireCube(ctx, aabb.center, aabb.size, { x: 0, y: 0, z: 0 }, 'rgba(0, 255, 255, 0.4)', proj, view, cw, ch, 1.5);
-            }
         }
     }
 
