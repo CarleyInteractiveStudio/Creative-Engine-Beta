@@ -7931,8 +7931,23 @@ async function renderModel3DInspector(assetName, assetPath, currentId, options =
 
     document.getElementById('btn-import-model-scene').onclick = async () => {
         const { createSkinnedMeshObject } = await import('../MateriaFactory.js');
-        const m = await createSkinnedMeshObject(assetPath, null);
+        const m = await createSkinnedMeshObject(assetPath, null, { meshIndex: options.meshIndex });
         if (m) {
+            if (options.meshIndex !== undefined) {
+                let meshCounter = 0;
+                m.traverse(sub => {
+                    const smr = sub.getComponentByName('SkinnedMeshRenderer3D') || sub.getComponentByName('MeshRenderer3D');
+                    if (smr) {
+                        if (meshCounter === options.meshIndex) {
+                            smr.isActive = true;
+                            sub.isActive = true;
+                        } else {
+                            smr.isActive = false;
+                        }
+                        meshCounter++;
+                    }
+                });
+            }
             if (window.updateHierarchy) window.updateHierarchy();
             if (window.updateScene) window.updateScene();
             if (window.selectMateria) window.selectMateria(m.id);
@@ -7942,42 +7957,49 @@ async function renderModel3DInspector(assetName, assetPath, currentId, options =
     const resetPosBtn = document.getElementById('btn-reset-model-pos');
     if (resetPosBtn) {
         resetPosBtn.onclick = async () => {
-            if (previewMateria) {
-                const t = previewMateria.getComponent(Components.Transform);
+            const resetTransformToOrigin = (mtr) => {
+                if (!mtr) return;
+                const t = mtr.getComponent ? mtr.getComponent(Components.Transform) : null;
                 if (t) {
-                    t.position = { x: 0, y: 0, z: 0 };
                     t.localPosition = { x: 0, y: 0, z: 0 };
+                    t.localRotation = { x: 0, y: 0, z: 0 };
+                    t.position = { x: 0, y: 0, z: 0 };
                 }
+            };
+
+            if (previewMateria) {
+                resetTransformToOrigin(previewMateria);
+                previewMateria.traverse(resetTransformToOrigin);
             }
 
-            // Reset position for all instances of this model in the active scene
+            let resetCount = 0;
             if (window.SceneManager && window.SceneManager.currentScene) {
                 const materias = window.SceneManager.currentScene.getAllMaterias();
-                let resetCount = 0;
                 materias.forEach(m => {
-                    const smr = m.getComponentByName('SkinnedMeshRenderer3D') || m.getComponentByName('MeshRenderer3D');
-                    if (smr && smr.modelPath && (smr.modelPath.endsWith(assetName) || smr.modelPath === assetPath)) {
-                        const t = m.getComponent(Components.Transform);
-                        if (t) {
-                            t.position = { x: 0, y: 0, z: 0 };
-                            t.localPosition = { x: 0, y: 0, z: 0 };
-                            resetCount++;
+                    let isMatch = false;
+                    m.traverse(sub => {
+                        const smr = sub.getComponentByName ? (sub.getComponentByName('SkinnedMeshRenderer3D') || sub.getComponentByName('MeshRenderer3D')) : null;
+                        if (smr && smr.modelPath && (smr.modelPath.endsWith(assetName) || smr.modelPath === assetPath)) {
+                            isMatch = true;
                         }
+                    });
+
+                    if (isMatch) {
+                        resetTransformToOrigin(m);
+                        m.traverse(resetTransformToOrigin);
+                        resetCount++;
                     }
                 });
 
                 const selectedMateria = getSelectedMateria ? getSelectedMateria() : null;
                 if (selectedMateria) {
-                    const t = selectedMateria.getComponent(Components.Transform);
-                    if (t) {
-                        t.position = { x: 0, y: 0, z: 0 };
-                        t.localPosition = { x: 0, y: 0, z: 0 };
-                    }
+                    resetTransformToOrigin(selectedMateria);
+                    selectedMateria.traverse(resetTransformToOrigin);
                 }
 
                 if (updateSceneCallback) updateSceneCallback();
                 if (window.updateHierarchy) window.updateHierarchy();
-                window.Dialogs.showNotification("Posición Reseteada", `La posición de ${resetCount || 1} objeto(s) '${assetName}' se ha colocado en (0, 0, 0).`);
+                window.Dialogs.showNotification("Posición Reseteada", `La posición del modelo '${assetName}' y sus partes se ha colocado en (0, 0, 0).`);
             } else {
                 window.Dialogs.showNotification("Posición Reseteada", `La posición del modelo '${assetName}' se ha colocado en (0, 0, 0).`);
             }
