@@ -1718,6 +1718,23 @@ export function initialize(dependencies) {
                     SceneManager.currentScene.addMateria(newMateria);
                 } else if (data.type === 'Asset' && data.kind === 'sub-model') {
                     newMateria = await MateriaFactory.createSkinnedMeshObject(data.path, null, { meshIndex: data.dragData?.meshIndex });
+                    if (newMateria && data.dragData?.meshIndex !== undefined) {
+                        let meshCounter = 0;
+                        newMateria.traverse(sub => {
+                            const smr = sub.getComponentByName('SkinnedMeshRenderer3D') || sub.getComponentByName('MeshRenderer3D');
+                            if (smr) {
+                                if (meshCounter === data.dragData.meshIndex) {
+                                    smr.isActive = true;
+                                    sub.isActive = true;
+                                } else {
+                                    smr.isActive = false;
+                                }
+                                meshCounter++;
+                            }
+                        });
+                    }
+                } else if (data.type === 'Asset' && (data.name.endsWith('.glb') || data.name.endsWith('.gltf') || data.name.endsWith('.obj') || data.name.endsWith('.fbx'))) {
+                    newMateria = await MateriaFactory.createSkinnedMeshObject(data.path, null);
                 } else if (data.type === 'Asset' && data.name.endsWith('.ceprefab')) {
                     newMateria = await SceneManager.instantiatePrefabFromPath(data.path, worldPos.x, worldPos.y);
                 } else if (data.type === 'Asset' && (data.name.endsWith('.png') || data.name.endsWith('.jpg') || data.name.endsWith('.jpeg') || data.name.endsWith('.ceSprite'))) {

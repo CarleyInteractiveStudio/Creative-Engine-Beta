@@ -8641,9 +8641,13 @@ async function renderSubModelInspector(subModelAsset) {
     const L = window.Localization;
     const subName = typeof subModelAsset === 'object' ? (subModelAsset.name || 'Sub-Modelo') : subModelAsset;
     const modelPath = typeof subModelAsset === 'object' ? (subModelAsset.path || subModelAsset.modelPath || '') : '';
-    const dragData = typeof subModelAsset === 'object' ? (subModelAsset.dragData || {}) : {};
+    let dragData = typeof subModelAsset === 'object' ? (subModelAsset.dragData || subModelAsset.options || {}) : {};
 
-    // Use full interactive 3D model inspector for sub-models
+    if (subModelAsset && typeof subModelAsset === 'object' && subModelAsset.options) {
+        dragData = { ...dragData, ...subModelAsset.options };
+    }
+
+    // Use full interactive 3D model inspector for sub-models with mesh isolation
     await renderModel3DInspector(subName, modelPath, lastUpdateId, dragData);
 }
 

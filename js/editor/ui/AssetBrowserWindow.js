@@ -1816,12 +1816,19 @@ function createSubAssetItem(container, name, icon, dragData) {
             iconContainer.innerHTML = `<img src="${texUrl}" class="icon-preview" style="max-width: 100%; max-height: 100%; object-fit: contain;">`;
         } else {
             const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
-            getURLForAssetPath(texUrl, currentDirHandle).then(url => {
+            const modelFolder = dragData.modelPath && dragData.modelPath.includes('/') ? dragData.modelPath.substring(0, dragData.modelPath.lastIndexOf('/') + 1) : 'Assets/';
+            let cleanTexPath = texUrl;
+            if (!cleanTexPath.startsWith('Assets/')) {
+                cleanTexPath = modelFolder + cleanTexPath.replace(/^\/+/, '');
+            }
+            getURLForAssetPath(cleanTexPath, currentDirHandle, true).then(url => {
                 if (url) {
                     iconContainer.innerHTML = `<img src="${url}" class="icon-preview" style="max-width: 100%; max-height: 100%; object-fit: contain;">`;
                 } else {
                     iconContainer.innerHTML = `<img src="icons/${icon}.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                 }
+            }).catch(() => {
+                iconContainer.innerHTML = `<img src="icons/${icon}.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             });
         }
     } else {
