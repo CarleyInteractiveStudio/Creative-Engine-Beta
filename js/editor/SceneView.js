@@ -1,4 +1,5 @@
-import { world3DToScreen, drawLineClipped } from '../engine/MathUtils.js';
+import * as MathUtils from '../engine/MathUtils.js';
+const { world3DToScreen, drawLineClipped, getAABB3D } = MathUtils;
 // --- Module for Scene View Interactions and Gizmos ---
 
 import { getAbsoluteRect, getClosestAnchorPoint, getAnchorPosition } from '../engine/UITransformUtils.js';
@@ -1715,6 +1716,8 @@ export function initialize(dependencies) {
                     newMateria.addComponent(spriteRenderer);
 
                     SceneManager.currentScene.addMateria(newMateria);
+                } else if (data.type === 'Asset' && data.kind === 'sub-model') {
+                    newMateria = await MateriaFactory.createSkinnedMeshObject(data.path, null, { meshIndex: data.dragData?.meshIndex });
                 } else if (data.type === 'Asset' && data.name.endsWith('.ceprefab')) {
                     newMateria = await SceneManager.instantiatePrefabFromPath(data.path, worldPos.x, worldPos.y);
                 } else if (data.type === 'Asset' && (data.name.endsWith('.png') || data.name.endsWith('.jpg') || data.name.endsWith('.jpeg') || data.name.endsWith('.ceSprite'))) {
@@ -3419,20 +3422,7 @@ function draw3DGizmos(materia, customProj = null, customView = null, customCw = 
 
             console.log(`[SceneView] Drawing with clr=${clr}, scale=${JSON.stringify(scale)}, rotation=${JSON.stringify(rotation)}, center=${JSON.stringify(center)}`);
 
-            if (meshRenderer && meshRenderer.meshType) {
-                console.log(`[SceneView] Drawing wireframe for meshType: ${meshRenderer.meshType}`);
-                if (meshRenderer.meshType === 'Cube') Gizmos.drawWireCube(ctx, center, scale, rotation, clr, proj, view, cw, ch, 3);
-                else if (meshRenderer.meshType === 'Sphere') Gizmos.drawWireSphere(ctx, center, Math.max(scale.x, scale.y, scale.z) * 0.5, rotation, clr, proj, view, cw, ch, 3);
-                else if (meshRenderer.meshType === 'Plane') Gizmos.drawWirePlane(ctx, center, { x: scale.x, z: scale.z }, rotation, clr, proj, view, cw, ch, 3);
-                else if (meshRenderer.meshType === 'Triangle') Gizmos.drawWireTriangle(ctx, center, { x: scale.x, y: scale.y }, rotation, clr, proj, view, cw, ch, 3);
-                else if (meshRenderer.meshType === 'Capsule') Gizmos.drawWireCapsule(ctx, center, Math.max(scale.x, scale.z) * 0.25, scale.y, rotation, clr, proj, view, cw, ch, 3);
-                else Gizmos.drawWireCube(ctx, center, scale, rotation, clr, proj, view, cw, ch, 3);
-            } else {
-                // For any other object, draw a beautiful 3D bounding box overlay based on its scale
-                console.log(`[SceneView] Bounding box fallback`);
-                const size = scale.x === 2 && scale.y === 2 && scale.z === 2 ? { x: 100, y: 100, z: 100 } : scale;
-                Gizmos.drawWireCube(ctx, center, size, rotation, clrFallback, proj, view, cw, ch, 3);
-            }
+            Gizmos.drawSilhouette(ctx, materia, clr, proj, view, cw, ch, 3);
         }
     }
 

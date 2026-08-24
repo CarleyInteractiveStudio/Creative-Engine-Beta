@@ -14,6 +14,22 @@ export class ModelLoader3D {
         else modelCache.clear();
     }
 
+    static getCacheSize() {
+        return modelCache.size;
+    }
+
+    static optimizeMemory() {
+        // Enforce maximum cache threshold on low-memory environments
+        if (modelCache.size > 50) {
+            const keys = Array.from(modelCache.keys());
+            // Keep the 30 most recent models to free memory
+            for (let i = 0; i < keys.length - 30; i++) {
+                modelCache.delete(keys[i]);
+            }
+            console.log(`[ModelLoader3D] Optimización de memoria ejecutada: caché reducido a 30 elementos.`);
+        }
+    }
+
     static async loadModel(path, projectsDirHandle) {
         if (modelCache.has(path)) {
             return modelCache.get(path);

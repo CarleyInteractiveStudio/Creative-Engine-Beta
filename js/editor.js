@@ -574,7 +574,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
     }
 
-    const preloadAll3DModels = async function(rootDirHandle) {
+    const preloadAll3DModels = async function(rootDirHandle, onProgress = null) {
         if (!rootDirHandle) return;
         try {
             const { ModelLoader3D } = await import("./engine/ModelLoader3D.js");
@@ -583,16 +583,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const projectHandle = await rootDirHandle.getDirectoryHandle(projectName);
             const assetsHandle = await projectHandle.getDirectoryHandle("Assets");
 
+            const modelFiles = [];
             async function scanDir(dirHandle, currentPath) {
                 for await (const entry of dirHandle.values()) {
                     const fullPath = `${currentPath}/${entry.name}`;
                     if (entry.kind === "file") {
                         const lower = entry.name.toLowerCase();
                         if (lower.endsWith(".fbx") || lower.endsWith(".obj") || lower.endsWith(".gltf") || lower.endsWith(".glb")) {
-                            console.log(`[Preloader3D] Precargando modelo 3D en segundo plano: ${fullPath}`);
-                            ModelLoader3D.loadModel(fullPath, rootDirHandle).catch(err => {
-                                console.warn(`[Preloader3D] Error al precargar ${fullPath}:`, err);
-                            });
+                            modelFiles.push(fullPath);
                         }
                     } else if (entry.kind === "directory") {
                         try {
@@ -603,8 +601,37 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             await scanDir(assetsHandle, "Assets");
+
+            let loadedCount = 0;
+            const totalModels = modelFiles.length;
+            if (totalModels > 0) {
+                console.log(`[Preloader3D] Precargando ${totalModels} modelos 3D al arrancar...`);
+                await Promise.all(modelFiles.map(async (fullPath) => {
+                    try {
+                        await ModelLoader3D.loadModel(fullPath, rootDirHandle);
+                        loadedCount++;
+                        if (typeof onProgress === 'function') {
+                            onProgress(loadedCount, totalModels, fullPath.split('/').pop());
+                        }
+                    } catch (err) {
+                        console.warn(`[Preloader3D] Error al precargar ${fullPath}:`, err);
+                        loadedCount++;
+                        if (typeof onProgress === 'function') {
+                            onProgress(loadedCount, totalModels, fullPath.split('/').pop());
+                        }
+                    }
+                }));
+                console.log(`[Preloader3D] ${totalModels} modelos 3D precargados completamente en memoria.`);
+            } else {
+                if (typeof onProgress === 'function') {
+                    onProgress(0, 0, null);
+                }
+            }
         } catch (e) {
             console.warn("[Preloader3D] No se pudieron precargar modelos 3D:", e);
+            if (typeof onProgress === 'function') {
+                onProgress(0, 0, null);
+            }
         }
     };
 
@@ -1332,11 +1359,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (!renderer3D) {
-            const { CarleyRenderer } = await import('./carley-world/CarleyRenderer.js');
+            const { Renderer3D } = await import('./engine/Renderer3D.js');
             const { CarleyWorld } = await import('./carley-world/CarleyWorld.js');
-            console.log("[Creative 3D Render] Instantiating Carley World 3D core...");
-            renderer3D = new CarleyRenderer(dom.sceneCanvas3d);
-            gameRenderer3D = new CarleyRenderer(dom.gameCanvas3d);
+            console.log("[Creative 3D Render] Instantiating 3D Engine Core Renderer...");
+            renderer3D = new Renderer3D(dom.sceneCanvas3d);
+            gameRenderer3D = new Renderer3D(dom.gameCanvas3d);
+            renderer3D.init();
+            gameRenderer3D.init();
 
             // Instanciar CarleyWorld globalmente para interactuar con la escena
             window.currentCarleyWorld = new CarleyWorld(dom.sceneCanvas3d);
@@ -5537,7 +5566,18 @@ public start() {
                 populateProjectSettingsUI(defaultConfig, null);
             }
 
-            updateLoadingProgress(85, "Actualizando paneles...");
+            updateLoadingProgress(85, "Escaneando modelos 3D...");
+            await preloadAll3DModels(projectsDirHandle, (loaded, total, modelName) => {
+                if (total === 0) {
+                    updateLoadingProgress(92, "Modelos 3D verificados (0 archivos).");
+                } else {
+                    const pct = Math.floor(85 + (loaded / total) * 8);
+                    const nameStr = modelName ? `: ${modelName}` : '';
+                    updateLoadingProgress(pct, `Cargando modelo 3D (${loaded}/${total})${nameStr}...`);
+                }
+            });
+
+            updateLoadingProgress(95, "Actualizando paneles...");
             updateCanvasInteractivity();
 
             // Sync 2D/3D toggle button on load

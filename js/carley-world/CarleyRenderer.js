@@ -131,11 +131,53 @@ export class CarleyRenderer {
         }
     }
 
+    getTexture(path) {
+        if (!path) return null;
+        if (!this.textureCache) this.textureCache = new Map();
+        if (this.textureCache.has(path)) return this.textureCache.get(path);
+
+        const gl = this.gl;
+        const tex = gl.createTexture();
+        this.textureCache.set(path, tex);
+
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
+
+        (async () => {
+            let url = path;
+            if (!path.startsWith('data:') && !path.startsWith('blob:') && !path.startsWith('http:') && !path.startsWith('https:')) {
+                const { getURLForAssetPath } = await import('../engine/AssetUtils.js');
+                url = await getURLForAssetPath(path, window.projectsDirHandle, true);
+            }
+            if (!url) return;
+
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                gl.bindTexture(gl.TEXTURE_2D, tex);
+                gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+                if ((img.width & (img.width - 1)) === 0 && (img.height & (img.height - 1)) === 0) {
+                    gl.generateMipmap(gl.TEXTURE_2D);
+                } else {
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                }
+            };
+            img.src = url;
+        })();
+
+        return tex;
+    }
+
     initShaders() {
         // Vertex Shader principal
         const vsSource = `
             attribute vec4 aPosition;
             attribute vec3 aNormal;
+            attribute vec2 aTexCoord;
+
             uniform mat4 uModelMatrix;
             uniform mat4 uViewMatrix;
             uniform mat4 uProjectionMatrix;
@@ -143,21 +185,24 @@ export class CarleyRenderer {
 
             varying vec3 vNormal;
             varying vec3 vFragPos;
+            varying vec2 vTexCoord;
             varying vec4 vPositionLightSpace;
 
             void main() {
                 vFragPos = vec3(uModelMatrix * aPosition);
                 vNormal = mat3(uModelMatrix) * aNormal;
+                vTexCoord = aTexCoord;
                 vPositionLightSpace = uLightSpaceMatrix * uModelMatrix * aPosition;
                 gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrix * aPosition;
             }
         `;
 
-        // Fragment Shader principal (Blinn-Phong + Shadows + Emissive Light Material)
+        // Fragment Shader principal (Blinn-Phong + Shadows + Emissive Light Material + Textures)
         const fsSource = `
             precision mediump float;
             varying vec3 vNormal;
             varying vec3 vFragPos;
+            varying vec2 vTexCoord;
             varying vec4 vPositionLightSpace;
 
             uniform vec4 uColor;
@@ -172,6 +217,8 @@ export class CarleyRenderer {
             uniform float uEmissiveIntensity;
 
             uniform sampler2D uShadowMap;
+            uniform sampler2D uMainTex;
+            uniform int uUseMainTex;
 
             float calculateShadow(vec4 fragPosLightSpace) {
                 vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
@@ -190,10 +237,16 @@ export class CarleyRenderer {
                     return;
                 }
 
+                vec4 baseColor = uColor;
+                if (uUseMainTex == 1) {
+                    vec4 texColor = texture2D(uMainTex, vTexCoord);
+                    baseColor = baseColor * texColor;
+                }
+
                 vec3 norm = normalize(vNormal);
                 vec3 lightDir = normalize(-uLightDir);
 
-                vec3 ambient = 0.15 * uLightColor;
+                vec3 ambient = 0.25 * uLightColor;
 
                 float diff = max(dot(norm, lightDir), 0.0);
                 vec3 diffuse = diff * uLightColor * uLightIntensity;
@@ -204,9 +257,9 @@ export class CarleyRenderer {
                 vec3 specular = 0.5 * spec * uLightColor;
 
                 float shadow = calculateShadow(vPositionLightSpace);
-                vec3 lighting = (ambient + (1.0 - shadow) * (diffuse + specular)) * uColor.rgb;
+                vec3 lighting = (ambient + (1.0 - shadow) * (diffuse + specular)) * baseColor.rgb;
 
-                gl_FragColor = vec4(lighting, uColor.a);
+                gl_FragColor = vec4(lighting, baseColor.a);
             }
         `;
 
@@ -281,7 +334,8 @@ export class CarleyRenderer {
         // Ubicaciones de atributos y uniformes principales
         this.attribs = {
             position: this.gl.getAttribLocation(this.program, 'aPosition'),
-            normal: this.gl.getAttribLocation(this.program, 'aNormal')
+            normal: this.gl.getAttribLocation(this.program, 'aNormal'),
+            texCoord: this.gl.getAttribLocation(this.program, 'aTexCoord')
         };
 
         this.uniforms = {
@@ -295,6 +349,8 @@ export class CarleyRenderer {
             lightColor: this.gl.getUniformLocation(this.program, 'uLightColor'),
             lightIntensity: this.gl.getUniformLocation(this.program, 'uLightIntensity'),
             shadowMap: this.gl.getUniformLocation(this.program, 'uShadowMap'),
+            mainTex: this.gl.getUniformLocation(this.program, 'uMainTex'),
+            useMainTex: this.gl.getUniformLocation(this.program, 'uUseMainTex'),
             isLightMaterial: this.gl.getUniformLocation(this.program, 'uIsLightMaterial'),
             emissiveColor: this.gl.getUniformLocation(this.program, 'uEmissiveColor'),
             emissiveIntensity: this.gl.getUniformLocation(this.program, 'uEmissiveIntensity')
@@ -924,9 +980,24 @@ export class CarleyRenderer {
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.shadowTexture);
         this.gl.uniform1i(this.uniforms.shadowMap, 0);
 
+        if (meshRenderer.texturePath) {
+            const tex = this.getTexture(meshRenderer.texturePath);
+            if (tex) {
+                this.gl.activeTexture(this.gl.TEXTURE1);
+                this.gl.bindTexture(this.gl.TEXTURE_2D, tex);
+                this.gl.uniform1i(this.uniforms.mainTex, 1);
+                this.gl.uniform1i(this.uniforms.useMainTex, 1);
+            } else {
+                this.gl.uniform1i(this.uniforms.useMainTex, 0);
+            }
+        } else {
+            this.gl.uniform1i(this.uniforms.useMainTex, 0);
+        }
+
         // Seleccionar buffer según tipo de malla para el dibujo final
         let vBuffer = this.cubeBuffer;
         let nBuffer = this.cubeNormalBuffer;
+        let uvBuffer = null;
         let iBuffer = this.cubeIndexBuffer;
         let count = 36;
 
@@ -946,6 +1017,10 @@ export class CarleyRenderer {
                     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffers.normals);
                     this.gl.bufferData(this.gl.ARRAY_BUFFER, meshRenderer.cpuNormals, this.gl.STATIC_DRAW);
                 }
+                if (buffers.uvs) {
+                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffers.uvs);
+                    this.gl.bufferData(this.gl.ARRAY_BUFFER, meshRenderer.cpuUVs, this.gl.STATIC_DRAW);
+                }
                 if (buffers.indices) {
                     this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
                     this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, meshRenderer.cpuIndices, this.gl.STATIC_DRAW);
@@ -954,6 +1029,7 @@ export class CarleyRenderer {
             }
             vBuffer = buffers.positions;
             nBuffer = buffers.normals || this.cubeNormalBuffer;
+            uvBuffer = buffers.uvs;
             iBuffer = buffers.indices;
             count = meshRenderer.indexCount || (meshRenderer.cpuIndices ? meshRenderer.cpuIndices.length : meshRenderer.cpuPositions.length / 3);
         }
@@ -988,6 +1064,14 @@ export class CarleyRenderer {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, nBuffer);
         this.gl.enableVertexAttribArray(this.attribs.normal);
         this.gl.vertexAttribPointer(this.attribs.normal, 3, this.gl.FLOAT, false, 0, 0);
+
+        if (uvBuffer && this.attribs.texCoord !== -1) {
+            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, uvBuffer);
+            this.gl.enableVertexAttribArray(this.attribs.texCoord);
+            this.gl.vertexAttribPointer(this.attribs.texCoord, 2, this.gl.FLOAT, false, 0, 0);
+        } else if (this.attribs.texCoord !== -1) {
+            this.gl.disableVertexAttribArray(this.attribs.texCoord);
+        }
 
         if (iBuffer) {
             this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, iBuffer);

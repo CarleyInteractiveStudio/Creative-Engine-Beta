@@ -915,17 +915,14 @@ export async function updateAssetBrowser() {
             } else if (lowerName.endsWith('.cescene')) {
                 iconContainer.innerHTML = `<img src="icons/map.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.endsWith('.obj') || lowerName.endsWith('.fbx')) {
-                iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
-                // Try to load a thumbnail if it exists (.thumb.png)
-                const thumbPath = fullPath + '.thumb.png';
-                const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
-                getURLForAssetPath(thumbPath, currentDirHandle, true).then(url => {
-                    if (url) {
-                        imgIcon.src = url;
-                        iconContainer.innerHTML = '';
-                        iconContainer.appendChild(imgIcon);
-                    }
-                });
+                const cardCanvas = document.createElement('canvas');
+                cardCanvas.className = 'model-card-3d-canvas';
+                cardCanvas.style.width = '100%';
+                cardCanvas.style.height = '100%';
+                cardCanvas.style.pointerEvents = 'none';
+                iconContainer.innerHTML = '';
+                iconContainer.appendChild(cardCanvas);
+                register3DCardPreview(cardCanvas, fullPath);
             } else if (lowerName.endsWith('.ceprefab')) {
                 iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (lowerName.endsWith('.celib')) {
@@ -1714,21 +1711,51 @@ async function renderModelSubAssets(gridContainer, fileEntry, modelPath) {
         const data = await Loader.loadModel(modelPath, window.projectsDirHandle);
         if (!data) return;
 
-        // 1. Meshes
-        if (data.meshes) {
+        // 1. Child Nodes / Sub-models
+        if (data.nodes && data.nodes.length > 0) {
+            data.nodes.forEach((n, i) => {
+                if (n.name) {
+                    createSubAssetItem(gridContainer, n.name, 'layers', { type: 'ModelNode', modelPath, nodeIndex: i });
+                }
+            });
+        }
+
+        // 2. Meshes
+        if (data.meshes && data.meshes.length > 0) {
             data.meshes.forEach((m, i) => {
                 createSubAssetItem(gridContainer, m.name || `Mesh ${i}`, 'box', { type: 'ModelMesh', modelPath, meshIndex: i });
             });
         }
 
-        // 2. Animations (Embedded)
-        if (data.animations) {
+        // 3. Materials
+        if (data.materials && data.materials.length > 0) {
+            data.materials.forEach((mat, i) => {
+                createSubAssetItem(gridContainer, mat.name || `Material ${i}`, 'palette', { type: 'ModelMaterial', modelPath, materialIndex: i, material: mat });
+            });
+        }
+
+        // 4. Embedded Textures
+        if (data.materials) {
+            const texturePaths = new Set();
+            data.materials.forEach(mat => {
+                if (mat.textureUrl || mat.texturePath) {
+                    texturePaths.add(mat.textureUrl || mat.texturePath);
+                }
+            });
+            texturePaths.forEach(tex => {
+                const texName = tex.split('/').pop().split('?')[0];
+                createSubAssetItem(gridContainer, texName, 'image', { type: 'ModelTexture', modelPath, texturePath: tex });
+            });
+        }
+
+        // 5. Animations (Embedded)
+        if (data.animations && data.animations.length > 0) {
             data.animations.forEach((a, i) => {
                 createSubAssetItem(gridContainer, a.name || `Anim ${i}`, 'route', { type: 'ModelAnimation', modelPath, animIndex: i, isEmbedded: true });
             });
         }
 
-        // 2.1 Animations (Extracted / Meta)
+        // 5.1 Animations (Extracted / Meta)
         const dirHandle = currentDirectoryHandle.handle;
         try {
             const fileName = modelPath.split('/').pop();
@@ -1743,7 +1770,7 @@ async function renderModelSubAssets(gridContainer, fileEntry, modelPath) {
             }
         } catch (e) {}
 
-        // 3. Skeleton
+        // 6. Skeleton
         if (data.skins && data.skins.length > 0) {
             createSubAssetItem(gridContainer, 'Skeleton', 'user', { type: 'ModelSkeleton', modelPath });
         }
@@ -1760,7 +1787,16 @@ function createSubAssetItem(container, name, icon, dragData) {
     item.dataset.name = name;
     item.dataset.path = dragData.assetPath || dragData.modelPath || '';
     item.dataset.kind = 'sub-model';
-    item.dataset.subSpriteName = name;
+
+    item.onclick = (e) => {
+        e.stopPropagation();
+        dom.assetGridView.querySelectorAll('.grid-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+
+        if (typeof onAssetSelected === 'function') {
+            onAssetSelected(name, dragData.modelPath || dragData.assetPath || '', 'sub-model', dragData, currentDirectoryHandle.handle);
+        }
+    };
 
     const iconContainer = document.createElement('div');
     iconContainer.className = 'icon';
@@ -1775,7 +1811,13 @@ function createSubAssetItem(container, name, icon, dragData) {
 
     item.ondragstart = (e) => {
         e.stopPropagation();
-        e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+            type: 'Asset',
+            name: name,
+            kind: 'sub-model',
+            path: dragData.modelPath || dragData.assetPath || '',
+            dragData: dragData
+        }));
     };
     container.appendChild(item);
 }
@@ -1861,4 +1903,140 @@ function createSubAssetItemWithLazyIcon(container, name, imageUrl, rect, dragDat
     };
 
     container.appendChild(item);
+}
+
+// --- Live 3D Model Card Preview System ---
+let previewRenderer = null;
+let previewOffscreenCanvas = null;
+let previewLoopId = null;
+const cardPreviews = new Map(); // canvasElement -> { path, model, scene, rotation, aabb }
+
+async function initPreviewRenderer() {
+    if (previewRenderer) return previewRenderer;
+    previewOffscreenCanvas = document.createElement('canvas');
+    previewOffscreenCanvas.width = 128;
+    previewOffscreenCanvas.height = 128;
+
+    const { Renderer3D } = await import('../../engine/Renderer3D.js');
+    if (!Renderer3D) return null;
+
+    previewRenderer = new Renderer3D(previewOffscreenCanvas);
+    previewRenderer.init({ preserveDrawingBuffer: true, alpha: true });
+    return previewRenderer;
+}
+
+function register3DCardPreview(canvasEl, modelPath) {
+    cardPreviews.set(canvasEl, {
+        path: modelPath,
+        model: null,
+        scene: null,
+        rotation: Math.random() * Math.PI * 2,
+        aabb: null,
+        loading: false
+    });
+
+    if (!previewLoopId) {
+        start3DPreviewLoop();
+    }
+}
+
+function start3DPreviewLoop() {
+    let lastTime = performance.now();
+
+    const loop = async (time) => {
+        const dt = (time - lastTime) / 1000;
+        lastTime = time;
+
+        const renderer = await initPreviewRenderer();
+
+        if (renderer && cardPreviews.size > 0) {
+            const glm = window.glMatrix;
+
+            for (const [canvasEl, entry] of cardPreviews.entries()) {
+                if (!canvasEl.isConnected) {
+                    if (entry.model) entry.model.destroy();
+                    cardPreviews.delete(canvasEl);
+                    continue;
+                }
+
+                if (!entry.model && !entry.loading) {
+                    entry.loading = true;
+                    (async () => {
+                        try {
+                            const { Scene } = await import('../../engine/SceneManager.js');
+                            const { createSkinnedMeshObject } = await import('../MateriaFactory.js');
+                            const { getAABB3D } = await import('../../engine/MathUtils.js');
+
+                            const model = await createSkinnedMeshObject(entry.path, null, { addToScene: false });
+                            if (model) {
+                                if (typeof model.updateWorldMatrix === 'function') {
+                                    model.updateWorldMatrix(true);
+                                }
+                                const scene = new Scene();
+                                scene.ambiente.skyMode = 'SolidColor';
+                                scene.ambiente.skyColor = '#000000';
+                                scene.addMateria(model);
+
+                                entry.model = model;
+                                entry.scene = scene;
+                                entry.aabb = getAABB3D(model);
+                            }
+                        } catch (e) {
+                            console.warn('[AssetBrowser] Error loading card 3D preview:', e);
+                        } finally {
+                            entry.loading = false;
+                        }
+                    })();
+                }
+
+                if (entry.model && entry.scene && glm) {
+                    entry.rotation += dt * 0.8;
+
+                    let orbitTarget = [0, 0, 0];
+                    let orbitDistance = 150;
+
+                    if (entry.aabb && entry.aabb.size && (entry.aabb.size.x > 0.01 || entry.aabb.size.y > 0.01 || entry.aabb.size.z > 0.01)) {
+                        orbitTarget = [entry.aabb.center.x, entry.aabb.center.y, entry.aabb.center.z];
+                        const size = Math.max(entry.aabb.size.x, entry.aabb.size.y, entry.aabb.size.z);
+                        orbitDistance = Math.max(size * 1.6, 20);
+                    }
+
+                    const camPos = [
+                        orbitTarget[0] + Math.sin(entry.rotation) * orbitDistance,
+                        orbitTarget[1] + orbitDistance * 0.35,
+                        orbitTarget[2] + Math.cos(entry.rotation) * orbitDistance
+                    ];
+
+                    const viewMat = glm.mat4.create();
+                    glm.mat4.lookAt(viewMat, camPos, orbitTarget, [0, 1, 0]);
+
+                    entry.model.update(dt);
+
+                    renderer.render(entry.scene, null, {
+                        viewMatrix: viewMat,
+                        showGrid: false,
+                        clearAlpha: 0
+                    });
+
+                    if (canvasEl.width !== 128 || canvasEl.height !== 128) {
+                        canvasEl.width = 128;
+                        canvasEl.height = 128;
+                    }
+                    const ctx = canvasEl.getContext('2d');
+                    if (ctx) {
+                        ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+                        ctx.drawImage(previewOffscreenCanvas, 0, 0);
+                    }
+                }
+            }
+        }
+
+        if (cardPreviews.size > 0) {
+            previewLoopId = requestAnimationFrame(loop);
+        } else {
+            previewLoopId = null;
+        }
+    };
+
+    previewLoopId = requestAnimationFrame(loop);
 }

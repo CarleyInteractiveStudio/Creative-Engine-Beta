@@ -1563,6 +1563,8 @@ export async function updateInspector() {
 
     if (selectedMateria) {
         await updateInspectorForMateria(selectedMateria);
+    } else if (selectedAsset && selectedAsset.kind === 'sub-model') {
+        await renderSubModelInspector(selectedAsset);
     } else if (selectedAsset) {
         await updateInspectorForAsset(selectedAsset.name, selectedAsset.path);
     } else {
@@ -2305,6 +2307,18 @@ async function updateInspectorForMateria(selectedMateria) {
             components3D[cat].push({ ley, index });
         }
     });
+
+    if (!selectedMateria.leyes.some(l => l.constructor.name.includes('MeshRenderer3D'))) {
+        selectedMateria.traverse(child => {
+            if (child !== selectedMateria) {
+                child.leyes.forEach((ley) => {
+                    if (ley.constructor.name.includes('MeshRenderer3D')) {
+                        components3D['otros'].push({ ley, index: -1, childMateria: child });
+                    }
+                });
+            }
+        });
+    }
 
     const renderComponentList = (list, container) => {
         list.forEach(({ ley, index }) => {
@@ -5285,6 +5299,8 @@ async function updateInspectorForMateria(selectedMateria) {
                             <label data-i18n="COLOR">Color</label>
                             <input type="color" class="prop-input" data-component="SkinnedMeshRenderer3D" data-prop="color" value="${ley.color}">
                         </div>
+                        ${renderPropertyDropper('Sprite', ley.texturePath, 'data-component="SkinnedMeshRenderer3D" data-prop="texturePath"')}
+                        ${renderPropertyDropper('Sprite', ley.normalMapPath, 'data-component="SkinnedMeshRenderer3D" data-prop="normalMapPath"')}
                     </div>
                 </div>
             `;
@@ -5329,6 +5345,8 @@ async function updateInspectorForMateria(selectedMateria) {
                             <label data-i18n="COLOR">Color</label>
                             <input type="color" class="prop-input" data-component="MeshRenderer3D" data-prop="color" value="${ley.color}">
                         </div>
+                        ${renderPropertyDropper('Sprite', ley.texturePath, 'data-component="MeshRenderer3D" data-prop="texturePath"')}
+                        ${renderPropertyDropper('Sprite', ley.normalMapPath, 'data-component="MeshRenderer3D" data-prop="normalMapPath"')}
                     </div>
                     <div class="inspector-group">
                         <div class="checkbox-field padded-checkbox-field">
@@ -5634,11 +5652,31 @@ async function updateInspectorForAsset(assetName, assetPath) {
         const lowerName = assetName.toLowerCase();
 
         if (selectedAsset && selectedAsset.kind === 'sub-model') {
+            const dragData = selectedAsset.dragData || {};
+            let subTypeLabel = "Elemento 3D";
+            let previewDetails = "";
+
+            if (dragData.type === 'ModelNode') subTypeLabel = "Nodo de Modelo 3D (Sub-modelo)";
+            else if (dragData.type === 'ModelMesh') subTypeLabel = "Malla 3D (Mesh)";
+            else if (dragData.type === 'ModelMaterial') subTypeLabel = "Material 3D";
+            else if (dragData.type === 'ModelTexture') subTypeLabel = "Textura 3D Vinculada";
+            else if (dragData.type === 'ModelAnimation') subTypeLabel = "Animación 3D";
+            else if (dragData.type === 'ModelSkeleton') subTypeLabel = "Esqueleto 3D (Bones)";
+
+            if (dragData.material) {
+                const colorHex = dragData.material.baseColor ? `#${Math.floor(dragData.material.baseColor[0]*255).toString(16).padStart(2,'0')}${Math.floor(dragData.material.baseColor[1]*255).toString(16).padStart(2,'0')}${Math.floor(dragData.material.baseColor[2]*255).toString(16).padStart(2,'0')}` : '#ffffff';
+                previewDetails = `<div style="display:flex; align-items:center; gap:8px; margin-top:8px;"><div style="width:20px; height:20px; border-radius:4px; background-color:${colorHex}; border:1px solid #666;"></div> <span>Color base: ${colorHex}</span></div>`;
+            } else if (dragData.texturePath) {
+                previewDetails = `<div style="margin-top:8px;"><img src="${dragData.texturePath}" style="max-width:100px; max-height:100px; border-radius:4px; border:1px solid #444;" /></div>`;
+            }
+
             dom.inspectorContent.innerHTML += `
-                <div class="inspector-section" style="padding: 10px;">
-                    <p style="font-weight: bold; color: var(--accent-color); margin-bottom: 6px;">Sub-asset 3D: ${selectedAsset.name}</p>
-                    <p style="font-size: 0.85em; opacity: 0.8; margin-bottom: 10px;">Origen: ${selectedAsset.path || assetName}</p>
-                    <p style="font-size: 0.8em; opacity: 0.6;">Puedes arrastrar esta sub-malla o animación directamente a la escena o a las propiedades de componentes compatibles.</p>
+                <div class="inspector-section" style="padding: 12px; background: rgba(0,0,0,0.2); border-radius: 6px; margin: 8px;">
+                    <h4 style="margin-top:0; color: var(--accent-color); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;">${selectedAsset.name}</h4>
+                    <p style="font-size: 0.85em; opacity: 0.9; margin: 4px 0;"><strong>Tipo:</strong> ${subTypeLabel}</p>
+                    <p style="font-size: 0.85em; opacity: 0.8; margin: 4px 0;"><strong>Modelo origen:</strong> ${selectedAsset.path || assetName}</p>
+                    ${previewDetails}
+                    <p style="font-size: 0.8em; opacity: 0.6; margin-top: 10px;">Puedes arrastrar esta sub-malla, material o nodo directamente a la escena o a la jerarquía para instanciarlo.</p>
                 </div>
             `;
             return;
@@ -7521,7 +7559,7 @@ async function saveProjectConfig() {
     }
 }
 
-async function renderModel3DInspector(assetName, assetPath, currentId) {
+async function renderModel3DInspector(assetName, assetPath, currentId, options = {}) {
     const L = window.Localization;
     const container = document.createElement('div');
     container.className = 'asset-settings';
@@ -7578,6 +7616,7 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
         <div class="inspector-section">
             <label data-i18n="ACTIONS">${L.get('ACTIONS', 'Acciones')}</label>
             <button id="btn-import-model-scene" class="primary-btn" style="width: 100%; margin-top: 10px;">Importar a la Escena</button>
+            <button id="btn-reset-model-pos" class="panel-tool-btn" style="width: 100%; margin-top: 5px; background: rgba(0, 180, 255, 0.2); color: #00ffcc; border: 1px solid #00ffcc;">Resetear Posición (0, 0, 0)</button>
             <button id="btn-extract-animations" class="panel-tool-btn" style="width: 100%; margin-top: 5px;">Extraer Animaciones (.cea)</button>
             <button id="btn-auto-rig" class="panel-tool-btn" style="width: 100%; margin-top: 5px;" title="Añade componentes de Hueso a la jerarquía del modelo automáticamente.">Generar Rigging (Huesos)</button>
             <p class="field-description" style="margin-top: 10px;">${L.get('HINT_ARRASTRAR_MODELO', 'Puedes arrastrar este archivo a la escena para importarlo.')}</p>
@@ -7677,8 +7716,14 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
         previewScene.ambiente.skyMode = 'SolidColor';
         previewScene.ambiente.skyColor = '#111111';
 
+        // Orbit camera state
+        let orbitYaw = 180;
+        let orbitPitch = 15;
+        let orbitDistance = 500;
+        let orbitTarget = [0, -50, 0];
+
         console.log(`[Inspector] Iniciando carga de vista previa para: ${assetPath}`);
-        previewMateria = await createSkinnedMeshObject(assetPath, null, { addToScene: false });
+        previewMateria = await createSkinnedMeshObject(assetPath, null, { addToScene: false, meshIndex: options.meshIndex });
         if (previewMateria) {
             previewScene.addMateria(previewMateria);
             console.log(`[Inspector] Modelo cargado en vista previa.`);
@@ -7686,41 +7731,39 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
             // Auto-frame for interactive preview as well
             const { getAABB3D } = await import('../../engine/MathUtils.js');
             const aabb = getAABB3D(previewMateria);
-            if (aabb) {
+            if (aabb && aabb.min && aabb.max && aabb.center) {
                 const glm = window.glMatrix;
                 const size = glm.vec3.distance(aabb.min, aabb.max);
                 orbitDistance = Math.max(size * 1.5, 50);
-                orbitTarget = [...aabb.center];
+                const c = aabb.center;
+                orbitTarget = [c.x !== undefined ? c.x : c[0], c.y !== undefined ? c.y : c[1], c.z !== undefined ? c.z : c[2]];
                 console.log(`[Inspector] Encuadre automático: distancia=${orbitDistance}, objetivo=[${orbitTarget}]`);
             }
 
             // Populate animations list
             const animList = document.getElementById('model-animations-list');
             const animator = previewMateria.getComponentByName('Animator3D');
-            if (animator && animator.animations && animator.animations.length > 0) {
-                animList.innerHTML = animator.animations.map((a, i) => `
-                    <div class="layer-item" style="padding: 4px 8px; font-size: 0.85em; display: flex; justify-content: space-between;">
-                        <span>${a.name || 'Anim ' + i}</span>
-                        <button class="small-btn play-preview-anim" data-index="${i}">▶</button>
-                    </div>
-                `).join('');
+            if (animList) {
+                if (animator && animator.animations && animator.animations.length > 0) {
+                    animList.innerHTML = animator.animations.map((a, i) => `
+                        <div class="layer-item" style="padding: 4px 8px; font-size: 0.85em; display: flex; justify-content: space-between;">
+                            <span>${a.name || 'Anim ' + i}</span>
+                            <button class="small-btn play-preview-anim" data-index="${i}">▶</button>
+                        </div>
+                    `).join('');
 
-                animList.querySelectorAll('.play-preview-anim').forEach(btn => {
-                    btn.onclick = () => {
-                        animator.play(animator.animations[parseInt(btn.dataset.index)].name);
-                    };
-                });
-            } else {
-                animList.innerHTML = `<p class="field-description" style="opacity: 0.5;">No hay animaciones embebidas.</p>`;
+                    animList.querySelectorAll('.play-preview-anim').forEach(btn => {
+                        btn.onclick = () => {
+                            animator.play(animator.animations[parseInt(btn.dataset.index)].name);
+                        };
+                    });
+                } else {
+                    animList.innerHTML = `<p class="field-description" style="opacity: 0.5;">No hay animaciones embebidas.</p>`;
+                }
             }
         }
 
         let lastTime = performance.now();
-        // Orbit camera state
-        let orbitYaw = 180;
-        let orbitPitch = 15;
-        let orbitDistance = 500;
-        let orbitTarget = [0, -50, 0];
 
         let isOrbiting = false;
         let isPanning = false;
@@ -7878,6 +7921,51 @@ async function renderModel3DInspector(assetName, assetPath, currentId) {
             if (window.selectMateria) window.selectMateria(m.id);
         }
     };
+
+    const resetPosBtn = document.getElementById('btn-reset-model-pos');
+    if (resetPosBtn) {
+        resetPosBtn.onclick = async () => {
+            if (previewMateria) {
+                const t = previewMateria.getComponent(Components.Transform);
+                if (t) {
+                    t.position = { x: 0, y: 0, z: 0 };
+                    t.localPosition = { x: 0, y: 0, z: 0 };
+                }
+            }
+
+            // Reset position for all instances of this model in the active scene
+            if (window.SceneManager && window.SceneManager.currentScene) {
+                const materias = window.SceneManager.currentScene.getAllMaterias();
+                let resetCount = 0;
+                materias.forEach(m => {
+                    const smr = m.getComponentByName('SkinnedMeshRenderer3D') || m.getComponentByName('MeshRenderer3D');
+                    if (smr && smr.modelPath && (smr.modelPath.endsWith(assetName) || smr.modelPath === assetPath)) {
+                        const t = m.getComponent(Components.Transform);
+                        if (t) {
+                            t.position = { x: 0, y: 0, z: 0 };
+                            t.localPosition = { x: 0, y: 0, z: 0 };
+                            resetCount++;
+                        }
+                    }
+                });
+
+                const selectedMateria = getSelectedMateria ? getSelectedMateria() : null;
+                if (selectedMateria) {
+                    const t = selectedMateria.getComponent(Components.Transform);
+                    if (t) {
+                        t.position = { x: 0, y: 0, z: 0 };
+                        t.localPosition = { x: 0, y: 0, z: 0 };
+                    }
+                }
+
+                if (updateSceneCallback) updateSceneCallback();
+                if (window.updateHierarchy) window.updateHierarchy();
+                window.Dialogs.showNotification("Posición Reseteada", `La posición de ${resetCount || 1} objeto(s) '${assetName}' se ha colocado en (0, 0, 0).`);
+            } else {
+                window.Dialogs.showNotification("Posición Reseteada", `La posición del modelo '${assetName}' se ha colocado en (0, 0, 0).`);
+            }
+        };
+    }
 
     document.getElementById('btn-extract-animations').onclick = async () => {
         if (!previewMateria) return;
@@ -8508,6 +8596,16 @@ async function autoDetectSheetGrid(imgUrl) {
         };
         img.src = imgUrl;
     });
+}
+
+async function renderSubModelInspector(subModelAsset) {
+    const L = window.Localization;
+    const subName = typeof subModelAsset === 'object' ? (subModelAsset.name || 'Sub-Modelo') : subModelAsset;
+    const modelPath = typeof subModelAsset === 'object' ? (subModelAsset.path || subModelAsset.modelPath || '') : '';
+    const dragData = typeof subModelAsset === 'object' ? (subModelAsset.dragData || {}) : {};
+
+    // Use full interactive 3D model inspector for sub-models
+    await renderModel3DInspector(subName, modelPath, lastUpdateId, dragData);
 }
 
 async function renderSingleSubSpriteInspector(spriteAsset, spriteData, dirHandle, assetPath, ceSpriteFileName) {
