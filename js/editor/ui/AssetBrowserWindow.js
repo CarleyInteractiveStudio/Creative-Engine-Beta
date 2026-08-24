@@ -1787,7 +1787,6 @@ function createSubAssetItem(container, name, icon, dragData) {
     item.dataset.name = name;
     item.dataset.path = dragData.assetPath || dragData.modelPath || '';
     item.dataset.kind = 'sub-model';
-    item.dataset.subSpriteName = name;
 
     item.onclick = (e) => {
         e.stopPropagation();
@@ -1795,7 +1794,7 @@ function createSubAssetItem(container, name, icon, dragData) {
         item.classList.add('active');
 
         if (typeof onAssetSelected === 'function') {
-            onAssetSelected(name, dragData.modelPath || dragData.assetPath || '', 'sub-model', dragData, currentDirectoryHandle.handle, name);
+            onAssetSelected(name, dragData.modelPath || dragData.assetPath || '', 'sub-model', dragData, currentDirectoryHandle.handle);
         }
     };
 
