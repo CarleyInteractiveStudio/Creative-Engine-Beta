@@ -1711,70 +1711,26 @@ async function renderModelSubAssets(gridContainer, fileEntry, modelPath) {
         const data = await Loader.loadModel(modelPath, window.projectsDirHandle);
         if (!data) return;
 
-        // 1. Child Nodes / Sub-models (with corresponding meshIndex mapped if present)
+        // Display ONLY sub-models / meshes like Unity hierarchy expansion (volante, gomas, chasis)
+        const addedMeshIndices = new Set();
+
         if (data.nodes && data.nodes.length > 0) {
             data.nodes.forEach((n, i) => {
-                if (n.name) {
-                    createSubAssetItem(gridContainer, n.name, 'layers', { type: 'ModelNode', modelPath, nodeIndex: i, meshIndex: n.mesh });
+                if (n.mesh !== undefined && n.mesh !== null) {
+                    addedMeshIndices.add(n.mesh);
+                    createSubAssetItem(gridContainer, n.name || `Sub-Modelo ${i}`, 'box', { type: 'ModelMesh', modelPath, meshIndex: n.mesh, nodeIndex: i });
                 }
             });
         }
 
-        // 2. Meshes
         if (data.meshes && data.meshes.length > 0) {
             data.meshes.forEach((m, i) => {
-                createSubAssetItem(gridContainer, m.name || `Mesh ${i}`, 'box', { type: 'ModelMesh', modelPath, meshIndex: i });
-            });
-        }
-
-        // 3. Materials
-        if (data.materials && data.materials.length > 0) {
-            data.materials.forEach((mat, i) => {
-                createSubAssetItem(gridContainer, mat.name || `Material ${i}`, 'palette', { type: 'ModelMaterial', modelPath, materialIndex: i, material: mat });
-            });
-        }
-
-        // 4. Embedded Textures
-        if (data.materials) {
-            const texturePaths = new Set();
-            data.materials.forEach(mat => {
-                if (mat.textureUrl || mat.texturePath) {
-                    texturePaths.add(mat.textureUrl || mat.texturePath);
+                if (!addedMeshIndices.has(i)) {
+                    addedMeshIndices.add(i);
+                    createSubAssetItem(gridContainer, m.name || `Mesh ${i}`, 'box', { type: 'ModelMesh', modelPath, meshIndex: i });
                 }
             });
-            texturePaths.forEach(tex => {
-                const texName = tex.split('/').pop().split('?')[0];
-                createSubAssetItem(gridContainer, texName, 'image', { type: 'ModelTexture', modelPath, texturePath: tex });
-            });
         }
-
-        // 5. Animations (Embedded)
-        if (data.animations && data.animations.length > 0) {
-            data.animations.forEach((a, i) => {
-                createSubAssetItem(gridContainer, a.name || `Anim ${i}`, 'route', { type: 'ModelAnimation', modelPath, animIndex: i, isEmbedded: true });
-            });
-        }
-
-        // 5.1 Animations (Extracted / Meta)
-        const dirHandle = currentDirectoryHandle.handle;
-        try {
-            const fileName = modelPath.split('/').pop();
-            const metaFileHandle = await dirHandle.getFileHandle(fileName + '.meta');
-            const metaFile = await metaFileHandle.getFile();
-            const meta = JSON.parse(await metaFile.text());
-            if (meta.extractedAnimations) {
-                meta.extractedAnimations.forEach(animPath => {
-                    const name = animPath.split('_').pop().replace('.ceanimclip', '');
-                    createSubAssetItem(gridContainer, name, 'clapperboard', { type: 'ModelAnimation', path: animPath, isExtracted: true });
-                });
-            }
-        } catch (e) {}
-
-        // 6. Skeleton
-        if (data.skins && data.skins.length > 0) {
-            createSubAssetItem(gridContainer, 'Skeleton', 'user', { type: 'ModelSkeleton', modelPath });
-        }
-
     } catch (e) {
         console.error("Error loading sub-assets for expansion:", e);
     }
