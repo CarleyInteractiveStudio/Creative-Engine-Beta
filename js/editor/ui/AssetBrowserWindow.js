@@ -1711,11 +1711,11 @@ async function renderModelSubAssets(gridContainer, fileEntry, modelPath) {
         const data = await Loader.loadModel(modelPath, window.projectsDirHandle);
         if (!data) return;
 
-        // 1. Child Nodes / Sub-models
+        // 1. Child Nodes / Sub-models (with corresponding meshIndex mapped if present)
         if (data.nodes && data.nodes.length > 0) {
             data.nodes.forEach((n, i) => {
                 if (n.name) {
-                    createSubAssetItem(gridContainer, n.name, 'layers', { type: 'ModelNode', modelPath, nodeIndex: i });
+                    createSubAssetItem(gridContainer, n.name, 'layers', { type: 'ModelNode', modelPath, nodeIndex: i, meshIndex: n.mesh });
                 }
             });
         }
@@ -1800,7 +1800,40 @@ function createSubAssetItem(container, name, icon, dragData) {
 
     const iconContainer = document.createElement('div');
     iconContainer.className = 'icon';
-    iconContainer.innerHTML = `<img src="icons/${icon}.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+
+    if ((dragData.type === 'ModelMesh' || dragData.type === 'ModelNode') && dragData.meshIndex !== undefined) {
+        const cardCanvas = document.createElement('canvas');
+        cardCanvas.className = 'model-card-3d-canvas';
+        cardCanvas.style.width = '100%';
+        cardCanvas.style.height = '100%';
+        cardCanvas.style.pointerEvents = 'none';
+        iconContainer.innerHTML = '';
+        iconContainer.appendChild(cardCanvas);
+        register3DCardPreview(cardCanvas, dragData.modelPath, dragData.meshIndex);
+    } else if (dragData.type === 'ModelTexture' && dragData.texturePath) {
+        const texUrl = dragData.texturePath;
+        if (texUrl.startsWith('data:') || texUrl.startsWith('blob:') || texUrl.startsWith('http')) {
+            iconContainer.innerHTML = `<img src="${texUrl}" class="icon-preview" style="max-width: 100%; max-height: 100%; object-fit: contain;">`;
+        } else {
+            const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
+            const modelFolder = dragData.modelPath && dragData.modelPath.includes('/') ? dragData.modelPath.substring(0, dragData.modelPath.lastIndexOf('/') + 1) : 'Assets/';
+            let cleanTexPath = texUrl;
+            if (!cleanTexPath.startsWith('Assets/')) {
+                cleanTexPath = modelFolder + cleanTexPath.replace(/^\/+/, '');
+            }
+            getURLForAssetPath(cleanTexPath, currentDirHandle, true).then(url => {
+                if (url) {
+                    iconContainer.innerHTML = `<img src="${url}" class="icon-preview" style="max-width: 100%; max-height: 100%; object-fit: contain;">`;
+                } else {
+                    iconContainer.innerHTML = `<img src="icons/${icon}.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+                }
+            }).catch(() => {
+                iconContainer.innerHTML = `<img src="icons/${icon}.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+            });
+        }
+    } else {
+        iconContainer.innerHTML = `<img src="icons/${icon}.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+    }
 
     const nameEl = document.createElement('div');
     nameEl.className = 'name';
@@ -1925,9 +1958,10 @@ async function initPreviewRenderer() {
     return previewRenderer;
 }
 
-function register3DCardPreview(canvasEl, modelPath) {
+function register3DCardPreview(canvasEl, modelPath, meshIndex = undefined) {
     cardPreviews.set(canvasEl, {
         path: modelPath,
+        meshIndex: meshIndex,
         model: null,
         scene: null,
         rotation: Math.random() * Math.PI * 2,
@@ -1967,8 +2001,23 @@ function start3DPreviewLoop() {
                             const { createSkinnedMeshObject } = await import('../MateriaFactory.js');
                             const { getAABB3D } = await import('../../engine/MathUtils.js');
 
-                            const model = await createSkinnedMeshObject(entry.path, null, { addToScene: false });
+                            const model = await createSkinnedMeshObject(entry.path, null, { addToScene: false, meshIndex: entry.meshIndex });
                             if (model) {
+                                if (entry.meshIndex !== undefined) {
+                                    let meshCounter = 0;
+                                    model.traverse(mtr => {
+                                        const smr = mtr.getComponentByName('SkinnedMeshRenderer3D') || mtr.getComponentByName('MeshRenderer3D');
+                                        if (smr) {
+                                            if (meshCounter === entry.meshIndex) {
+                                                smr.isActive = true;
+                                                mtr.isActive = true;
+                                            } else {
+                                                smr.isActive = false;
+                                            }
+                                            meshCounter++;
+                                        }
+                                    });
+                                }
                                 if (typeof model.updateWorldMatrix === 'function') {
                                     model.updateWorldMatrix(true);
                                 }

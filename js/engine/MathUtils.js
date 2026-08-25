@@ -214,13 +214,14 @@ export function getAABB3D(materia) {
     }
 
     const processMateria = (mtr) => {
+        if (mtr.isActive === false) return;
         const smr = mtr.getComponentByName ? (mtr.getComponentByName('SkinnedMeshRenderer3D') || mtr.getComponentByName('CarleySkinnedMeshRenderer3D')) : null;
         const mr = mtr.getComponentByName ? (mtr.getComponentByName('MeshRenderer3D') || mtr.getComponentByName('CarleyMeshRenderer3D')) : null;
         const r = smr || mr;
         const transform = mtr.getComponentByName ? (mtr.getComponentByName('Transform') || mtr.getComponentByName('CarleyTransform3D')) : null;
         const worldMatrix = transform ? transform.worldMatrix : mtr.worldMatrix;
 
-        if (r && worldMatrix && glm) {
+        if (r && r.isActive !== false && worldMatrix && glm) {
             const positions = r.cpuPositions || r.positions;
             if (positions && positions.length > 0) {
                 let lMinX = Infinity, lMinY = Infinity, lMinZ = Infinity;

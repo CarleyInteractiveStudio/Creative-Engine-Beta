@@ -7616,7 +7616,6 @@ async function renderModel3DInspector(assetName, assetPath, currentId, options =
         <div class="inspector-section">
             <label data-i18n="ACTIONS">${L.get('ACTIONS', 'Acciones')}</label>
             <button id="btn-import-model-scene" class="primary-btn" style="width: 100%; margin-top: 10px;">Importar a la Escena</button>
-            <button id="btn-reset-model-pos" class="panel-tool-btn" style="width: 100%; margin-top: 5px; background: rgba(0, 180, 255, 0.2); color: #00ffcc; border: 1px solid #00ffcc;">Resetear Posición (0, 0, 0)</button>
             <button id="btn-extract-animations" class="panel-tool-btn" style="width: 100%; margin-top: 5px;">Extraer Animaciones (.cea)</button>
             <button id="btn-auto-rig" class="panel-tool-btn" style="width: 100%; margin-top: 5px;" title="Añade componentes de Hueso a la jerarquía del modelo automáticamente.">Generar Rigging (Huesos)</button>
             <p class="field-description" style="margin-top: 10px;">${L.get('HINT_ARRASTRAR_MODELO', 'Puedes arrastrar este archivo a la escena para importarlo.')}</p>
@@ -7931,58 +7930,29 @@ async function renderModel3DInspector(assetName, assetPath, currentId, options =
 
     document.getElementById('btn-import-model-scene').onclick = async () => {
         const { createSkinnedMeshObject } = await import('../MateriaFactory.js');
-        const m = await createSkinnedMeshObject(assetPath, null);
+        const m = await createSkinnedMeshObject(assetPath, null, { meshIndex: options.meshIndex });
         if (m) {
+            if (options.meshIndex !== undefined) {
+                let meshCounter = 0;
+                m.traverse(sub => {
+                    const smr = sub.getComponentByName('SkinnedMeshRenderer3D') || sub.getComponentByName('MeshRenderer3D');
+                    if (smr) {
+                        if (meshCounter === options.meshIndex) {
+                            smr.isActive = true;
+                            sub.isActive = true;
+                        } else {
+                            smr.isActive = false;
+                        }
+                        meshCounter++;
+                    }
+                });
+            }
             if (window.updateHierarchy) window.updateHierarchy();
             if (window.updateScene) window.updateScene();
             if (window.selectMateria) window.selectMateria(m.id);
         }
     };
 
-    const resetPosBtn = document.getElementById('btn-reset-model-pos');
-    if (resetPosBtn) {
-        resetPosBtn.onclick = async () => {
-            if (previewMateria) {
-                const t = previewMateria.getComponent(Components.Transform);
-                if (t) {
-                    t.position = { x: 0, y: 0, z: 0 };
-                    t.localPosition = { x: 0, y: 0, z: 0 };
-                }
-            }
-
-            // Reset position for all instances of this model in the active scene
-            if (window.SceneManager && window.SceneManager.currentScene) {
-                const materias = window.SceneManager.currentScene.getAllMaterias();
-                let resetCount = 0;
-                materias.forEach(m => {
-                    const smr = m.getComponentByName('SkinnedMeshRenderer3D') || m.getComponentByName('MeshRenderer3D');
-                    if (smr && smr.modelPath && (smr.modelPath.endsWith(assetName) || smr.modelPath === assetPath)) {
-                        const t = m.getComponent(Components.Transform);
-                        if (t) {
-                            t.position = { x: 0, y: 0, z: 0 };
-                            t.localPosition = { x: 0, y: 0, z: 0 };
-                            resetCount++;
-                        }
-                    }
-                });
-
-                const selectedMateria = getSelectedMateria ? getSelectedMateria() : null;
-                if (selectedMateria) {
-                    const t = selectedMateria.getComponent(Components.Transform);
-                    if (t) {
-                        t.position = { x: 0, y: 0, z: 0 };
-                        t.localPosition = { x: 0, y: 0, z: 0 };
-                    }
-                }
-
-                if (updateSceneCallback) updateSceneCallback();
-                if (window.updateHierarchy) window.updateHierarchy();
-                window.Dialogs.showNotification("Posición Reseteada", `La posición de ${resetCount || 1} objeto(s) '${assetName}' se ha colocado en (0, 0, 0).`);
-            } else {
-                window.Dialogs.showNotification("Posición Reseteada", `La posición del modelo '${assetName}' se ha colocado en (0, 0, 0).`);
-            }
-        };
-    }
 
     document.getElementById('btn-extract-animations').onclick = async () => {
         if (!previewMateria) return;
@@ -8619,9 +8589,13 @@ async function renderSubModelInspector(subModelAsset) {
     const L = window.Localization;
     const subName = typeof subModelAsset === 'object' ? (subModelAsset.name || 'Sub-Modelo') : subModelAsset;
     const modelPath = typeof subModelAsset === 'object' ? (subModelAsset.path || subModelAsset.modelPath || '') : '';
-    const dragData = typeof subModelAsset === 'object' ? (subModelAsset.dragData || {}) : {};
+    let dragData = typeof subModelAsset === 'object' ? (subModelAsset.dragData || subModelAsset.options || {}) : {};
 
-    // Use full interactive 3D model inspector for sub-models
+    if (subModelAsset && typeof subModelAsset === 'object' && subModelAsset.options) {
+        dragData = { ...dragData, ...subModelAsset.options };
+    }
+
+    // Use full interactive 3D model inspector for sub-models with mesh isolation
     await renderModel3DInspector(subName, modelPath, lastUpdateId, dragData);
 }
 
