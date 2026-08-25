@@ -1711,14 +1711,23 @@ async function renderModelSubAssets(gridContainer, fileEntry, modelPath) {
         const data = await Loader.loadModel(modelPath, window.projectsDirHandle);
         if (!data) return;
 
-        // Display ONLY sub-models / meshes like Unity hierarchy expansion (volante, gomas, chasis)
+        const modelFileName = modelPath.split('/').pop().split('.')[0];
+
+        // 1. Full Model / Prefab Main Assembly Card
+        createSubAssetItem(gridContainer, `${modelFileName} (Modelo Completo)`, 'box', {
+            type: 'ModelMesh',
+            modelPath,
+            meshIndex: undefined
+        });
+
+        // 2. Sub-mesh / Sub-models (isolated sub-meshes like Unity: volante, gomas, chasis)
         const addedMeshIndices = new Set();
 
         if (data.nodes && data.nodes.length > 0) {
             data.nodes.forEach((n, i) => {
                 if (n.mesh !== undefined && n.mesh !== null && !addedMeshIndices.has(n.mesh)) {
                     addedMeshIndices.add(n.mesh);
-                    const meshName = (data.meshes && data.meshes[n.mesh] && data.meshes[n.mesh].name) ? data.meshes[n.mesh].name : (n.name || `Sub-Modelo ${n.mesh}`);
+                    const meshName = (data.meshes && data.meshes[n.mesh] && data.meshes[n.mesh].name) ? data.meshes[n.mesh].name : (n.name || `Pieza ${n.mesh}`);
                     createSubAssetItem(gridContainer, meshName, 'box', { type: 'ModelMesh', modelPath, meshIndex: n.mesh, nodeIndex: i });
                 }
             });
@@ -1728,7 +1737,51 @@ async function renderModelSubAssets(gridContainer, fileEntry, modelPath) {
             data.meshes.forEach((m, i) => {
                 if (!addedMeshIndices.has(i)) {
                     addedMeshIndices.add(i);
-                    createSubAssetItem(gridContainer, m.name || `Mesh ${i}`, 'box', { type: 'ModelMesh', modelPath, meshIndex: i });
+                    createSubAssetItem(gridContainer, m.name || `Sub-Modelo ${i}`, 'box', { type: 'ModelMesh', modelPath, meshIndex: i });
+                }
+            });
+        }
+
+        // 3. Animations & Bone Rig Skeleton (Unity style)
+        if (data.animations && data.animations.length > 0) {
+            data.animations.forEach((anim, idx) => {
+                const animName = anim.name || `Animación ${idx + 1}`;
+                createSubAssetItem(gridContainer, animName, 'play', {
+                    type: 'ModelAnimation',
+                    modelPath,
+                    animIndex: idx
+                });
+            });
+        }
+
+        if ((data.skins && data.skins.length > 0) || (data.nodes && data.nodes.some(n => n.name && (n.name.toLowerCase().includes('bone') || n.name.toLowerCase().includes('armature') || n.name.toLowerCase().includes('hueso'))))) {
+            createSubAssetItem(gridContainer, `${modelFileName} (Esqueleto / Huesos)`, 'bot', {
+                type: 'ModelSkeleton',
+                modelPath
+            });
+        }
+
+        // 4. Materials & Textures (Unity style)
+        const addedTextures = new Set();
+        if (data.materials && data.materials.length > 0) {
+            data.materials.forEach((mat, idx) => {
+                const matName = mat.name || `Material ${idx + 1}`;
+                const texPath = mat.textureUrl || mat.texturePath;
+                if (texPath) {
+                    if (!addedTextures.has(texPath)) {
+                        addedTextures.add(texPath);
+                        createSubAssetItem(gridContainer, `${matName} (Textura)`, 'image', {
+                            type: 'ModelTexture',
+                            modelPath,
+                            texturePath: texPath
+                        });
+                    }
+                } else {
+                    createSubAssetItem(gridContainer, matName, 'brush', {
+                        type: 'ModelMaterial',
+                        modelPath,
+                        materialIndex: idx
+                    });
                 }
             });
         }
@@ -1986,10 +2039,14 @@ function start3DPreviewLoop() {
                     let orbitTarget = [0, 0, 0];
                     let orbitDistance = 150;
 
-                    if (entry.aabb && entry.aabb.size && (entry.aabb.size.x > 0.01 || entry.aabb.size.y > 0.01 || entry.aabb.size.z > 0.01)) {
+                    if (!entry.aabb && entry.model) {
+                        entry.aabb = getAABB3D(entry.model);
+                    }
+
+                    if (entry.aabb && entry.aabb.size && (entry.aabb.size.x > 0.0001 || entry.aabb.size.y > 0.0001 || entry.aabb.size.z > 0.0001)) {
                         orbitTarget = [entry.aabb.center.x, entry.aabb.center.y, entry.aabb.center.z];
-                        const size = Math.max(entry.aabb.size.x, entry.aabb.size.y, entry.aabb.size.z);
-                        orbitDistance = Math.max(size * 1.6, 20);
+                        const diag = Math.hypot(entry.aabb.size.x, entry.aabb.size.y, entry.aabb.size.z);
+                        orbitDistance = Math.max(diag * 1.35, 0.5);
                     }
 
                     const camPos = [
