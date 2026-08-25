@@ -7616,7 +7616,6 @@ async function renderModel3DInspector(assetName, assetPath, currentId, options =
         <div class="inspector-section">
             <label data-i18n="ACTIONS">${L.get('ACTIONS', 'Acciones')}</label>
             <button id="btn-import-model-scene" class="primary-btn" style="width: 100%; margin-top: 10px;">Importar a la Escena</button>
-            <button id="btn-reset-model-pos" class="panel-tool-btn" style="width: 100%; margin-top: 5px; background: rgba(0, 180, 255, 0.2); color: #00ffcc; border: 1px solid #00ffcc;">Resetear Posición (0, 0, 0)</button>
             <button id="btn-extract-animations" class="panel-tool-btn" style="width: 100%; margin-top: 5px;">Extraer Animaciones (.cea)</button>
             <button id="btn-auto-rig" class="panel-tool-btn" style="width: 100%; margin-top: 5px;" title="Añade componentes de Hueso a la jerarquía del modelo automáticamente.">Generar Rigging (Huesos)</button>
             <p class="field-description" style="margin-top: 10px;">${L.get('HINT_ARRASTRAR_MODELO', 'Puedes arrastrar este archivo a la escena para importarlo.')}</p>
@@ -7954,57 +7953,6 @@ async function renderModel3DInspector(assetName, assetPath, currentId, options =
         }
     };
 
-    const resetPosBtn = document.getElementById('btn-reset-model-pos');
-    if (resetPosBtn) {
-        resetPosBtn.onclick = async () => {
-            const resetTransformToOrigin = (mtr) => {
-                if (!mtr) return;
-                const t = mtr.getComponent ? mtr.getComponent(Components.Transform) : null;
-                if (t) {
-                    t.localPosition = { x: 0, y: 0, z: 0 };
-                    t.localRotation = { x: 0, y: 0, z: 0 };
-                    t.position = { x: 0, y: 0, z: 0 };
-                }
-            };
-
-            if (previewMateria) {
-                resetTransformToOrigin(previewMateria);
-                previewMateria.traverse(resetTransformToOrigin);
-            }
-
-            let resetCount = 0;
-            if (window.SceneManager && window.SceneManager.currentScene) {
-                const materias = window.SceneManager.currentScene.getAllMaterias();
-                materias.forEach(m => {
-                    let isMatch = false;
-                    m.traverse(sub => {
-                        const smr = sub.getComponentByName ? (sub.getComponentByName('SkinnedMeshRenderer3D') || sub.getComponentByName('MeshRenderer3D')) : null;
-                        if (smr && smr.modelPath && (smr.modelPath.endsWith(assetName) || smr.modelPath === assetPath)) {
-                            isMatch = true;
-                        }
-                    });
-
-                    if (isMatch) {
-                        resetTransformToOrigin(m);
-                        m.traverse(resetTransformToOrigin);
-                        resetCount++;
-                    }
-                });
-
-                const selectedMateria = getSelectedMateria ? getSelectedMateria() : null;
-                if (selectedMateria) {
-                    resetTransformToOrigin(selectedMateria);
-                    selectedMateria.traverse(resetTransformToOrigin);
-                }
-
-                if (updateSceneCallback) updateSceneCallback();
-                if (window.updateHierarchy) window.updateHierarchy();
-                window.Dialogs.showNotification("Posición Reseteada", `La posición del modelo '${assetName}' y sus partes se ha colocado en (0, 0, 0).`);
-            } else {
-                window.Dialogs.showNotification("Posición Reseteada", `La posición del modelo '${assetName}' se ha colocado en (0, 0, 0).`);
-            }
-        };
-    }
 
     document.getElementById('btn-extract-animations').onclick = async () => {
         if (!previewMateria) return;
