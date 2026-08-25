@@ -1716,9 +1716,10 @@ async function renderModelSubAssets(gridContainer, fileEntry, modelPath) {
 
         if (data.nodes && data.nodes.length > 0) {
             data.nodes.forEach((n, i) => {
-                if (n.mesh !== undefined && n.mesh !== null) {
+                if (n.mesh !== undefined && n.mesh !== null && !addedMeshIndices.has(n.mesh)) {
                     addedMeshIndices.add(n.mesh);
-                    createSubAssetItem(gridContainer, n.name || `Sub-Modelo ${i}`, 'box', { type: 'ModelMesh', modelPath, meshIndex: n.mesh, nodeIndex: i });
+                    const meshName = (data.meshes && data.meshes[n.mesh] && data.meshes[n.mesh].name) ? data.meshes[n.mesh].name : (n.name || `Sub-Modelo ${n.mesh}`);
+                    createSubAssetItem(gridContainer, meshName, 'box', { type: 'ModelMesh', modelPath, meshIndex: n.mesh, nodeIndex: i });
                 }
             });
         }
@@ -1959,21 +1960,6 @@ function start3DPreviewLoop() {
 
                             const model = await createSkinnedMeshObject(entry.path, null, { addToScene: false, meshIndex: entry.meshIndex });
                             if (model) {
-                                if (entry.meshIndex !== undefined) {
-                                    let meshCounter = 0;
-                                    model.traverse(mtr => {
-                                        const smr = mtr.getComponentByName('SkinnedMeshRenderer3D') || mtr.getComponentByName('MeshRenderer3D');
-                                        if (smr) {
-                                            if (meshCounter === entry.meshIndex) {
-                                                smr.isActive = true;
-                                                mtr.isActive = true;
-                                            } else {
-                                                smr.isActive = false;
-                                            }
-                                            meshCounter++;
-                                        }
-                                    });
-                                }
                                 if (typeof model.updateWorldMatrix === 'function') {
                                     model.updateWorldMatrix(true);
                                 }
