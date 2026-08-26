@@ -1716,6 +1716,8 @@ export function initialize(dependencies) {
                     newMateria.addComponent(spriteRenderer);
 
                     SceneManager.currentScene.addMateria(newMateria);
+                } else if (data.type === 'Asset' && data.name.endsWith('.cm')) {
+                    newMateria = await MateriaFactory.instantiateCMModel(data.path, null);
                 } else if (data.type === 'Asset' && data.name.endsWith('.ceprefab')) {
                     newMateria = await SceneManager.instantiatePrefabFromPath(data.path, worldPos.x, worldPos.y);
                 } else if (data.type === 'Asset' && (data.name.endsWith('.png') || data.name.endsWith('.jpg') || data.name.endsWith('.jpeg') || data.name.endsWith('.ceSprite'))) {

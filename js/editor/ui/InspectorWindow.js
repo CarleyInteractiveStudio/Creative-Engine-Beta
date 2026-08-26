@@ -5286,6 +5286,20 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
+        } else if (ley.constructor.name === 'MeshRenderer3D' || ley.constructor.name === 'CarleyMeshRenderer3D') {
+            componentHTML = `
+                ${renderComponentHeader("Mesh Renderer 3D (Carley Model)", icon, index)}
+                <div class="component-content">
+                    <div class="inspector-group">
+                        <div class="prop-row-multi">
+                            <label>Color</label>
+                            <input type="color" class="prop-input" data-component="${ley.constructor.name}" data-prop="color" value="${ley.color || '#ffffff'}">
+                        </div>
+                        ${renderPropertyDropper('Sprite', ley.texturePath, `data-component="${ley.constructor.name}" data-prop="texturePath"`)}
+                        ${renderPropertyDropper('Sprite', ley.normalMapPath, `data-component="${ley.constructor.name}" data-prop="normalMapPath"`)}
+                    </div>
+                </div>
+            `;
         } else if (ley.constructor.name === 'SkinnedMeshRenderer3D') {
             componentHTML = `
                 ${renderComponentHeader(L.get('SKINNED_MESH_RENDERER_3D', "Skinned Mesh Renderer 3D"), icon, index)}

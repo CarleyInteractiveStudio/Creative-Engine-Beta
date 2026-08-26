@@ -3703,9 +3703,30 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (dom.menuImportModel3d) {
-            dom.menuImportModel3d.addEventListener('click', (e) => {
+            dom.menuImportModel3d.addEventListener('click', async (e) => {
                 e.preventDefault();
-                showNotificationDialog('Importación 3D', 'El sistema de importación de modelos 3D está siendo reconstruido.');
+                try {
+                    if (window.showOpenFilePicker) {
+                        const files = await window.showOpenFilePicker({
+                            types: [{ description: 'Modelos 3D (.cm / .gltf / .glb)', accept: { 'application/octet-stream': ['.cm', '.gltf', '.glb'] } }],
+                            multiple: true
+                        });
+                        showAssetImportModal(files, getCurrentDirectoryHandle(), updateAssetBrowser);
+                    } else {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = '.cm,.gltf,.glb';
+                        input.multiple = true;
+                        input.onchange = () => {
+                            showAssetImportModal(Array.from(input.files), getCurrentDirectoryHandle(), updateAssetBrowser);
+                        };
+                        input.click();
+                    }
+                } catch (err) {
+                    if (err.name !== 'AbortError') {
+                        console.error("Error al importar modelo 3D:", err);
+                    }
+                }
             });
         }
 

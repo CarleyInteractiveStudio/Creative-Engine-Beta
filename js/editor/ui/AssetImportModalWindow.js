@@ -1,5 +1,6 @@
 // js/editor/ui/AssetImportModalWindow.js
 import { showNotification } from './DialogWindow.js';
+import { CMModelConverter } from '../../engine/CMModelConverter.js';
 
 let modalElement = null;
 let currentFiles = []; // Array of File or FileHandle objects
@@ -14,6 +15,11 @@ let previewAnimTimer = null;
 let isPreviewPlaying = true;
 let currentImageObj = null;
 
+// 3D WebGL Turntable Preview State
+let currentCMData = null;
+let preview3DAngle = 0;
+let preview3DTimer = null;
+
 export function initializeAssetImportModal() {
     if (document.getElementById('asset-import-modal')) return;
 
@@ -22,11 +28,11 @@ export function initializeAssetImportModal() {
     modalElement.className = 'modal';
     modalElement.style.display = 'none';
     modalElement.innerHTML = `
-        <div class="modal-content asset-import-modal-content" style="width: 960px; max-width: 95vw; height: 680px; max-height: 92vh; display: flex; flex-direction: column; padding: 0; background: #1e1e24; color: #e0e0e0; border-radius: 8px; overflow: hidden; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.7);">
+        <div class="modal-content asset-import-modal-content" style="width: 980px; max-width: 95vw; height: 700px; max-height: 92vh; display: flex; flex-direction: column; padding: 0; background: #1e1e24; color: #e0e0e0; border-radius: 8px; overflow: hidden; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.7);">
             <!-- Header -->
             <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: #18181c; border-bottom: 1px solid #2d2d35;">
                 <h3 style="margin: 0; font-size: 1.1rem; color: #4da6ff; display: flex; align-items: center; gap: 8px;">
-                    <img src="icons/box.svg" class="ce-icon" style="width: 20px; height: 20px;"> Importador de Assets 3D Avanzado
+                    <img src="icons/box.svg" class="ce-icon" style="width: 20px; height: 20px;"> Importador de Assets 3D y Modelos (.CM / GLTF)
                 </h3>
                 <button class="close-button" id="import-modal-close" style="background: none; border: none; color: #888; font-size: 1.4rem; cursor: pointer;">&times;</button>
             </div>
@@ -49,21 +55,39 @@ export function initializeAssetImportModal() {
                 </div>
 
                 <!-- Center: Inspector Settings -->
-                <div style="width: 340px; padding: 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; background: #1e1e24; border-right: 1px solid #2d2d35;">
+                <div style="width: 350px; padding: 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; background: #1e1e24; border-right: 1px solid #2d2d35;">
                     <div style="border-bottom: 1px solid #2d2d35; padding-bottom: 6px;">
                         <h4 style="margin: 0; font-size: 0.95rem; color: #fff;">Configuración de Importación</h4>
                         <p style="margin: 4px 0 0 0; font-size: 0.78rem; color: #888;" id="import-selection-subtitle">Modificando selección actual</p>
                     </div>
 
-                    <!-- Option 1: Image Type -->
+                    <!-- Option 1: Asset Type -->
                     <div class="import-field-group">
-                        <label style="font-size: 0.82rem; font-weight: bold; color: #ccc; display: block; margin-bottom: 4px;">Tipo de Imagen 3D:</label>
+                        <label style="font-size: 0.82rem; font-weight: bold; color: #ccc; display: block; margin-bottom: 4px;">Tipo de Asset / Modelo:</label>
                         <select id="import-img-type" style="width: 100%; padding: 7px 10px; background: #121215; border: 1px solid #3a3a45; color: #fff; border-radius: 4px; font-size: 0.85rem;">
+                            <option value="Model3D">Modelo 3D (.CM / GLTF / GLB)</option>
                             <option value="Sprite">Sprite (2D/3D Quad)</option>
                             <option value="Textura">Textura Albedo (Superficie 3D)</option>
                             <option value="Normal Map">Normal Map (Relieve 3D)</option>
                             <option value="Hoja de Animacion">Hoja de Animación (Sprite Sheet)</option>
                         </select>
+                    </div>
+
+                    <!-- Model 3D Options (Dynamic) -->
+                    <div id="import-model3d-options" style="display: flex; background: #141418; padding: 12px; border-radius: 6px; border: 1px solid #333; gap: 8px; flex-direction: column;">
+                        <span style="font-size: 0.8rem; font-weight: bold; color: #4da6ff;">Ajustes de Conversión Carley Model (.CM)</span>
+                        <label style="font-size: 0.75rem; color: #ccc; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="checkbox" id="import-normalize-blender" checked style="cursor: pointer;">
+                            Normalizar Rotaciones de Blender (Z-Up -> Y-Up)
+                        </label>
+                        <label style="font-size: 0.75rem; color: #ccc; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="checkbox" id="import-extract-textures" checked style="cursor: pointer;">
+                            Extraer Texturas Integradas (.png/.jpg)
+                        </label>
+                        <label style="font-size: 0.75rem; color: #ccc; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="checkbox" id="import-extract-anims" checked style="cursor: pointer;">
+                            Extraer Clips de Animación (.cea3d)
+                        </label>
                     </div>
 
                     <!-- Sprite Sheet Controls (Dynamic) -->
@@ -133,10 +157,10 @@ export function initializeAssetImportModal() {
                     </div>
                 </div>
 
-                <!-- Right: Live Visual Preview & Slice Player -->
+                <!-- Right: Live Visual Preview & WebGL 3D Turntable Player -->
                 <div style="flex: 1; padding: 18px; display: flex; flex-direction: column; background: #16161a; gap: 12px; align-items: center; justify-content: center;">
                     <div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.85rem; font-weight: bold; color: #aaa;">Vista Previa en Tiempo Real</span>
+                        <span style="font-size: 0.85rem; font-weight: bold; color: #aaa;">Vista Previa 3D / 2D en Tiempo Real</span>
                         <span id="import-img-dimensions" style="font-size: 0.78rem; color: #4da6ff;">0 x 0 px</span>
                     </div>
 
@@ -186,9 +210,14 @@ function setupEvents() {
 
     const imgTypeSelect = document.getElementById('import-img-type');
     imgTypeSelect.onchange = () => {
-        const isSheet = imgTypeSelect.value === 'Hoja de Animacion';
+        const type = imgTypeSelect.value;
+        const isSheet = type === 'Hoja de Animacion';
+        const isModel = type === 'Model3D';
+
         document.getElementById('import-spritesheet-options').style.display = isSheet ? 'flex' : 'none';
         document.getElementById('import-anim-controls').style.display = isSheet ? 'flex' : 'none';
+        document.getElementById('import-model3d-options').style.display = isModel ? 'flex' : 'none';
+
         if (isSheet && currentImageObj) {
             autoSliceSpriteSheet();
         }
@@ -211,6 +240,7 @@ function setupEvents() {
 
 function hideModal() {
     if (previewAnimTimer) clearInterval(previewAnimTimer);
+    if (preview3DTimer) clearInterval(preview3DTimer);
     if (modalElement) {
         modalElement.classList.remove('is-open');
         modalElement.style.display = 'none';
@@ -331,6 +361,7 @@ function renderFileList() {
 async function loadFocusedFileForPreview() {
     if (currentFiles.length === 0 || selectedFileIndex < 0 || selectedFileIndex >= currentFiles.length) {
         currentImageObj = null;
+        currentCMData = null;
         updatePreview();
         return;
     }
@@ -341,8 +372,33 @@ async function loadFocusedFileForPreview() {
         fileObj = await item.getFile();
     }
 
+    const fileName = fileObj.name || 'file.png';
+    const lowerName = fileName.toLowerCase();
+
+    // 1. If 3D Model (.gltf / .glb)
+    if (lowerName.endsWith('.gltf') || lowerName.endsWith('.glb')) {
+        document.getElementById('import-img-type').value = 'Model3D';
+        document.getElementById('import-spritesheet-options').style.display = 'none';
+        document.getElementById('import-anim-controls').style.display = 'none';
+        document.getElementById('import-model3d-options').style.display = 'flex';
+
+        try {
+            const converted = await CMModelConverter.convertGLTFToCM(fileObj, fileName);
+            currentCMData = converted.cmData;
+            document.getElementById('import-img-dimensions').textContent = `3D: ${currentCMData.meshes.length} Sub-Malla(s)`;
+            update3DTurntablePreview();
+        } catch (e) {
+            console.error("Error al convertir modelo 3D para vista previa:", e);
+            currentCMData = null;
+            updatePreview();
+        }
+        return;
+    }
+
+    // 2. Image File
     if (fileObj.type && !fileObj.type.startsWith('image/')) {
         currentImageObj = null;
+        currentCMData = null;
         updatePreview();
         return;
     }
@@ -352,6 +408,7 @@ async function loadFocusedFileForPreview() {
     img.onload = () => {
         URL.revokeObjectURL(url);
         currentImageObj = img;
+        currentCMData = null;
         document.getElementById('import-img-dimensions').textContent = `${img.width} x ${img.height} px`;
 
         const imgTypeSelect = document.getElementById('import-img-type');
@@ -363,9 +420,72 @@ async function loadFocusedFileForPreview() {
     img.onerror = () => {
         URL.revokeObjectURL(url);
         currentImageObj = null;
+        currentCMData = null;
         updatePreview();
     };
     img.src = url;
+}
+
+function update3DTurntablePreview() {
+    if (preview3DTimer) clearInterval(preview3DTimer);
+
+    const canvas = document.getElementById('import-preview-canvas');
+    if (!canvas || !currentCMData) return;
+
+    canvas.width = 320;
+    canvas.height = 320;
+    const ctx = canvas.getContext('2d');
+
+    preview3DAngle = 0;
+    const drawTurntableFrame = () => {
+        ctx.clearRect(0, 0, 320, 320);
+
+        // Simple Wireframe 3D Projection Turntable for CM Model
+        ctx.save();
+        ctx.translate(160, 160);
+        ctx.strokeStyle = '#00a8ff';
+        ctx.lineWidth = 1.5;
+
+        const rad = (preview3DAngle * Math.PI) / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+
+        if (currentCMData.meshes) {
+            for (const mesh of currentCMData.meshes) {
+                for (const primitive of mesh.primitives) {
+                    const positions = primitive.positions;
+                    if (!positions || positions.length < 6) continue;
+
+                    ctx.beginPath();
+                    const step = positions.length > 3000 ? 18 : 6;
+                    for (let i = 0; i < positions.length; i += step) {
+                        const x = positions[i];
+                        const y = positions[i + 1];
+                        const z = positions[i + 2];
+
+                        // Rotate Y-axis turntable
+                        const rotX = x * cos - z * sin;
+                        const rotZ = x * sin + z * cos;
+
+                        // Perspective projection
+                        const scale = 220 / (250 + rotZ);
+                        const projX = rotX * scale;
+                        const projY = -y * scale;
+
+                        if (i === 0) ctx.moveTo(projX, projY);
+                        else ctx.lineTo(projX, projY);
+                    }
+                    ctx.stroke();
+                }
+            }
+        }
+
+        ctx.restore();
+        preview3DAngle = (preview3DAngle + 1.5) % 360;
+    };
+
+    drawTurntableFrame();
+    preview3DTimer = setInterval(drawTurntableFrame, 30);
 }
 
 function autoSliceSpriteSheet() {
@@ -374,7 +494,6 @@ function autoSliceSpriteSheet() {
     const width = currentImageObj.width;
     const height = currentImageObj.height;
 
-    // Automatic aspect ratio detection heuristics for standard power-of-two or square sprite grids
     let cols = 4;
     let rows = 4;
 
@@ -393,14 +512,19 @@ function autoSliceSpriteSheet() {
 }
 
 function updatePreview() {
-    if (previewAnimTimer) {
-        clearInterval(previewAnimTimer);
-        previewAnimTimer = null;
-    }
+    if (previewAnimTimer) clearInterval(previewAnimTimer);
+    if (preview3DTimer) clearInterval(preview3DTimer);
 
     const canvas = document.getElementById('import-preview-canvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+
+    const imgType = document.getElementById('import-img-type').value;
+
+    if (imgType === 'Model3D' && currentCMData) {
+        update3DTurntablePreview();
+        return;
+    }
 
     if (!currentImageObj) {
         canvas.width = 300;
@@ -409,11 +533,9 @@ function updatePreview() {
         ctx.fillStyle = '#666';
         ctx.font = '13px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Sin Vista Previa de Imagen', 150, 105);
+        ctx.fillText('Sin Vista Previa de Imagen / Modelo', 150, 105);
         return;
     }
-
-    const imgType = document.getElementById('import-img-type').value;
 
     if (imgType !== 'Hoja de Animacion') {
         canvas.width = currentImageObj.width;
@@ -555,10 +677,6 @@ async function executeImport() {
     const maxRes = document.getElementById('import-max-resolution').value;
     const targetFolder = document.getElementById('import-target-folder').value;
 
-    const cols = parseInt(document.getElementById('import-sheet-cols').value, 10) || 1;
-    const rows = parseInt(document.getElementById('import-sheet-rows').value, 10) || 1;
-    const fps = parseInt(document.getElementById('import-sheet-fps').value, 10) || 12;
-
     const filesToImport = Array.from(selectedFileIndices).map(idx => currentFiles[idx]);
 
     try {
@@ -577,15 +695,69 @@ async function executeImport() {
             }
 
             const fileName = fileObj.name;
+            const lowerName = fileName.toLowerCase();
+
+            // 1. Process 3D Model Conversion (.gltf / .glb -> .cm)
+            if (lowerName.endsWith('.gltf') || lowerName.endsWith('.glb')) {
+                const baseName = fileName.split('.')[0];
+                const cmFileName = `${baseName}.cm`;
+
+                const converted = await CMModelConverter.convertGLTFToCM(fileObj, fileName);
+
+                // Write .cm file
+                const cmHandle = await targetHandle.getFileHandle(cmFileName, { create: true });
+                const cmWritable = await cmHandle.createWritable();
+                await cmWritable.write(JSON.stringify(converted.cmData, null, 2));
+                await cmWritable.close();
+
+                // Write extracted textures
+                if (document.getElementById('import-extract-textures').checked && converted.textures) {
+                    for (const tex of converted.textures) {
+                        const texHandle = await targetHandle.getFileHandle(tex.name, { create: true });
+                        const texWritable = await texHandle.createWritable();
+                        await texWritable.write(tex.blob);
+                        await texWritable.close();
+                    }
+                }
+
+                // Write extracted animation clips (.cea3d)
+                if (document.getElementById('import-extract-anims').checked && converted.animations) {
+                    for (const anim of converted.animations) {
+                        const animHandle = await targetHandle.getFileHandle(anim.name, { create: true });
+                        const animWritable = await animHandle.createWritable();
+                        await animWritable.write(JSON.stringify(anim.data, null, 2));
+                        await animWritable.close();
+                    }
+                }
+
+                // Write .cm.meta file
+                const metaData = {
+                    assetType: 'CarleyModel',
+                    layer: grLayer,
+                    tag: tag,
+                    importDate: new Date().toISOString()
+                };
+
+                const metaHandle = await targetHandle.getFileHandle(`${cmFileName}.meta`, { create: true });
+                const metaWritable = await metaHandle.createWritable();
+                await metaWritable.write(JSON.stringify(metaData, null, 2));
+                await metaWritable.close();
+
+                continue;
+            }
+
+            // 2. Process Image / Texture
             const processedFile = await resizeImageIfNeeded(fileObj, maxRes);
 
-            // Write file
             const fileHandle = await targetHandle.getFileHandle(fileName, { create: true });
             const writable = await fileHandle.createWritable();
             await writable.write(processedFile);
             await writable.close();
 
-            // Write .meta with 3D import configuration metadata and slice grid
+            const cols = parseInt(document.getElementById('import-sheet-cols').value, 10) || 1;
+            const rows = parseInt(document.getElementById('import-sheet-rows').value, 10) || 1;
+            const fps = parseInt(document.getElementById('import-sheet-fps').value, 10) || 12;
+
             const metaData = {
                 imageType: imgType,
                 layer: grLayer,
@@ -602,7 +774,7 @@ async function executeImport() {
         }
 
         hideModal();
-        showNotification('Importación Completada', `${filesToImport.length} asset(s) importados en '${targetFolder}/'`);
+        showNotification('Importación Completada', `${filesToImport.length} asset(s) convertidos e importados en '${targetFolder}/'`);
 
         if (typeof onCompleteCallback === 'function') {
             onCompleteCallback();

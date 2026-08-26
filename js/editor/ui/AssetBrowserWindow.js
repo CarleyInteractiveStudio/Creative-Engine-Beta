@@ -910,6 +910,8 @@ export async function updateAssetBrowser() {
                 })();
             } else if (lowerName.endsWith('.cep')) {
                 iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+            } else if (lowerName.endsWith('.cm')) {
+                iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (lowerName.endsWith('.cmel')) {
                 iconContainer.innerHTML = `<img src="icons/image.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (lowerName.endsWith('.cescene')) {
@@ -1210,6 +1212,9 @@ export async function updateAssetBrowser() {
                  } else if (lowerName.endsWith('.mp3') || lowerName.endsWith('.wav')) {
                      iconName = 'music';
                      fileClass = 'file-audio';
+                 } else if (lowerName.endsWith('.cm')) {
+                     iconName = 'box';
+                     fileClass = 'file-model3d';
                  } else if (lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
                      iconName = 'image';
                      fileClass = 'file-image';

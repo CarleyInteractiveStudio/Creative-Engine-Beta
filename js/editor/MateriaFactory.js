@@ -96,8 +96,65 @@ export async function createSpotLight3D(parent = null) {
     return createSpotLightObject(parent);
 }
 
+export async function instantiateCMModel(cmPath, parent = null, options = {}) {
+    const C3D = await ensure3D();
+    const projectName = new URLSearchParams(window.location.search).get('project');
+    if (!projectName || !window.projectsDirHandle) return null;
+
+    try {
+        const projectHandle = await window.projectsDirHandle.getDirectoryHandle(projectName);
+
+        // Fetch .cm asset file
+        const parts = cmPath.split('/');
+        const fileName = parts.pop();
+        let currentHandle = projectHandle;
+        for (const part of parts) {
+            if (part) currentHandle = await currentHandle.getDirectoryHandle(part);
+        }
+
+        const fileHandle = await currentHandle.getFileHandle(fileName);
+        const file = await fileHandle.getFile();
+        const cmData = JSON.parse(await file.text());
+
+        const rootName = fileName.split('.')[0];
+        const rootMateria = createBaseMateria(generateUniqueName(rootName), parent, false, options.addToScene !== false);
+
+        if (cmData.meshes) {
+            cmData.meshes.forEach((mesh, mIdx) => {
+                const subName = mesh.name || `${rootName}_mesh_${mIdx}`;
+                const subMtr = createBaseMateria(subName, rootMateria, false, false);
+
+                mesh.primitives.forEach((prim) => {
+                    const renderer = new C3D.MeshRenderer3D(subMtr);
+                    renderer.cpuPositions = new Float32Array(prim.positions || []);
+                    renderer.cpuNormals = prim.normals ? new Float32Array(prim.normals) : null;
+                    renderer.cpuUVs = prim.uvs ? new Float32Array(prim.uvs) : null;
+                    renderer.cpuIndices = prim.indices ? new Uint16Array(prim.indices) : null;
+                    renderer.indexCount = prim.indices ? prim.indices.length : (prim.positions ? prim.positions.length / 3 : 0);
+
+                    if (cmData.materials && cmData.materials[prim.materialIndex]) {
+                        const mat = cmData.materials[prim.materialIndex];
+                        if (mat.texturePath) {
+                            const folder = cmPath.includes('/') ? cmPath.substring(0, cmPath.lastIndexOf('/') + 1) : 'Assets/';
+                            renderer.texturePath = folder + mat.texturePath;
+                        }
+                    }
+
+                    renderer.isLoaded = true;
+                    subMtr.addComponent(renderer);
+                });
+            });
+        }
+
+        return rootMateria;
+    } catch (e) {
+        console.error("Error instanciando Carley Model (.cm):", e);
+        return null;
+    }
+}
+
 export async function createSkinnedMeshObject(modelPath, parent = null, options = {}) {
-    return null;
+    return instantiateCMModel(modelPath, parent, options);
 }
 
 export function createScrollViewObject(parent) {
