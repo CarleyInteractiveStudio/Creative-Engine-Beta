@@ -4,8 +4,15 @@ import { showNotification } from './DialogWindow.js';
 let modalElement = null;
 let currentFiles = []; // Array of File or FileHandle objects
 let selectedFileIndices = new Set();
+let selectedFileIndex = 0; // Currently focused file for preview
 let targetDirHandle = null;
 let onCompleteCallback = null;
+
+// Sprite sheet preview animation state
+let previewAnimFrame = 0;
+let previewAnimTimer = null;
+let isPreviewPlaying = true;
+let currentImageObj = null;
 
 export function initializeAssetImportModal() {
     if (document.getElementById('asset-import-modal')) return;
@@ -15,19 +22,19 @@ export function initializeAssetImportModal() {
     modalElement.className = 'modal';
     modalElement.style.display = 'none';
     modalElement.innerHTML = `
-        <div class="modal-content asset-import-modal-content" style="width: 850px; max-width: 95vw; height: 600px; max-height: 90vh; display: flex; flex-direction: column; padding: 0; background: #1e1e24; color: #e0e0e0; border-radius: 8px; overflow: hidden; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.7);">
+        <div class="modal-content asset-import-modal-content" style="width: 960px; max-width: 95vw; height: 680px; max-height: 92vh; display: flex; flex-direction: column; padding: 0; background: #1e1e24; color: #e0e0e0; border-radius: 8px; overflow: hidden; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.7);">
             <!-- Header -->
-            <div class="modal-header" style="display: flex; justify-space-between; align-items: center; padding: 12px 20px; background: #18181c; border-bottom: 1px solid #2d2d35;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: #18181c; border-bottom: 1px solid #2d2d35;">
                 <h3 style="margin: 0; font-size: 1.1rem; color: #4da6ff; display: flex; align-items: center; gap: 8px;">
-                    <img src="icons/box.svg" class="ce-icon" style="width: 20px; height: 20px;"> Importador de Assets 3D
+                    <img src="icons/box.svg" class="ce-icon" style="width: 20px; height: 20px;"> Importador de Assets 3D Avanzado
                 </h3>
                 <button class="close-button" id="import-modal-close" style="background: none; border: none; color: #888; font-size: 1.4rem; cursor: pointer;">&times;</button>
             </div>
 
-            <!-- Body (Sidebar + Inspector) -->
+            <!-- Body (3 Columns: File List + Settings + Live Preview) -->
             <div style="display: flex; flex: 1; overflow: hidden;">
                 <!-- Left Sidebar: File List -->
-                <div style="width: 280px; background: #141418; border-right: 1px solid #2d2d35; display: flex; flex-direction: column;">
+                <div style="width: 250px; background: #141418; border-right: 1px solid #2d2d35; display: flex; flex-direction: column;">
                     <div style="padding: 10px 15px; border-bottom: 1px solid #2d2d35; display: flex; justify-content: space-between; align-items: center; background: #1a1a20;">
                         <span style="font-size: 0.85rem; font-weight: bold; color: #aaa;">Archivos (<span id="import-file-count">0</span>)</span>
                         <div>
@@ -41,17 +48,17 @@ export function initializeAssetImportModal() {
                     </div>
                 </div>
 
-                <!-- Right Inspector / Settings Panel -->
-                <div style="flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; background: #1e1e24;">
-                    <div style="border-bottom: 1px solid #2d2d35; padding-bottom: 8px; margin-bottom: 4px;">
+                <!-- Center: Inspector Settings -->
+                <div style="width: 340px; padding: 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; background: #1e1e24; border-right: 1px solid #2d2d35;">
+                    <div style="border-bottom: 1px solid #2d2d35; padding-bottom: 6px;">
                         <h4 style="margin: 0; font-size: 0.95rem; color: #fff;">Configuración de Importación</h4>
                         <p style="margin: 4px 0 0 0; font-size: 0.78rem; color: #888;" id="import-selection-subtitle">Modificando selección actual</p>
                     </div>
 
                     <!-- Option 1: Image Type -->
                     <div class="import-field-group">
-                        <label style="font-size: 0.85rem; font-weight: bold; color: #ccc; display: block; margin-bottom: 6px;">Tipo de Imagen 3D:</label>
-                        <select id="import-img-type" style="width: 100%; padding: 8px 10px; background: #121215; border: 1px solid #3a3a45; color: #fff; border-radius: 4px; font-size: 0.88rem;">
+                        <label style="font-size: 0.82rem; font-weight: bold; color: #ccc; display: block; margin-bottom: 4px;">Tipo de Imagen 3D:</label>
+                        <select id="import-img-type" style="width: 100%; padding: 7px 10px; background: #121215; border: 1px solid #3a3a45; color: #fff; border-radius: 4px; font-size: 0.85rem;">
                             <option value="Sprite">Sprite (2D/3D Quad)</option>
                             <option value="Textura">Textura Albedo (Superficie 3D)</option>
                             <option value="Normal Map">Normal Map (Relieve 3D)</option>
@@ -59,26 +66,50 @@ export function initializeAssetImportModal() {
                         </select>
                     </div>
 
-                    <!-- Option 2: GR (Grupos de Renderizado / Layer) & Tag -->
-                    <div style="display: flex; gap: 12px;">
+                    <!-- Sprite Sheet Controls (Dynamic) -->
+                    <div id="import-spritesheet-options" style="display: none; background: #141418; padding: 12px; border-radius: 6px; border: 1px solid #333; gap: 10px; flex-direction: column;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.8rem; font-weight: bold; color: #4da6ff;">Ajustes de Hoja de Animación</span>
+                            <button id="import-auto-slice-btn" style="padding: 2px 8px; background: #007acc; border: none; color: #fff; border-radius: 3px; font-size: 0.72rem; cursor: pointer;">Auto-Detección</button>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.75rem; color: #aaa; display: block; margin-bottom: 2px;">Columnas (X):</label>
+                                <input type="number" id="import-sheet-cols" value="4" min="1" max="64" style="width: 100%; padding: 5px; background: #0d0d10; border: 1px solid #3a3a45; color: #fff; border-radius: 3px; font-size: 0.82rem;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.75rem; color: #aaa; display: block; margin-bottom: 2px;">Filas (Y):</label>
+                                <input type="number" id="import-sheet-rows" value="4" min="1" max="64" style="width: 100%; padding: 5px; background: #0d0d10; border: 1px solid #3a3a45; color: #fff; border-radius: 3px; font-size: 0.82rem;">
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.75rem; color: #aaa; display: block; margin-bottom: 2px;">Velocidad FPS:</label>
+                                <input type="number" id="import-sheet-fps" value="12" min="1" max="60" style="width: 100%; padding: 5px; background: #0d0d10; border: 1px solid #3a3a45; color: #fff; border-radius: 3px; font-size: 0.82rem;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Option 2: GR & Tag -->
+                    <div style="display: flex; gap: 10px;">
                         <div class="import-field-group" style="flex: 1;">
-                            <label style="font-size: 0.85rem; font-weight: bold; color: #ccc; display: block; margin-bottom: 6px;">GR (Grupo de Renderizado):</label>
-                            <select id="import-gr-layer" style="width: 100%; padding: 8px 10px; background: #121215; border: 1px solid #3a3a45; color: #fff; border-radius: 4px; font-size: 0.88rem;">
+                            <label style="font-size: 0.82rem; font-weight: bold; color: #ccc; display: block; margin-bottom: 4px;">GR (Render Group):</label>
+                            <select id="import-gr-layer" style="width: 100%; padding: 7px 10px; background: #121215; border: 1px solid #3a3a45; color: #fff; border-radius: 4px; font-size: 0.85rem;">
                                 <!-- Dynamically populated -->
                             </select>
                         </div>
                         <div class="import-field-group" style="flex: 1;">
-                            <label style="font-size: 0.85rem; font-weight: bold; color: #ccc; display: block; margin-bottom: 6px;">Tag (Etiqueta):</label>
-                            <select id="import-tag" style="width: 100%; padding: 8px 10px; background: #121215; border: 1px solid #3a3a45; color: #fff; border-radius: 4px; font-size: 0.88rem;">
+                            <label style="font-size: 0.82rem; font-weight: bold; color: #ccc; display: block; margin-bottom: 4px;">Tag (Etiqueta):</label>
+                            <select id="import-tag" style="width: 100%; padding: 7px 10px; background: #121215; border: 1px solid #3a3a45; color: #fff; border-radius: 4px; font-size: 0.85rem;">
                                 <!-- Dynamically populated -->
                             </select>
                         </div>
                     </div>
 
-                    <!-- Option 3: Max Resolution Optimization (Unity style) -->
+                    <!-- Option 3: Max Resolution Optimization -->
                     <div class="import-field-group">
-                        <label style="font-size: 0.85rem; font-weight: bold; color: #ccc; display: block; margin-bottom: 6px;">Optimización de Calidad (Máx. Píxeles):</label>
-                        <select id="import-max-resolution" style="width: 100%; padding: 8px 10px; background: #121215; border: 1px solid #3a3a45; color: #fff; border-radius: 4px; font-size: 0.88rem;">
+                        <label style="font-size: 0.82rem; font-weight: bold; color: #ccc; display: block; margin-bottom: 4px;">Optimización de Calidad (Máx. Píxeles):</label>
+                        <select id="import-max-resolution" style="width: 100%; padding: 7px 10px; background: #121215; border: 1px solid #3a3a45; color: #fff; border-radius: 4px; font-size: 0.85rem;">
                             <option value="original">Original (Sin Redimensionar)</option>
                             <option value="2048">2048 x 2048 px</option>
                             <option value="1024">1024 x 1024 px</option>
@@ -89,16 +120,35 @@ export function initializeAssetImportModal() {
                     </div>
 
                     <!-- Option 4: Target Location & New Folder -->
-                    <div class="import-field-group" style="margin-top: 4px;">
-                        <label style="font-size: 0.85rem; font-weight: bold; color: #ccc; display: block; margin-bottom: 6px;">Carpeta Destino:</label>
-                        <div style="display: flex; gap: 8px;">
-                            <select id="import-target-folder" style="flex: 1; padding: 8px 10px; background: #121215; border: 1px solid #3a3a45; color: #fff; border-radius: 4px; font-size: 0.88rem;">
+                    <div class="import-field-group">
+                        <label style="font-size: 0.82rem; font-weight: bold; color: #ccc; display: block; margin-bottom: 4px;">Carpeta Destino:</label>
+                        <div style="display: flex; gap: 6px;">
+                            <select id="import-target-folder" style="flex: 1; padding: 7px 10px; background: #121215; border: 1px solid #3a3a45; color: #fff; border-radius: 4px; font-size: 0.85rem;">
                                 <option value="Assets">Assets/</option>
                             </select>
-                            <button id="import-new-folder-btn" style="padding: 8px 12px; background: #2b2b36; border: 1px solid #3a3a45; color: #4da6ff; border-radius: 4px; cursor: pointer; font-size: 0.82rem; font-weight: bold; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
-                                + Crear Carpeta
+                            <button id="import-new-folder-btn" style="padding: 7px 10px; background: #2b2b36; border: 1px solid #3a3a45; color: #4da6ff; border-radius: 4px; cursor: pointer; font-size: 0.78rem; font-weight: bold; white-space: nowrap;">
+                                + Carpeta
                             </button>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Right: Live Visual Preview & Slice Player -->
+                <div style="flex: 1; padding: 18px; display: flex; flex-direction: column; background: #16161a; gap: 12px; align-items: center; justify-content: center;">
+                    <div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.85rem; font-weight: bold; color: #aaa;">Vista Previa en Tiempo Real</span>
+                        <span id="import-img-dimensions" style="font-size: 0.78rem; color: #4da6ff;">0 x 0 px</span>
+                    </div>
+
+                    <!-- Interactive Canvas Container -->
+                    <div style="width: 100%; flex: 1; background: #0d0d10; border: 1px solid #2d2d35; border-radius: 6px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; background-image: radial-gradient(#222 1px, transparent 1px); background-size: 16px 16px;">
+                        <canvas id="import-preview-canvas" style="max-width: 95%; max-height: 95%; object-fit: contain; image-rendering: pixelated;"></canvas>
+                    </div>
+
+                    <!-- Animation Playback Controls (Visible for Sprite Sheets) -->
+                    <div id="import-anim-controls" style="display: none; width: 100%; justify-content: center; align-items: center; gap: 10px; padding: 6px; background: #1c1c22; border-radius: 4px; border: 1px solid #2a2a32;">
+                        <button id="import-play-pause-btn" style="padding: 4px 12px; background: #007acc; border: none; color: #fff; border-radius: 3px; font-size: 0.78rem; cursor: pointer; font-weight: bold;">Pausar</button>
+                        <span id="import-frame-counter" style="font-size: 0.78rem; color: #aaa; font-family: monospace;">Frame: 1 / 16</span>
                     </div>
                 </div>
             </div>
@@ -133,9 +183,34 @@ function setupEvents() {
 
     document.getElementById('import-new-folder-btn').onclick = createNewFolder;
     document.getElementById('import-confirm-btn').onclick = executeImport;
+
+    const imgTypeSelect = document.getElementById('import-img-type');
+    imgTypeSelect.onchange = () => {
+        const isSheet = imgTypeSelect.value === 'Hoja de Animacion';
+        document.getElementById('import-spritesheet-options').style.display = isSheet ? 'flex' : 'none';
+        document.getElementById('import-anim-controls').style.display = isSheet ? 'flex' : 'none';
+        if (isSheet && currentImageObj) {
+            autoSliceSpriteSheet();
+        }
+        updatePreview();
+    };
+
+    document.getElementById('import-sheet-cols').oninput = updatePreview;
+    document.getElementById('import-sheet-rows').oninput = updatePreview;
+    document.getElementById('import-sheet-fps').oninput = updatePreview;
+
+    document.getElementById('import-auto-slice-btn').onclick = () => {
+        if (currentImageObj) autoSliceSpriteSheet();
+    };
+
+    document.getElementById('import-play-pause-btn').onclick = () => {
+        isPreviewPlaying = !isPreviewPlaying;
+        document.getElementById('import-play-pause-btn').textContent = isPreviewPlaying ? 'Pausar' : 'Reproducir';
+    };
 }
 
 function hideModal() {
+    if (previewAnimTimer) clearInterval(previewAnimTimer);
     if (modalElement) {
         modalElement.classList.remove('is-open');
         modalElement.style.display = 'none';
@@ -215,6 +290,7 @@ function renderFileList() {
     currentFiles.forEach((f, idx) => {
         const fileName = f.name || f.fileHandle?.name || `Archivo ${idx + 1}`;
         const isSelected = selectedFileIndices.has(idx);
+        const isFocused = selectedFileIndex === idx;
 
         const item = document.createElement('div');
         item.style.padding = '8px 10px';
@@ -225,8 +301,8 @@ function renderFileList() {
         item.style.alignItems = 'center';
         item.style.gap = '8px';
         item.style.fontSize = '0.82rem';
-        item.style.background = isSelected ? '#1e3850' : '#18181d';
-        item.style.border = isSelected ? '1px solid #4da6ff' : '1px solid transparent';
+        item.style.background = isFocused ? '#254a6b' : (isSelected ? '#1e3850' : '#18181d');
+        item.style.border = isFocused ? '1px solid #00a8ff' : (isSelected ? '1px solid #4da6ff' : '1px solid transparent');
         item.style.color = isSelected ? '#fff' : '#aaa';
 
         item.innerHTML = `
@@ -236,6 +312,7 @@ function renderFileList() {
         `;
 
         item.onclick = (e) => {
+            selectedFileIndex = idx;
             if (e.target.tagName !== 'INPUT') {
                 if (selectedFileIndices.has(idx)) selectedFileIndices.delete(idx);
                 else selectedFileIndices.add(idx);
@@ -244,10 +321,144 @@ function renderFileList() {
                 else selectedFileIndices.delete(idx);
             }
             renderFileList();
+            loadFocusedFileForPreview();
         };
 
         container.appendChild(item);
     });
+}
+
+async function loadFocusedFileForPreview() {
+    if (currentFiles.length === 0 || selectedFileIndex < 0 || selectedFileIndex >= currentFiles.length) {
+        currentImageObj = null;
+        updatePreview();
+        return;
+    }
+
+    const item = currentFiles[selectedFileIndex];
+    let fileObj = item;
+    if (item.getFile) {
+        fileObj = await item.getFile();
+    }
+
+    if (fileObj.type && !fileObj.type.startsWith('image/')) {
+        currentImageObj = null;
+        updatePreview();
+        return;
+    }
+
+    const url = URL.createObjectURL(fileObj);
+    const img = new Image();
+    img.onload = () => {
+        URL.revokeObjectURL(url);
+        currentImageObj = img;
+        document.getElementById('import-img-dimensions').textContent = `${img.width} x ${img.height} px`;
+
+        const imgTypeSelect = document.getElementById('import-img-type');
+        if (imgTypeSelect.value === 'Hoja de Animacion') {
+            autoSliceSpriteSheet();
+        }
+        updatePreview();
+    };
+    img.onerror = () => {
+        URL.revokeObjectURL(url);
+        currentImageObj = null;
+        updatePreview();
+    };
+    img.src = url;
+}
+
+function autoSliceSpriteSheet() {
+    if (!currentImageObj) return;
+
+    const width = currentImageObj.width;
+    const height = currentImageObj.height;
+
+    // Automatic aspect ratio detection heuristics for standard power-of-two or square sprite grids
+    let cols = 4;
+    let rows = 4;
+
+    if (width === height) {
+        cols = 4; rows = 4;
+    } else if (width > height) {
+        cols = Math.round(width / (height / 2)) || 4;
+        rows = 2;
+    } else {
+        rows = Math.round(height / (width / 2)) || 4;
+        cols = 2;
+    }
+
+    document.getElementById('import-sheet-cols').value = Math.max(1, cols);
+    document.getElementById('import-sheet-rows').value = Math.max(1, rows);
+}
+
+function updatePreview() {
+    if (previewAnimTimer) {
+        clearInterval(previewAnimTimer);
+        previewAnimTimer = null;
+    }
+
+    const canvas = document.getElementById('import-preview-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    if (!currentImageObj) {
+        canvas.width = 300;
+        canvas.height = 200;
+        ctx.clearRect(0, 0, 300, 200);
+        ctx.fillStyle = '#666';
+        ctx.font = '13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Sin Vista Previa de Imagen', 150, 105);
+        return;
+    }
+
+    const imgType = document.getElementById('import-img-type').value;
+
+    if (imgType !== 'Hoja de Animacion') {
+        canvas.width = currentImageObj.width;
+        canvas.height = currentImageObj.height;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(currentImageObj, 0, 0);
+        return;
+    }
+
+    // Sprite Sheet Animated Preview Logic
+    const cols = parseInt(document.getElementById('import-sheet-cols').value, 10) || 1;
+    const rows = parseInt(document.getElementById('import-sheet-rows').value, 10) || 1;
+    const fps = parseInt(document.getElementById('import-sheet-fps').value, 10) || 12;
+
+    const frameWidth = Math.floor(currentImageObj.width / cols);
+    const frameHeight = Math.floor(currentImageObj.height / rows);
+
+    canvas.width = frameWidth;
+    canvas.height = frameHeight;
+
+    const totalFrames = cols * rows;
+    previewAnimFrame = 0;
+
+    const drawFrame = () => {
+        const frameIdx = previewAnimFrame % totalFrames;
+        const col = frameIdx % cols;
+        const row = Math.floor(frameIdx / cols);
+
+        ctx.clearRect(0, 0, frameWidth, frameHeight);
+        ctx.drawImage(
+            currentImageObj,
+            col * frameWidth, row * frameHeight, frameWidth, frameHeight,
+            0, 0, frameWidth, frameHeight
+        );
+
+        const counter = document.getElementById('import-frame-counter');
+        if (counter) counter.textContent = `Frame: ${frameIdx + 1} / ${totalFrames}`;
+
+        if (isPreviewPlaying) {
+            previewAnimFrame++;
+        }
+    };
+
+    drawFrame();
+    previewAnimTimer = setInterval(drawFrame, 1000 / fps);
 }
 
 async function createNewFolder() {
@@ -344,6 +555,10 @@ async function executeImport() {
     const maxRes = document.getElementById('import-max-resolution').value;
     const targetFolder = document.getElementById('import-target-folder').value;
 
+    const cols = parseInt(document.getElementById('import-sheet-cols').value, 10) || 1;
+    const rows = parseInt(document.getElementById('import-sheet-rows').value, 10) || 1;
+    const fps = parseInt(document.getElementById('import-sheet-fps').value, 10) || 12;
+
     const filesToImport = Array.from(selectedFileIndices).map(idx => currentFiles[idx]);
 
     try {
@@ -370,12 +585,13 @@ async function executeImport() {
             await writable.write(processedFile);
             await writable.close();
 
-            // Write .meta with 3D import configuration metadata
+            // Write .meta with 3D import configuration metadata and slice grid
             const metaData = {
                 imageType: imgType,
                 layer: grLayer,
                 tag: tag,
                 maxResolution: maxRes,
+                spriteSheet: imgType === 'Hoja de Animacion' ? { columns: cols, rows: rows, fps: fps } : null,
                 importDate: new Date().toISOString()
             };
 
@@ -402,12 +618,14 @@ export async function showAssetImportModal(files, defaultTargetDirHandle = null,
 
     currentFiles = Array.from(files);
     selectedFileIndices = new Set(currentFiles.map((_, i) => i));
+    selectedFileIndex = 0;
     targetDirHandle = defaultTargetDirHandle;
     onCompleteCallback = onComplete;
 
     populateDropdowns();
     await populateFolders(window.projectsDirHandle);
     renderFileList();
+    loadFocusedFileForPreview();
 
     modalElement.style.display = 'flex';
     modalElement.classList.add('is-open');
