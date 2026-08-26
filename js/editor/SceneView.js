@@ -1716,10 +1716,6 @@ export function initialize(dependencies) {
                     newMateria.addComponent(spriteRenderer);
 
                     SceneManager.currentScene.addMateria(newMateria);
-                } else if (data.type === 'Asset' && data.kind === 'sub-model') {
-                    newMateria = await MateriaFactory.createSkinnedMeshObject(data.path, null, { meshIndex: data.dragData?.meshIndex });
-                } else if (data.type === 'Asset' && (data.name.endsWith('.glb') || data.name.endsWith('.gltf') || data.name.endsWith('.obj') || data.name.endsWith('.fbx'))) {
-                    newMateria = await MateriaFactory.createSkinnedMeshObject(data.path, null);
                 } else if (data.type === 'Asset' && data.name.endsWith('.ceprefab')) {
                     newMateria = await SceneManager.instantiatePrefabFromPath(data.path, worldPos.x, worldPos.y);
                 } else if (data.type === 'Asset' && (data.name.endsWith('.png') || data.name.endsWith('.jpg') || data.name.endsWith('.jpeg') || data.name.endsWith('.ceSprite'))) {

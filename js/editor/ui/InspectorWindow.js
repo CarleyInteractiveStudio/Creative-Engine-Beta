@@ -7012,8 +7012,6 @@ async function updateInspectorForAsset(assetName, assetPath) {
             await renderAudioInspector(assetName, assetPath);
         } else if (lowerName.endsWith('.mp4') || lowerName.endsWith('.webm') || lowerName.endsWith('.ogv')) {
             await renderVideoInspector(assetName, assetPath);
-        } else if (lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.endsWith('.obj') || lowerName.endsWith('.fbx')) {
-            await renderModel3DInspector(assetName, assetPath, currentId);
         } else {
              dom.inspectorContent.innerHTML += `
                 <div class="unknown-file-info" style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">

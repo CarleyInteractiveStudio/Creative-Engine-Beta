@@ -914,15 +914,6 @@ export async function updateAssetBrowser() {
                 iconContainer.innerHTML = `<img src="icons/image.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (lowerName.endsWith('.cescene')) {
                 iconContainer.innerHTML = `<img src="icons/map.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
-            } else if (lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.endsWith('.obj') || lowerName.endsWith('.fbx')) {
-                const cardCanvas = document.createElement('canvas');
-                cardCanvas.className = 'model-card-3d-canvas';
-                cardCanvas.style.width = '100%';
-                cardCanvas.style.height = '100%';
-                cardCanvas.style.pointerEvents = 'none';
-                iconContainer.innerHTML = '';
-                iconContainer.appendChild(cardCanvas);
-                register3DCardPreview(cardCanvas, fullPath);
             } else if (lowerName.endsWith('.ceprefab')) {
                 iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (lowerName.endsWith('.celib')) {
@@ -950,19 +941,6 @@ export async function updateAssetBrowser() {
                 iconContainer.innerHTML = `<img src="icons/file.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             }
 
-            // --- Model Expansion Toggle ---
-            if (entry.kind === 'file' && (lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.endsWith('.obj') || lowerName.endsWith('.fbx'))) {
-                const toggle = document.createElement('div');
-                toggle.className = 'model-expand-toggle';
-                toggle.innerHTML = `<img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; transition: transform 0.2s; ${expandedModels.has(fullPath) ? 'transform: rotate(90deg);' : ''}">`;
-                toggle.onclick = (e) => {
-                    e.stopPropagation();
-                    if (expandedModels.has(fullPath)) expandedModels.delete(fullPath);
-                    else expandedModels.add(fullPath);
-                    updateAssetBrowser();
-                };
-                item.appendChild(toggle);
-            }
 
             // --- Sprite Expansion Toggle ---
             if (entry.kind === 'file' && lowerName.endsWith('.cesprite')) {
@@ -1235,9 +1213,6 @@ export async function updateAssetBrowser() {
                  } else if (lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
                      iconName = 'image';
                      fileClass = 'file-image';
-                 } else if (lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.endsWith('.obj') || lowerName.endsWith('.fbx')) {
-                     iconName = 'box';
-                     fileClass = 'file-model3d';
                  }
 
                  fileItem.classList.add(fileClass);
@@ -1705,89 +1680,6 @@ export function getCurrentDirectoryPath() {
 }
 
 async function renderModelSubAssets(gridContainer, fileEntry, modelPath) {
-    const { ModelLoader3D: Loader } = await import('../../engine/ModelLoader3D.js');
-
-    try {
-        const data = await Loader.loadModel(modelPath, window.projectsDirHandle);
-        if (!data) return;
-
-        const modelFileName = modelPath.split('/').pop().split('.')[0];
-
-        // 1. Full Model / Prefab Main Assembly Card
-        createSubAssetItem(gridContainer, `${modelFileName} (Modelo Completo)`, 'box', {
-            type: 'ModelMesh',
-            modelPath,
-            meshIndex: undefined
-        });
-
-        // 2. Sub-mesh / Sub-models (isolated sub-meshes like Unity: volante, gomas, chasis)
-        const addedMeshIndices = new Set();
-
-        if (data.nodes && data.nodes.length > 0) {
-            data.nodes.forEach((n, i) => {
-                if (n.mesh !== undefined && n.mesh !== null && !addedMeshIndices.has(n.mesh)) {
-                    addedMeshIndices.add(n.mesh);
-                    const meshName = (data.meshes && data.meshes[n.mesh] && data.meshes[n.mesh].name) ? data.meshes[n.mesh].name : (n.name || `Pieza ${n.mesh}`);
-                    createSubAssetItem(gridContainer, meshName, 'box', { type: 'ModelMesh', modelPath, meshIndex: n.mesh, nodeIndex: i });
-                }
-            });
-        }
-
-        if (data.meshes && data.meshes.length > 0) {
-            data.meshes.forEach((m, i) => {
-                if (!addedMeshIndices.has(i)) {
-                    addedMeshIndices.add(i);
-                    createSubAssetItem(gridContainer, m.name || `Sub-Modelo ${i}`, 'box', { type: 'ModelMesh', modelPath, meshIndex: i });
-                }
-            });
-        }
-
-        // 3. Animations & Bone Rig Skeleton (Unity style)
-        if (data.animations && data.animations.length > 0) {
-            data.animations.forEach((anim, idx) => {
-                const animName = anim.name || `Animación ${idx + 1}`;
-                createSubAssetItem(gridContainer, animName, 'play', {
-                    type: 'ModelAnimation',
-                    modelPath,
-                    animIndex: idx
-                });
-            });
-        }
-
-        if ((data.skins && data.skins.length > 0) || (data.nodes && data.nodes.some(n => n.name && (n.name.toLowerCase().includes('bone') || n.name.toLowerCase().includes('armature') || n.name.toLowerCase().includes('hueso'))))) {
-            createSubAssetItem(gridContainer, `${modelFileName} (Esqueleto / Huesos)`, 'bot', {
-                type: 'ModelSkeleton',
-                modelPath
-            });
-        }
-
-        // 4. Materials & Textures (Unity style)
-        const addedTextures = new Set();
-        if (data.materials && data.materials.length > 0) {
-            data.materials.forEach((mat, idx) => {
-                const matName = mat.name || `Material ${idx + 1}`;
-                const texPath = mat.textureUrl || mat.texturePath;
-                if (texPath) {
-                    if (!addedTextures.has(texPath)) {
-                        addedTextures.add(texPath);
-                        createSubAssetItem(gridContainer, `${matName} (Textura)`, 'image', {
-                            type: 'ModelTexture',
-                            modelPath,
-                            texturePath: texPath
-                        });
-                    }
-                } else {
-                    createSubAssetItem(gridContainer, matName, 'brush', {
-                        type: 'ModelMaterial',
-                        modelPath,
-                        materialIndex: idx
-                    });
-                }
-            });
-        }
-    } catch (e) {
-        console.error("Error loading sub-assets for expansion:", e);
-    }
 }
 
 function createSubAssetItem(container, name, icon, dragData) {

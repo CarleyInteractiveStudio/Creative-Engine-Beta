@@ -539,7 +539,7 @@ export async function handleContextMenuAction(action) {
             {
                 const input = document.createElement('input');
                 input.type = 'file';
-                input.accept = '.glb,.gltf,.obj,.fbx';
+                input.accept = '';
                 input.onchange = async (e) => {
                     const file = e.target.files[0];
                     if (!file) return;
@@ -819,13 +819,7 @@ function setupEventListeners() {
 
                 try {
                     let anim = null;
-                    if (data.isEmbedded) {
-                        const { ModelLoader3D } = await import('../../engine/ModelLoader3D.js');
-                        const modelData = await ModelLoader3D.loadModel(data.modelPath, window.projectsDirHandle);
-                        if (modelData && modelData.animations) {
-                            anim = modelData.animations[data.animIndex];
-                        }
-                    } else if (data.isExtracted) {
+                    if (data.isExtracted) {
                         const dirHandle = getCurrentDirectoryHandle();
                         const fileHandle = await dirHandle.getFileHandle(data.path);
                         const file = await fileHandle.getFile();
