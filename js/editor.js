@@ -52,6 +52,7 @@ import * as CollaborationSystem from './editor/CollaborationSystem.js';
 import * as UpdatesWindow from './editor/ui/UpdatesWindow.js';
 import * as CollabActivityWindow from './editor/ui/CollabActivityWindow.js';
 import { showExtensionsWindow } from './editor/ui/ExtensionsWindow.js';
+import { showAssetImportModal } from './editor/ui/AssetImportModalWindow.js';
  import { showPreMadeScenesWindow } from './editor/ui/PreMadeScenesWindow.js';
 import * as NoviceGuide from './editor/ui/NoviceGuideWindow.js';
 import { buildProject, runStandalonePreview } from './editor/BuildSystem.js';
@@ -3710,41 +3711,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         dom.menuImportAsset.addEventListener('click', async (e) => {
             e.preventDefault();
-            const L = window.Localization;
-            const currentDirHandle = getCurrentDirectoryHandle();
-            if (!currentDirHandle) {
-                showNotificationDialog(L?.get('AVISO') || "Aviso", L?.get('SELECCIONAR_CARPETA_IMPORTAR') || "Selecciona primero una carpeta en el navegador de assets para importar archivos.");
-                return;
-            }
-
             try {
-                // Try modern File System Access API
                 if (window.showOpenFilePicker) {
                     const files = await window.showOpenFilePicker({
                         multiple: true
                     });
-
-                    for (const fileHandle of files) {
-                        const file = await fileHandle.getFile();
-                        const targetFileHandle = await currentDirHandle.getFileHandle(file.name, { create: true });
-                        const writable = await targetFileHandle.createWritable();
-                        await writable.write(file);
-                        await writable.close();
-                    }
-                    updateAssetBrowser();
+                    showAssetImportModal(files, getCurrentDirectoryHandle(), updateAssetBrowser);
                 } else {
-                    // Fallback using hidden input
                     const input = document.createElement('input');
                     input.type = 'file';
                     input.multiple = true;
-                    input.onchange = async () => {
-                        for (const file of input.files) {
-                            const targetFileHandle = await currentDirHandle.getFileHandle(file.name, { create: true });
-                            const writable = await targetFileHandle.createWritable();
-                            await writable.write(file);
-                            await writable.close();
-                        }
-                        updateAssetBrowser();
+                    input.onchange = () => {
+                        showAssetImportModal(Array.from(input.files), getCurrentDirectoryHandle(), updateAssetBrowser);
                     };
                     input.click();
                 }

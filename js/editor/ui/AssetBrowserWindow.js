@@ -1633,42 +1633,16 @@ async function importZipFile(file, targetHandle, stats) {
 }
 
 async function handleExternalFileDrop(e) {
-    const L = window.Localization;
     dragCounter = 0;
     dom.assetsContent.classList.remove('drag-over-fs');
 
-    const items = e.dataTransfer.items;
-    if (!items || items.length === 0) return;
+    if (!e.dataTransfer || !e.dataTransfer.files || e.dataTransfer.files.length === 0) return;
 
     e.preventDefault();
     e.stopPropagation();
 
-    if (!currentDirectoryHandle.handle) {
-        console.error("[AssetBrowser] No directory handle available for import.");
-        window.Dialogs.showNotification(L.get('ERROR'), L.get('SELECCIONAR_CARPETA_IMPORTAR', 'Selecciona una carpeta para importar.'));
-        return;
-    }
-
-    console.log(`Iniciando importación recursiva a ${currentDirectoryHandle.path}...`);
-    let stats = { files: 0, libs: 0 };
-
-    for (const item of items) {
-        const entry = item.webkitGetAsEntry();
-        if (entry) {
-            await processEntry(entry, currentDirectoryHandle.handle, stats);
-        }
-    }
-
-    if (stats.files > 0) {
-        console.log(`${stats.files} archivo(s) importados con éxito.`);
-        await updateAssetBrowserCallback();
-    }
-    if (stats.libs > 0) {
-        console.log(`${stats.libs} librería(s) importada(s) con éxito.`);
-        if (refreshLibraryListCallback) {
-            refreshLibraryListCallback();
-        }
-    }
+    const { showAssetImportModal } = await import('./AssetImportModalWindow.js');
+    showAssetImportModal(Array.from(e.dataTransfer.files), currentDirectoryHandle.handle, updateAssetBrowser);
 }
 
 export function getCurrentDirectoryHandle() {
