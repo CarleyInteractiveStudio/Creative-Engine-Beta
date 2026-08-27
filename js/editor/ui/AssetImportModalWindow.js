@@ -39,13 +39,19 @@ export function initializeAssetImportModal() {
             <div style="display: flex; flex: 1; overflow: hidden;">
                 <!-- Left Sidebar: File List & Expandable 3D Hierarchy -->
                 <div style="width: 270px; background: #141418; border-right: 1px solid #2d2d35; display: flex; flex-direction: column;">
-                    <div style="padding: 10px 15px; border-bottom: 1px solid #2d2d35; display: flex; justify-content: space-between; align-items: center; background: #1a1a20;">
-                        <span style="font-size: 0.85rem; font-weight: bold; color: #aaa;">Archivos (<span id="import-file-count">0</span>)</span>
-                        <div>
-                            <button id="import-select-all" style="background: none; border: none; color: #4da6ff; font-size: 0.75rem; cursor: pointer; padding: 2px 4px;">Todos</button>
-                            <span style="color: #444;">|</span>
-                            <button id="import-deselect-all" style="background: none; border: none; color: #888; font-size: 0.75rem; cursor: pointer; padding: 2px 4px;">Ninguno</button>
+                    <div style="padding: 10px 15px; border-bottom: 1px solid #2d2d35; display: flex; flex-direction: column; gap: 6px; background: #1a1a20;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.85rem; font-weight: bold; color: #aaa;">Archivos (<span id="import-file-count">0</span>)</span>
+                            <div>
+                                <button id="import-select-all" style="background: none; border: none; color: #4da6ff; font-size: 0.75rem; cursor: pointer; padding: 2px 4px;">Todos</button>
+                                <span style="color: #444;">|</span>
+                                <button id="import-deselect-all" style="background: none; border: none; color: #888; font-size: 0.75rem; cursor: pointer; padding: 2px 4px;">Ninguno</button>
+                            </div>
                         </div>
+                        <button id="import-add-files-btn" style="width: 100%; padding: 5px 8px; background: #254a6b; border: 1px solid #00a8ff; color: #fff; border-radius: 4px; font-size: 0.78rem; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                            <span style="font-size: 1rem; line-height: 1;">+</span> Agregar Archivos / Modelos
+                        </button>
+                        <input type="file" id="import-file-picker-input" multiple style="display: none;" accept=".gltf,.glb,.cm,.png,.jpg,.jpeg,.mp3,.wav,.ceScene,.cea,.ceanim,.ceprefab">
                     </div>
                     <div id="import-file-list" style="flex: 1; overflow-y: auto; padding: 8px;">
                         <!-- List items injected dynamically -->
@@ -242,6 +248,19 @@ function setupEvents() {
         renderFileList();
     };
 
+    const addFilesBtn = document.getElementById('import-add-files-btn');
+    const filePickerInput = document.getElementById('import-file-picker-input');
+
+    if (addFilesBtn && filePickerInput) {
+        addFilesBtn.onclick = () => filePickerInput.click();
+        filePickerInput.onchange = (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+                appendFilesToImport(Array.from(e.target.files));
+                filePickerInput.value = ''; // Reset input
+            }
+        };
+    }
+
     document.getElementById('import-new-folder-btn').onclick = createNewFolder;
     document.getElementById('import-confirm-btn').onclick = executeImport;
 
@@ -314,15 +333,21 @@ function setupEvents() {
         container.style.border = 'none';
 
         if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const newFiles = Array.from(e.dataTransfer.files);
-            const startIdx = currentFiles.length;
-            currentFiles.push(...newFiles);
-            newFiles.forEach((_, i) => selectedFileIndices.add(startIdx + i));
-            selectedFileIndex = startIdx;
-            renderFileList();
-            loadFocusedFileForPreview();
+            appendFilesToImport(Array.from(e.dataTransfer.files));
         }
     });
+}
+
+function appendFilesToImport(newFiles) {
+    if (!newFiles || newFiles.length === 0) return;
+
+    const startIdx = currentFiles.length;
+    currentFiles.push(...newFiles);
+    newFiles.forEach((_, i) => selectedFileIndices.add(startIdx + i));
+    selectedFileIndex = startIdx;
+
+    renderFileList();
+    loadFocusedFileForPreview();
 }
 
 function hideModal() {
@@ -1170,16 +1195,25 @@ async function executeImport() {
 export async function showAssetImportModal(files, defaultTargetDirHandle = null, onComplete = null) {
     initializeAssetImportModal();
 
-    currentFiles = Array.from(files);
-    selectedFileIndices = new Set(currentFiles.map((_, i) => i));
-    selectedFileIndex = 0;
-    targetDirHandle = defaultTargetDirHandle;
-    onCompleteCallback = onComplete;
+    const newFiles = Array.from(files || []);
 
-    populateDropdowns();
-    await populateFolders(window.projectsDirHandle);
-    renderFileList();
-    loadFocusedFileForPreview();
+    // If modal is already open, append incoming files to existing hierarchy list
+    const isAlreadyOpen = modalElement.style.display === 'flex' && !modalElement.classList.contains('hidden');
+
+    if (isAlreadyOpen && currentFiles.length > 0) {
+        appendFilesToImport(newFiles);
+    } else {
+        currentFiles = newFiles;
+        selectedFileIndices = new Set(currentFiles.map((_, i) => i));
+        selectedFileIndex = 0;
+        targetDirHandle = defaultTargetDirHandle;
+        onCompleteCallback = onComplete;
+
+        populateDropdowns();
+        await populateFolders(window.projectsDirHandle);
+        renderFileList();
+        loadFocusedFileForPreview();
+    }
 
     modalElement.style.display = 'flex';
     modalElement.classList.remove('hidden');
