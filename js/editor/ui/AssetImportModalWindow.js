@@ -343,15 +343,9 @@ function setupEvents() {
             const dx = e.clientX - lastMousePos.x;
             const dy = e.clientY - lastMousePos.y;
 
-            if (e.buttons === 2 || e.shiftKey) {
-                // Pan camera
-                preview3DPanX += dx * 0.8;
-                preview3DPanY += dy * 0.8;
-            } else {
-                // Orbit Y-axis (Yaw) & X-axis (Pitch)
-                preview3DAngle = (preview3DAngle + dx * 0.5) % 360;
-                preview3DPitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, preview3DPitch + dy * 0.008));
-            }
+            // Pure relative camera rotation relative to screen orientation (no panning)
+            preview3DAngle = (preview3DAngle + dx * 0.6) % 360;
+            preview3DPitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, preview3DPitch + dy * 0.008));
 
             lastMousePos = { x: e.clientX, y: e.clientY };
         });
@@ -857,10 +851,10 @@ function update3DTurntablePreview() {
                             intensity = Math.max(0.35, Math.min(1.0, dot * 0.65 + 0.35));
                         }
 
-                        // Project to 2D screen coordinates with Pan
-                        const p0 = [r0[0] * scale * (300 / (300 + r0[2])) + preview3DPanX, -r0[1] * scale * (300 / (300 + r0[2])) + preview3DPanY];
-                        const p1 = [r1[0] * scale * (300 / (300 + r1[2])) + preview3DPanX, -r1[1] * scale * (300 / (300 + r1[2])) + preview3DPanY];
-                        const p2 = [r2[0] * scale * (300 / (300 + r2[2])) + preview3DPanX, -r2[1] * scale * (300 / (300 + r2[2])) + preview3DPanY];
+                        // Project to 2D screen coordinates
+                        const p0 = [r0[0] * scale * (300 / (300 + r0[2])), -r0[1] * scale * (300 / (300 + r0[2]))];
+                        const p1 = [r1[0] * scale * (300 / (300 + r1[2])), -r1[1] * scale * (300 / (300 + r1[2]))];
+                        const p2 = [r2[0] * scale * (300 / (300 + r2[2])), -r2[1] * scale * (300 / (300 + r2[2]))];
 
                         triangles.push({ p0, p1, p2, avgZ, intensity });
                     }
@@ -883,12 +877,16 @@ function update3DTurntablePreview() {
                             ctx.lineWidth = 1.0;
                             ctx.stroke();
                         } else if (isSolidWhite) {
-                            // 2. Clean White Shaded Model (Uniform White without Tinting)
-                            const val = Math.floor(tri.intensity * 200 + 55);
-                            ctx.fillStyle = `rgb(${val}, ${val}, ${val})`;
+                            // 2. Clean White Shaded Model (Fill + Slight Stroke matching fill to fill triangle gap seams)
+                            const val = Math.floor(tri.intensity * 190 + 65);
+                            const fillCol = `rgb(${val}, ${val}, ${val})`;
+                            ctx.fillStyle = fillCol;
+                            ctx.strokeStyle = fillCol;
+                            ctx.lineWidth = 0.7;
                             ctx.fill();
+                            ctx.stroke();
                         } else if (isTextured) {
-                            // 3. Model with Extracted Textures (or Shaded fallback)
+                            // 3. Model with Extracted Textures (or White Shaded fallback)
                             if (loadedImg && loadedImg.complete && loadedImg.width > 0) {
                                 ctx.save();
                                 ctx.clip();
@@ -896,9 +894,13 @@ function update3DTurntablePreview() {
                                 ctx.drawImage(loadedImg, -180, -180, 360, 360);
                                 ctx.restore();
                             } else {
-                                const val = Math.floor(tri.intensity * 200 + 55);
-                                ctx.fillStyle = `rgb(${val}, ${val}, ${val})`;
+                                const val = Math.floor(tri.intensity * 190 + 65);
+                                const fillCol = `rgb(${val}, ${val}, ${val})`;
+                                ctx.fillStyle = fillCol;
+                                ctx.strokeStyle = fillCol;
+                                ctx.lineWidth = 0.7;
                                 ctx.fill();
+                                ctx.stroke();
                             }
                         }
                     }
