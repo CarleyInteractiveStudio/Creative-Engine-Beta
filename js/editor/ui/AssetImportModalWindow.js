@@ -25,9 +25,15 @@ let currentImageObj = null;
 // 3D WebGL Turntable Preview State
 let currentCMData = null;
 let preview3DAngle = 0;
+let preview3DPitch = 0.3; // Orbit pitch angle (radians)
+let preview3DZoom = 1.0;  // Zoom scale multiplier
+let preview3DPanX = 0;    // Center X offset
+let preview3DPanY = 0;    // Center Y offset
 let preview3DTimer = null;
 let preview3DMode = 'shaded_wireframe'; // 'wireframe', 'shaded', 'shaded_wireframe'
 let textureImageMap = new Map(); // texture URI / name -> HTMLImageElement
+let isOrbitDragging = false;
+let lastMousePos = { x: 0, y: 0 };
 
 export function initializeAssetImportModal() {
     if (document.getElementById('asset-import-modal')) return;
@@ -311,6 +317,50 @@ function setupEvents() {
     }
 
     // Drag and Drop files directly into the modal window
+    // Interactive 3D Orbit Camera Controls (Mouse Drag & Zoom)
+    const previewCanvas = document.getElementById('import-preview-canvas');
+    if (previewCanvas) {
+        previewCanvas.addEventListener('mousedown', (e) => {
+            if (!currentCMData) return;
+            isOrbitDragging = true;
+            lastMousePos = { x: e.clientX, y: e.clientY };
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isOrbitDragging || !currentCMData) return;
+
+            const dx = e.clientX - lastMousePos.x;
+            const dy = e.clientY - lastMousePos.y;
+
+            if (e.buttons === 2 || e.shiftKey) {
+                // Pan camera
+                preview3DPanX += dx * 0.8;
+                preview3DPanY += dy * 0.8;
+            } else {
+                // Orbit Y-axis (Yaw) & X-axis (Pitch)
+                preview3DAngle = (preview3DAngle + dx * 0.5) % 360;
+                preview3DPitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, preview3DPitch + dy * 0.008));
+            }
+
+            lastMousePos = { x: e.clientX, y: e.clientY };
+        });
+
+        window.addEventListener('mouseup', () => {
+            isOrbitDragging = false;
+        });
+
+        previewCanvas.addEventListener('wheel', (e) => {
+            if (!currentCMData) return;
+            e.preventDefault();
+            const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+            preview3DZoom = Math.max(0.2, Math.min(6.0, preview3DZoom * zoomFactor));
+        });
+
+        previewCanvas.addEventListener('contextmenu', (e) => {
+            if (currentCMData) e.preventDefault();
+        });
+    }
+
     const container = modalElement.querySelector('.asset-import-container');
     container.addEventListener('dragover', (e) => {
         if (e.dataTransfer && e.dataTransfer.types.includes('Files')) {
@@ -727,12 +777,27 @@ function update3DTurntablePreview() {
         const isSolid = preview3DMode === 'shaded' || preview3DMode === 'shaded_wireframe';
         const isWireframe = preview3DMode === 'wireframe' || preview3DMode === 'shaded_wireframe';
 
+        const pitchCos = Math.cos(preview3DPitch);
+        const pitchSin = Math.sin(preview3DPitch);
+
         for (const mesh of meshesToRender) {
             for (const primitive of mesh.primitives) {
                 const positions = primitive.positions;
                 const normals = primitive.normals;
                 const indices = primitive.indices;
                 if (!positions || positions.length < 6) continue;
+
+                // Check texture mapping
+                let loadedImg = null;
+                if (primitive.material && primitive.material.texturePath) {
+                    const tPath = primitive.material.texturePath;
+                    loadedImg = textureImageMap.get(tPath) || textureImageMap.get(tPath.split('/').pop());
+                }
+                if (!loadedImg && textureImageMap.size > 0) {
+                    loadedImg = textureImageMap.values().next().value;
+                }
+
+                const scale = fitScale * preview3DZoom;
 
                 // Collect projected triangles for sorting/rendering
                 const triangles = [];
@@ -749,27 +814,37 @@ function update3DTurntablePreview() {
                         const v1 = [positions[i1] - centerX, positions[i1 + 1] - centerY, positions[i1 + 2] - centerZ];
                         const v2 = [positions[i2] - centerX, positions[i2 + 1] - centerY, positions[i2 + 2] - centerZ];
 
-                        // Rotate points around Y axis
-                        const r0 = [v0[0] * cos - v0[2] * sin, v0[1], v0[0] * sin + v0[2] * cos];
-                        const r1 = [v1[0] * cos - v1[2] * sin, v1[1], v1[0] * sin + v1[2] * cos];
-                        const r2 = [v2[0] * cos - v2[2] * sin, v2[1], v2[0] * sin + v2[2] * cos];
+                        // Yaw (Y-axis) rotation
+                        const ry0 = [v0[0] * cos - v0[2] * sin, v0[1], v0[0] * sin + v0[2] * cos];
+                        const ry1 = [v1[0] * cos - v1[2] * sin, v1[1], v1[0] * sin + v1[2] * cos];
+                        const ry2 = [v2[0] * cos - v2[2] * sin, v2[1], v2[0] * sin + v2[2] * cos];
+
+                        // Pitch (X-axis) rotation
+                        const r0 = [ry0[0], ry0[1] * pitchCos - ry0[2] * pitchSin, ry0[1] * pitchSin + ry0[2] * pitchCos];
+                        const r1 = [ry1[0], ry1[1] * pitchCos - ry1[2] * pitchSin, ry1[1] * pitchSin + ry1[2] * pitchCos];
+                        const r2 = [ry2[0], ry2[1] * pitchCos - ry2[2] * pitchSin, ry2[1] * pitchSin + ry2[2] * pitchCos];
 
                         const avgZ = (r0[2] + r1[2] + r2[2]) / 3;
 
                         // Calculate normal & directional lighting
-                        let intensity = 0.7;
+                        let intensity = 0.85;
                         if (normals && i0 + 2 < normals.length) {
-                            const nx = normals[i0] * cos - normals[i0 + 2] * sin;
-                            const ny = normals[i0 + 1];
-                            const nz = normals[i0] * sin + normals[i0 + 2] * cos;
+                            const ny0 = normals[i0] * cos - normals[i0 + 2] * sin;
+                            const ny1 = normals[i0 + 1];
+                            const ny2 = normals[i0] * sin + normals[i0 + 2] * cos;
+
+                            const nx = ny0;
+                            const ny = ny1 * pitchCos - ny2 * pitchSin;
+                            const nz = ny1 * pitchSin + ny2 * pitchCos;
+
                             const dot = nx * lightDir[0] + ny * lightDir[1] + nz * lightDir[2];
-                            intensity = Math.max(0.2, Math.min(1.0, dot * 0.7 + 0.3));
+                            intensity = Math.max(0.35, Math.min(1.0, dot * 0.65 + 0.35));
                         }
 
-                        // Project to 2D screen coordinates
-                        const p0 = [r0[0] * fitScale * (300 / (300 + r0[2])), -r0[1] * fitScale * (300 / (300 + r0[2]))];
-                        const p1 = [r1[0] * fitScale * (300 / (300 + r1[2])), -r1[1] * fitScale * (300 / (300 + r1[2]))];
-                        const p2 = [r2[0] * fitScale * (300 / (300 + r2[2])), -r2[1] * fitScale * (300 / (300 + r2[2]))];
+                        // Project to 2D screen coordinates with Pan
+                        const p0 = [r0[0] * scale * (300 / (300 + r0[2])) + preview3DPanX, -r0[1] * scale * (300 / (300 + r0[2])) + preview3DPanY];
+                        const p1 = [r1[0] * scale * (300 / (300 + r1[2])) + preview3DPanX, -r1[1] * scale * (300 / (300 + r1[2])) + preview3DPanY];
+                        const p2 = [r2[0] * scale * (300 / (300 + r2[2])) + preview3DPanX, -r2[1] * scale * (300 / (300 + r2[2])) + preview3DPanY];
 
                         triangles.push({ p0, p1, p2, avgZ, intensity });
                     }
@@ -787,14 +862,25 @@ function update3DTurntablePreview() {
                         ctx.closePath();
 
                         if (isSolid) {
-                            const val = Math.floor(tri.intensity * 200 + 45);
-                            ctx.fillStyle = selectedSubMeshIndex !== null ? `rgb(${val}, ${Math.floor(val * 0.6)}, 40)` : `rgb(40, ${Math.floor(val * 0.7)}, ${val})`;
-                            ctx.fill();
+                            if (loadedImg && loadedImg.complete && loadedImg.width > 0) {
+                                ctx.save();
+                                ctx.clip();
+                                ctx.globalAlpha = tri.intensity;
+                                ctx.drawImage(loadedImg, -180, -180, 360, 360);
+                                ctx.restore();
+                            } else {
+                                // Default clean white surface with smooth directional shading
+                                const val = Math.floor(tri.intensity * 215 + 40);
+                                ctx.fillStyle = selectedSubMeshIndex !== null ? `rgb(255, ${Math.floor(val * 0.7)}, ${Math.floor(val * 0.3)})` : `rgb(${val}, ${val}, ${val})`;
+                                ctx.fill();
+                            }
                         }
 
                         if (isWireframe) {
-                            ctx.strokeStyle = selectedSubMeshIndex !== null ? 'rgba(255, 159, 67, 0.4)' : 'rgba(0, 168, 255, 0.4)';
-                            ctx.lineWidth = 0.8;
+                            ctx.strokeStyle = preview3DMode === 'wireframe' ?
+                                (selectedSubMeshIndex !== null ? '#ff9f43' : '#00a8ff') :
+                                'rgba(0, 0, 0, 0.2)';
+                            ctx.lineWidth = preview3DMode === 'wireframe' ? 1.0 : 0.5;
                             ctx.stroke();
                         }
                     }
