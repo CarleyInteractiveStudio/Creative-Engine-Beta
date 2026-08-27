@@ -824,28 +824,28 @@ function update3DTurntablePreview() {
                         const v1 = [positions[i1] - centerX, positions[i1 + 1] - centerY, positions[i1 + 2] - centerZ];
                         const v2 = [positions[i2] - centerX, positions[i2 + 1] - centerY, positions[i2 + 2] - centerZ];
 
-                        // Yaw (Y-axis) rotation
-                        const ry0 = [v0[0] * cos - v0[2] * sin, v0[1], v0[0] * sin + v0[2] * cos];
-                        const ry1 = [v1[0] * cos - v1[2] * sin, v1[1], v1[0] * sin + v1[2] * cos];
-                        const ry2 = [v2[0] * cos - v2[2] * sin, v2[1], v2[0] * sin + v2[2] * cos];
+                        // 1. Pitch (X-axis) tilt applied first in model local space
+                        const rx0 = [v0[0], v0[1] * pitchCos - v0[2] * pitchSin, v0[1] * pitchSin + v0[2] * pitchCos];
+                        const rx1 = [v1[0], v1[1] * pitchCos - v1[2] * pitchSin, v1[1] * pitchSin + v1[2] * pitchCos];
+                        const rx2 = [v2[0], v2[1] * pitchCos - v2[2] * pitchSin, v2[1] * pitchSin + v2[2] * pitchCos];
 
-                        // Pitch (X-axis) rotation
-                        const r0 = [ry0[0], ry0[1] * pitchCos - ry0[2] * pitchSin, ry0[1] * pitchSin + ry0[2] * pitchCos];
-                        const r1 = [ry1[0], ry1[1] * pitchCos - ry1[2] * pitchSin, ry1[1] * pitchSin + ry1[2] * pitchCos];
-                        const r2 = [ry2[0], ry2[1] * pitchCos - ry2[2] * pitchSin, ry2[1] * pitchSin + ry2[2] * pitchCos];
+                        // 2. Turntable Yaw (Y-axis) rotation around screen vertical axis
+                        const r0 = [rx0[0] * cos - rx0[2] * sin, rx0[1], rx0[0] * sin + rx0[2] * cos];
+                        const r1 = [rx1[0] * cos - rx1[2] * sin, rx1[1], rx1[0] * sin + rx1[2] * cos];
+                        const r2 = [rx2[0] * cos - rx2[2] * sin, rx2[1], rx2[0] * sin + rx2[2] * cos];
 
                         const avgZ = (r0[2] + r1[2] + r2[2]) / 3;
 
                         // Calculate normal & directional lighting
                         let intensity = 0.85;
                         if (normals && i0 + 2 < normals.length) {
-                            const ny0 = normals[i0] * cos - normals[i0 + 2] * sin;
-                            const ny1 = normals[i0 + 1];
-                            const ny2 = normals[i0] * sin + normals[i0 + 2] * cos;
+                            const nx0 = normals[i0];
+                            const nx1 = normals[i0 + 1] * pitchCos - normals[i0 + 2] * pitchSin;
+                            const nx2 = normals[i0 + 1] * pitchSin + normals[i0 + 2] * pitchCos;
 
-                            const nx = ny0;
-                            const ny = ny1 * pitchCos - ny2 * pitchSin;
-                            const nz = ny1 * pitchSin + ny2 * pitchCos;
+                            const nx = nx0 * cos - nx2 * sin;
+                            const ny = nx1;
+                            const nz = nx0 * sin + nx2 * cos;
 
                             const dot = nx * lightDir[0] + ny * lightDir[1] + nz * lightDir[2];
                             intensity = Math.max(0.35, Math.min(1.0, dot * 0.65 + 0.35));
