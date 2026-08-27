@@ -30,7 +30,7 @@ let preview3DZoom = 1.0;  // Zoom scale multiplier
 let preview3DPanX = 0;    // Center X offset
 let preview3DPanY = 0;    // Center Y offset
 let preview3DTimer = null;
-let preview3DMode = 'shaded_wireframe'; // 'wireframe', 'shaded', 'shaded_wireframe'
+let preview3DMode = 'solid_white'; // 'wireframe_green', 'solid_white', 'textured'
 let textureImageMap = new Map(); // texture URI / name -> HTMLImageElement
 let isOrbitDragging = false;
 let lastMousePos = { x: 0, y: 0 };
@@ -194,9 +194,9 @@ export function initializeAssetImportModal() {
                             <span style="font-size: 0.85rem; font-weight: bold; color: #aaa;">Vista Previa 3D / 2D</span>
                             <!-- 3D Render Mode Select -->
                             <select id="import-3d-render-mode" style="display: none; padding: 2px 6px; background: #121215; border: 1px solid #3a3a45; color: #4da6ff; border-radius: 4px; font-size: 0.75rem;">
-                                <option value="shaded_wireframe">Sólido + Malla (Wireframe)</option>
-                                <option value="shaded">Sólido Texturizado / Sombreado</option>
-                                <option value="wireframe">Malla Wireframe Solamente</option>
+                                <option value="solid_white">Modelo Sólido Blanco (Sin Triángulos)</option>
+                                <option value="wireframe_green">Malla de Triángulos (Verde)</option>
+                                <option value="textured">Modelo Texturizado (Con Texturas Extraídas)</option>
                             </select>
                         </div>
                         <span id="import-img-dimensions" style="font-size: 0.78rem; color: #4da6ff;">0 x 0 px</span>
@@ -774,8 +774,9 @@ function update3DTurntablePreview() {
         // Light direction for shading
         const lightDir = [0.577, 0.577, 0.577];
 
-        const isSolid = preview3DMode === 'shaded' || preview3DMode === 'shaded_wireframe';
-        const isWireframe = preview3DMode === 'wireframe' || preview3DMode === 'shaded_wireframe';
+        const isWireframeGreen = preview3DMode === 'wireframe_green';
+        const isSolidWhite = preview3DMode === 'solid_white';
+        const isTextured = preview3DMode === 'textured';
 
         const pitchCos = Math.cos(preview3DPitch);
         const pitchSin = Math.sin(preview3DPitch);
@@ -789,12 +790,14 @@ function update3DTurntablePreview() {
 
                 // Check texture mapping
                 let loadedImg = null;
-                if (primitive.material && primitive.material.texturePath) {
-                    const tPath = primitive.material.texturePath;
-                    loadedImg = textureImageMap.get(tPath) || textureImageMap.get(tPath.split('/').pop());
-                }
-                if (!loadedImg && textureImageMap.size > 0) {
-                    loadedImg = textureImageMap.values().next().value;
+                if (isTextured) {
+                    if (primitive.material && primitive.material.texturePath) {
+                        const tPath = primitive.material.texturePath;
+                        loadedImg = textureImageMap.get(tPath) || textureImageMap.get(tPath.split('/').pop());
+                    }
+                    if (!loadedImg && textureImageMap.size > 0) {
+                        loadedImg = textureImageMap.values().next().value;
+                    }
                 }
 
                 const scale = fitScale * preview3DZoom;
@@ -861,7 +864,18 @@ function update3DTurntablePreview() {
                         ctx.lineTo(tri.p2[0], tri.p2[1]);
                         ctx.closePath();
 
-                        if (isSolid) {
+                        if (isWireframeGreen) {
+                            // 1. Only Green Wireframe Mesh Lines
+                            ctx.strokeStyle = '#00ff66';
+                            ctx.lineWidth = 1.0;
+                            ctx.stroke();
+                        } else if (isSolidWhite) {
+                            // 2. Clean White Shaded Model (No Triangles)
+                            const val = Math.floor(tri.intensity * 215 + 40);
+                            ctx.fillStyle = selectedSubMeshIndex !== null ? `rgb(255, ${Math.floor(val * 0.7)}, ${Math.floor(val * 0.3)})` : `rgb(${val}, ${val}, ${val})`;
+                            ctx.fill();
+                        } else if (isTextured) {
+                            // 3. Model with Extracted Textures (or Shaded fallback)
                             if (loadedImg && loadedImg.complete && loadedImg.width > 0) {
                                 ctx.save();
                                 ctx.clip();
@@ -869,38 +883,33 @@ function update3DTurntablePreview() {
                                 ctx.drawImage(loadedImg, -180, -180, 360, 360);
                                 ctx.restore();
                             } else {
-                                // Default clean white surface with smooth directional shading
                                 const val = Math.floor(tri.intensity * 215 + 40);
-                                ctx.fillStyle = selectedSubMeshIndex !== null ? `rgb(255, ${Math.floor(val * 0.7)}, ${Math.floor(val * 0.3)})` : `rgb(${val}, ${val}, ${val})`;
+                                ctx.fillStyle = `rgb(${val}, ${val}, ${val})`;
                                 ctx.fill();
                             }
                         }
-
-                        if (isWireframe) {
-                            ctx.strokeStyle = preview3DMode === 'wireframe' ?
-                                (selectedSubMeshIndex !== null ? '#ff9f43' : '#00a8ff') :
-                                'rgba(0, 0, 0, 0.2)';
-                            ctx.lineWidth = preview3DMode === 'wireframe' ? 1.0 : 0.5;
-                            ctx.stroke();
-                        }
                     }
                 } else {
-                    // Wireframe fallback for unindexed geometry
+                    // Fallback for unindexed geometry
                     ctx.beginPath();
-                    ctx.strokeStyle = selectedSubMeshIndex !== null ? '#ff9f43' : '#00a8ff';
+                    ctx.strokeStyle = isWireframeGreen ? '#00ff66' : '#ffffff';
                     ctx.lineWidth = 1.2;
                     const step = positions.length > 3000 ? 18 : 6;
                     for (let i = 0; i < positions.length; i += step) {
-                        const x = (positions[i] - centerX) * fitScale;
-                        const y = (positions[i + 1] - centerY) * fitScale;
-                        const z = (positions[i + 2] - centerZ) * fitScale;
+                        const x = (positions[i] - centerX) * scale;
+                        const y = (positions[i + 1] - centerY) * scale;
+                        const z = (positions[i + 2] - centerZ) * scale;
 
-                        const rotX = x * cos - z * sin;
-                        const rotZ = x * sin + z * cos;
+                        const ryX = x * cos - z * sin;
+                        const ryZ = x * sin + z * cos;
+
+                        const rotX = ryX;
+                        const rotY = y * pitchCos - ryZ * pitchSin;
+                        const rotZ = y * pitchSin + ryZ * pitchCos;
 
                         const projFactor = 300 / (300 + rotZ);
-                        const projX = rotX * projFactor;
-                        const projY = -y * projFactor;
+                        const projX = rotX * projFactor + preview3DPanX;
+                        const projY = -rotY * projFactor + preview3DPanY;
 
                         if (i === 0) ctx.moveTo(projX, projY);
                         else ctx.lineTo(projX, projY);

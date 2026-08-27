@@ -433,6 +433,7 @@ async function addEngineFilesToZip(zipOrHandle) {
         'js/engine/NetworkMonitor.js',
         'js/engine/Components3D.js',
         'js/engine/Renderer3D.js',
+        'js/engine/CMModelConverter.js',
         'js/engine/ExtensionsManager.js',
         'js/carley-world/CarleyComponents.js',
         'js/carley-world/CarleyLeyes3D.js',
