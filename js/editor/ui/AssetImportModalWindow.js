@@ -30,6 +30,7 @@ let preview3DZoom = 1.0;  // Zoom scale multiplier
 let preview3DPanX = 0;    // Center X offset
 let preview3DPanY = 0;    // Center Y offset
 let preview3DTimer = null;
+let preview3DAutoRotate = true; // Auto-rotation toggle
 let preview3DMode = 'solid_white'; // 'wireframe_green', 'solid_white', 'textured'
 let textureImageMap = new Map(); // texture URI / name -> HTMLImageElement
 let isOrbitDragging = false;
@@ -198,6 +199,9 @@ export function initializeAssetImportModal() {
                                 <option value="wireframe_green">Malla de Triángulos (Verde)</option>
                                 <option value="textured">Modelo Texturizado (Con Texturas Extraídas)</option>
                             </select>
+                            <label id="import-3d-autorotate-label" style="display: none; font-size: 0.75rem; color: #aaa; cursor: pointer; user-select: none; align-items: center; gap: 4px;">
+                                <input type="checkbox" id="import-3d-autorotate-cb" checked style="cursor: pointer;"> Giro Auto.
+                            </label>
                         </div>
                         <span id="import-img-dimensions" style="font-size: 0.78rem; color: #4da6ff;">0 x 0 px</span>
                     </div>
@@ -264,6 +268,13 @@ function setupEvents() {
                 appendFilesToImport(Array.from(e.target.files));
                 filePickerInput.value = ''; // Reset input
             }
+        };
+    }
+
+    const autoRotateCb = document.getElementById('import-3d-autorotate-cb');
+    if (autoRotateCb) {
+        autoRotateCb.onchange = () => {
+            preview3DAutoRotate = autoRotateCb.checked;
         };
     }
 
@@ -615,6 +626,7 @@ async function loadFocusedFileForPreview() {
         document.getElementById('import-anim-controls').style.display = 'none';
         document.getElementById('import-model3d-options').style.display = 'flex';
         document.getElementById('import-3d-render-mode').style.display = 'inline-block';
+        document.getElementById('import-3d-autorotate-label').style.display = 'inline-flex';
 
         try {
             const converted = await CMModelConverter.convertGLTFToCM(fileObj, fileName);
@@ -642,6 +654,7 @@ async function loadFocusedFileForPreview() {
         return;
     } else {
         document.getElementById('import-3d-render-mode').style.display = 'none';
+        document.getElementById('import-3d-autorotate-label').style.display = 'none';
     }
 
     // 2. Image File
@@ -870,9 +883,9 @@ function update3DTurntablePreview() {
                             ctx.lineWidth = 1.0;
                             ctx.stroke();
                         } else if (isSolidWhite) {
-                            // 2. Clean White Shaded Model (No Triangles)
-                            const val = Math.floor(tri.intensity * 215 + 40);
-                            ctx.fillStyle = selectedSubMeshIndex !== null ? `rgb(255, ${Math.floor(val * 0.7)}, ${Math.floor(val * 0.3)})` : `rgb(${val}, ${val}, ${val})`;
+                            // 2. Clean White Shaded Model (Uniform White without Tinting)
+                            const val = Math.floor(tri.intensity * 200 + 55);
+                            ctx.fillStyle = `rgb(${val}, ${val}, ${val})`;
                             ctx.fill();
                         } else if (isTextured) {
                             // 3. Model with Extracted Textures (or Shaded fallback)
@@ -883,7 +896,7 @@ function update3DTurntablePreview() {
                                 ctx.drawImage(loadedImg, -180, -180, 360, 360);
                                 ctx.restore();
                             } else {
-                                const val = Math.floor(tri.intensity * 215 + 40);
+                                const val = Math.floor(tri.intensity * 200 + 55);
                                 ctx.fillStyle = `rgb(${val}, ${val}, ${val})`;
                                 ctx.fill();
                             }
@@ -920,7 +933,10 @@ function update3DTurntablePreview() {
         }
 
         ctx.restore();
-        preview3DAngle = (preview3DAngle + 1.5) % 360;
+
+        if (preview3DAutoRotate && !isOrbitDragging) {
+            preview3DAngle = (preview3DAngle + 1.5) % 360;
+        }
     };
 
     drawTurntableFrame();
