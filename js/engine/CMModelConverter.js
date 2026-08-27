@@ -260,7 +260,23 @@ export class CMModelConverter {
     static _normalizeCoordinates(positions, normals) {
         if (!positions) return;
 
-        // Auto-Detect if Z-Up Blender coordinate system (heuristic: bounding box depth vs height)
+        // Swap Z-Up to Y-Up axis (Blender orientation: [X, Y, Z] -> [X, Z, -Y])
+        for (let i = 0; i < positions.length; i += 3) {
+            const y = positions[i + 1];
+            const z = positions[i + 2];
+            positions[i + 1] = z;   // Y = Z
+            positions[i + 2] = -y;  // Z = -Y
+        }
+
+        if (normals) {
+            for (let i = 0; i < normals.length; i += 3) {
+                const ny = normals[i + 1];
+                const nz = normals[i + 2];
+                normals[i + 1] = nz;
+                normals[i + 2] = -ny;
+            }
+        }
+
         let minX = Infinity, minY = Infinity, minZ = Infinity;
         let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
 
