@@ -58,7 +58,7 @@ export function initializeAssetImportModal() {
                         <button id="import-add-files-btn" style="width: 100%; padding: 5px 8px; background: #254a6b; border: 1px solid #00a8ff; color: #fff; border-radius: 4px; font-size: 0.78rem; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 4px;">
                             <span style="font-size: 1rem; line-height: 1;">+</span> Agregar Archivos / Modelos
                         </button>
-                        <input type="file" id="import-file-picker-input" multiple style="display: none;" accept=".gltf,.glb,.cm,.png,.jpg,.jpeg,.mp3,.wav,.ceScene,.cea,.ceanim,.ceprefab">
+                        <input type="file" id="import-file-picker-input" multiple style="display: none;" accept=".gltf,.glb,.obj,.mtl,.cm,.png,.jpg,.jpeg,.mp3,.wav,.ceScene,.cea,.ceanim,.ceprefab">
                     </div>
                     <div id="import-file-list" style="flex: 1; overflow-y: auto; padding: 8px;">
                         <!-- List items injected dynamically -->
@@ -629,8 +629,8 @@ async function loadFocusedFileForPreview() {
     const fileName = fileObj.name || 'file.png';
     const lowerName = fileName.toLowerCase();
 
-    // 1. If 3D Model (.gltf / .glb)
-    if (lowerName.endsWith('.gltf') || lowerName.endsWith('.glb')) {
+    // 1. If 3D Model (.gltf / .glb / .obj)
+    if (lowerName.endsWith('.gltf') || lowerName.endsWith('.glb') || lowerName.endsWith('.obj')) {
         document.getElementById('import-img-type').value = 'Model3D';
         document.getElementById('import-spritesheet-options').style.display = 'none';
         document.getElementById('import-anim-controls').style.display = 'none';
@@ -1182,8 +1182,8 @@ async function executeImport() {
             const fileName = fileObj.name;
             const lowerName = fileName.toLowerCase();
 
-            // 1. Process 3D Model Conversion (.gltf / .glb -> .cm)
-            if (lowerName.endsWith('.gltf') || lowerName.endsWith('.glb')) {
+            // 1. Process 3D Model Conversion (.gltf / .glb / .obj -> .cm)
+            if (lowerName.endsWith('.gltf') || lowerName.endsWith('.glb') || lowerName.endsWith('.obj')) {
                 const baseName = fileName.split('.')[0];
                 const cmFileName = `${baseName}.cm`;
 

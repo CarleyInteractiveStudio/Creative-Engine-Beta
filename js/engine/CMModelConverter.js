@@ -22,7 +22,16 @@ export class CMModelConverter {
             throw new Error("Formato de datos no soportado para la conversión GLTF.");
         }
 
-        const isGLB = fileName.toLowerCase().endsWith('.glb') || this._isGLBHeader(buffer);
+        const lowerName = fileName.toLowerCase();
+
+        // Handle OBJ Files (.obj)
+        if (lowerName.endsWith('.obj')) {
+            const decoder = new TextDecoder('utf-8');
+            const objText = decoder.decode(buffer);
+            return this.convertOBJToCM(objText, fileName, reductionRatio);
+        }
+
+        const isGLB = lowerName.endsWith('.glb') || this._isGLBHeader(buffer);
         let gltfJson = null;
         let binaryChunk = null;
 
@@ -205,6 +214,124 @@ export class CMModelConverter {
         };
 
         return { cmData, textures, animations };
+    }
+
+    /**
+     * Converts OBJ Waveform string content into a native .cm model bundle.
+     */
+    static convertOBJToCM(objText, fileName = 'model.obj', reductionRatio = 1.0) {
+        const lines = objText.split(/\r?\n/);
+
+        const rawPositions = [];
+        const rawNormals = [];
+        const rawUVs = [];
+
+        const positions = [];
+        const normals = [];
+        const uvs = [];
+        const indices = [];
+
+        const vertCache = new Map();
+
+        for (let line of lines) {
+            line = line.trim();
+            if (!line || line.startsWith('#')) continue;
+
+            const parts = line.split(/\s+/);
+            const type = parts[0];
+
+            if (type === 'v') {
+                rawPositions.push(parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3]));
+            } else if (type === 'vn') {
+                rawNormals.push(parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3]));
+            } else if (type === 'vt') {
+                rawUVs.push(parseFloat(parts[1]), parseFloat(parts[2]));
+            } else if (type === 'f') {
+                const faceVerts = parts.slice(1);
+
+                // Triangulate polygon face
+                for (let i = 1; i < faceVerts.length - 1; i++) {
+                    const triVerts = [faceVerts[0], faceVerts[i], faceVerts[i + 1]];
+
+                    for (const vKey of triVerts) {
+                        if (vertCache.has(vKey)) {
+                            indices.push(vertCache.get(vKey));
+                        } else {
+                            const [pIdx, tIdx, nIdx] = vKey.split('/').map(v => parseInt(v, 10));
+
+                            const pi = (pIdx > 0 ? pIdx - 1 : rawPositions.length / 3 + pIdx) * 3;
+                            positions.push(rawPositions[pi] || 0, rawPositions[pi + 1] || 0, rawPositions[pi + 2] || 0);
+
+                            if (rawNormals.length > 0 && nIdx) {
+                                const ni = (nIdx > 0 ? nIdx - 1 : rawNormals.length / 3 + nIdx) * 3;
+                                normals.push(rawNormals[ni] || 0, rawNormals[ni + 1] || 1, rawNormals[ni + 2] || 0);
+                            }
+
+                            if (rawUVs.length > 0 && tIdx) {
+                                const ti = (tIdx > 0 ? tIdx - 1 : rawUVs.length / 2 + tIdx) * 2;
+                                uvs.push(rawUVs[ti] || 0, rawUVs[ti + 1] || 0);
+                            }
+
+                            const newIdx = positions.length / 3 - 1;
+                            vertCache.set(vKey, newIdx);
+                            indices.push(newIdx);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Normalize Z-Up/Y-Up coordinate space
+        this._normalizeCoordinates(positions, normals);
+
+        let primPositions = positions;
+        let primNormals = normals.length > 0 ? normals : null;
+        let primUvs = uvs.length > 0 ? uvs : null;
+        let primIndices = indices;
+
+        if (reductionRatio < 0.98 && primIndices.length > 12) {
+            const decimated = this._decimateMesh(primPositions, primNormals, primUvs, primIndices, reductionRatio);
+            primPositions = decimated.positions;
+            primNormals = decimated.normals;
+            primUvs = decimated.uvs;
+            primIndices = decimated.indices;
+        }
+
+        const baseName = fileName.split('.')[0];
+        const cmMeshes = [{
+            name: baseName,
+            primitives: [{
+                positions: primPositions,
+                normals: primNormals,
+                uvs: primUvs,
+                indices: primIndices,
+                materialIndex: 0
+            }]
+        }];
+
+        const cmNodes = [{
+            id: 0,
+            name: baseName,
+            translation: [0, 0, 0],
+            scale: [1, 1, 1],
+            rotation: [0, 0, 0, 1],
+            mesh: 0,
+            children: []
+        }];
+
+        const cmData = {
+            formatVersion: '1.0',
+            generator: 'Carley Engine OBJ CM Converter',
+            originalFileName: fileName,
+            polyReductionRatio: reductionRatio,
+            nodes: cmNodes,
+            meshes: cmMeshes,
+            materials: [{ name: `${baseName}_Material`, baseColor: [1, 1, 1, 1] }],
+            skins: [],
+            animations: []
+        };
+
+        return { cmData, textures: [], animations: [] };
     }
 
     /**
