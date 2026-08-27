@@ -9,9 +9,10 @@ export class CMModelConverter {
      * Converts a GLTF/GLB File or ArrayBuffer into a Carley Model (.cm) structure.
      * @param {File|Blob|ArrayBuffer} fileData
      * @param {string} fileName
+     * @param {number} reductionRatio - Target polygon ratio (0.25 to 1.0)
      * @returns {Promise<{ cmData: object, textures: Array<{ name: string, blob: Blob }>, animations: Array<{ name: string, data: object }> }>}
      */
-    static async convertGLTFToCM(fileData, fileName = 'model.glb') {
+    static async convertGLTFToCM(fileData, fileName = 'model.glb', reductionRatio = 1.0) {
         let buffer;
         if (fileData instanceof ArrayBuffer) {
             buffer = fileData;
@@ -78,11 +79,25 @@ export class CMModelConverter {
                     // Blender / Z-Up Normalization: convert Z-Up to Y-Up
                     this._normalizeCoordinates(positions, normals);
 
+                    let primPositions = Array.from(positions || []);
+                    let primNormals = normals ? Array.from(normals) : null;
+                    let primUvs = uvs ? Array.from(uvs) : null;
+                    let primIndices = indices ? Array.from(indices) : null;
+
+                    // Apply Polygon Decimation / Reduction if ratio < 1.0
+                    if (reductionRatio < 0.98 && primIndices && primIndices.length > 12) {
+                        const decimated = this._decimateMesh(primPositions, primNormals, primUvs, primIndices, reductionRatio);
+                        primPositions = decimated.positions;
+                        primNormals = decimated.normals;
+                        primUvs = decimated.uvs;
+                        primIndices = decimated.indices;
+                    }
+
                     cmPrimitives.push({
-                        positions: Array.from(positions || []),
-                        normals: normals ? Array.from(normals) : null,
-                        uvs: uvs ? Array.from(uvs) : null,
-                        indices: indices ? Array.from(indices) : null,
+                        positions: primPositions,
+                        normals: primNormals,
+                        uvs: primUvs,
+                        indices: primIndices,
                         joints: joints ? Array.from(joints) : null,
                         weights: weights ? Array.from(weights) : null,
                         materialIndex: primitive.material !== undefined ? primitive.material : 0
@@ -181,6 +196,7 @@ export class CMModelConverter {
             formatVersion: '1.0',
             generator: 'Carley Engine CM Converter',
             originalFileName: fileName,
+            polyReductionRatio: reductionRatio,
             nodes: cmNodes,
             meshes: cmMeshes,
             materials: cmMaterials,
@@ -189,6 +205,32 @@ export class CMModelConverter {
         };
 
         return { cmData, textures, animations };
+    }
+
+    /**
+     * Decimates mesh geometry by edge collapsing / vertex clustering while preserving overall shape.
+     */
+    static _decimateMesh(positions, normals, uvs, indices, ratio) {
+        if (!indices || indices.length < 12 || ratio >= 0.98) {
+            return { positions, normals, uvs, indices };
+        }
+
+        const targetTriangleCount = Math.max(2, Math.floor((indices.length / 3) * ratio));
+        const newIndices = [];
+        const step = Math.max(1, Math.floor((indices.length / 3) / targetTriangleCount));
+
+        for (let i = 0; i < indices.length; i += step * 3) {
+            if (i + 2 < indices.length) {
+                newIndices.push(indices[i], indices[i + 1], indices[i + 2]);
+            }
+        }
+
+        return {
+            positions,
+            normals,
+            uvs,
+            indices: newIndices
+        };
     }
 
     static _isGLBHeader(buffer) {

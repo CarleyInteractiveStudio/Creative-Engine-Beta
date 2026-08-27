@@ -100,6 +100,15 @@ export function initializeAssetImportModal() {
                             <input type="checkbox" id="import-extract-anims" checked style="cursor: pointer;">
                             Extraer Clips de Animación (.cea3d)
                         </label>
+                        <div style="margin-top: 4px; border-top: 1px solid #282830; padding-top: 6px;">
+                            <label style="font-size: 0.78rem; font-weight: bold; color: #ff9f43; display: block; margin-bottom: 4px;">Configuración de Polígonos (Optimización):</label>
+                            <select id="import-poly-reduction" style="width: 100%; padding: 5px 8px; background: #0d0d10; border: 1px solid #3a3a45; color: #fff; border-radius: 4px; font-size: 0.78rem;">
+                                <option value="1.0">Original 100% (Sin Reducción)</option>
+                                <option value="0.75">Optimizado 75% Polígonos</option>
+                                <option value="0.50">Ligero 50% Polígonos (Media Carga)</option>
+                                <option value="0.25">Ultra Rápido 25% Polígonos (Bajo Peso)</option>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- Material "Pintado" Options (Dynamic) -->
@@ -275,6 +284,13 @@ function setupEvents() {
     if (autoRotateCb) {
         autoRotateCb.onchange = () => {
             preview3DAutoRotate = autoRotateCb.checked;
+        };
+    }
+
+    const polyReductionSelect = document.getElementById('import-poly-reduction');
+    if (polyReductionSelect) {
+        polyReductionSelect.onchange = () => {
+            loadFocusedFileForPreview();
         };
     }
 
@@ -623,7 +639,8 @@ async function loadFocusedFileForPreview() {
         document.getElementById('import-3d-autorotate-label').style.display = 'inline-flex';
 
         try {
-            const converted = await CMModelConverter.convertGLTFToCM(fileObj, fileName);
+            const polyRatio = parseFloat(document.getElementById('import-poly-reduction')?.value || '1.0');
+            const converted = await CMModelConverter.convertGLTFToCM(fileObj, fileName, polyRatio);
             currentCMData = converted.cmData;
 
             // Cache extracted texture images for solid 3D preview
@@ -1170,7 +1187,8 @@ async function executeImport() {
                 const baseName = fileName.split('.')[0];
                 const cmFileName = `${baseName}.cm`;
 
-                const converted = await CMModelConverter.convertGLTFToCM(fileObj, fileName);
+                const polyRatio = parseFloat(document.getElementById('import-poly-reduction')?.value || '1.0');
+                const converted = await CMModelConverter.convertGLTFToCM(fileObj, fileName, polyRatio);
 
                 // Write .cm file
                 const cmHandle = await targetHandle.getFileHandle(cmFileName, { create: true });
