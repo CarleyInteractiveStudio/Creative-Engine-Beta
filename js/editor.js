@@ -3708,14 +3708,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     if (window.showOpenFilePicker) {
                         const files = await window.showOpenFilePicker({
-                            types: [{ description: 'Modelos 3D (.cm / .gltf / .glb)', accept: { 'application/octet-stream': ['.cm', '.gltf', '.glb'] } }],
+                            types: [{ description: 'Modelos 3D (.cm / .gltf / .glb / .obj)', accept: { 'application/octet-stream': ['.cm', '.gltf', '.glb', '.obj'] } }],
                             multiple: true
                         });
                         showAssetImportModal(files, getCurrentDirectoryHandle(), updateAssetBrowser);
                     } else {
                         const input = document.createElement('input');
                         input.type = 'file';
-                        input.accept = '.cm,.gltf,.glb';
+                        input.accept = '.cm,.gltf,.glb,.obj';
                         input.multiple = true;
                         input.onchange = () => {
                             showAssetImportModal(Array.from(input.files), getCurrentDirectoryHandle(), updateAssetBrowser);

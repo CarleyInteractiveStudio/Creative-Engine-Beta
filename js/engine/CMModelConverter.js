@@ -217,11 +217,10 @@ export class CMModelConverter {
     }
 
     /**
-     * Converts OBJ Waveform string content into a native .cm model bundle.
+     * Converts OBJ Waveform string content into a native .cm model bundle asynchronously
+     * without blocking the UI thread on large models.
      */
-    static convertOBJToCM(objText, fileName = 'model.obj', reductionRatio = 1.0) {
-        const lines = objText.split(/\r?\n/);
-
+    static async convertOBJToCM(objText, fileName = 'model.obj', reductionRatio = 1.0) {
         const rawPositions = [];
         const rawNormals = [];
         const rawUVs = [];
@@ -233,31 +232,69 @@ export class CMModelConverter {
 
         const vertCache = new Map();
 
-        for (let line of lines) {
-            line = line.trim();
-            if (!line || line.startsWith('#')) continue;
+        let pos = 0;
+        const len = objText.length;
+        let lastYield = performance.now();
 
-            const parts = line.split(/\s+/);
-            const type = parts[0];
+        while (pos < len) {
+            // Yield every 15ms to keep UI smooth
+            if (performance.now() - lastYield > 15) {
+                await new Promise(resolve => setTimeout(resolve, 0));
+                lastYield = performance.now();
+            }
 
-            if (type === 'v') {
-                rawPositions.push(parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3]));
-            } else if (type === 'vn') {
-                rawNormals.push(parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3]));
-            } else if (type === 'vt') {
-                rawUVs.push(parseFloat(parts[1]), parseFloat(parts[2]));
-            } else if (type === 'f') {
+            let nextLineEnd = objText.indexOf('\n', pos);
+            if (nextLineEnd === -1) nextLineEnd = len;
+
+            let line = objText.substring(pos, nextLineEnd).trim();
+            pos = nextLineEnd + 1;
+
+            if (!line || line.charCodeAt(0) === 35) continue; // Skip comments ('#')
+
+            const code = line.charCodeAt(0);
+
+            // 'v' (vertex), 'vn' (normal), 'vt' (uv)
+            if (code === 118) {
+                const secondCode = line.charCodeAt(1);
+                if (secondCode === 32 || secondCode === 9) { // 'v '
+                    const parts = line.split(/\s+/);
+                    rawPositions.push(parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3]));
+                } else if (secondCode === 110) { // 'vn'
+                    const parts = line.split(/\s+/);
+                    rawNormals.push(parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3]));
+                } else if (secondCode === 116) { // 'vt'
+                    const parts = line.split(/\s+/);
+                    rawUVs.push(parseFloat(parts[1]), parseFloat(parts[2]));
+                }
+            } else if (code === 102) { // 'f' (face)
+                const parts = line.split(/\s+/);
                 const faceVerts = parts.slice(1);
 
-                // Triangulate polygon face
                 for (let i = 1; i < faceVerts.length - 1; i++) {
                     const triVerts = [faceVerts[0], faceVerts[i], faceVerts[i + 1]];
 
                     for (const vKey of triVerts) {
-                        if (vertCache.has(vKey)) {
-                            indices.push(vertCache.get(vKey));
+                        let cachedIdx = vertCache.get(vKey);
+                        if (cachedIdx !== undefined) {
+                            indices.push(cachedIdx);
                         } else {
-                            const [pIdx, tIdx, nIdx] = vKey.split('/').map(v => parseInt(v, 10));
+                            const slash1 = vKey.indexOf('/');
+                            let pIdx = 0, tIdx = 0, nIdx = 0;
+
+                            if (slash1 === -1) {
+                                pIdx = parseInt(vKey, 10);
+                            } else {
+                                pIdx = parseInt(vKey.substring(0, slash1), 10);
+                                const slash2 = vKey.indexOf('/', slash1 + 1);
+                                if (slash2 === -1) {
+                                    tIdx = parseInt(vKey.substring(slash1 + 1), 10);
+                                } else {
+                                    if (slash2 > slash1 + 1) {
+                                        tIdx = parseInt(vKey.substring(slash1 + 1, slash2), 10);
+                                    }
+                                    nIdx = parseInt(vKey.substring(slash2 + 1), 10);
+                                }
+                            }
 
                             const pi = (pIdx > 0 ? pIdx - 1 : rawPositions.length / 3 + pIdx) * 3;
                             positions.push(rawPositions[pi] || 0, rawPositions[pi + 1] || 0, rawPositions[pi + 2] || 0);

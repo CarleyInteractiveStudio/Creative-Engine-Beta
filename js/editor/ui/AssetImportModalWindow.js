@@ -826,11 +826,13 @@ function update3DTurntablePreview() {
 
                 const scale = fitScale * preview3DZoom;
 
-                // Collect projected triangles for sorting/rendering
+                // Collect projected triangles with dynamic LOD sampling for high-poly models
                 const triangles = [];
+                const totalTriangles = indices ? indices.length / 3 : 0;
+                const triStep = totalTriangles > 15000 ? (isOrbitDragging ? 4 : 2) : 1;
 
                 if (indices && indices.length >= 3) {
-                    for (let i = 0; i < indices.length; i += 3) {
+                    for (let i = 0; i < indices.length; i += triStep * 3) {
                         const i0 = indices[i] * 3;
                         const i1 = indices[i + 1] * 3;
                         const i2 = indices[i + 2] * 3;
@@ -853,6 +855,15 @@ function update3DTurntablePreview() {
 
                         const avgZ = (r0[2] + r1[2] + r2[2]) / 3;
 
+                        // Back-face culling check in screen-space
+                        const p0 = [r0[0] * scale * (300 / (300 + r0[2])), -r0[1] * scale * (300 / (300 + r0[2]))];
+                        const p1 = [r1[0] * scale * (300 / (300 + r1[2])), -r1[1] * scale * (300 / (300 + r1[2]))];
+                        const p2 = [r2[0] * scale * (300 / (300 + r2[2])), -r2[1] * scale * (300 / (300 + r2[2]))];
+
+                        // Cross product to test winding order (cull back-facing triangles)
+                        const crossZ = (p1[0] - p0[0]) * (p2[1] - p0[1]) - (p1[1] - p0[1]) * (p2[0] - p0[0]);
+                        if (crossZ <= 0) continue; // Skip back-facing triangles
+
                         // Calculate normal & directional lighting
                         let intensity = 0.85;
                         if (normals && i0 + 2 < normals.length) {
@@ -867,15 +878,6 @@ function update3DTurntablePreview() {
                             const dot = nx * lightDir[0] + ny * lightDir[1] + nz * lightDir[2];
                             intensity = Math.max(0.35, Math.min(1.0, dot * 0.65 + 0.35));
                         }
-
-                        // Back-face culling check in screen-space
-                        const p0 = [r0[0] * scale * (300 / (300 + r0[2])), -r0[1] * scale * (300 / (300 + r0[2]))];
-                        const p1 = [r1[0] * scale * (300 / (300 + r1[2])), -r1[1] * scale * (300 / (300 + r1[2]))];
-                        const p2 = [r2[0] * scale * (300 / (300 + r2[2])), -r2[1] * scale * (300 / (300 + r2[2]))];
-
-                        // Cross product to test winding order (cull back-facing triangles)
-                        const crossZ = (p1[0] - p0[0]) * (p2[1] - p0[1]) - (p1[1] - p0[1]) * (p2[0] - p0[0]);
-                        if (crossZ <= 0) continue; // Skip back-facing triangles
 
                         triangles.push({ p0, p1, p2, avgZ, intensity });
                     }
