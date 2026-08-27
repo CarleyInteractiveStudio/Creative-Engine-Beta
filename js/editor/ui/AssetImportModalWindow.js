@@ -26,6 +26,8 @@ let currentImageObj = null;
 let currentCMData = null;
 let preview3DAngle = 0;
 let preview3DTimer = null;
+let preview3DMode = 'shaded_wireframe'; // 'wireframe', 'shaded', 'shaded_wireframe'
+let textureImageMap = new Map(); // texture URI / name -> HTMLImageElement
 
 export function initializeAssetImportModal() {
     if (document.getElementById('asset-import-modal')) return;
@@ -176,7 +178,15 @@ export function initializeAssetImportModal() {
                 <!-- Right: Live Visual Preview & WebGL 3D Turntable Player -->
                 <div style="flex: 1; padding: 18px; display: flex; flex-direction: column; background: #16161a; gap: 12px; align-items: center; justify-content: center;">
                     <div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.85rem; font-weight: bold; color: #aaa;">Vista Previa 3D / 2D en Tiempo Real</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 0.85rem; font-weight: bold; color: #aaa;">Vista Previa 3D / 2D</span>
+                            <!-- 3D Render Mode Select -->
+                            <select id="import-3d-render-mode" style="display: none; padding: 2px 6px; background: #121215; border: 1px solid #3a3a45; color: #4da6ff; border-radius: 4px; font-size: 0.75rem;">
+                                <option value="shaded_wireframe">Sólido + Malla (Wireframe)</option>
+                                <option value="shaded">Sólido Texturizado / Sombreado</option>
+                                <option value="wireframe">Malla Wireframe Solamente</option>
+                            </select>
+                        </div>
                         <span id="import-img-dimensions" style="font-size: 0.78rem; color: #4da6ff;">0 x 0 px</span>
                     </div>
 
@@ -270,6 +280,49 @@ function setupEvents() {
         isPreviewPlaying = !isPreviewPlaying;
         document.getElementById('import-play-pause-btn').textContent = isPreviewPlaying ? 'Pausar' : 'Reproducir';
     };
+
+    const renderModeSelect = document.getElementById('import-3d-render-mode');
+    if (renderModeSelect) {
+        renderModeSelect.onchange = () => {
+            preview3DMode = renderModeSelect.value;
+            if (currentCMData) {
+                update3DTurntablePreview();
+            }
+        };
+    }
+
+    // Drag and Drop files directly into the modal window
+    const container = modalElement.querySelector('.asset-import-container');
+    container.addEventListener('dragover', (e) => {
+        if (e.dataTransfer && e.dataTransfer.types.includes('Files')) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = 'copy';
+            container.style.border = '2px dashed #00a8ff';
+        }
+    });
+
+    container.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        container.style.border = 'none';
+    });
+
+    container.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        container.style.border = 'none';
+
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const newFiles = Array.from(e.dataTransfer.files);
+            const startIdx = currentFiles.length;
+            currentFiles.push(...newFiles);
+            newFiles.forEach((_, i) => selectedFileIndices.add(startIdx + i));
+            selectedFileIndex = startIdx;
+            renderFileList();
+            loadFocusedFileForPreview();
+        }
+    });
 }
 
 function hideModal() {
@@ -376,24 +429,29 @@ function renderFileList() {
 
         item.innerHTML = `
             ${expandBtnHTML}
-            <input type="checkbox" ${isSelected ? 'checked' : ''} style="cursor: pointer;">
+            <input type="checkbox" class="import-file-checkbox" ${isSelected ? 'checked' : ''} style="cursor: pointer;">
             <img src="${is3DModel ? 'icons/box.svg' : 'icons/file.svg'}" class="ce-icon" style="width: 14px; height: 14px; opacity: 0.8;">
             <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; font-weight: ${isFocused ? 'bold' : 'normal'}">${fileName}</span>
         `;
 
+        const checkbox = item.querySelector('.import-file-checkbox');
+        checkbox.onclick = (e) => {
+            e.stopPropagation();
+            if (checkbox.checked) {
+                selectedFileIndices.add(idx);
+            } else {
+                selectedFileIndices.delete(idx);
+            }
+            document.getElementById('import-confirm-count').textContent = selectedFileIndices.size;
+            document.getElementById('import-selection-subtitle').textContent = `${selectedFileIndices.size} de ${currentFiles.length} archivo(s) seleccionado(s)`;
+        };
+
         item.onclick = (e) => {
-            if (e.target.classList.contains('import-expand-tree')) return;
+            if (e.target.classList.contains('import-expand-tree') || e.target.classList.contains('import-file-checkbox')) return;
 
             selectedFileIndex = idx;
             selectedSubMeshIndex = null; // Reset sub-mesh to main model on model re-select
 
-            if (e.target.tagName !== 'INPUT') {
-                if (selectedFileIndices.has(idx)) selectedFileIndices.delete(idx);
-                else selectedFileIndices.add(idx);
-            } else {
-                if (e.target.checked) selectedFileIndices.add(idx);
-                else selectedFileIndices.delete(idx);
-            }
             renderFileList();
             loadFocusedFileForPreview();
         };
@@ -481,10 +539,24 @@ async function loadFocusedFileForPreview() {
         document.getElementById('import-spritesheet-options').style.display = 'none';
         document.getElementById('import-anim-controls').style.display = 'none';
         document.getElementById('import-model3d-options').style.display = 'flex';
+        document.getElementById('import-3d-render-mode').style.display = 'inline-block';
 
         try {
             const converted = await CMModelConverter.convertGLTFToCM(fileObj, fileName);
             currentCMData = converted.cmData;
+
+            // Cache extracted texture images for solid 3D preview
+            textureImageMap.clear();
+            if (converted.textures) {
+                for (const tex of converted.textures) {
+                    const img = new Image();
+                    const texUrl = URL.createObjectURL(tex.blob);
+                    img.src = texUrl;
+                    textureImageMap.set(tex.name, img);
+                    textureImageMap.set(tex.uri, img);
+                }
+            }
+
             document.getElementById('import-img-dimensions').textContent = `3D: ${currentCMData.meshes.length} Sub-Malla(s)`;
             update3DTurntablePreview();
         } catch (e) {
@@ -493,6 +565,8 @@ async function loadFocusedFileForPreview() {
             updatePreview();
         }
         return;
+    } else {
+        document.getElementById('import-3d-render-mode').style.display = 'none';
     }
 
     // 2. Image File
@@ -524,6 +598,47 @@ async function loadFocusedFileForPreview() {
         updatePreview();
     };
     img.src = url;
+}
+
+function updateMaterialSpherePreview() {
+    if (preview3DTimer) clearInterval(preview3DTimer);
+
+    const canvas = document.getElementById('import-preview-canvas');
+    if (!canvas) return;
+
+    canvas.width = 300;
+    canvas.height = 300;
+    const ctx = canvas.getContext('2d');
+
+    const colorHex = document.getElementById('import-mat-color').value || '#00a8ff';
+    const alpha = parseFloat(document.getElementById('import-mat-alpha').value) || 1.0;
+    const shininess = parseFloat(document.getElementById('import-mat-shininess').value) || 0.5;
+
+    ctx.clearRect(0, 0, 300, 300);
+
+    // Render 3D shaded sphere representation
+    const radius = 90;
+    const cx = 150;
+    const cy = 150;
+
+    const grad = ctx.createRadialGradient(cx - radius * 0.3, cy - radius * 0.3, 5, cx, cy, radius);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(shininess * 0.4, colorHex);
+    grad.addColorStop(1, '#050508');
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#2d2d35';
+    ctx.stroke();
+    ctx.restore();
+
+    document.getElementById('import-img-dimensions').textContent = `Material 3D ("Pintado")`;
 }
 
 function update3DTurntablePreview() {
@@ -576,38 +691,111 @@ function update3DTurntablePreview() {
 
         ctx.save();
         ctx.translate(180, 180);
-        ctx.strokeStyle = selectedSubMeshIndex !== null ? '#ff9f43' : '#00a8ff';
-        ctx.lineWidth = 1.5;
 
         const rad = (preview3DAngle * Math.PI) / 180;
         const cos = Math.cos(rad);
         const sin = Math.sin(rad);
 
+        // Light direction for shading
+        const lightDir = [0.577, 0.577, 0.577];
+
+        const isSolid = preview3DMode === 'shaded' || preview3DMode === 'shaded_wireframe';
+        const isWireframe = preview3DMode === 'wireframe' || preview3DMode === 'shaded_wireframe';
+
         for (const mesh of meshesToRender) {
             for (const primitive of mesh.primitives) {
                 const positions = primitive.positions;
+                const normals = primitive.normals;
+                const indices = primitive.indices;
                 if (!positions || positions.length < 6) continue;
 
-                ctx.beginPath();
-                const step = positions.length > 3000 ? 18 : 6;
-                for (let i = 0; i < positions.length; i += step) {
-                    const x = (positions[i] - centerX) * fitScale;
-                    const y = (positions[i + 1] - centerY) * fitScale;
-                    const z = (positions[i + 2] - centerZ) * fitScale;
+                // Collect projected triangles for sorting/rendering
+                const triangles = [];
 
-                    // Rotate Y-axis turntable
-                    const rotX = x * cos - z * sin;
-                    const rotZ = x * sin + z * cos;
+                if (indices && indices.length >= 3) {
+                    for (let i = 0; i < indices.length; i += 3) {
+                        const i0 = indices[i] * 3;
+                        const i1 = indices[i + 1] * 3;
+                        const i2 = indices[i + 2] * 3;
 
-                    // Perspective projection
-                    const projFactor = 300 / (300 + rotZ);
-                    const projX = rotX * projFactor;
-                    const projY = -y * projFactor;
+                        if (i2 + 2 >= positions.length) continue;
 
-                    if (i === 0) ctx.moveTo(projX, projY);
-                    else ctx.lineTo(projX, projY);
+                        const v0 = [positions[i0] - centerX, positions[i0 + 1] - centerY, positions[i0 + 2] - centerZ];
+                        const v1 = [positions[i1] - centerX, positions[i1 + 1] - centerY, positions[i1 + 2] - centerZ];
+                        const v2 = [positions[i2] - centerX, positions[i2 + 1] - centerY, positions[i2 + 2] - centerZ];
+
+                        // Rotate points around Y axis
+                        const r0 = [v0[0] * cos - v0[2] * sin, v0[1], v0[0] * sin + v0[2] * cos];
+                        const r1 = [v1[0] * cos - v1[2] * sin, v1[1], v1[0] * sin + v1[2] * cos];
+                        const r2 = [v2[0] * cos - v2[2] * sin, v2[1], v2[0] * sin + v2[2] * cos];
+
+                        const avgZ = (r0[2] + r1[2] + r2[2]) / 3;
+
+                        // Calculate normal & directional lighting
+                        let intensity = 0.7;
+                        if (normals && i0 + 2 < normals.length) {
+                            const nx = normals[i0] * cos - normals[i0 + 2] * sin;
+                            const ny = normals[i0 + 1];
+                            const nz = normals[i0] * sin + normals[i0 + 2] * cos;
+                            const dot = nx * lightDir[0] + ny * lightDir[1] + nz * lightDir[2];
+                            intensity = Math.max(0.2, Math.min(1.0, dot * 0.7 + 0.3));
+                        }
+
+                        // Project to 2D screen coordinates
+                        const p0 = [r0[0] * fitScale * (300 / (300 + r0[2])), -r0[1] * fitScale * (300 / (300 + r0[2]))];
+                        const p1 = [r1[0] * fitScale * (300 / (300 + r1[2])), -r1[1] * fitScale * (300 / (300 + r1[2]))];
+                        const p2 = [r2[0] * fitScale * (300 / (300 + r2[2])), -r2[1] * fitScale * (300 / (300 + r2[2]))];
+
+                        triangles.push({ p0, p1, p2, avgZ, intensity });
+                    }
                 }
-                ctx.stroke();
+
+                // Sort triangles back-to-front (Painter's algorithm)
+                triangles.sort((a, b) => b.avgZ - a.avgZ);
+
+                if (triangles.length > 0) {
+                    for (const tri of triangles) {
+                        ctx.beginPath();
+                        ctx.moveTo(tri.p0[0], tri.p0[1]);
+                        ctx.lineTo(tri.p1[0], tri.p1[1]);
+                        ctx.lineTo(tri.p2[0], tri.p2[1]);
+                        ctx.closePath();
+
+                        if (isSolid) {
+                            const val = Math.floor(tri.intensity * 200 + 45);
+                            ctx.fillStyle = selectedSubMeshIndex !== null ? `rgb(${val}, ${Math.floor(val * 0.6)}, 40)` : `rgb(40, ${Math.floor(val * 0.7)}, ${val})`;
+                            ctx.fill();
+                        }
+
+                        if (isWireframe) {
+                            ctx.strokeStyle = selectedSubMeshIndex !== null ? 'rgba(255, 159, 67, 0.4)' : 'rgba(0, 168, 255, 0.4)';
+                            ctx.lineWidth = 0.8;
+                            ctx.stroke();
+                        }
+                    }
+                } else {
+                    // Wireframe fallback for unindexed geometry
+                    ctx.beginPath();
+                    ctx.strokeStyle = selectedSubMeshIndex !== null ? '#ff9f43' : '#00a8ff';
+                    ctx.lineWidth = 1.2;
+                    const step = positions.length > 3000 ? 18 : 6;
+                    for (let i = 0; i < positions.length; i += step) {
+                        const x = (positions[i] - centerX) * fitScale;
+                        const y = (positions[i + 1] - centerY) * fitScale;
+                        const z = (positions[i + 2] - centerZ) * fitScale;
+
+                        const rotX = x * cos - z * sin;
+                        const rotZ = x * sin + z * cos;
+
+                        const projFactor = 300 / (300 + rotZ);
+                        const projX = rotX * projFactor;
+                        const projY = -y * projFactor;
+
+                        if (i === 0) ctx.moveTo(projX, projY);
+                        else ctx.lineTo(projX, projY);
+                    }
+                    ctx.stroke();
+                }
             }
         }
 
@@ -846,13 +1034,38 @@ async function executeImport() {
                 await cmWritable.write(JSON.stringify(converted.cmData, null, 2));
                 await cmWritable.close();
 
-                // Write extracted textures
+                // Write extracted textures and automatically generate .ceMaterial files for the model
                 if (document.getElementById('import-extract-textures').checked && converted.textures) {
                     for (const tex of converted.textures) {
                         const texHandle = await targetHandle.getFileHandle(tex.name, { create: true });
                         const texWritable = await texHandle.createWritable();
                         await texWritable.write(tex.blob);
                         await texWritable.close();
+
+                        // Write .meta file for texture
+                        const texMetaHandle = await targetHandle.getFileHandle(`${tex.name}.meta`, { create: true });
+                        const texMetaWritable = await texMetaHandle.createWritable();
+                        await texMetaWritable.write(JSON.stringify({ imageType: 'Textura', layer: grLayer, tag: tag, importDate: new Date().toISOString() }, null, 2));
+                        await texMetaWritable.close();
+
+                        // Generate linked .ceMaterial for the texture
+                        const matName = `${tex.name.split('.')[0]}_Material.ceMaterial`;
+                        const materialData = {
+                            formatVersion: '1.0',
+                            assetType: 'CarleyMaterial',
+                            name: tex.name.split('.')[0],
+                            texturePath: `${targetFolder}/${tex.name}`,
+                            albedoColor: '#ffffff',
+                            alpha: 1.0,
+                            shininess: 0.5,
+                            layer: grLayer,
+                            tag: tag
+                        };
+
+                        const matHandle = await targetHandle.getFileHandle(matName, { create: true });
+                        const matWritable = await matHandle.createWritable();
+                        await matWritable.write(JSON.stringify(materialData, null, 2));
+                        await matWritable.close();
                     }
                 }
 
