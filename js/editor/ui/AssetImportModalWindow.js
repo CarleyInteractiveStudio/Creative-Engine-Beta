@@ -1,6 +1,7 @@
 // js/editor/ui/AssetImportModalWindow.js
 import { showNotification } from './DialogWindow.js';
 import { CMModelConverter } from '../../engine/CMModelConverter.js';
+import { createFloatingPanel, bringToFront } from '../FloatingPanelManager.js';
 
 let modalElement = null;
 let currentFiles = []; // Array of File or FileHandle objects
@@ -8,6 +9,12 @@ let selectedFileIndices = new Set();
 let selectedFileIndex = 0; // Currently focused file for preview
 let targetDirHandle = null;
 let onCompleteCallback = null;
+
+// Sub-mesh selection tracking
+let selectedSubMeshIndex = null; // null = entire model, number = specific mesh index
+
+// Material asset creation state
+let currentMaterialData = null;
 
 // Sprite sheet preview animation state
 let previewAnimFrame = 0;
@@ -23,24 +30,13 @@ let preview3DTimer = null;
 export function initializeAssetImportModal() {
     if (document.getElementById('asset-import-modal')) return;
 
-    modalElement = document.createElement('div');
-    modalElement.id = 'asset-import-modal';
-    modalElement.className = 'modal';
-    modalElement.style.display = 'none';
-    modalElement.innerHTML = `
-        <div class="modal-content asset-import-modal-content" style="width: 980px; max-width: 95vw; height: 700px; max-height: 92vh; display: flex; flex-direction: column; padding: 0; background: #1e1e24; color: #e0e0e0; border-radius: 8px; overflow: hidden; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.7);">
-            <!-- Header -->
-            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: #18181c; border-bottom: 1px solid #2d2d35;">
-                <h3 style="margin: 0; font-size: 1.1rem; color: #4da6ff; display: flex; align-items: center; gap: 8px;">
-                    <img src="icons/box.svg" class="ce-icon" style="width: 20px; height: 20px;"> Importador de Assets 3D y Modelos (.CM / GLTF)
-                </h3>
-                <button class="close-button" id="import-modal-close" style="background: none; border: none; color: #888; font-size: 1.4rem; cursor: pointer;">&times;</button>
-            </div>
+    const modalContentHTML = `
+        <div class="asset-import-container" style="display: flex; flex-direction: column; height: 100%; width: 100%; background: #1e1e24; color: #e0e0e0; border-radius: 0 0 8px 8px; overflow: hidden;">
 
             <!-- Body (3 Columns: File List + Settings + Live Preview) -->
             <div style="display: flex; flex: 1; overflow: hidden;">
-                <!-- Left Sidebar: File List -->
-                <div style="width: 250px; background: #141418; border-right: 1px solid #2d2d35; display: flex; flex-direction: column;">
+                <!-- Left Sidebar: File List & Expandable 3D Hierarchy -->
+                <div style="width: 270px; background: #141418; border-right: 1px solid #2d2d35; display: flex; flex-direction: column;">
                     <div style="padding: 10px 15px; border-bottom: 1px solid #2d2d35; display: flex; justify-content: space-between; align-items: center; background: #1a1a20;">
                         <span style="font-size: 0.85rem; font-weight: bold; color: #aaa;">Archivos (<span id="import-file-count">0</span>)</span>
                         <div>
@@ -66,6 +62,7 @@ export function initializeAssetImportModal() {
                         <label style="font-size: 0.82rem; font-weight: bold; color: #ccc; display: block; margin-bottom: 4px;">Tipo de Asset / Modelo:</label>
                         <select id="import-img-type" style="width: 100%; padding: 7px 10px; background: #121215; border: 1px solid #3a3a45; color: #fff; border-radius: 4px; font-size: 0.85rem;">
                             <option value="Model3D">Modelo 3D (.CM / GLTF / GLB)</option>
+                            <option value="PintadoMaterial">Material 3D ("Pintado" Sphere)</option>
                             <option value="Sprite">Sprite (2D/3D Quad)</option>
                             <option value="Textura">Textura Albedo (Superficie 3D)</option>
                             <option value="Normal Map">Normal Map (Relieve 3D)</option>
@@ -88,6 +85,25 @@ export function initializeAssetImportModal() {
                             <input type="checkbox" id="import-extract-anims" checked style="cursor: pointer;">
                             Extraer Clips de Animación (.cea3d)
                         </label>
+                    </div>
+
+                    <!-- Material "Pintado" Options (Dynamic) -->
+                    <div id="import-material-options" style="display: none; background: #141418; padding: 12px; border-radius: 6px; border: 1px solid #333; gap: 10px; flex-direction: column;">
+                        <span style="font-size: 0.8rem; font-weight: bold; color: #ff9f43;">Propiedades del Material ("Pintado")</span>
+                        <div>
+                            <label style="font-size: 0.75rem; color: #aaa; display: block; margin-bottom: 2px;">Color Principal (Albedo):</label>
+                            <input type="color" id="import-mat-color" value="#00a8ff" style="width: 100%; height: 32px; background: none; border: 1px solid #3a3a45; border-radius: 4px; cursor: pointer;">
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.75rem; color: #aaa; display: block; margin-bottom: 2px;">Transparencia (Alfa):</label>
+                                <input type="range" id="import-mat-alpha" min="0" max="1" step="0.01" value="1.0" style="width: 100%;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.75rem; color: #aaa; display: block; margin-bottom: 2px;">Brillo / Especular:</label>
+                                <input type="range" id="import-mat-shininess" min="0" max="1" step="0.01" value="0.5" style="width: 100%;">
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Sprite Sheet Controls (Dynamic) -->
@@ -130,8 +146,8 @@ export function initializeAssetImportModal() {
                         </div>
                     </div>
 
-                    <!-- Option 3: Max Resolution Optimization -->
-                    <div class="import-field-group">
+                    <!-- Option 3: Max Resolution Optimization (Hidden for 3D Models / Materials) -->
+                    <div class="import-field-group" id="import-max-resolution-group">
                         <label style="font-size: 0.82rem; font-weight: bold; color: #ccc; display: block; margin-bottom: 4px;">Optimización de Calidad (Máx. Píxeles):</label>
                         <select id="import-max-resolution" style="width: 100%; padding: 7px 10px; background: #121215; border: 1px solid #3a3a45; color: #fff; border-radius: 4px; font-size: 0.85rem;">
                             <option value="original">Original (Sin Redimensionar)</option>
@@ -187,12 +203,23 @@ export function initializeAssetImportModal() {
         </div>
     `;
 
-    document.body.appendChild(modalElement);
+    modalElement = createFloatingPanel('asset-import-modal', {
+        title: 'Importador de Assets 3D y Modelos (.CM / GLTF)',
+        content: modalContentHTML,
+        width: 980,
+        height: 700,
+        top: 60,
+        left: 120
+    });
+    modalElement.style.display = 'none';
+
     setupEvents();
 }
 
 function setupEvents() {
-    document.getElementById('import-modal-close').onclick = hideModal;
+    const closeBtn = modalElement.querySelector('.close-panel-btn');
+    if (closeBtn) closeBtn.onclick = hideModal;
+
     document.getElementById('import-cancel-btn').onclick = hideModal;
 
     document.getElementById('import-select-all').onclick = () => {
@@ -213,16 +240,23 @@ function setupEvents() {
         const type = imgTypeSelect.value;
         const isSheet = type === 'Hoja de Animacion';
         const isModel = type === 'Model3D';
+        const isMaterial = type === 'PintadoMaterial';
 
         document.getElementById('import-spritesheet-options').style.display = isSheet ? 'flex' : 'none';
         document.getElementById('import-anim-controls').style.display = isSheet ? 'flex' : 'none';
         document.getElementById('import-model3d-options').style.display = isModel ? 'flex' : 'none';
+        document.getElementById('import-material-options').style.display = isMaterial ? 'flex' : 'none';
+        document.getElementById('import-max-resolution-group').style.display = (isModel || isMaterial) ? 'none' : 'block';
 
         if (isSheet && currentImageObj) {
             autoSliceSpriteSheet();
         }
         updatePreview();
     };
+
+    document.getElementById('import-mat-color').oninput = updatePreview;
+    document.getElementById('import-mat-alpha').oninput = updatePreview;
+    document.getElementById('import-mat-shininess').oninput = updatePreview;
 
     document.getElementById('import-sheet-cols').oninput = updatePreview;
     document.getElementById('import-sheet-rows').oninput = updatePreview;
@@ -321,10 +355,13 @@ function renderFileList() {
         const fileName = f.name || f.fileHandle?.name || `Archivo ${idx + 1}`;
         const isSelected = selectedFileIndices.has(idx);
         const isFocused = selectedFileIndex === idx;
+        const is3DModel = fileName.toLowerCase().endsWith('.gltf') || fileName.toLowerCase().endsWith('.glb') || fileName.toLowerCase().endsWith('.cm');
+
+        const itemContainer = document.createElement('div');
+        itemContainer.style.marginBottom = '4px';
 
         const item = document.createElement('div');
         item.style.padding = '8px 10px';
-        item.style.marginBottom = '4px';
         item.style.borderRadius = '4px';
         item.style.cursor = 'pointer';
         item.style.display = 'flex';
@@ -335,14 +372,21 @@ function renderFileList() {
         item.style.border = isFocused ? '1px solid #00a8ff' : (isSelected ? '1px solid #4da6ff' : '1px solid transparent');
         item.style.color = isSelected ? '#fff' : '#aaa';
 
+        const expandBtnHTML = is3DModel ? `<span class="import-expand-tree" style="font-size: 0.75rem; color: #4da6ff; cursor: pointer; user-select: none;">▼</span>` : '';
+
         item.innerHTML = `
+            ${expandBtnHTML}
             <input type="checkbox" ${isSelected ? 'checked' : ''} style="cursor: pointer;">
-            <img src="icons/file.svg" class="ce-icon" style="width: 14px; height: 14px; opacity: 0.7;">
-            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">${fileName}</span>
+            <img src="${is3DModel ? 'icons/box.svg' : 'icons/file.svg'}" class="ce-icon" style="width: 14px; height: 14px; opacity: 0.8;">
+            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; font-weight: ${isFocused ? 'bold' : 'normal'}">${fileName}</span>
         `;
 
         item.onclick = (e) => {
+            if (e.target.classList.contains('import-expand-tree')) return;
+
             selectedFileIndex = idx;
+            selectedSubMeshIndex = null; // Reset sub-mesh to main model on model re-select
+
             if (e.target.tagName !== 'INPUT') {
                 if (selectedFileIndices.has(idx)) selectedFileIndices.delete(idx);
                 else selectedFileIndices.add(idx);
@@ -354,7 +398,63 @@ function renderFileList() {
             loadFocusedFileForPreview();
         };
 
-        container.appendChild(item);
+        itemContainer.appendChild(item);
+
+        // Expandable Sub-mesh Hierarchy Tree for 3D models
+        if (is3DModel && isFocused && currentCMData && currentCMData.meshes) {
+            const hierarchyTree = document.createElement('div');
+            hierarchyTree.className = 'import-submesh-tree';
+            hierarchyTree.style.marginLeft = '20px';
+            hierarchyTree.style.marginTop = '4px';
+            hierarchyTree.style.display = 'flex';
+            hierarchyTree.style.flexDirection = 'column';
+            hierarchyTree.style.gap = '2px';
+
+            currentCMData.meshes.forEach((mesh, mIdx) => {
+                const subItem = document.createElement('div');
+                const isSubFocused = selectedSubMeshIndex === mIdx;
+
+                subItem.style.padding = '4px 8px';
+                subItem.style.borderRadius = '3px';
+                subItem.style.cursor = 'pointer';
+                subItem.style.fontSize = '0.76rem';
+                subItem.style.display = 'flex';
+                subItem.style.alignItems = 'center';
+                subItem.style.gap = '6px';
+                subItem.style.background = isSubFocused ? 'rgba(0, 168, 255, 0.25)' : '#121216';
+                subItem.style.border = isSubFocused ? '1px solid #00a8ff' : '1px solid #282830';
+                subItem.style.color = isSubFocused ? '#4da6ff' : '#bbb';
+
+                subItem.innerHTML = `
+                    <span style="color: #666;">└</span>
+                    <img src="icons/layers.svg" class="ce-icon" style="width: 12px; height: 12px; opacity: 0.7;">
+                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">${mesh.name || `Sub-Malla ${mIdx + 1}`}</span>
+                `;
+
+                subItem.onclick = (e) => {
+                    e.stopPropagation();
+                    selectedSubMeshIndex = mIdx;
+                    renderFileList();
+                    update3DTurntablePreview();
+                };
+
+                hierarchyTree.appendChild(subItem);
+            });
+
+            const expandBtn = item.querySelector('.import-expand-tree');
+            if (expandBtn) {
+                expandBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    const isHidden = hierarchyTree.style.display === 'none';
+                    hierarchyTree.style.display = isHidden ? 'flex' : 'none';
+                    expandBtn.textContent = isHidden ? '▼' : '►';
+                };
+            }
+
+            itemContainer.appendChild(hierarchyTree);
+        }
+
+        container.appendChild(itemContainer);
     });
 }
 
@@ -432,51 +532,82 @@ function update3DTurntablePreview() {
     const canvas = document.getElementById('import-preview-canvas');
     if (!canvas || !currentCMData) return;
 
-    canvas.width = 320;
-    canvas.height = 320;
+    canvas.width = 360;
+    canvas.height = 360;
     const ctx = canvas.getContext('2d');
+
+    const meshesToRender = (selectedSubMeshIndex !== null && currentCMData.meshes[selectedSubMeshIndex]) ?
+        [currentCMData.meshes[selectedSubMeshIndex]] : currentCMData.meshes;
+
+    const subMeshName = selectedSubMeshIndex !== null && currentCMData.meshes[selectedSubMeshIndex] ?
+        currentCMData.meshes[selectedSubMeshIndex].name : 'Modelo Completo';
+
+    document.getElementById('import-img-dimensions').textContent = `3D: ${subMeshName} (${meshesToRender.length} mesh)`;
+
+    // Calculate AABB for auto-framing isolated sub-mesh or full model
+    let minX = Infinity, minY = Infinity, minZ = Infinity;
+    let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+
+    for (const mesh of meshesToRender) {
+        for (const primitive of mesh.primitives) {
+            const pos = primitive.positions;
+            if (!pos) continue;
+            for (let i = 0; i < pos.length; i += 3) {
+                minX = Math.min(minX, pos[i]); maxX = Math.max(maxX, pos[i]);
+                minY = Math.min(minY, pos[i + 1]); maxY = Math.max(maxY, pos[i + 1]);
+                minZ = Math.min(minZ, pos[i + 2]); maxZ = Math.max(maxZ, pos[i + 2]);
+            }
+        }
+    }
+
+    const sizeX = maxX - minX || 1;
+    const sizeY = maxY - minY || 1;
+    const sizeZ = maxZ - minZ || 1;
+    const maxDimension = Math.max(sizeX, sizeY, sizeZ);
+    const fitScale = 140 / maxDimension;
+
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    const centerZ = (minZ + maxZ) / 2;
 
     preview3DAngle = 0;
     const drawTurntableFrame = () => {
-        ctx.clearRect(0, 0, 320, 320);
+        ctx.clearRect(0, 0, 360, 360);
 
-        // Simple Wireframe 3D Projection Turntable for CM Model
         ctx.save();
-        ctx.translate(160, 160);
-        ctx.strokeStyle = '#00a8ff';
+        ctx.translate(180, 180);
+        ctx.strokeStyle = selectedSubMeshIndex !== null ? '#ff9f43' : '#00a8ff';
         ctx.lineWidth = 1.5;
 
         const rad = (preview3DAngle * Math.PI) / 180;
         const cos = Math.cos(rad);
         const sin = Math.sin(rad);
 
-        if (currentCMData.meshes) {
-            for (const mesh of currentCMData.meshes) {
-                for (const primitive of mesh.primitives) {
-                    const positions = primitive.positions;
-                    if (!positions || positions.length < 6) continue;
+        for (const mesh of meshesToRender) {
+            for (const primitive of mesh.primitives) {
+                const positions = primitive.positions;
+                if (!positions || positions.length < 6) continue;
 
-                    ctx.beginPath();
-                    const step = positions.length > 3000 ? 18 : 6;
-                    for (let i = 0; i < positions.length; i += step) {
-                        const x = positions[i];
-                        const y = positions[i + 1];
-                        const z = positions[i + 2];
+                ctx.beginPath();
+                const step = positions.length > 3000 ? 18 : 6;
+                for (let i = 0; i < positions.length; i += step) {
+                    const x = (positions[i] - centerX) * fitScale;
+                    const y = (positions[i + 1] - centerY) * fitScale;
+                    const z = (positions[i + 2] - centerZ) * fitScale;
 
-                        // Rotate Y-axis turntable
-                        const rotX = x * cos - z * sin;
-                        const rotZ = x * sin + z * cos;
+                    // Rotate Y-axis turntable
+                    const rotX = x * cos - z * sin;
+                    const rotZ = x * sin + z * cos;
 
-                        // Perspective projection
-                        const scale = 220 / (250 + rotZ);
-                        const projX = rotX * scale;
-                        const projY = -y * scale;
+                    // Perspective projection
+                    const projFactor = 300 / (300 + rotZ);
+                    const projX = rotX * projFactor;
+                    const projY = -y * projFactor;
 
-                        if (i === 0) ctx.moveTo(projX, projY);
-                        else ctx.lineTo(projX, projY);
-                    }
-                    ctx.stroke();
+                    if (i === 0) ctx.moveTo(projX, projY);
+                    else ctx.lineTo(projX, projY);
                 }
+                ctx.stroke();
             }
         }
 
@@ -523,6 +654,11 @@ function updatePreview() {
 
     if (imgType === 'Model3D' && currentCMData) {
         update3DTurntablePreview();
+        return;
+    }
+
+    if (imgType === 'PintadoMaterial') {
+        updateMaterialSpherePreview();
         return;
     }
 
@@ -746,7 +882,40 @@ async function executeImport() {
                 continue;
             }
 
-            // 2. Process Image / Texture
+            // 2. Process Material ("Pintado" Asset)
+            if (imgType === 'PintadoMaterial') {
+                const baseName = fileName.split('.')[0];
+                const matFileName = `${baseName}.ceMaterial`;
+
+                const colorHex = document.getElementById('import-mat-color').value || '#00a8ff';
+                const alpha = parseFloat(document.getElementById('import-mat-alpha').value) || 1.0;
+                const shininess = parseFloat(document.getElementById('import-mat-shininess').value) || 0.5;
+
+                const materialData = {
+                    formatVersion: '1.0',
+                    assetType: 'CarleyMaterial',
+                    name: baseName,
+                    albedoColor: colorHex,
+                    alpha: alpha,
+                    shininess: shininess,
+                    layer: grLayer,
+                    tag: tag
+                };
+
+                const matHandle = await targetHandle.getFileHandle(matFileName, { create: true });
+                const matWritable = await matHandle.createWritable();
+                await matWritable.write(JSON.stringify(materialData, null, 2));
+                await matWritable.close();
+
+                const metaHandle = await targetHandle.getFileHandle(`${matFileName}.meta`, { create: true });
+                const metaWritable = await metaHandle.createWritable();
+                await metaWritable.write(JSON.stringify({ assetType: 'CarleyMaterial', importDate: new Date().toISOString() }, null, 2));
+                await metaWritable.close();
+
+                continue;
+            }
+
+            // 3. Process Image / Texture
             const processedFile = await resizeImageIfNeeded(fileObj, maxRes);
 
             const fileHandle = await targetHandle.getFileHandle(fileName, { create: true });
@@ -800,5 +969,7 @@ export async function showAssetImportModal(files, defaultTargetDirHandle = null,
     loadFocusedFileForPreview();
 
     modalElement.style.display = 'flex';
+    modalElement.classList.remove('hidden');
     modalElement.classList.add('is-open');
+    bringToFront(modalElement);
 }
