@@ -6974,7 +6974,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             };
 
             dom.inspectorContent.appendChild(settingsContainer);
-        }         } else if (lowerName.endsWith('.cepalette')) {
+        } else if (lowerName.endsWith('.cepalette')) {
             const content = await file.text();
             let paletteData = { name: assetName.replace('.cepalette', '') };
             try {
