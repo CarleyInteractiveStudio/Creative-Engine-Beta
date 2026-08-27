@@ -208,27 +208,89 @@ export class CMModelConverter {
     }
 
     /**
-     * Decimates mesh geometry by edge collapsing / vertex clustering while preserving overall shape.
+     * Decimates mesh geometry using spatial Vertex Clustering to smooth/simplify
+     * high-poly geometry while keeping a contiguous, closed surface without holes/gaps.
      */
     static _decimateMesh(positions, normals, uvs, indices, ratio) {
-        if (!indices || indices.length < 12 || ratio >= 0.98) {
+        if (!positions || positions.length < 9 || !indices || indices.length < 12 || ratio >= 0.98) {
             return { positions, normals, uvs, indices };
         }
 
-        const targetTriangleCount = Math.max(2, Math.floor((indices.length / 3) * ratio));
-        const newIndices = [];
-        const step = Math.max(1, Math.floor((indices.length / 3) / targetTriangleCount));
+        // Calculate mesh bounding box
+        let minX = Infinity, minY = Infinity, minZ = Infinity;
+        let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
 
-        for (let i = 0; i < indices.length; i += step * 3) {
-            if (i + 2 < indices.length) {
-                newIndices.push(indices[i], indices[i + 1], indices[i + 2]);
+        for (let i = 0; i < positions.length; i += 3) {
+            minX = Math.min(minX, positions[i]); maxX = Math.max(maxX, positions[i]);
+            minY = Math.min(minY, positions[i + 1]); maxY = Math.max(maxY, positions[i + 1]);
+            minZ = Math.min(minZ, positions[i + 2]); maxZ = Math.max(maxZ, positions[i + 2]);
+        }
+
+        const extentX = (maxX - minX) || 1.0;
+        const extentY = (maxY - minY) || 1.0;
+        const extentZ = (maxZ - minZ) || 1.0;
+        const maxExtent = Math.max(extentX, extentY, extentZ);
+
+        // Grid cell size based on target reduction ratio (higher ratio = finer grid)
+        const gridRes = Math.max(4, Math.floor(64 * Math.pow(ratio, 0.75)));
+        const cellSize = maxExtent / gridRes;
+
+        const cellMap = new Map(); // gridKey -> newVertexIndex
+        const newPositions = [];
+        const newNormals = normals ? [] : null;
+        const newUvs = uvs ? [] : null;
+        const vertexRemap = new Int32Array(positions.length / 3);
+
+        const vertexCount = positions.length / 3;
+
+        for (let v = 0; v < vertexCount; v++) {
+            const px = positions[v * 3];
+            const py = positions[v * 3 + 1];
+            const pz = positions[v * 3 + 2];
+
+            const gx = Math.floor((px - minX) / cellSize);
+            const gy = Math.floor((py - minY) / cellSize);
+            const gz = Math.floor((pz - minZ) / cellSize);
+            const gridKey = `${gx}_${gy}_${gz}`;
+
+            if (cellMap.has(gridKey)) {
+                vertexRemap[v] = cellMap.get(gridKey);
+            } else {
+                const newIdx = newPositions.length / 3;
+                cellMap.set(gridKey, newIdx);
+                vertexRemap[v] = newIdx;
+
+                newPositions.push(px, py, pz);
+                if (normals) {
+                    newNormals.push(normals[v * 3], normals[v * 3 + 1], normals[v * 3 + 2]);
+                }
+                if (uvs) {
+                    newUvs.push(uvs[v * 2], uvs[v * 2 + 1]);
+                }
             }
         }
 
+        // Re-index triangles and discard degenerate faces (where two or more vertices collapsed to the same point)
+        const newIndices = [];
+        for (let i = 0; i < indices.length; i += 3) {
+            const i0 = vertexRemap[indices[i]];
+            const i1 = vertexRemap[indices[i + 1]];
+            const i2 = vertexRemap[indices[i + 2]];
+
+            if (i0 !== i1 && i1 !== i2 && i0 !== i2) {
+                newIndices.push(i0, i1, i2);
+            }
+        }
+
+        // If decimation collapsed all faces, fallback to original indices
+        if (newIndices.length < 3) {
+            return { positions, normals, uvs, indices };
+        }
+
         return {
-            positions,
-            normals,
-            uvs,
+            positions: newPositions,
+            normals: newNormals,
+            uvs: newUvs,
             indices: newIndices
         };
     }
