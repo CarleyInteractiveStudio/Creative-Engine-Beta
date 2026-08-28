@@ -1,25 +1,27 @@
 // js/engine/CMModelConverter.js
 /**
- * CMModelConverter - Converts .gltf and .glb 3D assets into native Carley Model (.cm) format,
- * extracting companion textures and .cea3d animation clips while normalizing Blender orientations.
+ * CMModelConverter - Converts .gltf, .glb, and Waveform .obj 3D assets into native Carley Model (.cm) format,
+ * extracting companion textures, .mtl materials, and .cea3d animation clips while normalizing Blender orientations.
  */
 
 export class CMModelConverter {
     /**
-     * Converts a GLTF/GLB File or ArrayBuffer into a Carley Model (.cm) structure.
+     * Converts a GLTF/GLB or OBJ File/ArrayBuffer into a Carley Model (.cm) structure.
      * @param {File|Blob|ArrayBuffer} fileData
      * @param {string} fileName
      * @param {number} reductionRatio - Target polygon ratio (0.25 to 1.0)
+     * @param {boolean} normalizeBlender - Whether to transform Z-Up to Y-Up
+     * @param {string|null} mtlText - Companion .mtl material text for .obj files
      * @returns {Promise<{ cmData: object, textures: Array<{ name: string, blob: Blob }>, animations: Array<{ name: string, data: object }> }>}
      */
-    static async convertGLTFToCM(fileData, fileName = 'model.glb', reductionRatio = 1.0, normalizeBlender = true) {
+    static async convertGLTFToCM(fileData, fileName = 'model.glb', reductionRatio = 1.0, normalizeBlender = true, mtlText = null) {
         let buffer;
         if (fileData instanceof ArrayBuffer) {
             buffer = fileData;
         } else if (fileData.arrayBuffer) {
             buffer = await fileData.arrayBuffer();
         } else {
-            throw new Error("Formato de datos no soportado para la conversión GLTF.");
+            throw new Error("Formato de datos no soportado para la conversión 3D.");
         }
 
         const lowerName = fileName.toLowerCase();
@@ -28,7 +30,7 @@ export class CMModelConverter {
         if (lowerName.endsWith('.obj')) {
             const decoder = new TextDecoder('utf-8');
             const objText = decoder.decode(buffer);
-            return this.convertOBJToCM(objText, fileName, reductionRatio);
+            return this.convertOBJToCM(objText, fileName, reductionRatio, normalizeBlender, mtlText);
         }
 
         const isGLB = lowerName.endsWith('.glb') || this._isGLBHeader(buffer);
@@ -87,8 +89,6 @@ export class CMModelConverter {
 
                     if (normalizeBlender) {
                         this._normalizeCoordinates(positions, normals);
-                    } else {
-                        this._centerPivot(positions);
                     }
 
                     let primPositions = Array.from(positions || []);
@@ -130,9 +130,8 @@ export class CMModelConverter {
                 const node = gltfJson.nodes[i];
                 let translation = node.translation || [0, 0, 0];
                 let scale = node.scale || [1, 1, 1];
-                let rotation = node.rotation || [0, 0, 0, 1]; // Quat [x,y,z,w]
+                let rotation = node.rotation || [0, 0, 0, 1];
 
-                // Blender coordinate swap on node positions
                 translation = [translation[0], translation[1], translation[2]];
 
                 cmNodes.push({
@@ -185,7 +184,7 @@ export class CMModelConverter {
 
                     channels.push({
                         node: channel.target.node,
-                        path: channel.target.path, // 'translation', 'rotation', 'scale'
+                        path: channel.target.path,
                         times: Array.from(inputData || []),
                         values: Array.from(outputData || []),
                         interpolation: sampler.interpolation || 'LINEAR'
@@ -203,7 +202,9 @@ export class CMModelConverter {
             }
         }
 
-        // Final .cm Bundle
+        // Apply global pivot centering across entire model hierarchy (not per sub-mesh)
+        this._centerGlobalModelPivot(cmMeshes);
+
         const cmData = {
             formatVersion: '1.0',
             generator: 'Carley Engine CM Converter',
@@ -220,27 +221,75 @@ export class CMModelConverter {
     }
 
     /**
-     * Converts OBJ Waveform string content into a native .cm model bundle asynchronously
-     * without blocking the UI thread on large models.
+     * Parse companion .mtl text into a map of material configurations.
      */
-    static async convertOBJToCM(objText, fileName = 'model.obj', reductionRatio = 1.0) {
+    static parseMTL(mtlText) {
+        const materials = new Map();
+        if (!mtlText) return materials;
+
+        let currentMat = null;
+        const lines = mtlText.split('\n');
+
+        for (let line of lines) {
+            line = line.trim();
+            if (!line || line.startsWith('#')) continue;
+
+            const parts = line.split(/\s+/);
+            const keyword = parts[0].toLowerCase();
+
+            if (keyword === 'newmtl') {
+                const matName = parts.slice(1).join(' ') || 'DefaultMaterial';
+                currentMat = {
+                    name: matName,
+                    baseColor: [1, 1, 1, 1],
+                    texturePath: null
+                };
+                materials.set(matName, currentMat);
+            } else if (currentMat) {
+                if (keyword === 'kd') {
+                    const r = parseFloat(parts[1]) || 1;
+                    const g = parseFloat(parts[2]) || 1;
+                    const b = parseFloat(parts[3]) || 1;
+                    currentMat.baseColor = [r, g, b, 1.0];
+                } else if (keyword === 'd' || keyword === 'tr') {
+                    const alpha = parseFloat(parts[1]);
+                    if (!isNaN(alpha)) {
+                        currentMat.baseColor[3] = keyword === 'tr' ? 1.0 - alpha : alpha;
+                    }
+                } else if (keyword === 'map_kd') {
+                    const texPath = parts.slice(1).join(' ').replace(/\\/g, '/');
+                    currentMat.texturePath = texPath.split('/').pop();
+                }
+            }
+        }
+        return materials;
+    }
+
+    /**
+     * Converts OBJ Waveform string content into a native .cm model bundle asynchronously.
+     * Guarantees 1:1 vertex attribute array length matching, sub-mesh separation by object/material,
+     * accurate normal/UV calculation, and global pivot centering.
+     */
+    static async convertOBJToCM(objText, fileName = 'model.obj', reductionRatio = 1.0, normalizeBlender = true, mtlText = null) {
         const rawPositions = [];
         const rawNormals = [];
         const rawUVs = [];
 
-        const positions = [];
-        const normals = [];
-        const uvs = [];
-        const indices = [];
+        const mtlMaterialsMap = this.parseMTL(mtlText);
 
-        const vertCache = new Map();
+        const groups = [];
+        let currentGroup = {
+            name: fileName.split('.')[0] || 'DefaultObject',
+            materialName: 'DefaultMaterial',
+            faces: []
+        };
+        groups.push(currentGroup);
 
         let pos = 0;
         const len = objText.length;
         let lastYield = performance.now();
 
         while (pos < len) {
-            // Yield every 15ms to keep UI smooth
             if (performance.now() - lastYield > 15) {
                 await new Promise(resolve => setTimeout(resolve, 0));
                 lastYield = performance.now();
@@ -252,40 +301,84 @@ export class CMModelConverter {
             let line = objText.substring(pos, nextLineEnd).trim();
             pos = nextLineEnd + 1;
 
-            if (!line || line.charCodeAt(0) === 35) continue; // Skip comments ('#')
+            if (!line || line.charCodeAt(0) === 35) continue;
 
-            const code = line.charCodeAt(0);
+            const parts = line.split(/\s+/);
+            const code = parts[0].toLowerCase();
 
-            // 'v' (vertex), 'vn' (normal), 'vt' (uv)
-            if (code === 118) {
-                const secondCode = line.charCodeAt(1);
-                if (secondCode === 32 || secondCode === 9) { // 'v '
-                    const parts = line.split(/\s+/);
-                    rawPositions.push(parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3]));
-                } else if (secondCode === 110) { // 'vn'
-                    const parts = line.split(/\s+/);
-                    rawNormals.push(parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3]));
-                } else if (secondCode === 116) { // 'vt'
-                    const parts = line.split(/\s+/);
-                    rawUVs.push(parseFloat(parts[1]), parseFloat(parts[2]));
+            if (code === 'v') {
+                rawPositions.push(parseFloat(parts[1]) || 0, parseFloat(parts[2]) || 0, parseFloat(parts[3]) || 0);
+            } else if (code === 'vn') {
+                rawNormals.push(parseFloat(parts[1]) || 0, parseFloat(parts[2]) || 0, parseFloat(parts[3]) || 0);
+            } else if (code === 'vt') {
+                rawUVs.push(parseFloat(parts[1]) || 0, parseFloat(parts[2]) || 0);
+            } else if (code === 'o' || code === 'g') {
+                const gName = parts.slice(1).join('_') || `Group_${groups.length}`;
+                if (currentGroup.faces.length === 0) {
+                    currentGroup.name = gName;
+                } else {
+                    currentGroup = {
+                        name: gName,
+                        materialName: currentGroup.materialName,
+                        faces: []
+                    };
+                    groups.push(currentGroup);
                 }
-            } else if (code === 102) { // 'f' (face)
-                const parts = line.split(/\s+/);
-                const faceVerts = [];
-                for (let k = 1; k < parts.length; k++) {
-                    if (parts[k]) faceVerts.push(parts[k]);
+            } else if (code === 'usemtl') {
+                const matName = parts.slice(1).join(' ') || 'DefaultMaterial';
+                if (currentGroup.faces.length === 0) {
+                    currentGroup.materialName = matName;
+                } else {
+                    currentGroup = {
+                        name: `${currentGroup.name}_${matName}`,
+                        materialName: matName,
+                        faces: []
+                    };
+                    groups.push(currentGroup);
                 }
+            } else if (code === 'f') {
+                const faceVerts = parts.slice(1).filter(Boolean);
+                if (faceVerts.length >= 3) {
+                    currentGroup.faces.push(faceVerts);
+                }
+            }
+        }
 
-                if (faceVerts.length < 3) continue;
+        const cmMeshes = [];
+        const cmNodes = [];
+        const cmMaterials = [];
+        const materialIndexMap = new Map();
 
-                // Triangulate convex/concave face fan
+        const baseName = fileName.split('.')[0];
+        const totalRawPos = rawPositions.length / 3;
+        const totalRawNorm = rawNormals.length / 3;
+        const totalRawUV = rawUVs.length / 2;
+
+        let nodeCounter = 0;
+
+        for (const grp of groups) {
+            if (grp.faces.length === 0) continue;
+
+            const positions = [];
+            const normals = [];
+            const uvs = [];
+            const indices = [];
+
+            const vertCache = new Map();
+
+            for (const faceVerts of grp.faces) {
+                // Triangulate faces (fan triangulation)
                 for (let i = 1; i < faceVerts.length - 1; i++) {
-                    const triVerts = [faceVerts[0], faceVerts[i], faceVerts[i + 1]];
+                    const tri = [faceVerts[0], faceVerts[i], faceVerts[i + 1]];
 
-                    for (const vKey of triVerts) {
+                    // Pre-validate all 3 triangle vertices before inserting into indices buffer
+                    let validTri = true;
+                    const triIndices = [];
+
+                    for (const vKey of tri) {
                         let cachedIdx = vertCache.get(vKey);
                         if (cachedIdx !== undefined) {
-                            indices.push(cachedIdx);
+                            triIndices.push(cachedIdx);
                             continue;
                         }
 
@@ -307,106 +400,146 @@ export class CMModelConverter {
                             }
                         }
 
-                        const totalP = rawPositions.length / 3;
-                        const pi = ((pIdx > 0 ? pIdx - 1 : totalP + pIdx) % totalP) * 3;
-
+                        const pi = ((pIdx > 0 ? pIdx - 1 : totalRawPos + pIdx) % totalRawPos) * 3;
                         if (isNaN(pi) || pi < 0 || pi >= rawPositions.length) {
-                            continue;
+                            validTri = false;
+                            break; // Abort entire triangle to preserve index buffer alignment
                         }
 
                         positions.push(rawPositions[pi], rawPositions[pi + 1], rawPositions[pi + 2]);
 
-                        if (rawNormals.length > 0 && nIdx) {
-                            const totalN = rawNormals.length / 3;
-                            const ni = ((nIdx > 0 ? nIdx - 1 : totalN + nIdx) % totalN) * 3;
-                            normals.push(rawNormals[ni] || 0, rawNormals[ni + 1] || 1, rawNormals[ni + 2] || 0);
+                        // Handle normals safely without replacing 0.0 with 1.0
+                        if (rawNormals.length > 0 && nIdx !== 0) {
+                            const ni = ((nIdx > 0 ? nIdx - 1 : totalRawNorm + nIdx) % totalRawNorm) * 3;
+                            const nx = rawNormals[ni] !== undefined ? rawNormals[ni] : 0;
+                            const ny = rawNormals[ni + 1] !== undefined ? rawNormals[ni + 1] : 1;
+                            const nz = rawNormals[ni + 2] !== undefined ? rawNormals[ni + 2] : 0;
+                            normals.push(nx, ny, nz);
+                        } else {
+                            normals.push(0, 1, 0);
                         }
 
-                        if (rawUVs.length > 0 && tIdx) {
-                            const totalT = rawUVs.length / 2;
-                            const ti = ((tIdx > 0 ? tIdx - 1 : totalT + tIdx) % totalT) * 2;
-                            uvs.push(rawUVs[ti] || 0, rawUVs[ti + 1] || 0);
+                        // Handle UVs
+                        if (rawUVs.length > 0 && tIdx !== 0) {
+                            const ti = ((tIdx > 0 ? tIdx - 1 : totalRawUV + tIdx) % totalRawUV) * 2;
+                            const u = rawUVs[ti] !== undefined ? rawUVs[ti] : 0;
+                            const v = rawUVs[ti + 1] !== undefined ? rawUVs[ti + 1] : 0;
+                            uvs.push(u, v);
+                        } else {
+                            uvs.push(0, 0);
                         }
 
                         const newIdx = Math.floor(positions.length / 3) - 1;
                         vertCache.set(vKey, newIdx);
-                        indices.push(newIdx);
+                        triIndices.push(newIdx);
+                    }
+
+                    if (validTri && triIndices.length === 3) {
+                        indices.push(triIndices[0], triIndices[1], triIndices[2]);
                     }
                 }
             }
-        }
 
-        // Generate facet normals if missing from OBJ file
-        if (normals.length === 0 && positions.length >= 9 && indices.length >= 3) {
-            for (let i = 0; i < positions.length; i++) normals.push(0);
-            for (let i = 0; i < indices.length; i += 3) {
-                const i0 = indices[i] * 3;
-                const i1 = indices[i + 1] * 3;
-                const i2 = indices[i + 2] * 3;
+            if (positions.length === 0) continue;
 
-                const ax = positions[i1] - positions[i0];
-                const ay = positions[i1 + 1] - positions[i0 + 1];
-                const az = positions[i1 + 2] - positions[i0 + 2];
+            // Generate facet normals if missing
+            const hasExplicitNormals = rawNormals.length > 0;
+            if (!hasExplicitNormals) {
+                for (let i = 0; i < positions.length; i++) normals[i] = 0;
 
-                const bx = positions[i2] - positions[i0];
-                const by = positions[i2 + 1] - positions[i0 + 1];
-                const bz = positions[i2 + 2] - positions[i0 + 2];
+                for (let i = 0; i < indices.length; i += 3) {
+                    const i0 = indices[i] * 3;
+                    const i1 = indices[i + 1] * 3;
+                    const i2 = indices[i + 2] * 3;
 
-                const nx = ay * bz - az * by;
-                const ny = az * bx - ax * bz;
-                const nz = ax * by - ay * bx;
+                    const ax = positions[i1] - positions[i0];
+                    const ay = positions[i1 + 1] - positions[i0 + 1];
+                    const az = positions[i1 + 2] - positions[i0 + 2];
 
-                normals[i0] += nx; normals[i0 + 1] += ny; normals[i0 + 2] += nz;
-                normals[i1] += nx; normals[i1 + 1] += ny; normals[i1 + 2] += nz;
-                normals[i2] += nx; normals[i2 + 1] += ny; normals[i2 + 2] += nz;
+                    const bx = positions[i2] - positions[i0];
+                    const by = positions[i2 + 1] - positions[i0 + 1];
+                    const bz = positions[i2 + 2] - positions[i0 + 2];
+
+                    const nx = ay * bz - az * by;
+                    const ny = az * bx - ax * bz;
+                    const nz = ax * by - ay * bx;
+
+                    normals[i0] += nx; normals[i0 + 1] += ny; normals[i0 + 2] += nz;
+                    normals[i1] += nx; normals[i1 + 1] += ny; normals[i1 + 2] += nz;
+                    normals[i2] += nx; normals[i2 + 1] += ny; normals[i2 + 2] += nz;
+                }
+
+                for (let i = 0; i < normals.length; i += 3) {
+                    const len = Math.hypot(normals[i], normals[i + 1], normals[i + 2]) || 1;
+                    normals[i] /= len;
+                    normals[i + 1] /= len;
+                    normals[i + 2] /= len;
+                }
             }
 
-            // Normalize vertex normals
-            for (let i = 0; i < normals.length; i += 3) {
-                const len = Math.hypot(normals[i], normals[i + 1], normals[i + 2]) || 1;
-                normals[i] /= len;
-                normals[i + 1] /= len;
-                normals[i + 2] /= len;
+            // Apply Z-Up -> Y-Up coordinate space transformation
+            if (normalizeBlender) {
+                this._normalizeCoordinates(positions, normals);
             }
+
+            let primPositions = positions;
+            let primNormals = normals;
+            let primUvs = uvs;
+            let primIndices = indices;
+
+            if (reductionRatio < 0.98 && primIndices.length > 12) {
+                const decimated = this._decimateMesh(primPositions, primNormals, primUvs, primIndices, reductionRatio);
+                primPositions = decimated.positions;
+                primNormals = decimated.normals;
+                primUvs = decimated.uvs;
+                primIndices = decimated.indices;
+            }
+
+            let matIdx = 0;
+            const matName = grp.materialName || 'DefaultMaterial';
+            if (materialIndexMap.has(matName)) {
+                matIdx = materialIndexMap.get(matName);
+            } else {
+                matIdx = cmMaterials.length;
+                materialIndexMap.set(matName, matIdx);
+
+                const mtlConfig = mtlMaterialsMap.get(matName);
+                cmMaterials.push({
+                    name: matName,
+                    baseColor: mtlConfig ? mtlConfig.baseColor : [1, 1, 1, 1],
+                    texturePath: mtlConfig ? mtlConfig.texturePath : null
+                });
+            }
+
+            const meshIndex = cmMeshes.length;
+            cmMeshes.push({
+                name: grp.name || `SubMesh_${meshIndex}`,
+                primitives: [{
+                    positions: primPositions,
+                    normals: primNormals,
+                    uvs: primUvs,
+                    indices: primIndices,
+                    materialIndex: matIdx
+                }]
+            });
+
+            cmNodes.push({
+                id: nodeCounter++,
+                name: grp.name || `Node_${meshIndex}`,
+                translation: [0, 0, 0],
+                scale: [1, 1, 1],
+                rotation: [0, 0, 0, 1],
+                mesh: meshIndex,
+                children: []
+            });
         }
 
-        // Normalize Z-Up/Y-Up coordinate space
-        this._normalizeCoordinates(positions, normals);
-
-        let primPositions = positions;
-        let primNormals = normals.length > 0 ? normals : null;
-        let primUvs = uvs.length > 0 ? uvs : null;
-        let primIndices = indices;
-
-        if (reductionRatio < 0.98 && primIndices.length > 12) {
-            const decimated = this._decimateMesh(primPositions, primNormals, primUvs, primIndices, reductionRatio);
-            primPositions = decimated.positions;
-            primNormals = decimated.normals;
-            primUvs = decimated.uvs;
-            primIndices = decimated.indices;
+        if (cmMaterials.length === 0) {
+            cmMaterials.push({ name: `${baseName}_Material`, baseColor: [1, 1, 1, 1] });
         }
 
-        const baseName = fileName.split('.')[0];
-        const cmMeshes = [{
-            name: baseName,
-            primitives: [{
-                positions: primPositions,
-                normals: primNormals,
-                uvs: primUvs,
-                indices: primIndices,
-                materialIndex: 0
-            }]
-        }];
-
-        const cmNodes = [{
-            id: 0,
-            name: baseName,
-            translation: [0, 0, 0],
-            scale: [1, 1, 1],
-            rotation: [0, 0, 0, 1],
-            mesh: 0,
-            children: []
-        }];
+        // Apply global pivot centering across entire model hierarchy (not per sub-mesh)
+        this._centerGlobalModelPivot(cmMeshes);
 
         const cmData = {
             formatVersion: '1.0',
@@ -415,12 +548,52 @@ export class CMModelConverter {
             polyReductionRatio: reductionRatio,
             nodes: cmNodes,
             meshes: cmMeshes,
-            materials: [{ name: `${baseName}_Material`, baseColor: [1, 1, 1, 1] }],
+            materials: cmMaterials,
             skins: [],
             animations: []
         };
 
         return { cmData, textures: [], animations: [] };
+    }
+
+    /**
+     * Centers the pivot of the entire combined model assembly without shifting individual sub-meshes to origin.
+     */
+    static _centerGlobalModelPivot(cmMeshes) {
+        if (!cmMeshes || cmMeshes.length === 0) return;
+
+        let minX = Infinity, minY = Infinity, minZ = Infinity;
+        let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+
+        for (const mesh of cmMeshes) {
+            for (const prim of mesh.primitives) {
+                const pos = prim.positions;
+                if (!pos) continue;
+                for (let i = 0; i < pos.length; i += 3) {
+                    minX = Math.min(minX, pos[i]); maxX = Math.max(maxX, pos[i]);
+                    minY = Math.min(minY, pos[i + 1]); maxY = Math.max(maxY, pos[i + 1]);
+                    minZ = Math.min(minZ, pos[i + 2]); maxZ = Math.max(maxZ, pos[i + 2]);
+                }
+            }
+        }
+
+        if (!isFinite(minX)) return;
+
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+        const centerZ = (minZ + maxZ) / 2;
+
+        for (const mesh of cmMeshes) {
+            for (const prim of mesh.primitives) {
+                const pos = prim.positions;
+                if (!pos) continue;
+                for (let i = 0; i < pos.length; i += 3) {
+                    pos[i] -= centerX;
+                    pos[i + 1] -= centerY;
+                    pos[i + 2] -= centerZ;
+                }
+            }
+        }
     }
 
     /**
@@ -432,7 +605,6 @@ export class CMModelConverter {
             return { positions, normals, uvs, indices };
         }
 
-        // Calculate mesh bounding box
         let minX = Infinity, minY = Infinity, minZ = Infinity;
         let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
 
@@ -447,11 +619,10 @@ export class CMModelConverter {
         const extentZ = (maxZ - minZ) || 1.0;
         const maxExtent = Math.max(extentX, extentY, extentZ);
 
-        // Grid cell size based on target reduction ratio (higher ratio = finer grid)
         const gridRes = Math.max(4, Math.floor(64 * Math.pow(ratio, 0.75)));
         const cellSize = maxExtent / gridRes;
 
-        const cellMap = new Map(); // gridKey -> newVertexIndex
+        const cellMap = new Map();
         const newPositions = [];
         const newNormals = normals ? [] : null;
         const newUvs = uvs ? [] : null;
@@ -486,7 +657,6 @@ export class CMModelConverter {
             }
         }
 
-        // Re-index triangles and discard degenerate faces (where two or more vertices collapsed to the same point)
         const newIndices = [];
         for (let i = 0; i < indices.length; i += 3) {
             const i0 = vertexRemap[indices[i]];
@@ -498,7 +668,6 @@ export class CMModelConverter {
             }
         }
 
-        // If decimation collapsed all faces, fallback to original indices
         if (newIndices.length < 3) {
             return { positions, normals, uvs, indices };
         }
@@ -537,11 +706,11 @@ export class CMModelConverter {
             const chunkType = view.getUint32(offset + 4, true);
             offset += 8;
 
-            if (chunkType === 0x4E4F534A) { // 'JSON'
+            if (chunkType === 0x4E4F534A) {
                 const jsonBytes = new Uint8Array(buffer, offset, chunkLength);
                 const decoder = new TextDecoder('utf-8');
                 jsonChunk = JSON.parse(decoder.decode(jsonBytes));
-            } else if (chunkType === 0x004E4942) { // 'BIN'
+            } else if (chunkType === 0x004E4942) {
                 binaryChunk = buffer.slice(offset, offset + chunkLength);
             }
 
@@ -577,28 +746,6 @@ export class CMModelConverter {
         return new TypedArrayCtor(slicedBuffer);
     }
 
-    static _centerPivot(positions) {
-        if (!positions || positions.length === 0) return;
-        let minX = Infinity, minY = Infinity, minZ = Infinity;
-        let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
-
-        for (let i = 0; i < positions.length; i += 3) {
-            minX = Math.min(minX, positions[i]); maxX = Math.max(maxX, positions[i]);
-            minY = Math.min(minY, positions[i + 1]); maxY = Math.max(maxY, positions[i + 1]);
-            minZ = Math.min(minZ, positions[i + 2]); maxZ = Math.max(maxZ, positions[i + 2]);
-        }
-
-        const centerX = (minX + maxX) / 2;
-        const centerY = (minY + maxY) / 2;
-        const centerZ = (minZ + maxZ) / 2;
-
-        for (let i = 0; i < positions.length; i += 3) {
-            positions[i] -= centerX;
-            positions[i + 1] -= centerY;
-            positions[i + 2] -= centerZ;
-        }
-    }
-
     static _normalizeCoordinates(positions, normals) {
         if (!positions) return;
 
@@ -606,8 +753,8 @@ export class CMModelConverter {
         for (let i = 0; i < positions.length; i += 3) {
             const y = positions[i + 1];
             const z = positions[i + 2];
-            positions[i + 1] = z;   // Y = Z
-            positions[i + 2] = -y;  // Z = -Y
+            positions[i + 1] = z;
+            positions[i + 2] = -y;
         }
 
         if (normals && normals.length === positions.length) {
@@ -618,7 +765,5 @@ export class CMModelConverter {
                 normals[i + 2] = -ny;
             }
         }
-
-        this._centerPivot(positions);
     }
 }
