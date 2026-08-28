@@ -5286,6 +5286,20 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
+        } else if (ley.constructor.name === 'MeshRenderer3D' || ley.constructor.name === 'CarleyMeshRenderer3D') {
+            componentHTML = `
+                ${renderComponentHeader("Mesh Renderer 3D (Carley Model)", icon, index)}
+                <div class="component-content">
+                    <div class="inspector-group">
+                        <div class="prop-row-multi">
+                            <label>Color</label>
+                            <input type="color" class="prop-input" data-component="${ley.constructor.name}" data-prop="color" value="${ley.color || '#ffffff'}">
+                        </div>
+                        ${renderPropertyDropper('Sprite', ley.texturePath, `data-component="${ley.constructor.name}" data-prop="texturePath"`)}
+                        ${renderPropertyDropper('Sprite', ley.normalMapPath, `data-component="${ley.constructor.name}" data-prop="normalMapPath"`)}
+                    </div>
+                </div>
+            `;
         } else if (ley.constructor.name === 'SkinnedMeshRenderer3D') {
             componentHTML = `
                 ${renderComponentHeader(L.get('SKINNED_MESH_RENDERER_3D', "Skinned Mesh Renderer 3D"), icon, index)}
@@ -6914,16 +6928,51 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 <p data-i18n="OPEN_SCENE_HINT">${L.get('OPEN_SCENE_HINT', 'Doble-click en el Navegador para abrir la escena.')}</p>
             `;
             dom.inspectorContent.appendChild(preview);
-        } else if (lowerName.endsWith('.cmel')) {
+        } else if (lowerName.endsWith('.cematerial') || lowerName.endsWith('.cmel')) {
             const content = await file.text();
-            const materialData = JSON.parse(content);
+            let materialData = {};
+            try { materialData = JSON.parse(content); } catch(e) {}
+
             const settingsContainer = document.createElement('div');
             settingsContainer.className = 'asset-settings';
-            let html = '';
-            for (const key in materialData) {
-                html += `<label>${key}</label><input type="text" autocomplete="off" value="${materialData[key]}" readonly>`;
-            }
-            settingsContainer.innerHTML = html;
+            settingsContainer.style.padding = '12px';
+            settingsContainer.style.background = '#1a1a20';
+            settingsContainer.style.borderRadius = '8px';
+            settingsContainer.style.border = '1px solid #2d2d35';
+
+            settingsContainer.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                    <img src="icons/box.svg" class="ce-icon" style="width: 20px; height: 20px; color: #ff9f43;">
+                    <h4 style="margin: 0; color: #ff9f43;">Material 3D ("Pintado")</h4>
+                </div>
+                <div class="prop-row-multi" style="margin-bottom: 10px;">
+                    <label>Color Principal (Albedo)</label>
+                    <input type="color" id="mat-albedo-color" value="${materialData.albedoColor || '#00a8ff'}" style="width: 100%; height: 32px; cursor: pointer; border: 1px solid #333; background: none; border-radius: 4px;">
+                </div>
+                <div class="prop-row-multi" style="margin-bottom: 10px;">
+                    <label>Transparencia (Alfa)</label>
+                    <input type="range" id="mat-alpha-range" min="0" max="1" step="0.01" value="${materialData.alpha !== undefined ? materialData.alpha : 1.0}" style="width: 100%;">
+                </div>
+                <div class="prop-row-multi" style="margin-bottom: 10px;">
+                    <label>Brillo / Especular</label>
+                    <input type="range" id="mat-shininess-range" min="0" max="1" step="0.01" value="${materialData.shininess !== undefined ? materialData.shininess : 0.5}" style="width: 100%;">
+                </div>
+                <button id="btn-save-ce-material" class="primary-btn" style="width: 100%; margin-top: 10px;">Guardar Material</button>
+            `;
+
+            settingsContainer.querySelector('#btn-save-ce-material').onclick = async () => {
+                materialData.albedoColor = document.getElementById('mat-albedo-color').value;
+                materialData.alpha = parseFloat(document.getElementById('mat-alpha-range').value) || 1.0;
+                materialData.shininess = parseFloat(document.getElementById('mat-shininess-range').value) || 0.5;
+
+                const writable = await fileHandle.createWritable();
+                await writable.write(JSON.stringify(materialData, null, 2));
+                await writable.close();
+
+                showNotification('Exito', `Material '${assetName}' guardado correctamente.`);
+                if (updateSceneCallback) updateSceneCallback();
+            };
+
             dom.inspectorContent.appendChild(settingsContainer);
         } else if (lowerName.endsWith('.cepalette')) {
             const content = await file.text();
@@ -7012,8 +7061,6 @@ async function updateInspectorForAsset(assetName, assetPath) {
             await renderAudioInspector(assetName, assetPath);
         } else if (lowerName.endsWith('.mp4') || lowerName.endsWith('.webm') || lowerName.endsWith('.ogv')) {
             await renderVideoInspector(assetName, assetPath);
-        } else if (lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.endsWith('.obj') || lowerName.endsWith('.fbx')) {
-            await renderModel3DInspector(assetName, assetPath, currentId);
         } else {
              dom.inspectorContent.innerHTML += `
                 <div class="unknown-file-info" style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">

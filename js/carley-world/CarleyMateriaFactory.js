@@ -4,7 +4,6 @@
 
 import { CarleyMateria3D } from './CarleyMateria3D.js';
 import * as CarleyComponents from './CarleyComponents.js';
-import { CarleyModelLoader3D } from './CarleyModelLoader3D.js';
 
 export function createBaseMateria3D(name, parent = null) {
     const mtr = new CarleyMateria3D(name);
@@ -105,85 +104,7 @@ export function createPlaneObject(parent = null, color = '#ffffff') {
     return mtr;
 }
 
-// Carga e instanciación de un modelo 3D (OBJ/GLTF/GLB) en Carley World
 export async function createSkinnedMeshObject(modelPath, parent = null, options = {}) {
-    const modelData = await CarleyModelLoader3D.loadModel(modelPath, window.projectsDirHandle);
-    if (!modelData) return null;
-
-    const rootName = modelPath.split('/').pop().split('.')[0];
-    const rootMateria = createBaseMateria3D(rootName, parent);
-
-    const nodeMaterias = [];
-
-    if (modelData.nodes) {
-        for (const node of modelData.nodes) {
-            const nodeMtr = new CarleyMateria3D(node.name);
-            const t = new CarleyComponents.CarleyTransform3D(nodeMtr);
-            t.position = { x: node.translation[0], y: node.translation[1], z: node.translation[2] };
-            t.scale = { x: node.scale[0], y: node.scale[1], z: node.scale[2] };
-            nodeMtr.addLaw(t);
-            nodeMaterias.push(nodeMtr);
-        }
-
-        for (let i = 0; i < modelData.nodes.length; i++) {
-            const node = modelData.nodes[i];
-            const nodeMtr = nodeMaterias[i];
-
-            if (node.children) {
-                node.children.forEach(childIdx => {
-                    const childMtr = nodeMaterias[childIdx];
-                    childMtr.setParent(nodeMtr);
-                });
-            }
-
-            if (node.mesh !== undefined && !options.onlySkeleton) {
-                const mesh = modelData.meshes[node.mesh];
-                mesh.primitives.forEach((primitive, pIdx) => {
-                    let targetMtr = nodeMtr;
-                    if (pIdx > 0) {
-                        targetMtr = createBaseMateria3D(`${node.name}_part${pIdx}`, nodeMtr);
-                    }
-
-                    const renderer = new CarleyComponents.CarleySkinnedMeshRenderer3D(targetMtr);
-                    renderer.modelPath = modelPath;
-                    renderer.cpuPositions = primitive.positions;
-                    renderer.cpuNormals = primitive.normals;
-                    renderer.cpuUVs = primitive.uvs;
-                    renderer.cpuIndices = primitive.indices;
-                    renderer.cpuJoints = primitive.joints ? new Float32Array(primitive.joints) : null;
-                    renderer.cpuWeights = primitive.weights ? new Float32Array(primitive.weights) : null;
-                    renderer.indexCount = primitive.indices ? primitive.indices.length : primitive.positions.length / 3;
-
-                    if (node.skin !== undefined) {
-                        const skin = modelData.skins[node.skin];
-                        renderer.skeleton = { joints: skin.joints.map(idx => nodeMaterias[idx].id), inverseBindMatrices: skin.inverseBindMatrices };
-                    }
-
-                    renderer.isLoaded = true;
-                    targetMtr.addLaw(renderer);
-                });
-            }
-        }
-        nodeMaterias.forEach(m => {
-            if (!m.parent) {
-                m.setParent(rootMateria);
-            }
-        });
-    }
-
-    if (modelData.animations?.length > 0) {
-        const animator = new CarleyComponents.CarleyAnimator3D(rootMateria);
-        animator.animations = modelData.animations.map(a => ({
-            ...a,
-            channels: a.channels.map(c => ({
-                ...c,
-                node: nodeMaterias[c.node]?.id || rootMateria.id
-            }))
-        }));
-        rootMateria.addLaw(animator);
-        animator.play();
-    }
-
-    return rootMateria;
+    return null;
 }
 export const crearMallaDeEsqueleto3d = createSkinnedMeshObject;

@@ -52,6 +52,7 @@ import * as CollaborationSystem from './editor/CollaborationSystem.js';
 import * as UpdatesWindow from './editor/ui/UpdatesWindow.js';
 import * as CollabActivityWindow from './editor/ui/CollabActivityWindow.js';
 import { showExtensionsWindow } from './editor/ui/ExtensionsWindow.js';
+import { showAssetImportModal } from './editor/ui/AssetImportModalWindow.js';
  import { showPreMadeScenesWindow } from './editor/ui/PreMadeScenesWindow.js';
 import * as NoviceGuide from './editor/ui/NoviceGuideWindow.js';
 import { buildProject, runStandalonePreview } from './editor/BuildSystem.js';
@@ -575,63 +576,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const preloadAll3DModels = async function(rootDirHandle, onProgress = null) {
-        if (!rootDirHandle) return;
-        try {
-            const { ModelLoader3D } = await import("./engine/ModelLoader3D.js");
-            const projectName = new URLSearchParams(window.location.search).get("project");
-            if (!projectName) return;
-            const projectHandle = await rootDirHandle.getDirectoryHandle(projectName);
-            const assetsHandle = await projectHandle.getDirectoryHandle("Assets");
-
-            const modelFiles = [];
-            async function scanDir(dirHandle, currentPath) {
-                for await (const entry of dirHandle.values()) {
-                    const fullPath = `${currentPath}/${entry.name}`;
-                    if (entry.kind === "file") {
-                        const lower = entry.name.toLowerCase();
-                        if (lower.endsWith(".fbx") || lower.endsWith(".obj") || lower.endsWith(".gltf") || lower.endsWith(".glb")) {
-                            modelFiles.push(fullPath);
-                        }
-                    } else if (entry.kind === "directory") {
-                        try {
-                            await scanDir(entry, fullPath);
-                        } catch (e) {}
-                    }
-                }
-            }
-
-            await scanDir(assetsHandle, "Assets");
-
-            let loadedCount = 0;
-            const totalModels = modelFiles.length;
-            if (totalModels > 0) {
-                console.log(`[Preloader3D] Precargando ${totalModels} modelos 3D al arrancar...`);
-                await Promise.all(modelFiles.map(async (fullPath) => {
-                    try {
-                        await ModelLoader3D.loadModel(fullPath, rootDirHandle);
-                        loadedCount++;
-                        if (typeof onProgress === 'function') {
-                            onProgress(loadedCount, totalModels, fullPath.split('/').pop());
-                        }
-                    } catch (err) {
-                        console.warn(`[Preloader3D] Error al precargar ${fullPath}:`, err);
-                        loadedCount++;
-                        if (typeof onProgress === 'function') {
-                            onProgress(loadedCount, totalModels, fullPath.split('/').pop());
-                        }
-                    }
-                }));
-                console.log(`[Preloader3D] ${totalModels} modelos 3D precargados completamente en memoria.`);
-            } else {
-                if (typeof onProgress === 'function') {
-                    onProgress(0, 0, null);
-                }
-            }
-        } catch (e) {
-            console.warn("[Preloader3D] No se pudieron precargar modelos 3D:", e);
-            if (typeof onProgress === 'function') {
-                onProgress(0, 0, null);
-            }
+        if (typeof onProgress === 'function') {
+            onProgress(0, 0, null);
         }
     };
 
@@ -3756,97 +3702,48 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        dom.menuImportModel3d.addEventListener('click', async (e) => {
-            e.preventDefault();
-            const L = window.Localization;
-            const currentDirHandle = getCurrentDirectoryHandle();
-            if (!currentDirHandle) {
-                showNotificationDialog(L?.get('AVISO') || "Aviso", L?.get('SELECCIONAR_CARPETA_IMPORTAR') || "Selecciona primero una carpeta en el navegador de assets para importar archivos.");
-                return;
-            }
-
-            try {
-                if (window.showOpenFilePicker) {
-                    const files = await window.showOpenFilePicker({
-                        multiple: true,
-                        types: [
-                            {
-                                description: '3D Models',
-                                accept: {
-                                    'model/gltf+json': ['.gltf'],
-                                    'model/gltf-binary': ['.glb'],
-                                    'model/obj': ['.obj']
-                                }
-                            }
-                        ]
-                    });
-
-                    for (const fileHandle of files) {
-                        const file = await fileHandle.getFile();
-                        const targetFileHandle = await currentDirHandle.getFileHandle(file.name, { create: true });
-                        const writable = await targetFileHandle.createWritable();
-                        await writable.write(file);
-                        await writable.close();
+        if (dom.menuImportModel3d) {
+            dom.menuImportModel3d.addEventListener('click', async (e) => {
+                e.preventDefault();
+                try {
+                    if (window.showOpenFilePicker) {
+                        const files = await window.showOpenFilePicker({
+                            types: [{ description: 'Modelos 3D (.cm / .gltf / .glb / .obj)', accept: { 'application/octet-stream': ['.cm', '.gltf', '.glb', '.obj'] } }],
+                            multiple: true
+                        });
+                        showAssetImportModal(files, getCurrentDirectoryHandle(), updateAssetBrowser);
+                    } else {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = '.cm,.gltf,.glb,.obj';
+                        input.multiple = true;
+                        input.onchange = () => {
+                            showAssetImportModal(Array.from(input.files), getCurrentDirectoryHandle(), updateAssetBrowser);
+                        };
+                        input.click();
                     }
-                    updateAssetBrowser();
-                } else {
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.multiple = true;
-                    input.accept = '.glb,.gltf,.obj';
-                    input.onchange = async (e) => {
-                        for (const file of e.target.files) {
-                            const targetFileHandle = await currentDirHandle.getFileHandle(file.name, { create: true });
-                            const writable = await targetFileHandle.createWritable();
-                            await writable.write(file);
-                            await writable.close();
-                        }
-                        updateAssetBrowser();
-                    };
-                    input.click();
+                } catch (err) {
+                    if (err.name !== 'AbortError') {
+                        console.error("Error al importar modelo 3D:", err);
+                    }
                 }
-            } catch (err) {
-                console.error("Error al importar modelo 3D:", err);
-            }
-        });
+            });
+        }
 
         dom.menuImportAsset.addEventListener('click', async (e) => {
             e.preventDefault();
-            const L = window.Localization;
-            const currentDirHandle = getCurrentDirectoryHandle();
-            if (!currentDirHandle) {
-                showNotificationDialog(L?.get('AVISO') || "Aviso", L?.get('SELECCIONAR_CARPETA_IMPORTAR') || "Selecciona primero una carpeta en el navegador de assets para importar archivos.");
-                return;
-            }
-
             try {
-                // Try modern File System Access API
                 if (window.showOpenFilePicker) {
                     const files = await window.showOpenFilePicker({
                         multiple: true
                     });
-
-                    for (const fileHandle of files) {
-                        const file = await fileHandle.getFile();
-                        const targetFileHandle = await currentDirHandle.getFileHandle(file.name, { create: true });
-                        const writable = await targetFileHandle.createWritable();
-                        await writable.write(file);
-                        await writable.close();
-                    }
-                    updateAssetBrowser();
+                    showAssetImportModal(files, getCurrentDirectoryHandle(), updateAssetBrowser);
                 } else {
-                    // Fallback using hidden input
                     const input = document.createElement('input');
                     input.type = 'file';
                     input.multiple = true;
-                    input.onchange = async () => {
-                        for (const file of input.files) {
-                            const targetFileHandle = await currentDirHandle.getFileHandle(file.name, { create: true });
-                            const writable = await targetFileHandle.createWritable();
-                            await writable.write(file);
-                            await writable.close();
-                        }
-                        updateAssetBrowser();
+                    input.onchange = () => {
+                        showAssetImportModal(Array.from(input.files), getCurrentDirectoryHandle(), updateAssetBrowser);
                     };
                     input.click();
                 }
@@ -5369,22 +5266,6 @@ public start() {
                     case 'jpg':
                     case 'jpeg':
                         SpriteSlicer.open(fileHandle, dirHandle, saveAssetMeta);
-                        break;
-                    case 'obj':
-                    case 'fbx':
-                    case 'gltf':
-                    case 'glb':
-                        (async () => {
-                            const assetPath = options.path || `Assets/${name}`;
-                            console.log(`Instanciando modelo 3D desde asset browser: ${assetPath}`);
-                            const m = await MateriaFactory.createSkinnedMeshObject(assetPath, null);
-                            if (m) {
-                                selectMateria(m);
-                                updateHierarchy();
-                                updateInspector();
-                                updateScene(renderer, false);
-                            }
-                        })();
                         break;
                     default:
                         console.log(`No double-click action defined for file: ${name}`);
