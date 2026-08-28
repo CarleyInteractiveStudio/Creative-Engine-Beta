@@ -1086,6 +1086,8 @@ export function update() {
                     <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                         <span style="font-size: 0.95em; color: #aaa; font-weight: bold;">📊 FPS: <span id="monitor-fps-val" style="color: #00ffcc;">${displayFPS} FPS</span></span>
                         <span style="font-size: 0.95em; color: #aaa; font-weight: bold;">📈 RAM Growth: <span id="monitor-ram-val" style="color: #00b4ff;">+${displayRamGrowth} MB/s</span></span>
+                        <span style="font-size: 0.85em; color: #888; font-weight: bold;">💻 CPU Cores: <span style="color: #ffdd55;">${navigator.hardwareConcurrency || 'N/A'}</span></span>
+                        <span style="font-size: 0.85em; color: #888; font-weight: bold;">🎮 GPU: <span style="color: #ff77ff;">${window.renderer3D?.gpuInfo?.renderer || 'WebGL GPU'}</span></span>
                         <div style="display: flex; align-items: center; gap: 6px;">
                             <span style="font-size: 0.85em; color: #888;">Historial:</span>
                             <select id="scene-session-select" style="background: #2d2d2d; border: 1px solid #444; color: #fff; border-radius: 4px; padding: 2px 6px; font-size: 0.85em; outline: none; cursor: pointer;">

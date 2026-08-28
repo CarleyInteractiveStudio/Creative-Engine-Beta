@@ -66,6 +66,17 @@ export class Renderer3D {
         gl.enable(gl.CULL_FACE);
         gl.frontFace(gl.CCW); // standard WebGL/GLTF winding
 
+        // Query GPU hardware details
+        this.gpuInfo = {
+            vendor: 'WebGL Vendor',
+            renderer: 'WebGL GPU Acceleration'
+        };
+        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+        if (debugInfo) {
+            this.gpuInfo.vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) || 'WebGL Vendor';
+            this.gpuInfo.renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || 'WebGL Renderer';
+        }
+
         this.initShaders();
         this.initBasicGeometry();
 

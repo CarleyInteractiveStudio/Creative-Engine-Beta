@@ -135,8 +135,12 @@ export async function instantiateCMModel(cmPath, parent = null, options = {}) {
                     if (cmData.materials && cmData.materials[prim.materialIndex]) {
                         const mat = cmData.materials[prim.materialIndex];
                         if (mat.texturePath) {
-                            const folder = cmPath.includes('/') ? cmPath.substring(0, cmPath.lastIndexOf('/') + 1) : 'Assets/';
-                            renderer.texturePath = folder + mat.texturePath;
+                            if (mat.texturePath.startsWith('data:') || mat.texturePath.startsWith('blob:') || mat.texturePath.startsWith('http:') || mat.texturePath.startsWith('https:') || mat.texturePath.startsWith('Assets/')) {
+                                renderer.texturePath = mat.texturePath;
+                            } else {
+                                const folder = cmPath.includes('/') ? cmPath.substring(0, cmPath.lastIndexOf('/') + 1) : 'Assets/';
+                                renderer.texturePath = folder + mat.texturePath;
+                            }
                         }
                     }
 

@@ -162,8 +162,8 @@ export function update() {
             <pre>Herramienta Activa: ${activeTool}\nSelección: ${selectedMateriaName}\nJuego Corriendo: ${gameRunningStatus}</pre>
         </div>
         <div class="debug-section">
-            <h4>Rendimiento</h4>
-            <pre>FPS: ${fps}\nDeltaTime: ${dtMs} ms\nCPU: <span>${cpuInfo}</span>\n<div class="ram-bar-container"><div class="ram-bar-fill" style="width: ${parseFloat(cpuInfo) || 0}%; ${cpuStyle}"></div></div>\nRAM Total: <span>${ramInfo}</span>\n<div class="ram-bar-container"><div class="ram-bar-fill" style="width: ${usagePercent}%; ${ramStyle}"></div></div>\nMotor: ${motorRamInfo} | Juego: ${gameRamInfo}</pre>
+            <h4>Rendimiento & Hardware</h4>
+            <pre>Núcleos CPU: ${navigator.hardwareConcurrency || 'N/A'} Núcleos Lógicos\nGPU: ${window.renderer3D?.gpuInfo?.renderer || 'Aceleración GPU WebGL'}\nFPS: ${fps}\nDeltaTime: ${dtMs} ms\nCPU: <span>${cpuInfo}</span>\n<div class="ram-bar-container"><div class="ram-bar-fill" style="width: ${parseFloat(cpuInfo) || 0}%; ${cpuStyle}"></div></div>\nRAM Total: <span>${ramInfo}</span>\n<div class="ram-bar-container"><div class="ram-bar-fill" style="width: ${usagePercent}%; ${ramStyle}"></div></div>\nMotor: ${motorRamInfo} | Juego: ${gameRamInfo}</pre>
         </div>
         <div class="debug-section">
             <h4>Red e Internet</h4>

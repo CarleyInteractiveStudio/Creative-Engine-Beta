@@ -47,11 +47,15 @@ const defaultPrefs = {
     executionMode: 'integrated',
     autoCloseGameWindow: true,
     shareWithCarley: true,
-    autoCorrectorInteligente: true
+    autoCorrectorInteligente: true,
+    gpuPreference: 'high-performance',
+    get cpuCores() {
+        return typeof navigator !== 'undefined' && navigator.hardwareConcurrency ? navigator.hardwareConcurrency : 4;
+    }
 };
 
 export function getPreferences() {
-    return currentPreferences;
+    return { ...defaultPrefs, ...currentPreferences };
 }
 
 async function fetchAndPopulateModels(provider, apiKey) {
