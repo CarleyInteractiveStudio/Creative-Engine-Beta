@@ -642,11 +642,19 @@ async function loadFocusedFileForPreview() {
             const polyRatio = parseFloat(document.getElementById('import-poly-reduction')?.value || '1.0');
             const normalizeBlender = document.getElementById('import-normalize-blender')?.checked !== false;
 
-            // Check if companion .mtl file exists in current import queue for .obj files
+            // Check companion files in current import queue
+            const companionMap = new Map();
+            for (const f of currentFiles) {
+                const fn = (f.name || f.fileHandle?.name || '').toLowerCase();
+                companionMap.set(fn, f);
+                const baseFn = fn.split('/').pop();
+                if (baseFn) companionMap.set(baseFn, f);
+            }
+
             let mtlText = null;
             if (lowerName.endsWith('.obj')) {
                 const baseObjName = fileName.split('.')[0];
-                const mtlItem = currentFiles.find(f => (f.name || f.fileHandle?.name || '').toLowerCase() === `${baseObjName.toLowerCase()}.mtl`);
+                const mtlItem = companionMap.get(`${baseObjName.toLowerCase()}.mtl`);
                 if (mtlItem) {
                     let mtlObj = mtlItem;
                     if (mtlItem.getFile) mtlObj = await mtlItem.getFile();
@@ -654,7 +662,7 @@ async function loadFocusedFileForPreview() {
                 }
             }
 
-            const converted = await CMModelConverter.convertGLTFToCM(fileObj, fileName, polyRatio, normalizeBlender, mtlText);
+            const converted = await CMModelConverter.convertGLTFToCM(fileObj, fileName, polyRatio, normalizeBlender, mtlText, companionMap);
             currentCMData = converted.cmData;
 
             // Cache extracted texture images for solid 3D preview
@@ -1206,11 +1214,19 @@ async function executeImport() {
                 const polyRatio = parseFloat(document.getElementById('import-poly-reduction')?.value || '1.0');
                 const normalizeBlender = document.getElementById('import-normalize-blender')?.checked !== false;
 
-                // Check for companion .mtl file
+                // Map companion files in current import queue
+                const companionMap = new Map();
+                for (const f of currentFiles) {
+                    const fn = (f.name || f.fileHandle?.name || '').toLowerCase();
+                    companionMap.set(fn, f);
+                    const baseFn = fn.split('/').pop();
+                    if (baseFn) companionMap.set(baseFn, f);
+                }
+
                 let mtlText = null;
                 if (lowerName.endsWith('.obj')) {
                     const baseObjName = fileName.split('.')[0];
-                    const mtlItem = currentFiles.find(f => (f.name || f.fileHandle?.name || '').toLowerCase() === `${baseObjName.toLowerCase()}.mtl`);
+                    const mtlItem = companionMap.get(`${baseObjName.toLowerCase()}.mtl`);
                     if (mtlItem) {
                         let mtlObj = mtlItem;
                         if (mtlItem.getFile) mtlObj = await mtlItem.getFile();
@@ -1218,7 +1234,7 @@ async function executeImport() {
                     }
                 }
 
-                const converted = await CMModelConverter.convertGLTFToCM(fileObj, fileName, polyRatio, normalizeBlender, mtlText);
+                const converted = await CMModelConverter.convertGLTFToCM(fileObj, fileName, polyRatio, normalizeBlender, mtlText, companionMap);
 
                 // Write .cm file
                 const cmHandle = await targetHandle.getFileHandle(cmFileName, { create: true });
