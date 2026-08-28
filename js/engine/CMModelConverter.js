@@ -10,11 +10,12 @@ export class CMModelConverter {
      * @param {File|Blob|ArrayBuffer} fileData
      * @param {string} fileName
      * @param {number} reductionRatio - Target polygon ratio (0.25 to 1.0)
-     * @param {boolean} normalizeBlender - Whether to transform Z-Up to Y-Up
+     * @param {boolean|null} normalizeBlender - Whether to transform Z-Up to Y-Up (defaults to true for OBJ, false for glTF/GLB)
      * @param {string|null} mtlText - Companion .mtl material text for .obj files
+     * @param {Map<string, File|Blob|string|ArrayBuffer>} companionFiles - Optional map of companion files (.bin, textures, etc.)
      * @returns {Promise<{ cmData: object, textures: Array<{ name: string, blob: Blob }>, animations: Array<{ name: string, data: object }> }>}
      */
-    static async convertGLTFToCM(fileData, fileName = 'model.glb', reductionRatio = 1.0, normalizeBlender = true, mtlText = null) {
+    static async convertGLTFToCM(fileData, fileName = 'model.glb', reductionRatio = 1.0, normalizeBlender = null, mtlText = null, companionFiles = null) {
         let buffer;
         if (fileData instanceof ArrayBuffer) {
             buffer = fileData;
@@ -26,11 +27,14 @@ export class CMModelConverter {
 
         const lowerName = fileName.toLowerCase();
 
+        // Default normalizeBlender: true for OBJ (Z-Up), false for glTF/GLB (already standard Y-Up according to glTF 2.0 spec)
+        const shouldNormalize = lowerName.endsWith('.obj') ? (normalizeBlender !== false) : (normalizeBlender === true);
+
         // Handle OBJ Files (.obj)
         if (lowerName.endsWith('.obj')) {
             const decoder = new TextDecoder('utf-8');
             const objText = decoder.decode(buffer);
-            return this.convertOBJToCM(objText, fileName, reductionRatio, normalizeBlender, mtlText);
+            return this.convertOBJToCM(objText, fileName, reductionRatio, shouldNormalize, mtlText);
         }
 
         const isGLB = lowerName.endsWith('.glb') || this._isGLBHeader(buffer);
@@ -46,24 +50,76 @@ export class CMModelConverter {
             gltfJson = JSON.parse(decoder.decode(buffer));
         }
 
+        // Resolve buffer chunks (.bin files, binary chunks, base64 data URIs)
+        const bufferChunks = [];
+        if (gltfJson.buffers) {
+            for (let i = 0; i < gltfJson.buffers.length; i++) {
+                const bufInfo = gltfJson.buffers[i];
+                if (i === 0 && binaryChunk && !bufInfo.uri) {
+                    bufferChunks.push(binaryChunk);
+                } else if (bufInfo.uri) {
+                    if (bufInfo.uri.startsWith('data:')) {
+                        const ab = this._dataURIToArrayBuffer(bufInfo.uri);
+                        bufferChunks.push(ab);
+                    } else if (companionFiles) {
+                        const binAb = await this._resolveCompanionBuffer(bufInfo.uri, companionFiles);
+                        bufferChunks.push(binAb);
+                    } else {
+                        bufferChunks.push(null);
+                    }
+                } else {
+                    bufferChunks.push(binaryChunk);
+                }
+            }
+        } else if (binaryChunk) {
+            bufferChunks.push(binaryChunk);
+        }
+
         const textures = [];
         const animations = [];
 
-        // 1. Process Embedded/Binary Textures
+        // 1. Process Embedded/Binary/External Textures
         if (gltfJson.images) {
             for (let i = 0; i < gltfJson.images.length; i++) {
                 const img = gltfJson.images[i];
-                if (img.bufferView !== undefined && binaryChunk) {
+                let blob = null;
+                let mimeType = img.mimeType || 'image/png';
+                let texName = null;
+
+                if (img.bufferView !== undefined) {
                     const bv = gltfJson.bufferViews[img.bufferView];
-                    const byteOffset = (bv.byteOffset || 0);
-                    const byteLength = bv.byteLength;
-                    const imgData = binaryChunk.slice(byteOffset, byteOffset + byteLength);
-                    const mimeType = img.mimeType || 'image/png';
-                    const blob = new Blob([imgData], { type: mimeType });
-                    const ext = mimeType.includes('jpeg') || mimeType.includes('jpg') ? 'jpg' : 'png';
-                    const texName = img.name ? `${img.name}.${ext}` : `${fileName.split('.')[0]}_tex_${i}.${ext}`;
-                    textures.push({ name: texName, blob, mimeType });
+                    const bIdx = bv.buffer || 0;
+                    const sourceBuf = bufferChunks[bIdx] || binaryChunk;
+                    if (sourceBuf) {
+                        const byteOffset = (bv.byteOffset || 0);
+                        const byteLength = bv.byteLength;
+                        const imgData = sourceBuf.slice(byteOffset, byteOffset + byteLength);
+                        blob = new Blob([imgData], { type: mimeType });
+                    }
+                } else if (img.uri) {
+                    if (img.uri.startsWith('data:')) {
+                        const match = img.uri.match(/^data:(image\/[a-zA-Z+]+);base64,/);
+                        if (match) mimeType = match[1];
+                        const ab = this._dataURIToArrayBuffer(img.uri);
+                        if (ab) blob = new Blob([ab], { type: mimeType });
+                    } else {
+                        texName = img.uri.split('/').pop();
+                        if (companionFiles) {
+                            const compBlob = await this._resolveCompanionBlob(img.uri, companionFiles);
+                            if (compBlob) {
+                                blob = compBlob;
+                                mimeType = compBlob.type || mimeType;
+                            }
+                        }
+                    }
                 }
+
+                if (!texName) {
+                    const ext = mimeType.includes('jpeg') || mimeType.includes('jpg') ? 'jpg' : 'png';
+                    texName = img.name ? `${img.name}.${ext}` : `${fileName.split('.')[0]}_tex_${i}.${ext}`;
+                }
+
+                textures.push({ name: texName, uri: img.uri, blob, mimeType });
             }
         }
 
@@ -75,19 +131,19 @@ export class CMModelConverter {
                 const cmPrimitives = [];
 
                 for (const primitive of mesh.primitives) {
-                    const positions = this._getAccessorData(gltfJson, primitive.attributes.POSITION, binaryChunk);
+                    const positions = this._getAccessorData(gltfJson, primitive.attributes.POSITION, binaryChunk, bufferChunks);
                     const normals = primitive.attributes.NORMAL !== undefined ?
-                        this._getAccessorData(gltfJson, primitive.attributes.NORMAL, binaryChunk) : null;
+                        this._getAccessorData(gltfJson, primitive.attributes.NORMAL, binaryChunk, bufferChunks) : null;
                     const uvs = primitive.attributes.TEXCOORD_0 !== undefined ?
-                        this._getAccessorData(gltfJson, primitive.attributes.TEXCOORD_0, binaryChunk) : null;
+                        this._getAccessorData(gltfJson, primitive.attributes.TEXCOORD_0, binaryChunk, bufferChunks) : null;
                     const indices = primitive.indices !== undefined ?
-                        this._getAccessorData(gltfJson, primitive.indices, binaryChunk) : null;
+                        this._getAccessorData(gltfJson, primitive.indices, binaryChunk, bufferChunks) : null;
                     const joints = primitive.attributes.JOINTS_0 !== undefined ?
-                        this._getAccessorData(gltfJson, primitive.attributes.JOINTS_0, binaryChunk) : null;
+                        this._getAccessorData(gltfJson, primitive.attributes.JOINTS_0, binaryChunk, bufferChunks) : null;
                     const weights = primitive.attributes.WEIGHTS_0 !== undefined ?
-                        this._getAccessorData(gltfJson, primitive.attributes.WEIGHTS_0, binaryChunk) : null;
+                        this._getAccessorData(gltfJson, primitive.attributes.WEIGHTS_0, binaryChunk, bufferChunks) : null;
 
-                    if (normalizeBlender) {
+                    if (shouldNormalize) {
                         this._normalizeCoordinates(positions, normals);
                     }
 
@@ -155,10 +211,14 @@ export class CMModelConverter {
                 const pbr = mat.pbrMetallicRoughness || {};
                 let texName = null;
 
-                if (pbr.baseColorTexture !== undefined && gltfJson.textures) {
-                    const texInfo = gltfJson.textures[pbr.baseColorTexture.index];
-                    if (texInfo && texInfo.source !== undefined && textures[texInfo.source]) {
-                        texName = textures[texInfo.source].name;
+                const mainTexObj = pbr.baseColorTexture || mat.emissiveTexture || mat.normalTexture;
+                if (mainTexObj !== undefined && gltfJson.textures) {
+                    const texInfo = gltfJson.textures[mainTexObj.index];
+                    if (texInfo) {
+                        const sourceIdx = texInfo.source !== undefined ? texInfo.source : (texInfo.extensions?.KHR_texture_basisu?.source ?? mainTexObj.index);
+                        if (textures[sourceIdx]) {
+                            texName = textures[sourceIdx].name;
+                        }
                     }
                 }
 
@@ -179,8 +239,8 @@ export class CMModelConverter {
 
                 for (const channel of anim.channels) {
                     const sampler = anim.samplers[channel.sampler];
-                    const inputData = this._getAccessorData(gltfJson, sampler.input, binaryChunk);
-                    const outputData = this._getAccessorData(gltfJson, sampler.output, binaryChunk);
+                    const inputData = this._getAccessorData(gltfJson, sampler.input, binaryChunk, bufferChunks);
+                    const outputData = this._getAccessorData(gltfJson, sampler.output, binaryChunk, bufferChunks);
 
                     channels.push({
                         node: channel.target.node,
@@ -724,10 +784,17 @@ export class CMModelConverter {
         return { json: jsonChunk, binaryChunk };
     }
 
-    static _getAccessorData(gltf, accessorIndex, binaryChunk) {
-        if (accessorIndex === undefined || accessorIndex === null || !binaryChunk) return null;
+    static _getAccessorData(gltf, accessorIndex, binaryChunk, bufferChunks = null) {
+        if (accessorIndex === undefined || accessorIndex === null || !gltf || !gltf.accessors) return null;
         const accessor = gltf.accessors[accessorIndex];
-        const bufferView = gltf.bufferViews[accessor.bufferView];
+        if (!accessor) return null;
+        const bufferView = gltf.bufferViews ? gltf.bufferViews[accessor.bufferView] : null;
+        if (!bufferView) return null;
+
+        const bufferIdx = bufferView.buffer || 0;
+        const targetBuffer = (bufferChunks && bufferChunks[bufferIdx]) ? bufferChunks[bufferIdx] : binaryChunk;
+        if (!targetBuffer) return null;
+
         const byteOffset = (bufferView.byteOffset || 0) + (accessor.byteOffset || 0);
 
         let TypedArrayCtor = Float32Array;
@@ -742,8 +809,49 @@ export class CMModelConverter {
         const count = accessor.count * numComponents;
         const byteLength = count * TypedArrayCtor.BYTES_PER_ELEMENT;
 
-        const slicedBuffer = binaryChunk.slice(byteOffset, byteOffset + byteLength);
+        const slicedBuffer = targetBuffer.slice(byteOffset, byteOffset + byteLength);
         return new TypedArrayCtor(slicedBuffer);
+    }
+
+    static _dataURIToArrayBuffer(dataURI) {
+        if (!dataURI || !dataURI.startsWith('data:')) return null;
+        const commaIdx = dataURI.indexOf(',');
+        if (commaIdx === -1) return null;
+        const base64 = dataURI.substring(commaIdx + 1);
+        const binaryString = atob(base64);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes.buffer;
+    }
+
+    static async _resolveCompanionBuffer(uri, companionFiles) {
+        if (!uri || !companionFiles) return null;
+        const key = uri.toLowerCase();
+        const baseKey = uri.split('/').pop().toLowerCase();
+        const item = (companionFiles.get ? (companionFiles.get(key) || companionFiles.get(baseKey)) : (companionFiles[key] || companionFiles[baseKey]));
+        if (!item) return null;
+        if (item instanceof ArrayBuffer) return item;
+        if (item.arrayBuffer) return await item.arrayBuffer();
+        if (item.getFile) {
+            const file = await item.getFile();
+            return await file.arrayBuffer();
+        }
+        return null;
+    }
+
+    static async _resolveCompanionBlob(uri, companionFiles) {
+        if (!uri || !companionFiles) return null;
+        const key = uri.toLowerCase();
+        const baseKey = uri.split('/').pop().toLowerCase();
+        const item = (companionFiles.get ? (companionFiles.get(key) || companionFiles.get(baseKey)) : (companionFiles[key] || companionFiles[baseKey]));
+        if (!item) return null;
+        if (item instanceof Blob) return item;
+        if (item.getFile) return await item.getFile();
+        if (item instanceof ArrayBuffer) return new Blob([item]);
+        return null;
     }
 
     static _normalizeCoordinates(positions, normals) {
