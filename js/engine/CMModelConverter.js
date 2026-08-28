@@ -12,7 +12,7 @@ export class CMModelConverter {
      * @param {number} reductionRatio - Target polygon ratio (0.25 to 1.0)
      * @returns {Promise<{ cmData: object, textures: Array<{ name: string, blob: Blob }>, animations: Array<{ name: string, data: object }> }>}
      */
-    static async convertGLTFToCM(fileData, fileName = 'model.glb', reductionRatio = 1.0) {
+    static async convertGLTFToCM(fileData, fileName = 'model.glb', reductionRatio = 1.0, normalizeBlender = true) {
         let buffer;
         if (fileData instanceof ArrayBuffer) {
             buffer = fileData;
@@ -85,8 +85,11 @@ export class CMModelConverter {
                     const weights = primitive.attributes.WEIGHTS_0 !== undefined ?
                         this._getAccessorData(gltfJson, primitive.attributes.WEIGHTS_0, binaryChunk) : null;
 
-                    // Blender / Z-Up Normalization: convert Z-Up to Y-Up
-                    this._normalizeCoordinates(positions, normals);
+                    if (normalizeBlender) {
+                        this._normalizeCoordinates(positions, normals);
+                    } else {
+                        this._centerPivot(positions);
+                    }
 
                     let primPositions = Array.from(positions || []);
                     let primNormals = normals ? Array.from(normals) : null;
@@ -268,8 +271,14 @@ export class CMModelConverter {
                 }
             } else if (code === 102) { // 'f' (face)
                 const parts = line.split(/\s+/);
-                const faceVerts = parts.slice(1);
+                const faceVerts = [];
+                for (let k = 1; k < parts.length; k++) {
+                    if (parts[k]) faceVerts.push(parts[k]);
+                }
 
+                if (faceVerts.length < 3) continue;
+
+                // Triangulate convex/concave face fan
                 for (let i = 1; i < faceVerts.length - 1; i++) {
                     const triVerts = [faceVerts[0], faceVerts[i], faceVerts[i + 1]];
 
@@ -277,44 +286,87 @@ export class CMModelConverter {
                         let cachedIdx = vertCache.get(vKey);
                         if (cachedIdx !== undefined) {
                             indices.push(cachedIdx);
-                        } else {
-                            const slash1 = vKey.indexOf('/');
-                            let pIdx = 0, tIdx = 0, nIdx = 0;
-
-                            if (slash1 === -1) {
-                                pIdx = parseInt(vKey, 10);
-                            } else {
-                                pIdx = parseInt(vKey.substring(0, slash1), 10);
-                                const slash2 = vKey.indexOf('/', slash1 + 1);
-                                if (slash2 === -1) {
-                                    tIdx = parseInt(vKey.substring(slash1 + 1), 10);
-                                } else {
-                                    if (slash2 > slash1 + 1) {
-                                        tIdx = parseInt(vKey.substring(slash1 + 1, slash2), 10);
-                                    }
-                                    nIdx = parseInt(vKey.substring(slash2 + 1), 10);
-                                }
-                            }
-
-                            const pi = (pIdx > 0 ? pIdx - 1 : rawPositions.length / 3 + pIdx) * 3;
-                            positions.push(rawPositions[pi] || 0, rawPositions[pi + 1] || 0, rawPositions[pi + 2] || 0);
-
-                            if (rawNormals.length > 0 && nIdx) {
-                                const ni = (nIdx > 0 ? nIdx - 1 : rawNormals.length / 3 + nIdx) * 3;
-                                normals.push(rawNormals[ni] || 0, rawNormals[ni + 1] || 1, rawNormals[ni + 2] || 0);
-                            }
-
-                            if (rawUVs.length > 0 && tIdx) {
-                                const ti = (tIdx > 0 ? tIdx - 1 : rawUVs.length / 2 + tIdx) * 2;
-                                uvs.push(rawUVs[ti] || 0, rawUVs[ti + 1] || 0);
-                            }
-
-                            const newIdx = positions.length / 3 - 1;
-                            vertCache.set(vKey, newIdx);
-                            indices.push(newIdx);
+                            continue;
                         }
+
+                        const slash1 = vKey.indexOf('/');
+                        let pIdx = 0, tIdx = 0, nIdx = 0;
+
+                        if (slash1 === -1) {
+                            pIdx = parseInt(vKey, 10);
+                        } else {
+                            pIdx = parseInt(vKey.substring(0, slash1), 10);
+                            const slash2 = vKey.indexOf('/', slash1 + 1);
+                            if (slash2 === -1) {
+                                tIdx = parseInt(vKey.substring(slash1 + 1), 10);
+                            } else {
+                                if (slash2 > slash1 + 1) {
+                                    tIdx = parseInt(vKey.substring(slash1 + 1, slash2), 10);
+                                }
+                                nIdx = parseInt(vKey.substring(slash2 + 1), 10);
+                            }
+                        }
+
+                        const totalP = rawPositions.length / 3;
+                        const pi = ((pIdx > 0 ? pIdx - 1 : totalP + pIdx) % totalP) * 3;
+
+                        if (isNaN(pi) || pi < 0 || pi >= rawPositions.length) {
+                            continue;
+                        }
+
+                        positions.push(rawPositions[pi], rawPositions[pi + 1], rawPositions[pi + 2]);
+
+                        if (rawNormals.length > 0 && nIdx) {
+                            const totalN = rawNormals.length / 3;
+                            const ni = ((nIdx > 0 ? nIdx - 1 : totalN + nIdx) % totalN) * 3;
+                            normals.push(rawNormals[ni] || 0, rawNormals[ni + 1] || 1, rawNormals[ni + 2] || 0);
+                        }
+
+                        if (rawUVs.length > 0 && tIdx) {
+                            const totalT = rawUVs.length / 2;
+                            const ti = ((tIdx > 0 ? tIdx - 1 : totalT + tIdx) % totalT) * 2;
+                            uvs.push(rawUVs[ti] || 0, rawUVs[ti + 1] || 0);
+                        }
+
+                        const newIdx = Math.floor(positions.length / 3) - 1;
+                        vertCache.set(vKey, newIdx);
+                        indices.push(newIdx);
                     }
                 }
+            }
+        }
+
+        // Generate facet normals if missing from OBJ file
+        if (normals.length === 0 && positions.length >= 9 && indices.length >= 3) {
+            for (let i = 0; i < positions.length; i++) normals.push(0);
+            for (let i = 0; i < indices.length; i += 3) {
+                const i0 = indices[i] * 3;
+                const i1 = indices[i + 1] * 3;
+                const i2 = indices[i + 2] * 3;
+
+                const ax = positions[i1] - positions[i0];
+                const ay = positions[i1 + 1] - positions[i0 + 1];
+                const az = positions[i1 + 2] - positions[i0 + 2];
+
+                const bx = positions[i2] - positions[i0];
+                const by = positions[i2 + 1] - positions[i0 + 1];
+                const bz = positions[i2 + 2] - positions[i0 + 2];
+
+                const nx = ay * bz - az * by;
+                const ny = az * bx - ax * bz;
+                const nz = ax * by - ay * bx;
+
+                normals[i0] += nx; normals[i0 + 1] += ny; normals[i0 + 2] += nz;
+                normals[i1] += nx; normals[i1 + 1] += ny; normals[i1 + 2] += nz;
+                normals[i2] += nx; normals[i2 + 1] += ny; normals[i2 + 2] += nz;
+            }
+
+            // Normalize vertex normals
+            for (let i = 0; i < normals.length; i += 3) {
+                const len = Math.hypot(normals[i], normals[i + 1], normals[i + 2]) || 1;
+                normals[i] /= len;
+                normals[i + 1] /= len;
+                normals[i + 2] /= len;
             }
         }
 
@@ -525,6 +577,28 @@ export class CMModelConverter {
         return new TypedArrayCtor(slicedBuffer);
     }
 
+    static _centerPivot(positions) {
+        if (!positions || positions.length === 0) return;
+        let minX = Infinity, minY = Infinity, minZ = Infinity;
+        let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+
+        for (let i = 0; i < positions.length; i += 3) {
+            minX = Math.min(minX, positions[i]); maxX = Math.max(maxX, positions[i]);
+            minY = Math.min(minY, positions[i + 1]); maxY = Math.max(maxY, positions[i + 1]);
+            minZ = Math.min(minZ, positions[i + 2]); maxZ = Math.max(maxZ, positions[i + 2]);
+        }
+
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+        const centerZ = (minZ + maxZ) / 2;
+
+        for (let i = 0; i < positions.length; i += 3) {
+            positions[i] -= centerX;
+            positions[i + 1] -= centerY;
+            positions[i + 2] -= centerZ;
+        }
+    }
+
     static _normalizeCoordinates(positions, normals) {
         if (!positions) return;
 
@@ -536,7 +610,7 @@ export class CMModelConverter {
             positions[i + 2] = -y;  // Z = -Y
         }
 
-        if (normals) {
+        if (normals && normals.length === positions.length) {
             for (let i = 0; i < normals.length; i += 3) {
                 const ny = normals[i + 1];
                 const nz = normals[i + 2];
@@ -545,27 +619,6 @@ export class CMModelConverter {
             }
         }
 
-        let minX = Infinity, minY = Infinity, minZ = Infinity;
-        let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
-
-        for (let i = 0; i < positions.length; i += 3) {
-            minX = Math.min(minX, positions[i]);
-            maxX = Math.max(maxX, positions[i]);
-            minY = Math.min(minY, positions[i + 1]);
-            maxY = Math.max(maxY, positions[i + 1]);
-            minZ = Math.min(minZ, positions[i + 2]);
-            maxZ = Math.max(maxZ, positions[i + 2]);
-        }
-
-        // Center model geometry around its origin (pivot)
-        const centerX = (minX + maxX) / 2;
-        const centerY = (minY + maxY) / 2;
-        const centerZ = (minZ + maxZ) / 2;
-
-        for (let i = 0; i < positions.length; i += 3) {
-            positions[i] -= centerX;
-            positions[i + 1] -= centerY;
-            positions[i + 2] -= centerZ;
-        }
+        this._centerPivot(positions);
     }
 }

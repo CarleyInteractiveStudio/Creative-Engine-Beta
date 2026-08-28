@@ -640,7 +640,8 @@ async function loadFocusedFileForPreview() {
 
         try {
             const polyRatio = parseFloat(document.getElementById('import-poly-reduction')?.value || '1.0');
-            const converted = await CMModelConverter.convertGLTFToCM(fileObj, fileName, polyRatio);
+            const normalizeBlender = document.getElementById('import-normalize-blender')?.checked !== false;
+            const converted = await CMModelConverter.convertGLTFToCM(fileObj, fileName, polyRatio, normalizeBlender);
             currentCMData = converted.cmData;
 
             // Cache extracted texture images for solid 3D preview
@@ -1190,7 +1191,8 @@ async function executeImport() {
                 const cmFileName = `${baseName}.cm`;
 
                 const polyRatio = parseFloat(document.getElementById('import-poly-reduction')?.value || '1.0');
-                const converted = await CMModelConverter.convertGLTFToCM(fileObj, fileName, polyRatio);
+                const normalizeBlender = document.getElementById('import-normalize-blender')?.checked !== false;
+                const converted = await CMModelConverter.convertGLTFToCM(fileObj, fileName, polyRatio, normalizeBlender);
 
                 // Write .cm file
                 const cmHandle = await targetHandle.getFileHandle(cmFileName, { create: true });
