@@ -24,6 +24,7 @@ let currentImageObj = null;
 
 // 3D WebGL Turntable Preview State
 let currentCMData = null;
+let currentConvertedModel = null;
 let preview3DAngle = 0;
 let preview3DPitch = 0.3; // Orbit pitch angle (radians)
 let preview3DZoom = 1.0;  // Zoom scale multiplier
@@ -554,8 +555,8 @@ function renderFileList() {
 
         itemContainer.appendChild(item);
 
-        // Expandable Sub-mesh Hierarchy Tree for 3D models
-        if (is3DModel && isFocused && currentCMData && currentCMData.meshes) {
+        // Expandable Sub-mesh, Texture & Animation Hierarchy Tree for 3D models
+        if (is3DModel && isFocused && currentCMData) {
             const hierarchyTree = document.createElement('div');
             hierarchyTree.className = 'import-submesh-tree';
             hierarchyTree.style.marginLeft = '20px';
@@ -564,36 +565,76 @@ function renderFileList() {
             hierarchyTree.style.flexDirection = 'column';
             hierarchyTree.style.gap = '2px';
 
-            currentCMData.meshes.forEach((mesh, mIdx) => {
-                const subItem = document.createElement('div');
-                const isSubFocused = selectedSubMeshIndex === mIdx;
+            if (currentCMData.meshes) {
+                currentCMData.meshes.forEach((mesh, mIdx) => {
+                    const subItem = document.createElement('div');
+                    const isSubFocused = selectedSubMeshIndex === mIdx;
 
-                subItem.style.padding = '4px 8px';
-                subItem.style.borderRadius = '3px';
-                subItem.style.cursor = 'pointer';
-                subItem.style.fontSize = '0.76rem';
-                subItem.style.display = 'flex';
-                subItem.style.alignItems = 'center';
-                subItem.style.gap = '6px';
-                subItem.style.background = isSubFocused ? 'rgba(0, 168, 255, 0.25)' : '#121216';
-                subItem.style.border = isSubFocused ? '1px solid #00a8ff' : '1px solid #282830';
-                subItem.style.color = isSubFocused ? '#4da6ff' : '#bbb';
+                    subItem.style.padding = '4px 8px';
+                    subItem.style.borderRadius = '3px';
+                    subItem.style.cursor = 'pointer';
+                    subItem.style.fontSize = '0.76rem';
+                    subItem.style.display = 'flex';
+                    subItem.style.alignItems = 'center';
+                    subItem.style.gap = '6px';
+                    subItem.style.background = isSubFocused ? 'rgba(0, 168, 255, 0.25)' : '#121216';
+                    subItem.style.border = isSubFocused ? '1px solid #00a8ff' : '1px solid #282830';
+                    subItem.style.color = isSubFocused ? '#4da6ff' : '#bbb';
 
-                subItem.innerHTML = `
-                    <span style="color: #666;">└</span>
-                    <img src="icons/layers.svg" class="ce-icon" style="width: 12px; height: 12px; opacity: 0.7;">
-                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">${mesh.name || `Sub-Malla ${mIdx + 1}`}</span>
-                `;
+                    subItem.innerHTML = `
+                        <span style="color: #666;">└</span>
+                        <img src="icons/layers.svg" class="ce-icon" style="width: 12px; height: 12px; opacity: 0.7;">
+                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">${mesh.name || `Sub-Malla ${mIdx + 1}`}</span>
+                    `;
 
-                subItem.onclick = (e) => {
-                    e.stopPropagation();
-                    selectedSubMeshIndex = mIdx;
-                    renderFileList();
-                    update3DTurntablePreview();
-                };
+                    subItem.onclick = (e) => {
+                        e.stopPropagation();
+                        selectedSubMeshIndex = mIdx;
+                        renderFileList();
+                        update3DTurntablePreview();
+                    };
 
-                hierarchyTree.appendChild(subItem);
-            });
+                    hierarchyTree.appendChild(subItem);
+                });
+            }
+
+            if (currentConvertedModel && currentConvertedModel.textures && currentConvertedModel.textures.length > 0) {
+                currentConvertedModel.textures.forEach((tex) => {
+                    const texItem = document.createElement('div');
+                    texItem.style.padding = '3px 8px';
+                    texItem.style.fontSize = '0.74rem';
+                    texItem.style.display = 'flex';
+                    texItem.style.alignItems = 'center';
+                    texItem.style.gap = '6px';
+                    texItem.style.color = '#a0e0a0';
+
+                    texItem.innerHTML = `
+                        <span style="color: #666;">└</span>
+                        <img src="icons/file.svg" class="ce-icon" style="width: 11px; height: 11px; opacity: 0.8;">
+                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">[Textura] ${tex.name}</span>
+                    `;
+                    hierarchyTree.appendChild(texItem);
+                });
+            }
+
+            if (currentConvertedModel && currentConvertedModel.animations && currentConvertedModel.animations.length > 0) {
+                currentConvertedModel.animations.forEach((anim) => {
+                    const animItem = document.createElement('div');
+                    animItem.style.padding = '3px 8px';
+                    animItem.style.fontSize = '0.74rem';
+                    animItem.style.display = 'flex';
+                    animItem.style.alignItems = 'center';
+                    animItem.style.gap = '6px';
+                    animItem.style.color = '#ffb366';
+
+                    animItem.innerHTML = `
+                        <span style="color: #666;">└</span>
+                        <img src="icons/play.svg" class="ce-icon" style="width: 11px; height: 11px; opacity: 0.8;">
+                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">[Animación] ${anim.name}</span>
+                    `;
+                    hierarchyTree.appendChild(animItem);
+                });
+            }
 
             const expandBtn = item.querySelector('.import-expand-tree');
             if (expandBtn) {
@@ -664,17 +705,27 @@ async function loadFocusedFileForPreview() {
 
             const converted = await CMModelConverter.convertGLTFToCM(fileObj, fileName, polyRatio, normalizeBlender, mtlText, companionMap);
             currentCMData = converted.cmData;
+            currentConvertedModel = converted;
 
-            // Cache extracted texture images for solid 3D preview
+            // Cache extracted texture images for 3D preview
             textureImageMap.clear();
-            if (converted.textures) {
+            if (converted.textures && converted.textures.length > 0) {
                 for (const tex of converted.textures) {
+                    if (!tex.blob) continue;
                     const img = new Image();
                     const texUrl = URL.createObjectURL(tex.blob);
                     img.src = texUrl;
                     textureImageMap.set(tex.name, img);
-                    textureImageMap.set(tex.uri, img);
+                    if (tex.uri) {
+                        textureImageMap.set(tex.uri, img);
+                        const baseUri = tex.uri.split('/').pop();
+                        if (baseUri) textureImageMap.set(baseUri, img);
+                    }
                 }
+                // Switch turntable preview to textured mode when textures are present
+                preview3DMode = 'textured';
+                const renderModeSel = document.getElementById('import-3d-render-mode');
+                if (renderModeSel) renderModeSel.value = 'textured';
             }
 
             document.getElementById('import-img-dimensions').textContent = `3D: ${currentCMData.meshes.length} Sub-Malla(s)`;
@@ -837,9 +888,13 @@ function update3DTurntablePreview() {
                 // Check texture mapping
                 let loadedImg = null;
                 if (isTextured) {
-                    if (primitive.material && primitive.material.texturePath) {
-                        const tPath = primitive.material.texturePath;
-                        loadedImg = textureImageMap.get(tPath) || textureImageMap.get(tPath.split('/').pop());
+                    const matIdx = primitive.materialIndex !== undefined ? primitive.materialIndex : primitive.material;
+                    if (matIdx !== undefined && currentCMData && currentCMData.materials && currentCMData.materials[matIdx]) {
+                        const mat = currentCMData.materials[matIdx];
+                        if (mat && mat.texturePath) {
+                            const tPath = mat.texturePath;
+                            loadedImg = textureImageMap.get(tPath) || textureImageMap.get(tPath.split('/').pop());
+                        }
                     }
                     if (!loadedImg && textureImageMap.size > 0) {
                         loadedImg = textureImageMap.values().next().value;
@@ -1245,6 +1300,7 @@ async function executeImport() {
                 // Write extracted textures and automatically generate .ceMaterial files for the model
                 if (document.getElementById('import-extract-textures').checked && converted.textures) {
                     for (const tex of converted.textures) {
+                        if (!tex.blob) continue;
                         const texHandle = await targetHandle.getFileHandle(tex.name, { create: true });
                         const texWritable = await texHandle.createWritable();
                         await texWritable.write(tex.blob);
