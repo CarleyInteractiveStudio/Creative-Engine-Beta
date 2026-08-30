@@ -1014,6 +1014,12 @@ function update3DTurntablePreview() {
                             ctx.stroke();
                         } else if (isTextured) {
                             // 3. Model with Extracted Textures (or White Shaded fallback)
+                            ctx.beginPath();
+                            ctx.moveTo(tri.p0[0], tri.p0[1]);
+                            ctx.lineTo(tri.p1[0], tri.p1[1]);
+                            ctx.lineTo(tri.p2[0], tri.p2[1]);
+                            ctx.closePath();
+
                             if (loadedImg && loadedImg.complete && loadedImg.width > 0) {
                                 ctx.save();
                                 ctx.clip();
