@@ -919,13 +919,11 @@ function update3DTurntablePreview() {
 
                 const scale = fitScale * preview3DZoom;
 
-                // Collect projected triangles with dynamic LOD sampling for high-poly models
+                // Collect all projected triangles without subsampling to eliminate mesh holes
                 const triangles = [];
-                const totalTriangles = indices ? indices.length / 3 : 0;
-                const triStep = totalTriangles > 15000 ? (isOrbitDragging ? 4 : 2) : 1;
 
                 if (indices && indices.length >= 3) {
-                    for (let i = 0; i < indices.length; i += triStep * 3) {
+                    for (let i = 0; i < indices.length; i += 3) {
                         const i0 = indices[i] * 3;
                         const i1 = indices[i + 1] * 3;
                         const i2 = indices[i + 2] * 3;

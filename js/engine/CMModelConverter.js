@@ -155,6 +155,13 @@ export class CMModelConverter {
                     let primUvs = uvs ? Array.from(uvs) : null;
                     let primIndices = indices ? Array.from(indices) : null;
 
+                    // Generate sequential indices for unindexed primitives to ensure solid mesh surface
+                    if (!primIndices && primPositions.length >= 9) {
+                        const count = Math.floor(primPositions.length / 3);
+                        primIndices = new Array(count);
+                        for (let idx = 0; idx < count; idx++) primIndices[idx] = idx;
+                    }
+
                     // Apply Polygon Decimation / Reduction if ratio < 1.0
                     if (reductionRatio < 0.98 && primIndices && primIndices.length > 12) {
                         const decimated = this._decimateMesh(primPositions, primNormals, primUvs, primIndices, reductionRatio);
