@@ -1013,20 +1013,52 @@ function update3DTurntablePreview() {
                             ctx.fill();
                             ctx.stroke();
                         } else if (isTextured) {
-                            // 3. Model with Extracted Textures (or White Shaded fallback)
-                            ctx.beginPath();
-                            ctx.moveTo(tri.p0[0], tri.p0[1]);
-                            ctx.lineTo(tri.p1[0], tri.p1[1]);
-                            ctx.lineTo(tri.p2[0], tri.p2[1]);
-                            ctx.closePath();
+                            // 3. Model with Extracted Textures (Affine UV Triangle Mapping)
+                            if (loadedImg && loadedImg.complete && loadedImg.width > 0 && tri.uv0) {
+                                const imgW = loadedImg.width;
+                                const imgH = loadedImg.height;
 
-                            if (loadedImg && loadedImg.complete && loadedImg.width > 0) {
+                                const u0 = tri.uv0[0] * imgW, v0 = (1 - tri.uv0[1]) * imgH;
+                                const u1 = tri.uv1[0] * imgW, v1 = (1 - tri.uv1[1]) * imgH;
+                                const u2 = tri.uv2[0] * imgW, v2 = (1 - tri.uv2[1]) * imgH;
+
+                                const x0 = tri.p0[0], y0 = tri.p0[1];
+                                const x1 = tri.p1[0], y1 = tri.p1[1];
+                                const x2 = tri.p2[0], y2 = tri.p2[1];
+
+                                const denom = (u0 * (v1 - v2) - v0 * (u1 - u2) + (u1 * v2 - u2 * v1));
+
                                 ctx.save();
+                                ctx.beginPath();
+                                ctx.moveTo(x0, y0);
+                                ctx.lineTo(x1, y1);
+                                ctx.lineTo(x2, y2);
+                                ctx.closePath();
                                 ctx.clip();
-                                ctx.globalAlpha = tri.intensity;
-                                ctx.drawImage(loadedImg, -180, -180, 360, 360);
+
+                                if (Math.abs(denom) > 0.00001) {
+                                    const a = (x0 * (v1 - v2) - v0 * (x1 - x2) + (x1 * v2 - x2 * v1)) / denom;
+                                    const b = (y0 * (v1 - v2) - v0 * (y1 - y2) + (y1 * v2 - y2 * v1)) / denom;
+                                    const c = (u0 * (x1 - x2) - x0 * (u1 - u2) + (u1 * x2 - u2 * x1)) / denom;
+                                    const d = (u0 * (y1 - y2) - y0 * (u1 - u2) + (u1 * y2 - u2 * y1)) / denom;
+                                    const e = (x0 * (u1 * v2 - u2 * v1) - u0 * (x1 * v2 - x2 * v1) + v0 * (x1 * u2 - x2 * u1)) / denom;
+                                    const f = (y0 * (u1 * v2 - u2 * v1) - u0 * (y1 * v2 - y2 * v1) + v0 * (y1 * u2 - y2 * u1)) / denom;
+
+                                    ctx.transform(a, b, c, d, e, f);
+                                    ctx.globalAlpha = tri.intensity;
+                                    ctx.drawImage(loadedImg, 0, 0);
+                                } else {
+                                    const val = Math.floor(tri.intensity * 190 + 65);
+                                    ctx.fillStyle = `rgb(${val}, ${val}, ${val})`;
+                                    ctx.fill();
+                                }
                                 ctx.restore();
                             } else {
+                                ctx.beginPath();
+                                ctx.moveTo(tri.p0[0], tri.p0[1]);
+                                ctx.lineTo(tri.p1[0], tri.p1[1]);
+                                ctx.lineTo(tri.p2[0], tri.p2[1]);
+                                ctx.closePath();
                                 const val = Math.floor(tri.intensity * 190 + 65);
                                 const fillCol = `rgb(${val}, ${val}, ${val})`;
                                 ctx.fillStyle = fillCol;
