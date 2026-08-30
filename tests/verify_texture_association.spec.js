@@ -2,18 +2,9 @@ import assert from 'node:assert';
 import test from 'node:test';
 import { CMModelConverter } from '../js/engine/CMModelConverter.js';
 
-test('CMModelConverter & AssetImportModalWindow - Complete GLB Import Suite', async () => {
-    // 1. Test basic glTF/GLB mock structure
-    const mockPositions = new Float32Array([
-        0, 1, 0,
-        -1, 0, 0,
-        1, 0, 0
-    ]);
-    const mockNormals = new Float32Array([
-        0, 0, 1,
-        0, 0, 1,
-        0, 0, 1
-    ]);
+test('CMModelConverter - Texture Naming, Extraction & Association', async () => {
+    const mockPositions = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]);
+    const mockNormals = new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]);
     const mockIndices = new Uint16Array([0, 1, 2]);
 
     const posBuf = mockPositions.buffer;
@@ -42,12 +33,12 @@ test('CMModelConverter & AssetImportModalWindow - Complete GLB Import Suite', as
             { bufferView: 2, componentType: 5123, count: 3, type: "SCALAR" }
         ],
         images: [
-            { uri: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", name: "CharacterTexture" }
+            { uri: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", name: "Albedo" }
         ],
         textures: [{ source: 0 }],
-        materials: [{ name: "HeroMaterial", pbrMetallicRoughness: { baseColorTexture: { index: 0 } } }],
-        meshes: [{ name: "HeroMesh", primitives: [{ attributes: { POSITION: 0, NORMAL: 1 }, indices: 2, material: 0 }] }],
-        nodes: [{ name: "HeroRootNode", mesh: 0 }]
+        materials: [{ name: "BodyMaterial", pbrMetallicRoughness: { baseColorTexture: { index: 0 } } }],
+        meshes: [{ name: "BodyMesh", primitives: [{ attributes: { POSITION: 0, NORMAL: 1 }, indices: 2, material: 0 }] }],
+        nodes: [{ name: "RootNode", mesh: 0 }]
     };
 
     const jsonBytes = new TextEncoder().encode(JSON.stringify(gltfJson));
@@ -78,16 +69,9 @@ test('CMModelConverter & AssetImportModalWindow - Complete GLB Import Suite', as
     offsetGlb += 8;
     u8View.set(binChunk, offsetGlb);
 
-    // Run conversion
-    const result = await CMModelConverter.convertGLTFToCM(glbBuffer, 'hero.glb');
+    const result = await CMModelConverter.convertGLTFToCM(glbBuffer, 'robot.glb');
 
-    assert.ok(result, 'Conversion result should be defined');
-    assert.strictEqual(result.cmData.meshes.length, 1, 'Should extract 1 mesh');
-    assert.strictEqual(result.textures.length, 1, 'Should extract 1 texture');
-    assert.strictEqual(result.textures[0].name, 'hero_CharacterTexture.png', 'Texture name should match');
-    assert.strictEqual(result.cmData.materials[0].texturePath, 'hero_CharacterTexture.png', 'Material texture link should be set');
-
-    // Check vertex positions (Y should be right side up: > 0 for top vertex after global pivot centering)
-    const positions = result.cmData.meshes[0].primitives[0].positions;
-    assert.ok(positions[1] > 0, 'Top vertex Y position should remain positive Y (not inverted)');
+    assert.ok(result.textures.length === 1, 'Should extract 1 texture');
+    assert.strictEqual(result.textures[0].name, 'robot_Albedo.png', 'Texture name should be prefixed with model base name');
+    assert.strictEqual(result.cmData.materials[0].texturePath, 'robot_Albedo.png', 'Material texturePath should match extracted texture name');
 });

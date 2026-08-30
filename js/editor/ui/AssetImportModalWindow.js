@@ -607,12 +607,27 @@ function renderFileList() {
                     texItem.style.alignItems = 'center';
                     texItem.style.gap = '6px';
                     texItem.style.color = '#a0e0a0';
+                    texItem.style.cursor = 'pointer';
 
                     texItem.innerHTML = `
                         <span style="color: #666;">└</span>
                         <img src="icons/file.svg" class="ce-icon" style="width: 11px; height: 11px; opacity: 0.8;">
                         <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">[Textura] ${tex.name}</span>
                     `;
+
+                    texItem.onclick = (e) => {
+                        e.stopPropagation();
+                        if (preview3DTimer) clearInterval(preview3DTimer);
+                        const texImg = textureImageMap.get(tex.name) || textureImageMap.get(tex.uri);
+                        if (texImg && texImg.complete) {
+                            currentImageObj = texImg;
+                            document.getElementById('import-img-type').value = 'Textura';
+                            document.getElementById('import-3d-render-mode').style.display = 'none';
+                            document.getElementById('import-3d-autorotate-label').style.display = 'none';
+                            updatePreview();
+                        }
+                    };
+
                     hierarchyTree.appendChild(texItem);
                 });
             }
@@ -938,9 +953,9 @@ function update3DTurntablePreview() {
                         const p1 = [r1[0] * scale * (300 / (300 + r1[2])), -r1[1] * scale * (300 / (300 + r1[2]))];
                         const p2 = [r2[0] * scale * (300 / (300 + r2[2])), -r2[1] * scale * (300 / (300 + r2[2]))];
 
-                        // Cross product to test winding order (cull back-facing triangles)
+                        // Cross product to test winding order (allow double-sided rendering to prevent hollow gaps)
                         const crossZ = (p1[0] - p0[0]) * (p2[1] - p0[1]) - (p1[1] - p0[1]) * (p2[0] - p0[0]);
-                        if (crossZ >= 0) continue; // Skip back-facing triangles in Y-flipped 2D canvas space
+                        const isBackFace = crossZ >= 0;
 
                         // Calculate normal & directional lighting
                         let intensity = 0.85;

@@ -63,7 +63,7 @@ export class Renderer3D {
         gl.getExtension('OES_element_index_uint');
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        gl.enable(gl.CULL_FACE);
+        gl.disable(gl.CULL_FACE); // Double-sided rendering by default to prevent holes/gaps in unclosed geometry
         gl.frontFace(gl.CCW); // standard WebGL/GLTF winding
 
         // Query GPU hardware details

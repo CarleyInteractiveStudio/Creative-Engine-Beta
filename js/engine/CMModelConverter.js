@@ -114,9 +114,12 @@ export class CMModelConverter {
                     }
                 }
 
+                const modelBaseName = fileName.split('.')[0];
                 if (!texName) {
                     const ext = mimeType.includes('jpeg') || mimeType.includes('jpg') ? 'jpg' : 'png';
-                    texName = img.name ? `${img.name}.${ext}` : `${fileName.split('.')[0]}_tex_${i}.${ext}`;
+                    texName = img.name ? `${modelBaseName}_${img.name}.${ext}` : `${modelBaseName}_tex_${i}.${ext}`;
+                } else if (!texName.startsWith(modelBaseName)) {
+                    texName = `${modelBaseName}_${texName}`;
                 }
 
                 textures.push({ name: texName, uri: img.uri, blob, mimeType });

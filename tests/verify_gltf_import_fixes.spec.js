@@ -135,12 +135,12 @@ test('CMModelConverter - glTF/GLB orientation, textures, animations & buffer res
     assert.ok(primPos, 'Positions should be extracted');
 
     assert.strictEqual(result.textures.length, 1, 'Should extract 1 texture');
-    assert.strictEqual(result.textures[0].name, 'TestTex.png', 'Texture name should match');
+    assert.strictEqual(result.textures[0].name, 'test_model_TestTex.png', 'Texture name should match');
 
     assert.strictEqual(result.animations.length, 1, 'Should extract 1 animation clip');
     assert.strictEqual(result.animations[0].name, 'Walk.cea3d', 'Animation clip name should match');
     assert.strictEqual(result.animations[0].data.name, 'Walk', 'Animation clip data name should match');
     assert.strictEqual(result.animations[0].data.channels.length, 1, 'Animation should have 1 channel');
 
-    assert.strictEqual(result.cmData.materials[0].texturePath, 'TestTex.png', 'Material texturePath should be bound');
+    assert.strictEqual(result.cmData.materials[0].texturePath, 'test_model_TestTex.png', 'Material texturePath should be bound');
 });
