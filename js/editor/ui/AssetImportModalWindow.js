@@ -1246,11 +1246,19 @@ async function executeImport() {
 
     try {
         const projectName = new URLSearchParams(window.location.search).get('project');
-        let targetHandle = await window.projectsDirHandle.getDirectoryHandle(projectName);
-
-        const parts = targetFolder.split('/');
-        for (const part of parts) {
-            if (part) targetHandle = await targetHandle.getDirectoryHandle(part, { create: true });
+        let targetHandle = null;
+        if (targetDirHandle) {
+            targetHandle = targetDirHandle;
+        } else if (window.projectsDirHandle && projectName) {
+            try {
+                targetHandle = await window.projectsDirHandle.getDirectoryHandle(projectName);
+                const parts = targetFolder.split('/');
+                for (const part of parts) {
+                    if (part) targetHandle = await targetHandle.getDirectoryHandle(part, { create: true });
+                }
+            } catch (err) {
+                console.warn("[AssetImportModalWindow] Target dir resolution via projectsDirHandle failed:", err);
+            }
         }
 
         for (const item of filesToImport) {
