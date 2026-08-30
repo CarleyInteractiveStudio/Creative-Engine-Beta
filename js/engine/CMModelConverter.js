@@ -28,7 +28,7 @@ export class CMModelConverter {
         const lowerName = fileName.toLowerCase();
 
         // Default normalizeBlender: true for OBJ (Z-Up), false for glTF/GLB (already standard Y-Up according to glTF 2.0 spec)
-        const shouldNormalize = lowerName.endsWith('.obj') ? (normalizeBlender !== false) : false;
+        const shouldNormalize = lowerName.endsWith('.obj') ? (normalizeBlender !== false) : (normalizeBlender === true);
 
         // Handle OBJ Files (.obj)
         if (lowerName.endsWith('.obj')) {
@@ -114,9 +114,12 @@ export class CMModelConverter {
                     }
                 }
 
+                const modelBaseName = fileName.split('.')[0];
                 if (!texName) {
                     const ext = mimeType.includes('jpeg') || mimeType.includes('jpg') ? 'jpg' : 'png';
-                    texName = img.name ? `${img.name}.${ext}` : `${fileName.split('.')[0]}_tex_${i}.${ext}`;
+                    texName = img.name ? `${modelBaseName}_${img.name}.${ext}` : `${modelBaseName}_tex_${i}.${ext}`;
+                } else if (!texName.startsWith(modelBaseName)) {
+                    texName = `${modelBaseName}_${texName}`;
                 }
 
                 textures.push({ name: texName, uri: img.uri, blob, mimeType });
@@ -151,6 +154,13 @@ export class CMModelConverter {
                     let primNormals = normals ? Array.from(normals) : null;
                     let primUvs = uvs ? Array.from(uvs) : null;
                     let primIndices = indices ? Array.from(indices) : null;
+
+                    // Generate sequential indices for unindexed primitives to ensure solid mesh surface
+                    if (!primIndices && primPositions.length >= 9) {
+                        const count = Math.floor(primPositions.length / 3);
+                        primIndices = new Array(count);
+                        for (let idx = 0; idx < count; idx++) primIndices[idx] = idx;
+                    }
 
                     // Apply Polygon Decimation / Reduction if ratio < 1.0
                     if (reductionRatio < 0.98 && primIndices && primIndices.length > 12) {
@@ -222,12 +232,22 @@ export class CMModelConverter {
                     }
                 }
 
+                if (!texName && textures.length > 0) {
+                    texName = textures[i % textures.length].name;
+                }
+
                 cmMaterials.push({
                     name: mat.name || `Material_${i}`,
                     baseColor: pbr.baseColorFactor || [1, 1, 1, 1],
                     texturePath: texName
                 });
             }
+        } else if (textures.length > 0) {
+            cmMaterials.push({
+                name: `Material_0`,
+                baseColor: [1, 1, 1, 1],
+                texturePath: textures[0].name
+            });
         }
 
         // 5. Extract Animations into .cea3d clips

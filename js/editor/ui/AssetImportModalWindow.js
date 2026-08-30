@@ -90,7 +90,7 @@ export function initializeAssetImportModal() {
                     <div id="import-model3d-options" style="display: flex; background: #141418; padding: 12px; border-radius: 6px; border: 1px solid #333; gap: 8px; flex-direction: column;">
                         <span style="font-size: 0.8rem; font-weight: bold; color: #4da6ff;">Ajustes de Conversión Carley Model (.CM)</span>
                         <label style="font-size: 0.75rem; color: #ccc; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                            <input type="checkbox" id="import-normalize-blender" checked style="cursor: pointer;">
+                            <input type="checkbox" id="import-normalize-blender" style="cursor: pointer;">
                             Normalizar Rotaciones de Blender (Z-Up -> Y-Up)
                         </label>
                         <label style="font-size: 0.75rem; color: #ccc; display: flex; align-items: center; gap: 6px; cursor: pointer;">
@@ -607,12 +607,27 @@ function renderFileList() {
                     texItem.style.alignItems = 'center';
                     texItem.style.gap = '6px';
                     texItem.style.color = '#a0e0a0';
+                    texItem.style.cursor = 'pointer';
 
                     texItem.innerHTML = `
                         <span style="color: #666;">└</span>
                         <img src="icons/file.svg" class="ce-icon" style="width: 11px; height: 11px; opacity: 0.8;">
                         <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">[Textura] ${tex.name}</span>
                     `;
+
+                    texItem.onclick = (e) => {
+                        e.stopPropagation();
+                        if (preview3DTimer) clearInterval(preview3DTimer);
+                        const texImg = textureImageMap.get(tex.name) || textureImageMap.get(tex.uri);
+                        if (texImg && texImg.complete) {
+                            currentImageObj = texImg;
+                            document.getElementById('import-img-type').value = 'Textura';
+                            document.getElementById('import-3d-render-mode').style.display = 'none';
+                            document.getElementById('import-3d-autorotate-label').style.display = 'none';
+                            updatePreview();
+                        }
+                    };
+
                     hierarchyTree.appendChild(texItem);
                 });
             }
@@ -904,13 +919,11 @@ function update3DTurntablePreview() {
 
                 const scale = fitScale * preview3DZoom;
 
-                // Collect projected triangles with dynamic LOD sampling for high-poly models
+                // Collect all projected triangles without subsampling to eliminate mesh holes
                 const triangles = [];
-                const totalTriangles = indices ? indices.length / 3 : 0;
-                const triStep = totalTriangles > 15000 ? (isOrbitDragging ? 4 : 2) : 1;
 
                 if (indices && indices.length >= 3) {
-                    for (let i = 0; i < indices.length; i += triStep * 3) {
+                    for (let i = 0; i < indices.length; i += 3) {
                         const i0 = indices[i] * 3;
                         const i1 = indices[i + 1] * 3;
                         const i2 = indices[i + 2] * 3;
@@ -938,9 +951,9 @@ function update3DTurntablePreview() {
                         const p1 = [r1[0] * scale * (300 / (300 + r1[2])), -r1[1] * scale * (300 / (300 + r1[2]))];
                         const p2 = [r2[0] * scale * (300 / (300 + r2[2])), -r2[1] * scale * (300 / (300 + r2[2]))];
 
-                        // Cross product to test winding order (cull back-facing triangles)
+                        // Cross product to test winding order (allow double-sided rendering to prevent hollow gaps)
                         const crossZ = (p1[0] - p0[0]) * (p2[1] - p0[1]) - (p1[1] - p0[1]) * (p2[0] - p0[0]);
-                        if (crossZ >= 0) continue; // Skip back-facing triangles in Y-flipped 2D canvas space
+                        const isBackFace = crossZ >= 0;
 
                         // Calculate normal & directional lighting
                         let intensity = 0.85;
@@ -957,7 +970,15 @@ function update3DTurntablePreview() {
                             intensity = Math.max(0.35, Math.min(1.0, dot * 0.65 + 0.35));
                         }
 
-                        triangles.push({ p0, p1, p2, avgZ, intensity });
+                        const uvs = primitive.uvs;
+                        let uv0 = null, uv1 = null, uv2 = null;
+                        if (uvs && (indices[i] * 2 + 1) < uvs.length) {
+                            uv0 = [uvs[indices[i] * 2], uvs[indices[i] * 2 + 1]];
+                            uv1 = [uvs[indices[i + 1] * 2], uvs[indices[i + 1] * 2 + 1]];
+                            uv2 = [uvs[indices[i + 2] * 2], uvs[indices[i + 2] * 2 + 1]];
+                        }
+
+                        triangles.push({ p0, p1, p2, uv0, uv1, uv2, avgZ, intensity });
                     }
                 }
 
@@ -966,19 +987,21 @@ function update3DTurntablePreview() {
 
                 if (triangles.length > 0) {
                     for (const tri of triangles) {
-                        ctx.beginPath();
-                        ctx.moveTo(tri.p0[0], tri.p0[1]);
-                        ctx.lineTo(tri.p1[0], tri.p1[1]);
-                        ctx.lineTo(tri.p2[0], tri.p2[1]);
-                        ctx.closePath();
-
                         if (isWireframeGreen) {
-                            // 1. Only Green Wireframe Mesh Lines
+                            ctx.beginPath();
+                            ctx.moveTo(tri.p0[0], tri.p0[1]);
+                            ctx.lineTo(tri.p1[0], tri.p1[1]);
+                            ctx.lineTo(tri.p2[0], tri.p2[1]);
+                            ctx.closePath();
                             ctx.strokeStyle = '#00ff66';
                             ctx.lineWidth = 1.0;
                             ctx.stroke();
-                        } else if (isSolidWhite) {
-                            // 2. Clean White Shaded Model (Fill + Seamless Border Overlap)
+                        } else if (isSolidWhite || !loadedImg || !loadedImg.complete || !loadedImg.width || !tri.uv0) {
+                            ctx.beginPath();
+                            ctx.moveTo(tri.p0[0], tri.p0[1]);
+                            ctx.lineTo(tri.p1[0], tri.p1[1]);
+                            ctx.lineTo(tri.p2[0], tri.p2[1]);
+                            ctx.closePath();
                             const val = Math.floor(tri.intensity * 190 + 65);
                             const fillCol = `rgb(${val}, ${val}, ${val})`;
                             ctx.fillStyle = fillCol;
@@ -988,14 +1011,52 @@ function update3DTurntablePreview() {
                             ctx.fill();
                             ctx.stroke();
                         } else if (isTextured) {
-                            // 3. Model with Extracted Textures (or White Shaded fallback)
-                            if (loadedImg && loadedImg.complete && loadedImg.width > 0) {
+                            // 3. Model with Extracted Textures (Affine UV Triangle Mapping)
+                            if (loadedImg && loadedImg.complete && loadedImg.width > 0 && tri.uv0) {
+                                const imgW = loadedImg.width;
+                                const imgH = loadedImg.height;
+
+                                const u0 = tri.uv0[0] * imgW, v0 = (1 - tri.uv0[1]) * imgH;
+                                const u1 = tri.uv1[0] * imgW, v1 = (1 - tri.uv1[1]) * imgH;
+                                const u2 = tri.uv2[0] * imgW, v2 = (1 - tri.uv2[1]) * imgH;
+
+                                const x0 = tri.p0[0], y0 = tri.p0[1];
+                                const x1 = tri.p1[0], y1 = tri.p1[1];
+                                const x2 = tri.p2[0], y2 = tri.p2[1];
+
+                                const denom = (u0 * (v1 - v2) - v0 * (u1 - u2) + (u1 * v2 - u2 * v1));
+
                                 ctx.save();
+                                ctx.beginPath();
+                                ctx.moveTo(x0, y0);
+                                ctx.lineTo(x1, y1);
+                                ctx.lineTo(x2, y2);
+                                ctx.closePath();
                                 ctx.clip();
-                                ctx.globalAlpha = tri.intensity;
-                                ctx.drawImage(loadedImg, -180, -180, 360, 360);
+
+                                if (Math.abs(denom) > 0.00001) {
+                                    const a = (x0 * (v1 - v2) - v0 * (x1 - x2) + (x1 * v2 - x2 * v1)) / denom;
+                                    const b = (y0 * (v1 - v2) - v0 * (y1 - y2) + (y1 * v2 - y2 * v1)) / denom;
+                                    const c = (u0 * (x1 - x2) - x0 * (u1 - u2) + (u1 * x2 - u2 * x1)) / denom;
+                                    const d = (u0 * (y1 - y2) - y0 * (u1 - u2) + (u1 * y2 - u2 * y1)) / denom;
+                                    const e = (x0 * (u1 * v2 - u2 * v1) - u0 * (x1 * v2 - x2 * v1) + v0 * (x1 * u2 - x2 * u1)) / denom;
+                                    const f = (y0 * (u1 * v2 - u2 * v1) - u0 * (y1 * v2 - y2 * v1) + v0 * (y1 * u2 - y2 * u1)) / denom;
+
+                                    ctx.transform(a, b, c, d, e, f);
+                                    ctx.globalAlpha = tri.intensity;
+                                    ctx.drawImage(loadedImg, 0, 0);
+                                } else {
+                                    const val = Math.floor(tri.intensity * 190 + 65);
+                                    ctx.fillStyle = `rgb(${val}, ${val}, ${val})`;
+                                    ctx.fill();
+                                }
                                 ctx.restore();
                             } else {
+                                ctx.beginPath();
+                                ctx.moveTo(tri.p0[0], tri.p0[1]);
+                                ctx.lineTo(tri.p1[0], tri.p1[1]);
+                                ctx.lineTo(tri.p2[0], tri.p2[1]);
+                                ctx.closePath();
                                 const val = Math.floor(tri.intensity * 190 + 65);
                                 const fillCol = `rgb(${val}, ${val}, ${val})`;
                                 ctx.fillStyle = fillCol;
@@ -1246,11 +1307,19 @@ async function executeImport() {
 
     try {
         const projectName = new URLSearchParams(window.location.search).get('project');
-        let targetHandle = await window.projectsDirHandle.getDirectoryHandle(projectName);
-
-        const parts = targetFolder.split('/');
-        for (const part of parts) {
-            if (part) targetHandle = await targetHandle.getDirectoryHandle(part, { create: true });
+        let targetHandle = null;
+        if (targetDirHandle) {
+            targetHandle = targetDirHandle;
+        } else if (window.projectsDirHandle && projectName) {
+            try {
+                targetHandle = await window.projectsDirHandle.getDirectoryHandle(projectName);
+                const parts = targetFolder.split('/');
+                for (const part of parts) {
+                    if (part) targetHandle = await targetHandle.getDirectoryHandle(part, { create: true });
+                }
+            } catch (err) {
+                console.warn("[AssetImportModalWindow] Target dir resolution via projectsDirHandle failed:", err);
+            }
         }
 
         for (const item of filesToImport) {
