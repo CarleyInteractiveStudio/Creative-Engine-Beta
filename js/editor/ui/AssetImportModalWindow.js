@@ -729,6 +729,7 @@ async function loadFocusedFileForPreview() {
             }
 
             document.getElementById('import-img-dimensions').textContent = `3D: ${currentCMData.meshes.length} Sub-Malla(s)`;
+            renderFileList();
             update3DTurntablePreview();
         } catch (e) {
             console.error("Error al convertir modelo 3D para vista previa:", e);
@@ -939,7 +940,7 @@ function update3DTurntablePreview() {
 
                         // Cross product to test winding order (cull back-facing triangles)
                         const crossZ = (p1[0] - p0[0]) * (p2[1] - p0[1]) - (p1[1] - p0[1]) * (p2[0] - p0[0]);
-                        if (crossZ <= 0) continue; // Skip back-facing triangles
+                        if (crossZ >= 0) continue; // Skip back-facing triangles in Y-flipped 2D canvas space
 
                         // Calculate normal & directional lighting
                         let intensity = 0.85;
