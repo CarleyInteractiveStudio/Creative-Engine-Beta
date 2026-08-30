@@ -27,8 +27,8 @@ export class CMModelConverter {
 
         const lowerName = fileName.toLowerCase();
 
-        // Default normalizeBlender: true for OBJ and Blender models (Z-Up -> Y-Up) when user option normalizeBlender is true
-        const shouldNormalize = normalizeBlender === true || (lowerName.endsWith('.obj') && normalizeBlender !== false);
+        // Default normalizeBlender: true for OBJ (Z-Up), false for glTF/GLB (already standard Y-Up according to glTF 2.0 spec)
+        const shouldNormalize = lowerName.endsWith('.obj') ? (normalizeBlender !== false) : (normalizeBlender === true);
 
         // Handle OBJ Files (.obj)
         if (lowerName.endsWith('.obj')) {

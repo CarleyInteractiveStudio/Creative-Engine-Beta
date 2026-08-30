@@ -90,7 +90,7 @@ export function initializeAssetImportModal() {
                     <div id="import-model3d-options" style="display: flex; background: #141418; padding: 12px; border-radius: 6px; border: 1px solid #333; gap: 8px; flex-direction: column;">
                         <span style="font-size: 0.8rem; font-weight: bold; color: #4da6ff;">Ajustes de Conversión Carley Model (.CM)</span>
                         <label style="font-size: 0.75rem; color: #ccc; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                            <input type="checkbox" id="import-normalize-blender" checked style="cursor: pointer;">
+                            <input type="checkbox" id="import-normalize-blender" style="cursor: pointer;">
                             Normalizar Rotaciones de Blender (Z-Up -> Y-Up)
                         </label>
                         <label style="font-size: 0.75rem; color: #ccc; display: flex; align-items: center; gap: 6px; cursor: pointer;">
@@ -972,7 +972,15 @@ function update3DTurntablePreview() {
                             intensity = Math.max(0.35, Math.min(1.0, dot * 0.65 + 0.35));
                         }
 
-                        triangles.push({ p0, p1, p2, avgZ, intensity });
+                        const uvs = primitive.uvs;
+                        let uv0 = null, uv1 = null, uv2 = null;
+                        if (uvs && (indices[i] * 2 + 1) < uvs.length) {
+                            uv0 = [uvs[indices[i] * 2], uvs[indices[i] * 2 + 1]];
+                            uv1 = [uvs[indices[i + 1] * 2], uvs[indices[i + 1] * 2 + 1]];
+                            uv2 = [uvs[indices[i + 2] * 2], uvs[indices[i + 2] * 2 + 1]];
+                        }
+
+                        triangles.push({ p0, p1, p2, uv0, uv1, uv2, avgZ, intensity });
                     }
                 }
 
@@ -981,19 +989,21 @@ function update3DTurntablePreview() {
 
                 if (triangles.length > 0) {
                     for (const tri of triangles) {
-                        ctx.beginPath();
-                        ctx.moveTo(tri.p0[0], tri.p0[1]);
-                        ctx.lineTo(tri.p1[0], tri.p1[1]);
-                        ctx.lineTo(tri.p2[0], tri.p2[1]);
-                        ctx.closePath();
-
                         if (isWireframeGreen) {
-                            // 1. Only Green Wireframe Mesh Lines
+                            ctx.beginPath();
+                            ctx.moveTo(tri.p0[0], tri.p0[1]);
+                            ctx.lineTo(tri.p1[0], tri.p1[1]);
+                            ctx.lineTo(tri.p2[0], tri.p2[1]);
+                            ctx.closePath();
                             ctx.strokeStyle = '#00ff66';
                             ctx.lineWidth = 1.0;
                             ctx.stroke();
-                        } else if (isSolidWhite) {
-                            // 2. Clean White Shaded Model (Fill + Seamless Border Overlap)
+                        } else if (isSolidWhite || !loadedImg || !loadedImg.complete || !loadedImg.width || !tri.uv0) {
+                            ctx.beginPath();
+                            ctx.moveTo(tri.p0[0], tri.p0[1]);
+                            ctx.lineTo(tri.p1[0], tri.p1[1]);
+                            ctx.lineTo(tri.p2[0], tri.p2[1]);
+                            ctx.closePath();
                             const val = Math.floor(tri.intensity * 190 + 65);
                             const fillCol = `rgb(${val}, ${val}, ${val})`;
                             ctx.fillStyle = fillCol;
