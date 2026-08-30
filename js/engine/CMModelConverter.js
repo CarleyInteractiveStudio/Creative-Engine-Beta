@@ -27,8 +27,8 @@ export class CMModelConverter {
 
         const lowerName = fileName.toLowerCase();
 
-        // Default normalizeBlender: true for OBJ (Z-Up), false for glTF/GLB (already standard Y-Up according to glTF 2.0 spec)
-        const shouldNormalize = lowerName.endsWith('.obj') ? (normalizeBlender !== false) : false;
+        // Default normalizeBlender: true for OBJ and Blender models (Z-Up -> Y-Up) when user option normalizeBlender is true
+        const shouldNormalize = normalizeBlender === true || (lowerName.endsWith('.obj') && normalizeBlender !== false);
 
         // Handle OBJ Files (.obj)
         if (lowerName.endsWith('.obj')) {
@@ -225,12 +225,22 @@ export class CMModelConverter {
                     }
                 }
 
+                if (!texName && textures.length > 0) {
+                    texName = textures[i % textures.length].name;
+                }
+
                 cmMaterials.push({
                     name: mat.name || `Material_${i}`,
                     baseColor: pbr.baseColorFactor || [1, 1, 1, 1],
                     texturePath: texName
                 });
             }
+        } else if (textures.length > 0) {
+            cmMaterials.push({
+                name: `Material_0`,
+                baseColor: [1, 1, 1, 1],
+                texturePath: textures[0].name
+            });
         }
 
         // 5. Extract Animations into .cea3d clips

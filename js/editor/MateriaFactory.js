@@ -132,15 +132,13 @@ export async function instantiateCMModel(cmPath, parent = null, options = {}) {
                     renderer.cpuIndices = prim.indices ? new Uint16Array(prim.indices) : null;
                     renderer.indexCount = prim.indices ? prim.indices.length : (prim.positions ? prim.positions.length / 3 : 0);
 
-                    if (cmData.materials && cmData.materials[prim.materialIndex]) {
-                        const mat = cmData.materials[prim.materialIndex];
-                        if (mat.texturePath) {
-                            if (mat.texturePath.startsWith('data:') || mat.texturePath.startsWith('blob:') || mat.texturePath.startsWith('http:') || mat.texturePath.startsWith('https:') || mat.texturePath.startsWith('Assets/')) {
-                                renderer.texturePath = mat.texturePath;
-                            } else {
-                                const folder = cmPath.includes('/') ? cmPath.substring(0, cmPath.lastIndexOf('/') + 1) : 'Assets/';
-                                renderer.texturePath = folder + mat.texturePath;
-                            }
+                    let mat = (cmData.materials && cmData.materials[prim.materialIndex]) ? cmData.materials[prim.materialIndex] : (cmData.materials ? cmData.materials[0] : null);
+                    if (mat && mat.texturePath) {
+                        if (mat.texturePath.startsWith('data:') || mat.texturePath.startsWith('blob:') || mat.texturePath.startsWith('http:') || mat.texturePath.startsWith('https:') || mat.texturePath.startsWith('Assets/')) {
+                            renderer.texturePath = mat.texturePath;
+                        } else {
+                            const folder = cmPath.includes('/') ? cmPath.substring(0, cmPath.lastIndexOf('/') + 1) : 'Assets/';
+                            renderer.texturePath = folder + mat.texturePath;
                         }
                     }
 
